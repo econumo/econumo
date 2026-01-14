@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "77ae06a3fa04e0518e4dabfab96d4547",
+    "content-hash": "467777fa6f5604e2f00e55a33f7755c7",
     "packages": [
         {
             "name": "brick/math",
@@ -3283,33 +3283,25 @@
         },
         {
             "name": "symfony/asset",
-            "version": "v5.4.45",
+            "version": "v8.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/asset.git",
-                "reference": "b7a18eaff1d717c321b4f13403413f8815bf9cb0"
+                "reference": "e07d70cfca384c1eabee192fdeedb6850c1c840b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/asset/zipball/b7a18eaff1d717c321b4f13403413f8815bf9cb0",
-                "reference": "b7a18eaff1d717c321b4f13403413f8815bf9cb0",
+                "url": "https://api.github.com/repos/symfony/asset/zipball/e07d70cfca384c1eabee192fdeedb6850c1c840b",
+                "reference": "e07d70cfca384c1eabee192fdeedb6850c1c840b",
                 "shasum": ""
             },
             "require": {
-                "php": ">=7.2.5",
-                "symfony/deprecation-contracts": "^2.1|^3",
-                "symfony/polyfill-php80": "^1.16"
-            },
-            "conflict": {
-                "symfony/http-foundation": "<5.3"
+                "php": ">=8.4"
             },
             "require-dev": {
-                "symfony/http-client": "^4.4|^5.0|^6.0",
-                "symfony/http-foundation": "^5.3|^6.0",
-                "symfony/http-kernel": "^4.4|^5.0|^6.0"
-            },
-            "suggest": {
-                "symfony/http-foundation": ""
+                "symfony/http-client": "^7.4|^8.0",
+                "symfony/http-foundation": "^7.4|^8.0",
+                "symfony/http-kernel": "^7.4|^8.0"
             },
             "type": "library",
             "autoload": {
@@ -3337,7 +3329,7 @@
             "description": "Manages URL generation and versioning of web assets such as CSS stylesheets, JavaScript files and image files",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/asset/tree/v5.4.45"
+                "source": "https://github.com/symfony/asset/tree/v8.0.0"
             },
             "funding": [
                 {
@@ -3349,11 +3341,15 @@
                     "type": "github"
                 },
                 {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
                     "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
                     "type": "tidelift"
                 }
             ],
-            "time": "2024-10-22T13:05:35+00:00"
+            "time": "2025-08-04T07:36:47+00:00"
         },
         {
             "name": "symfony/cache",
@@ -12166,5 +12162,5 @@
         "ext-pdo": "*"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }

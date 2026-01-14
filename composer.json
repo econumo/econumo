@@ -24,7 +24,7 @@
         "psr/log": "^1.1",
         "qandidate/symfony-json-request-transformer": "^2.0",
         "ramsey/uuid": "^4.0",
-        "symfony/asset": "5.4.*",
+        "symfony/asset": "8.0.*",
         "symfony/console": "5.4.*",
         "symfony/dotenv": "5.4.*",
         "symfony/flex": "^1.3.1",
