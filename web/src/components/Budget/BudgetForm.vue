@@ -14,7 +14,7 @@
           val => isNotEmpty(val.toString()) || $t('modules.budget.form.budget.name.validation.required_field'),
           val => isValidBudgetName(val.toString()) || $t('modules.budget.form.budget.name.validation.invalid_name')
         ]"
-        maxlength="18">
+        maxlength="64">
       </q-input>
     </div>
 

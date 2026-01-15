@@ -48,7 +48,7 @@
                 <q-item-section class="settings-connections-list-item-name">{{ connection.user.name }}</q-item-section>
               </div>
             </div>
-            <q-item-section class="settings-connections-list-item-more" side>
+            <q-item-section v-if="$q.screen.gt.md" class="settings-connections-list-item-more" side>
               <q-btn square flat icon="more_vert" class="account-transactions-item-check-button settings-connections-list-item-more-btn" @click.stop>
                 <q-menu cover auto-close class="account-transactions-item-check-button-menu" :ref="(el) => setMenuRef(el, connection.user.id)">
                   <q-list class="account-transactions-item-check-button-list">
@@ -61,6 +61,9 @@
                   </q-list>
                 </q-menu>
               </q-btn>
+            </q-item-section>
+            <q-item-section v-if="!$q.screen.gt.md" class="settings-connections-list-item-chevron" side>
+              <q-icon name="chevron_right" size="24px" color="grey-6" />
             </q-item-section>
           </q-item>
         </q-list>
@@ -369,3 +372,19 @@ onUnmounted(() => {
 });
 </script>
 
+<style scoped>
+.settings-connections-list-item-section {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings-connections-list-item-content {
+  min-width: 0;
+}
+
+.settings-connections-list-item-chevron {
+  align-self: center;
+}
+</style>

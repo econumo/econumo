@@ -46,7 +46,7 @@
               </q-item-section>
               <q-item-section
                 :class="'settings-classification-list-item-text ' + (!hasAccess(element) ? '-archived' : '')">
-                {{ element.name }}
+                <span class="settings-classification-list-item-name econumo-truncate" :title="element.name">{{ element.name }}</span>
                 <div class="settings-classification-list-item-description-archived" v-if="!isAccepted(element)">
                   {{ $t('modules.budget.page.settings.level.' + getRole(element)) }} -
                   {{ $t('modules.budget.page.settings.not_accepted') }}
@@ -603,4 +603,3 @@ function goToBudget(budgetId: Id) {
 }
 
 </script>
-

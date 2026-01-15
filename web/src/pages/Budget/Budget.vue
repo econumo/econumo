@@ -9,7 +9,9 @@
                    @click="navigateToHome(true)" />
           </div>
           <div>
-            <h4 class="budget-toolbar-mobile-head-title" v-if="budgetMeta">{{ budgetMeta.name }}</h4>
+            <h4 class="budget-toolbar-mobile-head-title" v-if="budgetMeta">
+              <span class="budget-toolbar-mobile-head-name econumo-truncate" :title="budgetMeta.name">{{ budgetMeta.name }}</span>
+            </h4>
             <h4 class="budget-toolbar-mobile-head-title" v-else>
               {{ $t('modules.budget.page.budget.empty.header') }}
             </h4>
@@ -25,7 +27,7 @@
       <div class="budget-toolbar-desktop">
         <div class="budget-toolbar-desktop-head">
           <h4 class="budget-toolbar-desktop-head-title" v-if="budgetMeta">
-            {{ budgetMeta.name }}
+            <span class="budget-toolbar-desktop-head-name econumo-truncate" :title="budgetMeta.name">{{ budgetMeta.name }}</span>
             <template v-if="isCurrenciesLoaded">
               <q-avatar size="24px"
                         :class="'budget-toolbar-desktop-head-icon ' + (selectedCurrencyId === currencyId ? 'budget-toolbar-desktop-head-icon-active' : '')"
@@ -1237,4 +1239,3 @@ function openCreateAccountModal() {
 centerActiveDate();
 
 </script>
-

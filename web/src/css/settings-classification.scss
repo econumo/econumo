@@ -150,12 +150,17 @@
         font-size: 16px;
         line-height: 19px;
         color: $color-text-black;
+        min-width: 0;
 
         &.-archived {
           display: flex;
           flex-direction: column;
           flex-wrap: nowrap;
         }
+      }
+
+      &-name {
+        display: block;
       }
 
       & .q-toggle__thumb:before {

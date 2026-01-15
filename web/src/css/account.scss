@@ -47,6 +47,10 @@
           color: $color-text-black;
           text-transform: uppercase;
           margin: 0;
+          max-width: 60vw;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
 
           & .q-field__native span {
             font-style: normal;
@@ -132,6 +136,10 @@
           color: $color-text-black;
           margin: 0;
           align-self: center;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
 
           & .q-field__native span {
             font-style: normal;
@@ -149,6 +157,11 @@
           color: $color-input-grey;
           margin-left: 16px;
           margin-bottom: 7px;
+          flex: 0 0 auto;
+        }
+
+        &-name {
+          max-width: clamp(200px, 40vw, 520px);
         }
       }
 
@@ -242,6 +255,8 @@
     align-items: stretch;
     align-content: stretch;
     background-color: $color-white;
+    min-width: 0;
+    overflow-x: hidden;
 
     &-date {
       width: 100%;
@@ -269,6 +284,10 @@
       border-radius: 16px;
       padding: 8px;
       margin-bottom: 4px;
+      max-width: 100%;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
 
       @include responsive(desktop) {
         padding: 9px 8px;
@@ -281,6 +300,7 @@
       }
 
       &-section {
+        min-width: 0;
         @include responsive(desktop) {
           flex-wrap: nowrap;
         }
@@ -288,11 +308,13 @@
 
       &-wrapper {
         @include responsive(desktop) {
-          width: 60%;
+          flex: 0 0 auto;
+          width: auto;
           display: flex;
           justify-content: space-between;
           align-items: center;
           height: fit-content;
+          min-width: 0;
         }
       }
 
@@ -304,129 +326,196 @@
 
       &-container {
         display: flex;
-        justify-content: space-between;
+        align-items: flex-start;
+        column-gap: 12px;
+        min-width: 0;
+        overflow: hidden;
+        width: 100%;
       }
 
-      &-info {
+      &-info-avatar {
         display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        width: 40px;
+        min-width: 40px;
+        height: 40px;
+        background: $color-background-grey;
+        border-radius: 50px;
 
-        &-avatar {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          position: relative;
-          width: 40px;
-          min-width: 40px;
-          height: 40px;
-          background: $color-background-grey;
-          border-radius: 50px;
-
-          &-icon {
-            width: 24px;
-            height: 24px;
-            color: $color-input-grey;
-          }
-
-          &-shared {
-            position: absolute;
-            top: 14px;
-            right: -14px;
-            width: 28px;
-            height: 28px;
-            border-radius: 32px;
-            & img {
-              border: 2px solid $color-grey;
-            }
-          }
+        &-icon {
+          width: 24px;
+          height: 24px;
+          color: $color-input-grey;
         }
 
-        &-description {
-          margin-left: 28px;
-
-          &-category {
-            font-style: normal;
-            font-weight: 400;
-            font-size: 16px;
-            line-height: 19px;
-            color: $color-text-black;
-            margin: 2px 0 3px 0;
-          }
-
-          &-note {
-            font-style: normal;
-            font-weight: 400;
-            font-size: 14px;
-            line-height: 16px;
-            color: $color-text-grey;
+        &-shared {
+          position: absolute;
+          top: 14px;
+          right: -14px;
+          width: 28px;
+          height: 28px;
+          border-radius: 32px;
+          & img {
+            border: 2px solid $color-grey;
           }
         }
       }
 
-      &-check {
-        @include responsive(desktop) {
-          position: relative;
-        }
+      &-info-description {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        flex: 1 1 0;
 
-        &-income {
+        &-category {
           font-style: normal;
           font-weight: 400;
-          font-size: 18px;
-          line-height: 20px;
-          margin-right: 8px;
-          @include responsive(desktop) {
-            vertical-align: middle;
-          }
+          font-size: 16px;
+          line-height: 19px;
+          color: $color-text-black;
+          margin: 2px 0 3px 0;
+          display: block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex: 1 1 0;
+          min-width: 0;
         }
 
-        &-currency {
+        &-note {
           font-style: normal;
-          font-weight: 500;
-          font-size: 18px;
-          line-height: 20px;
-          margin-right: 0;
-          color: $color-label-grey;
-          @include responsive(desktop) {
-            vertical-align: middle;
-            margin-right: 8px;
+          font-weight: 400;
+          font-size: 14px;
+          line-height: 16px;
+          color: $color-text-grey;
+          display: block;
+          max-width: 100%;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          margin-bottom: 4px;
+          @media (max-width: $breakpoint-sm) {
+            font-size: 12px;
+            line-height: 14px;
           }
         }
+      }
 
-        &-button {
-          color: $color-input-grey;
-          display: none;
-          @include responsive(desktop) {
-            display: inline-flex;
-            width: 16px;
-            height: 24px;
-          }
+      &-info-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content 16px;
+        column-gap: 8px;
+        align-items: center;
+        min-width: 0;
+        width: 100%;
+        @media (max-width: $breakpoint-sm) {
+          column-gap: 6px;
+        }
+      }
 
-          &-menu {
-            width: 196px;
-            box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.25);
-            border-radius: 8px;
-            padding: 8px;
-          }
 
-          &-item {
-            padding: 6px 12px;
-            border-radius: 8px;
-          }
+      &-check-amount {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+        flex: 0 0 auto;
+        grid-column: 2;
+      }
 
-          &-section {
-            color: $color-text-black;
-            font-weight: 400;
-            font-size: 16px;
-            line-height: 16px;
+      &-check-menu {
+        width: 16px;
+        display: inline-flex;
+        justify-content: flex-end;
+        flex: 0 0 auto;
+        grid-column: 3;
+      }
 
-            &.-delete {
-              color: $color-red;
-            }
+      &-check-income {
+        font-style: normal;
+        font-weight: 400;
+        font-size: 18px;
+        line-height: 20px;
+        margin-right: 8px;
+        @media (max-width: $breakpoint-sm) {
+          font-size: 16px;
+          line-height: 18px;
+          margin-right: 6px;
+        }
+        @include responsive(desktop) {
+          vertical-align: middle;
+        }
+      }
+
+      &-check-currency {
+        font-style: normal;
+        font-weight: 500;
+        font-size: 18px;
+        line-height: 20px;
+        margin-right: 0;
+        color: $color-label-grey;
+        @media (max-width: $breakpoint-sm) {
+          font-size: 16px;
+          line-height: 18px;
+        }
+        @include responsive(desktop) {
+          vertical-align: middle;
+          margin-right: 8px;
+        }
+      }
+
+      &-check-button {
+        color: $color-input-grey;
+        display: none;
+        @include responsive(desktop) {
+          display: inline-flex;
+          width: 16px;
+          height: 24px;
+        }
+
+        &-menu {
+          width: 196px;
+          box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.25);
+          border-radius: 8px;
+          padding: 8px;
+        }
+
+        &-item {
+          padding: 6px 12px;
+          border-radius: 8px;
+        }
+
+        &-section {
+          color: $color-text-black;
+          font-weight: 400;
+          font-size: 16px;
+          line-height: 16px;
+
+          &.-delete {
+            color: $color-red;
           }
         }
       }
 
       &-tags {
-        margin-top: 8px;
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        max-width: 100%;
+        min-width: 0;
+        @media (max-width: $breakpoint-sm) {
+          max-width: clamp(160px, 60vw, 240px);
+        }
+
+        &-tag-wrapper {
+          display: inline-flex;
+          max-width: 100%;
+          min-width: 0;
+        }
 
         &-tag {
           padding: 2px 4px;
@@ -439,6 +528,17 @@
           text-transform: uppercase;
           color: $color-input-grey;
           margin-left: 4px;
+          display: inline-flex;
+          align-items: center;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          @media (max-width: $breakpoint-sm) {
+            font-size: 10px;
+            line-height: 12px;
+            padding: 1px 3px;
+          }
 
           &:first-child {
             margin-left: 0;
@@ -446,7 +546,10 @@
         }
 
         &-block {
-          margin-top: 4px;
+          display: inline-flex;
+          max-width: 100%;
+          min-width: 0;
+          overflow: hidden;
         }
 
         &-payee {
@@ -454,31 +557,17 @@
           font-weight: 400;
           font-size: 13px;
           line-height: 16px;
-          text-align: right;
+          text-align: left;
           color: $color-text-grey;
-        }
-
-        &.-mobile {
-          display: block;
-          @include responsive(desktop) {
-            display: none;
-          }
-        }
-
-        &.-desktop {
-          display: none;
-          @include responsive(desktop) {
-            display: block;
-            margin-top: 0;
-
-            & .account-transactions-item-tags-block {
-              margin-top: 0;
-              margin-bottom: 4px;
-            }
-            & .account-transactions-item-tags-payee {
-              text-align: unset;
-
-            }
+          display: inline-block;
+          width: auto;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          @media (max-width: $breakpoint-sm) {
+            font-size: 12px;
+            line-height: 14px;
           }
         }
       }
@@ -603,6 +692,8 @@
         padding: 8px 12px;
         background: $color-grey;
         border-radius: 8px;
+        display: flex;
+        align-items: center;
 
         &-avatar {
           min-width: 24px;
@@ -613,6 +704,9 @@
         &-box {
           display: flex;
           flex-direction: column;
+          min-width: 0;
+          flex: 1 1 auto;
+          width: 100%;
 
           &-name {
             font-weight: 400;
@@ -620,6 +714,8 @@
             line-height: 16px;
             color: $color-text-black;
             margin-bottom: 4px;
+            max-width: 100%;
+            width: 100%;
           }
 
           &-balance {
@@ -629,6 +725,9 @@
             line-height: 16px;
             color: $color-input-grey;
             padding-left: 0 !important;
+            margin-left: 0 !important;
+            width: 100%;
+            text-align: left;
           }
         }
       }
@@ -660,11 +759,21 @@
 
             &.-tags {
               padding: 4px 8px;
-              width: fit-content;
+              width: auto;
+              max-width: 100%;
               background: $color-grey;
               border-radius: 4px;
               text-transform: uppercase;
             }
+          }
+
+          &-content.econumo-truncate {
+            display: block;
+            max-width: 100%;
+          }
+
+          &-content.-tags.econumo-truncate {
+            display: inline-block;
           }
         }
       }

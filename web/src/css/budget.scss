@@ -130,6 +130,10 @@ $budget-table-column-width: 150px;
           color: $color-text-black;
           text-transform: uppercase;
           margin: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 0;
 
           & .q-field__native span {
             font-style: normal;
@@ -139,6 +143,10 @@ $budget-table-column-width: 150px;
             color: $color-text-black;
             text-transform: uppercase;
           }
+        }
+
+        &-name {
+          max-width: clamp(140px, 60vw, 320px);
         }
       }
     }
@@ -166,6 +174,10 @@ $budget-table-column-width: 150px;
           color: $color-text-black;
           margin: 0;
           align-self: center;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
 
           & .q-field__native span {
             font-style: normal;
@@ -175,6 +187,10 @@ $budget-table-column-width: 150px;
             text-transform: uppercase;
             color: $color-text-black;
           }
+        }
+
+        &-name {
+          max-width: clamp(200px, 40vw, 520px);
         }
 
         &-icon {
@@ -187,6 +203,7 @@ $budget-table-column-width: 150px;
           font-size: 12px;
           font-weight: 500;
           cursor: pointer;
+          flex: 0 0 auto;
 
           &-active {
             background-color: $color-background-grey;

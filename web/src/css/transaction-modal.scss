@@ -197,6 +197,11 @@
             font-size: 14px;
             line-height: 16px;
             color: $color-text-black;
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
           & .q-field__native {
             font-style: normal;
@@ -205,6 +210,16 @@
             line-height: 16px;
             color: $color-input-grey;
           }
+        }
+      }
+    }
+
+    &-category {
+      &-select {
+        & .q-field__native {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
     }
@@ -341,6 +356,24 @@
 
       &-select {
         padding-bottom: 8px;
+
+        & .q-field__native {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          display: block;
+          height: 20px;
+          line-height: 20px;
+        }
+
+        & .q-field__control-container {
+          align-items: center;
+        }
+
+        & .q-field__input {
+          height: 20px;
+          line-height: 20px;
+        }
       }
     }
 
@@ -424,6 +457,37 @@
       width: 50%;
     }
   }
+
+  &-add-tag {
+    & .q-field__native {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  &-select-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &-select-name {
+    flex: 1 1 0;
+    min-width: 0;
+    display: block;
+  }
+
+  &-select-balance {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  &-tag-label {
+    display: inline-block;
+    max-width: 220px;
+  }
 }
 
 // TODO: Подумать как лучше сделать
@@ -497,6 +561,7 @@
 .modal-popup {
   border-radius: 8px;
   padding: 8px;
+  max-width: 100%;
 
   &-selected {
     background: $color-magenta;
@@ -521,17 +586,59 @@
     border-radius: 8px;
     padding: 10px 12px;
     margin-bottom: 2px;
+    max-width: 100%;
   }
 
   & .q-item:last-child {
     margin-bottom: 0;
   }
 
+  & .q-item__section {
+    min-width: 0;
+  }
+
   & .q-item__label {
+    display: block;
     font-style: normal;
     font-weight: 400;
     font-size: 16px;
     line-height: 20px !important;
     color: $color-text-black;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.transaction-modal-category-popup,
+.transaction-modal-payee-popup {
+  max-width: 100% !important;
+  padding-right: 0;
+}
+
+.q-select__dialog .transaction-modal-category-popup,
+.q-select__dialog .transaction-modal-payee-popup {
+  width: calc(100% - 16px) !important;
+
+  & .q-virtual-scroll__content,
+  & .q-list {
+    max-width: 100%;
+  }
+
+  & .q-item {
+    max-width: 100%;
+  }
+
+  & .q-item__section {
+    min-width: 0;
+  }
+
+  & .q-item__label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

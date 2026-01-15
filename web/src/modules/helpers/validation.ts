@@ -30,31 +30,31 @@ export function isValidDecimalNumber(value: string) {
 }
 
 export function isValidName(value: string) {
-  return value.length >= 2 && value.length <= 18;
+  return value.length >= 2 && value.length <= 64;
 }
 
 export function isValidFolderName(value: string) {
-  return value.length >= 2 && value.length <= 18;
+  return value.length >= 2 && value.length <= 64;
 }
 
 export function isValidAccountName(value: string) {
-  return value.length >= 3 && value.length <= 18;
+  return value.length >= 3 && value.length <= 64;
 }
 
 export function isValidCategoryName(value: string) {
-  return value.length >= 3 && value.length <= 18;
+  return value.length >= 3 && value.length <= 64;
 }
 
 export function isValidTagName(value: string) {
-  return value.length >= 3 && value.length <= 18;
+  return value.length >= 3 && value.length <= 64;
 }
 
 export function isValidPayeeName(value: string) {
-  return value.length >= 3 && value.length <= 18;
+  return value.length >= 3 && value.length <= 64;
 }
 
 export function isValidBudgetName(value: string) {
-  return value.length >= 3 && value.length <= 18;
+  return value.length >= 3 && value.length <= 64;
 }
 
 export function isValidPassword(value: string) {
@@ -62,11 +62,11 @@ export function isValidPassword(value: string) {
 }
 
 export function isValidBudgetFolderName(value: string) {
-  return value.length >= 3 && value.length <= 18;
+  return value.length >= 3 && value.length <= 64;
 }
 
 export function isValidBudgetEnvelopeName(value: string) {
-  return value.length >= 3 && value.length <= 18;
+  return value.length >= 3 && value.length <= 64;
 }
 
 export function isNotEmpty(value: string) {

@@ -43,7 +43,7 @@
                 (val: string) => isNotEmpty(val) || $t('modules.classifications.categories.forms.category.name.validation.required_field'),
                 (val: string) => isValidCategoryName(val) || $t('modules.classifications.categories.forms.category.name.validation.invalid_name')
               ]"
-              maxlength="18">
+              maxlength="64">
               <template v-slot:before>
                 <div class="settings-classification-modal-control-icon">
                   <q-icon class="settings-classification-modal-control-icon-img" :name="editCategory.icon"/>

@@ -26,6 +26,13 @@
   transition: none !important;
 }
 
+.econumo-truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .application {
   background-color: $color-grey;
   margin: 0;
@@ -60,6 +67,7 @@
 
     &-sidebar {
       min-width: $breakpoint-xs !important;
+      max-width: 100%;
       background-color: $color-white;
       padding: 16px !important;
       display: flex;
@@ -67,6 +75,7 @@
       flex-direction: column;
       justify-self: start;
       height: 100vh;
+      overflow-x: hidden;
 
       @include responsive(desktop) {
         background-color: $color-grey;
@@ -218,6 +227,14 @@
             margin-bottom: 0;
           }
         }
+        & .application-layout-account-folder-name {
+          display: block;
+          max-width: min(100%, clamp(240px, 60vw, 800px));
+          min-width: 0;
+          @include responsive(desktop) {
+            max-width: 180px;
+          }
+        }
         & .application-layout-account-folder-caption {
           width: 48px;
           height: 48px;
@@ -251,10 +268,12 @@
 
       &-list {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
+        width: 100%;
+        min-width: 0;
         @include responsive(tablet) {
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
         @include responsive(desktop) {
           display: block;
@@ -270,6 +289,11 @@
           background-color: $color-grey;
           flex-direction: column;
           position: relative;
+          min-width: 0;
+          overflow: hidden;
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
           @include responsive(desktop) {
             height: 52px;
             flex-direction: row;
@@ -285,6 +309,8 @@
         }
         &-name-block {
           width: 100%;
+          min-width: 0;
+          overflow: hidden;
         }
         &-section-name {
           font-size: 14px;
@@ -292,7 +318,13 @@
           color: $color-text-black;
           margin: 8px 0 4px 0;
           min-height: 32px;
+          max-width: 100%;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
           @include responsive(desktop) {
+            max-width: 190px;
             padding-bottom: 2px;
             margin: 0;
             min-height: auto;
@@ -797,4 +829,3 @@
     color: $color-text-black;
   }
 }
-

@@ -1,5 +1,5 @@
 <template>
-  <q-dialog class="settings-connections-modal" :model-value="isOpened" @update:model-value="$emit('update:isOpened', $event)" @hide="onHide" :position="$q.screen.gt.md ? 'standard' : 'bottom'" :no-backdrop-dismiss="$q.screen.gt.md">
+  <q-dialog class="settings-connections-modal" :model-value="isOpened" @update:model-value="$emit('update:isOpened', $event)" @hide="onHide" :position="$q.screen.gt.md ? 'standard' : 'bottom'">
     <q-card class="settings-connections-modal-card" v-if="connection">
         <q-card-section class="settings-connections-modal-section">
         <div class="settings-connections-modal-card-container">
@@ -33,17 +33,19 @@
                 <q-icon name="menu_book" />
               </q-item-section>
               <q-item-section class="settings-connections-modal-card-item-item-name-block">
-                <div>
-                  {{ budget.name }}
-                  <span v-if="isBudgetOwnedByCurrentUser(budget)" class="settings-connections-modal-card-item-item-owner-hint">{{ $t('modules.connections.modals.preview_connection.your_budget') }}</span>
-                  <span v-if="!isBudgetOwnedByCurrentUser(budget)" class="settings-connections-modal-card-item-item-shared-hint">{{ $t('modules.connections.modals.preview_connection.shared_with_you') }}</span>
+                <div class="settings-connections-modal-card-item-item-name-row">
+                  <span class="settings-connections-modal-card-item-item-name">
+                    {{ budget.name }}
+                  </span>
+                  <span v-if="isBudgetOwnedByCurrentUser(budget)" class="settings-connections-modal-card-item-item-owner-hint settings-connections-modal-card-item-item-badge">{{ $t('modules.connections.modals.preview_connection.your_budget') }}</span>
+                  <span v-if="!isBudgetOwnedByCurrentUser(budget)" class="settings-connections-modal-card-item-item-shared-hint settings-connections-modal-card-item-item-badge">{{ $t('modules.connections.modals.preview_connection.shared_with_you') }}</span>
                 </div>
                 <span class="settings-connections-modal-card-item-item-role">{{ $t('modules.connections.budgets.roles.' + budget.role) }}</span>
               </q-item-section>
 
               <q-item-section side class="settings-connections-modal-card-item-item-shared">
                 <q-avatar class="settings-connections-modal-card-item-item-shared-avatar">
-                    <img :src="getBudgetOwnerAvatar(budget)" width="30" height="30" :alt="isBudgetOwnedByCurrentUser(budget) ? currentUserName : connection.user.name" :title="isBudgetOwnedByCurrentUser(budget) ? currentUserName : connection.user.name">
+                  <img :src="getBudgetOwnerAvatar(budget)" width="30" height="30" :alt="isBudgetOwnedByCurrentUser(budget) ? currentUserName : connection.user.name" :title="isBudgetOwnedByCurrentUser(budget) ? currentUserName : connection.user.name">
                 </q-avatar>
               </q-item-section>
             </q-item>
@@ -75,10 +77,12 @@
                 <q-icon :name="account.icon" />
               </q-item-section>
               <q-item-section class="settings-connections-modal-card-item-item-name-block">
-                <div>
-                  {{ account.name }}
-                  <span v-if="isAccountOwnedByCurrentUser(account)" class="settings-connections-modal-card-item-item-owner-hint">{{ $t('modules.connections.modals.preview_connection.your_account') }}</span>
-                  <span v-if="!isAccountOwnedByCurrentUser(account)" class="settings-connections-modal-card-item-item-shared-hint">{{ $t('modules.connections.modals.preview_connection.shared_with_you') }}</span>
+                <div class="settings-connections-modal-card-item-item-name-row">
+                  <span class="settings-connections-modal-card-item-item-name">
+                    {{ account.name }}
+                  </span>
+                  <span v-if="isAccountOwnedByCurrentUser(account)" class="settings-connections-modal-card-item-item-owner-hint settings-connections-modal-card-item-item-badge">{{ $t('modules.connections.modals.preview_connection.your_account') }}</span>
+                  <span v-if="!isAccountOwnedByCurrentUser(account)" class="settings-connections-modal-card-item-item-shared-hint settings-connections-modal-card-item-item-badge">{{ $t('modules.connections.modals.preview_connection.shared_with_you') }}</span>
                 </div>
                 <span class="settings-connections-modal-card-item-item-role">{{ $t('modules.connections.accounts.roles.' + account.role) }}</span>
               </q-item-section>
@@ -377,3 +381,38 @@ const onCancelDeclineBudget = () => {
   selectedBudgetOwner.value = null;
 };
 </script>
+
+<style scoped>
+.settings-connections-modal-card-item-item-name-block {
+  min-width: 0;
+}
+
+.settings-connections-modal-card-item-item-name-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.settings-connections-modal-card-item-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-connections-modal-card-item-item-badge {
+  flex: 0 0 auto;
+  margin-right: 16px;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+.settings-connections-modal-card-item-item-shared {
+  align-items: center;
+  display: flex;
+}
+</style>

@@ -79,13 +79,19 @@
               expand-icon="navigate_next"
               expanded-icon="expand_more"
               v-for="item in accountsTree" v-bind:key="item.folder.id"
-              :label="item.folder.name"
-              :caption="moneyFormat(item.amount, item.currency.id)"
               expand-icon-class="application-layout-account-folder-caption"
               :default-opened="item.folder.opened"
               @show="openAccountFolder(item.folder.id)"
               @hide="closeAccountFolder(item.folder.id)"
             >
+              <template v-slot:header>
+                <q-item-section>
+                  <q-item-label class="application-layout-account-folder-name econumo-truncate" :title="item.folder.name">
+                    {{ item.folder.name }}
+                  </q-item-label>
+                  <q-item-label caption>{{ moneyFormat(item.amount, item.currency.id) }}</q-item-label>
+                </q-item-section>
+              </template>
               <q-list class="application-layout-account-list">
                 <q-item class="application-layout-account-list-item" clickable v-for="account in item.accounts"
                         v-bind:key="account.id" @click="selectAccount(account.id)"
@@ -94,7 +100,7 @@
                     <q-icon :name="account.icon" />
                   </q-item-section>
                   <div class="application-layout-account-list-name-block">
-                    <q-item-section class="application-layout-account-list-section-name">{{ account.name }}
+                    <q-item-section class="application-layout-account-list-section-name econumo-truncate" :title="account.name">{{ account.name }}
                     </q-item-section>
                     <q-item-section class="application-layout-account-list-section-balance" side>
                       {{ moneyFormat(account.balance, account.currency.id) }}

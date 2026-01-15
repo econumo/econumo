@@ -52,7 +52,7 @@
                     <q-icon name="drag_indicator"/>
                   </q-item-section>
                   <q-item-section :class="!!element.isArchived ? 'settings-classification-list-item-text -archived' : 'settings-classification-list-item-text'">
-                    {{ element.name }}
+                    <span class="settings-classification-list-item-name econumo-truncate" :title="element.name">{{ element.name }}</span>
                     <div class="settings-classification-list-item-description-archived" v-if="element.isArchived">{{ $t('modules.classifications.tags.pages.settings.archived_item') }}</div>
                   </q-item-section>
                   <q-item-section side @click.stop>

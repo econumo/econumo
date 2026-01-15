@@ -56,18 +56,42 @@
           <q-card-section class="transaction-modal-main">
             <div class="transaction-modal-main-account" v-if="!isTransfer">
               <q-select class="transaction-modal-main-account-select" v-model="account" :options="accountsOptions"
+                        ref="accountSelect"
+                        :title="account?.name"
                         :label="account.name"
                         popup-content-class="modal-popup"
+                        :popup-content-style="accountPopupStyle"
                         options-selected-class="modal-popup-selected"
+                        @popup-show="setAccountPopupWidth"
                         hide-dropdown-icon>
                 <template v-slot:prepend>
                   <q-icon :name="account.icon"/>
+                </template>
+                <template v-slot:selected-item="scope">
+                  <span class="transaction-modal-select-balance">
+                    {{ scope.opt.balanceLabel }}
+                  </span>
+                </template>
+                <template v-slot:option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label class="transaction-modal-select-value">
+                        <span class="econumo-truncate transaction-modal-select-name">
+                          {{ scope.opt.name || scope.opt.label }}
+                        </span>
+                        <span class="transaction-modal-select-balance">
+                          {{ scope.opt.balanceLabel }}
+                        </span>
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
                 </template>
               </q-select>
             </div>
 
             <div class="transaction-modal-main-amount">
               <calculator-input
+                ref="amountInput"
                 :class="'transaction-modal-main-amount-input amount ' + (isTransfer ? 'transfer' : '')"
                 v-model="amount"
                 :label="$t('modals.transaction.form.amount.label')"
@@ -100,8 +124,19 @@
             <div class="transaction-modal-main-category" v-if="!isTransfer">
               <q-select class="form-select transaction-modal-main-category-select" outlined bottom-slots
                         v-model="category" :use-input="canChangeAccountData"
-                        popup-content-class="modal-popup"
+                        :input-value="categoryInputValue"
+                        ref="categorySelect"
+                        :title="category?.label"
+                        popup-content-class="modal-popup transaction-modal-category-popup"
+                        :popup-content-style="categoryPopupStyle"
                         options-selected-class="modal-popup-selected"
+                        options-cover
+                        @focus="onCategoryFocus"
+                        @blur="restoreCategoryIfEmpty"
+                        @popup-show="setCategoryPopupWidth"
+                        @popup-hide="syncCategoryInputValue"
+                        @update:input-value="onCategoryInputValueUpdate"
+                        @update:model-value="blurSelect('categorySelect')"
                         @new-value="createCategory" @filter="filterCategories"
                         @filter-abort="filterCategoriesAbort" :options="categoriesOptions"
                         :label="$t('modals.transaction.form.category.label')"
@@ -110,6 +145,15 @@
                 <template v-slot:before>
                   <q-icon class="form-select-icon transaction-modal-main-category-select-icon"
                           :name="category?.icon || 'pending'"></q-icon>
+                </template>
+                <template v-slot:option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label class="econumo-truncate transaction-modal-select-name">
+                        {{ scope.opt.label }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
                 </template>
                 <!--  @thinking -->
                 <!--                  <template v-slot:append>-->
@@ -122,8 +166,12 @@
               <q-select class="form-select transaction-modal-main-from-account-select" outlined bottom-slots
                         v-model="account"
                         :disable="!isTransactionModalCreation"
+                        ref="fromAccountSelect"
+                        :title="account?.name"
                         popup-content-class="modal-popup"
+                        :popup-content-style="fromAccountPopupStyle"
                         options-selected-class="modal-popup-selected"
+                        @popup-show="setFromAccountPopupWidth"
                         :options="accountsOptions" :label="$t('modals.transaction.form.from.label')"
                         :option-disable="opt => opt.value === transactionModalAccountRecipientId">
                 <template v-slot:before>
@@ -134,19 +182,71 @@
                   <q-icon class="form-select-icon transaction-modal-main-from-account-select-icon after cursor-pointer"
                           @click="swapAccounts()" :name="'swap_vert'"></q-icon>
                 </template>
+                <template v-slot:selected-item="scope">
+                  <div class="transaction-modal-select-value">
+                    <span class="econumo-truncate transaction-modal-select-name">
+                      {{ scope.opt.name || scope.opt.label }}
+                    </span>
+                    <span class="transaction-modal-select-balance">
+                      {{ scope.opt.balanceLabel }}
+                    </span>
+                  </div>
+                </template>
+                <template v-slot:option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label class="transaction-modal-select-value">
+                        <span class="econumo-truncate transaction-modal-select-name">
+                          {{ scope.opt.name || scope.opt.label }}
+                        </span>
+                        <span class="transaction-modal-select-balance">
+                          {{ scope.opt.balanceLabel }}
+                        </span>
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
               </q-select>
             </div>
 
             <div class="transaction-modal-main-recipient" v-if="isTransfer">
               <q-select class="form-select transaction-modal-main-recipient-select" outlined bottom-slots
                         v-model="accountRecipient"
+                        ref="recipientAccountSelect"
+                        :title="accountRecipient?.label"
                         popup-content-class="modal-popup"
+                        :popup-content-style="recipientAccountPopupStyle"
                         options-selected-class="modal-popup-selected"
+                        @popup-show="setRecipientAccountPopupWidth"
                         :options="accountsOptions" :label="$t('modals.transaction.form.to.label')"
                         :option-disable="opt => opt.value === transactionModalAccountId">
                 <template v-slot:before>
                   <q-icon class="form-select-icon transaction-modal-main-recipient-select-icon"
                           :name="accountRecipient?.icon || 'pending'"></q-icon>
+                </template>
+                <template v-slot:selected-item="scope">
+                  <div class="transaction-modal-select-value">
+                    <span class="econumo-truncate transaction-modal-select-name">
+                      {{ scope.opt.name || scope.opt.label }}
+                    </span>
+                    <span class="transaction-modal-select-balance">
+                      {{ scope.opt.balanceLabel }}
+                    </span>
+                  </div>
+                </template>
+                <template v-slot:option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label class="transaction-modal-select-value">
+                        <span class="econumo-truncate transaction-modal-select-name">
+                          {{ scope.opt.name || scope.opt.label }}
+                        </span>
+                        <span class="transaction-modal-select-balance">
+                          {{ scope.opt.balanceLabel }}
+                        </span>
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
                 </template>
               </q-select>
             </div>
@@ -163,11 +263,33 @@
             <div class="transaction-modal-options-payee" v-if="!isTransfer">
               <q-select class="transaction-modal-options-payee-select form-select" outlined v-model="payee"
                         :use-input="canChangeAccountData" input-debounce="0"
-                        popup-content-class="modal-popup"
+                        :input-value="payeeInputValue"
+                        ref="payeeSelect"
+                        :title="payee?.label"
+                        popup-content-class="modal-popup transaction-modal-payee-popup"
+                        :popup-content-style="payeePopupStyle"
                         options-selected-class="modal-popup-selected"
+                        options-cover
+                        clearable
+                        @keydown="onPayeeKeydown"
+                        @blur="restorePayeeIfEmpty"
+                        @popup-show="setPayeePopupWidth"
+                        @popup-hide="syncPayeeInputValue"
+                        @update:input-value="onPayeeInputValueUpdate"
+                        @clear="onPayeeClear"
+                        @update:model-value="onPayeeModelValueUpdate"
                         @new-value="createPayee" @filter="filterPayees"
                         @filter-abort="filterPayeesAbort" :options="payeesOptions"
                         :label="$t('modals.transaction.form.payee.' + transactionType)">
+                <template v-slot:option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label class="econumo-truncate transaction-modal-select-name">
+                        {{ scope.opt.label }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
                 <!--                <template v-slot:append>-->
                 <!--                  <q-icon name="close" @click.stop="payee = ''" class="cursor-pointer" v-show="payee"/>-->
                 <!--                </template>-->
@@ -175,10 +297,13 @@
             </div>
 
             <div class="transaction-modal-options-tags" v-if="isExpense">
-              <q-btn class="transaction-modal-options-tags-tag-btn" :label="item.name" @click="selectTag(item.id)"
+              <q-btn class="transaction-modal-options-tags-tag-btn" @click="selectTag(item.id)"
+                     :title="item.name"
                      :style="(transactionModalTagId === item.id ? 'background: #F4CFFF; color: #93489F' : 'background: #F5F5F5; color: #666666')"
                      :ripple="false" v-for="item in accountOwnerTags"
-                     v-bind:key="item.id"/>
+                     v-bind:key="item.id">
+                <span class="econumo-truncate transaction-modal-tag-label">{{ item.name }}</span>
+              </q-btn>
               <q-btn class="transaction-modal-options-tags-tag-add-btn" round unelevated :ripple="false"
                      @click="openAddTagModal" v-if="canChangeAccountData">
                 <q-avatar class="transaction-modal-options-tags-tag-add-btn-icon">
@@ -213,7 +338,17 @@
                   :rules="[
                     val => !!val || $t('modals.transaction.dialog.new_tag.name.validation.required_field'),
                   ]"
-        />
+        >
+          <template v-slot:option="scope">
+            <q-item v-bind="scope.itemProps">
+              <q-item-section>
+                <q-item-label class="econumo-truncate transaction-modal-select-name">
+                  {{ scope.opt.label }}
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-select>
         <div class="transaction-modal-add-tag-actions">
           <q-btn class="econumo-btn -medium -grey transaction-modal-add-tag-button"
                  :label="$t('elements.button.cancel.label')" type="button" @click="closeAddTagModal"
@@ -272,9 +407,21 @@ export default defineComponent({
       categorySearchFilter: '',
       tagSearchFilter: '',
       payeeSearchFilter: '',
+      payeeInputValue: '',
+      categoryInputValue: '',
+      lastSelectedCategory: null,
+      lastSelectedPayee: null,
+      isPayeeCleared: false,
+      skipPayeeRestoreOnce: false,
+      payeeTypingStarted: false,
       isAddTag: false,
       tag: '',
-      customTags: null
+      customTags: null,
+      accountPopupStyle: '',
+      fromAccountPopupStyle: '',
+      recipientAccountPopupStyle: '',
+      categoryPopupStyle: '',
+      payeePopupStyle: ''
     }
   },
   computed: {
@@ -333,7 +480,11 @@ export default defineComponent({
         }
         useTransactionModalStore().changeTransactionModalType(value);
         useTransactionModalStore().changeTransactionModalCategory(null);
+        this.categoryInputValue = '';
+        this.categorySearchFilter = '';
+        this.lastSelectedCategory = null;
         this.calculateAmountRecipient(this.amount);
+        this.focusAmountInput();
       },
     },
     account: {
@@ -341,9 +492,10 @@ export default defineComponent({
         const account = _.find(this.accounts, {id: this.transactionModalAccountId});
         return {
           name: account.name,
-          label: this.moneyFormat(account.balance, account.currency.id, true, true),
+          label: account.name,
           value: this.transactionModalAccountId,
           icon: account.icon,
+          balanceLabel: this.moneyFormat(account.balance, account.currency.id, true, true),
           currencySign: account.currency.symbol,
           currencyId: account.currency.id
         };
@@ -362,9 +514,10 @@ export default defineComponent({
           return null
         }
         return {
-          label: account.name + ' ' + this.moneyFormat(account.balance, account.currency.id, true, true),
+          label: account.name,
           value: this.transactionModalAccountRecipientId,
           icon: account.icon,
+          balanceLabel: this.moneyFormat(account.balance, account.currency.id, true, true),
           currencySign: account.currency.symbol,
           currencyId: account.currency.id
         };
@@ -405,6 +558,8 @@ export default defineComponent({
       },
       set(item) {
         useTransactionModalStore().changeTransactionModalCategory(item ? item.value : null);
+        this.categoryInputValue = item?.label || '';
+        this.lastSelectedCategory = item ? {label: item.label, value: item.value} : this.lastSelectedCategory;
       },
     },
     description: {
@@ -428,6 +583,8 @@ export default defineComponent({
       },
       set(item) {
         useTransactionModalStore().changeTransactionModalPayee(item ? item.value : null);
+        this.payeeInputValue = item?.label || '';
+        this.lastSelectedPayee = item ? {label: item.label, value: item.value} : this.lastSelectedPayee;
       },
     },
     accountsOptions: function () {
@@ -442,7 +599,9 @@ export default defineComponent({
         }
 
         result.push({
-          label: item.name + ' ' + this.moneyFormat(item.balance, item.currency.id, true, true),
+          label: item.name,
+          name: item.name,
+          balanceLabel: this.moneyFormat(item.balance, item.currency.id, true, true),
           value: item.id,
           icon: item.icon,
           currencySign: item.currency.symbol,
@@ -539,6 +698,172 @@ export default defineComponent({
     }
   },
   methods: {
+    focusAmountInput() {
+      this.$nextTick(() => {
+        const amountInput = this.$refs.amountInput;
+        const el = amountInput?.$el || amountInput;
+        const input = el?.querySelector?.('input');
+        if (input) {
+          input.focus();
+        }
+      });
+    },
+    setPopupWidth(selectRef, styleKey, popupClass = '') {
+      const selectEl = this.$refs[selectRef]?.$el;
+      if (!selectEl) {
+        return;
+      }
+      let widthSource = selectEl.querySelector('.q-field__control') || selectEl;
+      if (popupClass) {
+        const popupEl = document.querySelector(`.${popupClass}`);
+        const dialogEl = popupEl?.closest('.q-select__dialog');
+        if (dialogEl) {
+          this[styleKey] = 'width: 100% !important; max-width: 100% !important;';
+          return;
+        }
+      }
+      const width = Math.max(0, Math.round(widthSource.getBoundingClientRect().width));
+      this[styleKey] = `width: ${width}px; max-width: ${width}px;`;
+    },
+    setCategoryPopupWidth() {
+      this.setPopupWidth('categorySelect', 'categoryPopupStyle', 'transaction-modal-category-popup');
+    },
+    onCategoryFocus() {
+      if (!this.canChangeAccountData || !this.category?.label) {
+        return;
+      }
+      this.categoryInputValue = '';
+      useTransactionModalStore().changeTransactionModalCategory(null);
+    },
+    onCategoryInputValueUpdate(value) {
+      this.categoryInputValue = value;
+      this.categorySearchFilter = value.toLowerCase();
+      if (this.category && value && value !== this.category.label) {
+        useTransactionModalStore().changeTransactionModalCategory(null);
+      }
+    },
+    syncCategoryInputValue() {
+      this.$nextTick(() => {
+        if (this.category?.label) {
+          this.categoryInputValue = this.category.label;
+          this.resetSelectInputScroll('categorySelect');
+        }
+      });
+    },
+    restoreCategoryIfEmpty() {
+      if (this.category || this.categoryInputValue) {
+        return;
+      }
+      if (this.lastSelectedCategory) {
+        useTransactionModalStore().changeTransactionModalCategory(this.lastSelectedCategory.value);
+        this.categoryInputValue = this.lastSelectedCategory.label;
+      }
+    },
+    setPayeePopupWidth() {
+      this.setPopupWidth('payeeSelect', 'payeePopupStyle', 'transaction-modal-payee-popup');
+    },
+    onPayeeInputValueUpdate(value) {
+      if (this.payee && value !== this.payee.label) {
+        this.payeeTypingStarted = true;
+      }
+      this.payeeInputValue = value;
+      this.payeeSearchFilter = value.toLowerCase();
+      this.isPayeeCleared = false;
+      if (this.payee && value && value !== this.payee.label) {
+        useTransactionModalStore().changeTransactionModalPayee(null);
+      }
+    },
+    onPayeeModelValueUpdate(value) {
+      if (value === null) {
+        this.onPayeeClear();
+        return;
+      }
+      this.isPayeeCleared = false;
+      this.payeeTypingStarted = false;
+      this.blurSelect('payeeSelect');
+    },
+    onPayeeClear() {
+      this.isPayeeCleared = true;
+      this.skipPayeeRestoreOnce = true;
+      this.payeeTypingStarted = false;
+      this.payeeInputValue = '';
+      this.payeeSearchFilter = '';
+      this.lastSelectedPayee = null;
+      useTransactionModalStore().changeTransactionModalPayee(null);
+      this.$nextTick(() => {
+        this.blurSelect('payeeSelect');
+      });
+    },
+    onPayeeKeydown(event) {
+      if (!this.payee || this.payeeTypingStarted) {
+        return;
+      }
+      const isInputKey = event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete';
+      if (!isInputKey) {
+        return;
+      }
+      this.payeeTypingStarted = true;
+      this.payeeInputValue = '';
+      this.payeeSearchFilter = '';
+      useTransactionModalStore().changeTransactionModalPayee(null);
+      this.$nextTick(() => {
+        const input = this.$refs.payeeSelect?.$el?.querySelector('input');
+        if (input && typeof input.setSelectionRange === 'function') {
+          input.value = '';
+          input.setSelectionRange(0, 0);
+        }
+      });
+    },
+    syncPayeeInputValue() {
+      this.$nextTick(() => {
+        if (this.payee?.label) {
+          this.payeeInputValue = this.payee.label;
+          this.resetSelectInputScroll('payeeSelect');
+        }
+      });
+    },
+    restorePayeeIfEmpty() {
+      if (this.skipPayeeRestoreOnce) {
+        this.skipPayeeRestoreOnce = false;
+        return;
+      }
+      if (this.isPayeeCleared || this.payee || this.payeeInputValue) {
+        return;
+      }
+      if (this.lastSelectedPayee) {
+        useTransactionModalStore().changeTransactionModalPayee(this.lastSelectedPayee.value);
+        this.payeeInputValue = this.lastSelectedPayee.label;
+      }
+    },
+    resetSelectInputScroll(refName) {
+      this.$nextTick(() => {
+        const input = this.$refs[refName]?.$el?.querySelector('input');
+        const nativeEl = this.$refs[refName]?.$el?.querySelector('.q-field__native');
+        if (input) {
+          input.scrollLeft = 0;
+          if (typeof input.setSelectionRange === 'function') {
+            input.setSelectionRange(0, 0);
+          }
+        }
+        if (nativeEl) {
+          nativeEl.scrollLeft = 0;
+        }
+      });
+    },
+    blurSelect(refName) {
+      this.$nextTick(() => {
+        this.$refs[refName]?.blur?.();
+      });
+    },
+    setAccountPopupWidth() {
+      this.setPopupWidth('accountSelect', 'accountPopupStyle');
+    },
+    setFromAccountPopupWidth() {
+      this.setPopupWidth('fromAccountSelect', 'fromAccountPopupStyle');
+    },
+    setRecipientAccountPopupWidth() {
+      this.setPopupWidth('recipientAccountSelect', 'recipientAccountPopupStyle');
+    },
     calculateAmountRecipient: function (value) {
       if (!this.accountRecipient || !value || isNaN(value)) {
         this.amountRecipient = value;

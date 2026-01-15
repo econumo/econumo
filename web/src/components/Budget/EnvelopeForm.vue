@@ -13,7 +13,7 @@
                   val => isNotEmpty(val) || $t('modules.budget.form.budget_envelope.name.validation.required_field'),
                   val => isValidBudgetEnvelopeName(val) || $t('modules.budget.form.budget_envelope.name.validation.invalid_name')
                 ]"
-        maxlength="18">
+        maxlength="64">
         <template v-slot:before>
           <div class="responsive-modal-control-icon">
             <q-icon class="responsive-modal-control-icon-img" :name="icon"/>

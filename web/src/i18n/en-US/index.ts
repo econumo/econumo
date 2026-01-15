@@ -22,7 +22,7 @@ export default {
   'elements': {
     'econumo': { 'label': 'Econumo' },
     'folders': { 'default_folder': 'All accounts' },
-    'account': { 'name_hidden': '[hidden]' },
+    'account': { 'name_hidden': '[Hidden Account]' },
     'switch_to_account': 'Switch to',
     'form': {
       'account': {
@@ -30,7 +30,7 @@ export default {
           'label': 'Name',
           'validation': {
             'empty_name': 'Enter folder name',
-            'error_name_length': 'The folder name must be between 3 and 18 characters'
+            'error_name_length': 'The folder name must be between 3 and 64 characters'
           }
         },
         'name': {
@@ -38,7 +38,7 @@ export default {
           'placeholder': 'Enter name',
           'validation': {
             'required_field': 'Required field',
-            'invalid_name': 'The account name must be between 3 and 18 characters'
+            'invalid_name': 'The account name must be between 3 and 64 characters'
           }
         },
         'balance': {
@@ -119,8 +119,8 @@ export default {
         'today': 'Today',
         'yesterday': 'Yesterday',
         'item': {
-          'transfer_from': 'Transfer from account',
-          'transfer_to': 'Transfer to account'
+          'transfer_from': 'Transfer from ',
+          'transfer_to': 'Transfer to '
         },
         'action': { 'add_transaction': 'Add transaction' }
       },
@@ -525,7 +525,7 @@ export default {
             'placeholder': 'My budget',
             'validation': {
               'required_field': 'Required field',
-              'invalid_name': 'Budget name must be between 3 and 18 characters'
+              'invalid_name': 'Budget name must be between 3 and 64 characters'
             }
           },
           'folder_name': {
@@ -533,7 +533,7 @@ export default {
             'placeholder': 'Provide a folder name',
             'validation': {
               'required_field': 'Required field',
-              'invalid_name': 'Folder name must be between 3 and 18 characters'
+              'invalid_name': 'Folder name must be between 3 and 64 characters'
             }
           }
         },
@@ -543,7 +543,7 @@ export default {
             'placeholder': '',
             'validation': {
               'required_field': 'Required field',
-              'invalid_name': 'Envelope name must be between 3 and 18 characters'
+              'invalid_name': 'Envelope name must be between 3 and 64 characters'
             }
           },
           'currency': {
@@ -684,7 +684,7 @@ export default {
               'placeholder': 'Enter name',
               'validation': {
                 'required_field': 'Required field',
-                'invalid_name': 'The category name must be between 3 and 18 characters'
+                'invalid_name': 'The category name must be between 3 and 64 characters'
               }
             },
             'icon': { 'label': 'Icon' }
@@ -715,7 +715,7 @@ export default {
               'label': 'Name',
               'validation': {
                 'required_field': 'Required field',
-                'invalid_name': 'The tag name must be between 3 and 18 characters'
+                'invalid_name': 'The tag name must be between 3 and 64 characters'
               }
             }
           },
@@ -745,7 +745,7 @@ export default {
               'label': 'Name',
               'validation': {
                 'required_field': 'Required field',
-                'invalid_name': 'Payee name must be between 3 and 18 characters'
+                'invalid_name': 'Payee name must be between 3 and 64 characters'
               }
             }
           }

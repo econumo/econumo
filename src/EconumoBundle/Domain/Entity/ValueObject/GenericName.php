@@ -22,7 +22,7 @@ class GenericName implements ValueObjectInterface, JsonSerializable, NameInterfa
     /**
      * @var int
      */
-    public const MAX_LENGTH = 18;
+    public const MAX_LENGTH = 64;
 
     public static function validate($value): void
     {

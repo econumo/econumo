@@ -46,7 +46,7 @@ class ImportTransactionListCest
         $I->seeResponseCodeIs(HttpCode::OK);
 
         $response = json_decode($I->grabResponse(), true, 512, JSON_THROW_ON_ERROR);
-        $errorMessage = 'Category name must be 3-18 characters';
+        $errorMessage = 'Category name must be 3-64 characters';
 
         Assert::assertSame([4, 5], $response['data']['errors'][$errorMessage] ?? null);
     }
