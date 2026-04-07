@@ -62,6 +62,9 @@ EXPOSE 80
 
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
+# Install su-exec for Alpine-compatible user switching in entrypoint
+RUN apk add --no-cache su-exec
+
 # Remove dev dependencies from vendor
 RUN composer install --no-dev --no-scripts --optimize-autoloader --classmap-authoritative && \
     composer clear-cache
