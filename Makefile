@@ -25,7 +25,7 @@ up:
 	@if [ ! -d vendor ]; then \
 		docker-compose exec -uwww-data app composer install; \
 	fi
-	docker-compose up -d
+	docker-compose up -d --build
 	docker-compose exec -uwww-data app bin/console doctrine:migrations:migrate -n
 
 # Stop application
