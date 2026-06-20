@@ -1,0 +1,241 @@
+// Export side: export-transaction-list. Produces CSV rows (a slice of string
+// cells per row, header first) byte-faithful to PHP TransactionService::
+// exportTransactionList + buildExportRows. The handler writes them as text/csv.
+package transaction
+
+import (
+	"context"
+	"regexp"
+	"strings"
+	"time"
+
+	"github.com/econumo/econumo/internal/domain/shared/vo"
+	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
+)
+
+// crlfRun matches one or more CR/LF characters (PHP preg_replace("/[\r\n]+/")).
+var crlfRun = regexp.MustCompile(`[\r\n]+`)
+
+// exportHeaders is the fixed CSV header row (PHP getExportHeaders).
+var exportHeaders = []string{
+	"transaction_id",
+	"account_name",
+	"account_currency",
+	"category",
+	"description",
+	"tag",
+	"payee",
+	"amount",
+	"date",
+}
+
+// ExportAccount is one accessible account in the export universe: id, name, and
+// currency code. Mirrors what PHP reads off the Account entity in buildExportRow.
+type ExportAccount struct {
+	ID           string
+	Name         string
+	CurrencyCode string
+}
+
+// ExportLookup supplies the read-side data the export needs without coupling the
+// transaction service to the account/metadata repo packages: the user's
+// accessible accounts (own + shared, not deleted) and name resolution for the
+// optional category/tag/payee of each transaction. Name lookups return "" when
+// the entity is missing.
+type ExportLookup interface {
+	ExportAccounts(ctx context.Context, userID vo.Id) ([]ExportAccount, error)
+	CategoryName(ctx context.Context, id vo.Id) (string, error)
+	TagName(ctx context.Context, id vo.Id) (string, error)
+	PayeeName(ctx context.Context, id vo.Id) (string, error)
+}
+
+// ExportTransactionList builds the CSV rows for the given user, optionally
+// restricted to a set of account ids (nil = all accessible accounts). The first
+// row is the header. Mirrors TransactionListService::exportTransactionList +
+// TransactionService::exportTransactionList/buildExportRows exactly.
+func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accountIDs []vo.Id) ([][]string, error) {
+	// allAccountsById = the user's accessible accounts (own + shared, not
+	// deleted), keyed by id. accountsById = that set intersected with the
+	// selected ids (or all when no selection).
+	accts, err := s.export.ExportAccounts(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	allAccountsByID := make(map[string]ExportAccount, len(accts))
+	for _, a := range accts {
+		allAccountsByID[a.ID] = a
+	}
+
+	selectedByID := allAccountsByID
+	if accountIDs != nil {
+		selectedByID = make(map[string]ExportAccount)
+		for _, id := range accountIDs {
+			if a, ok := allAccountsByID[id.String()]; ok {
+				selectedByID[a.ID] = a
+			}
+		}
+	}
+
+	rows := [][]string{exportHeaders}
+	if len(selectedByID) == 0 {
+		return rows, nil
+	}
+
+	// Source transactions = findAvailableForUserId(userId): every transaction
+	// whose source OR recipient account is in the accessible (own + shared) set.
+	ids := make([]vo.Id, 0, len(allAccountsByID))
+	for _, a := range accts {
+		id, perr := vo.ParseId(a.ID)
+		if perr != nil {
+			return nil, perr
+		}
+		ids = append(ids, id)
+	}
+	txs, err := s.repo.ListByAccountIDs(ctx, ids, time.Time{}, time.Time{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, t := range txs {
+		built, berr := s.buildExportRows(ctx, t, selectedByID, allAccountsByID)
+		if berr != nil {
+			return nil, berr
+		}
+		rows = append(rows, built...)
+	}
+	return rows, nil
+}
+
+// buildExportRows emits the 0, 1, or 2 CSV rows for one transaction (PHP
+// buildExportRows): a row on the source account if it is selected, plus a second
+// row on the recipient account if this is a transfer whose recipient is selected.
+func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transaction, selectedByID, allAccountsByID map[string]ExportAccount) ([][]string, error) {
+	var rows [][]string
+	accountID := t.AccountId().String()
+
+	if src, ok := selectedByID[accountID]; ok {
+		description := t.Description()
+		if t.Type().IsTransfer() {
+			transferNote := "Transfer"
+			if rid := t.AccountRecipientId(); rid != nil {
+				if recip, ok := allAccountsByID[rid.String()]; ok {
+					transferNote = "Transfer of " + formatAmountForDescription(t.Amount()) +
+						" " + src.CurrencyCode + " to " + recip.Name
+				}
+			}
+			description = applyTransferNote(transferNote, t.Description())
+		}
+
+		category, tag, payee, nerr := s.resolveNames(ctx, t)
+		if nerr != nil {
+			return nil, nerr
+		}
+		rows = append(rows, s.buildExportRow(
+			t, src,
+			formatAmount(t.Amount(), t.Type().IsExpense() || t.Type().IsTransfer()),
+			category, tag, payee, description,
+		))
+	}
+
+	if t.Type().IsTransfer() {
+		if rid := t.AccountRecipientId(); rid != nil {
+			if recip, ok := selectedByID[rid.String()]; ok {
+				sourceName := ""
+				if src, ok := allAccountsByID[accountID]; ok {
+					sourceName = src.Name
+				}
+				transferNote := "Transfer"
+				amt := t.Amount()
+				if ar := t.AmountRecipient(); ar != nil {
+					amt = *ar
+				}
+				if sourceName != "" {
+					transferNote = "Transfer of " + formatAmountForDescription(amt) +
+						" " + recip.CurrencyCode + " from " + sourceName
+				}
+				description := applyTransferNote(transferNote, t.Description())
+				rows = append(rows, s.buildExportRow(
+					t, recip, formatAmount(amt, false), "", "", "", description,
+				))
+			}
+		}
+	}
+
+	return rows, nil
+}
+
+// buildExportRow assembles one CSV row in the fixed column order (PHP
+// buildExportRow): id, account_name, account_currency, category, description,
+// tag, payee, amount, date.
+func (s *Service) buildExportRow(t *domtransaction.Transaction, account ExportAccount, amount, category, tag, payee, description string) []string {
+	return []string{
+		t.Id().String(),
+		sanitizeExportValue(account.Name),
+		account.CurrencyCode,
+		sanitizeExportValue(category),
+		sanitizeExportValue(description),
+		sanitizeExportValue(tag),
+		sanitizeExportValue(payee),
+		amount,
+		t.SpentAt().Format(apiDatetimeLayout),
+	}
+}
+
+// resolveNames resolves the optional category/tag/payee names for a transaction
+// (empty when absent or missing), mirroring the eager-loaded entity getters.
+func (s *Service) resolveNames(ctx context.Context, t *domtransaction.Transaction) (category, tag, payee string, err error) {
+	if id := t.CategoryId(); id != nil {
+		if category, err = s.export.CategoryName(ctx, *id); err != nil {
+			return "", "", "", err
+		}
+	}
+	if id := t.TagId(); id != nil {
+		if tag, err = s.export.TagName(ctx, *id); err != nil {
+			return "", "", "", err
+		}
+	}
+	if id := t.PayeeId(); id != nil {
+		if payee, err = s.export.PayeeName(ctx, *id); err != nil {
+			return "", "", "", err
+		}
+	}
+	return category, tag, payee, nil
+}
+
+// applyTransferNote combines the auto note with any existing description (PHP:
+// empty -> note; else "note [trimmed-desc]").
+func applyTransferNote(note, description string) string {
+	if strings.TrimSpace(description) == "" {
+		return note
+	}
+	return note + " [" + strings.TrimSpace(description) + "]"
+}
+
+// formatAmount returns the normalized decimal string with the sign forced
+// (negative=true -> leading '-'; negative=false -> stripped). Mirrors PHP
+// formatAmount over DecimalNumber::getValue().
+func formatAmount(amount string, negative bool) string {
+	value := vo.NewDecimal(amount).String()
+	if negative {
+		if strings.HasPrefix(value, "-") {
+			return value
+		}
+		return "-" + value
+	}
+	return strings.TrimPrefix(value, "-")
+}
+
+// formatAmountForDescription returns the absolute normalized decimal (no sign).
+func formatAmountForDescription(amount string) string {
+	return strings.TrimPrefix(vo.NewDecimal(amount).String(), "-")
+}
+
+// sanitizeExportValue collapses CR/LF runs to a single space and trims, matching
+// PHP sanitizeExportValue (null -> "").
+func sanitizeExportValue(value string) string {
+	if value == "" {
+		return ""
+	}
+	value = crlfRun.ReplaceAllString(value, " ")
+	return strings.TrimSpace(value)
+}

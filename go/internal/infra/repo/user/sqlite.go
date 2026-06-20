@@ -1,0 +1,46 @@
+package userrepo
+
+import (
+	"context"
+
+	"github.com/econumo/econumo/internal/infra/storage/backend"
+	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+)
+
+// sqliteQuerier implements querier over the sqlite-generated queries. Because
+// the canonical types ARE the sqlite types, every method is a direct passthrough
+// — the only adaptation is ExistsUserByIdentifier, which sqlc emits as int64.
+// It is stateless: each call binds a fresh *Queries to the caller-supplied DBTX
+// (the pool or the active tx), so the same value is safe to share.
+type sqliteQuerier struct{}
+
+var _ querier = sqliteQuerier{}
+
+func (sqliteQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string) (userRow, error) {
+	return sqlitegen.New(db).GetUserByID(ctx, id)
+}
+
+func (sqliteQuerier) GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error) {
+	return sqlitegen.New(db).GetUserByIdentifier(ctx, identifier)
+}
+
+func (sqliteQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error) {
+	n, err := sqlitegen.New(db).ExistsUserByIdentifier(ctx, identifier)
+	return n != 0, err
+}
+
+func (sqliteQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {
+	return sqlitegen.New(db).ListUserIDs(ctx)
+}
+
+func (sqliteQuerier) UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error {
+	return sqlitegen.New(db).UpsertUser(ctx, p)
+}
+
+func (sqliteQuerier) GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error) {
+	return sqlitegen.New(db).GetUserOptions(ctx, userID)
+}
+
+func (sqliteQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error {
+	return sqlitegen.New(db).UpsertUserOption(ctx, p)
+}

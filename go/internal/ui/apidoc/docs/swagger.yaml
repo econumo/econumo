@@ -1,0 +1,4469 @@
+basePath: /
+definitions:
+  account.AccountPositionChange:
+    properties:
+      folderId:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  account.AccountResult:
+    properties:
+      balance:
+        type: string
+      currency:
+        $ref: '#/definitions/account.CurrencyResult'
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner:
+        $ref: '#/definitions/account.OwnerResult'
+      position:
+        type: integer
+      sharedAccess:
+        items:
+          $ref: '#/definitions/account.SharedAccess'
+        type: array
+      type:
+        type: integer
+    type: object
+  account.CorrectionResult:
+    properties:
+      accountId:
+        type: string
+      amount:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      type:
+        type: string
+    type: object
+  account.CurrencyResult:
+    properties:
+      code:
+        type: string
+      fractionDigits:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      symbol:
+        type: string
+    type: object
+  account.FolderPositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  account.FolderResult:
+    properties:
+      id:
+        type: string
+      isVisible:
+        type: integer
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  account.OwnerResult:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  account.SharedAccess:
+    type: object
+  apidoc.JsonResponseError:
+    properties:
+      code:
+        example: 0
+        type: integer
+      errors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      message:
+        example: Validation failed
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  apidoc.JsonResponseException:
+    properties:
+      code:
+        example: 0
+        type: integer
+      exceptionType:
+        type: string
+      message:
+        example: Internal Server Error
+        type: string
+      stackTrace: {}
+      success:
+        example: false
+        type: boolean
+    type: object
+  apidoc.JsonResponseOk:
+    properties:
+      data: {}
+      message:
+        example: ""
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  apidoc.JsonResponseUnauthorized:
+    properties:
+      code:
+        example: 0
+        type: integer
+      errors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      message:
+        example: JWT Token not found
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  budget.AccessResult:
+    properties:
+      isAccepted:
+        type: integer
+      role:
+        type: string
+      user:
+        $ref: '#/definitions/budget.UserResult'
+    type: object
+  budget.AverageCurrencyRateResult:
+    properties:
+      baseCurrencyId:
+        type: string
+      currencyId:
+        type: string
+      periodEnd:
+        type: string
+      periodStart:
+        type: string
+      rate:
+        type: string
+    type: object
+  budget.BudgetResult:
+    properties:
+      balances:
+        items:
+          $ref: '#/definitions/budget.CurrencyBalanceResult'
+        type: array
+      currencyRates:
+        items:
+          $ref: '#/definitions/budget.AverageCurrencyRateResult'
+        type: array
+      filters:
+        $ref: '#/definitions/budget.FiltersResult'
+      meta:
+        $ref: '#/definitions/budget.MetaResult'
+      structure:
+        $ref: '#/definitions/budget.StructureResult'
+    type: object
+  budget.BudgetTransactionResult:
+    properties:
+      amount:
+        type: string
+      author:
+        $ref: '#/definitions/budget.UserResult'
+      category:
+        $ref: '#/definitions/budget.TxCategoryResult'
+      currencyId:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payee:
+        $ref: '#/definitions/budget.TxPayeeResult'
+      spentAt:
+        type: string
+      tag:
+        $ref: '#/definitions/budget.TxTagResult'
+    type: object
+  budget.ChildElementResult:
+    properties:
+      budgetSpent:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      spent:
+        type: string
+      type:
+        type: integer
+    type: object
+  budget.CurrencyBalanceResult:
+    properties:
+      currencyId:
+        type: string
+      endBalance:
+        type: string
+      exchanges:
+        type: string
+      expenses:
+        type: string
+      holdings:
+        type: string
+      income:
+        type: string
+      startBalance:
+        type: string
+    type: object
+  budget.FiltersResult:
+    properties:
+      excludedAccountsIds:
+        items:
+          type: string
+        type: array
+      periodEnd:
+        type: string
+      periodStart:
+        type: string
+    type: object
+  budget.FolderResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  budget.MetaResult:
+    properties:
+      access:
+        items:
+          $ref: '#/definitions/budget.AccessResult'
+        type: array
+      currencyId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  budget.MoveElementListItem:
+    properties:
+      folderId:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+      type:
+        type: string
+    type: object
+  budget.OrderFolderListItem:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  budget.ParentElementResult:
+    properties:
+      available:
+        type: string
+      budgetSpent:
+        type: string
+      budgeted:
+        type: string
+      children:
+        items:
+          $ref: '#/definitions/budget.ChildElementResult'
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      spent:
+        type: string
+      type:
+        type: integer
+    type: object
+  budget.StructureResult:
+    properties:
+      elements:
+        items:
+          $ref: '#/definitions/budget.ParentElementResult'
+        type: array
+      folders:
+        items:
+          $ref: '#/definitions/budget.FolderResult'
+        type: array
+    type: object
+  budget.TxCategoryResult:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  budget.TxPayeeResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  budget.TxTagResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  budget.UserResult:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  category.CategoryResult:
+    properties:
+      createdAt:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  category.PositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  connection.AccountAccessResult:
+    properties:
+      id:
+        type: string
+      ownerUserId:
+        type: string
+      role:
+        type: string
+    type: object
+  connection.ConnectionResult:
+    properties:
+      sharedAccounts:
+        items:
+          $ref: '#/definitions/connection.AccountAccessResult'
+        type: array
+      user:
+        $ref: '#/definitions/connection.UserResult'
+    type: object
+  connection.UserResult:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  currency.CurrencyRateResult:
+    properties:
+      baseCurrencyId:
+        type: string
+      currencyId:
+        type: string
+      rate:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  currency.CurrencyResult:
+    properties:
+      code:
+        type: string
+      fractionDigits:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      symbol:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.AccountResult:
+    properties:
+      balance:
+        type: string
+      currency:
+        $ref: '#/definitions/account.CurrencyResult'
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner:
+        $ref: '#/definitions/account.OwnerResult'
+      position:
+        type: integer
+      sharedAccess:
+        items:
+          $ref: '#/definitions/account.SharedAccess'
+        type: array
+      type:
+        type: integer
+    type: object
+  github_com_econumo_econumo_internal_app_account.CreateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.CreateAccountResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/account.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/account.AccountResult'
+    type: object
+  github_com_econumo_econumo_internal_app_account.CreateFolderRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.CreateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/account.FolderResult'
+    type: object
+  github_com_econumo_econumo_internal_app_account.DeleteAccountRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.DeleteAccountResult:
+    type: object
+  github_com_econumo_econumo_internal_app_account.GetAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.AccountResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_account.GetFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.FolderResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_account.HideFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.HideFolderResult:
+    type: object
+  github_com_econumo_econumo_internal_app_account.OrderAccountListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/account.AccountPositionChange'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_account.OrderAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.AccountResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_account.OrderFolderListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/account.FolderPositionChange'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_account.OrderFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.FolderResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest:
+    properties:
+      id:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.ReplaceFolderResult:
+    type: object
+  github_com_econumo_econumo_internal_app_account.ShowFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.ShowFolderResult:
+    type: object
+  github_com_econumo_econumo_internal_app_account.UpdateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.UpdateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/account.AccountResult'
+      transaction:
+        $ref: '#/definitions/account.CorrectionResult'
+    type: object
+  github_com_econumo_econumo_internal_app_account.UpdateFolderRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_account.UpdateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/account.FolderResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.AcceptAccessRequest:
+    properties:
+      budgetId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.AcceptAccessResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.MetaResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyRequest:
+    properties:
+      budgetId:
+        type: string
+      currencyId:
+        type: string
+      elementId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.FolderResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.CreateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      startDate:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.CreateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.BudgetResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.CreateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.CreateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.ParentElementResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeclineAccessRequest:
+    properties:
+      budgetId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeclineAccessResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeleteBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeleteBudgetResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeleteFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.DeleteFolderResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.ExcludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      budgetId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.ExcludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.GetBudgetListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.MetaResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_budget.GetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.BudgetResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.GetBudgetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.BudgetTransactionResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_budget.GrantAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.GrantAccessResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.MetaResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_budget.IncludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      budgetId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.IncludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.MoveElementListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/budget.MoveElementListItem'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_budget.MoveElementListResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/budget.OrderFolderListItem'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.ResetBudgetRequest:
+    properties:
+      id:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.ResetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.RevokeAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.RevokeAccessResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.SetLimitRequest:
+    properties:
+      amount:
+        type: string
+      budgetId:
+        type: string
+      elementId:
+        type: string
+      period:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.SetLimitResult:
+    type: object
+  github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.FolderResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.UpdateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.UpdateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
+    type: object
+  github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.ParentElementResult'
+    type: object
+  github_com_econumo_econumo_internal_app_category.ArchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult:
+    properties:
+      item:
+        $ref: '#/definitions/category.CategoryResult'
+    type: object
+  github_com_econumo_econumo_internal_app_category.CreateCategoryRequest:
+    properties:
+      accountId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_category.CreateCategoryResult:
+    properties:
+      item:
+        $ref: '#/definitions/category.CategoryResult'
+    type: object
+  github_com_econumo_econumo_internal_app_category.DeleteCategoryRequest:
+    properties:
+      id:
+        type: string
+      mode:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_category.DeleteCategoryResult:
+    type: object
+  github_com_econumo_econumo_internal_app_category.GetCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/category.CategoryResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_category.OrderCategoryListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/category.PositionChange'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_category.OrderCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/category.CategoryResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_category.UnarchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult:
+    properties:
+      item:
+        $ref: '#/definitions/category.CategoryResult'
+    type: object
+  github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_category.UpdateCategoryResult:
+    properties:
+      item:
+        $ref: '#/definitions/category.CategoryResult'
+    type: object
+  github_com_econumo_econumo_internal_app_connection.GetConnectionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/connection.ConnectionResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult:
+    type: object
+  github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult:
+    type: object
+  github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/currency.CurrencyResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/currency.CurrencyRateResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult:
+    properties:
+      item:
+        $ref: '#/definitions/payee.PayeeResult'
+    type: object
+  github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_payee.CreatePayeeResult:
+    properties:
+      item:
+        $ref: '#/definitions/payee.PayeeResult'
+    type: object
+  github_com_econumo_econumo_internal_app_payee.DeletePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_payee.DeletePayeeResult:
+    type: object
+  github_com_econumo_econumo_internal_app_payee.GetPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/payee.PayeeResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_payee.OrderPayeeListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/payee.PositionChange'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_payee.OrderPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/payee.PayeeResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_payee.UnarchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult:
+    properties:
+      item:
+        $ref: '#/definitions/payee.PayeeResult'
+    type: object
+  github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult:
+    properties:
+      item:
+        $ref: '#/definitions/payee.PayeeResult'
+    type: object
+  github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_tag.ArchiveTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/tag.TagResult'
+    type: object
+  github_com_econumo_econumo_internal_app_tag.CreateTagRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_tag.CreateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/tag.TagResult'
+    type: object
+  github_com_econumo_econumo_internal_app_tag.DeleteTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_tag.DeleteTagResult:
+    type: object
+  github_com_econumo_econumo_internal_app_tag.GetTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/tag.TagResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_tag.OrderTagListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/tag.PositionChange'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_tag.OrderTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/tag.TagResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/tag.TagResult'
+    type: object
+  github_com_econumo_econumo_internal_app_tag.UpdateTagRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_tag.UpdateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/tag.TagResult'
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.CreateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/transaction.TransactionResult'
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.DeleteTransactionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.DeleteTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/transaction.TransactionResult'
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.GetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/transaction.TransactionResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.ImportResult:
+    properties:
+      errors:
+        additionalProperties:
+          items:
+            type: integer
+          type: array
+        type: object
+      imported:
+        type: integer
+      skipped:
+        type: integer
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.UpdateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_transaction.UpdateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/transaction.TransactionResult'
+    type: object
+  github_com_econumo_econumo_internal_app_user.CompleteOnboardingResult:
+    properties:
+      user:
+        $ref: '#/definitions/user.CurrentUserResult'
+    type: object
+  github_com_econumo_econumo_internal_app_user.CurrentUserResult:
+    properties:
+      avatar:
+        type: string
+      currency:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/user.OptionResult'
+        type: array
+      reportPeriod:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.GetOptionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/user.OptionResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_user.GetUserDataResult:
+    properties:
+      user:
+        $ref: '#/definitions/user.CurrentUserResult'
+    type: object
+  github_com_econumo_econumo_internal_app_user.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.LoginResult:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/user.CurrentUserResult'
+    type: object
+  github_com_econumo_econumo_internal_app_user.LogoutResult:
+    type: object
+  github_com_econumo_econumo_internal_app_user.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.RemindPasswordRequest:
+    properties:
+      username:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.RemindPasswordResult:
+    type: object
+  github_com_econumo_econumo_internal_app_user.ResetPasswordRequest:
+    properties:
+      code:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.ResetPasswordResult:
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest:
+    properties:
+      currency:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateCurrencyResult:
+    properties:
+      user:
+        $ref: '#/definitions/user.CurrentUserResult'
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateNameRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateNameResult:
+    properties:
+      user:
+        $ref: '#/definitions/user.CurrentUserResult'
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdatePasswordRequest:
+    properties:
+      newPassword:
+        type: string
+      oldPassword:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdatePasswordResult:
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateReportPeriodRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateReportPeriodResult:
+    properties:
+      user:
+        $ref: '#/definitions/user.CurrentUserResult'
+    type: object
+  payee.PayeeResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  payee.PositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  tag.PositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  tag.TagResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  transaction.AuthorResult:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  transaction.TransactionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/transaction.AuthorResult'
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  user.CurrentUserResult:
+    properties:
+      avatar:
+        type: string
+      currency:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/user.OptionResult'
+        type: array
+      reportPeriod:
+        type: string
+    type: object
+  user.OptionResult:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Self-hosted personal finance and budgeting API (Go port).
+  title: Econumo API
+  version: 1.0.0
+paths:
+  /api/v1/account/create-account:
+    post:
+      consumes:
+      - application/json
+      description: Creates an account (idempotent on the request id), optionally seeding
+        its balance, in the given folder.
+      parameters:
+      - description: Create account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create an account
+      tags:
+      - Account
+  /api/v1/account/create-folder:
+    post:
+      consumes:
+      - application/json
+      description: Creates an account folder for the user (name unique among the user's
+        folders).
+      parameters:
+      - description: Create folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a folder
+      tags:
+      - Account
+  /api/v1/account/delete-account:
+    post:
+      consumes:
+      - application/json
+      description: Soft-deletes an account. Requires ownership.
+      parameters:
+      - description: Delete account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete an account
+      tags:
+      - Account
+  /api/v1/account/get-account-list:
+    get:
+      description: Returns all the user's available accounts (each with owner, currency,
+        folder, position, balance) in reverse order.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.GetAccountListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the account list
+      tags:
+      - Account
+  /api/v1/account/get-folder-list:
+    get:
+      description: Returns the user's account folders ordered by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.GetFolderListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the folder list
+      tags:
+      - Account
+  /api/v1/account/hide-folder:
+    post:
+      consumes:
+      - application/json
+      description: Marks a folder (and its accounts) hidden. Requires ownership.
+      parameters:
+      - description: Hide folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Hide a folder
+      tags:
+      - Account
+  /api/v1/account/order-account-list:
+    post:
+      consumes:
+      - application/json
+      description: Repositions accounts and moves them between folders, returning
+        the full list.
+      parameters:
+      - description: Order account list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the account list
+      tags:
+      - Account
+  /api/v1/account/order-folder-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's folders and returns the
+        full ordered list.
+      parameters:
+      - description: Order folder list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the folder list
+      tags:
+      - Account
+  /api/v1/account/replace-folder:
+    post:
+      consumes:
+      - application/json
+      description: Moves a folder's accounts into another folder and deletes it. Requires
+        ownership of both.
+      parameters:
+      - description: Replace folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Replace a folder
+      tags:
+      - Account
+  /api/v1/account/show-folder:
+    post:
+      consumes:
+      - application/json
+      description: Clears a folder's hidden flag. Requires ownership.
+      parameters:
+      - description: Show folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Show a folder
+      tags:
+      - Account
+  /api/v1/account/update-account:
+    post:
+      consumes:
+      - application/json
+      description: Updates an account's name/icon/currency and reconciles its balance
+        via a correction transaction. Requires ownership.
+      parameters:
+      - description: Update account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update an account
+      tags:
+      - Account
+  /api/v1/account/update-folder:
+    post:
+      consumes:
+      - application/json
+      description: Renames a folder the user owns (name unique among the user's folders).
+      parameters:
+      - description: Update folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a folder
+      tags:
+      - Account
+  /api/v1/budget/accept-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Accept access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.AcceptAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.AcceptAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Accept budget access
+      tags:
+      - Budget
+  /api/v1/budget/change-element-currency:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Change element currency
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Change a budget element's currency
+      tags:
+      - Budget
+  /api/v1/budget/create-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a budget
+      tags:
+      - Budget
+  /api/v1/budget/create-envelope:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create envelope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateEnvelopeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateEnvelopeResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Create an envelope
+      tags:
+      - Budget
+  /api/v1/budget/create-folder:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Create a budget folder
+      tags:
+      - Budget
+  /api/v1/budget/decline-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Decline access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeclineAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeclineAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Decline budget access
+      tags:
+      - Budget
+  /api/v1/budget/delete-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteBudgetResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Delete a budget
+      tags:
+      - Budget
+  /api/v1/budget/delete-envelope:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete envelope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Delete an envelope
+      tags:
+      - Budget
+  /api/v1/budget/delete-folder:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteFolderResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Delete a budget folder
+      tags:
+      - Budget
+  /api/v1/budget/exclude-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Exclude account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ExcludeAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ExcludeAccountResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Exclude an account from a budget
+      tags:
+      - Budget
+  /api/v1/budget/get-budget:
+    get:
+      parameters:
+      - description: Budget id
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Period date (Y-m-d)
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Get a budget
+      tags:
+      - Budget
+  /api/v1/budget/get-budget-list:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: List budgets
+      tags:
+      - Budget
+  /api/v1/budget/get-transaction-list:
+    get:
+      parameters:
+      - description: Budget id
+        in: query
+        name: budgetId
+        required: true
+        type: string
+      - description: Period start (Y-m-d)
+        in: query
+        name: periodStart
+        required: true
+        type: string
+      - description: Category id
+        in: query
+        name: categoryId
+        type: string
+      - description: Tag id
+        in: query
+        name: tagId
+        type: string
+      - description: Envelope id
+        in: query
+        name: envelopeId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetTransactionListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Budget transaction list
+      tags:
+      - Budget
+  /api/v1/budget/grant-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Grant access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GrantAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GrantAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Grant budget access
+      tags:
+      - Budget
+  /api/v1/budget/include-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Include account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.IncludeAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.IncludeAccountResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Include an account in a budget
+      tags:
+      - Budget
+  /api/v1/budget/move-element-list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Move elements
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.MoveElementListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.MoveElementListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Move/reorder budget elements
+      tags:
+      - Budget
+  /api/v1/budget/order-folder-list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order folders
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Reorder budget folders
+      tags:
+      - Budget
+  /api/v1/budget/reset-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Reset budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ResetBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ResetBudgetResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Reset a budget
+      tags:
+      - Budget
+  /api/v1/budget/revoke-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Revoke access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.RevokeAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.RevokeAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Revoke budget access
+      tags:
+      - Budget
+  /api/v1/budget/set-limit:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Set limit
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.SetLimitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.SetLimitResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Set a budget element limit
+      tags:
+      - Budget
+  /api/v1/budget/update-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+      security:
+      - Bearer: []
+      summary: Update a budget
+      tags:
+      - Budget
+  /api/v1/budget/update-envelope:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update envelope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Update an envelope
+      tags:
+      - Budget
+  /api/v1/budget/update-folder:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Update a budget folder
+      tags:
+      - Budget
+  /api/v1/category/archive-category:
+    post:
+      consumes:
+      - application/json
+      description: Marks a category archived. Requires ownership.
+      parameters:
+      - description: Archive category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.ArchiveCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a category
+      tags:
+      - Category
+  /api/v1/category/create-category:
+    post:
+      consumes:
+      - application/json
+      description: Creates a category for the authenticated user. Idempotent on the
+        request id.
+      parameters:
+      - description: Create category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.CreateCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a category
+      tags:
+      - Category
+  /api/v1/category/delete-category:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a category (mode=delete) or reassigns its transactions
+        to a replacement then deletes it (mode=replace). Requires ownership.
+      parameters:
+      - description: Delete category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.DeleteCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.DeleteCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a category
+      tags:
+      - Category
+  /api/v1/category/get-category-list:
+    get:
+      description: Returns all the authenticated user's categories (archived and not)
+        ordered by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.GetCategoryListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the category list
+      tags:
+      - Category
+  /api/v1/category/order-category-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's categories and returns the
+        full ordered list.
+      parameters:
+      - description: Order category list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.OrderCategoryListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.OrderCategoryListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the category list
+      tags:
+      - Category
+  /api/v1/category/unarchive-category:
+    post:
+      consumes:
+      - application/json
+      description: Clears a category's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UnarchiveCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a category
+      tags:
+      - Category
+  /api/v1/category/update-category:
+    post:
+      consumes:
+      - application/json
+      description: Updates a category's name and icon. Requires ownership.
+      parameters:
+      - description: Update category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UpdateCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a category
+      tags:
+      - Category
+  /api/v1/connection/accept-invite:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+      security:
+      - Bearer: []
+      summary: Accept an invite (not supported in self-hosted)
+      tags:
+      - Connection
+  /api/v1/connection/delete-connection:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+      security:
+      - Bearer: []
+      summary: Delete a connection (not supported in self-hosted)
+      tags:
+      - Connection
+  /api/v1/connection/delete-invite:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+      security:
+      - Bearer: []
+      summary: Delete an invite (not supported in self-hosted)
+      tags:
+      - Connection
+  /api/v1/connection/generate-invite:
+    post:
+      produces:
+      - application/json
+      responses:
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+      security:
+      - Bearer: []
+      summary: Generate an invite (not supported in self-hosted)
+      tags:
+      - Connection
+  /api/v1/connection/get-connection-list:
+    get:
+      description: Returns the user's connected users, each with the accounts shared
+        between them.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.GetConnectionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List connections
+      tags:
+      - Connection
+  /api/v1/connection/revoke-account-access:
+    post:
+      consumes:
+      - application/json
+      description: Removes a connected user's grant on an account you own or administer.
+      parameters:
+      - description: Revoke account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke account access
+      tags:
+      - Connection
+  /api/v1/connection/set-account-access:
+    post:
+      consumes:
+      - application/json
+      description: Grants or updates a connected user's role on an account you own
+        or administer.
+      parameters:
+      - description: Set account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Set account access
+      tags:
+      - Connection
+  /api/v1/currency/get-currency-list:
+    get:
+      description: Returns all currencies ordered by ISO code. The name is the English
+        display name.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the currency list
+      tags:
+      - Currency
+  /api/v1/currency/get-currency-rate-list:
+    get:
+      description: Returns all currency rates published on the most-recent available
+        date.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the latest currency rates
+      tags:
+      - Currency
+  /api/v1/payee/archive-payee:
+    post:
+      consumes:
+      - application/json
+      description: Marks a payee archived. Requires ownership.
+      parameters:
+      - description: Archive payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a payee
+      tags:
+      - Payee
+  /api/v1/payee/create-payee:
+    post:
+      consumes:
+      - application/json
+      description: Creates a payee for the authenticated user. Idempotent on the request
+        id; the name must be unique among the user's payees.
+      parameters:
+      - description: Create payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.CreatePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a payee
+      tags:
+      - Payee
+  /api/v1/payee/delete-payee:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a payee. Transactions referencing it have their payee cleared.
+        Requires ownership.
+      parameters:
+      - description: Delete payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.DeletePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.DeletePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a payee
+      tags:
+      - Payee
+  /api/v1/payee/get-payee-list:
+    get:
+      description: Returns all the authenticated user's payees (archived and not)
+        ordered by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.GetPayeeListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the payee list
+      tags:
+      - Payee
+  /api/v1/payee/order-payee-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's payees and returns the full
+        ordered list.
+      parameters:
+      - description: Order payee list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.OrderPayeeListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.OrderPayeeListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the payee list
+      tags:
+      - Payee
+  /api/v1/payee/unarchive-payee:
+    post:
+      consumes:
+      - application/json
+      description: Clears a payee's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.UnarchivePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a payee
+      tags:
+      - Payee
+  /api/v1/payee/update-payee:
+    post:
+      consumes:
+      - application/json
+      description: Updates a payee's name. Requires ownership; the new name must be
+        unique among the user's payees.
+      parameters:
+      - description: Update payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a payee
+      tags:
+      - Payee
+  /api/v1/tag/archive-tag:
+    post:
+      consumes:
+      - application/json
+      description: Marks a tag archived. Requires ownership.
+      parameters:
+      - description: Archive tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a tag
+      tags:
+      - Tag
+  /api/v1/tag/create-tag:
+    post:
+      consumes:
+      - application/json
+      description: Creates a tag for the authenticated user. Idempotent on the request
+        id; the name must be unique among the user's tags.
+      parameters:
+      - description: Create tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a tag
+      tags:
+      - Tag
+  /api/v1/tag/delete-tag:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a tag. Transactions referencing it have their tag cleared.
+        Requires ownership.
+      parameters:
+      - description: Delete tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a tag
+      tags:
+      - Tag
+  /api/v1/tag/get-tag-list:
+    get:
+      description: Returns all the authenticated user's tags (archived and not) ordered
+        by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.GetTagListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the tag list
+      tags:
+      - Tag
+  /api/v1/tag/order-tag-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's tags and returns the full
+        ordered list.
+      parameters:
+      - description: Order tag list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the tag list
+      tags:
+      - Tag
+  /api/v1/tag/unarchive-tag:
+    post:
+      consumes:
+      - application/json
+      description: Clears a tag's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a tag
+      tags:
+      - Tag
+  /api/v1/tag/update-tag:
+    post:
+      consumes:
+      - application/json
+      description: Updates a tag's name. Requires ownership; the new name must be
+        unique among the user's tags.
+      parameters:
+      - description: Update tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a tag
+      tags:
+      - Tag
+  /api/v1/transaction/create-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Creates a transaction (idempotent on the request id) and returns
+        it plus the refreshed account list.
+      parameters:
+      - description: Create transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.CreateTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a transaction
+      tags:
+      - Transaction
+  /api/v1/transaction/delete-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a transaction and returns it plus the refreshed account
+        list.
+      parameters:
+      - description: Delete transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.DeleteTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.DeleteTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a transaction
+      tags:
+      - Transaction
+  /api/v1/transaction/export-transaction-list:
+    get:
+      description: Returns a CSV (text/csv) of transactions on the selected accounts
+        (comma-separated accountId), or all accessible accounts when omitted.
+      parameters:
+      - description: Comma-separated account ids
+        in: query
+        name: accountId
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Export the transaction list as CSV
+      tags:
+      - Transaction
+  /api/v1/transaction/get-transaction-list:
+    get:
+      description: Returns transactions for an account, or a date window across visible
+        accounts, or all visible-account transactions.
+      parameters:
+      - description: Account id filter
+        in: query
+        name: accountId
+        type: string
+      - description: Period start (Y-m-d H:i:s or Y-m-d)
+        in: query
+        name: periodStart
+        type: string
+      - description: Period end (Y-m-d H:i:s or Y-m-d)
+        in: query
+        name: periodEnd
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.GetTransactionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the transaction list
+      tags:
+      - Transaction
+  /api/v1/transaction/import-transaction-list:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Imports transactions from an uploaded CSV using a field mapping
+        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Field mapping JSON
+        in: formData
+        name: mapping
+        required: true
+        type: string
+      - description: Override account id
+        in: formData
+        name: accountId
+        type: string
+      - description: Override date (Y-m-d)
+        in: formData
+        name: date
+        type: string
+      - description: Override category id
+        in: formData
+        name: categoryId
+        type: string
+      - description: Override description
+        in: formData
+        name: description
+        type: string
+      - description: Override payee id
+        in: formData
+        name: payeeId
+        type: string
+      - description: Override tag id
+        in: formData
+        name: tagId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.ImportResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Import a transaction list from CSV
+      tags:
+      - Transaction
+  /api/v1/transaction/update-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Updates a transaction and returns it plus the refreshed account
+        list.
+      parameters:
+      - description: Update transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.UpdateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_transaction.UpdateTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a transaction
+      tags:
+      - Transaction
+  /api/v1/user/complete-onboarding:
+    post:
+      description: Marks the authenticated user's onboarding complete and returns
+        the refreshed user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.CompleteOnboardingResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Complete onboarding
+      tags:
+      - User
+  /api/v1/user/get-option-list:
+    get:
+      description: 'Returns the authenticated user''s raw persisted options ({items:
+        [...]}).'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.GetOptionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get option list
+      tags:
+      - User
+  /api/v1/user/get-user-data:
+    get:
+      description: 'Returns the authenticated user''s profile ({user: CurrentUserResult}).'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.GetUserDataResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get user data
+      tags:
+      - User
+  /api/v1/user/login-user:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user by username/password and returns a JWT plus
+        the current user.
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.LoginResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Log in
+      tags:
+      - User
+  /api/v1/user/logout-user:
+    post:
+      description: Stateless logout; returns an empty success envelope (JWT is not
+        invalidated server-side).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.LogoutResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Log out
+      tags:
+      - User
+  /api/v1/user/register-user:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user (when registration is enabled) and returns the
+        current user without a token.
+      parameters:
+      - description: Register request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.CurrentUserResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Register a user
+      tags:
+      - User
+  /api/v1/user/remind-password:
+    post:
+      consumes:
+      - application/json
+      description: Triggers a password reminder email. Always returns success (anti-enumeration).
+      parameters:
+      - description: Remind password request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.RemindPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.RemindPasswordResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Remind password
+      tags:
+      - User
+  /api/v1/user/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets a user's password using a reminder code. Returns an empty
+        success envelope.
+      parameters:
+      - description: Reset password request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.ResetPasswordResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Reset password
+      tags:
+      - User
+  /api/v1/user/update-budget:
+    post:
+      description: Sets the authenticated user's active budget. Not yet implemented
+        — currently returns a 501 NotImplemented envelope.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseOk'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+        "501":
+          description: Not Implemented
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update budget (not implemented)
+      tags:
+      - User
+  /api/v1/user/update-currency:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's base currency and returns the
+        refreshed user.
+      parameters:
+      - description: Update currency request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateCurrencyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update currency
+      tags:
+      - User
+  /api/v1/user/update-name:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's display name (length 3..20) and
+        returns the refreshed user.
+      parameters:
+      - description: Update name request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateNameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateNameResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update name
+      tags:
+      - User
+  /api/v1/user/update-password:
+    post:
+      consumes:
+      - application/json
+      description: Changes the authenticated user's password after verifying the old
+        one. Returns an empty success envelope.
+      parameters:
+      - description: Update password request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdatePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdatePasswordResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update password
+      tags:
+      - User
+  /api/v1/user/update-report-period:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's reporting period option and returns
+        the refreshed user.
+      parameters:
+      - description: Update report period request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateReportPeriodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateReportPeriodResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update report period
+      tags:
+      - User
+securityDefinitions:
+  Bearer:
+    description: 'JWT bearer token. Format: "Bearer <token>".'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

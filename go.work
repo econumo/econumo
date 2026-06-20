@@ -1,0 +1,7 @@
+// go.work makes the Go module live at ./go (the repo root is a PHP project).
+// Without this, an editor/gopls opened at the repo root cannot find the nested
+// module and reports every Go file as unreferenced. `go` commands run from the
+// repo root also resolve the module through this file.
+go 1.26.0
+
+use ./go

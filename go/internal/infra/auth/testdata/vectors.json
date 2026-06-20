@@ -1,0 +1,61 @@
+{
+    "password_hasher": [
+        {
+            "password": "secret123",
+            "salt": "a3f1c9d2e4b5067890abcdef1234567890abcdef",
+            "hash": "7SXOz1CVDpuO+vv8vLKYKN+8w+8r2zx2OTAHTUDFrN3wUw+g+osQzQa7DTlb7VyVO950w88JyQOEiJuSVEz4Cw=="
+        },
+        {
+            "password": "hunter2",
+            "salt": "0011223344556677889900aabbccddeeff001122",
+            "hash": "gsoT86MykShhzgdo77YYrcwCIfQhyld+B5Hbc0Io5G+c8NKzKtPcmoifvi4OUwMC1nmy9ZtIivrnm5vSywwh0Q=="
+        },
+        {
+            "password": "",
+            "salt": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+            "hash": "3wNJXSU83XIKEv1fAPdumgKXVM6UTys9kuf0++ocrgmk7inYpAjoCdGOOVCMOBk0nfiVh/Y8ZI4iThGkwhoSdg=="
+        },
+        {
+            "password": "пароль🔒",
+            "salt": "cafebabecafebabecafebabecafebabecafebabe",
+            "hash": "PfEn1epTOxO3cR0oKGJ3g5Mbr0IbGOTIvHU7telWSpQ3D9lM8SfZpFOHMnHa0qyEVkHnmJedTWdrL+psOb15NQ=="
+        }
+    ],
+    "identifier_hash": [
+        {
+            "value": "john@example.com",
+            "salt": "0123456789abcdef",
+            "hash": "8ab901f184b70008d318983a58fcabc4"
+        },
+        {
+            "value": "john@example.com",
+            "salt": "0123456789abcdef",
+            "hash": "8ab901f184b70008d318983a58fcabc4"
+        },
+        {
+            "value": "тест@пример.рф",
+            "salt": "0123456789abcdef",
+            "hash": "bede302cbf0ba4144be2e7c2e3ccac15"
+        }
+    ],
+    "encode": [
+        {
+            "plaintext": "john@example.com",
+            "salt": "0123456789abcdef",
+            "iv": "000102030405060708090a0b0c0d0e0f",
+            "ciphertext": "AAECAwQFBgcICQoLDA0OD2A83zHu3MBSelPJ+39SLJuR0TmhJsG3V5WPp/lAuulePoEksZfOI7UF5QGEOp8H0GTaihvDMm8DDDyZgsb6FJY="
+        },
+        {
+            "plaintext": "JOHN@Example.com",
+            "salt": "0123456789abcdef",
+            "iv": "000102030405060708090a0b0c0d0e0f",
+            "ciphertext": "AAECAwQFBgcICQoLDA0OD/ID5X/ufT20Tku5U4AOeHsRVypspFfE/agY3sXIy/srtde7Brqk6VwCC4DWCkef47UfTW6qu8gLYpt5vPllbaY="
+        },
+        {
+            "plaintext": "тест@пример.рф",
+            "salt": "0123456789abcdef",
+            "iv": "000102030405060708090a0b0c0d0e0f",
+            "ciphertext": "AAECAwQFBgcICQoLDA0ODxqL/Uo/Vj8uNfbqycZ8MUZ9+fcGoVRIONXcI4GM4ge94fvJtVzige5GIbA1bCbOR37wRJTg0/sVnpcUYE2v5ZM="
+        }
+    ]
+}

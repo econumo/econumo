@@ -1,0 +1,69 @@
+package currency
+
+import (
+	"net/http"
+
+	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/ui/httpx"
+)
+
+// _ keeps the apidoc and appcurrency import aliases visible to swag's per-file
+// annotation parser (the @Success {object} apidoc.* and {data=appcurrency.*}
+// references below). swag matches the leading identifier of a type reference
+// against the file's import aliases, so both packages must be imported here even
+// though these read handlers decode no request body. No runtime effect.
+var (
+	_ = apidoc.JsonResponseError{}
+	_ = appcurrency.GetCurrencyListResult{}
+)
+
+// GetCurrencyList handles GET /api/v1/currency/get-currency-list (auth). No
+// request body; returns all currencies ordered by code.
+//
+// @Summary     Get the currency list
+// @Description Returns all currencies ordered by ISO code. The name is the English display name.
+// @Tags        Currency
+// @Produce     json
+// @Success     200 {object} apidoc.JsonResponseOk{data=appcurrency.GetCurrencyListResult}
+// @Failure     401 {object} apidoc.JsonResponseUnauthorized
+// @Failure     500 {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/currency/get-currency-list [get]
+func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	res, err := h.read.GetCurrencyList(r.Context(), userID)
+	if err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	httpx.OK(w, res)
+}
+
+// GetCurrencyRateList handles GET /api/v1/currency/get-currency-rate-list
+// (auth). No request body; returns every rate published on the most-recent date.
+//
+// @Summary     Get the latest currency rates
+// @Description Returns all currency rates published on the most-recent available date.
+// @Tags        Currency
+// @Produce     json
+// @Success     200 {object} apidoc.JsonResponseOk{data=appcurrency.GetCurrencyRateListResult}
+// @Failure     401 {object} apidoc.JsonResponseUnauthorized
+// @Failure     500 {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/currency/get-currency-rate-list [get]
+func (h *Handlers) GetCurrencyRateList(w http.ResponseWriter, r *http.Request) {
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	res, err := h.read.GetCurrencyRateList(r.Context(), userID)
+	if err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	httpx.OK(w, res)
+}
