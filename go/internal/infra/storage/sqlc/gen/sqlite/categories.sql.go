@@ -64,7 +64,7 @@ const listCategoriesByOwner = `-- name: ListCategoriesByOwner :many
 SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at
 FROM categories
 WHERE user_id = ?
-ORDER BY position
+ORDER BY position, id
 `
 
 // The owner's categories ordered by position; used by order-category-list (load,

@@ -20,7 +20,7 @@ WHERE t.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1
    )
-ORDER BY t.position
+ORDER BY t.position, t.id
 `
 
 // Read-model query for the tag module (PostgreSQL variant: $N placeholders).

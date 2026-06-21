@@ -59,7 +59,7 @@ const listTagsByOwner = `-- name: ListTagsByOwner :many
 SELECT id, user_id, name, position, is_archived, created_at, updated_at
 FROM tags
 WHERE user_id = $1
-ORDER BY position
+ORDER BY position, id
 `
 
 func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error) {

@@ -13,4 +13,4 @@ WHERE c.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1
    )
-ORDER BY c.position;
+ORDER BY c.position, c.id;

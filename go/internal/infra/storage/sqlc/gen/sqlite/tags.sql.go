@@ -69,7 +69,7 @@ const listTagsByOwner = `-- name: ListTagsByOwner :many
 SELECT id, user_id, name, position, is_archived, created_at, updated_at
 FROM tags
 WHERE user_id = ?
-ORDER BY position
+ORDER BY position, id
 `
 
 // The owner's tags ordered by position; used by order-tag-list (load, apply

@@ -12,7 +12,7 @@ SELECT COUNT(*) FROM categories WHERE user_id = $1;
 SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at
 FROM categories
 WHERE user_id = $1
-ORDER BY position;
+ORDER BY position, id;
 
 -- name: UpsertCategory :exec
 INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at)

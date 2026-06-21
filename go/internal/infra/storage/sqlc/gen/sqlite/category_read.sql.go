@@ -20,7 +20,7 @@ WHERE c.user_id = ?
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = ?
    )
-ORDER BY c.position
+ORDER BY c.position, c.id
 `
 
 type GetCategoryListViewParams struct {

@@ -59,7 +59,7 @@ const listPayeesByOwner = `-- name: ListPayeesByOwner :many
 SELECT id, user_id, name, position, is_archived, created_at, updated_at
 FROM payees
 WHERE user_id = $1
-ORDER BY position
+ORDER BY position, id
 `
 
 func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error) {

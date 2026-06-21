@@ -55,7 +55,7 @@ DELETE FROM budgets_access WHERE budget_id = $1 AND user_id = $2;
 
 -- name: ListBudgetFolders :many
 SELECT id, budget_id, name, position, created_at, updated_at
-FROM budgets_folders WHERE budget_id = $1 ORDER BY position ASC;
+FROM budgets_folders WHERE budget_id = $1 ORDER BY position ASC, id ASC;
 
 -- name: GetBudgetFolder :one
 SELECT id, budget_id, name, position, created_at, updated_at

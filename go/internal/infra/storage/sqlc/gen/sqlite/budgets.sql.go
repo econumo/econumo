@@ -408,7 +408,7 @@ func (q *Queries) ListBudgetExcludedAccountIDs(ctx context.Context, budgetID str
 
 const listBudgetFolders = `-- name: ListBudgetFolders :many
 SELECT id, budget_id, name, position, created_at, updated_at
-FROM budgets_folders WHERE budget_id = ? ORDER BY position ASC
+FROM budgets_folders WHERE budget_id = ? ORDER BY position ASC, id ASC
 `
 
 func (q *Queries) ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error) {

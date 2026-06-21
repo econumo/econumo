@@ -20,7 +20,7 @@ WHERE p.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1
    )
-ORDER BY p.position
+ORDER BY p.position, p.id
 `
 
 // Read-model query for the payee module (PostgreSQL variant: $N placeholders).

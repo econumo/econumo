@@ -69,7 +69,7 @@ const listPayeesByOwner = `-- name: ListPayeesByOwner :many
 SELECT id, user_id, name, position, is_archived, created_at, updated_at
 FROM payees
 WHERE user_id = ?
-ORDER BY position
+ORDER BY position, id
 `
 
 // The owner's payees ordered by position; used by order-payee-list (load, apply

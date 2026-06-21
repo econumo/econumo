@@ -16,7 +16,7 @@ SELECT COUNT(*) FROM tags WHERE user_id = $1
 SELECT id, user_id, name, position, is_archived, created_at, updated_at
 FROM tags
 WHERE user_id = $1
-ORDER BY position
+ORDER BY position, id
 ;
 
 -- name: UpsertTag :exec

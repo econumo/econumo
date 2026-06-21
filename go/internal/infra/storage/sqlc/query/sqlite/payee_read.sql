@@ -17,5 +17,5 @@ WHERE p.user_id = ?
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = ?
    )
-ORDER BY p.position
+ORDER BY p.position, p.id
 ;
