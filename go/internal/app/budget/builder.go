@@ -258,3 +258,17 @@ func boolToInt(b bool) int {
 func sortByPosition[T any](items []T, pos func(T) int) {
 	sort.SliceStable(items, func(i, j int) bool { return pos(items[i]) < pos(items[j]) })
 }
+
+// sortByPositionThenID orders by position ascending, breaking ties by id
+// ascending. Elements accumulate from Go map iteration (randomized order) and
+// many share a position, so a position-only sort leaves ties in random order
+// and the response varies run-to-run. The id tiebreak makes it deterministic;
+// the frontend reorders when it needs a different presentation order.
+func sortByPositionThenID[T any](items []T, pos func(T) int, id func(T) string) {
+	sort.Slice(items, func(i, j int) bool {
+		if pi, pj := pos(items[i]), pos(items[j]); pi != pj {
+			return pi < pj
+		}
+		return id(items[i]) < id(items[j])
+	})
+}
