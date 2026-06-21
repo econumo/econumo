@@ -5,7 +5,7 @@ build):
 
 | Tier | Command | What it runs | Dependencies |
 |------|---------|--------------|--------------|
-| **Smoke** | `make go-smoke` | unit + sqlite tests + lint + coverage gate | none |
+| **Smoke** | `make go-test` | unit + sqlite tests + lint + coverage gate | none |
 | **Regression** | `make go-regression` | everything in smoke **+** sqlite-vs-PostgreSQL comparison | PostgreSQL |
 
 Run **smoke** constantly / before every commit. Run **regression** before
@@ -13,13 +13,13 @@ merging or releasing.
 
 ## Smoke (unit + sqlite, no dependencies)
 
-Pure Go, SQLite-only. `make go-smoke` = `go-lint` + `go-test-cover`:
+Pure Go, SQLite-only. `make go-test` = `go-lint` + `go-test-cover`:
 
 ```sh
-make go-smoke         # lint + sqlite tests + coverage gate (the everyday command)
+make go-test          # lint + sqlite tests + coverage gate (the everyday command)
 
 # or the building blocks individually:
-make go-test          # just the fast sqlite tests
+make go-test-fast     # just the fast sqlite tests, no lint/coverage
 make go-test-cover    # + enforce the coverage gate (fails below GO_COVER_MIN)
 make go-lint          # build + go vet + gofmt check
 ```
@@ -100,6 +100,6 @@ deterministic snapshot string) and passing it to `runOnBoth(t, ...)`.
 
 `.github/workflows/go-tests.yml` runs on every push/PR touching `go/`:
 
-- **smoke** job: `make go-smoke` (build, vet, gofmt, sqlite tests, coverage gate).
+- **smoke** job: `make go-test` (build, vet, gofmt, sqlite tests, coverage gate).
 - **regression** job (needs smoke): spins up a `postgres:17` service container
   and runs `make go-test-engines` against it (the sqlite-vs-pgsql comparison).

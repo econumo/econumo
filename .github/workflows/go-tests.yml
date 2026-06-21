@@ -32,7 +32,7 @@ jobs:
           go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
       - name: Smoke suite (lint + sqlite tests + coverage gate)
-        run: make go-smoke
+        run: make go-test
       - name: Upload coverage profile
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,4 +1,4 @@
-.PHONY: help up down sh run test install dev bundle lint build go-test go-build go-image go-up go-down go-smoke go-regression go-test-cover go-test-engines go-lint go-pg-ensure
+.PHONY: help up down sh run test install dev bundle lint build go-test go-build go-image go-up go-down go-test-fast go-regression go-test-cover go-test-engines go-lint go-pg-ensure
 
 # Default target
 .DEFAULT_GOAL := help
@@ -21,9 +21,9 @@ help:
 	@echo "  make build        - Build frontend and Docker images for production"
 	@echo ""
 	@echo "Go backend (drop-in rewrite, in go/):"
-	@echo "  make go-smoke      - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
-	@echo "  make go-regression - REGRESSION suite: smoke + sqlite-vs-pgsql comparison"
-	@echo "  make go-test       - Just the fast sqlite tests (CGO off)"
+	@echo "  make go-test       - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
+	@echo "  make go-regression - REGRESSION suite: go-test + sqlite-vs-pgsql comparison"
+	@echo "  make go-test-fast  - Just the fast sqlite tests, no lint/coverage (CGO off)"
 	@echo "  make go-image     - Build the Go backend Docker image"
 	@echo "  make go-up        - Start the Go stack (compose, port 8182) side-by-side"
 	@echo "  make go-down      - Stop the Go stack"
@@ -91,23 +91,24 @@ build:
 
 # The Go suite is split into two tiers:
 #
-#   make go-smoke       SMOKE: unit + sqlite + lint + coverage gate. Fast, zero
+#   make go-test        SMOKE: unit + sqlite + lint + coverage gate. Fast, zero
 #                       external dependencies. Run this constantly / before commit.
-#   make go-regression  REGRESSION: everything in smoke PLUS the sqlite-vs-pgsql
+#   make go-regression  REGRESSION: everything in go-test PLUS the sqlite-vs-pgsql
 #                       engine comparison against a real PostgreSQL. Run before
 #                       merging / releasing.
 #
-# The granular targets below (go-test, go-test-cover, go-test-engines, go-lint)
-# remain as the building blocks the two tiers compose.
+# The granular targets below (go-test-fast, go-test-cover, go-test-engines,
+# go-lint) remain as the building blocks the two tiers compose.
 
 # ---- SMOKE (unit + sqlite, no dependencies) -------------------------------
 
-# Smoke suite: lint + the fast sqlite-only tests with a coverage gate.
-go-smoke: go-lint go-test-cover
+# Smoke suite: lint + the sqlite-only tests with a coverage gate. The everyday
+# command; no external dependencies.
+go-test: go-lint go-test-cover
 	@echo "SMOKE suite passed (unit + sqlite, no external deps)."
 
-# Run the fast Go test suite (CGO off, sqlite-only, no external deps).
-go-test:
+# Just the fast sqlite-only tests, no lint/coverage (CGO off). A building block.
+go-test-fast:
 	cd go && CGO_ENABLED=0 go test ./...
 
 # Coverage threshold for go-test-cover (true cross-package %). Override on the
@@ -143,7 +144,7 @@ DATABASE_TEST_PGSQL_URL ?= postgres://econumo:econumo@localhost:5432/econumo_tes
 # real PostgreSQL. If no Postgres is reachable it auto-creates a throwaway test
 # DB in the compose `postgres` service (start it with `make go-up` or
 # `docker compose up -d postgres` first).
-go-regression: go-smoke go-pg-ensure go-test-engines
+go-regression: go-test go-pg-ensure go-test-engines
 	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison)."
 
 # Ensure the throwaway test database exists in the compose postgres service.
