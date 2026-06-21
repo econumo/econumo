@@ -126,7 +126,10 @@ type Querier interface {
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
-	// CurrencyRateRepository::getLatestDate).
+	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
+	// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
+	// datetime TEXT, letting rows AT/after the boundary leak in (so "< Dec 1" wrongly
+	// returned a December date, snapping the rate period to the wrong month).
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// All rate rows published on the single most-recent published_at date (matches
 	// CurrencyRateRepository::getAll(): find MAX(published_at), return every row on

@@ -138,20 +138,23 @@ func (q *Queries) GetCurrencyListView(ctx context.Context) ([]GetCurrencyListVie
 
 const getLatestCurrencyRateDate = `-- name: GetLatestCurrencyRateDate :one
 SELECT published_at FROM currencies_rates
-WHERE base_currency_id = ? AND published_at < ?
+WHERE base_currency_id = ? AND datetime(published_at) < datetime(?)
 ORDER BY published_at DESC
 LIMIT 1
 `
 
 type GetLatestCurrencyRateDateParams struct {
 	BaseCurrencyID string
-	PublishedAt    time.Time
+	Datetime       interface{}
 }
 
 // Most-recent published_at for a base currency strictly before a date (matches
-// CurrencyRateRepository::getLatestDate).
+// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
+// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
+// datetime TEXT, letting rows AT/after the boundary leak in (so "< Dec 1" wrongly
+// returned a December date, snapping the rate period to the wrong month).
 func (q *Queries) GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error) {
-	row := q.db.QueryRowContext(ctx, getLatestCurrencyRateDate, arg.BaseCurrencyID, arg.PublishedAt)
+	row := q.db.QueryRowContext(ctx, getLatestCurrencyRateDate, arg.BaseCurrencyID, arg.Datetime)
 	var published_at time.Time
 	err := row.Scan(&published_at)
 	return published_at, err

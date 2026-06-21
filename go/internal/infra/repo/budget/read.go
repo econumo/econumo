@@ -416,14 +416,30 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 	var out []appbudget.SummarizedLimitRow
 	for rows.Next() {
 		var row appbudget.SummarizedLimitRow
-		var amount *string
-		if err := rows.Scan(&row.ExternalID, &row.Type, &amount); err != nil {
-			return nil, err
-		}
-		if amount != nil {
-			row.Amount = *amount
+		// SQLite's SUM(amount) over NUMERIC is a float; scanning it as a string
+		// yields full float precision (e.g. "155.56000000001"), which leaks a 1e-8
+		// into budgetedBefore. Scan as float and format with %.8f (PHP's
+		// DecimalNumber float path). PostgreSQL's SUM is exact NUMERIC text.
+		if r.driver == "postgresql" {
+			var amount *string
+			if err := rows.Scan(&row.ExternalID, &row.Type, &amount); err != nil {
+				return nil, err
+			}
+			if amount != nil {
+				row.Amount = *amount
+			} else {
+				row.Amount = "0"
+			}
 		} else {
-			row.Amount = "0"
+			var amount *float64
+			if err := rows.Scan(&row.ExternalID, &row.Type, &amount); err != nil {
+				return nil, err
+			}
+			if amount != nil {
+				row.Amount = strconv.FormatFloat(*amount, 'f', 8, 64)
+			} else {
+				row.Amount = "0"
+			}
 		}
 		out = append(out, row)
 	}
