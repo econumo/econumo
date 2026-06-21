@@ -87,9 +87,40 @@ build:
 
 # --- Go backend (drop-in rewrite) ---
 
-# Run the Go test suite (CGO off, matching the build).
+# Run the fast Go test suite (CGO off, sqlite-only, no external deps).
 go-test:
 	cd go && CGO_ENABLED=0 go test ./...
+
+# Coverage threshold for go-test-cover (true cross-package %). Override on the
+# command line: make go-test-cover GO_COVER_MIN=70
+GO_COVER_MIN ?= 64
+
+# Fast suite WITH a coverage gate: measures true cross-package coverage of all
+# internal packages and fails if it drops below GO_COVER_MIN. This is the gate
+# that makes refactoring safe — run it before committing.
+go-test-cover:
+	cd go && CGO_ENABLED=0 go test ./... -coverpkg=./internal/... -coverprofile=coverage.out
+	cd go && go tool cover -func=coverage.out | tail -1
+	@cd go && pct=$$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1); \
+		echo "total coverage: $$pct% (min $(GO_COVER_MIN)%)"; \
+		awk "BEGIN{exit !($$pct >= $(GO_COVER_MIN))}" || \
+		{ echo "FAIL: coverage $$pct% is below the $(GO_COVER_MIN)% gate"; exit 1; }
+
+# Engine-comparison suite: runs each repo operation against BOTH sqlite and a
+# real PostgreSQL and asserts identical results. Requires DATABASE_TEST_PGSQL_URL
+# (the pgsql half SKIPS without it; the sqlite half still runs). Build-tagged so
+# it never slows the fast suite.
+#   make go-test-engines DATABASE_TEST_PGSQL_URL=postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
+go-test-engines:
+	cd go && CGO_ENABLED=0 go test -tags enginecompare ./...
+
+# Lint gate: build, vet, and gofmt check (fails if any file is unformatted).
+go-lint:
+	cd go && CGO_ENABLED=0 go build ./...
+	cd go && CGO_ENABLED=0 go vet ./...
+	@cd go && unformatted=$$(gofmt -l . | grep -v '/gen/' || true); \
+		if [ -n "$$unformatted" ]; then echo "gofmt needed:"; echo "$$unformatted"; exit 1; fi; \
+		echo "gofmt: clean"
 
 # Build the Go backend Docker image (context is the repo root).
 go-image:

@@ -1,0 +1,82 @@
+name: Go tests
+
+# Guards the Go backend (go/) on every push + PR: build, vet, gofmt, the fast
+# sqlite test suite with a coverage gate, and a separate job that runs the
+# sqlite-vs-PostgreSQL engine-comparison suite against a real Postgres.
+on:
+  push:
+    paths:
+      - 'go/**'
+      - '.github/workflows/go-tests.yml'
+  pull_request:
+    paths:
+      - 'go/**'
+      - '.github/workflows/go-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  # Fast suite: lint + build + vet + sqlite-only tests with a coverage gate.
+  # CGO stays off (both DB drivers are pure Go), matching production builds.
+  test:
+    name: Lint & fast tests (sqlite)
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - name: Build
+        run: cd go && go build ./...
+      - name: Vet
+        run: cd go && go vet ./...
+      - name: gofmt
+        run: |
+          cd go
+          unformatted=$(gofmt -l . | grep -v '/gen/' || true)
+          if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi
+          echo "gofmt: clean"
+      - name: Test + coverage gate
+        run: make go-test-cover
+      - name: Upload coverage profile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: go/coverage.out
+          if-no-files-found: ignore
+
+  # Engine comparison: run every repo scenario against BOTH sqlite and a real
+  # PostgreSQL and assert identical results — catches sqlc engine-adapter drift.
+  engine-compare:
+    name: Engine comparison (sqlite vs PostgreSQL)
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: '0'
+      DATABASE_TEST_PGSQL_URL: postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: econumo
+          POSTGRES_PASSWORD: econumo
+          POSTGRES_DB: econumo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U econumo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - name: Engine-comparison suite
+        run: make go-test-engines
