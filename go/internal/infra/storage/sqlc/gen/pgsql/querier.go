@@ -101,7 +101,11 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	// Tiebreak by id so the order is deterministic and identical across engines even
+	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
+	// Tiebreak by id so SQLite and PostgreSQL return the same order even when all
+	// option rows share a created_at (the registration case). See the sqlite variant.
 	GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error)
 	// Read-model queries for the user module (CQRS read side). See the sqlite
 	// variant for rationale. Postgres uses $N placeholders.

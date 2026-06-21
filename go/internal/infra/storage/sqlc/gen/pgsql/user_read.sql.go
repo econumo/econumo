@@ -13,7 +13,7 @@ const getUserOptionsView = `-- name: GetUserOptionsView :many
 SELECT name, value
 FROM users_options
 WHERE user_id = $1
-ORDER BY created_at
+ORDER BY created_at, id
 `
 
 type GetUserOptionsViewRow struct {
@@ -21,6 +21,8 @@ type GetUserOptionsViewRow struct {
 	Value *string
 }
 
+// Tiebreak by id so SQLite and PostgreSQL return the same order even when all
+// option rows share a created_at (the registration case). See the sqlite variant.
 func (q *Queries) GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error) {
 	rows, err := q.db.QueryContext(ctx, getUserOptionsView, userID)
 	if err != nil {

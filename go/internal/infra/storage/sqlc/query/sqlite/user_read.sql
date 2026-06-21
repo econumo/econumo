@@ -10,9 +10,13 @@ FROM users
 WHERE id = ?;
 
 -- name: GetUserOptionsView :many
--- The persisted options (name/value) in stable order, for both get-user-data
--- (which appends a synthetic currency_id) and get-option-list (raw).
+-- The persisted options (name/value) in a fully deterministic order, for both
+-- get-user-data (which appends a synthetic currency_id) and get-option-list
+-- (raw). The tiebreak by id is required: at registration all option rows are
+-- created with the SAME created_at, so created_at alone leaves the order
+-- engine-specific (SQLite=insertion, PostgreSQL=unspecified). Ordering by id as
+-- the secondary key makes SQLite and PostgreSQL agree byte-for-byte.
 SELECT name, value
 FROM users_options
 WHERE user_id = ?
-ORDER BY created_at;
+ORDER BY created_at, id;

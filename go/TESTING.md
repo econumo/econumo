@@ -66,11 +66,25 @@ make go-test-cover GO_COVER_MIN=70
 ## Regression (smoke + sqlite-vs-PostgreSQL)
 
 `make go-regression` = smoke + the engine-comparison suite. The comparison is
-build-tagged (`enginecompare`) so it never slows the smoke tier. Each scenario
-runs the **same** repository operations against both a migrated SQLite DB and a
-real PostgreSQL DB and asserts the results are **identical** — guarding against
-drift between the two sqlc engine adapters (placeholders, types, datetime +
-decimal handling, upsert syntax).
+build-tagged (`enginecompare`) so it never slows the smoke tier. It asserts that
+SQLite and PostgreSQL produce **identical** output (SQLite is the reference /
+target engine) at two levels:
+
+- **Repository level** — runs the same repository operation on both engines and
+  compares a deterministic snapshot. Narrow and fast; pinpoints which query
+  diverges.
+- **API level (comprehensive)** — stands up the **real production HTTP handler**
+  (`internal/server.BuildAPI`, the identical router `cmd/econumo` serves) over
+  each engine from an **identical seed**, replays a broad catalogue of requests
+  (every read endpoint plus a write→read sequence per mutating module), and
+  compares the **raw response bytes**. This is the strongest parity contract —
+  it exercises middleware, JWT, the per-engine sqlc adapters, decimal/datetime
+  handling, and envelope serialization end-to-end. Server-generated UUIDv7 ids
+  (which legitimately differ per run) are redacted before comparison; all other
+  bytes are compared strictly.
+
+Both guard against drift between the two sqlc engine adapters (placeholders,
+types, datetime + decimal handling, upsert syntax, result ordering).
 
 ```sh
 # Full regression. Auto-provisions a throwaway econumo_test DB in the compose
@@ -92,9 +106,16 @@ make go-test-engines   # uses DATABASE_TEST_PGSQL_URL; pgsql half SKIPS if unrea
 Each test creates its own freshly-migrated schema and drops it afterwards, so
 the suite is safe to re-run against the same database repeatedly.
 
-Scenarios live in `internal/test/enginecompare`. Add one by writing a `scenario`
-closure (seed via the portable `seed(...)` helper, call repos, return a
-deterministic snapshot string) and passing it to `runOnBoth(t, ...)`.
+Scenarios live in `internal/test/enginecompare`:
+
+- **Repository scenarios** (`scenarios_test.go`): write a `scenario` closure (seed
+  via the portable `seed(...)` helper, call repos, return a deterministic snapshot
+  string) and pass it to `runOnBoth(t, ...)`.
+- **API scenarios** (`apiparity_test.go`): add an `apiScenario` returning an
+  ordered `[]apiCall` (method, path, which seeded user's token, JSON body) and
+  pass it to `runAPIOnBoth(t, name, ...)`. The shared fixture lives in
+  `apiparity_harness_test.go` (`seedAPIFixture`); extend it when a new scenario
+  needs more seed data, then bump `apiCatalogueSize()`.
 
 ## CI
 

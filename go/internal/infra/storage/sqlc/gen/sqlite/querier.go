@@ -176,9 +176,15 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	// Tiebreak by id so the order is deterministic and identical across engines even
+	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
-	// The persisted options (name/value) in stable order, for both get-user-data
-	// (which appends a synthetic currency_id) and get-option-list (raw).
+	// The persisted options (name/value) in a fully deterministic order, for both
+	// get-user-data (which appends a synthetic currency_id) and get-option-list
+	// (raw). The tiebreak by id is required: at registration all option rows are
+	// created with the SAME created_at, so created_at alone leaves the order
+	// engine-specific (SQLite=insertion, PostgreSQL=unspecified). Ordering by id as
+	// the secondary key makes SQLite and PostgreSQL agree byte-for-byte.
 	GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error)
 	// Read-model queries for the user module (CQRS read side). These are tailored
 	// to the response shape and bypass the domain aggregate. They live separately

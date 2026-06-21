@@ -14,9 +14,11 @@ const getUserOptions = `-- name: GetUserOptions :many
 SELECT id, user_id, name, value, created_at, updated_at
 FROM users_options
 WHERE user_id = ?
-ORDER BY created_at
+ORDER BY created_at, id
 `
 
+// Tiebreak by id so the order is deterministic and identical across engines even
+// when option rows share a created_at (the registration case).
 func (q *Queries) GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error) {
 	rows, err := q.db.QueryContext(ctx, getUserOptions, userID)
 	if err != nil {
