@@ -103,13 +103,23 @@ FROM accounts a LEFT JOIN (
  ) tmp GROUP BY tmp.account_id
 ) t ON a.id=t.account_id AND a.id IN (` + in + `)`
 	return sql, func(date time.Time, ids []any) []any {
+		// Bind the date bound as a 'Y-m-d H:i:s' string (see sqliteDatetime): a
+		// time.Time bound mis-compares against the stored datetime TEXT at the
+		// month boundary, dropping the first-of-month transaction.
+		d := sqliteDatetime(date)
 		args := make([]any, 0, 6+len(ids))
 		for i := 0; i < 6; i++ {
-			args = append(args, date)
+			args = append(args, d)
 		}
 		return append(args, ids...)
 	}
 }
+
+// sqliteDatetime renders a date bound as the 'Y-m-d H:i:s' string SQLite stores
+// datetimes in, so range comparisons against the TEXT spent_at/period columns
+// include the boundary rows (a bound time.Time is serialized differently by the
+// driver and silently drops them). PHP binds this same Y-m-d H:i:s form.
+func sqliteDatetime(t time.Time) string { return t.Format("2006-01-02 15:04:05") }
 
 // phFrom is ph for pgsql numbered params starting at `start` (sqlite ignores start).
 func (r *ReadRepo) phFrom(start, n int) string { return r.ph(start, n) }
@@ -185,10 +195,12 @@ func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start
 	} else {
 		in := r.ph(1, len(ids))
 		sql = reportSQLSqlite(in)
-		// 8 (start,end) pairs = 16 date args, then ids.
+		// 8 (start,end) pairs = 16 date args, then ids. Bind as 'Y-m-d H:i:s'
+		// strings so the spent_at range includes boundary rows (see sqliteDatetime).
+		ds, de := sqliteDatetime(start), sqliteDatetime(end)
 		args = make([]any, 0, 16+len(ids))
 		for i := 0; i < 8; i++ {
-			args = append(args, start, end)
+			args = append(args, ds, de)
 		}
 		args = append(args, ids...)
 	}
@@ -334,10 +346,14 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		catIn := r.ph(1, len(catArgs))
+		// Bind the spent_at bounds as 'Y-m-d H:i:s' strings: a time.Time bound is
+		// serialized by the driver in a form that does not compare correctly
+		// against the stored datetime TEXT at month boundaries (it drops the
+		// first-of-month row). PHP binds Y-m-d H:i:s.
 		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.category_id IN (" + catIn + ") AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
-		args = append(args, start, end)
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
@@ -383,12 +399,16 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 // SummarizedLimits implements ReadModel.
 func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, end time.Time) ([]appbudget.SummarizedLimitRow, error) {
 	var sql string
+	var pStart, pEnd any = start, end
 	if r.driver == "postgresql" {
 		sql = "SELECT e.external_id, e.type, SUM(l.amount) as amount FROM budgets_elements_limits l JOIN budgets_elements e ON e.id = l.element_id WHERE e.budget_id = $1 AND l.period >= $2 AND l.period < $3 GROUP BY e.external_id, e.type"
 	} else {
 		sql = "SELECT e.external_id, e.type, SUM(l.amount) as amount FROM budgets_elements_limits l JOIN budgets_elements e ON e.id = l.element_id WHERE e.budget_id = ? AND l.period >= ? AND l.period < ? GROUP BY e.external_id, e.type"
+		// Bind period bounds as 'Y-m-d H:i:s' strings so the range includes the
+		// boundary month (a time.Time bound mis-compares against the period TEXT).
+		pStart, pEnd = sqliteDatetime(start), sqliteDatetime(end)
 	}
-	rows, err := r.db(ctx).QueryContext(ctx, sql, budgetID.String(), start, end)
+	rows, err := r.db(ctx).QueryContext(ctx, sql, budgetID.String(), pStart, pEnd)
 	if err != nil {
 		return nil, err
 	}
