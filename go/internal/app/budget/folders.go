@@ -31,8 +31,28 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateBudg
 	now := s.clock.Now()
 	var created *dombudget.BudgetFolder
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		created = dombudget.NewBudgetFolder(folderID, budgetID, req.Name, int16(len(b.folders)), now)
-		return s.repo.SaveFolder(txCtx, created)
+		// PHP's BudgetFolderService::create inserts the new folder at position 0
+		// (factory default) and renumbers the existing folders 1,2,3,... in their
+		// current repository (position-ASC) order. The new folder therefore lands at
+		// the FRONT, not appended at the end.
+		created = dombudget.NewBudgetFolder(folderID, budgetID, req.Name, 0, now)
+		if serr := s.repo.SaveFolder(txCtx, created); serr != nil {
+			return serr
+		}
+		existing := append([]*dombudget.BudgetFolder(nil), b.folders...)
+		sort.SliceStable(existing, func(i, j int) bool { return existing[i].Position() < existing[j].Position() })
+		pos := int16(0)
+		for _, f := range existing {
+			pos++
+			if f.Position() == pos {
+				continue
+			}
+			f.UpdatePosition(pos, now)
+			if serr := s.repo.SaveFolder(txCtx, f); serr != nil {
+				return serr
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

@@ -40,14 +40,24 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEn
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
-	position := nextElementPosition(b)
+	// PHP creates the envelope element at position 0 (the front of its group) and
+	// then runs restoreElementsOrder, which renumbers the rest. The RESPONSE
+	// reports the element's position as created (0) — the assembler reads the
+	// just-created element before restore mutates the freshly-reloaded rows.
+	const newPosition = 0
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// PHP shifts existing same-group (same folder) elements up by one to free
+		// position 0 for the new envelope, so the new element is the unique
+		// position-0 row in its group before restoreElementsOrder runs.
+		if serr := s.shiftElements(txCtx, b, folderID, newPosition, now); serr != nil {
+			return serr
+		}
 		env := dombudget.NewBudgetEnvelope(envelopeID, budgetID, req.Name, req.Icon, now)
 		if serr := s.repo.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		el := dombudget.NewBudgetElement(s.repo.NextIdentity(), budgetID, envelopeID, dombudget.ElementEnvelope, &curID, folderID, int16(position), now)
+		el := dombudget.NewBudgetElement(s.repo.NextIdentity(), budgetID, envelopeID, dombudget.ElementEnvelope, &curID, folderID, int16(newPosition), now)
 		if serr := s.repo.SaveElement(txCtx, el); serr != nil {
 			return serr
 		}
@@ -60,12 +70,16 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEn
 				return serr
 			}
 		}
-		return nil
+		return s.restoreElementsOrder(txCtx, budgetID, now)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, position, false)}, nil
+	children, err := s.envelopeChildren(ctx, b, req.Categories)
+	if err != nil {
+		return nil, err
+	}
+	return &CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, newPosition, false, children)}, nil
 }
 
 // UpdateEnvelope updates an envelope's name/icon/archived + categories (canUpdate).
@@ -139,12 +153,16 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 				}
 			}
 		}
-		return nil
+		return s.restoreElementsOrder(txCtx, budgetID, now)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &UpdateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, int(position), req.IsArchived == 1)}, nil
+	children, err := s.envelopeChildren(ctx, b, req.Categories)
+	if err != nil {
+		return nil, err
+	}
+	return &UpdateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, int(position), req.IsArchived == 1, children)}, nil
 }
 
 // DeleteEnvelope removes an envelope + its element (canDelete).
@@ -164,6 +182,7 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req DeleteEn
 	if !s.canDelete(b, userID) {
 		return nil, accessDenied()
 	}
+	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		el, eerr := s.repo.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
@@ -171,7 +190,10 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req DeleteEn
 				return serr
 			}
 		}
-		return s.repo.DeleteEnvelope(txCtx, envelopeID)
+		if serr := s.repo.DeleteEnvelope(txCtx, envelopeID); serr != nil {
+			return serr
+		}
+		return s.restoreElementsOrder(txCtx, budgetID, now)
 	})
 	if err != nil {
 		return nil, err
@@ -191,17 +213,60 @@ func nextElementPosition(b *budgetAggregate) int {
 }
 
 // newEnvelopeElementResult builds the ParentElementResult for a freshly
-// created/updated envelope (no spending yet -> zero money fields).
-func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, folderID *vo.Id, position int, archived bool) ParentElementResult {
+// created/updated envelope (no spending yet -> zero money fields). children are
+// the envelope's category children (also zero spending), matching PHP's
+// assembleEnvelope.
+func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, folderID *vo.Id, position int, archived bool, children []ChildElementResult) ParentElementResult {
 	var fid *string
 	if folderID != nil {
 		s := folderID.String()
 		fid = &s
 	}
+	if children == nil {
+		children = []ChildElementResult{}
+	}
 	return ParentElementResult{
 		Id: id.String(), Type: int(dombudget.ElementEnvelope.Int16()), Name: name, Icon: icon,
 		CurrencyId: currencyID.String(), IsArchived: boolToInt(archived), FolderId: fid, Position: position,
 		Budgeted: "0", Available: "0", Spent: "0", BudgetSpent: "0",
-		Children: []ChildElementResult{}, OwnerUserId: nil,
+		Children: children, OwnerUserId: nil,
 	}
+}
+
+// envelopeChildren resolves a set of category ids to the response child shape
+// (category metadata + zero spending), matching PHP's assembleEnvelope. Order
+// follows the requested category ids; the API comparison is order-insensitive.
+func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, categoryIDs []string) ([]ChildElementResult, error) {
+	if len(categoryIDs) == 0 {
+		return []ChildElementResult{}, nil
+	}
+	userIDs := []vo.Id{b.budget.UserId()}
+	for _, a := range b.access {
+		if a.IsAccepted() && a.Role() != roleGuest() {
+			userIDs = append(userIDs, a.UserId())
+		}
+	}
+	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	byID := map[string]CategoryMeta{}
+	for _, c := range cats {
+		if c.IsIncome { // eligibility = expense-only participant categories (getCategories)
+			continue
+		}
+		byID[c.ID] = c
+	}
+	out := make([]ChildElementResult, 0, len(categoryIDs))
+	for _, cid := range categoryIDs {
+		c, ok := byID[cid]
+		if !ok {
+			continue
+		}
+		out = append(out, ChildElementResult{
+			Id: c.ID, Type: int(dombudget.ElementCategory.Int16()), Name: c.Name, Icon: c.Icon,
+			IsArchived: boolToInt(c.IsArchived), Spent: "0", BudgetSpent: "0", OwnerUserId: c.OwnerID,
+		})
+	}
+	return out, nil
 }

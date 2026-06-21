@@ -18,6 +18,8 @@ func allCases() []mutationCase {
 	cs = append(cs, folderCases()...)
 	cs = append(cs, userCases()...)
 	cs = append(cs, transactionCases()...)
+	cs = append(cs, connectionCases()...)
+	cs = append(cs, budgetCases()...)
 	return cs
 }
 

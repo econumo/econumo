@@ -399,13 +399,16 @@ type RevokeAccessResult struct{}
 // ---------------------------------------------------------------------------
 
 // ExcludeAccountRequest / IncludeAccountRequest toggle an account in the budget.
+// The request field for the budget id is "id" (not "budgetId") — the exclude/
+// include forms + DTOs use $dto->id for the budget. Validation reports the blank
+// field under "id" to match Symfony.
 type ExcludeAccountRequest struct {
-	BudgetId  string `json:"budgetId"`
+	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
 }
 
 func (r ExcludeAccountRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "accountId": r.AccountId})
+	return validateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
 // ExcludeAccountResult / IncludeAccountResult are {item: MetaResult}.
@@ -413,14 +416,15 @@ type ExcludeAccountResult struct {
 	Item MetaResult `json:"item"`
 }
 
-// IncludeAccountRequest includes a previously-excluded account.
+// IncludeAccountRequest includes a previously-excluded account. The budget id
+// arrives under "id" (see ExcludeAccountRequest).
 type IncludeAccountRequest struct {
-	BudgetId  string `json:"budgetId"`
+	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
 }
 
 func (r IncludeAccountRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "accountId": r.AccountId})
+	return validateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
 // IncludeAccountResult is {item: MetaResult}.
@@ -457,10 +461,12 @@ func (r SetLimitRequest) Validate() error {
 // SetLimitResult is empty.
 type SetLimitResult struct{}
 
-// MoveElementListItem is one element move/reorder instruction.
+// MoveElementListItem is one element move/reorder instruction. The wire shape is
+// {id, position, folderId?} — the element is identified by its EXTERNAL id alone
+// (no type); PHP keys $affectedElements by $item->id and matches the budget
+// element whose external id equals it (first-seen wins).
 type MoveElementListItem struct {
 	Id       string  `json:"id"`
-	Type     string  `json:"type"`
 	FolderId *string `json:"folderId"`
 	Position int     `json:"position"`
 }
