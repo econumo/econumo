@@ -32,3 +32,6 @@ src/*Bundle/.disabled*
 phpstan.neon
 ###< phpstan/phpstan ###
 deployment/compare/
+
+# Local dev-machine -> homelab transfer script (contains the homelab host/path).
+/sync-to-homelab.sh
