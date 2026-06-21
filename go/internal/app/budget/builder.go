@@ -61,6 +61,10 @@ type Convertor interface {
 // currencyRates block (domain currency.RateProvider satisfies AverageRates).
 type AverageRateLookup interface {
 	AverageRates(ctx context.Context, start, end time.Time) ([]domcurrency.FullRate, error)
+	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
+	// latest-rate month <= end, or the requested period when no rate exists).
+	// The currencyRates block reports THIS period, matching PHP.
+	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 }
 

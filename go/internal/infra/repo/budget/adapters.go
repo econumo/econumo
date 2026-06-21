@@ -98,8 +98,17 @@ var _ appbudget.AccountLookup = (*AccountLookup)(nil)
 // NewAccountLookup wraps an account repository.
 func NewAccountLookup(accounts accountRepo) *AccountLookup { return &AccountLookup{accounts: accounts} }
 
-// AccountsForOwners returns the non-deleted accounts of all the given owners.
+// AccountsForOwners returns the accounts OWNED by the given users. Budget
+// membership is owner-only: PHP BudgetFiltersBuilder uses
+// AccountRepository::findByOwnersIds (a.user IN :users), NOT the own+shared
+// "available" set. ListAvailable returns own + shared accounts, so we filter to
+// accounts actually owned by one of the participants — otherwise shared accounts
+// inflate the budget's start balance.
 func (l *AccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.AccountView, error) {
+	owners := make(map[string]bool, len(userIDs))
+	for _, uid := range userIDs {
+		owners[uid.String()] = true
+	}
 	var out []appbudget.AccountView
 	seen := map[string]bool{}
 	for _, uid := range userIDs {
@@ -108,6 +117,9 @@ func (l *AccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) 
 			return nil, err
 		}
 		for _, a := range accts {
+			if !owners[a.UserId().String()] {
+				continue // shared-with-participant but not owned by one (PHP findByOwnersIds)
+			}
 			if seen[a.Id().String()] {
 				continue
 			}

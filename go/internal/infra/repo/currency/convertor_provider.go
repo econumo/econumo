@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 	"time"
 
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
@@ -19,8 +20,14 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// avgRow is the canonical (sqlite) average-rate row.
-type avgRow = sqlitegen.GetAverageCurrencyRatesRow
+// avgRow is one average-rate row with the rate already rendered to its
+// PHP-compatible decimal STRING. SQLite's AVG is float, formatted with %.8f to
+// match PHP's new DecimalNumber((float)$avg) == sprintf('%.8F', $avg) (round at
+// the 8th decimal); PostgreSQL's AVG(NUMERIC) is exact and passes through.
+type avgRow struct {
+	CurrencyID string
+	Rate       string
+}
 
 // providerQuerier is the engine-agnostic surface the provider needs.
 type providerQuerier interface {
@@ -81,17 +88,9 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 		return nil, err
 	}
 
-	realStart, realEnd := start, end
-	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
-	if derr == nil {
-		// First of the latest-rate month .. next month (PHP Y-m-01 .. next month).
-		realStart = time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
-		realEnd = realStart.AddDate(0, 1, 0)
-	} else if !errors.Is(derr, sql.ErrNoRows) {
-		var nf *errs.NotFoundError
-		if !errors.As(derr, &nf) {
-			return nil, derr
-		}
+	realStart, realEnd, err := p.snapPeriod(ctx, baseID, start, end)
+	if err != nil {
+		return nil, err
 	}
 
 	rows, err := p.q.GetAverage(ctx, p.db(ctx), realStart, realEnd, baseID.String())
@@ -109,14 +108,54 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 	return out, nil
 }
 
+// SnappedRatePeriod returns the [start, end) AverageRates actually uses for the
+// requested period: the month of the latest published rate at or before `end`
+// (PHP getAverageCurrencyRates' getLatestDate snap), or the requested period
+// when no rate exists. The budget currencyRates block reports THIS period.
+func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error) {
+	baseID, err := p.BaseCurrencyID(ctx)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return p.snapPeriod(ctx, baseID, start, end)
+}
+
+// snapPeriod resolves [start,end) to the latest-rate month, or returns the
+// request unchanged when no rate is found (PHP NotFoundException fallback).
+func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end time.Time) (time.Time, time.Time, error) {
+	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
+	if derr == nil {
+		realStart := time.Date(last.Year(), last.Month(), 1, 0, 0, 0, 0, last.Location())
+		return realStart, realStart.AddDate(0, 1, 0), nil
+	}
+	if !errors.Is(derr, sql.ErrNoRows) {
+		var nf *errs.NotFoundError
+		if !errors.As(derr, &nf) {
+			return time.Time{}, time.Time{}, derr
+		}
+	}
+	return start, end, nil
+}
+
 // --- engine adapters ---
 
 type sqliteProviderQuerier struct{}
 
 func (sqliteProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, start, end time.Time, baseID string) ([]avgRow, error) {
-	return sqlitegen.New(db).GetAverageCurrencyRates(ctx, sqlitegen.GetAverageCurrencyRatesParams{
-		PublishedAt: start, PublishedAt_2: end, BaseCurrencyID: baseID,
+	// date(published_at) >= date(?) — pass 'Y-m-d' bounds so the date-only row
+	// "2025-04-01" is INCLUDED (a time.Time renders "...00:00:00", which lexically
+	// excludes it). AVG is a float -> %.8f (round) to match PHP's DecimalNumber.
+	rows, err := sqlitegen.New(db).GetAverageCurrencyRates(ctx, sqlitegen.GetAverageCurrencyRatesParams{
+		Date: start.Format("2006-01-02"), Date_2: end.Format("2006-01-02"), BaseCurrencyID: baseID,
 	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]avgRow, len(rows))
+	for i, r := range rows {
+		out[i] = avgRow{CurrencyID: r.CurrencyID, Rate: strconv.FormatFloat(r.Rate, 'f', 8, 64)}
+	}
+	return out, nil
 }
 func (sqliteProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error) {
 	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, PublishedAt: before})
@@ -133,7 +172,8 @@ func (pgsqlProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, sta
 	}
 	out := make([]avgRow, len(rows))
 	for i, r := range rows {
-		out[i] = avgRow(r)
+		// PostgreSQL AVG(NUMERIC) is exact; pass the text through.
+		out[i] = avgRow{CurrencyID: r.CurrencyID, Rate: r.Rate}
 	}
 	return out, nil
 }

@@ -101,14 +101,20 @@ func (s *Service) buildAverageRates(ctx context.Context, periodStart, periodEnd 
 	if err != nil {
 		return nil, err
 	}
+	// The reported period is the SNAPPED one (latest-rate month), not the
+	// requested period — PHP stamps $averageCurrencyRatesDto->periodStart/End.
+	rateStart, rateEnd, err := s.rates.SnappedRatePeriod(ctx, periodStart, periodEnd)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]AverageCurrencyRateResult, 0, len(fullRates))
 	for _, r := range fullRates {
 		out = append(out, AverageCurrencyRateResult{
 			CurrencyId:     r.CurrencyID.String(),
 			BaseCurrencyId: base.String(),
 			Rate:           r.Rate.String(),
-			PeriodStart:    periodStart.Format(apiDate),
-			PeriodEnd:      periodEnd.Format(apiDate),
+			PeriodStart:    rateStart.Format(apiDate),
+			PeriodEnd:      rateEnd.Format(apiDate),
 		})
 	}
 	return out, nil

@@ -11,21 +11,21 @@ import (
 )
 
 const getAverageCurrencyRates = `-- name: GetAverageCurrencyRates :many
-SELECT currency_id, CAST(AVG(rate) AS TEXT) AS rate
+SELECT currency_id, CAST(AVG(rate) AS REAL) AS rate
 FROM currencies_rates
-WHERE published_at >= ? AND published_at < ? AND base_currency_id = ?
+WHERE date(published_at) >= date(?) AND date(published_at) < date(?) AND base_currency_id = ?
 GROUP BY currency_id, base_currency_id
 `
 
 type GetAverageCurrencyRatesParams struct {
-	PublishedAt    time.Time
-	PublishedAt_2  time.Time
+	Date           interface{}
+	Date_2         interface{}
 	BaseCurrencyID string
 }
 
 type GetAverageCurrencyRatesRow struct {
 	CurrencyID string
-	Rate       string
+	Rate       float64
 }
 
 // Period-averaged rate per currency for a base currency over [start, end).
@@ -33,7 +33,7 @@ type GetAverageCurrencyRatesRow struct {
 // CurrencyRateRepository::getAverage. AVG is cast to TEXT and normalized in Go
 // via vo.NewDecimal (matching PHP's new DecimalNumber($rate)).
 func (q *Queries) GetAverageCurrencyRates(ctx context.Context, arg GetAverageCurrencyRatesParams) ([]GetAverageCurrencyRatesRow, error) {
-	rows, err := q.db.QueryContext(ctx, getAverageCurrencyRates, arg.PublishedAt, arg.PublishedAt_2, arg.BaseCurrencyID)
+	rows, err := q.db.QueryContext(ctx, getAverageCurrencyRates, arg.Date, arg.Date_2, arg.BaseCurrencyID)
 	if err != nil {
 		return nil, err
 	}

@@ -24,9 +24,9 @@ WHERE id = ?;
 -- published_at is a DATE (stored TEXT); bounds are 'Y-m-d' strings. Matches
 -- CurrencyRateRepository::getAverage. AVG is cast to TEXT and normalized in Go
 -- via vo.NewDecimal (matching PHP's new DecimalNumber($rate)).
-SELECT currency_id, CAST(AVG(rate) AS TEXT) AS rate
+SELECT currency_id, CAST(AVG(rate) AS REAL) AS rate
 FROM currencies_rates
-WHERE published_at >= ? AND published_at < ? AND base_currency_id = ?
+WHERE date(published_at) >= date(?) AND date(published_at) < date(?) AND base_currency_id = ?
 GROUP BY currency_id, base_currency_id;
 
 -- name: GetLatestCurrencyRateDate :one

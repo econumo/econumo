@@ -104,6 +104,66 @@ func TestRateProvider_AverageRates_SnapsToLatestMonth(t *testing.T) {
 	}
 }
 
+// TestRateProvider_AverageRates_IncludesFirstOfMonth is the regression for the
+// api-compare finding: a rate published on the FIRST day of the snapped month
+// (stored date-only, e.g. "2026-01-01") must be included in the average. A
+// time.Time lower bound renders as "2026-01-01 00:00:00", which lexically
+// EXCLUDES the date-only row; the query/binding uses date()+'Y-m-d' to include
+// it. Also checks the AVG is rounded to 8 decimals (%.8f), not truncated.
+func TestRateProvider_AverageRates_IncludesFirstOfMonth(t *testing.T) {
+	ctx := context.Background()
+	db, txm := setup(t)
+	// Replace the seed with three rates IN January, including the 1st-of-month.
+	if _, err := db.ExecContext(ctx, `DELETE FROM currencies_rates`); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	for _, r := range []struct{ id, date, rate string }{
+		{"20000000-0000-7000-8000-000000000001", "2026-01-01", "0.90"}, // first of month
+		{"20000000-0000-7000-8000-000000000002", "2026-01-15", "0.93"},
+		{"20000000-0000-7000-8000-000000000003", "2026-01-25", "0.96"},
+	} {
+		if _, err := db.ExecContext(ctx, `INSERT INTO currencies_rates (id, currency_id, base_currency_id, rate, published_at) VALUES (?, ?, ?, ?, ?)`,
+			r.id, eurID, usdID, r.rate, r.date); err != nil {
+			t.Fatalf("seed rate: %v", err)
+		}
+	}
+	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), "USD")
+
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	rates, err := p.AverageRates(ctx, start, end)
+	if err != nil {
+		t.Fatalf("AverageRates: %v", err)
+	}
+	if len(rates) != 1 {
+		t.Fatalf("rates = %+v, want 1", rates)
+	}
+	// AVG of (0.90, 0.93, 0.96) = 0.93 exactly (all three rows included). If the
+	// 1st-of-month row were dropped, AVG(0.93,0.96)=0.945.
+	if got := rates[0].Rate.String(); got != "0.93" {
+		t.Fatalf("avg = %s, want 0.93 (first-of-month row must be included)", got)
+	}
+}
+
+// TestRateProvider_SnappedRatePeriod verifies the reported budget rate period is
+// the latest-rate month, not the requested period (PHP getLatestDate snap).
+func TestRateProvider_SnappedRatePeriod(t *testing.T) {
+	ctx := context.Background()
+	_, txm := setup(t) // seed has latest rate 2026-01-20
+	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), "USD")
+
+	// Request a far-future period; it must snap back to Jan 2026.
+	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	rs, re, err := p.SnappedRatePeriod(ctx, start, end)
+	if err != nil {
+		t.Fatalf("SnappedRatePeriod: %v", err)
+	}
+	if rs.Format("2006-01-02") != "2026-01-01" || re.Format("2006-01-02") != "2026-02-01" {
+		t.Fatalf("snapped period = %s..%s, want 2026-01-01..2026-02-01", rs.Format("2006-01-02"), re.Format("2006-01-02"))
+	}
+}
+
 func mustParse(t *testing.T, s string) vo.Id {
 	t.Helper()
 	id, err := vo.ParseId(s)
