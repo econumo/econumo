@@ -3,6 +3,7 @@ package budget
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
@@ -45,7 +46,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	for _, fl := range b.folders {
 		folders = append(folders, FolderResult{Id: fl.Id().String(), Name: fl.Name(), Position: int(fl.Position())})
 	}
-	sortByPosition(folders, func(f FolderResult) int { return f.Position })
+	sortByPositionThenID(folders, func(f FolderResult) int { return f.Position }, func(f FolderResult) string { return f.Id })
 
 	toConvert := map[string][]domcurrency.ConvertItem{}
 	categoryUsed := map[string]bool{}
@@ -208,6 +209,9 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 				OwnerUserId: ch.ownerID,
 			})
 		}
+		// Children carry no position; tag children come from a map walk, so order
+		// by id for a deterministic response (frontend reorders when needed).
+		sort.Slice(children, func(i, j int) bool { return children[i].Id < children[j].Id })
 
 		available := el.budgetedBefore.Sub(spentBefore)
 		if el.isArchived && available.IsZero() && spent.IsZero() && el.budgeted.IsZero() &&
@@ -224,7 +228,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			Children: children, OwnerUserId: el.ownerID,
 		})
 	}
-	sortByPosition(result, func(p ParentElementResult) int { return p.Position })
+	sortByPositionThenID(result, func(p ParentElementResult) int { return p.Position }, func(p ParentElementResult) string { return p.Id })
 
 	return StructureResult{Folders: folders, Elements: result}, nil
 }
