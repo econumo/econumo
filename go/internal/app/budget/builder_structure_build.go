@@ -182,14 +182,17 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		return zero
 	}
 
-	var result []ParentElementResult
+	result := []ParentElementResult{}
 	for _, el := range elements {
 		index := elementKey(el.id, el.typ)
 		spent := get(fmt.Sprintf("spent_%s", index))
 		spentBudget := get(fmt.Sprintf("spent-budget_%s", index))
 		spentBefore := get(fmt.Sprintf("spent-before_%s", index))
 
-		var children []ChildElementResult
+		// PHP serializes an element's children as an array, so an element with no
+		// children emits "children":[] — never null. Start from a non-nil empty
+		// slice so the JSON matches (a nil slice would marshal to null).
+		children := []ChildElementResult{}
 		for _, ch := range el.children {
 			subSpent := get(fmt.Sprintf("%s_spent_%s", index, ch.subIndex))
 			subBudget := get(fmt.Sprintf("%s_spent-budget_%s", index, ch.subIndex))

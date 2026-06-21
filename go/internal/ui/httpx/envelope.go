@@ -55,6 +55,16 @@ func OK(w http.ResponseWriter, data any) {
 	writeJSON(w, http.StatusOK, okEnvelope{Success: true, Message: "", Data: data})
 }
 
+// Raw writes a 200 with the payload serialized AT THE TOP LEVEL — no
+// {success,message,data} envelope. This mirrors the few PHP controllers that
+// return `new JsonResponse($result)` directly instead of going through
+// ResponseFactory: the login endpoint (LoginUserV1Controller) emits the raw
+// {token,user} object, and the Vue SPA reads response.token off the top level
+// (web/src/stores/users.ts), so wrapping it would break login.
+func Raw(w http.ResponseWriter, payload any) {
+	writeJSON(w, http.StatusOK, payload)
+}
+
 // Err writes an error envelope (default HTTP 400). errors may be nil; it is
 // always serialized as an object ({} when empty) for wire compatibility.
 func Err(w http.ResponseWriter, message string, code int, errors map[string][]string, httpCode int) {

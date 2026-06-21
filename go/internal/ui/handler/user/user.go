@@ -23,7 +23,7 @@ var _ = apidoc.JsonResponseError{}
 // @Accept      json
 // @Produce     json
 // @Param       request body     appuser.LoginRequest true "Login request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appuser.LoginResult}
+// @Success     200     {object} appuser.LoginResult "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login)."
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -39,7 +39,10 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
-	httpx.OK(w, res)
+	// PHP's LoginUserV1Controller returns `new JsonResponse($result)` — the raw
+	// {token,user} at the top level, NOT the {success,message,data} envelope. The
+	// SPA reads response.token off the top level, so emit the body unwrapped.
+	httpx.Raw(w, res)
 }
 
 // RegisterUser handles POST /api/v1/user/register-user (public). Creates the

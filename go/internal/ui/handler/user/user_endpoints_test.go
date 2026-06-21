@@ -23,10 +23,14 @@ func TestLoginUser_Success(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
 	}
-	if !env.Success {
-		t.Fatalf("success = false; body: %s", env.raw)
+	// Login is the one endpoint that does NOT use the {success,message,data}
+	// envelope: PHP returns `new JsonResponse($result)` and the SPA reads
+	// response.token off the TOP LEVEL. So the body is the raw {token,user}, with
+	// no "success"/"data" keys — assert against env.raw, not env.Data.
+	if env.Success || env.Data != nil {
+		t.Fatalf("login must NOT be enveloped (no success/data keys); body: %s", env.raw)
 	}
-	res := mustUnmarshal[loginResult](t, env.Data)
+	res := mustUnmarshal[loginResult](t, env.raw)
 	if res.Token == "" {
 		t.Fatal("expected a non-empty token")
 	}
