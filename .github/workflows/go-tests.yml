@@ -1,8 +1,9 @@
 name: Go tests
 
-# Guards the Go backend (go/) on every push + PR: build, vet, gofmt, the fast
-# sqlite test suite with a coverage gate, and a separate job that runs the
-# sqlite-vs-PostgreSQL engine-comparison suite against a real Postgres.
+# Guards the Go backend (go/) on every push + PR with two tiers:
+#   - smoke:      unit + sqlite + lint + coverage gate (fast, no dependencies)
+#   - regression: the sqlite-vs-PostgreSQL engine comparison against a real
+#                 Postgres service container
 on:
   push:
     paths:
@@ -17,10 +18,10 @@ permissions:
   contents: read
 
 jobs:
-  # Fast suite: lint + build + vet + sqlite-only tests with a coverage gate.
+  # SMOKE: build, vet, gofmt, and the fast sqlite-only suite with a coverage gate.
   # CGO stays off (both DB drivers are pure Go), matching production builds.
-  test:
-    name: Lint & fast tests (sqlite)
+  smoke:
+    name: Smoke (unit + sqlite)
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: '0'
@@ -30,18 +31,8 @@ jobs:
         with:
           go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
-      - name: Build
-        run: cd go && go build ./...
-      - name: Vet
-        run: cd go && go vet ./...
-      - name: gofmt
-        run: |
-          cd go
-          unformatted=$(gofmt -l . | grep -v '/gen/' || true)
-          if [ -n "$unformatted" ]; then echo "gofmt needed:"; echo "$unformatted"; exit 1; fi
-          echo "gofmt: clean"
-      - name: Test + coverage gate
-        run: make go-test-cover
+      - name: Smoke suite (lint + sqlite tests + coverage gate)
+        run: make go-smoke
       - name: Upload coverage profile
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,11 +41,12 @@ jobs:
           path: go/coverage.out
           if-no-files-found: ignore
 
-  # Engine comparison: run every repo scenario against BOTH sqlite and a real
-  # PostgreSQL and assert identical results — catches sqlc engine-adapter drift.
-  engine-compare:
-    name: Engine comparison (sqlite vs PostgreSQL)
+  # REGRESSION: the sqlite-vs-PostgreSQL engine comparison against a real
+  # Postgres. Runs after smoke passes (smoke is the cheaper gate).
+  regression:
+    name: Regression (sqlite vs PostgreSQL)
     runs-on: ubuntu-latest
+    needs: smoke
     env:
       CGO_ENABLED: '0'
       DATABASE_TEST_PGSQL_URL: postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
@@ -78,5 +70,7 @@ jobs:
         with:
           go-version-file: go/go.mod
           cache-dependency-path: go/go.sum
+      # The Postgres service container already provisions econumo_test, so call
+      # the engine suite directly (skip go-pg-ensure, which expects compose).
       - name: Engine-comparison suite
         run: make go-test-engines

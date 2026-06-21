@@ -1,16 +1,26 @@
 # Testing
 
-The Go backend has two test suites: a **fast** one (default) and a separate
-**engine-comparison** one. Both run with `CGO_ENABLED=0` (the production build).
+The Go backend has two test tiers, both run with `CGO_ENABLED=0` (the production
+build):
 
-## Fast suite (default)
+| Tier | Command | What it runs | Dependencies |
+|------|---------|--------------|--------------|
+| **Smoke** | `make go-smoke` | unit + sqlite tests + lint + coverage gate | none |
+| **Regression** | `make go-regression` | everything in smoke **+** sqlite-vs-PostgreSQL comparison | PostgreSQL |
 
-Pure Go, SQLite-only, no external dependencies. This is what you run constantly
-while developing.
+Run **smoke** constantly / before every commit. Run **regression** before
+merging or releasing.
+
+## Smoke (unit + sqlite, no dependencies)
+
+Pure Go, SQLite-only. `make go-smoke` = `go-lint` + `go-test-cover`:
 
 ```sh
-make go-test          # run it
-make go-test-cover    # run it + enforce the coverage gate (fails below GO_COVER_MIN)
+make go-smoke         # lint + sqlite tests + coverage gate (the everyday command)
+
+# or the building blocks individually:
+make go-test          # just the fast sqlite tests
+make go-test-cover    # + enforce the coverage gate (fails below GO_COVER_MIN)
 make go-lint          # build + go vet + gofmt check
 ```
 
@@ -53,23 +63,34 @@ coverage grows:
 make go-test-cover GO_COVER_MIN=70
 ```
 
-## Engine-comparison suite (sqlite vs PostgreSQL)
+## Regression (smoke + sqlite-vs-PostgreSQL)
 
-Build-tagged (`enginecompare`) so it never slows the fast suite. Each scenario
+`make go-regression` = smoke + the engine-comparison suite. The comparison is
+build-tagged (`enginecompare`) so it never slows the smoke tier. Each scenario
 runs the **same** repository operations against both a migrated SQLite DB and a
-real PostgreSQL DB and asserts the results are **identical** — this is what
-guards against drift between the two sqlc engine adapters (placeholders, types,
-datetime + decimal handling, upsert syntax).
+real PostgreSQL DB and asserts the results are **identical** — guarding against
+drift between the two sqlc engine adapters (placeholders, types, datetime +
+decimal handling, upsert syntax).
 
 ```sh
-# Without Postgres: the pgsql half SKIPS, the sqlite half still runs the scenarios.
-make go-test-engines
+# Full regression. Auto-provisions a throwaway econumo_test DB in the compose
+# `postgres` service (start it first: make go-up  — or  docker compose up -d postgres).
+make go-regression
 
-# With Postgres: the full comparison. Point it at any throwaway database
-# (each test gets its own freshly-migrated schema and drops it afterwards).
-make go-test-engines \
-  DATABASE_TEST_PGSQL_URL='postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable'
+# Point it at any external Postgres instead:
+make go-regression \
+  DATABASE_TEST_PGSQL_URL='postgres://user:pass@host:5432/dbname?sslmode=disable'
 ```
+
+Just the comparison (without re-running smoke):
+
+```sh
+make go-test-engines   # uses DATABASE_TEST_PGSQL_URL; pgsql half SKIPS if unreachable,
+                       # sqlite half still runs the scenarios
+```
+
+Each test creates its own freshly-migrated schema and drops it afterwards, so
+the suite is safe to re-run against the same database repeatedly.
 
 Scenarios live in `internal/enginecompare`. Add one by writing a `scenario`
 closure (seed via the portable `seed(...)` helper, call repos, return a
@@ -79,6 +100,6 @@ deterministic snapshot string) and passing it to `runOnBoth(t, ...)`.
 
 `.github/workflows/go-tests.yml` runs on every push/PR touching `go/`:
 
-- **test** job: build, vet, gofmt, and `make go-test-cover` (the coverage gate).
-- **engine-compare** job: spins up a `postgres:17` service container and runs
-  `make go-test-engines` against it (full sqlite-vs-pgsql comparison).
+- **smoke** job: `make go-smoke` (build, vet, gofmt, sqlite tests, coverage gate).
+- **regression** job (needs smoke): spins up a `postgres:17` service container
+  and runs `make go-test-engines` against it (the sqlite-vs-pgsql comparison).
