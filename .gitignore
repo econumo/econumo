@@ -31,3 +31,4 @@ src/*Bundle/.disabled*
 ###> phpstan/phpstan ###
 phpstan.neon
 ###< phpstan/phpstan ###
+deployment/compare/
