@@ -78,7 +78,8 @@ func (r *ReadRepo) TagListView(ctx context.Context, userID string) ([]apptag.Tag
 type sqliteReadQuerier struct{}
 
 func (sqliteReadQuerier) GetTagListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.Tag, error) {
-	return sqlitegen.New(db).GetTagListView(ctx, userID)
+	// own + shared: the user id is repeated positionally -> two-field param.
+	return sqlitegen.New(db).GetTagListView(ctx, sqlitegen.GetTagListViewParams{UserID: userID, UserID_2: userID})
 }
 
 type pgsqlReadQuerier struct{}

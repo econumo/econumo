@@ -80,7 +80,9 @@ func (r *ReadRepo) CategoryListView(ctx context.Context, userID string) ([]appca
 type sqliteReadQuerier struct{}
 
 func (sqliteReadQuerier) GetCategoryListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.Category, error) {
-	return sqlitegen.New(db).GetCategoryListView(ctx, userID)
+	// own + shared: the query repeats the user id positionally (own user_id, and
+	// again in the shared-owners subquery), so sqlc generates a two-field param.
+	return sqlitegen.New(db).GetCategoryListView(ctx, sqlitegen.GetCategoryListViewParams{UserID: userID, UserID_2: userID})
 }
 
 type pgsqlReadQuerier struct{}

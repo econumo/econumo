@@ -64,9 +64,16 @@ type Querier interface {
 	// SQLite's sqlc parser rejects sqlc.arg() (numbered params) inside subqueries,
 	// so we use plain positional '?' and repeat each value at the call site. The
 	// repo passes the args in the exact order they appear below.
+	//
+	// The SUM over NUMERIC columns is floating point in SQLite. We return it as REAL
+	// (not CAST AS TEXT): SQLite's CAST(<float> AS TEXT) renders ~15 significant
+	// digits (e.g. "507.849999999999"), whereas PHP stringifies the same float with
+	// its precision=14 ini ("507.85"). The repo reads the REAL and formats it with
+	// the equivalent 14-significant-digit form so the wire value matches PHP, then
+	// vo.DecimalNumber normalizes.
 	// Args, in order: account_id, before (x4 each, interleaved per subquery).
-	// Returns "0" when the account has no transactions.
-	GetAccountBalance(ctx context.Context, arg GetAccountBalanceParams) (string, error)
+	// Returns 0 when the account has no transactions.
+	GetAccountBalance(ctx context.Context, arg GetAccountBalanceParams) (float64, error)
 	// Write-side queries for the account module (SQLite). Accounts are soft-deleted
 	// (is_deleted); per-user ordering lives in accounts_options; folder membership
 	// in accounts_folders. The balance is NOT stored -- it is computed from the
@@ -95,8 +102,12 @@ type Querier interface {
 	// Read-model queries for the category module (CQRS read side). Tailored to the
 	// response shape; bypasses the domain aggregate. Separate from the write queries
 	// (categories.sql) to keep the read and write concerns visibly distinct.
-	// All of the user's categories (archived and not) ordered by position.
-	GetCategoryListView(ctx context.Context, userID string) ([]Category, error)
+	// Available categories: the user's OWN categories plus the categories of every
+	// user who has shared an account WITH this user. Mirrors PHP
+	// CategoryRepository::findAvailableForUserId (self + DISTINCT owners of accounts
+	// granted to the user via accounts_access), ordered by position. The user id is
+	// repeated positionally, so sqlc generates a two-field Params struct.
+	GetCategoryListView(ctx context.Context, arg GetCategoryListViewParams) ([]Category, error)
 	// One currency by id, for embedding in another resource (e.g. the account
 	// result's currency block). name is NULL in practice; the app resolves the
 	// display name from the Intl table.
@@ -130,8 +141,12 @@ type Querier interface {
 	// Read-model query for the payee module (CQRS read side). Tailored to the
 	// response shape; bypasses the domain aggregate. Separate from the write queries
 	// (payees.sql) to keep the read and write concerns visibly distinct.
-	// All of the user's payees (archived and not) ordered by position.
-	GetPayeeListView(ctx context.Context, userID string) ([]Payee, error)
+	// Available payees: the user's OWN payees plus the payees of every user who has
+	// shared an account WITH this user. Mirrors PHP
+	// PayeeRepository::findAvailableForUserId (self + DISTINCT owners of accounts
+	// granted via accounts_access), ordered by position. The user id is repeated
+	// positionally -> two-field Params struct.
+	GetPayeeListView(ctx context.Context, arg GetPayeeListViewParams) ([]Payee, error)
 	// Write-side queries for the tag module. The read-side query lives in
 	// tag_read.sql to keep the CQRS boundary visible (matching categories.sql vs
 	// category_read.sql). The tags table has no type/icon columns (unlike
@@ -140,8 +155,11 @@ type Querier interface {
 	// Read-model query for the tag module (CQRS read side). Tailored to the
 	// response shape; bypasses the domain aggregate. Separate from the write queries
 	// (tags.sql) to keep the read and write concerns visibly distinct.
-	// All of the user's tags (archived and not) ordered by position.
-	GetTagListView(ctx context.Context, userID string) ([]Tag, error)
+	// Available tags: the user's OWN tags plus the tags of every user who has shared
+	// an account WITH this user. Mirrors PHP TagRepository::findAvailableForUserId
+	// (self + DISTINCT owners of accounts granted via accounts_access), ordered by
+	// position. The user id is repeated positionally -> two-field Params struct.
+	GetTagListView(ctx context.Context, arg GetTagListViewParams) ([]Tag, error)
 	// Write + read queries for the transaction module (SQLite). A transaction
 	// belongs to a user + account, has a type (0 expense, 1 income, 2 transfer),
 	// an amount, an optional recipient account + amount (transfers), and optional
@@ -179,8 +197,10 @@ type Querier interface {
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
-	// Args, in order: before (x4), user_id. account_id + balance per row; the app
-	// layer normalizes the balance string via vo.DecimalNumber.
+	// Balances for every AVAILABLE account (own + shared via accounts_access), to
+	// match PHP getAccountsBalancesBeforeDate over the available account-id set.
+	// Args, in order: before (x4), user_id (own), user_id (shared). REAL balance per
+	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// Available accounts: own OR shared via accounts_access, not deleted. Mirrors

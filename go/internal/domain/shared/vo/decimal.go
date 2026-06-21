@@ -203,10 +203,104 @@ var decimalPow8 = new(big.Int).Exp(big.NewInt(10), big.NewInt(decimalScale), nil
 //     drop the '.' entirely if the fraction becomes empty
 //   - if no '.': trim leading zeros (keeping one "0")
 //   - a value of just "0" after trimming is returned unsigned ("0", never "-0")
+//
+// expandScientific converts a scientific-notation string into a normalized
+// fixed-point decimal at scale 8, mirroring PHP DecimalNumber::normalize's
+// bcmul/bcdiv path. num[i] is the 'e'/'E'. The base part is itself a plain
+// decimal; the exponent is an integer. base*10^exp uses exact integer math at
+// scale 8 (bcdiv truncates toward zero at scale 8 — fromScaled does the same).
+func expandScientific(num string, i int) string {
+	base := num[:i]
+	expStr := num[i+1:]
+	exp := 0
+	expNeg := false
+	if len(expStr) > 0 && (expStr[0] == '+' || expStr[0] == '-') {
+		expNeg = expStr[0] == '-'
+		expStr = expStr[1:]
+	}
+	for _, c := range expStr {
+		if c < '0' || c > '9' {
+			// Malformed exponent: fall back to PHP's "not a number" -> "0".
+			return "0"
+		}
+		exp = exp*10 + int(c-'0')
+	}
+
+	// baseScaled = base * 10^8 (reuse the normalized-decimal scaler).
+	baseScaled := NewDecimal(normalizeDecimalPlain(base)).scaled()
+
+	pow := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(exp)), nil)
+	var resScaled *big.Int
+	if expNeg {
+		// base / 10^|exp| — Quo truncates toward zero (bcdiv scale-8 semantics).
+		resScaled = new(big.Int).Quo(baseScaled, pow)
+	} else {
+		resScaled = new(big.Int).Mul(baseScaled, pow)
+	}
+	return fromScaled(resScaled).String()
+}
+
+// normalizeDecimalPlain is normalizeDecimal without the scientific-notation
+// branch, used by expandScientific to normalize the (plain-decimal) base part
+// and avoid infinite recursion.
+func normalizeDecimalPlain(num string) string {
+	num = strings.TrimSpace(num)
+	if num == "" || num == "0" {
+		return "0"
+	}
+	negative := strings.HasPrefix(num, "-")
+	if negative {
+		num = num[1:]
+	}
+	if strings.Contains(num, ".") {
+		parts := strings.SplitN(num, ".", 2)
+		intPart, fracPart := parts[0], parts[1]
+		if intPart == "" || intPart == "0" {
+			intPart = "0"
+		} else {
+			intPart = strings.TrimLeft(intPart, "0")
+			if intPart == "" {
+				intPart = "0"
+			}
+		}
+		if len(fracPart) > decimalScale {
+			fracPart = fracPart[:decimalScale]
+		}
+		fracPart = strings.TrimRight(fracPart, "0")
+		if fracPart == "" {
+			num = intPart
+		} else {
+			num = intPart + "." + fracPart
+		}
+	} else {
+		num = strings.TrimLeft(num, "0")
+		if num == "" {
+			num = "0"
+		}
+	}
+	if strings.HasPrefix(num, ".") {
+		num = "0" + num
+	}
+	if negative && num != "0" {
+		return "-" + num
+	}
+	return num
+}
+
 func normalizeDecimal(num string) string {
 	num = strings.TrimSpace(num)
 	if num == "" || num == "0" {
 		return "0"
+	}
+
+	// Scientific notation (e.g. "2.586E-5", "1.2e-05"): databases sometimes store
+	// rates this way. Mirror PHP DecimalNumber::normalize — split on 'e', then
+	// base * 10^exp (exp>=0) or base / 10^|exp| (exp<0) at scale 8 — before the
+	// normal normalization runs on the expanded value.
+	if i := strings.IndexAny(num, "eE"); i >= 0 {
+		num = expandScientific(num, i)
+		// expandScientific returns an already-normalized fixed-point string.
+		return num
 	}
 
 	negative := strings.HasPrefix(num, "-")

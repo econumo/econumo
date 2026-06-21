@@ -47,7 +47,9 @@ SELECT
       - (SELECT COALESCE(SUM(tre.amount), 0) FROM transactions tre WHERE tre.account_id = a.id AND tre.type = 2 AND tre.spent_at < $1)
     AS TEXT) as balance
 FROM accounts a
-WHERE a.user_id = $2 AND a.is_deleted = false
+LEFT JOIN accounts_access aa ON aa.account_id = a.id
+WHERE a.is_deleted = false AND (a.user_id = $2 OR aa.user_id = $2)
+GROUP BY a.id
 `
 
 type ListAccountBalancesForUserParams struct {
@@ -60,6 +62,10 @@ type ListAccountBalancesForUserRow struct {
 	Balance   string
 }
 
+// Balances for every AVAILABLE account (own + shared via accounts_access), to
+// match PHP getAccountsBalancesBeforeDate over the available account-id set.
+// PostgreSQL's SUM(NUMERIC) is EXACT (not float like SQLite), so CAST AS TEXT
+// here yields the exact decimal — no precision-14 reformatting needed.
 func (q *Queries) ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAccountBalancesForUser, arg.Before, arg.UserID)
 	if err != nil {

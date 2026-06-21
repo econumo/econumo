@@ -78,7 +78,8 @@ func (r *ReadRepo) PayeeListView(ctx context.Context, userID string) ([]apppayee
 type sqliteReadQuerier struct{}
 
 func (sqliteReadQuerier) GetPayeeListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.Payee, error) {
-	return sqlitegen.New(db).GetPayeeListView(ctx, userID)
+	// own + shared: the user id is repeated positionally -> two-field param.
+	return sqlitegen.New(db).GetPayeeListView(ctx, sqlitegen.GetPayeeListViewParams{UserID: userID, UserID_2: userID})
 }
 
 type pgsqlReadQuerier struct{}

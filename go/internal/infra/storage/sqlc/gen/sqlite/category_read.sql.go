@@ -11,18 +11,33 @@ import (
 
 const getCategoryListView = `-- name: GetCategoryListView :many
 
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at
-FROM categories
-WHERE user_id = ?
-ORDER BY position
+SELECT c.id, c.user_id, c.name, c.position, c.type, c.icon, c.is_archived, c.created_at, c.updated_at
+FROM categories c
+WHERE c.user_id = ?
+   OR c.user_id IN (
+       SELECT a.user_id
+       FROM accounts_access aa
+       JOIN accounts a ON a.id = aa.account_id
+       WHERE aa.user_id = ?
+   )
+ORDER BY c.position
 `
+
+type GetCategoryListViewParams struct {
+	UserID   string
+	UserID_2 string
+}
 
 // Read-model queries for the category module (CQRS read side). Tailored to the
 // response shape; bypasses the domain aggregate. Separate from the write queries
 // (categories.sql) to keep the read and write concerns visibly distinct.
-// All of the user's categories (archived and not) ordered by position.
-func (q *Queries) GetCategoryListView(ctx context.Context, userID string) ([]Category, error) {
-	rows, err := q.db.QueryContext(ctx, getCategoryListView, userID)
+// Available categories: the user's OWN categories plus the categories of every
+// user who has shared an account WITH this user. Mirrors PHP
+// CategoryRepository::findAvailableForUserId (self + DISTINCT owners of accounts
+// granted to the user via accounts_access), ordered by position. The user id is
+// repeated positionally, so sqlc generates a two-field Params struct.
+func (q *Queries) GetCategoryListView(ctx context.Context, arg GetCategoryListViewParams) ([]Category, error) {
+	rows, err := q.db.QueryContext(ctx, getCategoryListView, arg.UserID, arg.UserID_2)
 	if err != nil {
 		return nil, err
 	}

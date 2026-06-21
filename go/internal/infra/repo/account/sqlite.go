@@ -2,11 +2,23 @@ package accountrepo
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
+
+// formatSQLiteBalance renders a SQLite float SUM the way PHP's DecimalNumber
+// constructor handles a float: PHP does sprintf('%.8F', $num) — round to 8
+// decimal places (bcmath SCALE) — so e.g. the summed float 358.34999999999127
+// becomes "358.35000000", which DecimalNumber then normalizes to "358.35".
+// strconv 'f' with precision 8 is the exact equivalent (both round half-away at
+// the 8th place for these magnitudes). This is the SQLite-only path; PostgreSQL
+// returns an exact NUMERIC string and needs no float rounding.
+func formatSQLiteBalance(f float64) string {
+	return strconv.FormatFloat(f, 'f', 8, 64)
+}
 
 // sqliteQuerier is the passthrough adapter over the sqlite-generated queries
 // (the canonical types ARE the sqlite types).
@@ -58,7 +70,7 @@ var _ balanceQuerier = sqliteBalance{}
 
 func (sqliteBalance) GetAccountBalance(ctx context.Context, db backend.DBTX, accountID string, before time.Time) (string, error) {
 	acc := accountID
-	return sqlitegen.New(db).GetAccountBalance(ctx, sqlitegen.GetAccountBalanceParams{
+	f, err := sqlitegen.New(db).GetAccountBalance(ctx, sqlitegen.GetAccountBalanceParams{
 		AccountID:          acc,
 		SpentAt:            before,
 		AccountID_2:        acc,
@@ -68,14 +80,27 @@ func (sqliteBalance) GetAccountBalance(ctx context.Context, db backend.DBTX, acc
 		AccountRecipientID: &acc,
 		SpentAt_4:          before,
 	})
+	if err != nil {
+		return "", err
+	}
+	return formatSQLiteBalance(f), nil
 }
 
-func (sqliteBalance) ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceRow, error) {
-	return sqlitegen.New(db).ListAccountBalancesForUser(ctx, sqlitegen.ListAccountBalancesForUserParams{
+func (sqliteBalance) ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error) {
+	rows, err := sqlitegen.New(db).ListAccountBalancesForUser(ctx, sqlitegen.ListAccountBalancesForUserParams{
 		SpentAt:   before,
 		SpentAt_2: before,
 		SpentAt_3: before,
 		SpentAt_4: before,
-		UserID:    userID,
+		UserID:    userID, // own
+		UserID_2:  userID, // shared (accounts_access)
 	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]balanceResult, len(rows))
+	for i, r := range rows {
+		out[i] = balanceResult{AccountID: r.AccountID, Balance: formatSQLiteBalance(r.Balance)}
+	}
+	return out, nil
 }

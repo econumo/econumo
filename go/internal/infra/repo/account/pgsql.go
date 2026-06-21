@@ -77,7 +77,10 @@ func (pgsqlBalance) GetAccountBalance(ctx context.Context, db backend.DBTX, acco
 	})
 }
 
-func (pgsqlBalance) ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceRow, error) {
+func (pgsqlBalance) ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error) {
+	// own + shared: sqlc.arg(user_id) is reused for both OR sides, so the param
+	// stays single. PostgreSQL's SUM(NUMERIC) is exact; the CAST AS TEXT balance
+	// is the exact decimal string (no float reformatting needed).
 	rows, err := pgsqlgen.New(db).ListAccountBalancesForUser(ctx, pgsqlgen.ListAccountBalancesForUserParams{
 		Before: before,
 		UserID: userID,
@@ -85,9 +88,9 @@ func (pgsqlBalance) ListAccountBalancesForUser(ctx context.Context, db backend.D
 	if err != nil {
 		return nil, err
 	}
-	out := make([]balanceRow, len(rows))
+	out := make([]balanceResult, len(rows))
 	for i, b := range rows {
-		out[i] = balanceRow(b)
+		out[i] = balanceResult{AccountID: b.AccountID, Balance: b.Balance}
 	}
 	return out, nil
 }

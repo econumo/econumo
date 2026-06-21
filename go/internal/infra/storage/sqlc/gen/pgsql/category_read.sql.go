@@ -11,13 +11,22 @@ import (
 
 const getCategoryListView = `-- name: GetCategoryListView :many
 
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at
-FROM categories
-WHERE user_id = $1
-ORDER BY position
+SELECT c.id, c.user_id, c.name, c.position, c.type, c.icon, c.is_archived, c.created_at, c.updated_at
+FROM categories c
+WHERE c.user_id = $1
+   OR c.user_id IN (
+       SELECT a.user_id
+       FROM accounts_access aa
+       JOIN accounts a ON a.id = aa.account_id
+       WHERE aa.user_id = $1
+   )
+ORDER BY c.position
 `
 
 // Read-model queries for the category module (PostgreSQL engine, $N placeholders).
+// Available categories: own + categories of users who shared an account with
+// this user (see the sqlite variant). $1 is reused for both positions so the
+// generated param stays single.
 func (q *Queries) GetCategoryListView(ctx context.Context, userID string) ([]Category, error) {
 	rows, err := q.db.QueryContext(ctx, getCategoryListView, userID)
 	if err != nil {

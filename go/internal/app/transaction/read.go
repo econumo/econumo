@@ -22,7 +22,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 		if err != nil {
 			return nil, err
 		}
-		if aerr := s.checkAccountOwned(ctx, userID, accountID); aerr != nil {
+		if aerr := s.checkViewAccess(ctx, userID, accountID); aerr != nil {
 			return nil, aerr
 		}
 		list, err := s.repo.ListByAccount(ctx, accountID)

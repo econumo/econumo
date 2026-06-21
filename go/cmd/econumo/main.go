@@ -54,6 +54,8 @@ import (
 	handleruser "github.com/econumo/econumo/internal/ui/handler/user"
 	"github.com/econumo/econumo/internal/ui/router"
 
+	"github.com/joho/godotenv"
+
 	// Blank-import the concrete DB backends so their init() registers them in
 	// the backend registry. Both are linked in; the DATABASE_URL scheme selects
 	// one at runtime. CGO stays off (both drivers are pure Go).
@@ -65,6 +67,13 @@ import (
 const defaultAddr = ":8181"
 
 func main() {
+	// `econumo -healthcheck` probes the running server's health endpoint and
+	// exits 0 (healthy) / 1 (not). It lets the distroless image (no shell, no
+	// curl) self-report health to Docker. Honors PORT to find the local port.
+	if len(os.Args) > 1 && (os.Args[1] == "-healthcheck" || os.Args[1] == "--healthcheck") {
+		os.Exit(healthcheck())
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	slog.SetDefault(logger)
 
@@ -74,8 +83,52 @@ func main() {
 	}
 }
 
+// healthcheck GETs /_/health-check on the local listen port and returns a
+// process exit code (0 healthy, 1 otherwise).
+func healthcheck() int {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8181"
+	}
+	port = strings.TrimPrefix(port, ":")
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/_/health-check")
+	if err != nil {
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 1
+	}
+	return 0
+}
+
+// loadDotEnv loads a .env file from the working directory if it exists. It is a
+// convenience for running the binary directly; godotenv.Load does NOT override
+// variables already present in the environment, so real env vars (set by the
+// shell, Docker, k8s, CI) always win. A missing .env is not an error.
+func loadDotEnv() {
+	const envFile = ".env"
+	if _, err := os.Stat(envFile); err != nil {
+		return // no .env present — nothing to load
+	}
+	if err := godotenv.Load(envFile); err != nil {
+		slog.Warn("failed to load .env", "err", err)
+		return
+	}
+	slog.Info("loaded .env", "file", envFile)
+}
+
 func run() error {
 	ctx := context.Background()
+
+	// Load a local .env into the process environment if one is present, for
+	// convenience when running the binary directly (e.g. `go run`). This does NOT
+	// override variables already set in the real environment, so containerized /
+	// orchestrated deployments (Docker compose env_file, k8s, CI) — which inject
+	// vars before the process starts — are never shadowed by a stray .env. In
+	// those setups the file is typically absent anyway and this is a no-op.
+	loadDotEnv()
 
 	cfg, err := config.Load()
 	if err != nil {

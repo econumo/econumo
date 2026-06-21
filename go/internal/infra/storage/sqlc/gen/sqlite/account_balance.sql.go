@@ -12,7 +12,7 @@ import (
 
 const getAccountBalance = `-- name: GetAccountBalance :one
 
-SELECT CAST(COALESCE(incomes, 0) + COALESCE(transfer_incomes, 0) - COALESCE(expenses, 0) - COALESCE(transfer_expenses, 0) AS TEXT) as balance
+SELECT CAST(COALESCE(incomes, 0) + COALESCE(transfer_incomes, 0) - COALESCE(expenses, 0) - COALESCE(transfer_expenses, 0) AS REAL) as balance
 FROM (
     SELECT
         (SELECT COALESCE(SUM(t0.amount), 0) FROM transactions t0 WHERE t0.account_id = ? AND t0.type = 0 AND t0.spent_at < ?) as expenses,
@@ -49,9 +49,16 @@ type GetAccountBalanceParams struct {
 // SQLite's sqlc parser rejects sqlc.arg() (numbered params) inside subqueries,
 // so we use plain positional '?' and repeat each value at the call site. The
 // repo passes the args in the exact order they appear below.
+//
+// The SUM over NUMERIC columns is floating point in SQLite. We return it as REAL
+// (not CAST AS TEXT): SQLite's CAST(<float> AS TEXT) renders ~15 significant
+// digits (e.g. "507.849999999999"), whereas PHP stringifies the same float with
+// its precision=14 ini ("507.85"). The repo reads the REAL and formats it with
+// the equivalent 14-significant-digit form so the wire value matches PHP, then
+// vo.DecimalNumber normalizes.
 // Args, in order: account_id, before (x4 each, interleaved per subquery).
-// Returns "0" when the account has no transactions.
-func (q *Queries) GetAccountBalance(ctx context.Context, arg GetAccountBalanceParams) (string, error) {
+// Returns 0 when the account has no transactions.
+func (q *Queries) GetAccountBalance(ctx context.Context, arg GetAccountBalanceParams) (float64, error) {
 	row := q.db.QueryRowContext(ctx, getAccountBalance,
 		arg.AccountID,
 		arg.SpentAt,
@@ -62,7 +69,7 @@ func (q *Queries) GetAccountBalance(ctx context.Context, arg GetAccountBalancePa
 		arg.AccountRecipientID,
 		arg.SpentAt_4,
 	)
-	var balance string
+	var balance float64
 	err := row.Scan(&balance)
 	return balance, err
 }
@@ -75,9 +82,11 @@ SELECT
       + (SELECT COALESCE(SUM(tri.amount_recipient), 0) FROM transactions tri WHERE tri.account_recipient_id = a.id AND tri.type = 2 AND tri.spent_at < ?)
       - (SELECT COALESCE(SUM(te.amount), 0) FROM transactions te WHERE te.account_id = a.id AND te.type = 0 AND te.spent_at < ?)
       - (SELECT COALESCE(SUM(tre.amount), 0) FROM transactions tre WHERE tre.account_id = a.id AND tre.type = 2 AND tre.spent_at < ?)
-    AS TEXT) as balance
+    AS REAL) as balance
 FROM accounts a
-WHERE a.user_id = ? AND a.is_deleted = 0
+LEFT JOIN accounts_access aa ON aa.account_id = a.id
+WHERE a.is_deleted = 0 AND (a.user_id = ? OR aa.user_id = ?)
+GROUP BY a.id
 `
 
 type ListAccountBalancesForUserParams struct {
@@ -86,15 +95,18 @@ type ListAccountBalancesForUserParams struct {
 	SpentAt_3 time.Time
 	SpentAt_4 time.Time
 	UserID    string
+	UserID_2  string
 }
 
 type ListAccountBalancesForUserRow struct {
 	AccountID string
-	Balance   string
+	Balance   float64
 }
 
-// Args, in order: before (x4), user_id. account_id + balance per row; the app
-// layer normalizes the balance string via vo.DecimalNumber.
+// Balances for every AVAILABLE account (own + shared via accounts_access), to
+// match PHP getAccountsBalancesBeforeDate over the available account-id set.
+// Args, in order: before (x4), user_id (own), user_id (shared). REAL balance per
+// row; the repo formats it to PHP's precision-14 string.
 func (q *Queries) ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAccountBalancesForUser,
 		arg.SpentAt,
@@ -102,6 +114,7 @@ func (q *Queries) ListAccountBalancesForUser(ctx context.Context, arg ListAccoun
 		arg.SpentAt_3,
 		arg.SpentAt_4,
 		arg.UserID,
+		arg.UserID_2,
 	)
 	if err != nil {
 		return nil, err

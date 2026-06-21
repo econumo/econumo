@@ -3,9 +3,18 @@
 -- (tags.sql) to keep the read and write concerns visibly distinct.
 
 -- name: GetTagListView :many
--- All of the user's tags (archived and not) ordered by position.
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
-FROM tags
-WHERE user_id = ?
-ORDER BY position
+-- Available tags: the user's OWN tags plus the tags of every user who has shared
+-- an account WITH this user. Mirrors PHP TagRepository::findAvailableForUserId
+-- (self + DISTINCT owners of accounts granted via accounts_access), ordered by
+-- position. The user id is repeated positionally -> two-field Params struct.
+SELECT t.id, t.user_id, t.name, t.position, t.is_archived, t.created_at, t.updated_at
+FROM tags t
+WHERE t.user_id = ?
+   OR t.user_id IN (
+       SELECT a.user_id
+       FROM accounts_access aa
+       JOIN accounts a ON a.id = aa.account_id
+       WHERE aa.user_id = ?
+   )
+ORDER BY t.position
 ;

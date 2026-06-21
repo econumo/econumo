@@ -1,0 +1,51 @@
+# Parallel compose stack for the drop-in Go backend, for running it SIDE-BY-SIDE
+# with the PHP stack (docker-compose.yml) to compare behaviour. It uses the SAME
+# .env and points at the same data shape so the two backends can be diffed.
+#
+#   docker compose -f docker-compose.go.yml up --build
+#
+# Notes vs the PHP stack:
+#   - The Go binary cannot generate JWT keys, so RSA keys MUST be mounted at
+#     /var/www/config/jwt (private.pem + public.pem). Generate once, e.g. with
+#     the PHP stack's `lexik:jwt:generate-keypair`, or any RSA keypair.
+#   - DATABASE_URL is required and defaults (in the image) to the SQLite file on
+#     the mounted db volume.
+#   - econumo-config.js ships with a working default; mount your own over
+#     /app/web/spa/econumo-config.js to override (example commented below).
+services:
+  econumo-go:
+    build:
+      # Build context is the repo root (two levels up), matching the PHP image.
+      context: ../..
+      dockerfile: deployment/docker/go/Dockerfile
+      target: prod
+    image: econumo/econumo-go:latest
+    env_file:
+      - .env
+    environment:
+      # The Go binary derives the engine from the URL scheme; this points at the
+      # SQLite file on the db volume below.
+      DATABASE_URL: sqlite:///var/www/var/db/db.sqlite
+      # Paths to the RSA keys mounted below (the binary cannot generate them).
+      JWT_PUBLIC_KEY: /var/www/config/jwt/public.pem
+      JWT_SECRET_KEY: /var/www/config/jwt/private.pem
+    ports:
+      # Same host:container mapping as the PHP stack. Run them on different host
+      # ports when comparing side-by-side (e.g. change 8181 -> 8182 here).
+      - "8182:80"
+    volumes:
+      - db-go:/var/www/var/db
+      - ./jwt:/var/www/config/jwt:ro
+      # Override the SPA runtime config by mounting your own file:
+      #- ./econumo-config.js:/app/web/spa/econumo-config.js:ro
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "/econumo", "-healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  db-go:

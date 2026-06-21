@@ -18,7 +18,12 @@ import (
 // dev controls whether the 500 path includes a stack trace.
 func WriteError(w http.ResponseWriter, err error, dev bool) {
 	if v, ok := errs.AsValidation(err); ok {
-		Err(w, v.Msg, 0, fieldsToMap(v.Fields), http.StatusBadRequest)
+		// PHP's Symfony form layer reports validation failures with the envelope
+		// message "Form validation error" and code 400, regardless of the
+		// per-field messages. Match that wire shape centrally so every endpoint's
+		// validation envelope is byte-identical, rather than relying on each call
+		// site passing the right Msg/code.
+		Err(w, "Form validation error", http.StatusBadRequest, fieldsToMap(v.Fields), http.StatusBadRequest)
 		return
 	}
 	if v, ok := errs.AsAccessDenied(err); ok {

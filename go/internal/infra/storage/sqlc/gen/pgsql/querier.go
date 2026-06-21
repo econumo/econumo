@@ -60,6 +60,9 @@ type Querier interface {
 	// Write-side queries for the category module (PostgreSQL engine, $N placeholders).
 	GetCategoryByID(ctx context.Context, id string) (Category, error)
 	// Read-model queries for the category module (PostgreSQL engine, $N placeholders).
+	// Available categories: own + categories of users who shared an account with
+	// this user (see the sqlite variant). $1 is reused for both positions so the
+	// generated param stays single.
 	GetCategoryListView(ctx context.Context, userID string) ([]Category, error)
 	GetCurrencyByIDView(ctx context.Context, id string) (GetCurrencyByIDViewRow, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
@@ -79,6 +82,8 @@ type Querier interface {
 	GetPayeeByID(ctx context.Context, id string) (Payee, error)
 	// Read-model query for the payee module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation.
+	// Available payees: own + payees of users who shared an account with this user.
+	// $1 is reused for both positions so the generated param stays single.
 	GetPayeeListView(ctx context.Context, userID string) ([]Payee, error)
 	// Write-side queries for the tag module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
@@ -86,6 +91,8 @@ type Querier interface {
 	GetTagByID(ctx context.Context, id string) (Tag, error)
 	// Read-model query for the tag module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation.
+	// Available tags: own + tags of users who shared an account with this user.
+	// $1 is reused for both positions so the generated param stays single.
 	GetTagListView(ctx context.Context, userID string) ([]Tag, error)
 	// Write + read queries for the transaction module (PostgreSQL: $N placeholders).
 	// See the sqlite variant for documentation.
@@ -107,6 +114,10 @@ type Querier interface {
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
+	// Balances for every AVAILABLE account (own + shared via accounts_access), to
+	// match PHP getAccountsBalancesBeforeDate over the available account-id set.
+	// PostgreSQL's SUM(NUMERIC) is EXACT (not float like SQLite), so CAST AS TEXT
+	// here yields the exact decimal — no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// Available accounts: own OR shared via accounts_access, not deleted (see the

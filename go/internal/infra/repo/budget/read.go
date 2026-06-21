@@ -8,6 +8,7 @@ package budgetrepo
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -127,14 +128,32 @@ func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs [
 	var out []appbudget.AccountBalanceRow
 	for rows.Next() {
 		var row appbudget.AccountBalanceRow
-		var bal *string
-		if err := rows.Scan(&row.AccountID, &row.CurrencyID, &bal); err != nil {
-			return nil, err
-		}
-		if bal != nil {
-			row.Balance = *bal
+		// SQLite's SUM over NUMERIC is float; scanning it as a string yields the
+		// driver's full-precision rendering (e.g. "358.34999999999127"). PHP's
+		// DecimalNumber constructor instead does sprintf('%.8F', $float) — round
+		// to 8 decimals (bcmath SCALE) — giving "358.35". Match that by scanning
+		// the float and formatting with 'f',8. PostgreSQL's SUM is exact NUMERIC,
+		// so scan it as a string and pass through unchanged.
+		if r.driver == "postgresql" {
+			var bal *string
+			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &bal); err != nil {
+				return nil, err
+			}
+			if bal != nil {
+				row.Balance = *bal
+			} else {
+				row.Balance = "0"
+			}
 		} else {
-			row.Balance = "0"
+			var bal *float64
+			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &bal); err != nil {
+				return nil, err
+			}
+			if bal != nil {
+				row.Balance = strconv.FormatFloat(*bal, 'f', 8, 64)
+			} else {
+				row.Balance = "0"
+			}
 		}
 		out = append(out, row)
 	}

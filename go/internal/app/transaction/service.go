@@ -114,6 +114,24 @@ func (s *Service) checkAccountOwned(ctx context.Context, userID, accountID vo.Id
 	return nil
 }
 
+// checkViewAccess verifies the user may VIEW the account's transactions: owner
+// OR any shared access. Mirrors PHP AccountAccessService.checkViewTransactionsAccess
+// (canViewTransactions == hasAccess), which throws AccessDeniedException (HTTP
+// 403) when access is denied. The visible-account set already computes own +
+// shared, so membership in it is exactly hasAccess.
+func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) error {
+	ids, err := s.visible.VisibleAccountIDs(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if id.Equal(accountID) {
+			return nil
+		}
+	}
+	return errs.NewAccessDenied("Access is not allowed")
+}
+
 // ---------------------------------------------------------------------------
 // result builders
 // ---------------------------------------------------------------------------

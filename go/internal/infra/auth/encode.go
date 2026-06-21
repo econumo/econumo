@@ -18,16 +18,37 @@ import (
 	"io"
 )
 
-// EncodeService hashes identifiers and reversibly encrypts emails. The key is
-// the raw ECONUMO_DATA_SALT bytes; for AES-128 the salt must be exactly 16
-// bytes (it is used directly as the cipher key).
+// EncodeService hashes identifiers and reversibly encrypts emails.
+//
+// PHP passes the raw ECONUMO_DATA_SALT straight to openssl_encrypt with
+// "AES-128-CBC". When the salt is longer than the 16-byte AES-128 key, OpenSSL
+// silently uses only its first 16 bytes (verified empirically); a shorter salt
+// is zero-padded to 16. We replicate that: the AES key is the salt coerced to
+// exactly 16 bytes, while the HMAC key and the md5 identifier use the FULL salt
+// (PHP keys hash_hmac and md5 with the whole salt). This keeps real deployments
+// whose salt is not exactly 16 bytes wire-compatible.
 type EncodeService struct {
-	salt []byte
+	salt   []byte // full salt: HMAC key + md5 identifier salt
+	aesKey []byte // salt coerced to 16 bytes: the AES-128 key (matches OpenSSL)
 }
 
 // NewEncodeService constructs the service from the raw data salt.
 func NewEncodeService(salt string) *EncodeService {
-	return &EncodeService{salt: []byte(salt)}
+	s := []byte(salt)
+	return &EncodeService{salt: s, aesKey: coerceAESKey(s)}
+}
+
+// coerceAESKey reproduces OpenSSL's handling of an AES-128-CBC key whose length
+// is not exactly 16: take the first 16 bytes, zero-padding if shorter. For an
+// empty salt it returns nil (Encode/Decode short-circuit to passthrough before
+// the key is used, so the value is never consulted).
+func coerceAESKey(salt []byte) []byte {
+	if len(salt) == 0 {
+		return nil
+	}
+	key := make([]byte, 16)
+	copy(key, salt) // copies min(16, len(salt)) bytes; remainder stays zero
+	return key
 }
 
 // Hash returns hex(md5(value + salt)) — the CHAR(32) user identifier.
@@ -55,7 +76,7 @@ func (e *EncodeService) Encode(value string) (string, error) {
 // encodeWithIV is the deterministic core of Encode, factored out so tests can
 // pin the IV and assert byte-for-byte output against the golden vectors.
 func (e *EncodeService) encodeWithIV(value, iv []byte) (string, error) {
-	block, err := aes.NewCipher(e.salt)
+	block, err := aes.NewCipher(e.aesKey)
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +117,7 @@ func (e *EncodeService) Decode(value string) (string, error) {
 	if subtle.ConstantTimeCompare(mac, expected.Sum(nil)) != 1 {
 		return "", errors.New("encode: hmac mismatch")
 	}
-	block, err := aes.NewCipher(e.salt)
+	block, err := aes.NewCipher(e.aesKey)
 	if err != nil {
 		return "", err
 	}

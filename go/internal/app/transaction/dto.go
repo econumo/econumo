@@ -11,9 +11,11 @@ package transaction
 
 import (
 	"strings"
+	"time"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
 // AuthorResult is the embedded transaction author: {id, avatar, name}.
@@ -163,6 +165,34 @@ type GetTransactionListRequest struct {
 	AccountId   string `json:"accountId"`
 	PeriodStart string `json:"periodStart"`
 	PeriodEnd   string `json:"periodEnd"`
+}
+
+// Validate mirrors PHP GetTransactionListV1Form: every field is optional, but
+// when present accountId must be a UUID and periodStart/periodEnd must match the
+// strict "Y-m-d H:i:s" datetime format. Messages + field grouping match PHP's
+// Symfony Uuid / DateTime constraints byte-for-byte.
+func (r GetTransactionListRequest) Validate() error {
+	var fields []errs.FieldError
+	if strings.TrimSpace(r.AccountId) != "" {
+		if _, err := vo.ParseId(r.AccountId); err != nil {
+			fields = append(fields, errs.FieldError{Key: "accountId", Message: "This value is not a valid UUID."})
+		}
+	}
+	for _, f := range []struct{ key, val string }{
+		{"periodStart", r.PeriodStart},
+		{"periodEnd", r.PeriodEnd},
+	} {
+		if strings.TrimSpace(f.val) == "" {
+			continue
+		}
+		if _, err := time.Parse("2006-01-02 15:04:05", f.val); err != nil {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value is not a valid datetime."})
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Form validation error", fields...)
+	}
+	return nil
 }
 
 // GetTransactionListResult is the response: {items: [...]}.

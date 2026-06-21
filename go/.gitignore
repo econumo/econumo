@@ -1,0 +1,6 @@
+# Local environment for running the binary directly (holds secrets like
+# JWT_PASSPHRASE). The committed template is .env.example.
+.env
+.env.local
+/apicompare
+/econumo

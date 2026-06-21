@@ -32,8 +32,17 @@ type (
 	getOptionP        = sqlitegen.GetAccountOptionParams
 	upsertOptionP     = sqlitegen.UpsertAccountOptionParams
 	insertCorrectionP = sqlitegen.InsertCorrectionTransactionParams
-	balanceRow        = sqlitegen.ListAccountBalancesForUserRow
 )
+
+// balanceResult is one account's balance already rendered to its PHP-compatible
+// decimal STRING. Each engine adapter formats its native balance into this:
+// SQLite's SUM is float (rendered to 14 significant digits, matching PHP's
+// precision=14 float->string), PostgreSQL's SUM is exact NUMERIC (passed through
+// as text). The repo then normalizes the string via vo.DecimalNumber.
+type balanceResult struct {
+	AccountID string
+	Balance   string
+}
 
 // querier is the engine-agnostic surface for the field-identical model queries.
 type querier interface {
@@ -52,7 +61,7 @@ type querier interface {
 // from plain args.
 type balanceQuerier interface {
 	GetAccountBalance(ctx context.Context, db backend.DBTX, accountID string, before time.Time) (string, error)
-	ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceRow, error)
+	ListAccountBalancesForUser(ctx context.Context, db backend.DBTX, userID string, before time.Time) ([]balanceResult, error)
 }
 
 // Repo implements domain/account.Repository.
