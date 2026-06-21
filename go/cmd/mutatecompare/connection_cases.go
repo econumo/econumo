@@ -2,38 +2,23 @@ package main
 
 // Connection mutation comparison cases.
 //
-// Scope reality check (HONEST): the live PHP backend the harness compares
-// against runs the EconumoCloudBundle, which OVERRIDES four connection
-// controllers with full implementations: generate-invite, accept-invite,
-// delete-invite, delete-connection. The Go reimplementation targets the
-// self-hosted EconumoBundle, where those same four are 501 stubs
-// ("Not supported in Econumo One"). They therefore CANNOT be fairly compared —
-// the two products implement different feature sets — and additionally rely on
-// random invite codes / server-minted ids / a genuine two-user exchange that
-// cannot be made deterministic across two independent backends. They are
-// emitted as explicit [SKIP]s with that reason rather than forced into a false
-// verdict.
+// The connection invite/disconnect routes are now implemented in BOTH backends:
+// the Go reimplementation ports the EconumoCloudBundle routes (which route to the
+// open-source ConnectionInviteService / ConnectionService logic). So
+// generate-invite + delete-invite ARE compared for real here; accept-invite and
+// delete-connection cannot be fairly compared (see their per-case reasons).
 //
-// The two endpoints that ARE implemented in BOTH backends and share the same
-// contract are set-account-access and revoke-account-access. Those are compared
-// for real, with get-connection-list as the state read. The seed already holds
-// a connection between the two seed users (kuznetsov2d <-> Irina) with many
-// shared accounts in both directions, so these are single-user, deterministic
-// mutations: the logged-in owner (kuznetsov2d) changes/revokes the OTHER user's
-// (Irina's) access to an account kuznetsov2d owns.
+// set-account-access and revoke-account-access have always been live in both;
+// the seed holds a kuznetsov2d <-> Irina connection with shared accounts in both
+// directions, so they are single-user deterministic mutations (the owner changes
+// /revokes the other user's access to an owned account), with get-connection-list
+// as the state read.
 //
-// NOTE: the get-connection-list sharedAccounts array has a documented
-// PHP-vs-Go ordering difference; the harness canonical compare sorts arrays, so
-// only genuine content differences register.
+// NOTE: the get-connection-list sharedAccounts array has a documented PHP-vs-Go
+// ordering difference; the harness canonical compare sorts arrays, so only
+// genuine content differences register.
 
 const connectionList = "/api/v1/connection/get-connection-list"
-
-// connectionUnsupportedMessage is the self-hosted EconumoBundle stub message Go
-// returns (501). The live Cloud PHP implements these endpoints instead, so the
-// skip reason names the mismatch explicitly.
-const cloudOnlyReason = "cloud-only: live PHP runs EconumoCloudBundle (implemented); " +
-	"Go targets self-hosted EconumoBundle (501 stub) — not fairly comparable, and " +
-	"depends on random invite code / two-user exchange (non-deterministic)"
 
 // connectedAccount picks a kuznetsov2d-OWNED account that the connected user
 // (Irina) currently has access to (want=true) or does NOT have access to
@@ -168,27 +153,47 @@ func connectionCases() []mutationCase {
 			stateRead: state,
 		},
 		{
+			// Generate the user's invite. Response is {item:{code,expiredAt}} where
+			// code is random (5 chars) and expiredAt is now+5min — both differ per
+			// backend, so they are masked; the comparison then verifies the
+			// envelope + item SHAPE matches. No state read (the invite is not
+			// exposed via any GET).
 			name: "connection/generate-invite",
 			build: func(php *client) (string, map[string]any, string, error) {
-				return "", nil, cloudOnlyReason, nil
+				return "/api/v1/connection/generate-invite", map[string]any{}, "", nil
 			},
+			volatile: []string{"code", "expiredAt"},
 		},
 		{
-			name: "connection/accept-invite",
-			build: func(php *client) (string, map[string]any, string, error) {
-				return "", nil, cloudOnlyReason, nil
-			},
-		},
-		{
+			// Clear the user's invite. Response is the empty {} on both backends;
+			// idempotent (no-op if none). No state read.
 			name: "connection/delete-invite",
 			build: func(php *client) (string, map[string]any, string, error) {
-				return "", nil, cloudOnlyReason, nil
+				return "/api/v1/connection/delete-invite", map[string]any{}, "", nil
 			},
 		},
 		{
+			// accept-invite redeems a CODE. Each backend mints its own random code,
+			// so a single request body (the harness sends the same body to both)
+			// cannot be valid on both at once — the one-body-for-both model can't
+			// express this two-step, per-backend-code exchange. The full happy path
+			// is covered by the Go end-to-end test (TestAcceptInvite_ConnectsUsers).
+			name: "connection/accept-invite",
+			build: func(php *client) (string, map[string]any, string, error) {
+				return "", nil, "per-backend random code: one-body-for-both can't express the " +
+					"generate→accept exchange (covered by Go e2e test)", nil
+			},
+		},
+		{
+			// delete-connection: the DEPLOYED PHP 500s here ("There is no active
+			// transaction" — an AntiCorruptionService defect, same class as budget
+			// reset/revoke). Go performs it correctly. Not comparable against a
+			// backend that errors; covered by the Go end-to-end test
+			// (TestDeleteConnection_RemovesLink).
 			name: "connection/delete-connection",
 			build: func(php *client) (string, map[string]any, string, error) {
-				return "", nil, cloudOnlyReason, nil
+				return "", nil, "live PHP delete-connection 500s (AntiCorruptionService 'no active " +
+					"transaction' defect); Go performs it correctly — not comparable", nil
 			},
 		},
 	}
