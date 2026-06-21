@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
 // ---------------------------------------------------------------------------
@@ -222,6 +223,33 @@ type CompleteOnboardingResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-budget
+// ---------------------------------------------------------------------------
+
+// UpdateBudgetRequest is the update-budget request body. The field name is
+// "value" (a budget id), matching PHP UpdateUserBudgetV1RequestDto.
+type UpdateBudgetRequest struct {
+	Value string `json:"value"`
+}
+
+// Validate mirrors PHP UpdateBudgetV1Form: value NotBlank + Uuid. The
+// budget-existence check (-> "Plan not found") is tier 2, in the service.
+func (r UpdateBudgetRequest) Validate() error {
+	if strings.TrimSpace(r.Value) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	}
+	if _, err := vo.ParseId(r.Value); err != nil {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value is not a valid UUID.", Code: "INVALID_UUID_ERROR"})
+	}
+	return nil
+}
+
+// UpdateBudgetResult is the update-budget response.
+type UpdateBudgetResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // remind-password / reset-password
 // ---------------------------------------------------------------------------
 
@@ -269,8 +297,13 @@ type ResetPasswordResult struct{}
 // logout-user
 // ---------------------------------------------------------------------------
 
-// LogoutResult is the logout response (empty object — the wire shape is {}).
-type LogoutResult struct{}
+// LogoutResult is the logout response. PHP's LogoutUserV1ResultAssembler sets a
+// dynamic `result = 'test'` property on the (otherwise empty) DTO, so the wire
+// shape is {"result":"test"} — NOT {}. We replicate the exact constant to
+// byte-match the reference backend.
+type LogoutResult struct {
+	Result string `json:"result"`
+}
 
 // ---------------------------------------------------------------------------
 // tier-1 field validators (shared)

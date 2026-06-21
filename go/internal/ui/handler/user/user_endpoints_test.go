@@ -247,4 +247,98 @@ func TestLogoutUser_Success(t *testing.T) {
 	if !env.Success {
 		t.Fatalf("success=false; body: %s", env.raw)
 	}
+	// PHP's LogoutUserV1ResultAssembler hard-codes result = 'test', so the data
+	// payload must be {"result":"test"} (NOT {}). Byte-match the reference.
+	res := mustUnmarshal[struct {
+		Result string `json:"result"`
+	}](t, env.Data)
+	if res.Result != "test" {
+		t.Fatalf("logout data.result = %q, want %q; body: %s", res.Result, "test", env.raw)
+	}
+}
+
+func TestUpdateBudget_SetsBudgetOption(t *testing.T) {
+	h := newHarness(t)
+	h.seedBudget(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-budget", token, map[string]string{
+		"value": seedBudgetID,
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+	b, ok := res.User.optionValue("budget")
+	if !ok || b == nil || *b != seedBudgetID {
+		t.Fatalf("budget option = %v (ok=%v), want %q", b, ok, seedBudgetID)
+	}
+}
+
+func TestUpdateBudget_NotFound_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	// A well-formed but non-existent budget id -> "Plan not found" (HTTP 400).
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-budget", token, map[string]string{
+		"value": "44444444-4444-4444-4444-4444444444ff",
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
+	}
+	if env.Message != "Plan not found" {
+		t.Fatalf("message = %q, want %q; body: %s", env.Message, "Plan not found", env.raw)
+	}
+}
+
+func TestUpdateBudget_BadUUID_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-budget", token, map[string]string{
+		"value": "not-a-uuid",
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
+	}
+	if msgs := env.errorsMap()["value"]; len(msgs) == 0 || msgs[0] != "This value is not a valid UUID." {
+		t.Fatalf("errors.value = %v, want [\"This value is not a valid UUID.\"]; body: %s", msgs, env.raw)
+	}
+}
+
+// TestUpdateReportPeriod_OverwritesCurrencyOption pins PHP's long-standing bug:
+// User::updateReportPeriod writes the period value onto the CURRENCY option (not
+// report_period). As a drop-in replacement Go replicates it: after the call the
+// currency option holds "monthly", the currency_id falls back to USD, and the
+// deprecated reportPeriod field still reads "monthly".
+func TestUpdateReportPeriod_OverwritesCurrencyOption(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-report-period", token, map[string]string{
+		"value": "monthly",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+
+	// The currency option must now hold the period string (the replicated bug).
+	cur, ok := res.User.optionValue("currency")
+	if !ok || cur == nil || *cur != "monthly" {
+		t.Fatalf("currency option = %v (ok=%v), want %q (PHP bug); body: %s", cur, ok, "monthly", env.raw)
+	}
+	// "monthly" is not a currency code -> currency_id falls back to USD and the
+	// deprecated top-level currency field reads back "USD".
+	cid, ok := res.User.optionValue("currency_id")
+	if !ok || cid == nil || *cid != usdCurrencyID {
+		t.Fatalf("currency_id = %v (ok=%v), want USD fallback %q; body: %s", cid, ok, usdCurrencyID, env.raw)
+	}
+	if res.User.Currency != "USD" {
+		t.Fatalf("deprecated currency field = %q, want USD; body: %s", res.User.Currency, env.raw)
+	}
 }

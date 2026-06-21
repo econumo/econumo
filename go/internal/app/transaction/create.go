@@ -13,10 +13,13 @@ import (
 // plus the refreshed account list (balances updated). The user must have access
 // to the account (ownership, in the single-user reduction).
 func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req CreateTransactionRequest) (*CreateTransactionResult, error) {
-	id, err := vo.ParseId(req.Id)
+	// req.Id is the operation/idempotency id (PHP locks on it); the entity id is
+	// freshly minted (PHP transactionRepository->getNextIdentity()).
+	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
+	id := vo.NewId()
 	typ, err := parseType(req.Type)
 	if err != nil {
 		return nil, err
@@ -39,7 +42,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 		if aerr := s.checkAccountOwned(ctx, userID, accountID); aerr != nil {
 			return aerr
 		}
-		already, cerr := s.ops.Claim(ctx, id, s.clock.Now())
+		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
 			return cerr
 		}
@@ -57,7 +60,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
 		}
-		if merr := s.ops.MarkHandled(ctx, id, now); merr != nil {
+		if merr := s.ops.MarkHandled(ctx, opID, now); merr != nil {
 			return merr
 		}
 		created = t

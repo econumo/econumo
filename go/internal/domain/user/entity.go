@@ -228,14 +228,18 @@ func (u *User) UpdateCurrency(code string, now time.Time) {
 	}
 }
 
-// UpdateReportPeriod sets the report_period option value. NOTE: this
-// deliberately writes to the REPORT_PERIOD option. The legacy implementation had
-// a long-standing bug that wrote the value onto the CURRENCY option instead; we
-// do not replicate it, because the wire result reads report_period back from its
-// own option and replicating the bug would corrupt the currency option. See
-// integration notes.
+// UpdateReportPeriod replicates PHP's User::updateReportPeriod. NOTE: the PHP
+// implementation has a long-standing bug — it iterates the options and, when it
+// finds the CURRENCY option (not REPORT_PERIOD), overwrites THAT option's value
+// with the report-period string. The REPORT_PERIOD option is never touched.
+//
+// As a drop-in replacement we must byte-match this behavior: after the call the
+// currency option holds the period string (e.g. "monthly"), which then fails the
+// currency_id lookup and falls back to USD in the result, while the deprecated
+// reportPeriod field still reads "monthly" from its own (unchanged) option. See
+// the user-settings mutation-compare harness.
 func (u *User) UpdateReportPeriod(period string, now time.Time) {
-	if o := u.Option(OptionReportPeriod); o != nil {
+	if o := u.Option(OptionCurrency); o != nil {
 		v := period
 		o.setValue(&v, now)
 	}

@@ -71,3 +71,35 @@ func (s *Service) UpdateReportPeriod(ctx context.Context, userID vo.Id, req Upda
 	}
 	return &UpdateReportPeriodResult{User: cur}, nil
 }
+
+// UpdateBudget sets the user's default budget option to the given budget id and
+// returns the refreshed current user. Mirrors PHP BudgetService.updateBudget:
+// the budget must already exist (existence-only, no ownership/access check); a
+// miss maps to the "Plan not found" validation error (HTTP 400). The id format
+// is validated tier-1 (NotBlank + Uuid).
+func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudgetRequest) (*UpdateBudgetResult, error) {
+	exists, err := s.budgets.Exists(ctx, req.Value)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		// PHP maps the budget NotFoundException to ValidationException('Plan not
+		// found') -> {message:"Plan not found",code:400,errors:[]}. NewNotFound
+		// renders the message verbatim at HTTP 400; the errors {} vs [] shape is the
+		// pre-existing cross-cutting envelope divergence (see go-php-api-compare),
+		// not specific to this endpoint.
+		return nil, errs.NewNotFound("Plan not found")
+	}
+	u, err := s.mutate(ctx, userID, func(u *domuser.User, now time.Time) error {
+		u.UpdateBudget(req.Value, now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &UpdateBudgetResult{User: cur}, nil
+}

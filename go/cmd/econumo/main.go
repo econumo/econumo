@@ -40,6 +40,7 @@ import (
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
+	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/ui/apidoc"
@@ -182,10 +183,11 @@ func run() error {
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
+	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
 	clk := clock.New()
 
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, jwt, currencyLookup, clk,
+		userRepo, txm, encodeSvc, hasher, jwt, currencyLookup, budgetExistence, clk,
 		cfg.AllowRegistration, cfg.ConnectUsers,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)

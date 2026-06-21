@@ -71,18 +71,17 @@ func TestExportTransactionList_ExpenseAndIncomeSigns(t *testing.T) {
 		t.Fatalf("rows=%d want 3 (header + 2)\n%s", len(records), body)
 	}
 
-	byID := map[string][]string{}
+	// Entity ids are server-minted (not the txID1/txID2 operation ids), so key
+	// rows by their amount column instead.
+	byAmount := map[string][]string{}
 	for _, r := range records[1:] {
-		byID[r[0]] = r
+		byAmount[r[7]] = r
 	}
-	exp := byID[txID1]
+	exp := byAmount["-42.5"]
 	if exp == nil {
-		t.Fatalf("no row for expense tx\n%s", body)
+		t.Fatalf("no row for expense tx (amount -42.5)\n%s", body)
 	}
 	// amount column (index 7) negative for expense; category resolved.
-	if exp[7] != "-42.5" {
-		t.Fatalf("expense amount=%q want -42.5", exp[7])
-	}
 	if exp[2] != "USD" {
 		t.Fatalf("expense currency=%q want USD", exp[2])
 	}
@@ -92,12 +91,9 @@ func TestExportTransactionList_ExpenseAndIncomeSigns(t *testing.T) {
 	if exp[1] != "Cash" {
 		t.Fatalf("expense account_name=%q want Cash", exp[1])
 	}
-	in := byID[txID2]
+	in := byAmount["100"]
 	if in == nil {
-		t.Fatalf("no row for income tx\n%s", body)
-	}
-	if in[7] != "100" {
-		t.Fatalf("income amount=%q want 100 (positive)", in[7])
+		t.Fatalf("no row for income tx (amount 100, positive)\n%s", body)
 	}
 }
 

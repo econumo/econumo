@@ -34,6 +34,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
+	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
@@ -60,6 +61,9 @@ const (
 	// USD is inserted by the baseline migration (20210812210548) with this id;
 	// the harness reuses it rather than seeding its own row.
 	usdCurrencyID = "dffc2a06-6f29-4704-8575-31709adee926"
+
+	// A budget owned by the seed user, used by the update-budget edge test.
+	seedBudgetID = "44444444-4444-4444-4444-444444444441"
 )
 
 // fixedClock pins issuance time so login tokens are deterministic.
@@ -115,9 +119,10 @@ func newHarness(t *testing.T) *harness {
 	repo := userrepo.NewSQLiteRepo(txm)
 	readRepo := userrepo.NewReadRepo("sqlite", txm)
 	currency := currencyrepo.New("sqlite", txm)
+	budgets := userbudgetrepo.New("sqlite", txm)
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*", AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwt, currency, clk, cfg.AllowRegistration, cfg.ConnectUsers)
+	svc := appuser.NewService(repo, txm, encode, hasher, jwt, currency, budgets, clk, cfg.AllowRegistration, cfg.ConnectUsers)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 
@@ -155,13 +160,19 @@ func seed(t *testing.T, ctx context.Context, db *sql.DB, encode *auth.EncodeServ
 		t.Fatalf("seed user: %v", err)
 	}
 
-	// Seed the default user options (currency + report_period).
+	// Seed the four default user options. The budget option is seeded with a NULL
+	// value (matching the production seed for a user with no default budget); it
+	// must be PRESENT so the domain's UpdateBudget — which only sets an existing
+	// option — can write to it.
+	str := func(s string) *string { return &s }
 	for _, o := range []struct {
-		id, name, value string
+		id, name string
+		value    *string
 	}{
-		{"33333333-3333-3333-3333-333333333331", "currency", "USD"},
-		{"33333333-3333-3333-3333-333333333332", "report_period", "monthly"},
-		{"33333333-3333-3333-3333-333333333333", "onboarding", "started"},
+		{"33333333-3333-3333-3333-333333333331", "currency", str("USD")},
+		{"33333333-3333-3333-3333-333333333332", "report_period", str("monthly")},
+		{"33333333-3333-3333-3333-333333333333", "onboarding", str("started")},
+		{"33333333-3333-3333-3333-333333333334", "budget", nil},
 	} {
 		if _, err := db.ExecContext(ctx,
 			`INSERT INTO users_options (id, user_id, name, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -169,6 +180,21 @@ func seed(t *testing.T, ctx context.Context, db *sql.DB, encode *auth.EncodeServ
 		); err != nil {
 			t.Fatalf("seed option %s: %v", o.name, err)
 		}
+	}
+}
+
+// seedBudget inserts a budget row owned by the seed user (id seedBudgetID) so
+// the update-budget success path has an existing budget to point at. Kept out of
+// the default seed so budget-less tests exercise the empty-option path.
+func (h *harness) seedBudget(t *testing.T) {
+	t.Helper()
+	now := time.Unix(1690000000, 0).UTC()
+	if _, err := h.db.ExecContext(context.Background(),
+		`INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		seedBudgetID, usdCurrencyID, seedUserID, "Test Budget", now, now, now,
+	); err != nil {
+		t.Fatalf("seed budget: %v", err)
 	}
 }
 

@@ -46,8 +46,11 @@ func TestCreateTransaction_Success_EmbedsAuthorAndAccounts(t *testing.T) {
 	}
 	res := mustUnmarshal[writeResult](t, env.Data)
 	it := res.Item
-	if it.ID != txID1 || it.Type != "expense" || it.Amount != "42.5" {
-		t.Fatalf("item = %+v, want id/expense/42.5", it)
+	// The entity id is server-minted (NOT the request/operation id txID1); PHP
+	// mints a fresh id via getNextIdentity(). Just assert it is present and
+	// differs from the operation id.
+	if it.ID == "" || it.ID == txID1 || it.Type != "expense" || it.Amount != "42.5" {
+		t.Fatalf("item = %+v, want fresh id != %s, expense/42.5", it, txID1)
 	}
 	if it.Author.ID != seedUserID || it.Author.Name != seedName {
 		t.Fatalf("author = %+v, want seed user", it.Author)
@@ -80,20 +83,24 @@ func TestCreateTransaction_DuplicateId_400(t *testing.T) {
 func TestGetTransactionList_ByAccount(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
+	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
+	created := mustUnmarshal[writeResult](t, cEnv.Data)
 	_, env := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+accountID, tok, nil)
 	list := mustUnmarshal[listResult](t, env.Data)
-	if len(list.Items) != 1 || list.Items[0].ID != txID1 {
-		t.Fatalf("list = %+v, want one txID1", list.Items)
+	// The listed tx carries the server-minted id returned by create, not txID1.
+	if len(list.Items) != 1 || list.Items[0].ID != created.Item.ID {
+		t.Fatalf("list = %+v, want one tx with id %s", list.Items, created.Item.ID)
 	}
 }
 
 func TestUpdateTransaction_ChangesAmount(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
+	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
+	created := mustUnmarshal[writeResult](t, cEnv.Data)
+	// update targets the server-minted entity id, not the create operation id.
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
-		"id": txID1, "type": "income", "amount": "100", "accountId": accountID, "categoryId": catID,
+		"id": created.Item.ID, "type": "income", "amount": "100", "accountId": accountID, "categoryId": catID,
 		"date": "2024-03-02 10:00:00", "description": "refund",
 	})
 	if status != http.StatusOK {
@@ -112,15 +119,16 @@ func TestUpdateTransaction_ChangesAmount(t *testing.T) {
 func TestDeleteTransaction_RemovesAndRefreshes(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
-	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/delete-transaction", tok, map[string]any{"id": txID1})
+	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
+	created := mustUnmarshal[writeResult](t, cEnv.Data)
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/delete-transaction", tok, map[string]any{"id": created.Item.ID})
 	if status != http.StatusOK {
 		t.Fatalf("delete=%d want 200; body: %s", status, env.raw)
 	}
 	res := mustUnmarshal[writeResult](t, env.Data)
-	// deleted item returned; balance back to 0.
-	if res.Item.ID != txID1 || res.Accounts[0].Balance != "0" {
-		t.Fatalf("res = %+v, want deleted item + balance 0", res)
+	// deleted item returned (the server-minted id); balance back to 0.
+	if res.Item.ID != created.Item.ID || res.Accounts[0].Balance != "0" {
+		t.Fatalf("res = %+v, want deleted item %s + balance 0", res, created.Item.ID)
 	}
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+accountID, tok, nil)
 	if l := mustUnmarshal[listResult](t, listEnv.Data); len(l.Items) != 0 {

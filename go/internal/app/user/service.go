@@ -40,6 +40,17 @@ type CurrencyLookup interface {
 	DefaultCode() string
 }
 
+// BudgetExistence is the minimal budget lookup the update-budget use case needs:
+// confirm a budget id exists before setting it as the user's default. PHP's
+// BudgetService.updateBudget does an existence-only get (no ownership/access
+// check) and maps a miss to the "Plan not found" validation error. The full
+// budget module owns the table; this is the read-only port the user service
+// depends on (mirrors CurrencyLookup).
+type BudgetExistence interface {
+	// Exists reports whether a budget with the given id exists.
+	Exists(ctx context.Context, budgetID string) (bool, error)
+}
+
 // TxRunner is the transaction boundary the service owns. backend.TxManager
 // satisfies it; defining it here keeps the app layer from importing the
 // storage package directly.
@@ -73,6 +84,7 @@ type Service struct {
 	hasher            passwordHasher
 	jwt               jwtIssuer
 	currency          CurrencyLookup
+	budgets           BudgetExistence
 	clock             Clock
 	allowRegistration bool
 	connectUsers      bool
@@ -86,6 +98,7 @@ func NewService(
 	hasher *auth.PasswordHasher,
 	jwt *auth.JWT,
 	currency CurrencyLookup,
+	budgets BudgetExistence,
 	clock Clock,
 	allowRegistration bool,
 	connectUsers bool,
@@ -97,6 +110,7 @@ func NewService(
 		hasher:            hasher,
 		jwt:               jwt,
 		currency:          currency,
+		budgets:           budgets,
 		clock:             clock,
 		allowRegistration: allowRegistration,
 		connectUsers:      connectUsers,
@@ -106,7 +120,8 @@ func NewService(
 // Logout is stateless (JWT); nothing to invalidate server-side.
 func (s *Service) Logout(ctx context.Context) (*LogoutResult, error) {
 	_ = ctx
-	return &LogoutResult{}, nil
+	// PHP's assembler hard-codes result = 'test'; replicate it verbatim.
+	return &LogoutResult{Result: "test"}, nil
 }
 
 // ---------------------------------------------------------------------------

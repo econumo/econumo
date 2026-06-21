@@ -16,7 +16,115 @@ func allCases() []mutationCase {
 	cs = append(cs, payeeCases()...)
 	cs = append(cs, accountCases()...)
 	cs = append(cs, folderCases()...)
+	cs = append(cs, userCases()...)
+	cs = append(cs, transactionCases()...)
 	return cs
+}
+
+const userData = "/api/v1/user/get-user-data"
+const budgetList = "/api/v1/budget/get-budget-list"
+
+// firstBudgetID returns the id of the first budget visible to the logged-in user
+// (owned or shared). update-budget does an existence-only check, so any existing
+// budget id works on both backends.
+func firstBudgetID(php *client) (string, string, error) {
+	items, err := php.items(budgetList, nil)
+	if err != nil {
+		return "", "", err
+	}
+	for _, it := range items {
+		if id, _ := it["id"].(string); id != "" {
+			return id, "", nil
+		}
+	}
+	return "", "no budget in " + budgetList, nil
+}
+
+// userCases compares the user-settings write endpoints. The settings-changing
+// ones (name/currency/budget/report-period/onboarding) reflect into
+// get-user-data, so that is their state read. logout and update-password are
+// response-only: logout has no persisted effect (stateless JWT) and
+// update-password's only effect is the password hash, which get-user-data does
+// not expose.
+//
+// NOTE on update-report-period: PHP's User::updateReportPeriod has a
+// long-standing bug that writes the period value onto the CURRENCY option (not
+// report_period). Go replicates it verbatim, so the response + state byte-match.
+func userCases() []mutationCase {
+	settingsState := func(php *client) string { return userData }
+	return []mutationCase{
+		{
+			name: "user/update-name",
+			build: func(php *client) (string, map[string]any, string, error) {
+				return "/api/v1/user/update-name", map[string]any{"name": "ZZ User"}, "", nil
+			},
+			stateRead: settingsState,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: "user/update-currency",
+			build: func(php *client) (string, map[string]any, string, error) {
+				// EUR exists in the seed currencies table; a real change from the
+				// seed user's CAD. The synthetic currency_id resolves on both sides.
+				return "/api/v1/user/update-currency", map[string]any{"currency": "EUR"}, "", nil
+			},
+			stateRead: settingsState,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: "user/update-budget",
+			build: func(php *client) (string, map[string]any, string, error) {
+				id, skip, err := firstBudgetID(php)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				return "/api/v1/user/update-budget", map[string]any{"value": id}, "", nil
+			},
+			stateRead: settingsState,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: "user/update-report-period",
+			build: func(php *client) (string, map[string]any, string, error) {
+				// "monthly" is the only valid ReportPeriod. PHP's bug overwrites the
+				// currency option with it; Go replicates this exactly.
+				return "/api/v1/user/update-report-period", map[string]any{"value": "monthly"}, "", nil
+			},
+			stateRead: settingsState,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: "user/complete-onboarding",
+			build: func(php *client) (string, map[string]any, string, error) {
+				return "/api/v1/user/complete-onboarding", map[string]any{}, "", nil
+			},
+			stateRead: settingsState,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: "user/update-password",
+			build: func(php *client) (string, map[string]any, string, error) {
+				// Use the correct current password as BOTH old and new so the change
+				// succeeds on both backends and leaves credentials usable. The only
+				// persisted effect (the hash) is not exposed by any read endpoint, so
+				// this is a response-only comparison.
+				return "/api/v1/user/update-password", map[string]any{
+					"oldPassword": loginPassword,
+					"newPassword": loginPassword,
+				}, "", nil
+			},
+			stateRead: nil,
+		},
+		{
+			name: "user/logout-user",
+			build: func(php *client) (string, map[string]any, string, error) {
+				// Stateless JWT: nothing persists. PHP's assembler returns
+				// {"result":"test"}; response-only comparison.
+				return "/api/v1/user/logout-user", map[string]any{}, "", nil
+			},
+			stateRead: nil,
+		},
+	}
 }
 
 const acctList = "/api/v1/account/get-account-list"
@@ -489,6 +597,61 @@ func pickByArchived(php *client, path string, q url.Values, want bool) (string, 
 	return "", fmt.Sprintf("no owned item with isArchived=%v in %s", want, path), nil
 }
 
+const txList = "/api/v1/transaction/get-transaction-list"
+
+// txListFor returns the get-transaction-list path for one account over a wide
+// past window ending in the far future (so every seeded + newly created/updated
+// row falls inside it). The bounds use the strict "Y-m-d H:i:s" format the form
+// validates.
+func txListFor(accountID string) string {
+	q := url.Values{}
+	q.Set("accountId", accountID)
+	q.Set("periodStart", "2000-01-01 00:00:00")
+	q.Set("periodEnd", "2030-01-01 00:00:00")
+	return txList + "?" + q.Encode()
+}
+
+// firstOwnedNonTransferTx returns an existing transaction owned by the logged-in
+// user that is NOT a transfer (so re-sending it as an expense/income update is a
+// single-account mutation with a category, deterministic on both backends). It
+// returns the account it lives on too. Used by update/delete.
+func firstOwnedNonTransferTx(php *client) (tx map[string]any, accountID string, skip string, err error) {
+	me, err := php.userID()
+	if err != nil {
+		return nil, "", "", err
+	}
+	accts, err := php.items(acctList, nil)
+	if err != nil {
+		return nil, "", "", err
+	}
+	for _, a := range accts {
+		owner, _ := a["owner"].(map[string]any)
+		if oid, _ := owner["id"].(string); oid != me {
+			continue
+		}
+		aid, _ := a["id"].(string)
+		if aid == "" {
+			continue
+		}
+		txs, terr := php.items(txListFor(aid), nil)
+		if terr != nil {
+			return nil, "", "", terr
+		}
+		for _, t := range txs {
+			if typ, _ := t["type"].(string); typ == "transfer" {
+				continue
+			}
+			// The transaction must live on THIS account (source side) so the
+			// access check (canUpdate/canDelete on accountId) passes for the owner.
+			if taid, _ := t["accountId"].(string); taid != aid {
+				continue
+			}
+			return t, aid, "", nil
+		}
+	}
+	return nil, "", "no owned non-transfer transaction found", nil
+}
+
 const catList = "/api/v1/category/get-category-list"
 
 func categoryCases() []mutationCase {
@@ -589,6 +752,125 @@ func categoryCases() []mutationCase {
 			},
 			stateRead: state,
 			volatile:  []string{"updatedAt"},
+		},
+	}
+}
+
+// firstOwnedExpenseCategoryID returns the id of the first expense category owned
+// by the logged-in user (a valid, mutable categoryId for create-transaction).
+func firstOwnedExpenseCategoryID(php *client) (string, string, error) {
+	me, err := php.userID()
+	if err != nil {
+		return "", "", err
+	}
+	items, err := php.items(catList, nil)
+	if err != nil {
+		return "", "", err
+	}
+	for _, it := range items {
+		if owner, _ := it["ownerUserId"].(string); owner != "" && owner != me {
+			continue
+		}
+		if typ, _ := it["type"].(string); typ != "expense" {
+			continue
+		}
+		if id, _ := it["id"].(string); id != "" {
+			return id, "", nil
+		}
+	}
+	return "", "no owned expense category", nil
+}
+
+// transactionCases compares the transaction write endpoints. create-transaction
+// has an operation/idempotency id (the request "id"); PHP mints a fresh entity
+// id, so the created row's id differs per backend (masked). update/delete operate
+// on an existing seeded transaction (stable id). All three return {item, accounts}
+// and bump the touched account's balance + updatedAt, so the state read is the
+// per-account transaction list AND the embedded account list reflects the new
+// balance (compared via the response body). The account embed's updatedAt is
+// non-deterministic (now), hence masked.
+func transactionCases() []mutationCase {
+	return []mutationCase{
+		{
+			name: "transaction/create",
+			build: func(php *client) (string, map[string]any, string, error) {
+				acct, skip, err := firstOwnedAccount(php)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				accountID, _ := acct["id"].(string)
+				categoryID, skip, err := firstOwnedExpenseCategoryID(php)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				body := map[string]any{
+					"id":         newUUID(), // operation id; PHP mints a fresh entity id
+					"type":       "expense",
+					"accountId":  accountID,
+					"categoryId": categoryID,
+					"amount":     "42.5",
+					"date":       "2024-06-15 12:00:00",
+				}
+				return "/api/v1/transaction/create-transaction", body, "", nil
+			},
+			// The created tx id is server-minted (differs); the touched account's
+			// embedded updatedAt is now (differs). The transaction's own date is
+			// sent (deterministic). createdAt is masked for safety (account embed).
+			stateRead: func(php *client) string {
+				acct, _, _ := firstOwnedAccount(php)
+				id, _ := acct["id"].(string)
+				return txListFor(id)
+			},
+			volatile: []string{"id", "createdAt", "updatedAt"},
+		},
+		{
+			name: "transaction/update",
+			build: func(php *client) (string, map[string]any, string, error) {
+				tx, accountID, skip, err := firstOwnedNonTransferTx(php)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				txID, _ := tx["id"].(string)
+				typ, _ := tx["type"].(string)
+				categoryID, _ := tx["categoryId"].(string)
+				body := map[string]any{
+					"id":        txID,
+					"type":      typ,
+					"accountId": accountID,
+					// Change amount + description so a real mutation occurs (balance
+					// shifts); keep category/account/type/date so it stays a
+					// single-account, deterministic update.
+					"amount":      "77.25",
+					"description": "ZZ Updated",
+					"date":        "2024-06-15 12:00:00",
+				}
+				if categoryID != "" {
+					body["categoryId"] = categoryID
+				}
+				return "/api/v1/transaction/update-transaction", body, "", nil
+			},
+			stateRead: func(php *client) string {
+				_, accountID, _, _ := firstOwnedNonTransferTx(php)
+				return txListFor(accountID)
+			},
+			// The touched account's embedded updatedAt is bumped to now.
+			volatile: []string{"updatedAt", "createdAt"},
+		},
+		{
+			name: "transaction/delete",
+			build: func(php *client) (string, map[string]any, string, error) {
+				tx, _, skip, err := firstOwnedNonTransferTx(php)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				txID, _ := tx["id"].(string)
+				return "/api/v1/transaction/delete-transaction", map[string]any{"id": txID}, "", nil
+			},
+			stateRead: func(php *client) string {
+				_, accountID, _, _ := firstOwnedNonTransferTx(php)
+				return txListFor(accountID)
+			},
+			volatile: []string{"updatedAt", "createdAt"},
 		},
 	}
 }
