@@ -26,8 +26,13 @@ func TestNewDecimal_Normalize(t *testing.T) {
 		{"0", "0"},
 		{"0.00000000", "0"},
 		{"0.0", "0"},
-		{"-0", "0"},
-		{"-0.00000000", "0"},
+		// negative-zero PRESERVES the sign (verified against real PHP
+		// DecimalNumber: new DecimalNumber("-0")->getValue() === "-0"). Only the
+		// literal "" and "0" inputs collapse to "0" (caught before sign handling).
+		// SQLite SUM() emits "-0" for some netted-to-zero balances; the API does
+		// too, so Go must match byte-for-byte.
+		{"-0", "-0"},
+		{"-0.00000000", "-0"},
 		// negatives keep the sign.
 		{"-12.34000000", "-12.34"},
 		{"-0.50000000", "-0.5"},

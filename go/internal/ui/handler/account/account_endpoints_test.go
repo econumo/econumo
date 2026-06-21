@@ -1,6 +1,7 @@
 package account_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 )
@@ -11,8 +12,7 @@ const (
 )
 
 type accountItemWrapper struct {
-	Item     accountItem   `json:"item"`
-	Accounts []accountItem `json:"accounts"`
+	Item accountItem `json:"item"`
 }
 type accountItemsWrapper struct {
 	Items []accountItem `json:"items"`
@@ -25,6 +25,24 @@ func createAccountReq(id, name, balance string) map[string]any {
 	}
 }
 
+// createAccount POSTs create-account and returns the SERVER-MINTED entity id from
+// the {item} response. The request `id` is only the operation id (PHP mints a
+// fresh entity id; Go now does too), so callers must not assume the entity id
+// equals the request id.
+func (h *harness) createAccount(t *testing.T, opID, name, balance string) (string, accountItem) {
+	t.Helper()
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, createAccountReq(opID, name, balance))
+	if status != http.StatusOK {
+		t.Fatalf("create-account = %d, want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[accountItemWrapper](t, env.Data)
+	if res.Item.ID == "" {
+		t.Fatalf("create-account returned no item id; body: %s", env.raw)
+	}
+	return res.Item.ID, res.Item
+}
+
 func TestCreateAccount_Success_EmbedsOwnerCurrencyFolder(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -35,8 +53,12 @@ func TestCreateAccount_Success_EmbedsOwnerCurrencyFolder(t *testing.T) {
 	}
 	res := mustUnmarshal[accountItemWrapper](t, env.Data)
 	it := res.Item
-	if it.ID != acctID1 || it.Name != "Cash" {
-		t.Fatalf("item id/name = %q/%q", it.ID, it.Name)
+	// The entity id is server-minted (UUIDv7), NOT the request/operation id.
+	if it.ID == "" || it.ID == acctID1 {
+		t.Fatalf("entity id = %q, want a fresh server-minted id (not the request id %q)", it.ID, acctID1)
+	}
+	if it.Name != "Cash" {
+		t.Fatalf("item name = %q, want Cash", it.Name)
 	}
 	if it.Owner.ID != seedUserID || it.Owner.Name != seedName || it.Owner.Avatar != seedAvatar {
 		t.Fatalf("owner embed = %+v, want seed user", it.Owner)
@@ -56,8 +78,11 @@ func TestCreateAccount_Success_EmbedsOwnerCurrencyFolder(t *testing.T) {
 	if it.SharedAccess == nil {
 		t.Fatalf("sharedAccess must be [] not null; body: %s", env.raw)
 	}
-	if len(res.Accounts) != 1 {
-		t.Fatalf("accounts list len = %d, want 1", len(res.Accounts))
+	// PHP's create-account result is {item} ONLY — there is no accounts list.
+	var rawObj map[string]json.RawMessage
+	mustDecode(t, env.Data, &rawObj)
+	if _, ok := rawObj["accounts"]; ok {
+		t.Fatalf("create-account response must not carry an 'accounts' field (PHP returns {item} only); body: %s", env.raw)
 	}
 }
 
@@ -109,11 +134,11 @@ func TestUpdateAccount_BalanceCorrection(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 
-	h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, createAccountReq(acctID1, "Cash", "100"))
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "100")
 
 	// Update balance to 250 -> correction of 150 (income), transaction returned.
 	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
-		"id": acctID1, "name": "Cash", "balance": "250", "icon": "wallet",
+		"id": acctID, "name": "Cash", "balance": "250", "icon": "wallet",
 		"updatedAt": "2024-01-01 12:00:00",
 	})
 	if status != http.StatusOK {
@@ -122,8 +147,22 @@ func TestUpdateAccount_BalanceCorrection(t *testing.T) {
 	var res struct {
 		Item        accountItem `json:"item"`
 		Transaction *struct {
-			Type   string `json:"type"`
-			Amount string `json:"amount"`
+			ID                 string  `json:"id"`
+			Type               string  `json:"type"`
+			AccountID          string  `json:"accountId"`
+			AccountRecipientID *string `json:"accountRecipientId"`
+			Amount             string  `json:"amount"`
+			AmountRecipient    string  `json:"amountRecipient"`
+			CategoryID         *string `json:"categoryId"`
+			Description        string  `json:"description"`
+			PayeeID            *string `json:"payeeId"`
+			TagID              *string `json:"tagId"`
+			Date               string  `json:"date"`
+			Author             struct {
+				ID     string `json:"id"`
+				Avatar string `json:"avatar"`
+				Name   string `json:"name"`
+			} `json:"author"`
 		} `json:"transaction"`
 	}
 	mustDecode(t, env.Data, &res)
@@ -133,18 +172,40 @@ func TestUpdateAccount_BalanceCorrection(t *testing.T) {
 	if res.Transaction == nil {
 		t.Fatalf("expected a correction transaction; body: %s", env.raw)
 	}
-	if res.Transaction.Type != "income" || res.Transaction.Amount != "150" {
-		t.Fatalf("correction = %+v, want income/150", *res.Transaction)
+	tr := res.Transaction
+	if tr.Type != "income" || tr.Amount != "150" {
+		t.Fatalf("correction type/amount = %s/%s, want income/150", tr.Type, tr.Amount)
+	}
+	// The correction transaction is the FULL PHP TransactionResultDto shape:
+	// author embedded, amountRecipient = amount, the auto comment, and null
+	// account-recipient/category/payee/tag.
+	if tr.Author.ID != seedUserID || tr.Author.Name != seedName {
+		t.Fatalf("correction author = %+v, want seed user", tr.Author)
+	}
+	if tr.AccountID != acctID {
+		t.Fatalf("correction accountId = %q, want %q", tr.AccountID, acctID)
+	}
+	if tr.AmountRecipient != "150" {
+		t.Fatalf("amountRecipient = %q, want 150 (falls back to amount)", tr.AmountRecipient)
+	}
+	if tr.Description != "Balance adjustment" {
+		t.Fatalf("description = %q, want \"Balance adjustment\"", tr.Description)
+	}
+	if tr.AccountRecipientID != nil || tr.CategoryID != nil || tr.PayeeID != nil || tr.TagID != nil {
+		t.Fatalf("correction recipient/category/payee/tag must all be null; got %+v", tr)
+	}
+	if tr.Date != "2024-01-01 12:00:00" {
+		t.Fatalf("date = %q, want the request updatedAt", tr.Date)
 	}
 }
 
 func TestUpdateAccount_NoBalanceChange_NullTransaction(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, createAccountReq(acctID1, "Cash", "100"))
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "100")
 
 	_, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
-		"id": acctID1, "name": "Renamed", "balance": "100", "icon": "wallet",
+		"id": acctID, "name": "Renamed", "balance": "100", "icon": "wallet",
 		"updatedAt": "2024-01-01 12:00:00",
 	})
 	var res struct {
@@ -163,9 +224,9 @@ func TestUpdateAccount_NoBalanceChange_NullTransaction(t *testing.T) {
 func TestDeleteAccount_SoftDelete_RemovesFromList(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, createAccountReq(acctID1, "Cash", "0"))
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "0")
 
-	status, _ := h.do(t, http.MethodPost, "/api/v1/account/delete-account", tok, map[string]any{"id": acctID1})
+	status, _ := h.do(t, http.MethodPost, "/api/v1/account/delete-account", tok, map[string]any{"id": acctID})
 	if status != http.StatusOK {
 		t.Fatalf("delete = %d, want 200", status)
 	}

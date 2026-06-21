@@ -22,10 +22,12 @@ import (
 // apiDatetimeLayout is the wire format for dates ("2006-01-02 15:04:05").
 const apiDatetimeLayout = "2006-01-02 15:04:05"
 
-// correctionComment is the description stamped on a balance-correction
-// transaction (PHP trans('account.correction.message'); the translation key is
-// absent so PHP returns the key — mirror that until reconciled vs a real Cest).
-const correctionComment = "account.correction.message"
+// correctionComment is the description stamped on the balance-correction
+// transaction that update-account writes. PHP uses
+// trans('account.correction.message'); that key IS defined in
+// translations/messages.en.yaml as "Balance adjustment" (default_locale=en), so
+// the stored/returned description is the translated string, not the key.
+const correctionComment = "Balance adjustment"
 
 // Clock supplies the current time (seam for deterministic tests).
 type Clock interface {

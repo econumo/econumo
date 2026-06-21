@@ -94,12 +94,12 @@ func (r CreateAccountRequest) Validate() error {
 	return nil
 }
 
-// CreateAccountResult is the create-account response: {item, accounts}. item is
-// the created account; accounts is the full available list (reverse order),
-// which the frontend uses to refresh balances.
+// CreateAccountResult is the create-account response: {item} ONLY. PHP's
+// CreateAccountV1ResultDto has a single public $item property, so the envelope is
+// {"data":{"item":{...account...}}}; there is no accounts list (verified vs PHP
+// CreateAccountV1ResultAssembler).
 type CreateAccountResult struct {
-	Item     AccountResult   `json:"item"`
-	Accounts []AccountResult `json:"accounts"`
+	Item AccountResult `json:"item"`
 }
 
 // ---------------------------------------------------------------------------
@@ -141,16 +141,26 @@ type UpdateAccountResult struct {
 	Transaction *CorrectionResult `json:"transaction"`
 }
 
-// CorrectionResult is the minimal transaction shape returned by update-account's
-// balance correction. It mirrors the transaction result's relevant fields.
+// CorrectionResult is the transaction shape returned by update-account's balance
+// correction. It is the FULL PHP TransactionResultDto (the update assembler runs
+// the correction transaction through TransactionToDtoResultAssembler), so it
+// carries author + all the nullable transaction fields, not just a subset. For a
+// balance correction: accountRecipientId/categoryId/payeeId/tagId are always
+// null and amountRecipient falls back to amount. Field order is irrelevant on the
+// wire (canonical compare), but the SET of keys must match PHP exactly.
 type CorrectionResult struct {
-	Id          string  `json:"id"`
-	Type        string  `json:"type"`
-	AccountId   string  `json:"accountId"`
-	Amount      string  `json:"amount"`
-	CategoryId  *string `json:"categoryId"`
-	Description string  `json:"description"`
-	Date        string  `json:"date"`
+	Id                 string      `json:"id"`
+	Author             OwnerResult `json:"author"`
+	Type               string      `json:"type"`
+	AccountId          string      `json:"accountId"`
+	AccountRecipientId *string     `json:"accountRecipientId"`
+	Amount             string      `json:"amount"`
+	AmountRecipient    string      `json:"amountRecipient"`
+	CategoryId         *string     `json:"categoryId"`
+	Description        string      `json:"description"`
+	PayeeId            *string     `json:"payeeId"`
+	TagId              *string     `json:"tagId"`
+	Date               string      `json:"date"`
 }
 
 // ---------------------------------------------------------------------------

@@ -4364,21 +4364,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login).",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LoginResult"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LoginResult"
                         }
                     },
                     "400": {
@@ -5022,8 +5010,17 @@ const docTemplate = `{
                 "accountId": {
                     "type": "string"
                 },
+                "accountRecipientId": {
+                    "type": "string"
+                },
                 "amount": {
                     "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "author": {
+                    "$ref": "#/definitions/account.OwnerResult"
                 },
                 "categoryId": {
                     "type": "string"
@@ -5035,6 +5032,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
                     "type": "string"
                 },
                 "type": {
@@ -5105,7 +5108,15 @@ const docTemplate = `{
             }
         },
         "account.SharedAccess": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/account.OwnerResult"
+                }
+            }
         },
         "apidoc.JsonResponseError": {
             "type": "object",
@@ -5729,12 +5740,6 @@ const docTemplate = `{
         "github_com_econumo_econumo_internal_app_account.CreateAccountResult": {
             "type": "object",
             "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                },
                 "item": {
                     "$ref": "#/definitions/account.AccountResult"
                 }
@@ -6374,12 +6379,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/category.CategoryResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_category.CreateCategoryRequest": {
             "type": "object",
@@ -6468,12 +6468,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/category.CategoryResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest": {
             "type": "object",
@@ -6490,12 +6485,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_category.UpdateCategoryResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/category.CategoryResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_connection.GetConnectionListResult": {
             "type": "object",
@@ -6570,12 +6560,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/payee.PayeeResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest": {
             "type": "object",
@@ -6652,12 +6637,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/payee.PayeeResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest": {
             "type": "object",
@@ -6671,12 +6651,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/payee.PayeeResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest": {
             "type": "object",
@@ -6687,12 +6662,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_tag.ArchiveTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_tag.CreateTagRequest": {
             "type": "object",
@@ -6769,12 +6739,7 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
+            "type": "object"
         },
         "github_com_econumo_econumo_internal_app_tag.UpdateTagRequest": {
             "type": "object",

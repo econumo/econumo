@@ -10,20 +10,26 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// CreateAccount creates an account for the current user and returns it plus the
-// refreshed account list (reverse order, as the frontend expects).
+// CreateAccount creates an account for the current user and returns {item}.
+//
+// The request `id` is the OPERATION/idempotency id (PHP OperationId constraint),
+// NOT the entity id: PHP's account factory mints a FRESH id (getNextIdentity) for
+// the account, and Go does the same (vo.NewId() = UUIDv7). req.Id is used only to
+// Claim/MarkHandled the operation guard.
 //
 // Steps inside one tx: claim the operation id (idempotency); compute the
 // position (max accounts_options.position for the user, else count of available
 // accounts); create the account (always CREDIT_CARD) + its accounts_options row;
 // add it to the requested folder (which must be owned by the user); if the
 // requested balance is non-zero, write a balance-correction transaction dated at
-// the account's creation time; mark the operation handled.
+// the account's creation time; mark the operation handled. Returns {item} only
+// (PHP CreateAccountV1ResultDto has a single $item — no accounts list).
 func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAccountRequest) (*CreateAccountResult, error) {
-	id, err := vo.ParseId(req.Id)
+	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
+	id := vo.NewId() // fresh entity id (UUIDv7); req.Id is the operation id only
 	name, err := newAccountName(req.Name)
 	if err != nil {
 		return nil, err
@@ -44,7 +50,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 
 	var created *domaccount.Account
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		already, cerr := s.ops.Claim(ctx, id, s.clock.Now())
+		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
 			return cerr
 		}
@@ -105,7 +111,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 			}
 		}
 
-		if merr := s.ops.MarkHandled(ctx, id, now); merr != nil {
+		if merr := s.ops.MarkHandled(ctx, opID, now); merr != nil {
 			return merr
 		}
 		created = acct
@@ -115,7 +121,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	}
 
 	// Build the result outside the write tx (reads on the pool see the committed
-	// rows). item + the full reversed list.
+	// rows). PHP returns {item} ONLY (no accounts list).
 	folders, err := s.sortedFolders(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -132,11 +138,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	if err != nil {
 		return nil, err
 	}
-	list, err := s.buildAccountList(ctx, userID, true)
-	if err != nil {
-		return nil, err
-	}
-	return &CreateAccountResult{Item: item, Accounts: list}, nil
+	return &CreateAccountResult{Item: item}, nil
 }
 
 // correctionType returns the transaction type for a balance correction: a

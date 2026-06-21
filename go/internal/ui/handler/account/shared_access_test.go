@@ -39,9 +39,9 @@ type accountWithShared struct {
 func TestGetAccountList_SharedAccessPopulated(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, createAccountReq(acctID1, "Cash", "0"))
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "0")
 	// Grant the other user "user" role (1) on the seed user's account.
-	h.seedGrant(t, acctID1, otherUserID, 1)
+	h.seedGrant(t, acctID, otherUserID, 1)
 
 	_, env := h.do(t, http.MethodGet, "/api/v1/account/get-account-list", tok, nil)
 	var wrap struct {
@@ -99,7 +99,7 @@ func TestDeleteAccount_NotOwnedButGranted_RevokesOwnAccess(t *testing.T) {
 func TestGetAccountList_IncludesSharedAccounts(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, createAccountReq(acctID1, "Mine", "0"))
+	ownID, _ := h.createAccount(t, acctID1, "Mine", "0")
 	// An account owned by the other user, shared with the seed user.
 	h.seedAccount(t, acctID2, otherUserID, "Shared")
 	h.seedGrant(t, acctID2, seedUserID, 1)
@@ -113,7 +113,7 @@ func TestGetAccountList_IncludesSharedAccounts(t *testing.T) {
 	for _, it := range wrap.Items {
 		ids[it.Id] = true
 	}
-	if !ids[acctID1] || !ids[acctID2] {
-		t.Fatalf("list ids=%v want both own (%s) + shared (%s)", ids, acctID1, acctID2)
+	if !ids[ownID] || !ids[acctID2] {
+		t.Fatalf("list ids=%v want both own (%s) + shared (%s)", ids, ownID, acctID2)
 	}
 }

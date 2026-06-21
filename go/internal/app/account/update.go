@@ -100,14 +100,22 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 			if corrType == 1 {
 				typeAlias = "income"
 			}
+			// Mirror PHP TransactionToDtoResultAssembler exactly: amountRecipient
+			// falls back to amount when null; accountRecipientId/categoryId/payeeId/
+			// tagId are null for a balance correction. author is filled in after the
+			// tx (needs a UserLookup read).
 			correction = &CorrectionResult{
-				Id:          corrID.String(),
-				Type:        typeAlias,
-				AccountId:   id.String(),
-				Amount:      corr.Amount,
-				CategoryId:  nil,
-				Description: correctionComment,
-				Date:        updatedAt.Format(apiDatetimeLayout),
+				Id:                 corrID.String(),
+				Type:               typeAlias,
+				AccountId:          id.String(),
+				AccountRecipientId: nil,
+				Amount:             corr.Amount,
+				AmountRecipient:    corr.Amount,
+				CategoryId:         nil,
+				Description:        correctionComment,
+				PayeeId:            nil,
+				TagId:              nil,
+				Date:               updatedAt.Format(apiDatetimeLayout),
 			}
 		}
 		updated = acct
@@ -131,6 +139,15 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 	item, err := s.buildAccountResult(ctx, userID, updated, bal, folders, memberships)
 	if err != nil {
 		return nil, err
+	}
+	// Fill the correction's author (the account owner = the requesting user), to
+	// mirror PHP's TransactionToDtoResultAssembler embedding $transaction->getUser().
+	if correction != nil {
+		owner, oerr := s.users.GetOwner(ctx, userID.String())
+		if oerr != nil {
+			return nil, oerr
+		}
+		correction.Author = OwnerResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
 	}
 	return &UpdateAccountResult{Item: item, Transaction: correction}, nil
 }

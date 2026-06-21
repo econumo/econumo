@@ -38,8 +38,14 @@ definitions:
     properties:
       accountId:
         type: string
+      accountRecipientId:
+        type: string
       amount:
         type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/account.OwnerResult'
       categoryId:
         type: string
       date:
@@ -47,6 +53,10 @@ definitions:
       description:
         type: string
       id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
         type: string
       type:
         type: string
@@ -92,6 +102,11 @@ definitions:
         type: string
     type: object
   account.SharedAccess:
+    properties:
+      role:
+        type: string
+      user:
+        $ref: '#/definitions/account.OwnerResult'
     type: object
   apidoc.JsonResponseError:
     properties:
@@ -502,10 +517,6 @@ definitions:
     type: object
   github_com_econumo_econumo_internal_app_account.CreateAccountResult:
     properties:
-      accounts:
-        items:
-          $ref: '#/definitions/account.AccountResult'
-        type: array
       item:
         $ref: '#/definitions/account.AccountResult'
     type: object
@@ -915,9 +926,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult:
-    properties:
-      item:
-        $ref: '#/definitions/category.CategoryResult'
     type: object
   github_com_econumo_econumo_internal_app_category.CreateCategoryRequest:
     properties:
@@ -975,9 +983,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult:
-    properties:
-      item:
-        $ref: '#/definitions/category.CategoryResult'
     type: object
   github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest:
     properties:
@@ -989,9 +994,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_category.UpdateCategoryResult:
-    properties:
-      item:
-        $ref: '#/definitions/category.CategoryResult'
     type: object
   github_com_econumo_econumo_internal_app_connection.GetConnectionListResult:
     properties:
@@ -1040,9 +1042,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult:
-    properties:
-      item:
-        $ref: '#/definitions/payee.PayeeResult'
     type: object
   github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest:
     properties:
@@ -1092,9 +1091,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult:
-    properties:
-      item:
-        $ref: '#/definitions/payee.PayeeResult'
     type: object
   github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest:
     properties:
@@ -1104,9 +1100,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult:
-    properties:
-      item:
-        $ref: '#/definitions/payee.PayeeResult'
     type: object
   github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest:
     properties:
@@ -1114,9 +1107,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_tag.ArchiveTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
     type: object
   github_com_econumo_econumo_internal_app_tag.CreateTagRequest:
     properties:
@@ -1166,9 +1156,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
     type: object
   github_com_econumo_econumo_internal_app_tag.UpdateTagRequest:
     properties:
@@ -4093,14 +4080,10 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Raw {token,user} body — NOT wrapped in the standard envelope
+            (matches PHP login).
           schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.LoginResult'
-              type: object
+            $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.LoginResult'
         "400":
           description: Bad Request
           schema:
