@@ -16,13 +16,12 @@ func (s *Service) ArchivePayee(ctx context.Context, userID vo.Id, req ArchivePay
 	if err != nil {
 		return nil, err
 	}
-	p, err := s.mutate(ctx, id, userID, func(p *dompayee.Payee, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(p *dompayee.Payee, now time.Time) {
 		p.Archive(now)
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &ArchivePayeeResult{Item: toResult(p)}, nil
+	return &ArchivePayeeResult{}, nil
 }
 
 // UnarchivePayee loads the payee, checks ownership (403 otherwise), clears the
@@ -32,11 +31,10 @@ func (s *Service) UnarchivePayee(ctx context.Context, userID vo.Id, req Unarchiv
 	if err != nil {
 		return nil, err
 	}
-	p, err := s.mutate(ctx, id, userID, func(p *dompayee.Payee, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(p *dompayee.Payee, now time.Time) {
 		p.Unarchive(now)
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &UnarchivePayeeResult{Item: toResult(p)}, nil
+	return &UnarchivePayeeResult{}, nil
 }

@@ -21,6 +21,20 @@ func createReq(id, name string) map[string]any {
 	return map[string]any{"id": id, "name": name}
 }
 
+// createTag creates a tag via the API endpoint and returns the server-minted
+// entity id. The request id is the operation/idempotency id only; the server
+// mints a fresh entity id (a different UUIDv7), so follow-up operations must use
+// the returned id rather than the request id.
+func createTag(t *testing.T, h *harness, token, opID, name string) string {
+	t.Helper()
+	_, env := h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(opID, name))
+	res := mustUnmarshal[itemWrapper](t, env.Data)
+	if res.Item.ID == "" {
+		t.Fatalf("create returned no id; body: %s", env.raw)
+	}
+	return res.Item.ID
+}
+
 // itemWrapper / itemsWrapper are the {item} / {items} data shapes.
 type itemWrapper struct {
 	Item tagItem `json:"item"`
@@ -52,8 +66,9 @@ func TestCreateTag_Success(t *testing.T) {
 
 	res := mustUnmarshal[itemWrapper](t, env.Data)
 	it := res.Item
-	if it.ID != tagID1 {
-		t.Fatalf("item.id = %q, want %q", it.ID, tagID1)
+	// The server mints a fresh entity id distinct from the request (operation) id.
+	if it.ID == "" || it.ID == tagID1 {
+		t.Fatalf("item.id = %q, want a fresh server id (non-empty and != %q)", it.ID, tagID1)
 	}
 	if it.OwnerUserID != seedUserID {
 		t.Fatalf("item.ownerUserId = %q, want %q", it.OwnerUserID, seedUserID)
@@ -171,10 +186,10 @@ func TestUpdateTag_ChangesName(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID1, "#food"))
+	id := createTag(t, h, token, tagID1, "#food")
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/update-tag", token, map[string]any{
-		"id": tagID1, "name": "#groceries",
+		"id": id, "name": "#groceries",
 	})
 	if status != http.StatusOK {
 		t.Fatalf("update status = %d, want 200; body: %s", status, env.raw)
@@ -227,29 +242,33 @@ func TestArchiveTag_ThenListShowsArchived(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID1, "#food"))
+	id := createTag(t, h, token, tagID1, "#food")
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/tag/archive-tag", token, map[string]any{"id": tagID1})
+	status, env := h.do(t, http.MethodPost, "/api/v1/tag/archive-tag", token, map[string]any{"id": id})
 	if status != http.StatusOK {
 		t.Fatalf("archive status = %d, want 200; body: %s", status, env.raw)
 	}
-	res := mustUnmarshal[itemWrapper](t, env.Data)
-	if res.Item.IsArchived != 1 {
-		t.Fatalf("archived item.isArchived = %d, want 1", res.Item.IsArchived)
+	// archive-tag returns empty data ({}).
+	if string(env.Data) != "{}" {
+		t.Fatalf("archive data = %s, want empty object {}", env.Data)
 	}
 
 	// get-tag-list returns archived tags too, with isArchived=1.
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/tag/get-tag-list", token, nil)
 	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
-	if len(list.Items) != 1 || list.Items[0].IsArchived != 1 {
-		t.Fatalf("list = %+v, want one item with isArchived=1", list.Items)
+	if len(list.Items) != 1 || list.Items[0].ID != id || list.Items[0].IsArchived != 1 {
+		t.Fatalf("list = %+v, want one item (id %s) with isArchived=1", list.Items, id)
 	}
 
-	// Unarchive flips it back.
-	_, unEnv := h.do(t, http.MethodPost, "/api/v1/tag/unarchive-tag", token, map[string]any{"id": tagID1})
-	un := mustUnmarshal[itemWrapper](t, unEnv.Data)
-	if un.Item.IsArchived != 0 {
-		t.Fatalf("unarchived item.isArchived = %d, want 0", un.Item.IsArchived)
+	// Unarchive flips it back; also returns empty data.
+	_, unEnv := h.do(t, http.MethodPost, "/api/v1/tag/unarchive-tag", token, map[string]any{"id": id})
+	if string(unEnv.Data) != "{}" {
+		t.Fatalf("unarchive data = %s, want empty object {}", unEnv.Data)
+	}
+	_, listEnv2 := h.do(t, http.MethodGet, "/api/v1/tag/get-tag-list", token, nil)
+	list2 := mustUnmarshal[itemsWrapper](t, listEnv2.Data)
+	if len(list2.Items) != 1 || list2.Items[0].ID != id || list2.Items[0].IsArchived != 0 {
+		t.Fatalf("list after unarchive = %+v, want one item (id %s) with isArchived=0", list2.Items, id)
 	}
 }
 
@@ -257,15 +276,15 @@ func TestOrderTagList_Reorders(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID1, "#first"))  // pos 0
-	h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID2, "#second")) // pos 1
-	h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID3, "#third"))  // pos 2
+	id1 := createTag(t, h, token, tagID1, "#first")  // pos 0
+	id2 := createTag(t, h, token, tagID2, "#second") // pos 1
+	id3 := createTag(t, h, token, tagID3, "#third")  // pos 2
 
-	// Reverse: tagID3 -> 0, tagID1 -> 2.
+	// Reverse: id3 -> 0, id1 -> 2.
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/order-tag-list", token, map[string]any{
 		"changes": []map[string]any{
-			{"id": tagID3, "position": 0},
-			{"id": tagID1, "position": 2},
+			{"id": id3, "position": 0},
+			{"id": id1, "position": 2},
 		},
 	})
 	if status != http.StatusOK {
@@ -279,11 +298,11 @@ func TestOrderTagList_Reorders(t *testing.T) {
 	for _, it := range res.Items {
 		pos[it.ID] = it.Position
 	}
-	if pos[tagID3] != 0 || pos[tagID2] != 1 || pos[tagID1] != 2 {
-		t.Fatalf("positions = %v, want tagID3=0 tagID2=1 tagID1=2", pos)
+	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
+		t.Fatalf("positions = %v, want id3=%s=0 id2=%s=1 id1=%s=2", pos, id3, id2, id1)
 	}
-	if res.Items[0].ID != tagID3 || res.Items[2].ID != tagID1 {
-		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, tagID3, tagID1)
+	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
+		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
 	}
 }
 
@@ -329,9 +348,9 @@ func TestDeleteTag_RemovesIt(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID1, "#food"))
+	id := createTag(t, h, token, tagID1, "#food")
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/tag/delete-tag", token, map[string]any{"id": tagID1})
+	status, env := h.do(t, http.MethodPost, "/api/v1/tag/delete-tag", token, map[string]any{"id": id})
 	if status != http.StatusOK {
 		t.Fatalf("delete status = %d, want 200; body: %s", status, env.raw)
 	}

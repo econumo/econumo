@@ -21,15 +21,15 @@ func (s *Service) UpdatePayee(ctx context.Context, userID vo.Id, req UpdatePayee
 	if err != nil {
 		return nil, err
 	}
-	p, err := s.mutateChecked(ctx, id, userID, func(txCtx context.Context, p *dompayee.Payee, now time.Time) error {
+	if _, err := s.mutateChecked(ctx, id, userID, func(txCtx context.Context, p *dompayee.Payee, now time.Time) error {
 		if uerr := s.ensureNameUnique(txCtx, userID, name, id); uerr != nil {
 			return uerr
 		}
 		p.UpdateName(name, now)
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &UpdatePayeeResult{Item: toResult(p)}, nil
+	// PHP returns an empty DTO -> {"data":{}}.
+	return &UpdatePayeeResult{}, nil
 }

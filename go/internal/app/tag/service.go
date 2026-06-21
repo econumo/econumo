@@ -50,11 +50,14 @@ type Service struct {
 	tx    TxRunner
 	ops   OperationGuard
 	clock Clock
+	read  ReadModel
 }
 
-// NewService wires the tag service.
-func NewService(repo domtag.Repository, tx TxRunner, ops OperationGuard, clock Clock) *Service {
-	return &Service{repo: repo, tx: tx, ops: ops, clock: clock}
+// NewService wires the tag service. read is the own+shared tag view (the same
+// ReadModel get-tag-list uses); order-tag-list returns that full available list,
+// mirroring PHP's OrderTagListV1ResultAssembler (findAvailableForUserId).
+func NewService(repo domtag.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel) *Service {
+	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read}
 }
 
 // ---------------------------------------------------------------------------
@@ -72,7 +75,7 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *domta
 			return err
 		}
 		if !t.UserId().Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
+			return errs.NewAccessDenied("")
 		}
 		fn(t, s.clock.Now())
 		if err := s.repo.Save(ctx, t); err != nil {
@@ -104,7 +107,7 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 			return err
 		}
 		if !t.UserId().Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
+			return errs.NewAccessDenied("")
 		}
 		if ferr := fn(txCtx, t, s.clock.Now()); ferr != nil {
 			return ferr
@@ -140,16 +143,18 @@ func toResult(t *domtag.Tag) TagResult {
 	}
 }
 
-// listResults loads the owner's tags (ordered by position) and converts them to
-// the wire shape — used by order-tag-list.
+// listResults returns the user's AVAILABLE tags (own + shared via account
+// access), ordered by position, in the wire shape — used by order-tag-list. It
+// reads through the same own+shared view as get-tag-list (PHP's order assembler
+// uses findAvailableForUserId, not owner-only).
 func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]TagResult, error) {
-	tags, err := s.repo.ListByOwner(ctx, userID)
+	rows, err := s.read.TagListView(ctx, userID.String())
 	if err != nil {
 		return nil, err
 	}
-	items := make([]TagResult, 0, len(tags))
-	for _, t := range tags {
-		items = append(items, toResult(t))
+	items := make([]TagResult, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, toViewResult(r))
 	}
 	return items, nil
 }

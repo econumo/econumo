@@ -7,14 +7,15 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// OrderCategoryList applies each {id, position} change to the matching category
-// owned by the user, saving only the ones that actually changed, then returns
-// the full ordered list.
+// OrderCategoryList applies each {id, position} change to the matching category,
+// then returns the full available list.
 //
-// Changes referencing an id the user does not own are ignored (only categories
-// found among the owner's are mutated).
+// IMPORTANT asymmetry vs tag/payee: PHP's CategoryService::orderCategories
+// iterates findByOwnerId (OWNER-ONLY), so a SHARED category's position is NOT
+// updated — only the user's own categories are. (Tag/payee order, by contrast,
+// iterate findAvailableForUserId and DO update shared.) The RESPONSE, however,
+// is the full available list (own + shared) via the read view.
 func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req OrderCategoryListRequest) (*OrderCategoryListResult, error) {
-	// Build an id -> position map from the changes.
 	positions := make(map[string]int16, len(req.Changes))
 	for _, ch := range req.Changes {
 		id, err := vo.ParseId(ch.Id)
@@ -26,6 +27,7 @@ func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req Order
 
 	var items []CategoryResult
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// Owner-only set: shared categories are not reordered (matches PHP).
 		cats, err := s.repo.ListByOwner(ctx, userID)
 		if err != nil {
 			return err
@@ -44,6 +46,7 @@ func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req Order
 				}
 			}
 		}
+		// Response is the full available list (own + shared).
 		built, berr := s.listResults(ctx, userID)
 		if berr != nil {
 			return berr

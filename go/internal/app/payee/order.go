@@ -7,37 +7,47 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// OrderPayeeList applies each {id, position} change to the matching payee owned
-// by the user, saving only the ones that actually changed, then returns the
-// full ordered list.
-//
-// Changes referencing an id the user does not own are ignored (only payees
-// found among the owner's are mutated).
+// OrderPayeeList applies each {id, position} change to the matching payee in the
+// user's AVAILABLE set (own + shared via account access), saving those that
+// changed, then returns the full ordered list. Mirrors PHP's
+// PayeeService::orderPayees, which iterates findAvailableForUserId and updates+
+// saves each named payee (a SHARED payee's position is updated too).
 func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req OrderPayeeListRequest) (*OrderPayeeListResult, error) {
-	// Build an id -> position map from the changes.
 	positions := make(map[string]int16, len(req.Changes))
+	order := make([]string, 0, len(req.Changes))
 	for _, ch := range req.Changes {
 		id, err := vo.ParseId(ch.Id)
 		if err != nil {
 			return nil, err
+		}
+		if _, seen := positions[id.String()]; !seen {
+			order = append(order, id.String())
 		}
 		positions[id.String()] = int16(ch.Position)
 	}
 
 	var items []PayeeResult
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		payees, err := s.repo.ListByOwner(txCtx, userID)
+		avail, err := s.read.PayeeListView(txCtx, userID.String())
 		if err != nil {
 			return err
 		}
+		available := make(map[string]struct{}, len(avail))
+		for _, r := range avail {
+			available[r.ID] = struct{}{}
+		}
 		now := s.clock.Now()
-		for _, p := range payees {
-			pos, ok := positions[p.Id().String()]
-			if !ok {
+		for _, idStr := range order {
+			if _, ok := available[idStr]; !ok {
 				continue
 			}
+			id, _ := vo.ParseId(idStr)
+			p, gerr := s.repo.GetByID(txCtx, id)
+			if gerr != nil {
+				return gerr
+			}
 			before := p.Position()
-			p.UpdatePosition(pos, now)
+			p.UpdatePosition(positions[idStr], now)
 			if p.Position() != before {
 				if serr := s.repo.Save(txCtx, p); serr != nil {
 					return serr

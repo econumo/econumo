@@ -20,13 +20,12 @@ func (s *Service) ArchiveTag(ctx context.Context, userID vo.Id, req ArchiveTagRe
 	if err != nil {
 		return nil, err
 	}
-	t, err := s.mutate(ctx, id, userID, func(t *domtag.Tag, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(t *domtag.Tag, now time.Time) {
 		t.Archive(now)
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &ArchiveTagResult{Item: toResult(t)}, nil
+	return &ArchiveTagResult{}, nil
 }
 
 // UnarchiveTag loads the tag, checks ownership (403 otherwise), clears the
@@ -36,11 +35,10 @@ func (s *Service) UnarchiveTag(ctx context.Context, userID vo.Id, req UnarchiveT
 	if err != nil {
 		return nil, err
 	}
-	t, err := s.mutate(ctx, id, userID, func(t *domtag.Tag, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(t *domtag.Tag, now time.Time) {
 		t.Unarchive(now)
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &UnarchiveTagResult{Item: toResult(t)}, nil
+	return &UnarchiveTagResult{}, nil
 }

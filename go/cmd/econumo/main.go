@@ -208,7 +208,7 @@ func run() error {
 	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
 	tagRepo := tagrepo.NewRepo(cfg.DatabaseDriver, txm)
 	tagReadRepo := tagrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk)
+	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo)
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
 	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc, cfg.IsDev())
 
@@ -217,7 +217,7 @@ func run() error {
 	// create.
 	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
 	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk)
+	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo)
 	payeeReadSvc := apppayee.NewReadService(payeeReadRepo)
 	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc, cfg.IsDev())
 

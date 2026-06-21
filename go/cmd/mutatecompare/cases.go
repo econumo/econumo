@@ -12,7 +12,120 @@ import (
 func allCases() []mutationCase {
 	var cs []mutationCase
 	cs = append(cs, categoryCases()...)
+	cs = append(cs, tagCases()...)
+	cs = append(cs, payeeCases()...)
 	return cs
+}
+
+// simpleNamedCases builds the create/update/archive/unarchive/delete/order cases
+// for the category-shaped resources (category, tag, payee). They share the same
+// request shapes; only the route prefix, list endpoint, and the create "type"
+// field (categories only) differ. withType adds {"type":"expense"} to create.
+func simpleNamedCases(resource, listPath string, withType bool) []mutationCase {
+	state := func(php *client) string { return listPath }
+	base := "/api/v1/" + resource + "/"
+	// Only the category form has an icon field; tag/payee forms reject unknown
+	// fields, so don't send icon for them (the real SPA doesn't either).
+	withIcon := withType
+	return []mutationCase{
+		{
+			name: resource + "/create",
+			build: func(php *client) (string, map[string]any, string, error) {
+				id := newUUID()
+				body := map[string]any{"id": id, "name": "ZZ Compare " + id[:8]}
+				if withType {
+					body["type"] = "expense"
+				}
+				if withIcon {
+					body["icon"] = "label"
+				}
+				return base + "create-" + resource, body, "", nil
+			},
+			stateRead: state,
+			volatile:  []string{"id", "createdAt", "updatedAt"},
+		},
+		{
+			name: resource + "/update",
+			build: func(php *client) (string, map[string]any, string, error) {
+				id, skip, err := firstOwnedID(php, listPath, nil)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				body := map[string]any{"id": id, "name": "ZZ Renamed " + id[:8]}
+				if withIcon {
+					body["icon"] = "star"
+				}
+				return base + "update-" + resource, body, "", nil
+			},
+			stateRead: state,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: resource + "/archive",
+			build: func(php *client) (string, map[string]any, string, error) {
+				id, skip, err := pickByArchived(php, listPath, nil, false)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				return base + "archive-" + resource, map[string]any{"id": id}, "", nil
+			},
+			stateRead: state,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: resource + "/unarchive",
+			build: func(php *client) (string, map[string]any, string, error) {
+				id, skip, err := pickByArchived(php, listPath, nil, true)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				return base + "unarchive-" + resource, map[string]any{"id": id}, "", nil
+			},
+			stateRead: state,
+			volatile:  []string{"updatedAt"},
+		},
+		{
+			name: resource + "/delete",
+			build: func(php *client) (string, map[string]any, string, error) {
+				id, skip, err := firstOwnedID(php, listPath, nil)
+				if skip != "" || err != nil {
+					return "", nil, skip, err
+				}
+				body := map[string]any{"id": id}
+				if withType { // only category's delete takes a mode (delete/replace)
+					body["mode"] = "delete"
+				}
+				return base + "delete-" + resource, body, "", nil
+			},
+			stateRead: state,
+		},
+		{
+			name: resource + "/order",
+			build: func(php *client) (string, map[string]any, string, error) {
+				items, err := php.items(listPath, nil)
+				if err != nil {
+					return "", nil, "", err
+				}
+				if len(items) < 2 {
+					return "", nil, "need >=2 to reorder", nil
+				}
+				a, _ := items[0]["id"].(string)
+				b, _ := items[1]["id"].(string)
+				changes := []map[string]any{{"id": a, "position": 1}, {"id": b, "position": 0}}
+				return base + "order-" + resource + "-list", map[string]any{"changes": changes}, "", nil
+			},
+			stateRead: state,
+			volatile:  []string{"updatedAt"},
+		},
+	}
+}
+
+func tagCases() []mutationCase {
+	return simpleNamedCases("tag", "/api/v1/tag/get-tag-list", false)
+}
+
+func payeeCases() []mutationCase {
+	return simpleNamedCases("payee", "/api/v1/payee/get-payee-list", false)
 }
 
 // firstID returns the id of the first item from a list read, or skip if empty.

@@ -50,11 +50,14 @@ type Service struct {
 	tx    TxRunner
 	ops   OperationGuard
 	clock Clock
+	read  ReadModel
 }
 
-// NewService wires the payee service.
-func NewService(repo dompayee.Repository, tx TxRunner, ops OperationGuard, clock Clock) *Service {
-	return &Service{repo: repo, tx: tx, ops: ops, clock: clock}
+// NewService wires the payee service. read is the own+shared payee view (the
+// same ReadModel get-payee-list uses); order-payee-list returns that full
+// available list, mirroring PHP's assembler (findAvailableForUserId).
+func NewService(repo dompayee.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel) *Service {
+	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read}
 }
 
 // ---------------------------------------------------------------------------
@@ -72,7 +75,7 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *dompa
 			return err
 		}
 		if !p.UserId().Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
+			return errs.NewAccessDenied("")
 		}
 		fn(p, s.clock.Now())
 		if err := s.repo.Save(txCtx, p); err != nil {
@@ -104,7 +107,7 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 			return err
 		}
 		if !p.UserId().Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
+			return errs.NewAccessDenied("")
 		}
 		if ferr := fn(txCtx, p, s.clock.Now()); ferr != nil {
 			return ferr
@@ -140,16 +143,18 @@ func toResult(p *dompayee.Payee) PayeeResult {
 	}
 }
 
-// listResults loads the owner's payees (ordered by position) and converts them
-// to the wire shape — used by order-payee-list.
+// listResults returns the user's AVAILABLE payees (own + shared via account
+// access), ordered by position, in the wire shape — used by order-payee-list.
+// It reads through the same own+shared view as get-payee-list (PHP's order
+// assembler uses findAvailableForUserId, not owner-only).
 func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]PayeeResult, error) {
-	payees, err := s.repo.ListByOwner(ctx, userID)
+	rows, err := s.read.PayeeListView(ctx, userID.String())
 	if err != nil {
 		return nil, err
 	}
-	items := make([]PayeeResult, 0, len(payees))
-	for _, p := range payees {
-		items = append(items, toResult(p))
+	items := make([]PayeeResult, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, toViewResult(r))
 	}
 	return items, nil
 }

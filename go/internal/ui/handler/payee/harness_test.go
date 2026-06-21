@@ -99,7 +99,7 @@ func newHarness(t *testing.T) *harness {
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
-	svc := apppayee.NewService(repo, txm, opGuard, clk)
+	svc := apppayee.NewService(repo, txm, opGuard, clk, readRepo)
 	readSvc := apppayee.NewReadService(readRepo)
 	handlers := handlerpayee.NewHandlers(svc, readSvc, cfg.IsDev())
 

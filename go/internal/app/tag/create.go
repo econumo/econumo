@@ -22,10 +22,14 @@ import (
 // New-tag position = count(user's existing tags); the new tag is active with
 // created/updated = now.
 func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequest) (*CreateTagResult, error) {
-	id, err := vo.ParseId(req.Id)
+	// The request id is the OPERATION id (idempotency key), not the entity id.
+	// PHP mints a fresh UUIDv7 via tagFactory->create (getNextIdentity); the dto
+	// id is consumed only by the operation-id middleware. Mirror that.
+	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
+	id := vo.NewId()
 	name, err := newTagName(req.Name)
 	if err != nil {
 		return nil, err
@@ -43,7 +47,7 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 
 	var created *domtag.Tag
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		already, cerr := s.ops.Claim(ctx, id, s.clock.Now())
+		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
 			return cerr
 		}
@@ -65,7 +69,7 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
 		}
-		if merr := s.ops.MarkHandled(ctx, id, now); merr != nil {
+		if merr := s.ops.MarkHandled(ctx, opID, now); merr != nil {
 			return merr
 		}
 		created = t

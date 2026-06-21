@@ -116,10 +116,9 @@ func (r ArchiveTagRequest) Validate() error {
 	return nil
 }
 
-// ArchiveTagResult is the archive-tag response: {item: TagResult}.
-type ArchiveTagResult struct {
-	Item TagResult `json:"item"`
-}
+// ArchiveTagResult is the archive-tag response. PHP returns an empty DTO ->
+// {"data":{}}. (Note tag UPDATE, unlike archive, DOES echo the item.)
+type ArchiveTagResult struct{}
 
 // UnarchiveTagRequest is the unarchive-tag request body (id NotBlank).
 type UnarchiveTagRequest struct {
@@ -134,10 +133,8 @@ func (r UnarchiveTagRequest) Validate() error {
 	return nil
 }
 
-// UnarchiveTagResult is the unarchive-tag response: {item: TagResult}.
-type UnarchiveTagResult struct {
-	Item TagResult `json:"item"`
-}
+// UnarchiveTagResult is the unarchive-tag response. PHP returns an empty DTO.
+type UnarchiveTagResult struct{}
 
 // ---------------------------------------------------------------------------
 // delete-tag

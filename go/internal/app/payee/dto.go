@@ -94,10 +94,10 @@ func (r UpdatePayeeRequest) Validate() error {
 	return nil
 }
 
-// UpdatePayeeResult is the update-payee response: {item: PayeeResult}.
-type UpdatePayeeResult struct {
-	Item PayeeResult `json:"item"`
-}
+// UpdatePayeeResult is the update-payee response. PHP's
+// UpdatePayeeV1ResultAssembler returns an EMPTY DTO -> {"data":{}} (unlike tag,
+// whose update echoes the item).
+type UpdatePayeeResult struct{}
 
 // ---------------------------------------------------------------------------
 // archive-payee / unarchive-payee
@@ -116,10 +116,8 @@ func (r ArchivePayeeRequest) Validate() error {
 	return nil
 }
 
-// ArchivePayeeResult is the archive-payee response: {item: PayeeResult}.
-type ArchivePayeeResult struct {
-	Item PayeeResult `json:"item"`
-}
+// ArchivePayeeResult is the archive-payee response. PHP returns an empty DTO.
+type ArchivePayeeResult struct{}
 
 // UnarchivePayeeRequest is the unarchive-payee request body (id NotBlank).
 type UnarchivePayeeRequest struct {
@@ -134,10 +132,8 @@ func (r UnarchivePayeeRequest) Validate() error {
 	return nil
 }
 
-// UnarchivePayeeResult is the unarchive-payee response: {item: PayeeResult}.
-type UnarchivePayeeResult struct {
-	Item PayeeResult `json:"item"`
-}
+// UnarchivePayeeResult is the unarchive-payee response. PHP returns an empty DTO.
+type UnarchivePayeeResult struct{}
 
 // ---------------------------------------------------------------------------
 // delete-payee

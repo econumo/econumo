@@ -21,6 +21,18 @@ func createReq(id, name string) map[string]any {
 	return map[string]any{"id": id, "name": name}
 }
 
+// createPayee calls the create-payee endpoint and returns the MINTED entity id
+// from the response (which is NOT equal to the operation/idempotency opID).
+func createPayee(t *testing.T, h *harness, token, opID, name string) string {
+	t.Helper()
+	_, env := h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(opID, name))
+	res := mustUnmarshal[itemWrapper](t, env.Data)
+	if res.Item.ID == "" {
+		t.Fatalf("create returned no id; body: %s", env.raw)
+	}
+	return res.Item.ID
+}
+
 // itemWrapper / itemsWrapper are the {item} / {items} data shapes.
 type itemWrapper struct {
 	Item payeeItem `json:"item"`
@@ -51,8 +63,11 @@ func TestCreatePayee_Success(t *testing.T) {
 
 	res := mustUnmarshal[itemWrapper](t, env.Data)
 	it := res.Item
-	if it.ID != payeeID1 {
-		t.Fatalf("item.id = %q, want %q", it.ID, payeeID1)
+	if it.ID == "" {
+		t.Fatalf("item.id is empty; body: %s", env.raw)
+	}
+	if it.ID == payeeID1 {
+		t.Fatalf("item.id = %q, must be a freshly minted id (not the request id %q)", it.ID, payeeID1)
 	}
 	if it.OwnerUserID != seedUserID {
 		t.Fatalf("item.ownerUserId = %q, want %q", it.OwnerUserID, seedUserID)
@@ -168,23 +183,28 @@ func TestUpdatePayee_ChangesName(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(payeeID1, "Old"))
+	id := createPayee(t, h, token, payeeID1, "Old")
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/payee/update-payee", token, map[string]any{
-		"id": payeeID1, "name": "New",
+		"id": id, "name": "New",
 	})
 	if status != http.StatusOK {
 		t.Fatalf("update status = %d, want 200; body: %s", status, env.raw)
 	}
-	res := mustUnmarshal[itemWrapper](t, env.Data)
-	if res.Item.Name != "New" {
-		t.Fatalf("returned name = %q, want New", res.Item.Name)
+	if string(env.Data) != "{}" {
+		t.Fatalf("update data = %s, want empty object {}", env.Data)
 	}
 
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/payee/get-payee-list", token, nil)
 	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
-	if len(list.Items) != 1 || list.Items[0].Name != "New" {
-		t.Fatalf("persisted list = %+v, want one item named New", list.Items)
+	var found *payeeItem
+	for i := range list.Items {
+		if list.Items[i].ID == id {
+			found = &list.Items[i]
+		}
+	}
+	if found == nil || found.Name != "New" {
+		t.Fatalf("persisted list = %+v, want item %s named New", list.Items, id)
 	}
 }
 
@@ -221,27 +241,31 @@ func TestArchivePayee_ThenListShowsArchived(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(payeeID1, "Shop"))
+	id := createPayee(t, h, token, payeeID1, "Shop")
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/payee/archive-payee", token, map[string]any{"id": payeeID1})
+	status, env := h.do(t, http.MethodPost, "/api/v1/payee/archive-payee", token, map[string]any{"id": id})
 	if status != http.StatusOK {
 		t.Fatalf("archive status = %d, want 200; body: %s", status, env.raw)
 	}
-	res := mustUnmarshal[itemWrapper](t, env.Data)
-	if res.Item.IsArchived != 1 {
-		t.Fatalf("archived item.isArchived = %d, want 1", res.Item.IsArchived)
+	if string(env.Data) != "{}" {
+		t.Fatalf("archive data = %s, want empty object {}", env.Data)
 	}
 
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/payee/get-payee-list", token, nil)
 	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
-	if len(list.Items) != 1 || list.Items[0].IsArchived != 1 {
-		t.Fatalf("list = %+v, want one item with isArchived=1", list.Items)
+	if len(list.Items) != 1 || list.Items[0].ID != id || list.Items[0].IsArchived != 1 {
+		t.Fatalf("list = %+v, want one item %s with isArchived=1", list.Items, id)
 	}
 
-	_, unEnv := h.do(t, http.MethodPost, "/api/v1/payee/unarchive-payee", token, map[string]any{"id": payeeID1})
-	un := mustUnmarshal[itemWrapper](t, unEnv.Data)
-	if un.Item.IsArchived != 0 {
-		t.Fatalf("unarchived item.isArchived = %d, want 0", un.Item.IsArchived)
+	_, unEnv := h.do(t, http.MethodPost, "/api/v1/payee/unarchive-payee", token, map[string]any{"id": id})
+	if string(unEnv.Data) != "{}" {
+		t.Fatalf("unarchive data = %s, want empty object {}", unEnv.Data)
+	}
+
+	_, listEnv2 := h.do(t, http.MethodGet, "/api/v1/payee/get-payee-list", token, nil)
+	list2 := mustUnmarshal[itemsWrapper](t, listEnv2.Data)
+	if len(list2.Items) != 1 || list2.Items[0].ID != id || list2.Items[0].IsArchived != 0 {
+		t.Fatalf("list after unarchive = %+v, want one item %s with isArchived=0", list2.Items, id)
 	}
 }
 
@@ -249,14 +273,14 @@ func TestOrderPayeeList_Reorders(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(payeeID1, "First"))  // pos 0
-	h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(payeeID2, "Second")) // pos 1
-	h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(payeeID3, "Third"))  // pos 2
+	id1 := createPayee(t, h, token, payeeID1, "First")  // pos 0
+	id2 := createPayee(t, h, token, payeeID2, "Second") // pos 1
+	id3 := createPayee(t, h, token, payeeID3, "Third")  // pos 2
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/payee/order-payee-list", token, map[string]any{
 		"changes": []map[string]any{
-			{"id": payeeID3, "position": 0},
-			{"id": payeeID1, "position": 2},
+			{"id": id3, "position": 0},
+			{"id": id1, "position": 2},
 		},
 	})
 	if status != http.StatusOK {
@@ -270,11 +294,11 @@ func TestOrderPayeeList_Reorders(t *testing.T) {
 	for _, it := range res.Items {
 		pos[it.ID] = it.Position
 	}
-	if pos[payeeID3] != 0 || pos[payeeID2] != 1 || pos[payeeID1] != 2 {
-		t.Fatalf("positions = %v, want payeeID3=0 payeeID2=1 payeeID1=2", pos)
+	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
+		t.Fatalf("positions = %v, want id3=0 id2=1 id1=2", pos)
 	}
-	if res.Items[0].ID != payeeID3 || res.Items[2].ID != payeeID1 {
-		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, payeeID3, payeeID1)
+	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
+		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
 	}
 }
 
@@ -319,9 +343,9 @@ func TestDeletePayee_RemovesIt(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(payeeID1, "Shop"))
+	id := createPayee(t, h, token, payeeID1, "Shop")
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/payee/delete-payee", token, map[string]any{"id": payeeID1})
+	status, env := h.do(t, http.MethodPost, "/api/v1/payee/delete-payee", token, map[string]any{"id": id})
 	if status != http.StatusOK {
 		t.Fatalf("delete status = %d, want 200; body: %s", status, env.raw)
 	}

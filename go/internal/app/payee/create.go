@@ -23,10 +23,13 @@ import (
 // New-payee position = count(user's existing payees); the new payee is active
 // with created/updated = now.
 func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayeeRequest) (*CreatePayeeResult, error) {
-	id, err := vo.ParseId(req.Id)
+	// Request id is the OPERATION id; PHP mints a fresh entity UUIDv7 via
+	// payeeFactory->create (getNextIdentity). Mirror that.
+	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
+	id := vo.NewId()
 	name, err := newPayeeName(req.Name)
 	if err != nil {
 		return nil, err
@@ -44,7 +47,7 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 
 	var created *dompayee.Payee
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		already, cerr := s.ops.Claim(txCtx, id, s.clock.Now())
+		already, cerr := s.ops.Claim(txCtx, opID, s.clock.Now())
 		if cerr != nil {
 			return cerr
 		}
@@ -66,7 +69,7 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 		if serr := s.repo.Save(txCtx, p); serr != nil {
 			return serr
 		}
-		if merr := s.ops.MarkHandled(txCtx, id, now); merr != nil {
+		if merr := s.ops.MarkHandled(txCtx, opID, now); merr != nil {
 			return merr
 		}
 		created = p
