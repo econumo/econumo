@@ -1,10 +1,12 @@
 package budget_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -18,35 +20,23 @@ const (
 // seeded Food category. Mirrors the convertor_provider seeding pattern.
 func (h *harness) seedTwoCurrency(t *testing.T) {
 	t.Helper()
-	ctx := context.Background()
-	now := time.Unix(1690000000, 0).UTC()
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	// EUR currency (the baseline already inserted USD with usdID).
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO currencies (id, code, symbol, fraction_digits, created_at) VALUES (?, 'EUR', 'E', 2, ?)`, eurID, now); err != nil {
-		t.Fatalf("seed EUR: %v", err)
-	}
+	f.Currency(fixture.Currency{ID: eurID, Code: "EUR", Symbol: "E"})
 	// Two EUR->USD rates in Jan 2026: AVG(0.90, 0.92) = 0.91.
 	for _, r := range []struct{ id, date, rate string }{
 		{"20000000-0000-7000-8000-000000000001", "2026-01-10", "0.90"},
 		{"20000000-0000-7000-8000-000000000002", "2026-01-20", "0.92"},
 	} {
-		if _, err := h.db.ExecContext(ctx, `INSERT INTO currencies_rates (id, currency_id, base_currency_id, rate, published_at) VALUES (?, ?, ?, ?, ?)`,
-			r.id, eurID, usdID, r.rate, r.date); err != nil {
-			t.Fatalf("seed rate: %v", err)
-		}
+		f.Rate(fixture.Rate{ID: r.id, CurrencyID: eurID, BaseCurrencyID: usdID, Rate: r.rate, PublishedAt: r.date})
 	}
 	// EUR account owned by the seed user, in the Main folder.
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Euro', 2, 'wallet', 0, ?, ?)`,
-		eurAcctID, eurID, seedUserID, now, now); err != nil {
-		t.Fatalf("seed EUR account: %v", err)
-	}
-	h.db.ExecContext(ctx, `INSERT INTO accounts_folders (folder_id, account_id) VALUES (?, ?)`, folderID, eurAcctID)
-	h.db.ExecContext(ctx, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 1, ?, ?)`, eurAcctID, seedUserID, now, now)
+	f.Account(fixture.Account{ID: eurAcctID, UserID: seedUserID, CurrencyID: eurID, Name: "Euro"})
+	f.AccountInFolder(folderID, eurAcctID)
+	f.AccountOption(eurAcctID, seedUserID, 1)
 	// A 100 EUR expense (type=0) in Jan 2026, categorized to Food.
 	jan := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO transactions (id, user_id, account_id, category_id, type, amount, description, spent_at, created_at, updated_at) VALUES (?, ?, ?, ?, 0, '100.00', '', ?, ?, ?)`,
-		eurTxID, seedUserID, eurAcctID, catID, jan, now, now); err != nil {
-		t.Fatalf("seed EUR tx: %v", err)
-	}
+	f.Transaction(fixture.Transaction{ID: eurTxID, UserID: seedUserID, AccountID: eurAcctID, CategoryID: catID, Type: 0, Amount: "100.00", SpentAt: jan})
 }
 
 // A USD budget with a EUR account + EUR transaction reports the EUR balance in

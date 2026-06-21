@@ -13,6 +13,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -20,16 +21,16 @@ const (
 	folder2 = "ffffffff-0000-0000-0000-00000000f002"
 )
 
-func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *dbtest.DB) {
+func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
-	return accountrepo.NewFolderRepo("sqlite", db.TX), db
+	return accountrepo.NewFolderRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
 func TestFolderRepo_SaveGetRoundTrip(t *testing.T) {
-	repo, db := newFolderRepo(t)
+	repo, _, fx := newFolderRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
+	seedUser(t, fx, userA, "A")
 
 	id := vo.MustParseId(folder1)
 	f := domaccount.FolderFromState(id, vo.MustParseId(userA), "Main", 5, true, fixedTime, fixedTime)
@@ -52,8 +53,8 @@ func TestFolderRepo_SaveGetRoundTrip(t *testing.T) {
 }
 
 func TestFolderRepo_GetByID_NotFound(t *testing.T) {
-	repo, db := newFolderRepo(t)
-	seedUser(t, db, userA, "A")
+	repo, _, fx := newFolderRepo(t)
+	seedUser(t, fx, userA, "A")
 	_, err := repo.GetByID(context.Background(), vo.NewId())
 	var nf *errs.NotFoundError
 	if !errors.As(err, &nf) {
@@ -62,9 +63,9 @@ func TestFolderRepo_GetByID_NotFound(t *testing.T) {
 }
 
 func TestFolderRepo_ListAndCountByUser(t *testing.T) {
-	repo, db := newFolderRepo(t)
+	repo, _, fx := newFolderRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
+	seedUser(t, fx, userA, "A")
 	for _, id := range []string{folder1, folder2} {
 		f := domaccount.FolderFromState(vo.MustParseId(id), vo.MustParseId(userA), "F", 0, true, fixedTime, fixedTime)
 		if err := repo.Save(ctx, f); err != nil {
@@ -88,9 +89,9 @@ func TestFolderRepo_ListAndCountByUser(t *testing.T) {
 }
 
 func TestFolderRepo_Delete(t *testing.T) {
-	repo, db := newFolderRepo(t)
+	repo, _, fx := newFolderRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
+	seedUser(t, fx, userA, "A")
 	id := vo.MustParseId(folder1)
 	f := domaccount.FolderFromState(id, vo.MustParseId(userA), "Main", 0, true, fixedTime, fixedTime)
 	if err := repo.Save(ctx, f); err != nil {
@@ -107,11 +108,11 @@ func TestFolderRepo_Delete(t *testing.T) {
 }
 
 func TestFolderRepo_Membership(t *testing.T) {
-	repo, db := newFolderRepo(t)
+	repo, _, fx := newFolderRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
-	seedAccount(t, db, acctCash, userA, "Cash")
-	seedAccount(t, db, acctBank, userA, "Bank")
+	seedUser(t, fx, userA, "A")
+	seedAccount(t, fx, acctCash, userA, "Cash")
+	seedAccount(t, fx, acctBank, userA, "Bank")
 	f := domaccount.FolderFromState(vo.MustParseId(folder1), vo.MustParseId(userA), "Main", 0, true, fixedTime, fixedTime)
 	if err := repo.Save(ctx, f); err != nil {
 		t.Fatalf("Save folder: %v", err)

@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -35,8 +36,7 @@ var (
 
 func seedUser(t *testing.T, db *dbtest.DB, id string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
-		id, id, fixedTime, fixedTime)
+	fixture.New(t, db).User(fixture.User{ID: id, Name: "u"})
 }
 
 func newRepo(t *testing.T) (*budgetrepo.Repo, *dbtest.DB) {
@@ -125,8 +125,7 @@ func TestBudgetRepo_ExcludedAccounts(t *testing.T) {
 	repo, db := newRepo(t)
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'A', 2, 'x', 0, ?, ?)`,
-		acctA, usdID, userA, fixedTime, fixedTime)
+	fixture.New(t, db).Account(fixture.Account{ID: acctA, CurrencyID: usdID, UserID: userA, Name: "A", Icon: "x"})
 
 	if err := repo.ExcludeAccount(ctx, vo.MustParseId(budgetID), vo.MustParseId(acctA)); err != nil {
 		t.Fatalf("ExcludeAccount: %v", err)
@@ -186,8 +185,7 @@ func TestBudgetRepo_EnvelopeCRUDAndCategories(t *testing.T) {
 
 	// Envelope category membership.
 	catID := vo.NewId()
-	db.Exec(t, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, 'Food', 0, 0, 'x', 0, ?, ?)`,
-		catID.String(), userA, fixedTime, fixedTime)
+	fixture.New(t, db).Category(fixture.Category{ID: catID.String(), UserID: userA, Name: "Food", Icon: "x"})
 	if err := repo.AddEnvelopeCategory(ctx, eid, catID); err != nil {
 		t.Fatalf("AddEnvelopeCategory: %v", err)
 	}
@@ -299,12 +297,10 @@ func TestBudgetRepo_GetLimit_DatetimeBinding(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	eid := "e0000000-0000-0000-0000-0000000000e1"
-	db.Exec(t, `INSERT INTO budgets_elements (id, budget_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, 1, 0, ?, ?)`,
-		eid, budgetID, vo.NewId().String(), fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO budgets_elements_limits (id, element_id, period, amount, created_at, updated_at) VALUES (?, ?, '2024-04-01 00:00:00', '250.12345678', ?, ?)`,
-		"71000000-0000-0000-0000-000000000001", eid, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO budgets_elements_limits (id, element_id, period, amount, created_at, updated_at) VALUES (?, ?, '2024-05-01 00:00:00', '99.99', ?, ?)`,
-		"71000000-0000-0000-0000-000000000002", eid, fixedTime, fixedTime)
+	f := fixture.New(t, db)
+	f.BudgetElement(fixture.BudgetElement{ID: eid, BudgetID: budgetID, ExternalID: vo.NewId().String(), Type: 1, Position: 0})
+	f.BudgetLimit(fixture.BudgetLimit{ID: "71000000-0000-0000-0000-000000000001", ElementID: eid, Period: "2024-04-01 00:00:00", Amount: "250.12345678"})
+	f.BudgetLimit(fixture.BudgetLimit{ID: "71000000-0000-0000-0000-000000000002", ElementID: eid, Period: "2024-05-01 00:00:00", Amount: "99.99"})
 
 	got, err := repo.GetLimit(ctx, vo.MustParseId(eid), aprPeriod)
 	if err != nil {

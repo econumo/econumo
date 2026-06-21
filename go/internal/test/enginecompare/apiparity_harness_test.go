@@ -18,8 +18,6 @@ package enginecompare
 
 import (
 	"bytes"
-	"context"
-	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -31,19 +29,17 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/testkeys"
 )
 
 // Fixed crypto material shared by both engines so seeded users + minted tokens
-// are identical. The data salt is exactly 16 bytes (AES-128). The JWT keypair is
-// the repo dev keypair vendored under infra/auth/testdata; the relative path
-// resolves from THIS package directory (internal/test/enginecompare).
+// are identical. The data salt is exactly 16 bytes (AES-128). The JWT keypair
+// comes from the shared testkeys helper (embedded, written to a temp file) so no
+// fragile relative path to it is needed.
 const (
 	apiDataSalt     = "0123456789abcdef"
-	apiPassphrase   = "d78eedcb16c13bd949ede5d1b8b910cd"
-	apiPrivateKey   = "../../infra/auth/testdata/private.pem"
-	apiPublicKey    = "../../infra/auth/testdata/public.pem"
 	apiSeedPassword = "secret-pw"
-	apiSeedSalt     = "0000000000000000000000000000000000000001" // 40-char sha1-shaped salt
 )
 
 // apiFixedClock pins issuance + persistence time so tokens and any created-row
@@ -56,7 +52,6 @@ func (c apiFixedClock) Now() time.Time { return c.t }
 // collaborators a scenario needs to craft authenticated requests.
 type apiHarness struct {
 	srv    *httptest.Server
-	db     *sql.DB
 	engine string
 	jwt    *auth.JWT
 	clock  apiFixedClock
@@ -67,7 +62,8 @@ type apiHarness struct {
 func newAPIHarness(t *testing.T, db *dbtest.DB) *apiHarness {
 	t.Helper()
 
-	jwt, err := auth.NewJWT(apiPrivateKey, apiPublicKey, apiPassphrase)
+	priv, pub := testkeys.Paths(t)
+	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
@@ -87,14 +83,13 @@ func newAPIHarness(t *testing.T, db *dbtest.DB) *apiHarness {
 		CORSAllowOrigin:   "*",
 	}
 
-	encode := auth.NewEncodeService(apiDataSalt)
-	seedAPIFixture(t, db, encode)
+	seedAPIFixture(t, db)
 
 	handler := server.BuildAPI(cfg, db.Raw, jwt, clk)
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &apiHarness{srv: srv, db: db.Raw, engine: db.Engine, jwt: jwt, clock: clk}
+	return &apiHarness{srv: srv, engine: db.Engine, jwt: jwt, clock: clk}
 }
 
 // apiClockTime is the fixed instant used for token issuance + any created rows.
@@ -172,137 +167,51 @@ const (
 	apiBudget = "b0000000-0000-0000-0000-000000000001"
 )
 
-// apiSeedTime is the fixed created/updated timestamp for every seeded row. Bound
-// as a "Y-m-d H:i:s" string by the seed helper's time formatting (see seed()).
-var apiSeedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
-
-// seedAPIFixture inserts an identical, cross-module fixture into the given engine
-// using engine-portable statements (the rebind + TRUE/FALSE helpers from
-// harness_test.go). It seeds: two connected users (with hashed password +
-// encrypted email so login works), their default options, folders, an owned
-// account and a guest-owned account shared to the owner, categories, a tag, a
-// payee, two transactions, and a budget — so every read endpoint returns
-// non-empty data on both engines.
-func seedAPIFixture(t *testing.T, db *dbtest.DB, encode *auth.EncodeService) {
+// seedAPIFixture seeds an identical, cross-module fixture into the given engine
+// via the typed fixture builder. It seeds: two connected users (with hashed
+// password + encrypted email so login works), their default options, folders, an
+// owned account and a guest-owned account shared to the owner, categories, a tag,
+// a payee, two transactions, and a budget — so every read endpoint returns
+// non-empty data on both engines. Fixed ids are used (the scenarios reference
+// them in request bodies); the comparison is over the API RESPONSES.
+func seedAPIFixture(t *testing.T, db *dbtest.DB) {
 	t.Helper()
-	hasher := auth.NewPasswordHasher()
+	f := fixture.New(t, db).WithCrypto(apiDataSalt)
 
-	for _, u := range []struct{ id, email string }{
-		{apiOwnerID, apiOwnerEmail},
-		{apiGuestID, apiGuestEmail},
-	} {
-		identifier := encode.Hash(lower(u.email))
-		encEmail, err := encode.Encode(u.email)
-		if err != nil {
-			t.Fatalf("encode email: %v", err)
-		}
-		pwHash := hasher.Hash(apiSeedPassword, apiSeedSalt)
-		seedTS(t, db, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-			VALUES (?, ?, ?, ?, '', ?, ?, ?, ?, TRUE)`,
-			u.id, identifier, encEmail, "User "+u.id[:4], pwHash, apiSeedSalt, apiSeedTime, apiSeedTime)
-
-		// Four default options per user (budget value NULL — matches production).
-		// All four share an IDENTICAL created_at, exactly as production does (one
-		// clock.Now() per registration seeds every option). This deliberately
-		// exercises the options query's secondary "ORDER BY ..., id" tiebreak: with
-		// equal created_at the order would otherwise be engine-specific
-		// (SQLite=insertion, PostgreSQL=unspecified). The ids below are fixed and
-		// strictly increasing so both engines agree on the resulting order.
-		for _, o := range []struct {
-			id, name, value string
-			null            bool
-		}{
-			{u.id[:8] + "-0000-0000-0000-000000000001", "currency", "USD", false},
-			{u.id[:8] + "-0000-0000-0000-000000000002", "report_period", "monthly", false},
-			{u.id[:8] + "-0000-0000-0000-000000000003", "onboarding", "started", false},
-			{u.id[:8] + "-0000-0000-0000-000000000004", "budget", "", true},
-		} {
-			if o.null {
-				seedTS(t, db, `INSERT INTO users_options (id, user_id, name, value, created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?)`,
-					o.id, u.id, o.name, apiSeedTime, apiSeedTime)
-			} else {
-				seedTS(t, db, `INSERT INTO users_options (id, user_id, name, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-					o.id, u.id, o.name, o.value, apiSeedTime, apiSeedTime)
-			}
-		}
-	}
-
-	// Bidirectional connection between owner and guest.
-	seed(t, db, `INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, apiOwnerID, apiGuestID)
-	seed(t, db, `INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, apiGuestID, apiOwnerID)
+	f.User(fixture.User{ID: apiOwnerID, Email: apiOwnerEmail, Name: "User " + apiOwnerID[:4], Password: apiSeedPassword})
+	f.DefaultOptions(apiOwnerID)
+	f.User(fixture.User{ID: apiGuestID, Email: apiGuestEmail, Name: "User " + apiGuestID[:4], Password: apiSeedPassword})
+	f.DefaultOptions(apiGuestID)
+	f.Connect(apiOwnerID, apiGuestID)
 
 	// Folders.
-	seedTS(t, db, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, TRUE, ?, ?)`,
-		apiOwnerFolder, apiOwnerID, apiSeedTime, apiSeedTime)
-	seedTS(t, db, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, TRUE, ?, ?)`,
-		apiGuestFolder, apiGuestID, apiSeedTime, apiSeedTime)
+	f.Folder(fixture.Folder{ID: apiOwnerFolder, UserID: apiOwnerID, Name: "Main"})
+	f.Folder(fixture.Folder{ID: apiGuestFolder, UserID: apiGuestID, Name: "Main"})
 
 	// Owner's own account.
-	seedTS(t, db, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Cash', 2, 'wallet', FALSE, ?, ?)`,
-		apiOwnerAccount, apiUSD, apiOwnerID, apiSeedTime, apiSeedTime)
-	seed(t, db, `INSERT INTO accounts_folders (folder_id, account_id) VALUES (?, ?)`, apiOwnerFolder, apiOwnerAccount)
-	seedTS(t, db, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 0, ?, ?)`,
-		apiOwnerAccount, apiOwnerID, apiSeedTime, apiSeedTime)
+	f.Account(fixture.Account{ID: apiOwnerAccount, UserID: apiOwnerID, CurrencyID: apiUSD, Name: "Cash"})
+	f.AccountInFolder(apiOwnerFolder, apiOwnerAccount)
+	f.AccountOption(apiOwnerAccount, apiOwnerID, 0)
 
 	// Guest-owned account, SHARED to the owner (accounts_access grant) so the
 	// owner's get-account-list / sharedAccess[] / connection list are non-empty.
-	seedTS(t, db, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Shared', 2, 'wallet', FALSE, ?, ?)`,
-		apiSharedAccount, apiUSD, apiGuestID, apiSeedTime, apiSeedTime)
-	seedTS(t, db, `INSERT INTO accounts_folders (folder_id, account_id) VALUES (?, ?)`, apiGuestFolder, apiSharedAccount)
-	seedTS(t, db, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 0, ?, ?)`,
-		apiSharedAccount, apiGuestID, apiSeedTime, apiSeedTime)
-	seedTS(t, db, `INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, 1, ?, ?)`,
-		apiSharedAccount, apiOwnerID, apiSeedTime, apiSeedTime)
+	f.Account(fixture.Account{ID: apiSharedAccount, UserID: apiGuestID, CurrencyID: apiUSD, Name: "Shared"})
+	f.AccountInFolder(apiGuestFolder, apiSharedAccount)
+	f.AccountOption(apiSharedAccount, apiGuestID, 0)
+	f.AccountAccess(apiSharedAccount, apiOwnerID, 1)
 
 	// Categories (owner): one expense, one income.
-	seedTS(t, db, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, 'Food', 0, 0, 'i', FALSE, ?, ?)`,
-		apiCatFood, apiOwnerID, apiSeedTime, apiSeedTime)
-	seedTS(t, db, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, 'Salary', 1, 1, 'i', FALSE, ?, ?)`,
-		apiCatSalary, apiOwnerID, apiSeedTime, apiSeedTime)
+	f.Category(fixture.Category{ID: apiCatFood, UserID: apiOwnerID, Name: "Food", Position: 0, Type: 0})
+	f.Category(fixture.Category{ID: apiCatSalary, UserID: apiOwnerID, Name: "Salary", Position: 1, Type: 1})
 
 	// Tag + payee (owner).
-	seedTS(t, db, `INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at) VALUES (?, ?, 'Work', 0, FALSE, ?, ?)`,
-		apiTagWork, apiOwnerID, apiSeedTime, apiSeedTime)
-	seedTS(t, db, `INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at) VALUES (?, ?, 'Shop', 0, FALSE, ?, ?)`,
-		apiPayeeShop, apiOwnerID, apiSeedTime, apiSeedTime)
+	f.Tag(fixture.Tag{ID: apiTagWork, UserID: apiOwnerID, Name: "Work"})
+	f.Payee(fixture.Payee{ID: apiPayeeShop, UserID: apiOwnerID, Name: "Shop"})
 
 	// Transactions on the owner's account (one expense, one income).
-	seedTS(t, db, `INSERT INTO transactions (id, user_id, account_id, category_id, payee_id, type, amount, description, spent_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, 1, ?, 'lunch', ?, ?, ?)`,
-		apiTxn1, apiOwnerID, apiOwnerAccount, apiCatFood, apiPayeeShop, "12.50000000", apiSeedTime, apiSeedTime, apiSeedTime)
-	seedTS(t, db, `INSERT INTO transactions (id, user_id, account_id, category_id, type, amount, description, spent_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 0, ?, 'pay', ?, ?, ?)`,
-		apiTxn2, apiOwnerID, apiOwnerAccount, apiCatSalary, "1000.00000000", apiSeedTime, apiSeedTime, apiSeedTime)
+	f.Transaction(fixture.Transaction{ID: apiTxn1, UserID: apiOwnerID, AccountID: apiOwnerAccount, CategoryID: apiCatFood, PayeeID: apiPayeeShop, Type: 1, Amount: "12.50000000", Description: "lunch"})
+	f.Transaction(fixture.Transaction{ID: apiTxn2, UserID: apiOwnerID, AccountID: apiOwnerAccount, CategoryID: apiCatSalary, Type: 0, Amount: "1000.00000000", Description: "pay"})
 
 	// A budget owned by the owner.
-	seedTS(t, db, `INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at) VALUES (?, ?, ?, 'Budget', ?, ?, ?)`,
-		apiBudget, apiUSD, apiOwnerID, apiSeedTime, apiSeedTime, apiSeedTime)
-}
-
-// seedTS is seed() but formats any time.Time arg as the bare "Y-m-d H:i:s" string
-// the production code stores (modernc serializes time.Time to RFC3339, which
-// SQLite datetime() can't parse — so timestamp columns must be bound as strings).
-func seedTS(t *testing.T, db *dbtest.DB, query string, args ...any) {
-	t.Helper()
-	out := make([]any, len(args))
-	for i, a := range args {
-		if tm, ok := a.(time.Time); ok {
-			out[i] = tm.Format("2006-01-02 15:04:05")
-		} else {
-			out[i] = a
-		}
-	}
-	if _, err := db.Raw.ExecContext(context.Background(), rebind(db.Engine, query), out...); err != nil {
-		t.Fatalf("seedTS (%s) %q: %v", db.Engine, query, err)
-	}
-}
-
-func lower(s string) string {
-	b := []byte(s)
-	for i, c := range b {
-		if c >= 'A' && c <= 'Z' {
-			b[i] = c + 32
-		}
-	}
-	return string(b)
+	f.Budget(fixture.Budget{ID: apiBudget, UserID: apiOwnerID, CurrencyID: apiUSD, Name: "Budget"})
 }

@@ -13,6 +13,7 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const budgetA = "b0d00000-0000-0000-0000-00000000b0a1"
@@ -20,8 +21,9 @@ const budgetA = "b0d00000-0000-0000-0000-00000000b0a1"
 func TestBudgetAccessRevoker_RevokeBetween(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
-	seedUser(t, db, userB)
+	f := fixture.New(t, db)
+	seedUser(t, f, userA)
+	seedUser(t, f, userB)
 
 	budgets := budgetrepo.NewRepo("sqlite", db.TX)
 	revoker := connectionrepo.NewBudgetAccessRevoker(budgets)

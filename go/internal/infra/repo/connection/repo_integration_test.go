@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -28,30 +29,29 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-func seedUser(t *testing.T, db *dbtest.DB, id string) {
+func seedUser(t *testing.T, f *fixture.Builder, id string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
-		id, id, fixedTime, fixedTime)
+	f.User(fixture.User{ID: id, Name: "u"})
 }
 
-func seedAccount(t *testing.T, db *dbtest.DB, id, userID string) {
+func seedAccount(t *testing.T, f *fixture.Builder, id, userID string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'A', 2, 'x', 0, ?, ?)`,
-		id, usdID, userID, fixedTime, fixedTime)
+	f.Account(fixture.Account{ID: id, UserID: userID, CurrencyID: usdID, Name: "A", Type: 2, Icon: "x"})
 }
 
-func newRepo(t *testing.T) (*connectionrepo.Repo, *dbtest.DB) {
+func newRepo(t *testing.T) (*connectionrepo.Repo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
-	seedUser(t, db, userA)
-	seedUser(t, db, userB)
-	seedAccount(t, db, acctA, userA)
-	seedAccount(t, db, acctB, userB)
-	return connectionrepo.NewRepo("sqlite", db.TX), db
+	f := fixture.New(t, db)
+	seedUser(t, f, userA)
+	seedUser(t, f, userB)
+	seedAccount(t, f, acctA, userA)
+	seedAccount(t, f, acctB, userB)
+	return connectionrepo.NewRepo("sqlite", db.TX), db, f
 }
 
 func TestConnectionRepo_GrantCRUD(t *testing.T) {
-	repo, _ := newRepo(t)
+	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	// userA grants access on acctA to userB.
 	access := domconnection.FromState(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime)
@@ -80,7 +80,7 @@ func TestConnectionRepo_GrantCRUD(t *testing.T) {
 }
 
 func TestConnectionRepo_Get_NotFound(t *testing.T) {
-	repo, _ := newRepo(t)
+	repo, _, _ := newRepo(t)
 	_, err := repo.Get(context.Background(), vo.MustParseId(acctA), vo.MustParseId(userB))
 	var nf *errs.NotFoundError
 	if !errors.As(err, &nf) {
@@ -89,7 +89,7 @@ func TestConnectionRepo_Get_NotFound(t *testing.T) {
 }
 
 func TestConnectionRepo_ReceivedIssuedByAccount(t *testing.T) {
-	repo, _ := newRepo(t)
+	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	// userA grants access on acctA to userB.
 	_ = repo.Save(ctx, domconnection.FromState(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime))
@@ -132,7 +132,7 @@ func TestConnectionRepo_ReceivedIssuedByAccount(t *testing.T) {
 }
 
 func TestConnectionRepo_AccountOwner(t *testing.T) {
-	repo, _ := newRepo(t)
+	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	owner, err := repo.AccountOwner(ctx, vo.MustParseId(acctA))
 	if err != nil {
@@ -149,7 +149,7 @@ func TestConnectionRepo_AccountOwner(t *testing.T) {
 }
 
 func TestConnectionRepo_ConnectUsersAndLinks(t *testing.T) {
-	repo, _ := newRepo(t)
+	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	if err := repo.ConnectUsers(ctx, vo.MustParseId(userA), vo.MustParseId(userB)); err != nil {
 		t.Fatalf("ConnectUsers: %v", err)
@@ -182,10 +182,9 @@ func TestConnectionRepo_ConnectUsersAndLinks(t *testing.T) {
 }
 
 func TestConnectionRepo_DeleteOption(t *testing.T) {
-	repo, db := newRepo(t)
+	repo, db, f := newRepo(t)
 	ctx := context.Background()
-	db.Exec(t, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 0, ?, ?)`,
-		acctA, userB, fixedTime, fixedTime)
+	f.AccountOption(acctA, userB, 0)
 	if err := repo.DeleteOption(ctx, vo.MustParseId(acctA), vo.MustParseId(userB)); err != nil {
 		t.Fatalf("DeleteOption: %v", err)
 	}

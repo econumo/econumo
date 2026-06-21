@@ -10,20 +10,21 @@ import (
 	"time"
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
+
+	"github.com/econumo/econumo/internal/test/testkeys"
 )
 
-// Repo dev keypair, copied into testdata so these tests are self-contained and
-// run without external services in CI. The passphrase is the repo's dev
-// JWT_PASSPHRASE from .env.dist (not a production secret).
-const (
-	testPrivateKeyPath = "testdata/private.pem"
-	testPublicKeyPath  = "testdata/public.pem"
-	testPassphrase     = "d78eedcb16c13bd949ede5d1b8b910cd"
-)
+// The repo dev keypair lives in the shared testkeys package (embedded, written to
+// a temp file by testkeys.Paths). These tests use it so there is a single home
+// for the keypair. lexik_token.json (the golden token signed with this key by the
+// PHP backend) stays in this package's local testdata. The passphrase is the
+// repo's dev JWT_PASSPHRASE from .env.dist (not a production secret).
+const testPassphrase = testkeys.Passphrase
 
 func newTestJWT(t *testing.T) *JWT {
 	t.Helper()
-	j, err := NewJWT(testPrivateKeyPath, testPublicKeyPath, testPassphrase)
+	priv, pub := testkeys.Paths(t)
+	j, err := NewJWT(priv, pub, testPassphrase)
 	if err != nil {
 		t.Fatalf("NewJWT: %v", err)
 	}
@@ -241,7 +242,8 @@ func TestVerifyRejectsForeignKey(t *testing.T) {
 // TestVerifyOnlyWithoutPrivateKey confirms a JWT built without a readable
 // private key can still verify but refuses to issue.
 func TestVerifyOnlyWithoutPrivateKey(t *testing.T) {
-	j, err := NewJWT("testdata/does-not-exist.pem", testPublicKeyPath, testPassphrase)
+	_, pub := testkeys.Paths(t)
+	j, err := NewJWT("testdata/does-not-exist.pem", pub, testPassphrase)
 	if err != nil {
 		t.Fatalf("NewJWT verify-only: %v", err)
 	}

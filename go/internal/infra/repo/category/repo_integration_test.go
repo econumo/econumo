@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -28,16 +29,15 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-func seedUser(t *testing.T, db *dbtest.DB, id string) {
+func seedUser(t *testing.T, f *fixture.Builder, id string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
-		id, id, fixedTime, fixedTime)
+	f.User(fixture.User{ID: id, Name: "u"})
 }
 
-func newRepo(t *testing.T) (*categoryrepo.Repo, *categoryrepo.ReadRepo, *dbtest.DB) {
+func newRepo(t *testing.T) (*categoryrepo.Repo, *categoryrepo.ReadRepo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
-	return categoryrepo.NewRepo("sqlite", db.TX), categoryrepo.NewReadRepo("sqlite", db.TX), db
+	return categoryrepo.NewRepo("sqlite", db.TX), categoryrepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
 func cat(id, userID, name string, pos int16, typ domcategory.Type) *domcategory.Category {
@@ -45,9 +45,9 @@ func cat(id, userID, name string, pos int16, typ domcategory.Type) *domcategory.
 }
 
 func TestCategoryRepo_SaveGetRoundTrip(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
+	seedUser(t, f, userA)
 
 	if err := repo.Save(ctx, cat(catA1, userA, "Food", 2, domcategory.TypeExpense)); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -68,8 +68,8 @@ func TestCategoryRepo_SaveGetRoundTrip(t *testing.T) {
 }
 
 func TestCategoryRepo_GetByID_NotFound(t *testing.T) {
-	repo, _, db := newRepo(t)
-	seedUser(t, db, userA)
+	repo, _, _, f := newRepo(t)
+	seedUser(t, f, userA)
 	_, err := repo.GetByID(context.Background(), vo.NewId())
 	var nf *errs.NotFoundError
 	if !errors.As(err, &nf) {
@@ -78,10 +78,10 @@ func TestCategoryRepo_GetByID_NotFound(t *testing.T) {
 }
 
 func TestCategoryRepo_ListAndCountByOwner(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
-	seedUser(t, db, userB)
+	seedUser(t, f, userA)
+	seedUser(t, f, userB)
 	_ = repo.Save(ctx, cat(catA1, userA, "A1", 1, domcategory.TypeExpense))
 	_ = repo.Save(ctx, cat(catA2, userA, "A2", 0, domcategory.TypeIncome))
 	_ = repo.Save(ctx, cat(catB1, userB, "B1", 0, domcategory.TypeExpense))
@@ -104,9 +104,9 @@ func TestCategoryRepo_ListAndCountByOwner(t *testing.T) {
 }
 
 func TestCategoryRepo_Delete(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
+	seedUser(t, f, userA)
 	_ = repo.Save(ctx, cat(catA1, userA, "A1", 0, domcategory.TypeExpense))
 	if err := repo.Delete(ctx, vo.MustParseId(catA1)); err != nil {
 		t.Fatalf("Delete: %v", err)
@@ -119,10 +119,10 @@ func TestCategoryRepo_Delete(t *testing.T) {
 }
 
 func TestCategoryReadRepo_OwnPlusShared(t *testing.T) {
-	repo, read, db := newRepo(t)
+	repo, read, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
-	seedUser(t, db, userB)
+	seedUser(t, f, userA)
+	seedUser(t, f, userB)
 	// userA owns A1; userB owns B1.
 	_ = repo.Save(ctx, cat(catA1, userA, "A1", 0, domcategory.TypeExpense))
 	_ = repo.Save(ctx, cat(catB1, userB, "B1", 0, domcategory.TypeExpense))
@@ -141,10 +141,8 @@ func TestCategoryReadRepo_OwnPlusShared(t *testing.T) {
 	}
 
 	// userB owns an account and grants access to userA -> A now sees B's categories.
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Shared', 2, 'x', 0, ?, ?)`,
-		"acc00000-0000-0000-0000-0000000000b1", usdID, userB, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, 1, ?, ?)`,
-		"acc00000-0000-0000-0000-0000000000b1", userA, fixedTime, fixedTime)
+	f.Account(fixture.Account{ID: "acc00000-0000-0000-0000-0000000000b1", UserID: userB, CurrencyID: usdID, Name: "Shared", Type: 2, Icon: "x"})
+	f.AccountAccess("acc00000-0000-0000-0000-0000000000b1", userA, 1)
 
 	shared, err := read.CategoryListView(ctx, userA)
 	if err != nil {
@@ -156,15 +154,13 @@ func TestCategoryReadRepo_OwnPlusShared(t *testing.T) {
 }
 
 func TestCategoryRepo_ReassignTransactions(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, db, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
+	seedUser(t, f, userA)
 	_ = repo.Save(ctx, cat(catA1, userA, "Old", 0, domcategory.TypeExpense))
 	_ = repo.Save(ctx, cat(catA2, userA, "New", 1, domcategory.TypeExpense))
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'C', 2, 'x', 0, ?, ?)`,
-		"acc00000-0000-0000-0000-0000000000a1", usdID, userA, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, category_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, 0, '10.00', '', ?, ?, '2024-03-01 00:00:00')`,
-		"7c000000-0000-0000-0000-000000000001", userA, "acc00000-0000-0000-0000-0000000000a1", catA1, fixedTime, fixedTime)
+	f.Account(fixture.Account{ID: "acc00000-0000-0000-0000-0000000000a1", UserID: userA, CurrencyID: usdID, Name: "C", Type: 2, Icon: "x"})
+	f.Transaction(fixture.Transaction{ID: "7c000000-0000-0000-0000-000000000001", UserID: userA, AccountID: "acc00000-0000-0000-0000-0000000000a1", CategoryID: catA1, Type: 0, Amount: "10.00", SpentAt: "2024-03-01 00:00:00"})
 
 	if err := repo.ReassignTransactions(ctx, vo.MustParseId(catA1), vo.MustParseId(catA2)); err != nil {
 		t.Fatalf("ReassignTransactions: %v", err)
@@ -179,9 +175,9 @@ func TestCategoryRepo_ReassignTransactions(t *testing.T) {
 }
 
 func TestCategoryRepo_OperationGuard_Idempotency(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, db, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
+	seedUser(t, f, userA)
 	opID := vo.NewId()
 
 	already, err := repo.Claim(ctx, opID, fixedTime)

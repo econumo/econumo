@@ -1,38 +1,30 @@
 package category_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
-	"time"
+
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // usdID is the baseline USD currency (seeded by migration 20210812210548).
-const usdID = "dffc2a06-6f29-4704-8575-31709adee926"
+const usdID = fixture.USD
 
 // seedAccount inserts an account owned by ownerID.
 func (h *harness) seedAccount(t *testing.T, id, ownerID, name string) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, 2, 'wallet', 0, ?, ?)`,
-		id, usdID, ownerID, name, now, now,
-	); err != nil {
-		t.Fatalf("seed account %s: %v", id, err)
-	}
+	fixture.New(t, h.tdb).Account(fixture.Account{
+		ID:         id,
+		UserID:     ownerID,
+		CurrencyID: usdID,
+		Name:       name,
+	})
 }
 
 // seedGrant inserts an accounts_access row granting userID access to accountID.
 func (h *harness) seedGrant(t *testing.T, accountID, userID string, role int) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		accountID, userID, role, now, now,
-	); err != nil {
-		t.Fatalf("seed grant %s->%s: %v", accountID, userID, err)
-	}
+	fixture.New(t, h.tdb).AccountAccess(accountID, userID, role)
 }
 
 // TestGetCategoryList_IncludesSharedOwners verifies the list returns the user's

@@ -16,12 +16,13 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func newInviteRepo(t *testing.T) (*connectionrepo.InviteRepo, *dbtest.DB) {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
-	seedUser(t, db, userA)
+	seedUser(t, fixture.New(t, db), userA)
 	return connectionrepo.NewInviteRepo("sqlite", db.TX), db
 }
 

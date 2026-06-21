@@ -1,11 +1,12 @@
 package transaction_test
 
 import (
-	"context"
 	"net/http"
 	"net/url"
 	"testing"
-	"time"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // TestGetTransactionList_ValidationEnvelope verifies tier-1 validation matches
@@ -76,21 +77,9 @@ func TestGetTransactionList_ForbiddenAccount(t *testing.T) {
 	// A second user owns an account the seed user cannot see.
 	const otherUser = "22222222-2222-2222-2222-222222222222"
 	const otherAcct = "aaaa2222-0000-0000-0000-0000000000a2"
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-		 VALUES (?, ?, ?, 'Other', '', '', '', ?, ?, 1)`,
-		otherUser, "ident-other", "enc-other", now, now,
-	); err != nil {
-		t.Fatalf("seed other user: %v", err)
-	}
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
-		 VALUES (?, ?, ?, 'Theirs', 2, 'wallet', 0, ?, ?)`,
-		otherAcct, usdID, otherUser, now, now,
-	); err != nil {
-		t.Fatalf("seed other account: %v", err)
-	}
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.User(fixture.User{ID: otherUser, Name: "Other"})
+	f.Account(fixture.Account{ID: otherAcct, UserID: otherUser, CurrencyID: usdID, Name: "Theirs"})
 
 	status, env := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+otherAcct, tok, nil)
 	if status != http.StatusForbidden {

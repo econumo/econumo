@@ -14,7 +14,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -24,18 +23,15 @@ import (
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/auth"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/testkeys"
 	handlercurrency "github.com/econumo/econumo/internal/ui/handler/currency"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
 const (
-	testDataSalt   = "0123456789abcdef"
-	testPassphrase = "d78eedcb16c13bd949ede5d1b8b910cd"
-	testPrivateKey = "../../../infra/auth/testdata/private.pem"
-	testPublicKey  = "../../../infra/auth/testdata/public.pem"
+	testDataSalt = "0123456789abcdef"
 
 	seedUserID    = "11111111-1111-1111-1111-111111111111"
 	seedEmail     = "user@example.test"
@@ -57,35 +53,26 @@ type harness struct {
 	db    *sql.DB
 	jwt   *auth.JWT
 	clock fixedClock
+	f     *fixture.Builder
 }
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	ctx := context.Background()
 
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
+	tdb := dbtest.NewSQLite(t)
+	db := tdb.Raw
 
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-
-	encode := auth.NewEncodeService(testDataSalt)
-	hasher := auth.NewPasswordHasher()
-	jwt, err := auth.NewJWT(testPrivateKey, testPublicKey, testPassphrase)
+	priv, pub := testkeys.Paths(t)
+	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
-	seedUser(t, ctx, db, encode, hasher)
+	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
+	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatarURL, Password: "pw", Salt: seedSalt})
 
-	txm := backend.NewTxManager(db)
-	readRepo := currencyrepo.NewReadRepo("sqlite", txm)
+	readRepo := currencyrepo.NewReadRepo("sqlite", tdb.TX)
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
 	readSvc := appcurrency.NewReadService(readRepo)
@@ -99,33 +86,7 @@ func newHarness(t *testing.T) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, jwt: jwt, clock: clk}
-}
-
-func seedUser(t *testing.T, ctx context.Context, db *sql.DB, encode *auth.EncodeService, hasher *auth.PasswordHasher) {
-	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	identifier := encode.Hash(strings.ToLower(seedEmail))
-	encEmail, err := encode.Encode(seedEmail)
-	if err != nil {
-		t.Fatalf("encode email: %v", err)
-	}
-	passwordHash := hasher.Hash("pw", seedSalt)
-	if _, err := db.ExecContext(ctx,
-		`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-		seedUserID, identifier, encEmail, seedName, seedAvatarURL, passwordHash, seedSalt, now, now,
-	); err != nil {
-		t.Fatalf("seed user: %v", err)
-	}
-}
-
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
-	}
-	return out
+	return &harness{srv: srv, db: db, jwt: jwt, clock: clk, f: f}
 }
 
 // resetCurrencies clears the currencies + rates tables so a test controls the
@@ -141,29 +102,20 @@ func (h *harness) resetCurrencies(t *testing.T) {
 }
 
 // seedCurrency inserts a currency row with a NULL name (matching prod, where the
-// name is always resolved from the Intl table by code).
+// name is always resolved from the Intl table by code). fractionDigits is passed
+// through verbatim (the builder's *int field honors an explicit 0 — the
+// unknown-code fallback case).
 func (h *harness) seedCurrency(t *testing.T, id, code, symbol string, fractionDigits int) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO currencies (id, code, symbol, name, fraction_digits, created_at)
-		 VALUES (?, ?, ?, NULL, ?, ?)`,
-		id, code, symbol, fractionDigits, now,
-	); err != nil {
-		t.Fatalf("seed currency %s: %v", code, err)
-	}
+	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{
+		ID: id, Code: code, Symbol: symbol, FractionDigits: &fractionDigits,
+	})
 }
 
 // seedRate inserts a currency_rates row published on the given date (YYYY-MM-DD).
 func (h *harness) seedRate(t *testing.T, id, currencyID, baseID, publishedAt, rate string) {
 	t.Helper()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO currencies_rates (id, currency_id, base_currency_id, published_at, rate)
-		 VALUES (?, ?, ?, ?, ?)`,
-		id, currencyID, baseID, publishedAt, rate,
-	); err != nil {
-		t.Fatalf("seed rate %s: %v", id, err)
-	}
+	h.f.Rate(fixture.Rate{ID: id, CurrencyID: currencyID, BaseCurrencyID: baseID, PublishedAt: publishedAt, Rate: rate})
 }
 
 func (h *harness) do(t *testing.T, method, path, token string) (int, envelope) {

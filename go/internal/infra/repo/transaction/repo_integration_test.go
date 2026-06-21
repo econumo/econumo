@@ -17,6 +17,7 @@ import (
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -41,14 +42,12 @@ func setup(t *testing.T) (*transactionrepo.Repo, *dbtest.DB) {
 
 func seedUser(t *testing.T, db *dbtest.DB, id string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
-		id, id, fixedTime, fixedTime)
+	fixture.New(t, db).User(fixture.User{ID: id, Name: "u"})
 }
 
 func seedAccount(t *testing.T, db *dbtest.DB, id, userID string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'A', 2, 'x', 0, ?, ?)`,
-		id, usdID, userID, fixedTime, fixedTime)
+	fixture.New(t, db).Account(fixture.Account{ID: id, CurrencyID: usdID, UserID: userID, Name: "A", Icon: "x"})
 }
 
 func deref(s *string) string {
@@ -216,8 +215,7 @@ func TestTransactionRepo_ListExportAccountsForUser_OwnPlusShared(t *testing.T) {
 	// userB owns acctB and grants access to userA.
 	seedUser(t, db, userB)
 	seedAccount(t, db, acctB, userB)
-	db.Exec(t, `INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, 1, ?, ?)`,
-		acctB, userA, fixedTime, fixedTime)
+	fixture.New(t, db).AccountAccess(acctB, userA, 1)
 
 	rows, err := repo.ListExportAccountsForUser(ctx, vo.MustParseId(userA))
 	if err != nil {

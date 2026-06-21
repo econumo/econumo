@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"testing"
-	"time"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // TestGetBudget_SpendingIncludesFirstOfMonth is the regression for the
@@ -17,19 +19,17 @@ import (
 func TestGetBudget_SpendingIncludesFirstOfMonth(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	ctx := context.Background()
 
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "FoM Budget")); st != 200 {
 		t.Fatalf("create=%d body=%s", st, e.raw)
 	}
 	// An expense (type=0) dated EXACTLY on 2025-04-01 00:00:00 (the period start),
 	// categorized to the seeded Food category on the seeded account.
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(ctx,
-		`INSERT INTO transactions (id, user_id, account_id, category_id, type, amount, description, spent_at, created_at, updated_at) VALUES (?, ?, ?, ?, 0, '42.00', '', '2025-04-01 00:00:00', ?, ?)`,
-		"dddd1111-0000-7000-8000-000000000001", seedUserID, accountID, catID, now, now); err != nil {
-		t.Fatalf("seed first-of-month tx: %v", err)
-	}
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Transaction(fixture.Transaction{
+		ID: "dddd1111-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "42.00", SpentAt: "2025-04-01 00:00:00",
+	})
 
 	status, env := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1+"&date=2025-04-15", tok, nil)
 	if status != http.StatusOK {
@@ -82,12 +82,11 @@ func TestGetBudget_ElementBudgetedFromLimit(t *testing.T) {
 		`SELECT id FROM budgets_elements WHERE external_id = ? AND type = 1`, catID).Scan(&elementID); err != nil {
 		t.Fatalf("find budget element for category: %v", err)
 	}
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(ctx,
-		`INSERT INTO budgets_elements_limits (id, element_id, period, amount, created_at, updated_at) VALUES (?, ?, '2025-04-01 00:00:00', '1700.00', ?, ?)`,
-		"cccc1111-0000-7000-8000-000000000001", elementID, now, now); err != nil {
-		t.Fatalf("seed limit: %v", err)
-	}
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.BudgetLimit(fixture.BudgetLimit{
+		ID: "cccc1111-0000-7000-8000-000000000001", ElementID: elementID,
+		Period: "2025-04-01 00:00:00", Amount: "1700.00",
+	})
 
 	status, env := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1+"&date=2025-04-15", tok, nil)
 	if status != http.StatusOK {

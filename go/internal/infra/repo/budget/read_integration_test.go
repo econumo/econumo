@@ -13,24 +13,22 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func seedAccount(t *testing.T, db *dbtest.DB, id, userID string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'A', 2, 'x', 0, ?, ?)`,
-		id, usdID, userID, fixedTime, fixedTime)
+	fixture.New(t, db).Account(fixture.Account{ID: id, CurrencyID: usdID, UserID: userID, Name: "A", Icon: "x"})
 }
 
 func seedCategory(t *testing.T, db *dbtest.DB, id, userID string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, 'C', 0, 0, 'x', 0, ?, ?)`,
-		id, userID, fixedTime, fixedTime)
+	fixture.New(t, db).Category(fixture.Category{ID: id, UserID: userID, Name: "C", Icon: "x"})
 }
 
 func seedExpense(t *testing.T, db *dbtest.DB, id, account, category, amount, spentAt string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, category_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, 0, ?, '', ?, ?, ?)`,
-		id, userA, account, category, amount, fixedTime, fixedTime, spentAt)
+	fixture.New(t, db).Transaction(fixture.Transaction{ID: id, UserID: userA, AccountID: account, CategoryID: category, Type: 0, Amount: amount, SpentAt: spentAt})
 }
 
 func newReadRepo(t *testing.T) (*budgetrepo.ReadRepo, *dbtest.DB) {
@@ -47,10 +45,9 @@ func TestBudgetReadRepo_AccountsBalances(t *testing.T) {
 	cat := "c0000000-0000-0000-0000-0000000000c1"
 	seedCategory(t, db, cat, userA)
 	// Two incomes minus one expense; float sum must render clean.
-	db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, 1, '100.10', '', ?, ?, '2024-03-10 00:00:00')`,
-		"70000000-0000-0000-0000-000000000001", userA, acctA, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, 1, '200.20', '', ?, ?, '2024-03-11 00:00:00')`,
-		"70000000-0000-0000-0000-000000000002", userA, acctA, fixedTime, fixedTime)
+	f := fixture.New(t, db)
+	f.Transaction(fixture.Transaction{ID: "70000000-0000-0000-0000-000000000001", UserID: userA, AccountID: acctA, Type: 1, Amount: "100.10", SpentAt: "2024-03-10 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: "70000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, Type: 1, Amount: "200.20", SpentAt: "2024-03-11 00:00:00"})
 	seedExpense(t, db, "70000000-0000-0000-0000-000000000003", acctA, cat, "0.30", "2024-03-12 00:00:00")
 
 	onDate := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
@@ -105,17 +102,14 @@ func TestBudgetReadRepo_SummarizedLimits_MonthBoundary(t *testing.T) {
 	read, db := newReadRepo(t)
 	ctx := context.Background()
 	// Seed a budget + element + limits directly so the period range is testable.
-	db.Exec(t, `INSERT INTO budgets (id, user_id, currency_id, name, started_at, created_at, updated_at) VALUES (?, ?, ?, 'B', ?, ?, ?)`,
-		budgetID, userA, usdID, startedAt, fixedTime, fixedTime)
+	f := fixture.New(t, db)
+	f.Budget(fixture.Budget{ID: budgetID, UserID: userA, CurrencyID: usdID, Name: "B", StartedAt: startedAt})
 	eid := "e0000000-0000-0000-0000-0000000000e1"
 	externalID := "ec000000-0000-0000-0000-0000000000c1"
-	db.Exec(t, `INSERT INTO budgets_elements (id, budget_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, 1, 0, ?, ?)`,
-		eid, budgetID, externalID, fixedTime, fixedTime)
+	f.BudgetElement(fixture.BudgetElement{ID: eid, BudgetID: budgetID, ExternalID: externalID, Type: 1, Position: 0})
 	// Two limits: April (in range) + May (out of range for an April-only window).
-	db.Exec(t, `INSERT INTO budgets_elements_limits (id, element_id, period, amount, created_at, updated_at) VALUES (?, ?, '2024-04-01 00:00:00', '120.55', ?, ?)`,
-		"71000000-0000-0000-0000-000000000001", eid, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO budgets_elements_limits (id, element_id, period, amount, created_at, updated_at) VALUES (?, ?, '2024-05-01 00:00:00', '300.00', ?, ?)`,
-		"71000000-0000-0000-0000-000000000002", eid, fixedTime, fixedTime)
+	f.BudgetLimit(fixture.BudgetLimit{ID: "71000000-0000-0000-0000-000000000001", ElementID: eid, Period: "2024-04-01 00:00:00", Amount: "120.55"})
+	f.BudgetLimit(fixture.BudgetLimit{ID: "71000000-0000-0000-0000-000000000002", ElementID: eid, Period: "2024-05-01 00:00:00", Amount: "300.00"})
 
 	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)

@@ -13,7 +13,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -38,15 +37,15 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/testkeys"
 	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
 const (
-	testDataSalt   = "0123456789abcdef"
-	testPassphrase = "d78eedcb16c13bd949ede5d1b8b910cd"
-	testPrivateKey = "../../../infra/auth/testdata/private.pem"
-	testPublicKey  = "../../../infra/auth/testdata/public.pem"
+	testDataSalt = "0123456789abcdef"
 
 	seedUserID = "11111111-1111-1111-1111-111111111111"
 	seedEmail  = "user@example.test"
@@ -78,27 +77,24 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	encode := auth.NewEncodeService(testDataSalt)
-	hasher := auth.NewPasswordHasher()
-	jwt, err := auth.NewJWT(testPrivateKey, testPublicKey, testPassphrase)
+	priv, pub := testkeys.Paths(t)
+	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
-	now := time.Unix(1690000000, 0).UTC()
-	identifier := encode.Hash(strings.ToLower(seedEmail))
-	encEmail, _ := encode.Encode(seedEmail)
-	if _, err := db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-		seedUserID, identifier, encEmail, seedName, seedAvatar, hasher.Hash("pw", seedSalt), seedSalt, now, now); err != nil {
-		t.Fatalf("seed user: %v", err)
-	}
-	// folder + account + a category (for non-transfer transactions).
-	db.ExecContext(ctx, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, 1, ?, ?)`, folderID, seedUserID, now, now)
-	db.ExecContext(ctx, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Cash', 2, 'wallet', 0, ?, ?)`, accountID, usdID, seedUserID, now, now)
-	db.ExecContext(ctx, `INSERT INTO accounts_folders (folder_id, account_id) VALUES (?, ?)`, folderID, accountID)
-	db.ExecContext(ctx, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 0, ?, ?)`, accountID, seedUserID, now, now)
-	db.ExecContext(ctx, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, 'Food', 0, 0, 'local_offer', 0, ?, ?)`, catID, seedUserID, now, now)
 
 	txm := backend.NewTxManager(db)
+
+	// Seed via the shared fixture builder over the same DB handle.
+	f := fixture.New(t, &dbtest.DB{Raw: db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
+	// folder + account + a category (for non-transfer transactions).
+	f.Folder(fixture.Folder{ID: folderID, UserID: seedUserID, Name: "Main"})
+	f.Account(fixture.Account{ID: accountID, UserID: seedUserID, CurrencyID: usdID, Name: "Cash"})
+	f.AccountInFolder(folderID, accountID)
+	f.AccountOption(accountID, seedUserID, 0)
+	f.Category(fixture.Category{ID: catID, UserID: seedUserID, Name: "Food", Type: 0, Icon: "local_offer"})
+
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
 		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),

@@ -6,13 +6,11 @@ package account_test
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -29,18 +27,15 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/testkeys"
 	handleraccount "github.com/econumo/econumo/internal/ui/handler/account"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
 const (
-	testDataSalt   = "0123456789abcdef"
-	testPassphrase = "d78eedcb16c13bd949ede5d1b8b910cd"
-	testPrivateKey = "../../../infra/auth/testdata/private.pem"
-	testPublicKey  = "../../../infra/auth/testdata/public.pem"
+	testDataSalt = "0123456789abcdef"
 
 	seedUserID  = "11111111-1111-1111-1111-111111111111"
 	otherUserID = "22222222-2222-2222-2222-222222222222"
@@ -59,34 +54,26 @@ type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
 	jwt *auth.JWT
+	f   *fixture.Builder
 }
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	ctx := context.Background()
 
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
+	tdb := dbtest.NewSQLite(t)
+	db := tdb.Raw
 
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-
-	encode := auth.NewEncodeService(testDataSalt)
-	hasher := auth.NewPasswordHasher()
-	jwt, err := auth.NewJWT(testPrivateKey, testPublicKey, testPassphrase)
+	priv, pub := testkeys.Paths(t)
+	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
 
-	seedUsers(t, ctx, db, encode, hasher)
-	seedFolder(t, ctx, db, seedFolderID, seedUserID, "Main", 0)
+	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
+	seedUsers(t, f)
+	f.Folder(fixture.Folder{ID: seedFolderID, UserID: seedUserID, Name: "Main", Position: 0})
 
-	txm := backend.NewTxManager(db)
+	txm := tdb.TX
 	repo := accountrepo.NewRepo("sqlite", txm)
 	folderRepo := accountrepo.NewFolderRepo("sqlite", txm)
 	curLookup := currencyrepo.New("sqlite", txm)
@@ -117,49 +104,17 @@ func newHarness(t *testing.T) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, jwt: jwt}
+	return &harness{srv: srv, db: db, jwt: jwt, f: f}
 }
 
-func seedUsers(t *testing.T, ctx context.Context, db *sql.DB, encode *auth.EncodeService, hasher *auth.PasswordHasher) {
+func seedUsers(t *testing.T, f *fixture.Builder) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
 	for _, u := range []struct{ id, email string }{
 		{seedUserID, seedEmail},
 		{otherUserID, "other@example.test"},
 	} {
-		identifier := encode.Hash(strings.ToLower(u.email))
-		encEmail, err := encode.Encode(u.email)
-		if err != nil {
-			t.Fatalf("encode email: %v", err)
-		}
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-			u.id, identifier, encEmail, seedName, seedAvatar, hasher.Hash("pw", seedSalt), seedSalt, now, now,
-		); err != nil {
-			t.Fatalf("seed user %s: %v", u.id, err)
-		}
+		f.User(fixture.User{ID: u.id, Email: u.email, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 	}
-}
-
-func seedFolder(t *testing.T, ctx context.Context, db *sql.DB, id, userID, name string, position int) {
-	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := db.ExecContext(ctx,
-		`INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, 1, ?, ?)`,
-		id, userID, name, position, now, now,
-	); err != nil {
-		t.Fatalf("seed folder: %v", err)
-	}
-}
-
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
-	}
-	return out
 }
 
 func (h *harness) token(t *testing.T) string {
@@ -264,14 +219,7 @@ func mustDecode(t *testing.T, raw json.RawMessage, v any) {
 // tests. Always CREDIT_CARD, USD, not deleted.
 func (h *harness) seedAccount(t *testing.T, id, ownerID, name string) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, 2, 'wallet', 0, ?, ?)`,
-		id, usdID, ownerID, name, now, now,
-	); err != nil {
-		t.Fatalf("seed account %s: %v", id, err)
-	}
+	h.f.Account(fixture.Account{ID: id, UserID: ownerID, CurrencyID: usdID, Name: name, Type: 2, Icon: "wallet"})
 }
 
 // errorsMap decodes the validation-form errors object (field -> messages).

@@ -3,9 +3,6 @@
 package enginecompare
 
 import (
-	"context"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -46,48 +43,4 @@ func runOnBoth(t *testing.T, s scenario) {
 			t.Fatalf("engine snapshots differ:\n  sqlite: %s\n  pgsql : %s", sqliteSnap, pgSnap)
 		}
 	})
-}
-
-// ---- portable seeding ----
-
-// rebind converts ?-style placeholders to the engine's form ($1.. for pgsql,
-// left as ? for sqlite), so one seed statement works on both engines.
-func rebind(engine, query string) string {
-	if engine != "postgresql" {
-		return query
-	}
-	var b strings.Builder
-	n := 0
-	for i := 0; i < len(query); i++ {
-		if query[i] == '?' {
-			n++
-			b.WriteByte('$')
-			b.WriteString(strconv.Itoa(n))
-		} else {
-			b.WriteByte(query[i])
-		}
-	}
-	return b.String()
-}
-
-// seed runs an INSERT (or other statement) against the raw DB with engine-aware
-// placeholders, failing the test on error.
-func seed(t *testing.T, db *dbtest.DB, query string, args ...any) {
-	t.Helper()
-	if _, err := db.Raw.ExecContext(context.Background(), rebind(db.Engine, query), args...); err != nil {
-		t.Fatalf("seed (%s) %q: %v", db.Engine, query, err)
-	}
-}
-
-// seedUser inserts a minimal active user. Both engines store identical column
-// values; the encrypted-email/identifier are not exercised here (those have
-// their own crypto golden-vector tests), so plain placeholder values are used.
-func seedUser(t *testing.T, db *dbtest.DB, id, email string) {
-	t.Helper()
-	// Boolean columns use TRUE/FALSE literals (Postgres has real BOOLEAN columns;
-	// SQLite accepts the literals too and stores 1/0) — integer 1/0 would fail on
-	// Postgres with "column is of type boolean but expression is of type integer".
-	seed(t, db, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-		VALUES (?, ?, ?, ?, '', 'x', 'salt', ?, ?, TRUE)`,
-		id, "ident-"+id[:8], email, "User "+id[:4], fixedTime, fixedTime)
 }

@@ -6,17 +6,14 @@ package currencyrepo_test
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
-
-	_ "modernc.org/sqlite"
 
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -24,38 +21,19 @@ const (
 	eurID = "1ae5bfd5-03e8-412b-80d2-c0ecf3ce32fe"
 )
 
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
-	}
-	return out
-}
-
-func setup(t *testing.T) (*sql.DB, *backend.TxManager) {
+func setup(t *testing.T) (*dbtest.DB, *backend.TxManager) {
 	t.Helper()
-	ctx := context.Background()
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	db := dbtest.NewSQLite(t)
+	// The baseline migration seeds a USD currency; this suite reseeds its own
+	// USD/EUR with distinct ids, so wipe the baseline rows first (DELETEs are
+	// allowed; only the INSERTs move to the fixture builder).
+	db.Exec(t, `DELETE FROM currencies_rates`)
+	db.Exec(t, `DELETE FROM currencies`)
 	// Two currencies (USD base + EUR) and two rate dates in Jan 2026 plus one in
 	// Dec 2025. getLatestDate(end) should snap to Jan 2026 -> AVG over Jan only.
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := db.ExecContext(ctx, `DELETE FROM currencies_rates`); err != nil {
-		t.Fatalf("clear rates: %v", err)
-	}
-	if _, err := db.ExecContext(ctx, `DELETE FROM currencies`); err != nil {
-		t.Fatalf("clear currencies: %v", err)
-	}
-	if _, err := db.ExecContext(ctx, `INSERT INTO currencies (id, code, symbol, fraction_digits, created_at) VALUES (?, 'USD', '$', 2, ?), (?, 'EUR', 'E', 2, ?)`, usdID, now, eurID, now); err != nil {
-		t.Fatalf("seed currencies: %v", err)
-	}
+	f := fixture.New(t, db)
+	f.Currency(fixture.Currency{ID: usdID, Code: "USD", Symbol: "$"})
+	f.Currency(fixture.Currency{ID: eurID, Code: "EUR", Symbol: "E"})
 	rows := []struct {
 		id, date, rate string
 	}{
@@ -64,10 +42,9 @@ func setup(t *testing.T) (*sql.DB, *backend.TxManager) {
 		{"10000000-0000-7000-8000-000000000003", "2025-12-15", "0.85"}, // earlier month, excluded
 	}
 	for _, r := range rows {
-		db.ExecContext(ctx, `INSERT INTO currencies_rates (id, currency_id, base_currency_id, rate, published_at) VALUES (?, ?, ?, ?, ?)`,
-			r.id, eurID, usdID, r.rate, r.date)
+		f.Rate(fixture.Rate{ID: r.id, CurrencyID: eurID, BaseCurrencyID: usdID, Rate: r.rate, PublishedAt: r.date})
 	}
-	return db, backend.NewTxManager(db)
+	return db, db.TX
 }
 
 func TestRateProvider_AverageRates_SnapsToLatestMonth(t *testing.T) {
@@ -114,18 +91,14 @@ func TestRateProvider_AverageRates_IncludesFirstOfMonth(t *testing.T) {
 	ctx := context.Background()
 	db, txm := setup(t)
 	// Replace the seed with three rates IN January, including the 1st-of-month.
-	if _, err := db.ExecContext(ctx, `DELETE FROM currencies_rates`); err != nil {
-		t.Fatalf("clear: %v", err)
-	}
+	db.Exec(t, `DELETE FROM currencies_rates`)
+	f := fixture.New(t, db)
 	for _, r := range []struct{ id, date, rate string }{
 		{"20000000-0000-7000-8000-000000000001", "2026-01-01", "0.90"}, // first of month
 		{"20000000-0000-7000-8000-000000000002", "2026-01-15", "0.93"},
 		{"20000000-0000-7000-8000-000000000003", "2026-01-25", "0.96"},
 	} {
-		if _, err := db.ExecContext(ctx, `INSERT INTO currencies_rates (id, currency_id, base_currency_id, rate, published_at) VALUES (?, ?, ?, ?, ?)`,
-			r.id, eurID, usdID, r.rate, r.date); err != nil {
-			t.Fatalf("seed rate: %v", err)
-		}
+		f.Rate(fixture.Rate{ID: r.id, CurrencyID: eurID, BaseCurrencyID: usdID, Rate: r.rate, PublishedAt: r.date})
 	}
 	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), "USD")
 

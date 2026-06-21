@@ -8,13 +8,11 @@ package connection_test
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -28,18 +26,15 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/testkeys"
 	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
 const (
-	testDataSalt   = "0123456789abcdef"
-	testPassphrase = "d78eedcb16c13bd949ede5d1b8b910cd"
-	testPrivateKey = "../../../infra/auth/testdata/private.pem"
-	testPublicKey  = "../../../infra/auth/testdata/public.pem"
+	testDataSalt = "0123456789abcdef"
 
 	ownerUserID = "11111111-1111-1111-1111-111111111111"
 	ownerEmail  = "owner@example.test"
@@ -72,50 +67,34 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	ctx := context.Background()
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
 
-	encode := auth.NewEncodeService(testDataSalt)
-	hasher := auth.NewPasswordHasher()
-	jwt, err := auth.NewJWT(testPrivateKey, testPublicKey, testPassphrase)
+	tdb := dbtest.NewSQLite(t)
+	db := tdb.Raw
+
+	priv, pub := testkeys.Paths(t)
+	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
-	now := time.Unix(1690000000, 0).UTC()
 
-	seedUser := func(id, email, name, avatar string) {
-		identifier := encode.Hash(strings.ToLower(email))
-		encEmail, _ := encode.Encode(email)
-		if _, err := db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-			id, identifier, encEmail, name, avatar, hasher.Hash("pw", "0000000000000000000000000000000000000001"), "0000000000000000000000000000000000000001", now, now); err != nil {
-			t.Fatalf("seed user %s: %v", email, err)
-		}
-	}
-	seedUser(ownerUserID, ownerEmail, ownerName, ownerAvatar)
-	seedUser(guestUserID, guestEmail, guestName, guestAvatar)
-	seedUser(thirdUserID, thirdEmail, thirdName, thirdAvatar)
+	const seedSalt = "0000000000000000000000000000000000000001"
+	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
+	f.User(fixture.User{ID: ownerUserID, Email: ownerEmail, Name: ownerName, Avatar: ownerAvatar, Password: "pw", Salt: seedSalt})
+	f.User(fixture.User{ID: guestUserID, Email: guestEmail, Name: guestName, Avatar: guestAvatar, Password: "pw", Salt: seedSalt})
+	f.User(fixture.User{ID: thirdUserID, Email: thirdEmail, Name: thirdName, Avatar: thirdAvatar, Password: "pw", Salt: seedSalt})
 
 	// Symmetric connection between owner and guest.
-	db.ExecContext(ctx, `INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, ownerUserID, guestUserID)
-	db.ExecContext(ctx, `INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, guestUserID, ownerUserID)
+	f.Connect(ownerUserID, guestUserID)
 
 	// Each user has one folder; owner owns one account.
-	db.ExecContext(ctx, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, 1, ?, ?)`, ownerFolderID, ownerUserID, now, now)
-	db.ExecContext(ctx, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, 1, ?, ?)`, guestFolderID, guestUserID, now, now)
-	db.ExecContext(ctx, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, 1, ?, ?)`, thirdFolderID, thirdUserID, now, now)
-	db.ExecContext(ctx, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Cash', 2, 'wallet', 0, ?, ?)`, ownerAccount, usdID, ownerUserID, now, now)
-	db.ExecContext(ctx, `INSERT INTO accounts_folders (folder_id, account_id) VALUES (?, ?)`, ownerFolderID, ownerAccount)
-	db.ExecContext(ctx, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 0, ?, ?)`, ownerAccount, ownerUserID, now, now)
+	f.Folder(fixture.Folder{ID: ownerFolderID, UserID: ownerUserID, Name: "Main", Position: 0})
+	f.Folder(fixture.Folder{ID: guestFolderID, UserID: guestUserID, Name: "Main", Position: 0})
+	f.Folder(fixture.Folder{ID: thirdFolderID, UserID: thirdUserID, Name: "Main", Position: 0})
+	f.Account(fixture.Account{ID: ownerAccount, UserID: ownerUserID, CurrencyID: usdID, Name: "Cash", Type: 2, Icon: "wallet"})
+	f.AccountInFolder(ownerFolderID, ownerAccount)
+	f.AccountOption(ownerAccount, ownerUserID, 0)
 
-	txm := backend.NewTxManager(db)
+	txm := tdb.TX
 	folderRepo := accountrepo.NewFolderRepo("sqlite", txm)
 	accountRepo := accountrepo.NewRepo("sqlite", txm)
 	svc := appconnection.NewService(
@@ -133,14 +112,6 @@ func newHarness(t *testing.T) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db, jwt: jwt}
-}
-
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
-	}
-	return out
 }
 
 func (h *harness) token(t *testing.T, userID, email string) string {

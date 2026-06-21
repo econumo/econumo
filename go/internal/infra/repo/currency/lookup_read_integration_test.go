@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const seededUSD = "dffc2a06-6f29-4704-8575-31709adee926"
@@ -99,9 +100,9 @@ func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
 	// Seed a second currency + a rate; the rate's NUMERIC(19,8) must normalize to
 	// the PHP DecimalNumber wire form (trailing zeros trimmed).
 	eur := "1ae5bfd5-03e8-412b-80d2-c0ecf3ce32fe"
-	db.Exec(t, `INSERT INTO currencies (id, code, symbol, fraction_digits, created_at) VALUES (?, 'EUR', 'E', 2, ?)`, eur, fixedTimeStr)
-	db.Exec(t, `INSERT INTO currencies_rates (id, currency_id, base_currency_id, rate, published_at) VALUES (?, ?, ?, '0.92000000', '2026-01-20')`,
-		"10000000-0000-7000-8000-000000000099", eur, seededUSD)
+	f := fixture.New(t, db)
+	f.Currency(fixture.Currency{ID: eur, Code: "EUR", Symbol: "E"})
+	f.Rate(fixture.Rate{ID: "10000000-0000-7000-8000-000000000099", CurrencyID: eur, BaseCurrencyID: seededUSD, Rate: "0.92000000", PublishedAt: "2026-01-20"})
 
 	rows, err := read.LatestCurrencyRateListView(ctx)
 	if err != nil {
@@ -139,5 +140,3 @@ func TestRateProvider_FractionDigitsAndBase(t *testing.T) {
 		t.Errorf("want 2 fraction digits, got %d", fd)
 	}
 }
-
-const fixedTimeStr = "2024-04-01 12:00:00"

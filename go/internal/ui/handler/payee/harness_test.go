@@ -18,7 +18,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -32,18 +31,17 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/testkeys"
 	handlerpayee "github.com/econumo/econumo/internal/ui/handler/payee"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
-// Fixed test data. The JWT keypair is the repo dev keypair vendored into
-// infra/auth/testdata; referenced by a relative path that resolves from this
-// package directory.
+// Fixed test data. The JWT keypair comes from the shared testkeys package
+// (testkeys.Paths + testkeys.Passphrase).
 const (
-	testDataSalt   = "0123456789abcdef" // 16 bytes -> AES-128
-	testPassphrase = "d78eedcb16c13bd949ede5d1b8b910cd"
-	testPrivateKey = "../../../infra/auth/testdata/private.pem"
-	testPublicKey  = "../../../infra/auth/testdata/public.pem"
+	testDataSalt = "0123456789abcdef" // 16 bytes -> AES-128
 
 	seedUserID    = "11111111-1111-1111-1111-111111111111"
 	otherUserID   = "22222222-2222-2222-2222-222222222222"
@@ -62,6 +60,7 @@ func (c fixedClock) Now() time.Time { return c.t }
 type harness struct {
 	srv   *httptest.Server
 	db    *sql.DB
+	tdb   *dbtest.DB
 	jwt   *auth.JWT
 	clock fixedClock
 }
@@ -83,17 +82,18 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	encode := auth.NewEncodeService(testDataSalt)
-	hasher := auth.NewPasswordHasher()
-	jwt, err := auth.NewJWT(testPrivateKey, testPublicKey, testPassphrase)
+	priv, pub := testkeys.Paths(t)
+	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
-	seedUsers(t, ctx, db, encode, hasher)
-
 	txm := backend.NewTxManager(db)
+	tdb := &dbtest.DB{Raw: db, TX: txm, Engine: "sqlite"}
+
+	seedUsers(t, tdb)
+
 	repo := payeerepo.NewSQLiteRepo(txm)
 	readRepo := payeerepo.NewReadRepo("sqlite", txm)
 	opGuard := operationrepo.NewGuard("sqlite", txm)
@@ -111,32 +111,26 @@ func newHarness(t *testing.T) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, jwt: jwt, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, jwt: jwt, clock: clk}
 }
 
 // seedUsers inserts the seeded user (the JWT subject) and a second user used to
 // test ownership boundaries. Payees are created via the API in each test.
-func seedUsers(t *testing.T, ctx context.Context, db *sql.DB, encode *auth.EncodeService, hasher *auth.PasswordHasher) {
+func seedUsers(t *testing.T, tdb *dbtest.DB) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-
+	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
 	for _, u := range []struct{ id, email string }{
 		{seedUserID, seedEmail},
 		{otherUserID, "other@example.test"},
 	} {
-		identifier := encode.Hash(strings.ToLower(u.email))
-		encEmail, err := encode.Encode(u.email)
-		if err != nil {
-			t.Fatalf("encode email: %v", err)
-		}
-		passwordHash := hasher.Hash("pw", seedSalt)
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-			u.id, identifier, encEmail, seedName, seedAvatarURL, passwordHash, seedSalt, now, now,
-		); err != nil {
-			t.Fatalf("seed user %s: %v", u.id, err)
-		}
+		f.User(fixture.User{
+			ID:       u.id,
+			Email:    u.email,
+			Name:     seedName,
+			Avatar:   seedAvatarURL,
+			Password: "pw",
+			Salt:     seedSalt,
+		})
 	}
 }
 
@@ -153,18 +147,13 @@ func toMigrations(files []migrations.File) []migrate.Migration {
 // payees table has no type/icon columns.
 func (h *harness) seedPayee(t *testing.T, id, ownerID, name string, position int, archived bool) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	arch := 0
-	if archived {
-		arch = 1
-	}
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		id, ownerID, name, position, arch, now, now,
-	); err != nil {
-		t.Fatalf("seed payee %s: %v", id, err)
-	}
+	fixture.New(t, h.tdb).Payee(fixture.Payee{
+		ID:       id,
+		UserID:   ownerID,
+		Name:     name,
+		Position: position,
+		Archived: archived,
+	})
 }
 
 // ---- request helpers ----

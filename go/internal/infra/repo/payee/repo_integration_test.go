@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -27,16 +28,15 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-func seedUser(t *testing.T, db *dbtest.DB, id string) {
+func seedUser(t *testing.T, f *fixture.Builder, id string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
-		id, id, fixedTime, fixedTime)
+	f.User(fixture.User{ID: id, Name: "u"})
 }
 
-func newRepo(t *testing.T) (*payeerepo.Repo, *payeerepo.ReadRepo, *dbtest.DB) {
+func newRepo(t *testing.T) (*payeerepo.Repo, *payeerepo.ReadRepo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
-	return payeerepo.NewRepo("sqlite", db.TX), payeerepo.NewReadRepo("sqlite", db.TX), db
+	return payeerepo.NewRepo("sqlite", db.TX), payeerepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
 func payee(id, userID, name string, pos int16) *dompayee.Payee {
@@ -44,9 +44,9 @@ func payee(id, userID, name string, pos int16) *dompayee.Payee {
 }
 
 func TestPayeeRepo_SaveGetRoundTrip(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
+	seedUser(t, f, userA)
 	if err := repo.Save(ctx, payee(payeeA1, userA, "Acme", 6)); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -63,8 +63,8 @@ func TestPayeeRepo_SaveGetRoundTrip(t *testing.T) {
 }
 
 func TestPayeeRepo_GetByID_NotFound(t *testing.T) {
-	repo, _, db := newRepo(t)
-	seedUser(t, db, userA)
+	repo, _, _, f := newRepo(t)
+	seedUser(t, f, userA)
 	_, err := repo.GetByID(context.Background(), vo.NewId())
 	var nf *errs.NotFoundError
 	if !errors.As(err, &nf) {
@@ -73,10 +73,10 @@ func TestPayeeRepo_GetByID_NotFound(t *testing.T) {
 }
 
 func TestPayeeRepo_ListAndCountByOwner(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
-	seedUser(t, db, userB)
+	seedUser(t, f, userA)
+	seedUser(t, f, userB)
 	_ = repo.Save(ctx, payee(payeeA1, userA, "A1", 1))
 	_ = repo.Save(ctx, payee(payeeA2, userA, "A2", 0))
 	_ = repo.Save(ctx, payee(payeeB1, userB, "B1", 0))
@@ -98,9 +98,9 @@ func TestPayeeRepo_ListAndCountByOwner(t *testing.T) {
 }
 
 func TestPayeeRepo_Delete(t *testing.T) {
-	repo, _, db := newRepo(t)
+	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
+	seedUser(t, f, userA)
 	_ = repo.Save(ctx, payee(payeeA1, userA, "A1", 0))
 	if err := repo.Delete(ctx, vo.MustParseId(payeeA1)); err != nil {
 		t.Fatalf("Delete: %v", err)
@@ -113,10 +113,10 @@ func TestPayeeRepo_Delete(t *testing.T) {
 }
 
 func TestPayeeReadRepo_OwnPlusShared(t *testing.T) {
-	repo, read, db := newRepo(t)
+	repo, read, _, f := newRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA)
-	seedUser(t, db, userB)
+	seedUser(t, f, userA)
+	seedUser(t, f, userB)
 	_ = repo.Save(ctx, payee(payeeA1, userA, "A1", 0))
 	_ = repo.Save(ctx, payee(payeeB1, userB, "B1", 0))
 
@@ -131,10 +131,8 @@ func TestPayeeReadRepo_OwnPlusShared(t *testing.T) {
 		t.Errorf("datetime format wrong: %q", own[0].CreatedAt)
 	}
 
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Shared', 2, 'x', 0, ?, ?)`,
-		"acc00000-0000-0000-0000-0000000000b1", usdID, userB, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, 1, ?, ?)`,
-		"acc00000-0000-0000-0000-0000000000b1", userA, fixedTime, fixedTime)
+	f.Account(fixture.Account{ID: "acc00000-0000-0000-0000-0000000000b1", UserID: userB, CurrencyID: usdID, Name: "Shared", Type: 2, Icon: "x"})
+	f.AccountAccess("acc00000-0000-0000-0000-0000000000b1", userA, 1)
 
 	shared, err := read.PayeeListView(ctx, userA)
 	if err != nil {

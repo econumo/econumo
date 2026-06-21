@@ -10,6 +10,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -23,6 +24,7 @@ var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 func TestUserBudgetLookup_Exists(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	ctx := context.Background()
+	f := fixture.New(t, db)
 	lookup := userbudget.New("sqlite", db.TX)
 
 	// Missing -> (false, nil).
@@ -35,10 +37,8 @@ func TestUserBudgetLookup_Exists(t *testing.T) {
 	}
 
 	// Seed user + budget -> (true, nil).
-	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
-		userA, userA, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO budgets (id, user_id, currency_id, name, started_at, created_at, updated_at) VALUES (?, ?, ?, 'B', ?, ?, ?)`,
-		budgetID, userA, usdID, fixedTime, fixedTime, fixedTime)
+	f.User(fixture.User{ID: userA, Name: "u"})
+	f.Budget(fixture.Budget{ID: budgetID, UserID: userA, CurrencyID: usdID, Name: "B", StartedAt: fixedTime})
 
 	ok, err = lookup.Exists(ctx, budgetID)
 	if err != nil {

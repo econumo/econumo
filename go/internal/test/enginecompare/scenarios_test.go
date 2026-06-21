@@ -16,6 +16,7 @@ import (
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func mustID(t *testing.T, s string) vo.Id {
@@ -35,21 +36,17 @@ func mustID(t *testing.T, s string) vo.Id {
 func TestEngines_CategoryOwnAndShared(t *testing.T) {
 	runOnBoth(t, func(t *testing.T, db *dbtest.DB) string {
 		ctx := context.Background()
-		seedUser(t, db, userA, "a@test")
-		seedUser(t, db, userB, "b@test")
+		f := fixture.New(t, db)
+		f.User(fixture.User{ID: userA, Email: "a@test"})
+		f.User(fixture.User{ID: userB, Email: "b@test"})
 
 		const acct = "aaaa1111-0000-0000-0000-0000000000b1"
-		seed(t, db, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
-			VALUES (?, ?, ?, 'Shared', 2, 'wallet', FALSE, ?, ?)`, acct, usdID, userB, fixedTime, fixedTime)
-		seed(t, db, `INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at)
-			VALUES (?, ?, 1, ?, ?)`, acct, userA, fixedTime, fixedTime)
+		f.Account(fixture.Account{ID: acct, CurrencyID: usdID, UserID: userB, Name: "Shared", Type: 2, Icon: "wallet"})
+		f.AccountAccess(acct, userA, 1)
 
-		seed(t, db, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at)
-			VALUES (?, ?, 'Food', 0, 0, 'i', FALSE, ?, ?)`, "c0000000-0000-0000-0000-0000000000a1", userA, fixedTime, fixedTime)
-		seed(t, db, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at)
-			VALUES (?, ?, 'Salary', 1, 1, 'i', FALSE, ?, ?)`, "c0000000-0000-0000-0000-0000000000a2", userA, fixedTime, fixedTime)
-		seed(t, db, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at)
-			VALUES (?, ?, 'Rent', 0, 0, 'i', TRUE, ?, ?)`, "c0000000-0000-0000-0000-0000000000b1", userB, fixedTime, fixedTime)
+		f.Category(fixture.Category{ID: "c0000000-0000-0000-0000-0000000000a1", UserID: userA, Name: "Food", Position: 0, Type: 0, Icon: "i"})
+		f.Category(fixture.Category{ID: "c0000000-0000-0000-0000-0000000000a2", UserID: userA, Name: "Salary", Position: 1, Type: 1, Icon: "i"})
+		f.Category(fixture.Category{ID: "c0000000-0000-0000-0000-0000000000b1", UserID: userB, Name: "Rent", Position: 0, Type: 0, Icon: "i", Archived: true})
 
 		rows, err := categoryrepo.NewReadRepo(db.Engine, db.TX).CategoryListView(ctx, userA)
 		if err != nil {
@@ -76,15 +73,20 @@ func snapshotCategories(rows []appcategory.CategoryViewRow) string {
 func TestEngines_AccountBalances(t *testing.T) {
 	runOnBoth(t, func(t *testing.T, db *dbtest.DB) string {
 		ctx := context.Background()
-		seedUser(t, db, userA, "a@test")
+		f := fixture.New(t, db)
+		f.User(fixture.User{ID: userA, Email: "a@test"})
 		const acct = "aaaa1111-0000-0000-0000-0000000000c1"
-		seed(t, db, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
-			VALUES (?, ?, ?, 'Cash', 2, 'wallet', FALSE, ?, ?)`, acct, usdID, userA, fixedTime, fixedTime)
+		f.Account(fixture.Account{ID: acct, CurrencyID: usdID, UserID: userA, Name: "Cash", Type: 2, Icon: "wallet"})
 		amounts := []string{"100.00000000", "33.33000000", "-133.33000000", "0.10000000", "0.20000000"}
 		for i, amt := range amounts {
-			seed(t, db, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, spent_at, created_at, updated_at)
-				VALUES (?, ?, ?, 1, ?, '', ?, ?, ?)`,
-				fmt.Sprintf("d0000000-0000-0000-0000-00000000000%d", i), userA, acct, amt, fixedTime, fixedTime, fixedTime)
+			f.Transaction(fixture.Transaction{
+				ID:        fmt.Sprintf("d0000000-0000-0000-0000-00000000000%d", i),
+				UserID:    userA,
+				AccountID: acct,
+				Type:      1,
+				Amount:    amt,
+				SpentAt:   fixedTime,
+			})
 		}
 		bals, err := accountrepo.NewRepo(db.Engine, db.TX).Balances(ctx, mustID(t, userA), fixedTime.AddDate(1, 0, 0))
 		if err != nil {
@@ -101,7 +103,7 @@ func TestEngines_AccountBalances(t *testing.T) {
 func TestEngines_ConnectionInviteByCode(t *testing.T) {
 	runOnBoth(t, func(t *testing.T, db *dbtest.DB) string {
 		ctx := context.Background()
-		seedUser(t, db, userA, "a@test")
+		fixture.New(t, db).User(fixture.User{ID: userA, Email: "a@test"})
 		repo := connectionrepo.NewInviteRepo(db.Engine, db.TX)
 
 		inv := domconnection.NewConnectionInvite(mustID(t, userA))

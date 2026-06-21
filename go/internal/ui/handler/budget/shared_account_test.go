@@ -1,10 +1,12 @@
 package budget_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -24,35 +26,19 @@ const (
 func TestGetBudget_ExcludesSharedAccountBalance(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	ctx := context.Background()
-	now := time.Unix(1690000000, 0).UTC()
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	// A transaction BEFORE the period gives the seed user's OWN account a start
 	// balance of 200 (income, type=1) on the baseline USD account.
 	before := time.Date(2025, 12, 1, 12, 0, 0, 0, time.UTC)
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, spent_at, created_at, updated_at) VALUES (?, ?, ?, 1, '200.00', '', ?, ?, ?)`,
-		ownedTxID, seedUserID, accountID, before, now, now); err != nil {
-		t.Fatalf("seed owned tx: %v", err)
-	}
+	f.Transaction(fixture.Transaction{ID: ownedTxID, UserID: seedUserID, AccountID: accountID, Type: 1, Amount: "200.00", SpentAt: before})
 
 	// A second user owns a USD account they SHARE with the seed user, with a
 	// before-period balance of 5000. It must NOT appear in the budget balance.
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, 'ident2', 'enc2', 'Other', '', '', '', ?, ?, 1)`,
-		otherUserID, now, now); err != nil {
-		t.Fatalf("seed other user: %v", err)
-	}
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Theirs', 2, 'wallet', 0, ?, ?)`,
-		sharedAcctID, usdID, otherUserID, now, now); err != nil {
-		t.Fatalf("seed shared account: %v", err)
-	}
+	f.User(fixture.User{ID: otherUserID, Name: "Other"})
+	f.Account(fixture.Account{ID: sharedAcctID, UserID: otherUserID, CurrencyID: usdID, Name: "Theirs"})
 	// Grant the seed user access (role user=1) — makes it "available" but not owned.
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, 1, ?, ?)`,
-		sharedAcctID, seedUserID, now, now); err != nil {
-		t.Fatalf("seed grant: %v", err)
-	}
-	if _, err := h.db.ExecContext(ctx, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, spent_at, created_at, updated_at) VALUES (?, ?, ?, 1, '5000.00', '', ?, ?, ?)`,
-		sharedTxID, otherUserID, sharedAcctID, before, now, now); err != nil {
-		t.Fatalf("seed shared tx: %v", err)
-	}
+	f.AccountAccess(sharedAcctID, seedUserID, 1)
+	f.Transaction(fixture.Transaction{ID: sharedTxID, UserID: otherUserID, AccountID: sharedAcctID, Type: 1, Amount: "5000.00", SpentAt: before})
 
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(c4BudgetID, "C4 Budget")); st != 200 {
 		t.Fatalf("create=%d body=%s", st, e.raw)

@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -29,28 +30,26 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-func seedUser(t *testing.T, db *dbtest.DB, id, name string) {
+func seedUser(t *testing.T, f *fixture.Builder, id, name string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', ?, '', '', '', ?, ?, 1)`,
-		id, id, name, fixedTime, fixedTime)
+	f.User(fixture.User{ID: id, Name: name})
 }
 
-func seedAccount(t *testing.T, db *dbtest.DB, id, userID, name string) {
+func seedAccount(t *testing.T, f *fixture.Builder, id, userID, name string) {
 	t.Helper()
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, ?, 2, 'wallet', 0, ?, ?)`,
-		id, usdID, userID, name, fixedTime, fixedTime)
+	f.Account(fixture.Account{ID: id, UserID: userID, CurrencyID: usdID, Name: name, Type: 2, Icon: "wallet"})
 }
 
-func newAccountRepo(t *testing.T) (*accountrepo.Repo, *dbtest.DB) {
+func newAccountRepo(t *testing.T) (*accountrepo.Repo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
-	return accountrepo.NewRepo("sqlite", db.TX), db
+	return accountrepo.NewRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
 func TestAccountRepo_SaveGetRoundTrip(t *testing.T) {
-	repo, db := newAccountRepo(t)
+	repo, _, f := newAccountRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
+	seedUser(t, f, userA, "A")
 
 	id := vo.MustParseId(acctCash)
 	acc := domaccount.FromState(
@@ -80,8 +79,8 @@ func TestAccountRepo_SaveGetRoundTrip(t *testing.T) {
 }
 
 func TestAccountRepo_GetByID_NotFound(t *testing.T) {
-	repo, db := newAccountRepo(t)
-	seedUser(t, db, userA, "A")
+	repo, _, f := newAccountRepo(t)
+	seedUser(t, f, userA, "A")
 	_, err := repo.GetByID(context.Background(), vo.NewId())
 	var nf *errs.NotFoundError
 	if !errors.As(err, &nf) {
@@ -90,14 +89,13 @@ func TestAccountRepo_GetByID_NotFound(t *testing.T) {
 }
 
 func TestAccountRepo_ListAndCountAvailable(t *testing.T) {
-	repo, db := newAccountRepo(t)
+	repo, _, f := newAccountRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
-	seedAccount(t, db, acctCash, userA, "Cash")
-	seedAccount(t, db, acctBank, userA, "Bank")
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
+	seedAccount(t, f, acctBank, userA, "Bank")
 	// A deleted account must be excluded.
-	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Gone', 2, 'x', 1, ?, ?)`,
-		acctOther, usdID, userA, fixedTime, fixedTime)
+	f.Account(fixture.Account{ID: acctOther, UserID: userA, CurrencyID: usdID, Name: "Gone", Type: 2, Icon: "x", Deleted: true})
 
 	list, err := repo.ListAvailable(ctx, vo.MustParseId(userA))
 	if err != nil {
@@ -116,11 +114,11 @@ func TestAccountRepo_ListAndCountAvailable(t *testing.T) {
 }
 
 func TestAccountRepo_Positions(t *testing.T) {
-	repo, db := newAccountRepo(t)
+	repo, _, f := newAccountRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
-	seedAccount(t, db, acctCash, userA, "Cash")
-	seedAccount(t, db, acctBank, userA, "Bank")
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
+	seedAccount(t, f, acctBank, userA, "Bank")
 
 	// No option row yet.
 	_, ok, err := repo.GetPosition(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA))
@@ -164,15 +162,14 @@ func TestAccountRepo_Positions(t *testing.T) {
 }
 
 func TestAccountRepo_Balance_RoundsFloatSum(t *testing.T) {
-	repo, db := newAccountRepo(t)
+	repo, _, f := newAccountRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
-	seedAccount(t, db, acctCash, userA, "Cash")
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
 
 	// Three income transactions that float-sum with drift but must render clean.
 	seedTx := func(id, amt string) {
-		db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, 1, ?, '', ?, ?, ?)`,
-			id, userA, acctCash, amt, fixedTime, fixedTime, "2024-03-01 00:00:00")
+		f.Transaction(fixture.Transaction{ID: id, UserID: userA, AccountID: acctCash, Type: 1, Amount: amt, SpentAt: "2024-03-01 00:00:00"})
 	}
 	seedTx("c0000000-0000-0000-0000-000000000001", "100.10")
 	seedTx("c0000000-0000-0000-0000-000000000002", "200.20")
@@ -188,7 +185,7 @@ func TestAccountRepo_Balance_RoundsFloatSum(t *testing.T) {
 	}
 
 	// No transactions -> "0".
-	seedAccount(t, db, acctBank, userA, "Bank")
+	seedAccount(t, f, acctBank, userA, "Bank")
 	bal2, err := repo.Balance(ctx, vo.MustParseId(acctBank), before)
 	if err != nil {
 		t.Fatalf("Balance empty: %v", err)
@@ -199,18 +196,15 @@ func TestAccountRepo_Balance_RoundsFloatSum(t *testing.T) {
 }
 
 func TestAccountRepo_Balances_NegativeZeroNormalized(t *testing.T) {
-	repo, db := newAccountRepo(t)
+	repo, _, f := newAccountRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
-	seedAccount(t, db, acctCash, userA, "Cash")
-	db.Exec(t, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 0, ?, ?)`,
-		acctCash, userA, fixedTime, fixedTime)
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
+	f.AccountOption(acctCash, userA, 0)
 
 	// An income then an equal expense -> net 0 (must not be "-0").
-	db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, 1, '50.00', '', ?, ?, '2024-03-01 00:00:00')`,
-		"d0000000-0000-0000-0000-000000000001", userA, acctCash, fixedTime, fixedTime)
-	db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, 0, '50.00', '', ?, ?, '2024-03-01 00:00:00')`,
-		"d0000000-0000-0000-0000-000000000002", userA, acctCash, fixedTime, fixedTime)
+	f.Transaction(fixture.Transaction{ID: "d0000000-0000-0000-0000-000000000001", UserID: userA, AccountID: acctCash, Type: 1, Amount: "50.00", SpentAt: "2024-03-01 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctCash, Type: 0, Amount: "50.00", SpentAt: "2024-03-01 00:00:00"})
 
 	before := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 	balances, err := repo.Balances(ctx, vo.MustParseId(userA), before)
@@ -227,10 +221,10 @@ func TestAccountRepo_Balances_NegativeZeroNormalized(t *testing.T) {
 }
 
 func TestAccountRepo_SaveCorrection(t *testing.T) {
-	repo, db := newAccountRepo(t)
+	repo, db, f := newAccountRepo(t)
 	ctx := context.Background()
-	seedUser(t, db, userA, "A")
-	seedAccount(t, db, acctCash, userA, "Cash")
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
 
 	corrID := vo.NewId()
 	c := domaccount.Correction{

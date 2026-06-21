@@ -1,22 +1,18 @@
 package account_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
-	"time"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-// seedGrant inserts an accounts_access row (role: admin=0/user=1/guest=2).
+// seedGrant inserts an accounts_access row (role: admin=0/user=1/guest=2). role
+// is stored verbatim, so role=0 (admin) is faithfully represented.
 func (h *harness) seedGrant(t *testing.T, accountID, userID string, role int) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		accountID, userID, role, now, now,
-	); err != nil {
-		t.Fatalf("seed grant: %v", err)
-	}
+	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).AccountAccess(accountID, userID, role)
 }
 
 // sharedAccessItem mirrors one sharedAccess[] entry: {user:{id,avatar,name}, role}.

@@ -8,10 +8,12 @@ package budget_test
 // follow-up GET (get-budget / get-budget-list) or a direct DB read.
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // secondUserID is a second seeded user used for access / ownership tests.
@@ -21,14 +23,8 @@ const secondUserID = "22222222-2222-2222-2222-222222222222"
 // tests have a distinct principal. Returns a JWT for that user.
 func (h *harness) seedSecondUser(t *testing.T) string {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	_, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-		secondUserID, "ident-2", "enc-2", "Second User", "https://avatar.test/2", "hash", seedSalt, now, now)
-	if err != nil {
-		t.Fatalf("seed second user: %v", err)
-	}
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.User(fixture.User{ID: secondUserID, Name: "Second User", Avatar: "https://avatar.test/2", Salt: seedSalt})
 	tok, err := h.jwt.Issue(secondUserID, "second@example.test", time.Now())
 	if err != nil {
 		t.Fatalf("issue second token: %v", err)
@@ -514,11 +510,7 @@ func TestChangeElementCurrency_UpdatesElement(t *testing.T) {
 
 	// Seed a EUR currency so the change is a real mutation.
 	const eurID = "dffc2a06-6f29-4704-8575-31709adee927"
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO currencies (id, code, symbol, created_at) VALUES (?, 'EUR', '€', ?)`, eurID, now); err != nil {
-		t.Fatalf("seed EUR: %v", err)
-	}
+	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{ID: eurID, Code: "EUR", Symbol: "€"})
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/change-element-currency", tok, map[string]any{
 		"budgetId": budgetID1, "elementId": catID, "currencyId": eurID,

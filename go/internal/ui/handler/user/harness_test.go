@@ -23,7 +23,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -38,19 +37,18 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/testkeys"
 	handleruser "github.com/econumo/econumo/internal/ui/handler/user"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
 // Fixed test data. The data salt is a 16-byte string (AES-128 requires exactly
-// 16 key bytes — see auth.EncodeService). The JWT keys are the repo dev keypair
-// vendored into infra/auth/testdata; we reference them by a relative path that
-// resolves from this package directory.
+// 16 key bytes — see auth.EncodeService). The JWT keypair comes from the shared
+// testkeys package (testkeys.Paths + testkeys.Passphrase).
 const (
-	testDataSalt   = "0123456789abcdef" // 16 bytes -> AES-128
-	testPassphrase = "d78eedcb16c13bd949ede5d1b8b910cd"
-	testPrivateKey = "../../../infra/auth/testdata/private.pem"
-	testPublicKey  = "../../../infra/auth/testdata/public.pem"
+	testDataSalt = "0123456789abcdef" // 16 bytes -> AES-128
 
 	seedUserID   = "11111111-1111-1111-1111-111111111111"
 	seedEmail    = "user@example.test"
@@ -76,6 +74,7 @@ func (c fixedClock) Now() time.Time { return c.t }
 type harness struct {
 	srv    *httptest.Server
 	db     *sql.DB
+	tdb    *dbtest.DB
 	encode *auth.EncodeService
 	hasher *auth.PasswordHasher
 	jwt    *auth.JWT
@@ -104,7 +103,8 @@ func newHarness(t *testing.T) *harness {
 
 	encode := auth.NewEncodeService(testDataSalt)
 	hasher := auth.NewPasswordHasher()
-	jwt, err := auth.NewJWT(testPrivateKey, testPublicKey, testPassphrase)
+	priv, pub := testkeys.Paths(t)
+	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
@@ -113,9 +113,11 @@ func newHarness(t *testing.T) *harness {
 	// integer-timestamp JWT claims.
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
-	seed(t, ctx, db, encode, hasher)
-
 	txm := backend.NewTxManager(db)
+	tdb := &dbtest.DB{Raw: db, TX: txm, Engine: "sqlite"}
+
+	seed(t, tdb)
+
 	repo := userrepo.NewSQLiteRepo(txm)
 	readRepo := userrepo.NewReadRepo("sqlite", txm)
 	currency := currencyrepo.New("sqlite", txm)
@@ -134,53 +136,27 @@ func newHarness(t *testing.T) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, encode: encode, hasher: hasher, jwt: jwt, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, jwt: jwt, clock: clk}
 }
 
-// seed inserts the USD currency and a known user (with hashed password and
-// encrypted email) so login and get-user-data work.
-func seed(t *testing.T, ctx context.Context, db *sql.DB, encode *auth.EncodeService, hasher *auth.PasswordHasher) {
+// seed inserts a known user (with hashed password and encrypted email) plus the
+// four default user options so login and get-user-data work. USD currency is
+// provided by the baseline migration. The budget option is seeded with a NULL
+// value (matching the production seed for a user with no default budget); it
+// must be PRESENT so the domain's UpdateBudget — which only sets an existing
+// option — can write to it.
+func seed(t *testing.T, tdb *dbtest.DB) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-
-	// USD currency is provided by the baseline migration; no need to seed it.
-
-	identifier := encode.Hash(strings.ToLower(seedEmail))
-	encEmail, err := encode.Encode(seedEmail)
-	if err != nil {
-		t.Fatalf("encode email: %v", err)
-	}
-	passwordHash := hasher.Hash(seedPassword, seedSalt)
-
-	if _, err := db.ExecContext(ctx,
-		`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-		seedUserID, identifier, encEmail, seedName, "https://avatar.test/x", passwordHash, seedSalt, now, now,
-	); err != nil {
-		t.Fatalf("seed user: %v", err)
-	}
-
-	// Seed the four default user options. The budget option is seeded with a NULL
-	// value (matching the production seed for a user with no default budget); it
-	// must be PRESENT so the domain's UpdateBudget — which only sets an existing
-	// option — can write to it.
-	str := func(s string) *string { return &s }
-	for _, o := range []struct {
-		id, name string
-		value    *string
-	}{
-		{"33333333-3333-3333-3333-333333333331", "currency", str("USD")},
-		{"33333333-3333-3333-3333-333333333332", "report_period", str("monthly")},
-		{"33333333-3333-3333-3333-333333333333", "onboarding", str("started")},
-		{"33333333-3333-3333-3333-333333333334", "budget", nil},
-	} {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO users_options (id, user_id, name, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			o.id, seedUserID, o.name, o.value, now, now,
-		); err != nil {
-			t.Fatalf("seed option %s: %v", o.name, err)
-		}
-	}
+	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
+	f.User(fixture.User{
+		ID:       seedUserID,
+		Email:    seedEmail,
+		Name:     seedName,
+		Avatar:   "https://avatar.test/x",
+		Password: seedPassword,
+		Salt:     seedSalt,
+	})
+	f.DefaultOptions(seedUserID)
 }
 
 // seedBudget inserts a budget row owned by the seed user (id seedBudgetID) so
@@ -188,14 +164,13 @@ func seed(t *testing.T, ctx context.Context, db *sql.DB, encode *auth.EncodeServ
 // the default seed so budget-less tests exercise the empty-option path.
 func (h *harness) seedBudget(t *testing.T) {
 	t.Helper()
-	now := time.Unix(1690000000, 0).UTC()
-	if _, err := h.db.ExecContext(context.Background(),
-		`INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		seedBudgetID, usdCurrencyID, seedUserID, "Test Budget", now, now, now,
-	); err != nil {
-		t.Fatalf("seed budget: %v", err)
-	}
+	f := fixture.New(t, h.tdb)
+	f.Budget(fixture.Budget{
+		ID:         seedBudgetID,
+		UserID:     seedUserID,
+		CurrencyID: usdCurrencyID,
+		Name:       "Test Budget",
+	})
 }
 
 func toMigrations(files []migrations.File) []migrate.Migration {
