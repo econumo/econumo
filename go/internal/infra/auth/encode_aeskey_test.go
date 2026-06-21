@@ -9,10 +9,10 @@ import (
 // TestCoerceAESKey verifies the AES-128 key derivation matches PHP/OpenSSL:
 // over-length salts use only their first 16 bytes, shorter salts zero-pad to 16,
 // and an empty salt yields no key (passthrough path). Regression for the
-// api-compare finding where a 33-byte ECONUMO_DATA_SALT (the real deployment's
+// api-compare finding where a 33-byte ECONUMO_DATA_SALT (one with a multibyte char,
 // salt, with a multibyte char) produced "crypto/aes: invalid key size 33".
 func TestCoerceAESKey(t *testing.T) {
-	long := []byte("NPZ9Un6;9<NnZ£afuB<aPm!6P.WRkC~S") // 33 bytes (£ is 2)
+	long := []byte("SYNTHETIC_TEST_SALT_pad_xyz789£!") // 33 bytes (£ is 2)
 	if len(long) != 33 {
 		t.Fatalf("precondition: salt is %d bytes, want 33", len(long))
 	}
@@ -41,10 +41,10 @@ func TestCoerceAESKey(t *testing.T) {
 // only past byte 16 for the ciphertext bodies to match — here we assert the
 // round-trip, which is the user-visible contract).
 func TestEncodeDecode_NonSixteenByteSalt(t *testing.T) {
-	salt := "NPZ9Un6;9<NnZ£afuB<aPm!6P.WRkC~S"
+	salt := "SYNTHETIC_TEST_SALT_pad_xyz789£!"
 	svc := NewEncodeService(salt)
 
-	const plain = "kuznetsov2d@example.test"
+	const plain = "user@example.test"
 	enc, err := svc.Encode(plain)
 	if err != nil {
 		t.Fatalf("Encode with 33-byte salt: %v", err)

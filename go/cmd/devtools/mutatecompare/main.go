@@ -36,8 +36,8 @@ import (
 )
 
 var (
-	loginEmail    = "kuznetsov2d@gmail.com"
-	loginPassword = "econum0))"
+	loginEmail    = "" // supply via -email (no creds committed)
+	loginPassword = "" // supply via -password
 )
 
 func main() {

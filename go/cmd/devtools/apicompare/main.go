@@ -33,8 +33,8 @@ import (
 // Login credentials for the seed database. Overridable via -email / -password
 // so creds are never hardcoded for a non-fixture seed.
 var (
-	loginEmail    = "kuznetsov2d@gmail.com"
-	loginPassword = "econum0))"
+	loginEmail    = "" // supply via -email (no creds committed)
+	loginPassword = "" // supply via -password
 )
 
 func main() {

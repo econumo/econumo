@@ -24,8 +24,10 @@ PHP_DB="${PHP_DB:-$ROOT/deployment/compare/db.php.sqlite}"
 GO_DB="${GO_DB:-$ROOT/deployment/compare/db.go.sqlite}"
 PHP_URL="${PHP_URL:-http://localhost:8082}"
 GO_URL="${GO_URL:-http://localhost:8282}"
-EMAIL="${EMAIL:-kuznetsov2d@gmail.com}"
-PASSWORD="${PASSWORD:-econum0))}"
+# Seed login — supply via env (no credentials are committed):
+#   EMAIL=you@example.com PASSWORD=secret bash deployment/compare/mutate_compare.sh
+EMAIL="${EMAIL:?set EMAIL to the seed login email}"
+PASSWORD="${PASSWORD:?set PASSWORD to the seed login password}"
 FILTER="${1:-}"
 
 [ -f "$SEED" ] || { echo "seed not found: $SEED" >&2; exit 1; }
