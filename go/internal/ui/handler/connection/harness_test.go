@@ -25,6 +25,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
+	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -54,6 +55,13 @@ const (
 	ownerFolderID = "ffffffff-0000-0000-0000-00000000f01d"
 	guestFolderID = "ffffffff-0000-0000-0000-00000000f02d"
 	ownerAccount  = "aaaa1111-0000-0000-0000-0000000000a1"
+
+	// A third user NOT connected to owner/guest, for the invite happy-path.
+	thirdUserID   = "33333333-3333-3333-3333-333333333333"
+	thirdEmail    = "third@example.test"
+	thirdName     = "Third User"
+	thirdAvatar   = "https://avatar.test/third"
+	thirdFolderID = "ffffffff-0000-0000-0000-00000000f03d"
 )
 
 type harness struct {
@@ -93,6 +101,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	seedUser(ownerUserID, ownerEmail, ownerName, ownerAvatar)
 	seedUser(guestUserID, guestEmail, guestName, guestAvatar)
+	seedUser(thirdUserID, thirdEmail, thirdName, thirdAvatar)
 
 	// Symmetric connection between owner and guest.
 	db.ExecContext(ctx, `INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, ownerUserID, guestUserID)
@@ -101,6 +110,7 @@ func newHarness(t *testing.T) *harness {
 	// Each user has one folder; owner owns one account.
 	db.ExecContext(ctx, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, 1, ?, ?)`, ownerFolderID, ownerUserID, now, now)
 	db.ExecContext(ctx, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, 1, ?, ?)`, guestFolderID, guestUserID, now, now)
+	db.ExecContext(ctx, `INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, 'Main', 0, 1, ?, ?)`, thirdFolderID, thirdUserID, now, now)
 	db.ExecContext(ctx, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'Cash', 2, 'wallet', 0, ?, ?)`, ownerAccount, usdID, ownerUserID, now, now)
 	db.ExecContext(ctx, `INSERT INTO accounts_folders (folder_id, account_id) VALUES (?, ?)`, ownerFolderID, ownerAccount)
 	db.ExecContext(ctx, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, 0, ?, ?)`, ownerAccount, ownerUserID, now, now)
@@ -110,9 +120,11 @@ func newHarness(t *testing.T) *harness {
 	accountRepo := accountrepo.NewRepo("sqlite", txm)
 	svc := appconnection.NewService(
 		connectionrepo.NewRepo("sqlite", txm),
+		connectionrepo.NewInviteRepo("sqlite", txm),
 		connectionrepo.NewFolderPort(folderRepo),
 		connectionrepo.NewOptionPort(accountRepo),
 		connectionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)),
+		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)),
 		txm, clock.New(),
 	)
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
@@ -196,10 +208,10 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 }
 
 type envelope struct {
-	Success bool                `json:"success"`
-	Message string              `json:"message"`
-	Code    int                 `json:"code"`
-	Data    json.RawMessage     `json:"data"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Code    int             `json:"code"`
+	Data    json.RawMessage `json:"data"`
 	Errors  json.RawMessage `json:"errors"`
 	raw     []byte
 }
@@ -212,7 +224,6 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 	}
 	return v
 }
-
 
 // errorsMap decodes the validation-form errors object (field -> messages).
 // Access-denied / exception responses emit an empty array ([]) instead, which

@@ -99,53 +99,132 @@ func (h *Handlers) RevokeAccountAccess(w http.ResponseWriter, r *http.Request) {
 }
 
 // GenerateInvite handles POST /api/v1/connection/generate-invite (auth).
-// Self-hosted: not supported -> 501.
+// Ported from EconumoCloudBundle: creates/refreshes the user's invite code.
 //
-// @Summary     Generate an invite (not supported in self-hosted)
+// @Summary     Generate an invite
+// @Description Generates (or refreshes) the user's connection invite code.
 // @Tags        Connection
+// @Accept      json
 // @Produce     json
-// @Success     501 {object} apidoc.JsonResponseError
+// @Param       request body     appconnection.GenerateInviteRequest false "Generate invite request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.GenerateInviteResult}
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/generate-invite [post]
 func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
-	httpx.NotImplemented(w, notImplementedMessage)
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	var req appconnection.GenerateInviteRequest
+	if err := httpx.DecodeValidate(r, &req); err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	res, err := h.svc.GenerateInvite(r.Context(), userID, req)
+	if err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	httpx.OK(w, res)
 }
 
 // DeleteInvite handles POST /api/v1/connection/delete-invite (auth).
-// Self-hosted: not supported -> 501.
+// Ported from EconumoCloudBundle: clears the user's outstanding invite.
 //
-// @Summary     Delete an invite (not supported in self-hosted)
+// @Summary     Delete an invite
+// @Description Clears the user's outstanding connection invite (no-op if none).
 // @Tags        Connection
+// @Accept      json
 // @Produce     json
-// @Success     501 {object} apidoc.JsonResponseError
+// @Param       request body     appconnection.DeleteInviteRequest false "Delete invite request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.DeleteInviteResult}
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-invite [post]
 func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
-	httpx.NotImplemented(w, notImplementedMessage)
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	var req appconnection.DeleteInviteRequest
+	if err := httpx.DecodeValidate(r, &req); err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	res, err := h.svc.DeleteInvite(r.Context(), userID, req)
+	if err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	httpx.OK(w, res)
 }
 
 // AcceptInvite handles POST /api/v1/connection/accept-invite (auth).
-// Self-hosted: not supported -> 501.
+// Ported from EconumoCloudBundle: redeems a code and connects the two users.
 //
-// @Summary     Accept an invite (not supported in self-hosted)
+// @Summary     Accept an invite
+// @Description Redeems an invite code, connecting the user with the invite's owner.
 // @Tags        Connection
+// @Accept      json
 // @Produce     json
-// @Success     501 {object} apidoc.JsonResponseError
+// @Param       request body     appconnection.AcceptInviteRequest true "Accept invite request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.AcceptInviteResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/accept-invite [post]
 func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
-	httpx.NotImplemented(w, notImplementedMessage)
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	var req appconnection.AcceptInviteRequest
+	if err := httpx.DecodeValidate(r, &req); err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	res, err := h.svc.AcceptInvite(r.Context(), userID, req)
+	if err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	httpx.OK(w, res)
 }
 
 // DeleteConnection handles POST /api/v1/connection/delete-connection (auth).
-// Self-hosted: not supported -> 501.
+// Ported from EconumoCloudBundle: disconnects two users, revoking the account
+// and budget access shared between them.
 //
-// @Summary     Delete a connection (not supported in self-hosted)
+// @Summary     Delete a connection
+// @Description Disconnects the user from a connected user, revoking shared access.
 // @Tags        Connection
+// @Accept      json
 // @Produce     json
-// @Success     501 {object} apidoc.JsonResponseError
+// @Param       request body     appconnection.DeleteConnectionRequest true "Delete connection request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.DeleteConnectionResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-connection [post]
 func (h *Handlers) DeleteConnection(w http.ResponseWriter, r *http.Request) {
-	httpx.NotImplemented(w, notImplementedMessage)
+	userID, ok := h.requireUser(w, r)
+	if !ok {
+		return
+	}
+	var req appconnection.DeleteConnectionRequest
+	if err := httpx.DecodeValidate(r, &req); err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	res, err := h.svc.DeleteConnection(r.Context(), userID, req)
+	if err != nil {
+		httpx.WriteError(w, err, h.dev)
+		return
+	}
+	httpx.OK(w, res)
 }

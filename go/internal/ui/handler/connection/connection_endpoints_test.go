@@ -2,9 +2,12 @@ package connection_test
 
 import (
 	"net/http"
-	"strings"
+	"regexp"
 	"testing"
 )
+
+// apiDatetime matches the wire datetime format "2006-01-02 15:04:05".
+var apiDatetime = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`)
 
 type accessItem struct {
 	ID          string `json:"id"`
@@ -23,26 +26,163 @@ type listResult struct {
 	Items []connItem `json:"items"`
 }
 
-// --- 501 stubs (self-hosted) ---
+// --- invites + delete-connection (ported from EconumoCloudBundle) ---
 
-func TestInviteAndConnectionStubs_501(t *testing.T) {
+// inviteResult is the {item:{code,expiredAt}} generate-invite response.
+type inviteResult struct {
+	Item struct {
+		Code      string `json:"code"`
+		ExpiredAt string `json:"expiredAt"`
+	} `json:"item"`
+}
+
+func TestGenerateInvite_ReturnsCodeAndExpiry(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t, ownerUserID, ownerEmail)
-	for _, path := range []string{
-		"/api/v1/connection/generate-invite",
-		"/api/v1/connection/delete-invite",
-		"/api/v1/connection/accept-invite",
-		"/api/v1/connection/delete-connection",
-	} {
-		status, raw := h.doRaw(t, http.MethodPost, path, tok, map[string]any{"code": "abcde", "id": guestUserID})
-		if status != http.StatusNotImplemented {
-			t.Fatalf("%s status=%d want 501; body: %s", path, status, raw)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/connection/generate-invite", tok, map[string]any{})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[inviteResult](t, env.Data)
+	if len([]rune(res.Item.Code)) != 5 {
+		t.Fatalf("code = %q, want a 5-char code", res.Item.Code)
+	}
+	if !apiDatetime.MatchString(res.Item.ExpiredAt) {
+		t.Fatalf("expiredAt = %q, want Y-m-d H:i:s", res.Item.ExpiredAt)
+	}
+	// The invite is persisted: a second generate refreshes (still valid, may differ).
+	_, env2 := h.do(t, http.MethodPost, "/api/v1/connection/generate-invite", tok, map[string]any{})
+	res2 := mustUnmarshal[inviteResult](t, env2.Data)
+	if len([]rune(res2.Item.Code)) != 5 {
+		t.Fatalf("second code = %q, want a 5-char code", res2.Item.Code)
+	}
+}
+
+func TestDeleteInvite_ClearsCode(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t, ownerUserID, ownerEmail)
+
+	// Generate, then delete.
+	_, gen := h.do(t, http.MethodPost, "/api/v1/connection/generate-invite", tok, map[string]any{})
+	code := mustUnmarshal[inviteResult](t, gen.Data).Item.Code
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/connection/delete-invite", tok, map[string]any{})
+	if status != http.StatusOK {
+		t.Fatalf("delete-invite status=%d want 200; body: %s", status, env.raw)
+	}
+	if string(env.Data) != "{}" {
+		t.Fatalf("delete-invite data=%s want {}", env.Data)
+	}
+
+	// The code is now cleared: a third user trying to accept it gets a 400.
+	thirdTok := h.token(t, thirdUserID, thirdEmail)
+	st, _ := h.do(t, http.MethodPost, "/api/v1/connection/accept-invite", thirdTok, map[string]any{"code": code})
+	if st != http.StatusBadRequest {
+		t.Fatalf("accept after delete status=%d want 400 (code cleared)", st)
+	}
+}
+
+func TestAcceptInvite_ConnectsUsers(t *testing.T) {
+	h := newHarness(t)
+	ownerTok := h.token(t, ownerUserID, ownerEmail)
+	thirdTok := h.token(t, thirdUserID, thirdEmail)
+
+	// Owner generates an invite; the (unconnected) third user accepts it.
+	_, gen := h.do(t, http.MethodPost, "/api/v1/connection/generate-invite", ownerTok, map[string]any{})
+	code := mustUnmarshal[inviteResult](t, gen.Data).Item.Code
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/connection/accept-invite", thirdTok, map[string]any{"code": code})
+	if status != http.StatusOK {
+		t.Fatalf("accept status=%d want 200; body: %s", status, env.raw)
+	}
+	// The response is the third user's connection list, now including the owner.
+	res := mustUnmarshal[listResult](t, env.Data)
+	var sawOwner bool
+	for _, c := range res.Items {
+		if c.User.ID == ownerUserID {
+			sawOwner = true
 		}
-		// 501 envelope emits errors as [] (not {}) -- decode loosely.
-		body := string(raw)
-		if !strings.Contains(body, `"success":false`) || !strings.Contains(body, "Not supported in Econumo One") || !strings.Contains(body, `"errors":[]`) {
-			t.Fatalf("%s 501 envelope = %s, want not-supported + errors:[]", path, body)
+	}
+	if !sawOwner {
+		t.Fatalf("accept result must list the owner as a connection; got %+v", res.Items)
+	}
+	// The symmetric link exists: owner's connection list now includes the third user.
+	_, ownerList := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", ownerTok, nil)
+	ol := mustUnmarshal[listResult](t, ownerList.Data)
+	var sawThird bool
+	for _, c := range ol.Items {
+		if c.User.ID == thirdUserID {
+			sawThird = true
 		}
+	}
+	if !sawThird {
+		t.Fatalf("owner's connection list must include the third user after accept")
+	}
+}
+
+func TestAcceptInvite_BadCodeLength_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t, thirdUserID, thirdEmail)
+	status, _ := h.do(t, http.MethodPost, "/api/v1/connection/accept-invite", tok, map[string]any{"code": "toolong"})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 (code must be 5 chars)", status)
+	}
+}
+
+func TestAcceptInvite_Blank_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t, thirdUserID, thirdEmail)
+	status, env := h.do(t, http.MethodPost, "/api/v1/connection/accept-invite", tok, map[string]any{"code": ""})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400; body: %s", status, env.raw)
+	}
+}
+
+func TestAcceptInvite_SelfInvite_400(t *testing.T) {
+	h := newHarness(t)
+	ownerTok := h.token(t, ownerUserID, ownerEmail)
+	_, gen := h.do(t, http.MethodPost, "/api/v1/connection/generate-invite", ownerTok, map[string]any{})
+	code := mustUnmarshal[inviteResult](t, gen.Data).Item.Code
+
+	// Owner accepting their own invite is rejected ("Inviting yourself?").
+	status, _ := h.do(t, http.MethodPost, "/api/v1/connection/accept-invite", ownerTok, map[string]any{"code": code})
+	if status != http.StatusBadRequest {
+		t.Fatalf("self-invite status=%d want 400", status)
+	}
+}
+
+func TestDeleteConnection_RemovesLink(t *testing.T) {
+	h := newHarness(t)
+	ownerTok := h.token(t, ownerUserID, ownerEmail)
+
+	// Owner and guest are connected in the seed; delete the connection.
+	status, env := h.do(t, http.MethodPost, "/api/v1/connection/delete-connection", ownerTok, map[string]any{"id": guestUserID})
+	if status != http.StatusOK {
+		t.Fatalf("delete-connection status=%d want 200; body: %s", status, env.raw)
+	}
+	if string(env.Data) != "{}" {
+		t.Fatalf("delete-connection data=%s want {}", env.Data)
+	}
+
+	// Both directions of the link are gone: neither lists the other.
+	_, ol := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", ownerTok, nil)
+	if items := mustUnmarshal[listResult](t, ol.Data).Items; len(items) != 0 {
+		t.Fatalf("owner still has %d connections after delete, want 0", len(items))
+	}
+	guestTok := h.token(t, guestUserID, guestEmail)
+	_, gl := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", guestTok, nil)
+	if items := mustUnmarshal[listResult](t, gl.Data).Items; len(items) != 0 {
+		t.Fatalf("guest still has %d connections after delete, want 0", len(items))
+	}
+}
+
+func TestDeleteConnection_Self_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t, ownerUserID, ownerEmail)
+	status, _ := h.do(t, http.MethodPost, "/api/v1/connection/delete-connection", tok, map[string]any{"id": ownerUserID})
+	if status != http.StatusBadRequest {
+		t.Fatalf("self-delete status=%d want 400", status)
 	}
 }
 

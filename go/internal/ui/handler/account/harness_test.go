@@ -24,6 +24,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
+	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
@@ -98,8 +99,10 @@ func newHarness(t *testing.T) *harness {
 	// non-owner revoke branch are exercised against actual accounts_access rows.
 	connRepo := connectionrepo.NewRepo("sqlite", txm)
 	connSvc := appconnection.NewService(
-		connRepo, connectionrepo.NewFolderPort(folderRepo), connectionrepo.NewOptionPort(repo),
-		connectionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)), txm, clock.New(),
+		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
+		connectionrepo.NewFolderPort(folderRepo), connectionrepo.NewOptionPort(repo),
+		connectionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)),
+		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
 	)
 	sharedLookup := connectionrepo.NewSharedAccessLookup(connRepo)
 	revoker := connectionrepo.NewAccessRevoker(connRepo, connSvc)
@@ -202,10 +205,10 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 }
 
 type envelope struct {
-	Success bool                `json:"success"`
-	Message string              `json:"message"`
-	Code    int                 `json:"code"`
-	Data    json.RawMessage     `json:"data"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Code    int             `json:"code"`
+	Data    json.RawMessage `json:"data"`
 	Errors  json.RawMessage `json:"errors"`
 	raw     []byte
 }
@@ -270,7 +273,6 @@ func (h *harness) seedAccount(t *testing.T, id, ownerID, name string) {
 		t.Fatalf("seed account %s: %v", id, err)
 	}
 }
-
 
 // errorsMap decodes the validation-form errors object (field -> messages).
 // Access-denied / exception responses emit an empty array ([]) instead, which

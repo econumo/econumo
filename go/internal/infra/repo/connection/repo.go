@@ -33,6 +33,7 @@ type querier interface {
 	ListConnectedUserIDs(ctx context.Context, db backend.DBTX, userID string) ([]string, error)
 	DeleteConnectionLink(ctx context.Context, db backend.DBTX, a, b string) error
 	DeleteAccountOptionForUser(ctx context.Context, db backend.DBTX, accountID, userID string) error
+	InsertConnectionLink(ctx context.Context, db backend.DBTX, a, b string) error
 }
 
 // Repo implements domain/connection.AccountAccessRepository.
@@ -147,6 +148,16 @@ func (r *Repo) DeleteConnection(ctx context.Context, a, b vo.Id) error {
 	return r.q.DeleteConnectionLink(ctx, r.db(ctx), a.String(), b.String())
 }
 
+// ConnectUsers creates the symmetric link between two users (both directions),
+// idempotent. Mirrors PHP User::connectUser called on both sides of accept.
+func (r *Repo) ConnectUsers(ctx context.Context, a, b vo.Id) error {
+	db := r.db(ctx)
+	if err := r.q.InsertConnectionLink(ctx, db, a.String(), b.String()); err != nil {
+		return err
+	}
+	return r.q.InsertConnectionLink(ctx, db, b.String(), a.String())
+}
+
 // DeleteOption removes a user's accounts_options row for an account.
 func (r *Repo) DeleteOption(ctx context.Context, accountID, userID vo.Id) error {
 	return r.q.DeleteAccountOptionForUser(ctx, r.db(ctx), accountID.String(), userID.String())
@@ -212,6 +223,9 @@ func (sqliteQuerier) DeleteConnectionLink(ctx context.Context, db backend.DBTX, 
 func (sqliteQuerier) DeleteAccountOptionForUser(ctx context.Context, db backend.DBTX, accountID, userID string) error {
 	return sqlitegen.New(db).DeleteAccountOptionForUser(ctx, sqlitegen.DeleteAccountOptionForUserParams{AccountID: accountID, UserID: userID})
 }
+func (sqliteQuerier) InsertConnectionLink(ctx context.Context, db backend.DBTX, a, b string) error {
+	return sqlitegen.New(db).InsertConnectionLink(ctx, sqlitegen.InsertConnectionLinkParams{UserID: a, ConnectedUserID: b})
+}
 
 type pgsqlQuerier struct{}
 
@@ -271,4 +285,7 @@ func (pgsqlQuerier) DeleteConnectionLink(ctx context.Context, db backend.DBTX, a
 }
 func (pgsqlQuerier) DeleteAccountOptionForUser(ctx context.Context, db backend.DBTX, accountID, userID string) error {
 	return pgsqlgen.New(db).DeleteAccountOptionForUser(ctx, pgsqlgen.DeleteAccountOptionForUserParams{AccountID: accountID, UserID: userID})
+}
+func (pgsqlQuerier) InsertConnectionLink(ctx context.Context, db backend.DBTX, a, b string) error {
+	return pgsqlgen.New(db).InsertConnectionLink(ctx, pgsqlgen.InsertConnectionLinkParams{UserID: a, ConnectedUserID: b})
 }

@@ -243,11 +243,18 @@ func run() error {
 	// non-owner branch can revoke the caller's own access. The connection ports
 	// reuse the account folder/options repos for their side effects.
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
+	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
 	connectionFolderPort := connectionrepo.NewFolderPort(folderRepo)
 	connectionOptionPort := connectionrepo.NewOptionPort(accountRepo)
 	connectionUserLookup := connectionrepo.NewUserLookup(userRepo)
+	// The budget repo is also constructed below for the budget module; build it
+	// here so delete-connection can revoke budget sharing between the two users
+	// (mirrors PHP ConnectionService's BudgetSharedAccessService dependency).
+	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
+	connectionBudgetRevoker := connectionrepo.NewBudgetAccessRevoker(connectionBudgetRepo)
 	connectionSvc := appconnection.NewService(
-		connectionRepo, connectionFolderPort, connectionOptionPort, connectionUserLookup, txm, clk,
+		connectionRepo, connectionInviteRepo, connectionFolderPort, connectionOptionPort,
+		connectionUserLookup, connectionBudgetRevoker, txm, clk,
 	)
 	accountSharedLookup := connectionrepo.NewSharedAccessLookup(connectionRepo)
 	accountRevoker := connectionrepo.NewAccessRevoker(connectionRepo, connectionSvc)

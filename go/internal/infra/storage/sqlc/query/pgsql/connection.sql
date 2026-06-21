@@ -53,3 +53,25 @@ WHERE account_id = $1 AND user_id = $2;
 DELETE FROM users_connections
 WHERE (user_id = $1 AND connected_user_id = $2)
    OR (user_id = $3 AND connected_user_id = $4);
+
+-- name: InsertConnectionLink :exec
+INSERT INTO users_connections (user_id, connected_user_id)
+VALUES ($1, $2)
+ON CONFLICT (user_id, connected_user_id) DO NOTHING;
+
+-- name: GetConnectionInviteByUser :one
+SELECT user_id, code, expired_at
+FROM users_connections_invites
+WHERE user_id = $1;
+
+-- name: GetConnectionInviteByCode :one
+SELECT user_id, code, expired_at
+FROM users_connections_invites
+WHERE code = $1 AND expired_at IS NOT NULL AND expired_at >= $2;
+
+-- name: UpsertConnectionInvite :exec
+INSERT INTO users_connections_invites (user_id, code, expired_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id) DO UPDATE SET
+    code       = excluded.code,
+    expired_at = excluded.expired_at;

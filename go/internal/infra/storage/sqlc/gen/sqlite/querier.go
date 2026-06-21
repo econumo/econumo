@@ -108,6 +108,11 @@ type Querier interface {
 	// granted to the user via accounts_access), ordered by position. The user id is
 	// repeated positionally, so sqlc generates a two-field Params struct.
 	GetCategoryListView(ctx context.Context, arg GetCategoryListViewParams) ([]Category, error)
+	// Look up a non-expired invite by code. The caller passes 'now' as a
+	// 'Y-m-d H:i:s' string so the comparison is against the stored datetime TEXT
+	// (a time.Time bound mis-compares at the boundary; see the budget read notes).
+	GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error)
+	GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error)
 	// One currency by id, for embedding in another resource (e.g. the account
 	// result's currency block). name is NULL in practice; the app resolves the
 	// display name from the Intl table.
@@ -181,6 +186,8 @@ type Querier interface {
 	// write concerns visibly distinct.
 	// The user's display fields for get-user-data / the login response user object.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
+	// Idempotently create one direction of the symmetric users_connections link.
+	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create
 	// (initial non-zero balance) and update (balance change) write a correction
 	// transaction so the computed balance matches the requested one. This is a
@@ -273,6 +280,9 @@ type Querier interface {
 	UpsertBudgetFolder(ctx context.Context, arg UpsertBudgetFolderParams) error
 	UpsertBudgetLimit(ctx context.Context, arg UpsertBudgetLimitParams) error
 	UpsertCategory(ctx context.Context, arg UpsertCategoryParams) error
+	// One invite row per user (user_id PK). code/expired_at are nullable (a cleared
+	// invite). expired_at is bound as a 'Y-m-d H:i:s' string (or NULL).
+	UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error

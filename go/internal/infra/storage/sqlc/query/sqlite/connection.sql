@@ -53,3 +53,31 @@ WHERE account_id = ? AND user_id = ?;
 DELETE FROM users_connections
 WHERE (user_id = ? AND connected_user_id = ?)
    OR (user_id = ? AND connected_user_id = ?);
+
+-- name: InsertConnectionLink :exec
+-- Idempotently create one direction of the symmetric users_connections link.
+INSERT INTO users_connections (user_id, connected_user_id)
+VALUES (?, ?)
+ON CONFLICT (user_id, connected_user_id) DO NOTHING;
+
+-- name: GetConnectionInviteByUser :one
+SELECT user_id, code, expired_at
+FROM users_connections_invites
+WHERE user_id = ?;
+
+-- name: GetConnectionInviteByCode :one
+-- Look up a non-expired invite by code. The caller passes 'now' as a
+-- 'Y-m-d H:i:s' string so the comparison is against the stored datetime TEXT
+-- (a time.Time bound mis-compares at the boundary; see the budget read notes).
+SELECT user_id, code, expired_at
+FROM users_connections_invites
+WHERE code = ? AND expired_at IS NOT NULL AND datetime(expired_at) >= datetime(?);
+
+-- name: UpsertConnectionInvite :exec
+-- One invite row per user (user_id PK). code/expired_at are nullable (a cleared
+-- invite). expired_at is bound as a 'Y-m-d H:i:s' string (or NULL).
+INSERT INTO users_connections_invites (user_id, code, expired_at)
+VALUES (?, ?, ?)
+ON CONFLICT (user_id) DO UPDATE SET
+    code       = excluded.code,
+    expired_at = excluded.expired_at;

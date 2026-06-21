@@ -64,6 +64,8 @@ type Querier interface {
 	// this user (see the sqlite variant). $1 is reused for both positions so the
 	// generated param stays single.
 	GetCategoryListView(ctx context.Context, userID string) ([]Category, error)
+	GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error)
+	GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error)
 	GetCurrencyByIDView(ctx context.Context, id string) (GetCurrencyByIDViewRow, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
 	// Read-model queries for the currency module (PostgreSQL variant). No $N
@@ -104,6 +106,7 @@ type Querier interface {
 	// Read-model queries for the user module (CQRS read side). See the sqlite
 	// variant for rationale. Postgres uses $N placeholders.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
+	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
@@ -166,6 +169,7 @@ type Querier interface {
 	UpsertBudgetFolder(ctx context.Context, arg UpsertBudgetFolderParams) error
 	UpsertBudgetLimit(ctx context.Context, arg UpsertBudgetLimitParams) error
 	UpsertCategory(ctx context.Context, arg UpsertCategoryParams) error
+	UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error

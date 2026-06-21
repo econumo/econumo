@@ -62,25 +62,39 @@ type OptionPort interface {
 
 // Service is the connection write+read orchestrator. It owns the tx boundary and
 // builds response-shaped *Result structs directly.
+// apiDatetimeLayout is the wire format for datetimes (e.g. an invite's
+// expiredAt): "2006-01-02 15:04:05", space separator, no zone. See COMPATIBILITY.
+const apiDatetimeLayout = "2006-01-02 15:04:05"
+
 type Service struct {
-	access  domconnection.AccountAccessRepository
-	folders FolderPort
-	options OptionPort
-	users   UserLookup
-	tx      TxRunner
-	clock   Clock
+	access       domconnection.AccountAccessRepository
+	invites      domconnection.InviteRepository
+	folders      FolderPort
+	options      OptionPort
+	users        UserLookup
+	budgetAccess BudgetAccessRevoker
+	tx           TxRunner
+	clock        Clock
 }
 
-// NewService wires the connection service.
+// NewService wires the connection service. invites backs the generate/accept/
+// delete-invite + delete-connection flows (the endpoints EconumoCloudBundle
+// enables). budgetAccess drops budget sharing on delete-connection; it may be
+// nil (delete-connection then only unwinds account access + the connection link).
 func NewService(
 	access domconnection.AccountAccessRepository,
+	invites domconnection.InviteRepository,
 	folders FolderPort,
 	options OptionPort,
 	users UserLookup,
+	budgetAccess BudgetAccessRevoker,
 	tx TxRunner,
 	clock Clock,
 ) *Service {
-	return &Service{access: access, folders: folders, options: options, users: users, tx: tx, clock: clock}
+	return &Service{
+		access: access, invites: invites, folders: folders, options: options,
+		users: users, budgetAccess: budgetAccess, tx: tx, clock: clock,
+	}
 }
 
 // parseID converts a primitive id string to a vo.Id, surfacing a validation

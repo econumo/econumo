@@ -102,6 +102,53 @@ func (q *Queries) GetAccountAccess(ctx context.Context, arg GetAccountAccessPara
 	return i, err
 }
 
+const getConnectionInviteByCode = `-- name: GetConnectionInviteByCode :one
+SELECT user_id, code, expired_at
+FROM users_connections_invites
+WHERE code = $1 AND expired_at IS NOT NULL AND expired_at >= $2
+`
+
+type GetConnectionInviteByCodeParams struct {
+	Code      *string
+	ExpiredAt *time.Time
+}
+
+func (q *Queries) GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error) {
+	row := q.db.QueryRowContext(ctx, getConnectionInviteByCode, arg.Code, arg.ExpiredAt)
+	var i UsersConnectionsInvite
+	err := row.Scan(&i.UserID, &i.Code, &i.ExpiredAt)
+	return i, err
+}
+
+const getConnectionInviteByUser = `-- name: GetConnectionInviteByUser :one
+SELECT user_id, code, expired_at
+FROM users_connections_invites
+WHERE user_id = $1
+`
+
+func (q *Queries) GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error) {
+	row := q.db.QueryRowContext(ctx, getConnectionInviteByUser, userID)
+	var i UsersConnectionsInvite
+	err := row.Scan(&i.UserID, &i.Code, &i.ExpiredAt)
+	return i, err
+}
+
+const insertConnectionLink = `-- name: InsertConnectionLink :exec
+INSERT INTO users_connections (user_id, connected_user_id)
+VALUES ($1, $2)
+ON CONFLICT (user_id, connected_user_id) DO NOTHING
+`
+
+type InsertConnectionLinkParams struct {
+	UserID          string
+	ConnectedUserID string
+}
+
+func (q *Queries) InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error {
+	_, err := q.db.ExecContext(ctx, insertConnectionLink, arg.UserID, arg.ConnectedUserID)
+	return err
+}
+
 const listAccountAccessByAccount = `-- name: ListAccountAccessByAccount :many
 SELECT account_id, user_id, role, created_at, updated_at
 FROM accounts_access
@@ -264,5 +311,24 @@ func (q *Queries) UpsertAccountAccess(ctx context.Context, arg UpsertAccountAcce
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
+	return err
+}
+
+const upsertConnectionInvite = `-- name: UpsertConnectionInvite :exec
+INSERT INTO users_connections_invites (user_id, code, expired_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id) DO UPDATE SET
+    code       = excluded.code,
+    expired_at = excluded.expired_at
+`
+
+type UpsertConnectionInviteParams struct {
+	UserID    string
+	Code      *string
+	ExpiredAt *time.Time
+}
+
+func (q *Queries) UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error {
+	_, err := q.db.ExecContext(ctx, upsertConnectionInvite, arg.UserID, arg.Code, arg.ExpiredAt)
 	return err
 }
