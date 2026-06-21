@@ -13,7 +13,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const (
@@ -27,15 +27,15 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-func seedUser(t *testing.T, db *testutil.DB, id string) {
+func seedUser(t *testing.T, db *dbtest.DB, id string) {
 	t.Helper()
 	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
 		id, id, fixedTime, fixedTime)
 }
 
-func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *testutil.DB) {
+func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *dbtest.DB) {
 	t.Helper()
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	return tagrepo.NewRepo("sqlite", db.TX), tagrepo.NewReadRepo("sqlite", db.TX), db
 }
 

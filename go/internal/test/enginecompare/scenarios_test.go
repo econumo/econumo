@@ -15,7 +15,7 @@ import (
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 func mustID(t *testing.T, s string) vo.Id {
@@ -33,7 +33,7 @@ func mustID(t *testing.T, s string) vo.Id {
 // an account with userA, so userA's available list must include userB's
 // categories. The snapshot is userA's list; both engines must agree.
 func TestEngines_CategoryOwnAndShared(t *testing.T) {
-	runOnBoth(t, func(t *testing.T, db *testutil.DB) string {
+	runOnBoth(t, func(t *testing.T, db *dbtest.DB) string {
 		ctx := context.Background()
 		seedUser(t, db, userA, "a@test")
 		seedUser(t, db, userB, "b@test")
@@ -74,7 +74,7 @@ func snapshotCategories(rows []appcategory.CategoryViewRow) string {
 // NUMERIC text. Seeded transactions (incl. a netting-to-zero pair) must produce
 // the SAME balance strings on both engines.
 func TestEngines_AccountBalances(t *testing.T) {
-	runOnBoth(t, func(t *testing.T, db *testutil.DB) string {
+	runOnBoth(t, func(t *testing.T, db *dbtest.DB) string {
 		ctx := context.Background()
 		seedUser(t, db, userA, "a@test")
 		const acct = "aaaa1111-0000-0000-0000-0000000000c1"
@@ -99,7 +99,7 @@ func TestEngines_AccountBalances(t *testing.T) {
 // bound; pgsql compares native timestamps). Look up by code before expiry
 // (found) and after expiry (not found) — both engines must agree.
 func TestEngines_ConnectionInviteByCode(t *testing.T) {
-	runOnBoth(t, func(t *testing.T, db *testutil.DB) string {
+	runOnBoth(t, func(t *testing.T, db *dbtest.DB) string {
 		ctx := context.Background()
 		seedUser(t, db, userA, "a@test")
 		repo := connectionrepo.NewInviteRepo(db.Engine, db.TX)

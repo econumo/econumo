@@ -12,30 +12,30 @@ import (
 
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
-func seedAccount(t *testing.T, db *testutil.DB, id, userID string) {
+func seedAccount(t *testing.T, db *dbtest.DB, id, userID string) {
 	t.Helper()
 	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, 'A', 2, 'x', 0, ?, ?)`,
 		id, usdID, userID, fixedTime, fixedTime)
 }
 
-func seedCategory(t *testing.T, db *testutil.DB, id, userID string) {
+func seedCategory(t *testing.T, db *dbtest.DB, id, userID string) {
 	t.Helper()
 	db.Exec(t, `INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, 'C', 0, 0, 'x', 0, ?, ?)`,
 		id, userID, fixedTime, fixedTime)
 }
 
-func seedExpense(t *testing.T, db *testutil.DB, id, account, category, amount, spentAt string) {
+func seedExpense(t *testing.T, db *dbtest.DB, id, account, category, amount, spentAt string) {
 	t.Helper()
 	db.Exec(t, `INSERT INTO transactions (id, user_id, account_id, category_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, 0, ?, '', ?, ?, ?)`,
 		id, userA, account, category, amount, fixedTime, fixedTime, spentAt)
 }
 
-func newReadRepo(t *testing.T) (*budgetrepo.ReadRepo, *testutil.DB) {
+func newReadRepo(t *testing.T) (*budgetrepo.ReadRepo, *dbtest.DB) {
 	t.Helper()
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	seedUser(t, db, userA)
 	seedAccount(t, db, acctA, userA)
 	return budgetrepo.NewReadRepo("sqlite", db.TX), db

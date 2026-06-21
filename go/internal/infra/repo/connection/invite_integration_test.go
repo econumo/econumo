@@ -15,12 +15,12 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
-func newInviteRepo(t *testing.T) (*connectionrepo.InviteRepo, *testutil.DB) {
+func newInviteRepo(t *testing.T) (*connectionrepo.InviteRepo, *dbtest.DB) {
 	t.Helper()
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	seedUser(t, db, userA)
 	return connectionrepo.NewInviteRepo("sqlite", db.TX), db
 }

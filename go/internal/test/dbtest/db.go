@@ -1,4 +1,4 @@
-// Package testutil provides shared test helpers for spinning up a migrated
+// Package dbtest provides shared test helpers for spinning up a migrated
 // database and a TxManager. It centralizes what every handler/repo test
 // previously duplicated (open + migrate + single-connection pin) so repository
 // tests, app-service tests, and the engine-comparison suite all build their
@@ -7,7 +7,7 @@
 // It is a TEST-ONLY package (imported only from *_test.go files). It is a normal
 // package — not itself under _test.go — so it can be imported across packages;
 // it must therefore avoid pulling production wiring it doesn't need.
-package testutil
+package dbtest
 
 import (
 	"context"
@@ -41,13 +41,13 @@ func NewSQLite(t testing.TB) *DB {
 	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
 	raw, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		t.Fatalf("testutil: open sqlite: %v", err)
+		t.Fatalf("dbtest: open sqlite: %v", err)
 	}
 	raw.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = raw.Close() })
 
 	if err := migrate.Run(context.Background(), raw, toMigrations(migrations.SQLite())); err != nil {
-		t.Fatalf("testutil: migrate sqlite: %v", err)
+		t.Fatalf("dbtest: migrate sqlite: %v", err)
 	}
 	return &DB{Raw: raw, TX: backend.NewTxManager(raw), Engine: "sqlite"}
 }
@@ -66,6 +66,6 @@ func toMigrations(files []migrations.File) []migrate.Migration {
 func (d *DB) Exec(t testing.TB, query string, args ...any) {
 	t.Helper()
 	if _, err := d.Raw.ExecContext(context.Background(), query, args...); err != nil {
-		t.Fatalf("testutil: exec %q: %v", query, err)
+		t.Fatalf("dbtest: exec %q: %v", query, err)
 	}
 }

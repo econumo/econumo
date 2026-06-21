@@ -15,7 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const (
@@ -33,15 +33,15 @@ var (
 	mayPeriod = time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
 )
 
-func seedUser(t *testing.T, db *testutil.DB, id string) {
+func seedUser(t *testing.T, db *dbtest.DB, id string) {
 	t.Helper()
 	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', 'u', '', '', '', ?, ?, 1)`,
 		id, id, fixedTime, fixedTime)
 }
 
-func newRepo(t *testing.T) (*budgetrepo.Repo, *testutil.DB) {
+func newRepo(t *testing.T) (*budgetrepo.Repo, *dbtest.DB) {
 	t.Helper()
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	seedUser(t, db, userA)
 	return budgetrepo.NewRepo("sqlite", db.TX), db
 }

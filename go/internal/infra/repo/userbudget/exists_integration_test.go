@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/repo/userbudget"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
 func TestUserBudgetLookup_Exists(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	ctx := context.Background()
 	lookup := userbudget.New("sqlite", db.TX)
 

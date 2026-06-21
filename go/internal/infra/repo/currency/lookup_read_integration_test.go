@@ -3,7 +3,7 @@ package currencyrepo_test
 // Integration tests for the currency Lookup and ReadRepo against a real migrated
 // in-memory SQLite (USD is seeded by the baseline migration). Note: the
 // usdID/setup/toMigrations helpers in convertor_provider_test.go DELETE and
-// re-seed currencies with a different id, so these tests use testutil's pristine
+// re-seed currencies with a different id, so these tests use dbtest's pristine
 // migrated DB (seeded USD = dffc2a06...) and their own distinct identifiers.
 
 import (
@@ -13,13 +13,13 @@ import (
 
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const seededUSD = "dffc2a06-6f29-4704-8575-31709adee926"
 
 func TestCurrencyLookup_GetIDByCode(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	lookup := currencyrepo.New("sqlite", db.TX)
 	ctx := context.Background()
 
@@ -43,7 +43,7 @@ func TestCurrencyLookup_GetIDByCode(t *testing.T) {
 }
 
 func TestCurrencyLookup_GetByID(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	lookup := currencyrepo.New("sqlite", db.TX)
 	ctx := context.Background()
 
@@ -66,7 +66,7 @@ func TestCurrencyLookup_GetByID(t *testing.T) {
 }
 
 func TestCurrencyReadRepo_CurrencyListView(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	read := currencyrepo.NewReadRepo("sqlite", db.TX)
 	ctx := context.Background()
 
@@ -92,7 +92,7 @@ func TestCurrencyReadRepo_CurrencyListView(t *testing.T) {
 }
 
 func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	read := currencyrepo.NewReadRepo("sqlite", db.TX)
 	ctx := context.Background()
 
@@ -119,7 +119,7 @@ func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
 }
 
 func TestRateProvider_FractionDigitsAndBase(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	lookup := currencyrepo.New("sqlite", db.TX)
 	provider := currencyrepo.NewRateProvider("sqlite", db.TX, lookup, "USD")
 	ctx := context.Background()

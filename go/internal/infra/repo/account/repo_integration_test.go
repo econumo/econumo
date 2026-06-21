@@ -15,7 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const (
@@ -29,21 +29,21 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-func seedUser(t *testing.T, db *testutil.DB, id, name string) {
+func seedUser(t *testing.T, db *dbtest.DB, id, name string) {
 	t.Helper()
 	db.Exec(t, `INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active) VALUES (?, ?, '', ?, '', '', '', ?, ?, 1)`,
 		id, id, name, fixedTime, fixedTime)
 }
 
-func seedAccount(t *testing.T, db *testutil.DB, id, userID, name string) {
+func seedAccount(t *testing.T, db *dbtest.DB, id, userID, name string) {
 	t.Helper()
 	db.Exec(t, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?, ?, ?, ?, 2, 'wallet', 0, ?, ?)`,
 		id, usdID, userID, name, fixedTime, fixedTime)
 }
 
-func newAccountRepo(t *testing.T) (*accountrepo.Repo, *testutil.DB) {
+func newAccountRepo(t *testing.T) (*accountrepo.Repo, *dbtest.DB) {
 	t.Helper()
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	return accountrepo.NewRepo("sqlite", db.TX), db
 }
 

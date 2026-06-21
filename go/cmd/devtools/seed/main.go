@@ -4,7 +4,7 @@
 //
 // Usage:
 //
-//	go run ./cmd/seed -dsn /abs/path/to/db.sqlite \
+//	go run ./cmd/devtools/seed -dsn /abs/path/to/db.sqlite \
 //	    -email you@example.test -password secret -salt 0123456789abcdef
 //
 // -salt must match the ECONUMO_DATA_SALT you run the server with (16 bytes for

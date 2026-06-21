@@ -12,13 +12,13 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const budgetA = "b0d00000-0000-0000-0000-00000000b0a1"
 
 func TestBudgetAccessRevoker_RevokeBetween(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	ctx := context.Background()
 	seedUser(t, db, userA)
 	seedUser(t, db, userB)

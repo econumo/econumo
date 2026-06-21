@@ -10,7 +10,7 @@
 // isolated and parallelizable against one database; the schema is dropped at
 // test end. If the env var is unset the test is SKIPPED (not failed), so the
 // tag can be enabled in CI where Postgres is available and skipped locally.
-package testutil
+package dbtest
 
 import (
 	"context"
@@ -38,16 +38,16 @@ func NewPostgres(t testing.TB) *DB {
 	t.Helper()
 	url := os.Getenv(PgsqlURLEnv)
 	if url == "" {
-		t.Skipf("testutil: %s not set — skipping PostgreSQL engine test", PgsqlURLEnv)
+		t.Skipf("dbtest: %s not set — skipping PostgreSQL engine test", PgsqlURLEnv)
 	}
 
 	raw, err := sql.Open("postgres", url)
 	if err != nil {
-		t.Fatalf("testutil: open postgres: %v", err)
+		t.Fatalf("dbtest: open postgres: %v", err)
 	}
 	if err := raw.PingContext(context.Background()); err != nil {
 		_ = raw.Close()
-		t.Fatalf("testutil: ping postgres (%s): %v", PgsqlURLEnv, err)
+		t.Fatalf("dbtest: ping postgres (%s): %v", PgsqlURLEnv, err)
 	}
 	// Pin to one connection so the session-level search_path sticks for every
 	// statement this test issues.
@@ -57,11 +57,11 @@ func NewPostgres(t testing.TB) *DB {
 	ctx := context.Background()
 	if _, err := raw.ExecContext(ctx, fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE; CREATE SCHEMA %q`, schema, schema)); err != nil {
 		_ = raw.Close()
-		t.Fatalf("testutil: create schema %s: %v", schema, err)
+		t.Fatalf("dbtest: create schema %s: %v", schema, err)
 	}
 	if _, err := raw.ExecContext(ctx, fmt.Sprintf(`SET search_path TO %q`, schema)); err != nil {
 		_ = raw.Close()
-		t.Fatalf("testutil: set search_path %s: %v", schema, err)
+		t.Fatalf("dbtest: set search_path %s: %v", schema, err)
 	}
 	t.Cleanup(func() {
 		_, _ = raw.ExecContext(context.Background(), fmt.Sprintf(`DROP SCHEMA IF EXISTS %q CASCADE`, schema))
@@ -69,7 +69,7 @@ func NewPostgres(t testing.TB) *DB {
 	})
 
 	if err := migrate.Run(ctx, raw, toMigrationsPg(migrations.Pgsql())); err != nil {
-		t.Fatalf("testutil: migrate postgres: %v", err)
+		t.Fatalf("dbtest: migrate postgres: %v", err)
 	}
 	return &DB{Raw: raw, TX: backend.NewTxManager(raw), Engine: "postgresql"}
 }

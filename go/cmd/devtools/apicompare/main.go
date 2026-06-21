@@ -11,7 +11,7 @@
 //
 // Usage:
 //
-//	go run ./cmd/apicompare -php http://localhost:8082 -go http://localhost:8282
+//	go run ./cmd/devtools/apicompare -php http://localhost:8082 -go http://localhost:8282
 //
 // Exit code 0 = all compared endpoints match; 1 = at least one diff or error.
 package main

@@ -9,7 +9,7 @@
 // byte-identical results — catching divergence in the per-engine sqlc adapters
 // (placeholder/type differences, datetime + decimal handling, upsert syntax).
 //
-// PostgreSQL is provided via DATABASE_TEST_PGSQL_URL (see testutil.NewPostgres);
+// PostgreSQL is provided via DATABASE_TEST_PGSQL_URL (see dbtest.NewPostgres);
 // when that env var is unset every test SKIPS, so:
 //
 //	go test -tags enginecompare ./internal/enginecompare/...                # skips pg (sqlite half still runs the scenarios)

@@ -14,7 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/domain/user"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const (
@@ -25,9 +25,9 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *testutil.DB) {
+func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *dbtest.DB) {
 	t.Helper()
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	return userrepo.NewRepo("sqlite", db.TX), userrepo.NewReadRepo("sqlite", db.TX), db
 }
 

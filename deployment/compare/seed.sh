@@ -66,5 +66,5 @@ echo "       ECONUMO_SPA_DIR=../web/dist/spa go run ./cmd/econumo"
 echo
 echo "3) Run the diff harness:"
 echo
-echo "     cd go && go run ./cmd/apicompare -php http://localhost:8082 -go http://localhost:8282"
+echo "     cd go && go run ./cmd/devtools/apicompare -php http://localhost:8082 -go http://localhost:8282"
 echo "------------------------------------------------------------------------"

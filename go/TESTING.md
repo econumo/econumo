@@ -30,7 +30,7 @@ It covers, in layers:
   and dependency-free: validation rules, state transitions, the "bump updatedAt
   only on real change" invariants, boundary values.
 - **Repository integration tests** (`internal/infra/repo/**`) — every repo against
-  a real migrated in-memory SQLite via `internal/testutil`: CRUD round-trips,
+  a real migrated in-memory SQLite via `internal/test/dbtest`: CRUD round-trips,
   NotFound paths, own-vs-shared list queries, datetime/decimal boundaries,
   idempotency.
 - **HTTP/handler tests** (`internal/ui/handler/**`) — the real `net/http` stack
@@ -44,7 +44,7 @@ It covers, in layers:
 
 ### Shared test helper
 
-`internal/testutil` centralizes DB setup so tests don't duplicate it:
+`internal/test/dbtest` centralizes DB setup so tests don't duplicate it:
 
 ```go
 db := testutil.NewSQLite(t)            // fresh migrated in-memory DB, auto-closed
@@ -92,7 +92,7 @@ make go-test-engines   # uses DATABASE_TEST_PGSQL_URL; pgsql half SKIPS if unrea
 Each test creates its own freshly-migrated schema and drops it afterwards, so
 the suite is safe to re-run against the same database repeatedly.
 
-Scenarios live in `internal/enginecompare`. Add one by writing a `scenario`
+Scenarios live in `internal/test/enginecompare`. Add one by writing a `scenario`
 closure (seed via the portable `seed(...)` helper, call repos, return a
 deterministic snapshot string) and passing it to `runOnBoth(t, ...)`.
 

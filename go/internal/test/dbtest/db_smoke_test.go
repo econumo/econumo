@@ -1,13 +1,13 @@
-package testutil_test
+package dbtest_test
 
 import (
 	"testing"
 
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 func TestNewSQLite_MigratesAndQueries(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	if db.Engine != "sqlite" {
 		t.Fatalf("engine = %q", db.Engine)
 	}

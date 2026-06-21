@@ -21,8 +21,8 @@
 //
 // Usage:
 //
-//	go run ./cmd/mutatecompare -case category/create -php http://localhost:8082 -go http://localhost:8282
-//	go run ./cmd/mutatecompare -list   # list all case names
+//	go run ./cmd/devtools/mutatecompare -case category/create -php http://localhost:8082 -go http://localhost:8282
+//	go run ./cmd/devtools/mutatecompare -list   # list all case names
 package main
 
 import (

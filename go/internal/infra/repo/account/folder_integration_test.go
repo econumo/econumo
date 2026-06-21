@@ -12,7 +12,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 const (
@@ -20,9 +20,9 @@ const (
 	folder2 = "ffffffff-0000-0000-0000-00000000f002"
 )
 
-func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *testutil.DB) {
+func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *dbtest.DB) {
 	t.Helper()
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	return accountrepo.NewFolderRepo("sqlite", db.TX), db
 }
 

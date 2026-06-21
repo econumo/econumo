@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Per-case mutation comparison driver.
 #
-# For EACH write-endpoint case (see `go run ./cmd/mutatecompare -list`):
+# For EACH write-endpoint case (see `go run ./cmd/devtools/mutatecompare -list`):
 #   1. stop the Go backend (PHP reads the file per-request, no restart needed)
 #   2. copy a FRESH seed DB for each backend (full isolation per case)
 #   3. clear the PHP cache so it reopens the fresh file
@@ -61,7 +61,7 @@ reset_dbs() {
   docker compose exec -T -u www-data app sh -c 'bin/console cache:clear --env=dev -q' >/dev/null 2>&1
 }
 
-CASES=$(cd "$ROOT/go" && go run ./cmd/mutatecompare -list)
+CASES=$(cd "$ROOT/go" && go run ./cmd/devtools/mutatecompare -list)
 [ -n "$FILTER" ] && CASES=$(echo "$CASES" | grep "^$FILTER")
 
 pass=0; fail=0; skip=0; failed_cases=""
@@ -69,7 +69,7 @@ for c in $CASES; do
   stop_go
   reset_dbs
   start_go || exit 1
-  out=$(cd "$ROOT/go" && go run ./cmd/mutatecompare \
+  out=$(cd "$ROOT/go" && go run ./cmd/devtools/mutatecompare \
     -case "$c" -php "$PHP_URL" -go "$GO_URL" -email "$EMAIL" -password "$PASSWORD" 2>&1)
   echo "$out"
   if   echo "$out" | grep -q '^\[PASS\]'; then pass=$((pass+1))

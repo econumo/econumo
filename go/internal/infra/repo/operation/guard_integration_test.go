@@ -11,13 +11,13 @@ import (
 
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/repo/operation"
-	"github.com/econumo/econumo/internal/testutil"
+	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
 func TestGuard_Claim_Idempotency(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	guard := operation.NewGuard("sqlite", db.TX)
 	ctx := context.Background()
 	id := vo.NewId()
@@ -49,7 +49,7 @@ func TestGuard_Claim_Idempotency(t *testing.T) {
 }
 
 func TestGuard_MarkHandled(t *testing.T) {
-	db := testutil.NewSQLite(t)
+	db := dbtest.NewSQLite(t)
 	guard := operation.NewGuard("sqlite", db.TX)
 	ctx := context.Background()
 	id := vo.NewId()
