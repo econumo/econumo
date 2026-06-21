@@ -221,7 +221,7 @@ type envelope struct {
 	Message string              `json:"message"`
 	Code    int                 `json:"code"`
 	Data    json.RawMessage     `json:"data"`
-	Errors  map[string][]string `json:"errors"`
+	Errors  json.RawMessage `json:"errors"`
 	raw     []byte
 }
 
@@ -245,4 +245,17 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 		t.Fatalf("unmarshal %T: %v\nraw: %s", v, err, raw)
 	}
 	return v
+}
+
+
+// errorsMap decodes the validation-form errors object (field -> messages).
+// Access-denied / exception responses emit an empty array ([]) instead, which
+// leaves the returned map empty. Added because the access-denied envelope's
+// errors is [] (PHP shape), which won't unmarshal into a map.
+func (e envelope) errorsMap() map[string][]string {
+	m := map[string][]string{}
+	if len(e.Errors) > 0 {
+		_ = json.Unmarshal(e.Errors, &m)
+	}
+	return m
 }

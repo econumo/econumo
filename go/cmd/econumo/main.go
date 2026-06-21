@@ -197,7 +197,7 @@ func run() error {
 	// JWT-protected; the module applies JWT per-handler inside its RegisterAPI.
 	categoryRepo := categoryrepo.NewRepo(cfg.DatabaseDriver, txm)
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk)
+	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo)
 	categoryReadSvc := appcategory.NewReadService(categoryReadRepo)
 	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc, cfg.IsDev())
 

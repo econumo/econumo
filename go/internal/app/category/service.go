@@ -54,11 +54,15 @@ type Service struct {
 	tx    TxRunner
 	ops   OperationGuard
 	clock Clock
+	read  ReadModel
 }
 
-// NewService wires the category service.
-func NewService(repo domcategory.Repository, tx TxRunner, ops OperationGuard, clock Clock) *Service {
-	return &Service{repo: repo, tx: tx, ops: ops, clock: clock}
+// NewService wires the category service. read is the own+shared category view
+// (the same ReadModel get-category-list uses); order-category-list returns that
+// full available list, mirroring PHP's OrderCategoryListV1ResultAssembler, which
+// calls findAvailableForUserId (NOT owner-only).
+func NewService(repo domcategory.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel) *Service {
+	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read}
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +81,9 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *domca
 			return err
 		}
 		if !c.UserId().Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
+			// PHP throws a bare AccessDeniedException() here (CategoryService
+			// updateCategory/archive/etc.), so the 403 envelope message is EMPTY.
+			return errs.NewAccessDenied("")
 		}
 		fn(c, s.clock.Now())
 		if err := s.repo.Save(ctx, c); err != nil {
@@ -113,16 +119,19 @@ func toResult(c *domcategory.Category) CategoryResult {
 	}
 }
 
-// listResults loads the owner's categories (ordered by position) and converts
-// them to the wire shape — used by order-category-list and get-category-list.
+// listResults returns the user's AVAILABLE categories (own + shared via account
+// access), ordered by position, in the wire shape — used by order-category-list.
+// It reads through the same own+shared view as get-category-list so the order
+// response carries the full list (PHP's assembler uses findAvailableForUserId,
+// not owner-only).
 func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]CategoryResult, error) {
-	cats, err := s.repo.ListByOwner(ctx, userID)
+	rows, err := s.read.CategoryListView(ctx, userID.String())
 	if err != nil {
 		return nil, err
 	}
-	items := make([]CategoryResult, 0, len(cats))
-	for _, c := range cats {
-		items = append(items, toResult(c))
+	items := make([]CategoryResult, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, toViewResult(r))
 	}
 	return items, nil
 }

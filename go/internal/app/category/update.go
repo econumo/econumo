@@ -25,12 +25,12 @@ func (s *Service) UpdateCategory(ctx context.Context, userID vo.Id, req UpdateCa
 	if err != nil {
 		return nil, err
 	}
-	c, err := s.mutate(ctx, id, userID, func(c *domcategory.Category, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(c *domcategory.Category, now time.Time) {
 		c.UpdateName(name, now)
 		c.UpdateIcon(icon, now)
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &UpdateCategoryResult{Item: toResult(c)}, nil
+	// PHP returns an empty DTO -> {"data":{}}; the entity is not echoed.
+	return &UpdateCategoryResult{}, nil
 }

@@ -27,7 +27,9 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 		return
 	}
 	if v, ok := errs.AsAccessDenied(err); ok {
-		Err(w, v.Error(), 0, nil, http.StatusForbidden)
+		// 403 with errors:[] (empty ARRAY, not {}) and the domain message verbatim
+		// — matches PHP's HttpApiExceptionListener access-denied branch.
+		AccessDenied(w, v.Msg)
 		return
 	}
 	if v, ok := errs.AsUnauthorized(err); ok {

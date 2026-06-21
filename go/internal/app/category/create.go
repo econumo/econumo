@@ -20,10 +20,15 @@ import (
 // New-category position = count(user's existing categories); the new category is
 // active with created/updated = now.
 func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCategoryRequest) (*CreateCategoryResult, error) {
-	id, err := vo.ParseId(req.Id)
+	// The request id is the OPERATION id (idempotency key), NOT the new entity's
+	// id. PHP ignores $dto->id for the entity and mints a fresh UUIDv7 via
+	// getNextIdentity() (CategoryFactory::create); the dto id is consumed only by
+	// the operation-id middleware. Mirror that: claim opID, generate a new entity id.
+	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
+	id := vo.NewId()
 	name, err := newCategoryName(req.Name)
 	if err != nil {
 		return nil, err
@@ -53,7 +58,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 
 	var created *domcategory.Category
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		already, cerr := s.ops.Claim(ctx, id, s.clock.Now())
+		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
 			return cerr
 		}
@@ -71,7 +76,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 		if serr := s.repo.Save(ctx, c); serr != nil {
 			return serr
 		}
-		if merr := s.ops.MarkHandled(ctx, id, now); merr != nil {
+		if merr := s.ops.MarkHandled(ctx, opID, now); merr != nil {
 			return merr
 		}
 		created = c

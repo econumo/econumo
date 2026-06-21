@@ -100,8 +100,8 @@ func TestCreateAccount_ShortName_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-	if msgs := env.Errors["name"]; len(msgs) == 0 || msgs[0] != "Account name must be 3-64 characters" {
-		t.Fatalf("name error = %v, want exact account-name message", env.Errors["name"])
+	if msgs := env.errorsMap()["name"]; len(msgs) == 0 || msgs[0] != "Account name must be 3-64 characters" {
+		t.Fatalf("name error = %v, want exact account-name message", env.errorsMap()["name"])
 	}
 }
 

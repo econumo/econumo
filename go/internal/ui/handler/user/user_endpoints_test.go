@@ -92,10 +92,10 @@ func TestLoginUser_BlankFields_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-	if _, ok := env.Errors["username"]; !ok {
+	if _, ok := env.errorsMap()["username"]; !ok {
 		t.Fatalf("expected a username field error; body: %s", env.raw)
 	}
-	if _, ok := env.Errors["password"]; !ok {
+	if _, ok := env.errorsMap()["password"]; !ok {
 		t.Fatalf("expected a password field error; body: %s", env.raw)
 	}
 }
@@ -231,7 +231,7 @@ func TestUpdateName_TooShort_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-	if _, ok := env.Errors["name"]; !ok {
+	if _, ok := env.errorsMap()["name"]; !ok {
 		t.Fatalf("expected a name field error; body: %s", env.raw)
 	}
 }

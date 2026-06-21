@@ -98,7 +98,7 @@ func newHarness(t *testing.T) *harness {
 	readRepo := categoryrepo.NewReadRepo("sqlite", txm)
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
-	svc := appcategory.NewService(repo, txm, repo, clk)
+	svc := appcategory.NewService(repo, txm, repo, clk, readRepo)
 	readSvc := appcategory.NewReadService(readRepo)
 	handlers := handlercategory.NewHandlers(svc, readSvc, cfg.IsDev())
 
@@ -215,14 +215,28 @@ func (h *harness) issueToken(t *testing.T) string {
 	return tok
 }
 
-// envelope is the decoded response envelope (success or error).
+// envelope is the decoded response envelope (success or error). Errors is raw
+// because the wire shape varies: the validation path emits an OBJECT
+// (field -> []messages) while access-denied/exception paths emit an empty ARRAY
+// ([]). Use errorsMap() to read the validation-object form.
 type envelope struct {
-	Success bool                `json:"success"`
-	Message string              `json:"message"`
-	Code    int                 `json:"code"`
-	Data    json.RawMessage     `json:"data"`
-	Errors  map[string][]string `json:"errors"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Code    int             `json:"code"`
+	Data    json.RawMessage `json:"data"`
+	Errors  json.RawMessage `json:"errors"`
 	raw     []byte
+}
+
+// errorsMap decodes the validation-form errors object (field -> messages). It
+// returns an empty map when errors is absent or the empty-array ([]) form.
+func (e envelope) errorsMap() map[string][]string {
+	m := map[string][]string{}
+	if len(e.Errors) == 0 {
+		return m
+	}
+	_ = json.Unmarshal(e.Errors, &m) // ignores the [] form, leaving m empty
+	return m
 }
 
 // categoryItem is the wire shape of a CategoryResult, with exact JSON keys (the

@@ -104,10 +104,10 @@ func (r UpdateCategoryRequest) Validate() error {
 	return nil
 }
 
-// UpdateCategoryResult is the update-category response: {item: CategoryResult}.
-type UpdateCategoryResult struct {
-	Item CategoryResult `json:"item"`
-}
+// UpdateCategoryResult is the update-category response. PHP's
+// UpdateCategoryV1ResultAssembler returns an EMPTY DTO, so the body is
+// {"data":{}} — no item is echoed back.
+type UpdateCategoryResult struct{}
 
 // ---------------------------------------------------------------------------
 // archive-category / unarchive-category
@@ -126,10 +126,9 @@ func (r ArchiveCategoryRequest) Validate() error {
 	return nil
 }
 
-// ArchiveCategoryResult is the archive-category response: {item: CategoryResult}.
-type ArchiveCategoryResult struct {
-	Item CategoryResult `json:"item"`
-}
+// ArchiveCategoryResult is the archive-category response. PHP returns an empty
+// DTO -> {"data":{}}.
+type ArchiveCategoryResult struct{}
 
 // UnarchiveCategoryRequest is the unarchive-category request body (id NotBlank).
 type UnarchiveCategoryRequest struct {
@@ -144,10 +143,9 @@ func (r UnarchiveCategoryRequest) Validate() error {
 	return nil
 }
 
-// UnarchiveCategoryResult is the unarchive-category response: {item: CategoryResult}.
-type UnarchiveCategoryResult struct {
-	Item CategoryResult `json:"item"`
-}
+// UnarchiveCategoryResult is the unarchive-category response. PHP returns an
+// empty DTO -> {"data":{}}.
+type UnarchiveCategoryResult struct{}
 
 // ---------------------------------------------------------------------------
 // delete-category

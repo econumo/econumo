@@ -21,6 +21,21 @@ func createReq(id, name, typ string) map[string]any {
 	return map[string]any{"id": id, "name": name, "type": typ}
 }
 
+// createCategory POSTs create-category and returns the SERVER-MINTED entity id
+// from the response. The request id is only the operation/idempotency key — PHP
+// (and now Go) ignore it for the entity id and mint a fresh UUIDv7 — so callers
+// that need to update/archive/delete the category must use this returned id, not
+// the request id.
+func createCategory(t *testing.T, h *harness, token, opID, name, typ string) string {
+	t.Helper()
+	_, env := h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(opID, name, typ))
+	res := mustUnmarshal[itemWrapper](t, env.Data)
+	if res.Item.ID == "" {
+		t.Fatalf("create returned no id; body: %s", env.raw)
+	}
+	return res.Item.ID
+}
+
 // itemWrapper / itemsWrapper are the {item} / {items} data shapes.
 type itemWrapper struct {
 	Item categoryItem `json:"item"`
@@ -52,8 +67,9 @@ func TestCreateCategory_Success(t *testing.T) {
 
 	res := mustUnmarshal[itemWrapper](t, env.Data)
 	it := res.Item
-	if it.ID != catID1 {
-		t.Fatalf("item.id = %q, want %q", it.ID, catID1)
+	// The entity id is a server-minted UUIDv7, NOT the request (operation) id.
+	if it.ID == "" || it.ID == catID1 {
+		t.Fatalf("item.id = %q; want a fresh server id != the request id %q", it.ID, catID1)
 	}
 	if it.OwnerUserID != seedUserID {
 		t.Fatalf("item.ownerUserId = %q, want %q", it.OwnerUserID, seedUserID)
@@ -120,7 +136,7 @@ func TestCreateCategory_ShortName_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-	msgs, ok := env.Errors["name"]
+	msgs, ok := env.errorsMap()["name"]
 	if !ok || len(msgs) == 0 {
 		t.Fatalf("expected a name field error; body: %s", env.raw)
 	}
@@ -159,27 +175,28 @@ func TestUpdateCategory_ChangesName(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(catID1, "Food", "expense"))
+	id := createCategory(t, h, token, catID1, "Food", "expense")
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/category/update-category", token, map[string]any{
-		"id": catID1, "name": "Groceries", "icon": "shopping_cart",
+		"id": id, "name": "Groceries", "icon": "shopping_cart",
 	})
 	if status != http.StatusOK {
 		t.Fatalf("update status = %d, want 200; body: %s", status, env.raw)
 	}
-	res := mustUnmarshal[itemWrapper](t, env.Data)
-	if res.Item.Name != "Groceries" {
-		t.Fatalf("returned name = %q, want Groceries", res.Item.Name)
+	// update-category returns an EMPTY data object ({}), mirroring PHP's empty DTO.
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(env.Data, &probe); err != nil {
+		t.Fatalf("decode data: %v; body: %s", err, env.raw)
 	}
-	if res.Item.Icon != "shopping_cart" {
-		t.Fatalf("returned icon = %q, want shopping_cart", res.Item.Icon)
+	if len(probe) != 0 {
+		t.Fatalf("update data = %s, want empty object {}", env.Data)
 	}
 
 	// Verify persistence via get-category-list.
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/category/get-category-list", token, nil)
 	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
-	if len(list.Items) != 1 || list.Items[0].Name != "Groceries" {
-		t.Fatalf("persisted list = %+v, want one item named Groceries", list.Items)
+	if len(list.Items) != 1 || list.Items[0].Name != "Groceries" || list.Items[0].Icon != "shopping_cart" {
+		t.Fatalf("persisted list = %+v, want one item named Groceries/shopping_cart", list.Items)
 	}
 }
 
@@ -187,15 +204,15 @@ func TestArchiveCategory_ThenListShowsArchived(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(catID1, "Food", "expense"))
+	id := createCategory(t, h, token, catID1, "Food", "expense")
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/category/archive-category", token, map[string]any{"id": catID1})
+	status, env := h.do(t, http.MethodPost, "/api/v1/category/archive-category", token, map[string]any{"id": id})
 	if status != http.StatusOK {
 		t.Fatalf("archive status = %d, want 200; body: %s", status, env.raw)
 	}
-	res := mustUnmarshal[itemWrapper](t, env.Data)
-	if res.Item.IsArchived != 1 {
-		t.Fatalf("archived item.isArchived = %d, want 1", res.Item.IsArchived)
+	// archive returns empty data ({}).
+	if string(env.Data) != "{}" {
+		t.Fatalf("archive data = %s, want {}", env.Data)
 	}
 
 	// get-category-list returns archived categories too, with isArchived=1.
@@ -205,11 +222,15 @@ func TestArchiveCategory_ThenListShowsArchived(t *testing.T) {
 		t.Fatalf("list = %+v, want one item with isArchived=1", list.Items)
 	}
 
-	// Unarchive flips it back.
-	_, unEnv := h.do(t, http.MethodPost, "/api/v1/category/unarchive-category", token, map[string]any{"id": catID1})
-	un := mustUnmarshal[itemWrapper](t, unEnv.Data)
-	if un.Item.IsArchived != 0 {
-		t.Fatalf("unarchived item.isArchived = %d, want 0", un.Item.IsArchived)
+	// Unarchive flips it back (also empty data).
+	_, unEnv := h.do(t, http.MethodPost, "/api/v1/category/unarchive-category", token, map[string]any{"id": id})
+	if string(unEnv.Data) != "{}" {
+		t.Fatalf("unarchive data = %s, want {}", unEnv.Data)
+	}
+	_, listEnv2 := h.do(t, http.MethodGet, "/api/v1/category/get-category-list", token, nil)
+	list2 := mustUnmarshal[itemsWrapper](t, listEnv2.Data)
+	if len(list2.Items) != 1 || list2.Items[0].IsArchived != 0 {
+		t.Fatalf("list after unarchive = %+v, want isArchived=0", list2.Items)
 	}
 }
 
@@ -217,15 +238,15 @@ func TestOrderCategoryList_Reorders(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(catID1, "First", "expense"))  // pos 0
-	h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(catID2, "Second", "expense")) // pos 1
-	h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(catID3, "Third", "expense"))  // pos 2
+	id1 := createCategory(t, h, token, catID1, "First", "expense")  // pos 0
+	id2 := createCategory(t, h, token, catID2, "Second", "expense") // pos 1
+	id3 := createCategory(t, h, token, catID3, "Third", "expense")  // pos 2
 
-	// Reverse the order: catID3 -> 0, catID1 -> 2.
+	// Reverse the order: id3 -> 0, id1 -> 2.
 	status, env := h.do(t, http.MethodPost, "/api/v1/category/order-category-list", token, map[string]any{
 		"changes": []map[string]any{
-			{"id": catID3, "position": 0},
-			{"id": catID1, "position": 2},
+			{"id": id3, "position": 0},
+			{"id": id1, "position": 2},
 		},
 	})
 	if status != http.StatusOK {
@@ -235,17 +256,17 @@ func TestOrderCategoryList_Reorders(t *testing.T) {
 	if len(res.Items) != 3 {
 		t.Fatalf("returned %d items, want 3", len(res.Items))
 	}
-	// Items must come back ordered by position: catID3(0), catID2(1), catID1(2).
+	// Items must come back ordered by position: id3(0), id2(1), id1(2).
 	pos := map[string]int{}
 	for _, it := range res.Items {
 		pos[it.ID] = it.Position
 	}
-	if pos[catID3] != 0 || pos[catID2] != 1 || pos[catID1] != 2 {
-		t.Fatalf("positions = %v, want catID3=0 catID2=1 catID1=2", pos)
+	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
+		t.Fatalf("positions = %v, want id3=0 id2=1 id1=2", pos)
 	}
 	// And the returned slice itself must be position-ordered.
-	if res.Items[0].ID != catID3 || res.Items[2].ID != catID1 {
-		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, catID3, catID1)
+	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
+		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
 	}
 }
 
@@ -280,10 +301,10 @@ func TestDeleteCategory_Delete_RemovesIt(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(catID1, "Food", "expense"))
+	id := createCategory(t, h, token, catID1, "Food", "expense")
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/category/delete-category", token, map[string]any{
-		"id": catID1, "mode": "delete",
+		"id": id, "mode": "delete",
 	})
 	if status != http.StatusOK {
 		t.Fatalf("delete status = %d, want 200; body: %s", status, env.raw)

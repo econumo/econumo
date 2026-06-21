@@ -39,7 +39,7 @@ func TestGetTransactionList_ValidationEnvelope(t *testing.T) {
 			if env.Code != 400 {
 				t.Errorf("code = %d, want 400", env.Code)
 			}
-			msgs := env.Errors[tc.field]
+			msgs := env.errorsMap()[tc.field]
 			if len(msgs) == 0 || msgs[0] != tc.wantMsg {
 				t.Errorf("errors[%q] = %v, want [%q]", tc.field, msgs, tc.wantMsg)
 			}

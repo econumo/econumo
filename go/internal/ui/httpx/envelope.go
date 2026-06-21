@@ -77,6 +77,27 @@ func Err(w http.ResponseWriter, message string, code int, errors map[string][]st
 	writeJSON(w, httpCode, errEnvelope{Success: false, Message: message, Code: code, Errors: errors})
 }
 
+// accessDeniedEnvelope is the 403 response. PHP renders it via
+// ResponseFactory::createErrorResponse(msg, code, [], HTTP_FORBIDDEN) — note the
+// errors argument is an empty PHP ARRAY, which serializes as [] (NOT the {} that
+// the validation path's field-map produces). The message is the domain
+// exception's own message, which for resource-ownership denials is empty.
+type accessDeniedEnvelope struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+	Errors  []any  `json:"errors"`
+}
+
+// AccessDenied writes the 403 envelope: errors serialized as [] (an empty array,
+// matching PHP), message taken verbatim from the domain error (empty for bare
+// ownership denials).
+func AccessDenied(w http.ResponseWriter, message string) {
+	writeJSON(w, http.StatusForbidden, accessDeniedEnvelope{
+		Success: false, Message: message, Code: 0, Errors: []any{},
+	})
+}
+
 // Exception writes the 500 exception envelope. stackTrace is included only when
 // dev is true (matching APP_ENV=dev behavior).
 func Exception(w http.ResponseWriter, message, exceptionType string, stackTrace any, dev bool) {

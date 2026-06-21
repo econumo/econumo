@@ -10,10 +10,21 @@ import (
 )
 
 type envelope struct {
-	Success bool                `json:"success"`
-	Message string              `json:"message"`
-	Code    int                 `json:"code"`
-	Errors  map[string][]string `json:"errors"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Code    int             `json:"code"`
+	Errors  json.RawMessage `json:"errors"`
+}
+
+// errs decodes the validation-form errors object (field -> messages). The
+// access-denied/exception paths emit an empty array ([]) instead; that leaves
+// the returned map empty.
+func (e envelope) errs() map[string][]string {
+	m := map[string][]string{}
+	if len(e.Errors) > 0 {
+		_ = json.Unmarshal(e.Errors, &m)
+	}
+	return m
 }
 
 func decodeEnvelope(t *testing.T, rec *httptest.ResponseRecorder) envelope {
@@ -50,7 +61,7 @@ func TestWriteError_ValidationEnvelope(t *testing.T) {
 	if env.Code != 400 {
 		t.Errorf("code = %d, want 400", env.Code)
 	}
-	if got := env.Errors["accountId"]; len(got) != 1 || got[0] != "This value is not a valid UUID." {
+	if got := env.errs()["accountId"]; len(got) != 1 || got[0] != "This value is not a valid UUID." {
 		t.Errorf("errors[accountId] = %v, want [%q]", got, "This value is not a valid UUID.")
 	}
 }

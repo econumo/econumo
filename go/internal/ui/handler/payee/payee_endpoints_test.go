@@ -117,7 +117,7 @@ func TestCreatePayee_ShortName_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-	msgs, ok := env.Errors["name"]
+	msgs, ok := env.errorsMap()["name"]
 	if !ok || len(msgs) == 0 {
 		t.Fatalf("expected a name field error; body: %s", env.raw)
 	}

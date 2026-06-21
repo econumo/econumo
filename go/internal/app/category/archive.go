@@ -20,13 +20,12 @@ func (s *Service) ArchiveCategory(ctx context.Context, userID vo.Id, req Archive
 	if err != nil {
 		return nil, err
 	}
-	c, err := s.mutate(ctx, id, userID, func(c *domcategory.Category, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(c *domcategory.Category, now time.Time) {
 		c.Archive(now)
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &ArchiveCategoryResult{Item: toResult(c)}, nil
+	return &ArchiveCategoryResult{}, nil
 }
 
 // UnarchiveCategory loads the category, checks ownership (403 otherwise), clears
@@ -36,11 +35,10 @@ func (s *Service) UnarchiveCategory(ctx context.Context, userID vo.Id, req Unarc
 	if err != nil {
 		return nil, err
 	}
-	c, err := s.mutate(ctx, id, userID, func(c *domcategory.Category, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(c *domcategory.Category, now time.Time) {
 		c.Unarchive(now)
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
-	return &UnarchiveCategoryResult{Item: toResult(c)}, nil
+	return &UnarchiveCategoryResult{}, nil
 }
