@@ -190,6 +190,35 @@ to the (production-shared) Docker image.
 
 ---
 
+## Phase 9 — Deterministic budget structure ordering
+
+**Commit:** `82bb388` *fix(go): make budget structure ordering deterministic*
+
+A re-run of the local `apicompare` harness against the live PHP backend surfaced
+a **flaky** `get-budget` diff: the same budget returned its `structure.elements`
+in a different order on every request. Root cause was the same class of bug as
+Phase 6's `users_options`, but one layer up in the builder: the structure
+elements are accumulated by iterating Go **maps** (tags, standalone categories,
+and tag children — `builder_structure_build.go`), whose iteration order Go
+randomizes, and the final sort keyed on `position` **only**. Many elements share
+a position, so ties kept the random map order and the response varied run-to-run.
+
+Fixed by sorting parents and folders by **position then id**, and children by
+**id** (children carry no position). This is determinism, not PHP-order parity:
+PHP breaks position ties by a different key (e.g. `name`), so the Go order is now
+stable but intentionally need not match PHP — the frontend reorders lists when it
+needs a specific presentation order. Locked with a `sortByPositionThenID` unit
+test.
+
+> Known, accepted divergence: the read-only list endpoints (`category`, `tag`,
+> `payee`, `account`-folders, `user`-options, `connection`-sharedAccounts) are
+> each **deterministic** on Go but ordered by a different tiebreak than PHP. They
+> show as stable `apicompare` diffs and are left as-is for the same reason — the
+> frontend owns presentation order. They are *not* flakiness; only the budget
+> structure was non-deterministic, and that is now fixed.
+
+---
+
 ## How verification works today
 
 - **Everyday:** `make go-test` — smoke tier (build + vet + gofmt + unit + sqlite
