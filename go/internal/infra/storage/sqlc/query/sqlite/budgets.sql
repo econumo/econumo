@@ -132,14 +132,18 @@ ON CONFLICT (id) DO UPDATE SET
 DELETE FROM budgets_elements WHERE id = ?;
 
 -- name: ListBudgetLimitsForPeriod :many
+-- period is stored as a datetime TEXT whose exact form varies (RFC3339
+-- "...T00:00:00Z" from Go writes vs "Y-m-d H:i:s" from PHP fixtures). A bound
+-- time.Time does NOT compare equal to either via raw "=", so normalize both
+-- sides with datetime() and bind the period as a 'Y-m-d H:i:s' string.
 SELECT l.id, l.element_id, l.period, l.created_at, l.updated_at, l.amount
 FROM budgets_elements_limits l
 JOIN budgets_elements e ON e.id = l.element_id
-WHERE e.budget_id = ? AND l.period = ?;
+WHERE e.budget_id = ? AND datetime(l.period) = datetime(?);
 
 -- name: GetBudgetLimit :one
 SELECT id, element_id, period, created_at, updated_at, amount
-FROM budgets_elements_limits WHERE element_id = ? AND period = ?;
+FROM budgets_elements_limits WHERE element_id = ? AND datetime(period) = datetime(?);
 
 -- name: UpsertBudgetLimit :exec
 INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)

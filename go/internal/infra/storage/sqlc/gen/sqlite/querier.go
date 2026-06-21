@@ -212,6 +212,10 @@ type Querier interface {
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetExcludedAccountIDs(ctx context.Context, budgetID string) ([]string, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
+	// period is stored as a datetime TEXT whose exact form varies (RFC3339
+	// "...T00:00:00Z" from Go writes vs "Y-m-d H:i:s" from PHP fixtures). A bound
+	// time.Time does NOT compare equal to either via raw "=", so normalize both
+	// sides with datetime() and bind the period as a 'Y-m-d H:i:s' string.
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]BudgetsElementsLimit, error)
 	// Budgets the user owns OR has an access row for. Ordered by created_at for a
 	// stable list.

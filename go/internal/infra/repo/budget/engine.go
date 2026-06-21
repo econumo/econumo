@@ -139,11 +139,19 @@ func (sqliteQuerier) UpsertBudgetElement(ctx context.Context, db backend.DBTX, p
 func (sqliteQuerier) DeleteBudgetElement(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteBudgetElement(ctx, id)
 }
+
+// limitPeriodArg renders a limit period as the 'Y-m-d H:i:s' string the
+// datetime() comparison normalizes against (SQLite only).
+func limitPeriodArg(period time.Time) string { return period.Format("2006-01-02 15:04:05") }
+
 func (sqliteQuerier) ListBudgetLimitsForPeriod(ctx context.Context, db backend.DBTX, budgetID string, period time.Time) ([]limitRow, error) {
-	return sqlitegen.New(db).ListBudgetLimitsForPeriod(ctx, sqlitegen.ListBudgetLimitsForPeriodParams{BudgetID: budgetID, Period: period})
+	// The query is datetime(l.period) = datetime(?); bind the period as a
+	// 'Y-m-d H:i:s' string so it normalizes equal regardless of the stored form
+	// (a bound time.Time does not compare equal to the stored datetime text).
+	return sqlitegen.New(db).ListBudgetLimitsForPeriod(ctx, sqlitegen.ListBudgetLimitsForPeriodParams{BudgetID: budgetID, Datetime: limitPeriodArg(period)})
 }
 func (sqliteQuerier) GetBudgetLimit(ctx context.Context, db backend.DBTX, elementID string, period time.Time) (limitRow, error) {
-	return sqlitegen.New(db).GetBudgetLimit(ctx, sqlitegen.GetBudgetLimitParams{ElementID: elementID, Period: period})
+	return sqlitegen.New(db).GetBudgetLimit(ctx, sqlitegen.GetBudgetLimitParams{ElementID: elementID, Datetime: limitPeriodArg(period)})
 }
 func (sqliteQuerier) UpsertBudgetLimit(ctx context.Context, db backend.DBTX, p upLimitP) error {
 	return sqlitegen.New(db).UpsertBudgetLimit(ctx, p)

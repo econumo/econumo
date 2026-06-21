@@ -346,18 +346,34 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	defer rows.Close()
 	var out []appbudget.SpendingRow
 	for rows.Next() {
-		var amount, categoryID, currencyID *string
-		var tagID *string
-		if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
-			return nil, err
-		}
-		// rows with a NULL currency (account not in the included set) are skipped.
-		if currencyID == nil || categoryID == nil {
-			continue
-		}
+		var categoryID, currencyID, tagID *string
+		// SQLite's SUM(amount) is a float; scan it as float and format with %.8f
+		// to match PHP's DecimalNumber float path (round to 8 decimals) instead of
+		// the driver's full-precision text (e.g. "32.26999999"). PostgreSQL's SUM
+		// is exact NUMERIC, scanned as text and passed through.
 		a := "0"
-		if amount != nil {
-			a = *amount
+		if r.driver == "postgresql" {
+			var amount *string
+			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil || categoryID == nil {
+				continue
+			}
+			if amount != nil {
+				a = *amount
+			}
+		} else {
+			var amount *float64
+			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil || categoryID == nil {
+				continue
+			}
+			if amount != nil {
+				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+			}
 		}
 		out = append(out, appbudget.SpendingRow{CategoryID: *categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
 	}
