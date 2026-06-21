@@ -3,6 +3,14 @@
 # Default target
 .DEFAULT_GOAL := help
 
+# Docker Compose v2 plugin.
+DC := docker compose
+
+# Run container commands as the host user so files written to the bind-mounted
+# tree (vendor/, var/) stay owned by the host and stay writable. HOME is set
+# because the host UID has no passwd entry in the image (composer needs it).
+DC_EXEC := $(DC) exec -u $(shell id -u):$(shell id -g) -e HOME=/tmp -e COMPOSER_HOME=/tmp/composer app
+
 # Show available targets
 help:
 	@echo "Backend commands:"
@@ -30,29 +38,29 @@ help:
 
 # Start application
 up:
+	$(DC) up -d --build
 	@if [ ! -d vendor ]; then \
-		docker-compose exec -uwww-data app composer install; \
+		$(DC_EXEC) composer install; \
 	fi
-	docker-compose up -d --build
-	docker-compose exec -uwww-data app bin/console doctrine:migrations:migrate -n
+	$(DC_EXEC) bin/console doctrine:migrations:migrate -n
 
 # Stop application
 down:
-	docker-compose down --remove-orphans
+	$(DC) down --remove-orphans
 
 # Open shell in application container
 sh:
-	docker-compose exec -uwww-data app sh
+	$(DC_EXEC) sh
 
 # Run tests
 # Usage: make test ARGS='unit'
 test:
-	docker-compose up -d
-	-docker-compose exec -uwww-data app bin/console doctrine:database:drop --force --env=test -vvv
-	docker-compose exec -uwww-data app bin/console doctrine:database:create --env=test -vvv
-	docker-compose exec -uwww-data app bin/console doctrine:migration:migrate -n --env=test -vvv
-	docker-compose exec -uwww-data app bin/console doctrine:fixtures:load --purge-with-truncate -n --env=test -vvv
-	-docker-compose exec -uwww-data app php -d register_argc_argv=1 vendor/bin/codecept run $(ARGS) --steps -v
+	$(DC) up -d
+	-$(DC_EXEC) bin/console doctrine:database:drop --force --env=test -vvv
+	$(DC_EXEC) bin/console doctrine:database:create --env=test -vvv
+	$(DC_EXEC) bin/console doctrine:migration:migrate -n --env=test -vvv
+	$(DC_EXEC) bin/console doctrine:fixtures:load --purge-with-truncate -n --env=test -vvv
+	-$(DC_EXEC) php -d register_argc_argv=1 vendor/bin/codecept run $(ARGS) --steps -v
 
 # Install web dependencies
 install:
