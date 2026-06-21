@@ -177,10 +177,10 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 }
 
 type envelope struct {
-	Success bool                `json:"success"`
-	Message string              `json:"message"`
-	Code    int                 `json:"code"`
-	Data    json.RawMessage     `json:"data"`
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Code    int             `json:"code"`
+	Data    json.RawMessage `json:"data"`
 	Errors  json.RawMessage `json:"errors"`
 	raw     []byte
 }
@@ -193,7 +193,6 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 	}
 	return v
 }
-
 
 // errorsMap decodes the validation-form errors object (field -> messages).
 // Access-denied / exception responses emit an empty array ([]) instead, which

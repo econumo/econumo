@@ -154,7 +154,20 @@ func (sqliteQuerier) GetBudgetLimit(ctx context.Context, db backend.DBTX, elemen
 	return sqlitegen.New(db).GetBudgetLimit(ctx, sqlitegen.GetBudgetLimitParams{ElementID: elementID, Datetime: limitPeriodArg(period)})
 }
 func (sqliteQuerier) UpsertBudgetLimit(ctx context.Context, db backend.DBTX, p upLimitP) error {
-	return sqlitegen.New(db).UpsertBudgetLimit(ctx, p)
+	// Store `period` as a 'Y-m-d H:i:s' string, NOT a time.Time: the modernc
+	// driver serializes time.Time as RFC3339 ("...T...Z"), which SQLite's
+	// datetime() cannot parse — so the read side's `datetime(period)=datetime(?)`
+	// (see ListBudgetLimitsForPeriod / GetBudgetLimit) would never match and a
+	// set limit would silently read back as budgeted=0. Bind period the same way
+	// the read side does (limitPeriodArg). Done via raw exec because the
+	// generated param type is time.Time. created_at/updated_at are never compared
+	// with datetime(), so their RFC3339 form is harmless.
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT (id) DO UPDATE SET amount = excluded.amount, updated_at = excluded.updated_at`,
+		p.ID, p.ElementID, p.Period.Format("2006-01-02 15:04:05"), p.CreatedAt, p.UpdatedAt, p.Amount)
+	return err
 }
 func (sqliteQuerier) DeleteBudgetLimit(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteBudgetLimit(ctx, id)

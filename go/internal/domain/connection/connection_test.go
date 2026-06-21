@@ -59,6 +59,33 @@ func TestRoleFromAlias_Invalid(t *testing.T) {
 	}
 }
 
+func TestAccountAccess_FromState_RoundTripAndGetters(t *testing.T) {
+	acc := mustID(t, "11111111-1111-1111-1111-111111111111")
+	usr := mustID(t, "22222222-2222-2222-2222-222222222222")
+	a := FromState(acc, usr, RoleGuest, tn0, tn1)
+	if !a.AccountId().Equal(acc) {
+		t.Errorf("AccountId()=%v want %v", a.AccountId(), acc)
+	}
+	if !a.UserId().Equal(usr) {
+		t.Errorf("UserId()=%v want %v", a.UserId(), usr)
+	}
+	if a.Role() != RoleGuest {
+		t.Errorf("Role()=%d want guest", a.Role())
+	}
+	if !a.CreatedAt().Equal(tn0) || !a.UpdatedAt().Equal(tn1) {
+		t.Errorf("timestamps: %v / %v want %v / %v", a.CreatedAt(), a.UpdatedAt(), tn0, tn1)
+	}
+}
+
+func TestNewAccountAccess_CreatedEqualsUpdated(t *testing.T) {
+	a := NewAccountAccess(
+		mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), RoleAdmin, tn0)
+	if !a.CreatedAt().Equal(tn0) || !a.UpdatedAt().Equal(tn0) {
+		t.Errorf("new access: created=%v updated=%v want both %v", a.CreatedAt(), a.UpdatedAt(), tn0)
+	}
+}
+
 func TestAccountAccess_UpdateRole_OnlyBumpsOnChange(t *testing.T) {
 	a := NewAccountAccess(
 		mustID(t, "11111111-1111-1111-1111-111111111111"),
