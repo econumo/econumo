@@ -48,20 +48,20 @@ type TransactionResult struct {
 // ---------------------------------------------------------------------------
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
-// accept number or string on the wire (the frontend may send either); decoded as
-// json.Number-friendly strings via custom handling in the handler.
+// are vo.FlexString: the frontend posts them as JSON numbers, the contract treats
+// them as decimal strings, and FlexString accepts either (see its doc).
 type CreateTransactionRequest struct {
-	Id                 string  `json:"id"`
-	Type               string  `json:"type"`
-	Amount             string  `json:"amount"`
-	AmountRecipient    *string `json:"amountRecipient"`
-	AccountId          string  `json:"accountId"`
-	AccountRecipientId *string `json:"accountRecipientId"`
-	CategoryId         *string `json:"categoryId"`
-	Date               string  `json:"date"`
-	Description        *string `json:"description"`
-	PayeeId            *string `json:"payeeId"`
-	TagId              *string `json:"tagId"`
+	Id                 string         `json:"id"`
+	Type               string         `json:"type"`
+	Amount             vo.FlexString  `json:"amount"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	AccountId          string         `json:"accountId"`
+	AccountRecipientId *string        `json:"accountRecipientId"`
+	CategoryId         *string        `json:"categoryId"`
+	Date               string         `json:"date"`
+	Description        *string        `json:"description"`
+	PayeeId            *string        `json:"payeeId"`
+	TagId              *string        `json:"tagId"`
 }
 
 // Validate enforces tier-1 constraints: id/type/amount/accountId/date NotBlank,
@@ -70,7 +70,7 @@ type CreateTransactionRequest struct {
 func (r CreateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
-		{"id", r.Id}, {"type", r.Type}, {"amount", r.Amount},
+		{"id", r.Id}, {"type", r.Type}, {"amount", r.Amount.String()},
 		{"accountId", r.AccountId}, {"date", r.Date},
 	} {
 		if strings.TrimSpace(f.val) == "" {
@@ -96,24 +96,24 @@ type CreateTransactionResult struct {
 // UpdateTransactionRequest is the update-transaction body (same fields as create
 // minus the operation-id semantics; id is the transaction id).
 type UpdateTransactionRequest struct {
-	Id                 string  `json:"id"`
-	Type               string  `json:"type"`
-	Amount             string  `json:"amount"`
-	AmountRecipient    *string `json:"amountRecipient"`
-	AccountId          string  `json:"accountId"`
-	AccountRecipientId *string `json:"accountRecipientId"`
-	CategoryId         *string `json:"categoryId"`
-	Date               string  `json:"date"`
-	Description        *string `json:"description"`
-	PayeeId            *string `json:"payeeId"`
-	TagId              *string `json:"tagId"`
+	Id                 string         `json:"id"`
+	Type               string         `json:"type"`
+	Amount             vo.FlexString  `json:"amount"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	AccountId          string         `json:"accountId"`
+	AccountRecipientId *string        `json:"accountRecipientId"`
+	CategoryId         *string        `json:"categoryId"`
+	Date               string         `json:"date"`
+	Description        *string        `json:"description"`
+	PayeeId            *string        `json:"payeeId"`
+	TagId              *string        `json:"tagId"`
 }
 
 // Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.
 func (r UpdateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
-		{"id", r.Id}, {"type", r.Type}, {"amount", r.Amount},
+		{"id", r.Id}, {"type", r.Type}, {"amount", r.Amount.String()},
 		{"accountId", r.AccountId}, {"date", r.Date},
 	} {
 		if strings.TrimSpace(f.val) == "" {

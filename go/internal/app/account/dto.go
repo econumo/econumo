@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
 // ---------------------------------------------------------------------------
@@ -68,12 +69,12 @@ type SharedAccess struct {
 // CreateAccountRequest is the create-account body. balance defaults to 0; icon
 // has a value-object (non-empty) check tier-2.
 type CreateAccountRequest struct {
-	Id         string `json:"id"`
-	Name       string `json:"name"`
-	CurrencyId string `json:"currencyId"`
-	Balance    string `json:"balance"`
-	Icon       string `json:"icon"`
-	FolderId   string `json:"folderId"`
+	Id         string        `json:"id"`
+	Name       string        `json:"name"`
+	CurrencyId string        `json:"currencyId"`
+	Balance    vo.FlexString `json:"balance"`
+	Icon       string        `json:"icon"`
+	FolderId   string        `json:"folderId"`
 }
 
 // Validate enforces tier-1 NotBlank on id, name, currencyId, icon, folderId. The
@@ -109,12 +110,12 @@ type CreateAccountResult struct {
 // UpdateAccountRequest is the update-account body. currencyId is nullable;
 // updatedAt is the timestamp the correction transaction is dated with.
 type UpdateAccountRequest struct {
-	Id         string  `json:"id"`
-	Name       string  `json:"name"`
-	Balance    string  `json:"balance"`
-	Icon       string  `json:"icon"`
-	CurrencyId *string `json:"currencyId"`
-	UpdatedAt  string  `json:"updatedAt"`
+	Id         string        `json:"id"`
+	Name       string        `json:"name"`
+	Balance    vo.FlexString `json:"balance"`
+	Icon       string        `json:"icon"`
+	CurrencyId *string       `json:"currencyId"`
+	UpdatedAt  string        `json:"updatedAt"`
 }
 
 // Validate enforces tier-1 NotBlank on id, name, icon, updatedAt.

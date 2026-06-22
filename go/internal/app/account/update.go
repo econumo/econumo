@@ -41,7 +41,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 		return nil, errs.NewValidation("Invalid updatedAt",
 			errs.FieldError{Key: "updatedAt", Message: "Invalid date format, expected Y-m-d H:i:s"})
 	}
-	requested := vo.NewDecimal(req.Balance)
+	requested := vo.NewDecimal(req.Balance.String())
 
 	var (
 		updated    *domaccount.Account

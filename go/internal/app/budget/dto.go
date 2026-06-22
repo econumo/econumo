@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
 // ---------------------------------------------------------------------------
@@ -448,10 +449,10 @@ type ChangeElementCurrencyResult struct{}
 
 // SetLimitRequest sets/clears an element's period limit.
 type SetLimitRequest struct {
-	BudgetId  string  `json:"budgetId"`
-	ElementId string  `json:"elementId"`
-	Period    string  `json:"period"`
-	Amount    *string `json:"amount"`
+	BudgetId  string         `json:"budgetId"`
+	ElementId string         `json:"elementId"`
+	Period    string         `json:"period"`
+	Amount    *vo.FlexString `json:"amount"`
 }
 
 func (r SetLimitRequest) Validate() error {

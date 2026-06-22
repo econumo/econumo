@@ -46,7 +46,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	if err != nil {
 		return nil, err
 	}
-	balance := vo.NewDecimal(req.Balance)
+	balance := vo.NewDecimal(req.Balance.String())
 
 	var created *domaccount.Account
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {

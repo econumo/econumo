@@ -68,6 +68,34 @@ func TestCreateTransaction_Success_EmbedsAuthorAndAccounts(t *testing.T) {
 	}
 }
 
+// The Quasar frontend sends amount/amountRecipient as JSON numbers (it does
+// Number(...) before posting), while the API contract treats them as decimal
+// strings. PHP coerced scalars leniently; Go must accept both. Regression for
+// "json: cannot unmarshal number into Go struct field ...amount of type string".
+func TestCreateTransaction_NumericAmount_Accepted(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	// amount as a JSON number with a fraction; amountRecipient also numeric (an
+	// expense ignores it, so it falls back to amount — the point is that decoding
+	// a number no longer 500s).
+	body := map[string]any{
+		"id": txID1, "type": "expense", "amount": 123.45, "amountRecipient": 99,
+		"accountId": accountID, "categoryId": catID, "date": "2024-03-01 10:00:00", "description": "",
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[writeResult](t, env.Data)
+	if res.Item.Amount != "123.45" {
+		t.Fatalf("amount = %q, want \"123.45\"", res.Item.Amount)
+	}
+	// expense -> recipient falls back to amount.
+	if res.Item.AmountRecipient == nil || *res.Item.AmountRecipient != "123.45" {
+		t.Fatalf("amountRecipient = %v, want \"123.45\" (fallback)", res.Item.AmountRecipient)
+	}
+}
+
 func TestCreateTransaction_DuplicateId_400(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

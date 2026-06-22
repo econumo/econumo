@@ -54,8 +54,8 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req Updat
 			return gerr
 		}
 		now := s.clock.Now()
-		st, berr := buildState(id, userID, typ, accountID, req.Amount,
-			req.AmountRecipient, req.AccountRecipientId, req.CategoryId, req.PayeeId, req.TagId,
+		st, berr := buildState(id, userID, typ, accountID, req.Amount.String(),
+			req.AmountRecipient.StrPtr(), req.AccountRecipientId, req.CategoryId, req.PayeeId, req.TagId,
 			description, spentAt, now)
 		if berr != nil {
 			return berr

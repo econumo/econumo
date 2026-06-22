@@ -149,7 +149,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req SetLimitReques
 			}
 			return nil
 		}
-		amount := vo.NewDecimal(*req.Amount)
+		amount := vo.NewDecimal(req.Amount.String())
 		if hasExisting {
 			existing.UpdateAmount(amount, now)
 			return s.repo.SaveLimit(txCtx, existing)
