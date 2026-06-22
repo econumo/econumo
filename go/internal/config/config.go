@@ -80,14 +80,11 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.DatabaseDriver = driver
-	if c.JWTPublicKeyPath == "" {
-		return Config{}, fmt.Errorf("JWT_PUBLIC_KEY is required")
-	}
-	// The listen port is not defaulted: deployments must set PORT explicitly so
-	// the bound port is never an implicit surprise.
-	if c.Port == "" {
-		return Config{}, fmt.Errorf("PORT is required")
-	}
+	// NOTE: PORT and JWT_PUBLIC_KEY are required by the HTTP server only, and are
+	// validated at server startup (cmd/econumo run()). They are intentionally NOT
+	// required here because config.Load is also the CLI's composition entry point
+	// (bin/console app:*), and those commands neither bind a port nor issue JWTs.
+	// Only DATABASE_URL (checked above) is universally required.
 	return c, nil
 }
 

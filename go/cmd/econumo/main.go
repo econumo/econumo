@@ -50,14 +50,21 @@ func main() {
 	//   - a non-flag first argument names a subcommand (e.g. `econumo app:...`).
 	// A bare `econumo` and flags (leading '-', e.g. -healthcheck above) fall
 	// through to the HTTP server.
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	slog.SetDefault(logger)
+
+	// Load a local .env (if present) for BOTH the CLI and the server paths, so
+	// `./econumo app:...` and `bin/console app:...` pick up DATABASE_URL etc. the
+	// same way the server does. Must happen before the dispatch below, which
+	// builds its config straight away. godotenv.Load never overrides real env
+	// vars, so containerized/orchestrated deployments are unaffected.
+	loadDotEnv()
+
 	invokedAsConsole := filepath.Base(os.Args[0]) == "console"
 	hasSubcommand := len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-")
 	if invokedAsConsole || hasSubcommand {
 		os.Exit(cli.Run(os.Args[1:]))
 	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	slog.SetDefault(logger)
 
 	if err := run(); err != nil {
 		slog.Error("startup failed", "err", err)
@@ -104,14 +111,9 @@ func loadDotEnv() {
 func run() error {
 	ctx := context.Background()
 
-	// Load a local .env into the process environment if one is present, for
-	// convenience when running the binary directly (e.g. `go run`). This does NOT
-	// override variables already set in the real environment, so containerized /
-	// orchestrated deployments (Docker compose env_file, k8s, CI) — which inject
-	// vars before the process starts — are never shadowed by a stray .env. In
-	// those setups the file is typically absent anyway and this is a no-op.
-	loadDotEnv()
-
+	// .env is loaded once in main() (before CLI/server dispatch); nothing to do
+	// here. godotenv.Load never overrides real env vars, so containerized /
+	// orchestrated deployments (Docker compose env_file, k8s, CI) are unaffected.
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -121,6 +123,16 @@ func run() error {
 		"database_driver", cfg.DatabaseDriver,
 		"spa_dir", cfg.SPADir,
 	)
+
+	// Server-only requirements (the CLI path validated via config.Load does not
+	// need these). PORT is never defaulted so the bound port is never an implicit
+	// surprise; JWT_PUBLIC_KEY is needed to verify auth tokens.
+	if cfg.Port == "" {
+		return errors.New("PORT is required")
+	}
+	if cfg.JWTPublicKeyPath == "" {
+		return errors.New("JWT_PUBLIC_KEY is required")
+	}
 
 	// Select the linked backend for the engine derived from the DATABASE_URL
 	// scheme. A miss is fatal with a clear message listing what is actually

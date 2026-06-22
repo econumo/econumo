@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 )
 
 // command is one CLI subcommand. name is the exact Symfony command string (e.g.
@@ -101,4 +102,18 @@ func printUsage(w *os.File) {
 // the operator the correct invocation).
 func usageErr(usage string) error {
 	return fmt.Errorf("usage: bin/console %s", usage)
+}
+
+// firstPositional returns the first non-flag, non-empty argument (trimmed), or
+// "" if there is none. It lets commands with a single optional positional ignore
+// stray Symfony-style global flags (e.g. -vvv, -q, -n) carried over by habit.
+func firstPositional(args []string) string {
+	for _, a := range args {
+		a = strings.TrimSpace(a)
+		if a == "" || strings.HasPrefix(a, "-") {
+			continue
+		}
+		return a
+	}
+	return ""
 }

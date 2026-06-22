@@ -18,10 +18,13 @@ func currencyCommands() []command {
 			summary: "Load exchange rates from Open Exchange Rates: app:update-currency-rates [YYYY-MM-DD]",
 			run: func(ctx context.Context, c *container, args []string) error {
 				date := c.clk.Now()
-				if len(args) >= 1 && strings.TrimSpace(args[0]) != "" {
-					d, err := time.Parse("2006-01-02", strings.TrimSpace(args[0]))
+				// The single optional positional is the date. Ignore any leading-dash
+				// tokens (e.g. a Symfony-style -vvv/-q/-n carried over by muscle memory)
+				// so they don't get misread as the date.
+				if arg := firstPositional(args); arg != "" {
+					d, err := time.Parse("2006-01-02", arg)
 					if err != nil {
-						return fmt.Errorf("invalid date %q (want YYYY-MM-DD): %w", args[0], err)
+						return fmt.Errorf("invalid date %q (want YYYY-MM-DD): %w", arg, err)
 					}
 					date = d
 				}
