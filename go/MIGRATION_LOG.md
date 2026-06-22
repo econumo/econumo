@@ -234,8 +234,10 @@ user- and currency-management commands and preserved the legacy invocation.
 
 **Shape.** The binary is subcommand-driven (stdlib only, no cobra, per the
 stdlib-first decision): `cmd/econumo` dispatches on the first arg — `serve` runs
-the HTTP server, `healthcheck` probes a running one, and everything else routes to
-the `internal/cli` dispatcher (the `app:*` management commands). A bare invocation
+the HTTP server, `healthcheck` probes a running one, `generate-jwt-keypair` writes
+the RS256 keypair the server needs (Go equivalent of `lexik:jwt:generate-keypair`,
+in `infra/auth`; DB-free), and everything else routes to the `internal/cli`
+dispatcher (the `app:*` management commands). A bare invocation
 prints usage and does NOT serve, so a stray `econumo`/`bin/console` can't start a
 second instance by mistake; `serve` being explicit also removed the earlier
 `argv[0] == "console"` special-case. Verbosity flags (`-v/-vv/-vvv`, `--verbose=N`,

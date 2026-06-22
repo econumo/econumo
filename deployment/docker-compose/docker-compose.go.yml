@@ -5,9 +5,13 @@
 #   docker compose -f docker-compose.go.yml up --build
 #
 # Notes vs the PHP stack:
-#   - The Go binary cannot generate JWT keys, so RSA keys MUST be mounted at
-#     /var/www/config/jwt (private.pem + public.pem). Generate once, e.g. with
-#     the PHP stack's `lexik:jwt:generate-keypair`, or any RSA keypair.
+#   - An RSA keypair MUST be mounted at /var/www/config/jwt (private.pem +
+#     public.pem). Generate one with the binary's own command (writes to
+#     JWT_SECRET_KEY/JWT_PUBLIC_KEY, sealed with JWT_PASSPHRASE):
+#       docker run --rm -v "$PWD/jwt:/jwt" \
+#         -e JWT_SECRET_KEY=/jwt/private.pem -e JWT_PUBLIC_KEY=/jwt/public.pem \
+#         -e JWT_PASSPHRASE=change-me econumo/econumo-go:latest generate-jwt-keypair
+#     (The PHP stack's `lexik:jwt:generate-keypair` or any RSA keypair also work.)
 #   - DATABASE_URL is required and defaults (in the image) to the SQLite file on
 #     the mounted db volume.
 #   - econumo-config.js ships with a working default; mount your own over
@@ -26,7 +30,7 @@ services:
       # The Go binary derives the engine from the URL scheme; this points at the
       # SQLite file on the db volume below.
       DATABASE_URL: sqlite:///var/www/var/db/db.sqlite
-      # Paths to the RSA keys mounted below (the binary cannot generate them).
+      # Paths to the RSA keys mounted below (generate via `generate-jwt-keypair`).
       JWT_PUBLIC_KEY: /var/www/config/jwt/public.pem
       JWT_SECRET_KEY: /var/www/config/jwt/private.pem
     ports:

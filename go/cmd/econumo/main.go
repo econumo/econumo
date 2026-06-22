@@ -68,6 +68,12 @@ func main() {
 		// `-healthcheck` is kept as an alias for any older healthcheck config.
 		os.Exit(healthcheck())
 
+	case "generate-jwt-keypair":
+		// Generate the RS256 keypair the server needs (Go equivalent of
+		// lexik:jwt:generate-keypair). DB-free; reads only the key paths +
+		// passphrase from the environment/.env.
+		os.Exit(generateJWTKeypair(args[1:]))
+
 	case "help", "-h", "--help":
 		printUsage(os.Stdout)
 		os.Exit(0)
@@ -92,8 +98,45 @@ func printUsage(w io.Writer) {
 	fmt.Fprintf(w, "  %-40s %s\n", "serve", "Start the HTTP API + SPA server")
 	fmt.Fprintf(w, "  %-40s %s\n", "healthcheck", "Probe a running server's health endpoint (exit 0/1)")
 	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Setup:")
+	fmt.Fprintf(w, "  %-40s %s\n", "generate-jwt-keypair [--force]", "Generate the RS256 JWT keypair (JWT_SECRET_KEY/JWT_PUBLIC_KEY)")
+	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Management commands:")
 	cli.WriteCommandList(w)
+}
+
+// generateJWTKeypair writes a fresh RS256 keypair to the JWT_SECRET_KEY /
+// JWT_PUBLIC_KEY paths (defaulting to config/jwt/{private,public}.pem), encrypted
+// with JWT_PASSPHRASE. It does not touch the database.
+func generateJWTKeypair(args []string) int {
+	loadDotEnv()
+
+	force := false
+	for _, a := range args {
+		if a == "--force" || a == "-f" {
+			force = true
+		}
+	}
+
+	privPath := envOr("JWT_SECRET_KEY", "config/jwt/private.pem")
+	pubPath := envOr("JWT_PUBLIC_KEY", "config/jwt/public.pem")
+	passphrase := os.Getenv("JWT_PASSPHRASE")
+
+	if err := auth.GenerateKeypair(privPath, pubPath, passphrase, force); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 1
+	}
+	fmt.Printf("Generated RS256 JWT keypair:\n  private key: %s\n  public key:  %s\n", privPath, pubPath)
+	fmt.Println("Ensure the server runs with matching JWT_SECRET_KEY, JWT_PUBLIC_KEY and JWT_PASSPHRASE.")
+	return 0
+}
+
+// envOr returns the env var value or a default when unset/empty.
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 // healthcheck GETs /_/health-check on the local listen port and returns a
