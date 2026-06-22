@@ -73,4 +73,6 @@ WORKDIR /var/www
 # jwt keys mounted at runtime must be readable/writable by it.
 USER nonroot:nonroot
 
-ENTRYPOINT ["/econumo"]
+# `serve` is explicit: the binary prints usage (and does not start a server) when
+# invoked with no command, so the server start is always intentional.
+ENTRYPOINT ["/econumo", "serve"]

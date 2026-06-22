@@ -36,4 +36,4 @@ ECONUMO_ALLOW_REGISTRATION=true \
 ECONUMO_SPA_DIR=../web/dist/spa \
 APP_ENV=dev \
 PORT="$PORT" \
-exec /tmp/econumo-local
+exec /tmp/econumo-local serve

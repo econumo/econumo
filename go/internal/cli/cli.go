@@ -12,6 +12,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"sort"
@@ -88,11 +89,19 @@ func index(cs []command) map[string]command {
 	return m
 }
 
-// printUsage writes the command list (sorted by name) with one-line summaries.
-func printUsage(w *os.File) {
+// printUsage writes the management-command list with a header (used when the CLI
+// is invoked directly, e.g. via the bin/console symlink, with no/unknown command).
+func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage: bin/console <command> [args]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Available commands:")
+	WriteCommandList(w)
+}
+
+// WriteCommandList writes the registered management commands (sorted by name)
+// with one-line summaries. Exported so the binary's top-level usage can include
+// the app:* commands alongside its own (serve, healthcheck).
+func WriteCommandList(w io.Writer) {
 	cs := commandList()
 	sort.Slice(cs, func(i, j int) bool { return cs[i].name < cs[j].name })
 	for _, c := range cs {

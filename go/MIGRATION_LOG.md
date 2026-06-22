@@ -232,24 +232,29 @@ user- and currency-management commands and preserved the legacy invocation.
 - Currency: `app:update-currency-rates [date]` (Open Exchange Rates loader +
   rate upsert), `app:add-currency`, `app:restore-currency-fraction-digits`.
 
-**Shape.** A stdlib subcommand dispatcher lives in `internal/cli` (no cobra, per
-the stdlib-first decision); `cmd/econumo` routes to it when argv[0] is the
-`console` symlink **or** the first arg is a non-flag subcommand, else it serves.
+**Shape.** The binary is subcommand-driven (stdlib only, no cobra, per the
+stdlib-first decision): `cmd/econumo` dispatches on the first arg — `serve` runs
+the HTTP server, `healthcheck` probes a running one, and everything else routes to
+the `internal/cli` dispatcher (the `app:*` management commands). A bare invocation
+prints usage and does NOT serve, so a stray `econumo`/`bin/console` can't start a
+second instance by mistake; `serve` being explicit also removed the earlier
+`argv[0] == "console"` special-case. Verbosity flags (`-v/-vv/-vvv`, `--verbose=N`,
+`-q`, and the `SHELL_VERBOSITY` env) set the slog level, Symfony-style.
 Admin use cases live in `internal/app/{user,currency}/admin.go` and reuse the same
 repos/seams the HTTP handlers use — `register.go` was refactored to share an
 ungated `createUser` core. New write path: `internal/infra/repo/currency/write.go`
 + `currency_write.sql` (sqlc, both engines) with an `ON CONFLICT (published_at,
-currency_id, base_currency_id)` rate upsert (SQLite wraps the date in `date()` so
-it stores the same `Y-m-d` text PHP writes); the OXR client is
-`internal/infra/openexchangerates`. ISO symbol + fraction-digit metadata is now
+currency_id, base_currency_id)` rate upsert (the published date is stored as a
+midnight `time.Time`; modernc writes date columns as ISO8601 and the read path
+compares via `date()`/`MAX`, so storage format stays irrelevant); the OXR client
+is `internal/infra/openexchangerates`. ISO symbol + fraction-digit metadata is now
 generated alongside names by `gen_names.sh` (from Intl `en.php` + `meta.php`),
 exposed as `currency.Symbol`/`currency.FractionDigits`.
 
-**Back-compat in the distroless image.** `deployment/docker/go/Dockerfile` creates
-a build-time `bin/console -> /econumo` symlink and sets `WORKDIR /var/www`, so
-`docker exec <c> bin/console app:create-user …` works without a shell (and
-`/econumo app:…` works directly). A bare `bin/console` prints usage rather than
-booting a second server.
+**Back-compat in the distroless image.** `deployment/docker/go/Dockerfile` runs
+`ENTRYPOINT ["/econumo", "serve"]`, creates a build-time `bin/console -> /econumo`
+symlink, and sets `WORKDIR /var/www`, so `docker exec <c> bin/console
+app:create-user …` works without a shell (and `/econumo app:…` works directly).
 
 **Out of scope (deliberately):** Doctrine/cache shims (migrations run on boot),
 WAL toggles, `sqlite-to-postgres`. The CLI assumes an already-migrated DB (like

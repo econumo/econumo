@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ["CMD", "/econumo", "-healthcheck"]
+      test: ["CMD", "/econumo", "healthcheck"]
       interval: 1m30s
       timeout: 10s
       retries: 12

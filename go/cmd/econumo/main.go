@@ -1,6 +1,12 @@
-// Command econumo is the Econumo HTTP server: it loads configuration, selects
-// the database backend from the DATABASE_URL scheme, runs the baseline-aware
-// migrations, builds the net/http router (API + SPA), and serves.
+// Command econumo is the Econumo binary. It is subcommand-driven:
+//
+//	econumo serve            run the HTTP API + SPA server
+//	econumo healthcheck      probe a running server's health endpoint (exit 0/1)
+//	econumo app:<command>    management commands ported from Symfony (see cli)
+//
+// `serve` is explicit so a bare invocation can never accidentally start a second
+// server — with no command it prints usage and exits. The legacy `bin/console`
+// symlink resolves to this same binary, so `bin/console app:...` works too.
 //
 // Both database backends are linked into this single binary and chosen at
 // runtime; the concrete backend packages register themselves via init() and are
@@ -10,10 +16,11 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -35,46 +42,58 @@ import (
 )
 
 func main() {
-	// `econumo -healthcheck` probes the running server's health endpoint and
-	// exits 0 (healthy) / 1 (not). It lets the distroless image (no shell, no
-	// curl) self-report health to Docker. Honors PORT to find the local port.
-	if len(os.Args) > 1 && (os.Args[1] == "-healthcheck" || os.Args[1] == "--healthcheck") {
-		os.Exit(healthcheck())
+	args := os.Args[1:]
+
+	// No command: print usage and exit. Deliberately does NOT start the server,
+	// so a stray `econumo` (or `bin/console`) can't boot a second instance.
+	if len(args) == 0 {
+		printUsage(os.Stderr)
+		os.Exit(2)
 	}
 
-	// Route to the CLI (the `bin/console app:*` management commands ported from
-	// Symfony) instead of starting the server when EITHER:
-	//   - the binary was invoked through the `bin/console` symlink (argv[0]
-	//     basename "console") — so a bare `bin/console` prints usage rather than
-	//     accidentally booting a second server, matching Symfony's console; or
-	//   - a non-flag first argument names a subcommand (e.g. `econumo app:...`).
-	// A bare `econumo` and flags (leading '-', e.g. -healthcheck above) fall
-	// through to the HTTP server.
-	// Route to the CLI when invoked as `bin/console` or given a non-flag
-	// subcommand (see below); otherwise start the server.
-	invokedAsConsole := filepath.Base(os.Args[0]) == "console"
-	hasSubcommand := len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-")
-	if invokedAsConsole || hasSubcommand {
-		// Apply Symfony-style verbosity (-v/-vv/-vvv/-q) FIRST so it also governs
-		// the startup logs below (.env load, database open). It strips those flags
-		// from the args the command then sees.
-		cmdArgs := cli.ConfigureLogging(os.Args[1:])
+	switch args[0] {
+	case "serve":
+		// Server path: default INFO logging, then load .env and run. Returning
+		// from run() (server stopped) exits 0; an error exits 1.
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+		loadDotEnv()
+		if err := run(); err != nil {
+			slog.Error("startup failed", "err", err)
+			os.Exit(1)
+		}
+
+	case "healthcheck", "-healthcheck", "--healthcheck":
+		// Probe the running server's health endpoint and exit 0 (healthy) / 1.
+		// Lets the distroless image (no shell, no curl) self-report to Docker.
+		// `-healthcheck` is kept as an alias for any older healthcheck config.
+		os.Exit(healthcheck())
+
+	case "help", "-h", "--help":
+		printUsage(os.Stdout)
+		os.Exit(0)
+
+	default:
+		// Management commands (the `app:*` set ported from Symfony). Apply
+		// Symfony-style verbosity (-v/-vv/-vvv/-q) FIRST so it also governs the
+		// startup logs (.env load, database open); it strips those flags from the
+		// args the command then sees.
+		cmdArgs := cli.ConfigureLogging(args)
 		loadDotEnv()
 		os.Exit(cli.Run(cmdArgs))
 	}
+}
 
-	// Server path: default INFO logging.
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
-
-	// Load a local .env (if present) so the server picks up DATABASE_URL etc. when
-	// run directly. godotenv.Load never overrides real env vars, so
-	// containerized/orchestrated deployments are unaffected.
-	loadDotEnv()
-
-	if err := run(); err != nil {
-		slog.Error("startup failed", "err", err)
-		os.Exit(1)
-	}
+// printUsage writes the top-level command listing: the binary's own commands
+// (serve, healthcheck) plus the management commands owned by the cli package.
+func printUsage(w io.Writer) {
+	fmt.Fprintln(w, "Usage: econumo <command> [args]")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Server:")
+	fmt.Fprintf(w, "  %-40s %s\n", "serve", "Start the HTTP API + SPA server")
+	fmt.Fprintf(w, "  %-40s %s\n", "healthcheck", "Probe a running server's health endpoint (exit 0/1)")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Management commands:")
+	cli.WriteCommandList(w)
 }
 
 // healthcheck GETs /_/health-check on the local listen port and returns a
