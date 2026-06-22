@@ -25,6 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: '0'
+      # Lock the go driver and its tools to the single SDK setup-go installs
+      # (from go/go.mod). With 'auto', the runner's newer default Go can leak in
+      # via toolchain re-exec, mixing a 1.25 driver with 1.26-compiled objects
+      # ("compile: version ... does not match go tool version ...").
+      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -49,6 +54,8 @@ jobs:
     needs: smoke
     env:
       CGO_ENABLED: '0'
+      # See smoke job: keep the toolchain locked to the SDK setup-go installs.
+      GOTOOLCHAIN: local
       DATABASE_TEST_PGSQL_URL: postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
     services:
       postgres:
