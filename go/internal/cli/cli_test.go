@@ -7,37 +7,51 @@ import (
 	"testing"
 )
 
-// TestParseVerbosity covers flag accumulation, quiet, level mapping, and that
-// the recognized flags are stripped while everything else is preserved in order.
-func TestParseVerbosity(t *testing.T) {
+// TestResolveVerbosity covers the Symfony-compatible aliases: short (-v/-vv/-vvv),
+// long (--verbose, --verbose=N), quiet (-q/--quiet), the SHELL_VERBOSITY env
+// baseline + flag override, priority (not additive) semantics, and flag stripping.
+func TestResolveVerbosity(t *testing.T) {
 	cases := []struct {
 		name      string
 		args      []string
-		wantV     int
+		shellEnv  string
+		wantLevel int
 		wantQuiet bool
 		wantRest  []string
-		wantLevel slog.Level
+		wantSlog  slog.Level
 	}{
-		{"none", []string{"app:add-currency", "EUR"}, 0, false, []string{"app:add-currency", "EUR"}, slog.LevelWarn},
-		{"single -v", []string{"app:x", "-v"}, 1, false, []string{"app:x"}, slog.LevelInfo},
-		{"-vv", []string{"-vv", "app:x"}, 2, false, []string{"app:x"}, slog.LevelDebug},
-		{"-vvv", []string{"app:x", "-vvv"}, 3, false, []string{"app:x"}, slog.LevelDebug},
-		{"additive -v -v", []string{"app:x", "-v", "-v"}, 2, false, []string{"app:x"}, slog.LevelDebug},
-		{"--verbose", []string{"--verbose", "app:x"}, 1, false, []string{"app:x"}, slog.LevelInfo},
-		{"quiet wins", []string{"app:x", "-q", "-vvv"}, 3, true, []string{"app:x"}, slog.LevelError + 4},
-		{"flags interleaved", []string{"app:update-currency-rates", "-vv", "2025-04-01"}, 2, false, []string{"app:update-currency-rates", "2025-04-01"}, slog.LevelDebug},
+		{"none", []string{"app:add-currency", "EUR"}, "", 0, false, []string{"app:add-currency", "EUR"}, slog.LevelWarn},
+		{"-v", []string{"app:x", "-v"}, "", 1, false, []string{"app:x"}, slog.LevelInfo},
+		{"-vv", []string{"-vv", "app:x"}, "", 2, false, []string{"app:x"}, slog.LevelDebug},
+		{"-vvv", []string{"app:x", "-vvv"}, "", 3, false, []string{"app:x"}, slog.LevelDebug},
+		{"--verbose", []string{"--verbose", "app:x"}, "", 1, false, []string{"app:x"}, slog.LevelInfo},
+		{"--verbose=2", []string{"app:x", "--verbose=2"}, "", 2, false, []string{"app:x"}, slog.LevelDebug},
+		{"--verbose=3", []string{"app:x", "--verbose=3"}, "", 3, false, []string{"app:x"}, slog.LevelDebug},
+		// Priority, NOT additive: two -v stay verbose (Symfony semantics).
+		{"-v -v stays verbose", []string{"app:x", "-v", "-v"}, "", 1, false, []string{"app:x"}, slog.LevelInfo},
+		// Highest flag wins regardless of order.
+		{"mixed -v -vvv", []string{"-v", "app:x", "-vvv"}, "", 3, false, []string{"app:x"}, slog.LevelDebug},
+		{"quiet beats -vvv", []string{"app:x", "-q", "-vvv"}, "", 0, true, []string{"app:x"}, slog.LevelError + 4},
+		{"--quiet", []string{"--quiet", "app:x"}, "", 0, true, []string{"app:x"}, slog.LevelError + 4},
+		{"flags interleaved kept in order", []string{"app:update-currency-rates", "-vv", "2025-04-01"}, "", 2, false, []string{"app:update-currency-rates", "2025-04-01"}, slog.LevelDebug},
+		// SHELL_VERBOSITY baseline applies when no flag is given...
+		{"env baseline 2", []string{"app:x"}, "2", 2, false, []string{"app:x"}, slog.LevelDebug},
+		{"env quiet -1", []string{"app:x"}, "-1", 0, true, []string{"app:x"}, slog.LevelError + 4},
+		// ...and a flag overrides the env baseline.
+		{"flag overrides env", []string{"app:x", "-vvv"}, "1", 3, false, []string{"app:x"}, slog.LevelDebug},
+		{"-v overrides env quiet", []string{"app:x", "-v"}, "-1", 1, false, []string{"app:x"}, slog.LevelInfo},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			v, quiet, rest := parseVerbosity(tc.args)
-			if v != tc.wantV || quiet != tc.wantQuiet {
-				t.Errorf("verbosity=%d quiet=%v, want %d/%v", v, quiet, tc.wantV, tc.wantQuiet)
+			level, quiet, rest := resolveVerbosity(tc.args, tc.shellEnv)
+			if level != tc.wantLevel || quiet != tc.wantQuiet {
+				t.Errorf("level=%d quiet=%v, want %d/%v", level, quiet, tc.wantLevel, tc.wantQuiet)
 			}
 			if !reflect.DeepEqual(rest, tc.wantRest) {
 				t.Errorf("rest = %v, want %v", rest, tc.wantRest)
 			}
-			if got := levelFor(v, quiet); got != tc.wantLevel {
-				t.Errorf("level = %v, want %v", got, tc.wantLevel)
+			if got := levelFor(level, quiet); got != tc.wantSlog {
+				t.Errorf("slog level = %v, want %v", got, tc.wantSlog)
 			}
 		})
 	}
