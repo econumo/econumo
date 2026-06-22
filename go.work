@@ -2,6 +2,6 @@
 // Without this, an editor/gopls opened at the repo root cannot find the nested
 // module and reports every Go file as unreferenced. `go` commands run from the
 // repo root also resolve the module through this file.
-go 1.26.0
+go 1.25.0
 
 use ./go
