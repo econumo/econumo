@@ -113,6 +113,8 @@ type Querier interface {
 	// (a time.Time bound mis-compares at the boundary; see the budget read notes).
 	GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error)
 	GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error)
+	// One currency by ISO code (full row), for the idempotency check in add-currency.
+	GetCurrencyByCode(ctx context.Context, code string) (GetCurrencyByCodeRow, error)
 	// One currency by id, for embedding in another resource (e.g. the account
 	// result's currency block). name is NULL in practice; the app resolves the
 	// display name from the Intl table.
@@ -204,6 +206,8 @@ type Querier interface {
 	// tag/recipient. The factory chooses the type from the sign of the correction
 	// amount; the stored amount is the absolute value.
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
+	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
+	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
 	// create endpoint takes a client-supplied operation id (category, tag, ...). The
 	// shared OperationGuard (internal/infra/repo/operation) is built on these.
@@ -240,6 +244,20 @@ type Querier interface {
 	// apply position changes, re-save) and as the basis for the returned list.
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
+	// Write-side queries for the currency module: the CLI admin commands
+	// (app:add-currency, app:restore-currency-fraction-digits) and the rate loader
+	// (app:update-currency-rates). Kept separate from currencies.sql (the user-module
+	// lookup) and currency_read.sql (the CQRS read model) so the write concern is
+	// visibly distinct. The HTTP API has no currency write path; these run only from
+	// the CLI.
+	//
+	// NOTE: keep these comments ASCII-only. sqlc's sqlite engine miscomputes the
+	// emitted query length when a query's leading comment contains multi-byte UTF-8
+	// (it truncates the SQL by the byte-vs-rune delta), which silently corrupts the
+	// generated statement.
+	// Every currency's id + code, used to build the rate loader's symbols list and
+	// the code->id map. Mirrors CurrencyRepository::getAll() (code projection only).
+	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
 	// Read-side query for the transaction CSV export (SQLite). Returns the user's
 	// accessible accounts (own + shared via accounts_access, not deleted) with their
@@ -276,6 +294,9 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	// Reset a currency's fraction digits to the ICU default. Mirrors
+	// CurrencyUpdateService::restoreFractionDigits.
+	UpdateCurrencyFractionDigitsByCode(ctx context.Context, arg UpdateCurrencyFractionDigitsByCodeParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error
@@ -289,6 +310,13 @@ type Querier interface {
 	// One invite row per user (user_id PK). code/expired_at are nullable (a cleared
 	// invite). expired_at is bound as a 'Y-m-d H:i:s' string (or NULL).
 	UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error
+	// Insert or update a rate for (published_at, currency, base). published_at is a
+	// DATE; the repo passes a time.Time truncated to midnight UTC. modernc stores
+	// date/datetime columns in ISO8601 (like every other date the Go repos write);
+	// the read path is format-agnostic because it compares via date()/MAX, and the
+	// midnight truncation keeps the value stable so the ON CONFLICT
+	// (identifier_uniq_currencies_rates) upsert dedupes per day.
+	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error

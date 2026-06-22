@@ -34,10 +34,21 @@ COPY go/go.mod go/go.sum ./
 RUN go mod download
 COPY go/ ./
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/econumo ./cmd/econumo
+# Backward-compatible `bin/console` entry: a symlink to the single binary. The
+# binary dispatches a non-flag first argument to the CLI (the ported `app:*`
+# management commands), so `bin/console app:create-user …` works exactly like
+# `econumo app:create-user …`. Made here (alpine has a shell); the distroless
+# stage cannot RUN. The target is the absolute /econumo path in the final image.
+RUN mkdir -p /out/bin && ln -s /econumo /out/bin/console
 
 # --- 3. Runtime (distroless: no shell, no package manager, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
 COPY --from=gobuild /out/econumo /econumo
+# bin/console -> /econumo symlink, resolved relative to WORKDIR below so
+# `docker exec <c> bin/console app:…` works (distroless has no shell to expand a
+# PATH lookup). COPY preserves the symlink. `docker exec <c> /econumo app:…` also
+# works directly.
+COPY --from=gobuild /out/bin/console /var/www/bin/console
 COPY --from=frontend /build/web/dist/spa /app/web/spa
 
 # Serve the SPA the frontend stage built; listen on :80 (the compose maps 8181:80
@@ -53,6 +64,10 @@ ENV ECONUMO_SPA_DIR=/app/web/spa \
     DATABASE_URL=sqlite:///var/www/var/db/db.sqlite
 
 EXPOSE 80
+
+# WORKDIR so a relative `bin/console` (the symlink at /var/www/bin/console)
+# resolves under `docker exec`, matching the PHP image's /var/www layout.
+WORKDIR /var/www
 
 # distroless ships a non-root `nonroot` user (uid 65532); the SQLite db dir +
 # jwt keys mounted at runtime must be readable/writable by it.

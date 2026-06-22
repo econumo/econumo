@@ -66,6 +66,8 @@ type Querier interface {
 	GetCategoryListView(ctx context.Context, userID string) ([]Category, error)
 	GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error)
 	GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error)
+	// One currency by ISO code (full row), for the idempotency check in add-currency.
+	GetCurrencyByCode(ctx context.Context, code string) (GetCurrencyByCodeRow, error)
 	GetCurrencyByIDView(ctx context.Context, id string) (GetCurrencyByIDViewRow, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
 	// Read-model queries for the currency module (PostgreSQL variant). No $N
@@ -114,6 +116,8 @@ type Querier interface {
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
+	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
+	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	// Idempotency queries over operation_requests_ids (PostgreSQL variant: $N
 	// placeholders). Shared by every module whose create endpoint takes a
 	// client-supplied operation id. See the sqlite variant for documentation.
@@ -139,6 +143,15 @@ type Querier interface {
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
+	// Write-side queries for the currency module: the CLI admin commands
+	// (app:add-currency, app:restore-currency-fraction-digits) and the rate loader
+	// (app:update-currency-rates). Kept separate from currencies.sql (the user-module
+	// lookup) and currency_read.sql (the CQRS read model) so the write concern is
+	// visibly distinct. The HTTP API has no currency write path; these run only from
+	// the CLI. (Comments kept ASCII-only to match the sqlite sibling; see its note.)
+	// Every currency's id + code, used to build the rate loader's symbols list and
+	// the code->id map. Mirrors CurrencyRepository::getAll() (code projection only).
+	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
 	// Read-side query for the transaction CSV export (PostgreSQL). Returns the
 	// user's accessible accounts (own + shared via accounts_access, not deleted)
@@ -163,6 +176,9 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	// Reset a currency's fraction digits to the ICU default. Mirrors
+	// CurrencyUpdateService::restoreFractionDigits.
+	UpdateCurrencyFractionDigitsByCode(ctx context.Context, arg UpdateCurrencyFractionDigitsByCodeParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error
@@ -174,6 +190,10 @@ type Querier interface {
 	UpsertBudgetLimit(ctx context.Context, arg UpsertBudgetLimitParams) error
 	UpsertCategory(ctx context.Context, arg UpsertCategoryParams) error
 	UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error
+	// Insert or update a rate for (published_at, currency, base). published_at is a
+	// native DATE; the conflict target is the identifier_uniq_currencies_rates UNIQUE
+	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
+	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error

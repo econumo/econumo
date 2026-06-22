@@ -204,6 +204,26 @@ func (u *User) UpdateName(name string, now time.Time) {
 	u.updatedAt = now
 }
 
+// Activate marks the account active (PHP User::activate). Bumps updatedAt only
+// when the state actually changes, so a no-op activate leaves the row untouched.
+func (u *User) Activate(now time.Time) {
+	if u.isActive {
+		return
+	}
+	u.isActive = true
+	u.updatedAt = now
+}
+
+// Deactivate marks the account inactive (PHP User::deactivate). Bumps updatedAt
+// only on a real state change.
+func (u *User) Deactivate(now time.Time) {
+	if !u.isActive {
+		return
+	}
+	u.isActive = false
+	u.updatedAt = now
+}
+
 // UpdatePassword replaces the stored password hash. The caller hashes the
 // plaintext via infra/auth using this user's salt first.
 func (u *User) UpdatePassword(passwordHash string, now time.Time) {

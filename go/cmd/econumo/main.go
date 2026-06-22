@@ -13,9 +13,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/cli"
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -38,6 +40,20 @@ func main() {
 	// curl) self-report health to Docker. Honors PORT to find the local port.
 	if len(os.Args) > 1 && (os.Args[1] == "-healthcheck" || os.Args[1] == "--healthcheck") {
 		os.Exit(healthcheck())
+	}
+
+	// Route to the CLI (the `bin/console app:*` management commands ported from
+	// Symfony) instead of starting the server when EITHER:
+	//   - the binary was invoked through the `bin/console` symlink (argv[0]
+	//     basename "console") — so a bare `bin/console` prints usage rather than
+	//     accidentally booting a second server, matching Symfony's console; or
+	//   - a non-flag first argument names a subcommand (e.g. `econumo app:...`).
+	// A bare `econumo` and flags (leading '-', e.g. -healthcheck above) fall
+	// through to the HTTP server.
+	invokedAsConsole := filepath.Base(os.Args[0]) == "console"
+	hasSubcommand := len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-")
+	if invokedAsConsole || hasSubcommand {
+		os.Exit(cli.Run(os.Args[1:]))
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))

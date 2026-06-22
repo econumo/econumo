@@ -219,6 +219,47 @@ test.
 
 ---
 
+## Phase 10 — `bin/console` management commands ported to Go
+
+The Go image previously shipped only the HTTP server, so the operational
+`bin/console app:*` commands self-hosters rely on had no Go equivalent. Ported the
+user- and currency-management commands and preserved the legacy invocation.
+
+**Commands** (exact Symfony names kept, so the shim is a true drop-in):
+- User: `app:create-user`, `app:change-user-email`, `app:change-user-password`.
+- Cloud-user (toggle the core `users.is_active`): `app:activate-user`,
+  `app:deactivate-users --date=YYYY-MM-DD`.
+- Currency: `app:update-currency-rates [date]` (Open Exchange Rates loader +
+  rate upsert), `app:add-currency`, `app:restore-currency-fraction-digits`.
+
+**Shape.** A stdlib subcommand dispatcher lives in `internal/cli` (no cobra, per
+the stdlib-first decision); `cmd/econumo` routes to it when argv[0] is the
+`console` symlink **or** the first arg is a non-flag subcommand, else it serves.
+Admin use cases live in `internal/app/{user,currency}/admin.go` and reuse the same
+repos/seams the HTTP handlers use — `register.go` was refactored to share an
+ungated `createUser` core. New write path: `internal/infra/repo/currency/write.go`
++ `currency_write.sql` (sqlc, both engines) with an `ON CONFLICT (published_at,
+currency_id, base_currency_id)` rate upsert (SQLite wraps the date in `date()` so
+it stores the same `Y-m-d` text PHP writes); the OXR client is
+`internal/infra/openexchangerates`. ISO symbol + fraction-digit metadata is now
+generated alongside names by `gen_names.sh` (from Intl `en.php` + `meta.php`),
+exposed as `currency.Symbol`/`currency.FractionDigits`.
+
+**Back-compat in the distroless image.** `deployment/docker/go/Dockerfile` creates
+a build-time `bin/console -> /econumo` symlink and sets `WORKDIR /var/www`, so
+`docker exec <c> bin/console app:create-user …` works without a shell (and
+`/econumo app:…` works directly). A bare `bin/console` prints usage rather than
+booting a second server.
+
+**Out of scope (deliberately):** Doctrine/cache shims (migrations run on boot),
+WAL toggles, `sqlite-to-postgres`. The CLI assumes an already-migrated DB (like
+PHP). Verified end-to-end via a local sqlite smoke run (synthetic data only):
+create/duplicate, change email/password, activate/deactivate, add-currency
+idempotency + ISO defaults (JPY → 0 digits, ¥), invalid-code + no-OXR-token error
+paths, and unknown-command → exit 2.
+
+---
+
 ## How verification works today
 
 - **Everyday:** `make go-test` — smoke tier (build + vet + gofmt + unit + sqlite

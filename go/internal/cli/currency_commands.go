@@ -1,0 +1,92 @@
+package cli
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// currencyCommands returns the currency-management subcommands (ports of the PHP
+// UpdateCurrencyRatesCommand, AddCurrencyCommand, and
+// RestoreCurrencyFractionDigitsCommand).
+func currencyCommands() []command {
+	return []command{
+		{
+			name:    "app:update-currency-rates",
+			summary: "Load exchange rates from Open Exchange Rates: app:update-currency-rates [YYYY-MM-DD]",
+			run: func(ctx context.Context, c *container, args []string) error {
+				date := c.clk.Now()
+				if len(args) >= 1 && strings.TrimSpace(args[0]) != "" {
+					d, err := time.Parse("2006-01-02", strings.TrimSpace(args[0]))
+					if err != nil {
+						return fmt.Errorf("invalid date %q (want YYYY-MM-DD): %w", args[0], err)
+					}
+					date = d
+				}
+				codes, err := c.currency.AvailableCodes(ctx)
+				if err != nil {
+					return err
+				}
+				rates, err := c.loader.Load(ctx, date, c.cfg.CurrencyBase, codes)
+				if err != nil {
+					return err
+				}
+				n, err := c.currency.UpdateRates(ctx, rates)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Loaded %d rate(s); updated %d\n", len(rates), n)
+				return nil
+			},
+		},
+		{
+			name:    "app:add-currency",
+			summary: "Add a currency: app:add-currency <code> [name] [fraction-digits]",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) < 1 || len(args) > 3 {
+					return usageErr("app:add-currency <code> [name] [fraction-digits]")
+				}
+				code := strings.TrimSpace(args[0])
+
+				var namePtr *string
+				if len(args) >= 2 && strings.TrimSpace(args[1]) != "" {
+					name := strings.TrimSpace(args[1])
+					namePtr = &name
+				}
+				var fdPtr *int
+				if len(args) == 3 && strings.TrimSpace(args[2]) != "" {
+					fd, err := strconv.Atoi(strings.TrimSpace(args[2]))
+					if err != nil {
+						return fmt.Errorf("invalid fraction-digits %q: %w", args[2], err)
+					}
+					fdPtr = &fd
+				}
+
+				created, err := c.currency.AddCurrency(ctx, code, namePtr, fdPtr)
+				if err != nil {
+					return err
+				}
+				if created {
+					fmt.Printf("Currency %s added\n", strings.ToUpper(code))
+				} else {
+					fmt.Printf("Currency %s already exists\n", strings.ToUpper(code))
+				}
+				return nil
+			},
+		},
+		{
+			name:    "app:restore-currency-fraction-digits",
+			summary: "Reset fraction digits to ICU defaults: app:restore-currency-fraction-digits [codes...]",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := c.currency.RestoreFractionDigits(ctx, args)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Restored fraction digits for %d currenc(ies)\n", n)
+				return nil
+			},
+		},
+	}
+}
