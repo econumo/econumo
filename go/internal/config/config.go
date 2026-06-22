@@ -33,6 +33,7 @@ type Config struct {
 	JWTPassphrase    string
 
 	// HTTP
+	Port            string // PORT: HTTP listen port ("8181" or ":8181"); required, no default
 	CORSAllowOrigin string // default "*"
 
 	// Integrations
@@ -62,6 +63,7 @@ func Load() (Config, error) {
 		JWTSecretKeyPath:       os.Getenv("JWT_SECRET_KEY"),
 		JWTPublicKeyPath:       os.Getenv("JWT_PUBLIC_KEY"),
 		JWTPassphrase:          os.Getenv("JWT_PASSPHRASE"),
+		Port:                   os.Getenv("PORT"),
 		CORSAllowOrigin:        getEnv("CORS_ALLOW_ORIGIN", "*"),
 		MailerDSN:              os.Getenv("MAILER_DSN"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
@@ -80,6 +82,11 @@ func Load() (Config, error) {
 	c.DatabaseDriver = driver
 	if c.JWTPublicKeyPath == "" {
 		return Config{}, fmt.Errorf("JWT_PUBLIC_KEY is required")
+	}
+	// The listen port is not defaulted: deployments must set PORT explicitly so
+	// the bound port is never an implicit surprise.
+	if c.Port == "" {
+		return Config{}, fmt.Errorf("PORT is required")
 	}
 	return c, nil
 }

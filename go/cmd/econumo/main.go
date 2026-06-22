@@ -32,9 +32,6 @@ import (
 	_ "github.com/econumo/econumo/internal/infra/storage/sqlite"
 )
 
-// defaultAddr is the listen address; overridable via the PORT env var.
-const defaultAddr = ":8181"
-
 func main() {
 	// `econumo -healthcheck` probes the running server's health endpoint and
 	// exits 0 (healthy) / 1 (not). It lets the distroless image (no shell, no
@@ -57,7 +54,7 @@ func main() {
 func healthcheck() int {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8181"
+		return 1 // PORT is required; without it we cannot know where to probe
 	}
 	port = strings.TrimPrefix(port, ":")
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -147,7 +144,7 @@ func run() error {
 	handler := server.BuildAPI(cfg, db, jwt, clock.New())
 
 	srv := &http.Server{
-		Addr:              addr(),
+		Addr:              addr(cfg.Port),
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -159,12 +156,10 @@ func run() error {
 	return nil
 }
 
-// addr returns the listen address, honoring PORT (e.g. "8080" or ":8080").
-func addr() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		return defaultAddr
-	}
+// addr normalizes the configured port (e.g. "8080" or ":8080") into a listen
+// address. The port is required and validated by config.Load, so it is never
+// empty here.
+func addr(port string) string {
 	if strings.HasPrefix(port, ":") {
 		return port
 	}
