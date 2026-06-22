@@ -4,8 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Tag to publish (e.g., v1.2.3 or beta)"
+        description: "Tag to publish (e.g., v1.2.3)"
         required: true
+      push_latest:
+        description: "Also move the 'latest' Docker tag to this build"
+        required: false
+        type: boolean
+        default: false
+      push_beta:
+        description: "Also move the 'beta' Docker tag to this build"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: "docker-publish-release"
@@ -17,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.set-version.outputs.version }}
+      image_tags: ${{ steps.set-version.outputs.image_tags }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,8 +37,13 @@ jobs:
       - name: Set version
         id: set-version
         run: |
-          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          echo "Creating tag: ${{ github.event.inputs.version }}"
+          VERSION="${{ github.event.inputs.version }}"
+          TAGS="$VERSION"
+          [ "${{ github.event.inputs.push_latest }}" = "true" ] && TAGS="$TAGS,latest"
+          [ "${{ github.event.inputs.push_beta }}"   = "true" ] && TAGS="$TAGS,beta"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "image_tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "Tag ${VERSION} -> tags [${TAGS}]"
 
       - name: Configure git
         run: |
@@ -54,9 +70,8 @@ jobs:
     needs: create-tag
     uses: ./.github/workflows/embedded-build-package.yml
     with:
-      REGISTRY: "docker.io"
-      IMAGE_NAME: "econumo/econumo-ce"
-      IMAGE_TAGS: "${{ needs.create-tag.outputs.version }},latest,beta"
+      IMAGES: "docker.io/econumo/econumo-ce,ghcr.io/econumo/econumo"
+      IMAGE_TAGS: "${{ needs.create-tag.outputs.image_tags }}"
       RUNS_ON: "blacksmith-4vcpu-ubuntu-2404"
       PLATFORMS: "linux/amd64,linux/arm64"
       VERSION: "${{ needs.create-tag.outputs.version }}"
@@ -70,16 +85,13 @@ jobs:
     needs: create-tag
     uses: ./.github/workflows/embedded-build-package.yml
     with:
-      REGISTRY: "ghcr.io"
-      IMAGE_NAME: "econumo/econumo-cloud"
-      IMAGE_TAGS: "${{ needs.create-tag.outputs.version }},latest,beta"
+      IMAGES: "ghcr.io/econumo/econumo-cloud"
+      IMAGE_TAGS: "${{ needs.create-tag.outputs.image_tags }}"
       ECONUMO_EDITION: "cloud"
       RUNS_ON: "blacksmith-4vcpu-ubuntu-2404"
       PLATFORMS: "linux/arm64"
       VERSION: "${{ needs.create-tag.outputs.version }}"
     secrets:
-      DOCKER_USERNAME: ${{ github.actor }}
-      DOCKER_PASSWORD: ${{ secrets.BUILD_USER_TOKEN }}
       BUILD_USER_TOKEN: ${{ secrets.BUILD_USER_TOKEN }}
 
   create-github-release:

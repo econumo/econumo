@@ -1,13 +1,10 @@
 on:
   workflow_call:
     inputs:
-      REGISTRY:
+      IMAGES:
         required: true
         type: string
-        default: "docker.io"
-      IMAGE_NAME:
-        required: true
-        type: string
+        description: 'Comma-separated fully-qualified image base refs incl. registry (e.g., "docker.io/econumo/econumo-ce,ghcr.io/econumo/econumo"). The first entry is used as the build cache source.'
       IMAGE_TAGS:
         required: true
         type: string
@@ -34,9 +31,9 @@ on:
         description: "Version label to inject into the build (e.g., v1.2.3 or beta)"
     secrets:
       DOCKER_USERNAME:
-        required: true
+        required: false
       DOCKER_PASSWORD:
-        required: true
+        required: false
       BUILD_USER_TOKEN:
         required: false
 
@@ -74,12 +71,21 @@ jobs:
         with:
           platforms: all
 
-      - name: Log in to Docker Registry
+      - name: Log in to Docker Hub
+        if: contains(inputs.IMAGES, 'docker.io/')
         uses: docker/login-action@v2
         with:
+          registry: docker.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          registry: ${{ inputs.REGISTRY }}
+
+      - name: Log in to GitHub Container Registry
+        if: contains(inputs.IMAGES, 'ghcr.io/')
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.BUILD_USER_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -89,16 +95,20 @@ jobs:
       - name: Prepare Docker Image Tags
         id: prep
         run: |
-          TAGS=""
+          IFS=',' read -ra IMAGE_ARRAY <<< "${{ inputs.IMAGES }}"
           IFS=',' read -ra TAG_ARRAY <<< "${{ inputs.IMAGE_TAGS }}"
-          for tag in "${TAG_ARRAY[@]}"; do
-            IMAGE_TAG="${{ inputs.REGISTRY }}/${{ inputs.IMAGE_NAME }}:${tag}"
-            if [ -n "$TAGS" ]; then
-              TAGS="${TAGS},"
-            fi
-            TAGS="${TAGS}${IMAGE_TAG}"
+          TAGS=""
+          for image in "${IMAGE_ARRAY[@]}"; do
+            for tag in "${TAG_ARRAY[@]}"; do
+              ref="${image}:${tag}"
+              if [ -n "$TAGS" ]; then
+                TAGS="${TAGS},"
+              fi
+              TAGS="${TAGS}${ref}"
+            done
           done
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "cache_ref=${IMAGE_ARRAY[0]}:beta" >> $GITHUB_OUTPUT
 
       - name: Build and Push Multi-Arch Docker Image
         uses: docker/build-push-action@v3
@@ -109,6 +119,6 @@ jobs:
           file: deployment/docker/app/Dockerfile
           target: prod
           tags: ${{ steps.prep.outputs.tags }}
-          cache-from: type=registry,ref=${{ inputs.REGISTRY }}/${{ inputs.IMAGE_NAME }}:beta
+          cache-from: type=registry,ref=${{ steps.prep.outputs.cache_ref }}
           cache-to: type=inline
           platforms: ${{ inputs.PLATFORMS }}

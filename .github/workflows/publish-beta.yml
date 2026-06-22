@@ -34,8 +34,7 @@ jobs:
     if: ${{ inputs.edition == 'all' || inputs.edition == 'ce' || inputs.edition == '' || inputs.edition == null }}
     uses: ./.github/workflows/embedded-build-package.yml
     with:
-      REGISTRY: "docker.io"
-      IMAGE_NAME: "econumo/econumo-ce"
+      IMAGES: "docker.io/econumo/econumo-ce,ghcr.io/econumo/econumo"
       IMAGE_TAGS: "beta"
       ECONUMO_EDITION: "ce"
       RUNS_ON: "blacksmith-4vcpu-ubuntu-2404"
@@ -50,14 +49,11 @@ jobs:
     if: ${{ inputs.edition == 'all' || inputs.edition == 'cloud' || inputs.edition == '' || inputs.edition == null }}
     uses: ./.github/workflows/embedded-build-package.yml
     with:
-      REGISTRY: "ghcr.io"
-      IMAGE_NAME: "econumo/econumo-cloud"
+      IMAGES: "ghcr.io/econumo/econumo-cloud"
       IMAGE_TAGS: "beta"
       ECONUMO_EDITION: "cloud"
       RUNS_ON: "blacksmith-4vcpu-ubuntu-2404"
       PLATFORMS: "linux/arm64"
       VERSION: "beta"
     secrets:
-      DOCKER_USERNAME: ${{ github.actor }}
-      DOCKER_PASSWORD: ${{ secrets.BUILD_USER_TOKEN }}
       BUILD_USER_TOKEN: ${{ secrets.BUILD_USER_TOKEN }}
