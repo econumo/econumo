@@ -7,10 +7,11 @@
 # Notes vs the PHP stack:
 #   - An RSA keypair MUST be mounted at /var/www/config/jwt (private.pem +
 #     public.pem). Generate one with the binary's own command (writes to
-#     JWT_SECRET_KEY/JWT_PUBLIC_KEY, sealed with JWT_PASSPHRASE):
-#       docker run --rm -v "$PWD/jwt:/jwt" \
+#     JWT_SECRET_KEY/JWT_PUBLIC_KEY, sealed with JWT_PASSPHRASE). The ENTRYPOINT is
+#     `serve`, so override it:
+#       docker run --rm -v "$PWD/jwt:/jwt" --entrypoint /econumo \
 #         -e JWT_SECRET_KEY=/jwt/private.pem -e JWT_PUBLIC_KEY=/jwt/public.pem \
-#         -e JWT_PASSPHRASE=change-me econumo/econumo-go:latest generate-jwt-keypair
+#         -e JWT_PASSPHRASE=change-me econumo/econumo-go:latest app:generate-jwt-keypair
 #     (The PHP stack's `lexik:jwt:generate-keypair` or any RSA keypair also work.)
 #   - DATABASE_URL is required and defaults (in the image) to the SQLite file on
 #     the mounted db volume.

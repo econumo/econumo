@@ -20,12 +20,17 @@ import (
 )
 
 // command is one CLI subcommand. name is the exact Symfony command string (e.g.
-// "app:create-user"); run receives the already-built container and the args
+// "app:create-user"); run receives the (possibly nil) container and the args
 // following the command name.
 type command struct {
 	name    string
 	summary string
-	run     func(ctx context.Context, c *container, args []string) error
+	// noContainer marks a command that does NOT need the DB-backed service
+	// container (e.g. app:generate-jwt-keypair, a setup step that may run before a
+	// database exists). For such commands Run passes a nil container and never
+	// opens the database. Default false = the container is built.
+	noContainer bool
+	run         func(ctx context.Context, c *container, args []string) error
 }
 
 // commandList returns every registered command, grouped by domain in sibling
@@ -35,6 +40,7 @@ func commandList() []command {
 	var cs []command
 	cs = append(cs, userCommands()...)
 	cs = append(cs, currencyCommands()...)
+	cs = append(cs, setupCommands()...)
 	return cs
 }
 
@@ -61,12 +67,19 @@ func Run(args []string) int {
 	}
 
 	ctx := context.Background()
-	c, err := newContainer(ctx)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		return 1
+
+	// Build the DB-backed container only for commands that need it; setup
+	// commands (noContainer) get a nil container and never open the database.
+	var c *container
+	if !cmd.noContainer {
+		var err error
+		c, err = newContainer(ctx)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		defer c.Close()
 	}
-	defer c.Close()
 
 	slog.Debug("cli: running command", "command", name, "args", args[1:])
 	if err := cmd.run(ctx, c, args[1:]); err != nil {

@@ -86,6 +86,7 @@ func TestCommandRegistry(t *testing.T) {
 		"app:create-user", "app:change-user-email", "app:change-user-password",
 		"app:activate-user", "app:deactivate-users",
 		"app:update-currency-rates", "app:add-currency", "app:restore-currency-fraction-digits",
+		"app:generate-jwt-keypair",
 	}
 	for _, name := range want {
 		if !seen[name] {

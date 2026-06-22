@@ -11,10 +11,11 @@
 #   - DATABASE_URL is REQUIRED  (sqlite:///var/www/var/db/db.sqlite by default).
 #   - JWT_PUBLIC_KEY is REQUIRED; mount an RSA keypair at /var/www/config/jwt.
 #     Generate one with the binary itself (writes to JWT_SECRET_KEY/JWT_PUBLIC_KEY,
-#     sealed with JWT_PASSPHRASE), e.g. into a host ./jwt dir:
-#       docker run --rm -v "$PWD/jwt:/jwt" \
+#     sealed with JWT_PASSPHRASE), e.g. into a host ./jwt dir. The ENTRYPOINT is
+#     `serve`, so override it to run the setup command:
+#       docker run --rm -v "$PWD/jwt:/jwt" --entrypoint /econumo \
 #         -e JWT_SECRET_KEY=/jwt/private.pem -e JWT_PUBLIC_KEY=/jwt/public.pem \
-#         -e JWT_PASSPHRASE=change-me econumo/econumo-go generate-jwt-keypair
+#         -e JWT_PASSPHRASE=change-me econumo/econumo-go app:generate-jwt-keypair
 #   - Migrations run inside the binary on boot (baseline-aware), so there is no
 #     entrypoint script — distroless has no shell and needs none.
 #   - econumo-config.js ships with a working default (API_URL:null -> same
