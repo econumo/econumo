@@ -50,21 +50,26 @@ func main() {
 	//   - a non-flag first argument names a subcommand (e.g. `econumo app:...`).
 	// A bare `econumo` and flags (leading '-', e.g. -healthcheck above) fall
 	// through to the HTTP server.
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	slog.SetDefault(logger)
-
-	// Load a local .env (if present) for BOTH the CLI and the server paths, so
-	// `./econumo app:...` and `bin/console app:...` pick up DATABASE_URL etc. the
-	// same way the server does. Must happen before the dispatch below, which
-	// builds its config straight away. godotenv.Load never overrides real env
-	// vars, so containerized/orchestrated deployments are unaffected.
-	loadDotEnv()
-
+	// Route to the CLI when invoked as `bin/console` or given a non-flag
+	// subcommand (see below); otherwise start the server.
 	invokedAsConsole := filepath.Base(os.Args[0]) == "console"
 	hasSubcommand := len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-")
 	if invokedAsConsole || hasSubcommand {
-		os.Exit(cli.Run(os.Args[1:]))
+		// Apply Symfony-style verbosity (-v/-vv/-vvv/-q) FIRST so it also governs
+		// the startup logs below (.env load, database open). It strips those flags
+		// from the args the command then sees.
+		cmdArgs := cli.ConfigureLogging(os.Args[1:])
+		loadDotEnv()
+		os.Exit(cli.Run(cmdArgs))
 	}
+
+	// Server path: default INFO logging.
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+
+	// Load a local .env (if present) so the server picks up DATABASE_URL etc. when
+	// run directly. godotenv.Load never overrides real env vars, so
+	// containerized/orchestrated deployments are unaffected.
+	loadDotEnv()
 
 	if err := run(); err != nil {
 		slog.Error("startup failed", "err", err)

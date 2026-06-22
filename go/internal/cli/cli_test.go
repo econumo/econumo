@@ -1,9 +1,47 @@
 package cli
 
 import (
+	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 )
+
+// TestParseVerbosity covers flag accumulation, quiet, level mapping, and that
+// the recognized flags are stripped while everything else is preserved in order.
+func TestParseVerbosity(t *testing.T) {
+	cases := []struct {
+		name      string
+		args      []string
+		wantV     int
+		wantQuiet bool
+		wantRest  []string
+		wantLevel slog.Level
+	}{
+		{"none", []string{"app:add-currency", "EUR"}, 0, false, []string{"app:add-currency", "EUR"}, slog.LevelWarn},
+		{"single -v", []string{"app:x", "-v"}, 1, false, []string{"app:x"}, slog.LevelInfo},
+		{"-vv", []string{"-vv", "app:x"}, 2, false, []string{"app:x"}, slog.LevelDebug},
+		{"-vvv", []string{"app:x", "-vvv"}, 3, false, []string{"app:x"}, slog.LevelDebug},
+		{"additive -v -v", []string{"app:x", "-v", "-v"}, 2, false, []string{"app:x"}, slog.LevelDebug},
+		{"--verbose", []string{"--verbose", "app:x"}, 1, false, []string{"app:x"}, slog.LevelInfo},
+		{"quiet wins", []string{"app:x", "-q", "-vvv"}, 3, true, []string{"app:x"}, slog.LevelError + 4},
+		{"flags interleaved", []string{"app:update-currency-rates", "-vv", "2025-04-01"}, 2, false, []string{"app:update-currency-rates", "2025-04-01"}, slog.LevelDebug},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			v, quiet, rest := parseVerbosity(tc.args)
+			if v != tc.wantV || quiet != tc.wantQuiet {
+				t.Errorf("verbosity=%d quiet=%v, want %d/%v", v, quiet, tc.wantV, tc.wantQuiet)
+			}
+			if !reflect.DeepEqual(rest, tc.wantRest) {
+				t.Errorf("rest = %v, want %v", rest, tc.wantRest)
+			}
+			if got := levelFor(v, quiet); got != tc.wantLevel {
+				t.Errorf("level = %v, want %v", got, tc.wantLevel)
+			}
+		})
+	}
+}
 
 // TestCommandRegistry checks the registry is well-formed: unique names, the
 // Symfony "app:" prefix, and a summary on every command.

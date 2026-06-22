@@ -12,6 +12,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sort"
 	"strings"
@@ -66,6 +67,7 @@ func Run(args []string) int {
 	}
 	defer c.Close()
 
+	slog.Debug("cli: running command", "command", name, "args", args[1:])
 	if err := cmd.run(ctx, c, args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		return 1

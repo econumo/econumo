@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"strings"
 
 	appcurrency "github.com/econumo/econumo/internal/app/currency"
@@ -49,6 +50,7 @@ func newContainer(ctx context.Context) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
+	slog.Debug("cli: database opened", "driver", cfg.DatabaseDriver)
 
 	txm := backend.NewTxManager(db)
 	encodeSvc := auth.NewEncodeService(cfg.DataSalt)

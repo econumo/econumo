@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -73,6 +74,10 @@ func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols 
 	if len(symbols) > 0 {
 		q.Set("symbols", strings.Join(symbols, ","))
 	}
+
+	// Log the endpoint + non-secret params (NOT the full URL — that carries the
+	// app_id token in its query). Visible at -vv/-vvv.
+	slog.Debug("openexchangerates: requesting rates", "endpoint", endpoint, "base", base, "symbols", len(symbols))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
