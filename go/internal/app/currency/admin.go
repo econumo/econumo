@@ -7,6 +7,7 @@ package currency
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"time"
 
@@ -97,6 +98,9 @@ func (s *WriteService) AvailableCodes(ctx context.Context) ([]string, error) {
 	for code := range codes {
 		out = append(out, code)
 	}
+	// Sorted so the rate-loader's outbound `symbols` request and its debug log are
+	// deterministic (the source map iteration order is not).
+	sort.Strings(out)
 	return out, nil
 }
 

@@ -76,8 +76,10 @@ func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols 
 	}
 
 	// Log the endpoint + non-secret params (NOT the full URL — that carries the
-	// app_id token in its query). Visible at -vv/-vvv.
-	slog.Debug("openexchangerates: requesting rates", "endpoint", endpoint, "base", base, "symbols", len(symbols))
+	// app_id token in its query). Visible at -vv/-vvv; the full code list is shown
+	// (the operator running -vvv wants the detail), with a count for convenience.
+	slog.Debug("openexchangerates: requesting rates",
+		"endpoint", endpoint, "base", base, "count", len(symbols), "symbols", strings.Join(symbols, ","))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
