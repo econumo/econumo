@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/auth"
 )
 
@@ -24,8 +25,8 @@ func setupCommands() []command {
 						force = true
 					}
 				}
-				privPath := envOr("JWT_SECRET_KEY", "config/jwt/private.pem")
-				pubPath := envOr("JWT_PUBLIC_KEY", "config/jwt/public.pem")
+				privPath := config.ResolveProjectDir(envOr("JWT_SECRET_KEY", "config/jwt/private.pem"))
+				pubPath := config.ResolveProjectDir(envOr("JWT_PUBLIC_KEY", "config/jwt/public.pem"))
 				passphrase := os.Getenv("JWT_PASSPHRASE")
 
 				if err := auth.GenerateKeypair(privPath, pubPath, passphrase, force); err != nil {

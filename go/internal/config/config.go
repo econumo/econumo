@@ -70,6 +70,12 @@ func Load() (Config, error) {
 		SPADir:                 getEnv("ECONUMO_SPA_DIR", "web/dist/spa"),
 	}
 
+	// JWT key paths copied from a Symfony/lexik .env often contain the
+	// "%kernel.project_dir%" placeholder (which Symfony resolves to the app root).
+	// Expand it to the working directory so such a .env works here unchanged.
+	c.JWTPublicKeyPath = ResolveProjectDir(c.JWTPublicKeyPath)
+	c.JWTSecretKeyPath = ResolveProjectDir(c.JWTSecretKeyPath)
+
 	if c.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
 	}
@@ -108,6 +114,25 @@ func driverFromURL(url string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported DATABASE_URL scheme %q (want sqlite, postgres, or postgresql)", scheme)
 	}
+}
+
+// projectDirPlaceholder is the Symfony container parameter commonly embedded in
+// lexik JWT key paths (e.g. "%kernel.project_dir%/config/jwt/private.pem").
+const projectDirPlaceholder = "%kernel.project_dir%"
+
+// ResolveProjectDir expands the Symfony "%kernel.project_dir%" placeholder in a
+// path to the process working directory (the app root — /var/www in the Docker
+// image), so JWT key paths taken from a Symfony/lexik .env resolve here. A path
+// without the placeholder is returned unchanged.
+func ResolveProjectDir(path string) string {
+	if !strings.Contains(path, projectDirPlaceholder) {
+		return path
+	}
+	wd, err := os.Getwd()
+	if err != nil || wd == "" {
+		wd = "."
+	}
+	return strings.ReplaceAll(path, projectDirPlaceholder, wd)
 }
 
 func getEnv(key, def string) string {
