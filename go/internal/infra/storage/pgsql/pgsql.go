@@ -1,6 +1,9 @@
-// Package pgsql is the PostgreSQL database backend, using the pure-Go lib/pq
-// driver (CGO stays off). It registers itself under the driver name
-// "postgresql" via init() and is blank-imported in cmd/econumo.
+// Package pgsql is the PostgreSQL database backend. It uses the pure-Go pgx
+// driver (jackc/pgx) via its database/sql adapter (CGO stays off), configured for
+// the SIMPLE query protocol — no server-side prepared statements — so it works
+// through PgBouncer transaction/statement pooling, matching how PHP PDO connects.
+// It registers itself under the driver name "postgresql" via init() and is
+// blank-imported in cmd/econumo.
 package pgsql
 
 import (
@@ -10,7 +13,8 @@ import (
 	"net/url"
 	"strings"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
@@ -30,12 +34,12 @@ func New() *Backend { return &Backend{} }
 // Name returns "postgresql".
 func (b *Backend) Name() string { return Name }
 
-// Open opens the PostgreSQL database via lib/pq. The DSN is the standard
-// postgres:// URL from config (DATABASE_URL).
+// Open opens the PostgreSQL database and verifies connectivity. The DSN is the
+// standard postgres:// URL from config (DATABASE_URL).
 func (b *Backend) Open(ctx context.Context, dsn string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", sanitizeDSN(dsn))
+	db, err := OpenDB(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("pgsql open: %w", err)
+		return nil, err
 	}
 	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
@@ -44,18 +48,37 @@ func (b *Backend) Open(ctx context.Context, dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
+// OpenDB builds a *sql.DB over pgx for the given DSN WITHOUT pinging it (so test
+// harnesses can configure the connection before first use). It is shared by the
+// production backend and the engine-comparison test harness so both exercise the
+// identical driver + protocol mode.
+//
+// pgx is put in QueryExecModeSimpleProtocol: parameters are sent inline (text)
+// and NO server-side prepared statements are used. This is what lets the backend
+// run through PgBouncer transaction/statement pooling — lib/pq's extended-protocol
+// prepared statements desynchronize across pooled server connections ("bind
+// message has N result formats but query has M columns"). It mirrors PHP PDO's
+// emulated-prepares behavior, so an existing PgBouncer-fronted deployment works.
+func OpenDB(dsn string) (*sql.DB, error) {
+	cfg, err := pgx.ParseConfig(sanitizeDSN(dsn))
+	if err != nil {
+		return nil, fmt.Errorf("pgsql parse dsn: %w", err)
+	}
+	cfg.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	return stdlib.OpenDB(*cfg), nil
+}
+
 // doctrineOnlyParams are DATABASE_URL query parameters that Symfony/Doctrine
-// accept but libpq does not understand. lib/pq forwards any unrecognized query
-// parameter to the server as a startup parameter; a direct PostgreSQL tolerates
-// some, but PgBouncer rejects unknown startup parameters outright
-// ("unsupported startup parameter"). Stripping them lets an existing PHP-style
-// DATABASE_URL (e.g. ...?serverVersion=17&charset=utf8) work unchanged here.
+// accept but the PostgreSQL wire protocol does not. They are forwarded as startup
+// parameters otherwise; a direct PostgreSQL tolerates some, but PgBouncer rejects
+// unknown startup parameters outright ("unsupported startup parameter"). Stripping
+// them lets an existing PHP-style DATABASE_URL (e.g. ...?serverVersion=17&charset=utf8)
+// work unchanged here.
 var doctrineOnlyParams = []string{"serverVersion", "charset", "default_dbname"}
 
 // sanitizeDSN removes the Doctrine-only query parameters from a postgres:// URL,
-// leaving genuine libpq parameters (sslmode, application_name, connect_timeout,
-// …) intact. A DSN that does not parse as a URL (e.g. libpq key=value form) is
-// returned unchanged for lib/pq to handle.
+// leaving genuine connection parameters (sslmode, application_name, …) intact. A
+// DSN that does not parse as a URL is returned unchanged.
 func sanitizeDSN(dsn string) string {
 	u, err := url.Parse(dsn)
 	if err != nil || u.Query() == nil {

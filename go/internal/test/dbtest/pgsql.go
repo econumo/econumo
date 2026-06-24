@@ -14,17 +14,15 @@ package dbtest
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 
-	_ "github.com/lib/pq"
-
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/infra/storage/pgsql"
 )
 
 // PgsqlURLEnv is the env var naming the test Postgres connection URL.
@@ -41,7 +39,9 @@ func NewPostgres(t testing.TB) *DB {
 		t.Skipf("dbtest: %s not set — skipping PostgreSQL engine test", PgsqlURLEnv)
 	}
 
-	raw, err := sql.Open("postgres", url)
+	// Use the production opener (pgx, simple protocol) so the engine-parity suite
+	// exercises the exact driver + protocol mode the server runs.
+	raw, err := pgsql.OpenDB(url)
 	if err != nil {
 		t.Fatalf("dbtest: open postgres: %v", err)
 	}

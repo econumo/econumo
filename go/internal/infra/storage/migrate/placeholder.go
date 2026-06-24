@@ -16,8 +16,8 @@ func nowUTC() time.Time {
 // in use. The runner supports two pure-Go drivers with incompatible placeholder
 // conventions:
 //
-//	modernc.org/sqlite -> positional "?"
-//	lib/pq (postgres)  -> ordinal "$1", "$2", ...
+//	modernc.org/sqlite        -> positional "?"
+//	jackc/pgx (postgres)      -> ordinal "$1", "$2", ...
 //
 // The style is detected by inspecting the driver's type name (set by the chosen
 // Backend at Open time) rather than threading dialect state through Run, keeping
@@ -26,7 +26,10 @@ func nowUTC() time.Time {
 // migrations and sqlc-generated code.
 var pgDriver = func(driverType string) bool {
 	t := strings.ToLower(driverType)
-	return strings.Contains(t, "pq") || strings.Contains(t, "postgres")
+	// pgx's database/sql driver is "*stdlib.Driver"; also accept the legacy
+	// lib/pq names so the detection is robust to the driver in use.
+	return strings.Contains(t, "pgx") || strings.Contains(t, "stdlib") ||
+		strings.Contains(t, "pq") || strings.Contains(t, "postgres")
 }
 
 // placeholdersFor renders n placeholders ("?,?" or "$1,$2") for the given
