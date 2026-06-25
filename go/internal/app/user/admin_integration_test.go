@@ -30,7 +30,7 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 	repo := userrepo.NewRepo("sqlite", db.TX)
 	lookup := currencyrepo.New("sqlite", db.TX)
 	budgets := userbudgetrepo.New("sqlite", db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, nil, lookup, budgets, clock.New(), false, false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, nil, lookup, budgets, nil, nil, clock.New(), false, false)
 	return svc, enc, hasher
 }
 

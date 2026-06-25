@@ -215,16 +215,15 @@ func TestRemindPassword_InvalidEmail_400(t *testing.T) {
 	}
 }
 
-func TestResetPassword_Placeholder_Success(t *testing.T) {
+// A reset with a code that was never issued is rejected (400). The full happy
+// path is covered by TestRemindAndResetPassword.
+func TestResetPassword_UnknownCode_400(t *testing.T) {
 	h := newHarness(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/reset-password", "", map[string]string{
-		"username": "user@example.test", "code": "123456", "password": "newpassword",
+		"username": seedEmail, "code": "deadbeef0000", "password": "newpassword",
 	})
-	if status != http.StatusOK {
-		t.Fatalf("reset-password=%d body=%s", status, env.raw)
-	}
-	if !env.Success {
-		t.Fatalf("reset-password success=false body=%s", env.raw)
+	if status != http.StatusBadRequest {
+		t.Fatalf("reset-password unknown code=%d want 400; body=%s", status, env.raw)
 	}
 }
 

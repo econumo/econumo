@@ -34,6 +34,10 @@ type Querier interface {
 	DeletePayee(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	DeleteUserPasswordRequest(ctx context.Context, id string) error
+	// Password-reset request queries (users_password_requests). See the sqlite
+	// sibling for the flow; expiry is compared in the app layer, not SQL.
+	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByIdentifier(ctx context.Context, identifier string) (bool, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
 	// grants to connected users; users_connections is the symmetric user link.
@@ -109,6 +113,7 @@ type Querier interface {
 	// Tiebreak by id so SQLite and PostgreSQL return the same order even when all
 	// option rows share a created_at (the registration case). See the sqlite variant.
 	GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error)
+	GetUserPasswordRequestByUserAndCode(ctx context.Context, arg GetUserPasswordRequestByUserAndCodeParams) (UsersPasswordRequest, error)
 	// Read-model queries for the user module (CQRS read side). See the sqlite
 	// variant for rationale. Postgres uses $N placeholders.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
@@ -123,6 +128,7 @@ type Querier interface {
 	// client-supplied operation id. See the sqlite variant for documentation.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to

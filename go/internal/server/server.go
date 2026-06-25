@@ -28,12 +28,14 @@ import (
 	"github.com/econumo/econumo/internal/config"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/mailer"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
+	passwordrequestrepo "github.com/econumo/econumo/internal/infra/repo/passwordrequest"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
@@ -79,9 +81,11 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
 	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
 
+	passwordReqRepo := passwordrequestrepo.New(cfg.DatabaseDriver, txm)
+	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailerDSN), cfg.FromEmail, cfg.ReplyToEmail)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, jwt, currencyLookup, budgetExistence, clk,
-		cfg.AllowRegistration, cfg.ConnectUsers,
+		userRepo, txm, encodeSvc, hasher, jwt, currencyLookup, budgetExistence,
+		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration, cfg.ConnectUsers,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)

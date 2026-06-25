@@ -31,7 +31,9 @@ import (
 	appuser "github.com/econumo/econumo/internal/app/user"
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/mailer"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
+	passwordrequestrepo "github.com/econumo/econumo/internal/infra/repo/passwordrequest"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -122,9 +124,12 @@ func newHarness(t *testing.T) *harness {
 	readRepo := userrepo.NewReadRepo("sqlite", txm)
 	currency := currencyrepo.New("sqlite", txm)
 	budgets := userbudgetrepo.New("sqlite", txm)
+	passwordReqs := passwordrequestrepo.New("sqlite", txm)
+	// No-op mailer (empty DSN/From) — the reset test reads the code from the DB.
+	resetMailer := mailer.NewResetSender(mailer.New(""), "", "")
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*", AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwt, currency, budgets, clk, cfg.AllowRegistration, cfg.ConnectUsers)
+	svc := appuser.NewService(repo, txm, encode, hasher, jwt, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration, cfg.ConnectUsers)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 

@@ -75,6 +75,25 @@ type jwtIssuer interface {
 	Issue(userID, email string, now time.Time) (string, error)
 }
 
+// PasswordRequests persists password-reset codes (users_password_requests) for
+// the remind/reset flow. The infra passwordrequestrepo implements it.
+type PasswordRequests interface {
+	// DeleteByUser removes all of a user's pending reset codes.
+	DeleteByUser(ctx context.Context, userID vo.Id) error
+	// Save inserts a new reset request.
+	Save(ctx context.Context, pr *domuser.PasswordRequest) error
+	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
+	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*domuser.PasswordRequest, error)
+	// Delete removes a request by id.
+	Delete(ctx context.Context, id vo.Id) error
+}
+
+// ResetMailer sends the password-reset confirmation-code email. The infra mailer
+// implements it; a no-op/unconfigured mailer simply sends nothing.
+type ResetMailer interface {
+	SendResetPasswordCode(ctx context.Context, toEmail, name, code string) error
+}
+
 // Service is the user use-case orchestrator. It owns the tx boundary and builds
 // the response-shaped *Result structs directly.
 type Service struct {
@@ -85,6 +104,8 @@ type Service struct {
 	jwt               jwtIssuer
 	currency          CurrencyLookup
 	budgets           BudgetExistence
+	passwordRequests  PasswordRequests
+	mailer            ResetMailer
 	clock             Clock
 	allowRegistration bool
 	connectUsers      bool
@@ -99,6 +120,8 @@ func NewService(
 	jwt *auth.JWT,
 	currency CurrencyLookup,
 	budgets BudgetExistence,
+	passwordRequests PasswordRequests,
+	mailer ResetMailer,
 	clock Clock,
 	allowRegistration bool,
 	connectUsers bool,
@@ -111,6 +134,8 @@ func NewService(
 		jwt:               jwt,
 		currency:          currency,
 		budgets:           budgets,
+		passwordRequests:  passwordRequests,
+		mailer:            mailer,
 		clock:             clock,
 		allowRegistration: allowRegistration,
 		connectUsers:      connectUsers,

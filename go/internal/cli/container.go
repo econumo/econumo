@@ -12,8 +12,10 @@ import (
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/infra/openexchangerates"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
+	passwordrequestrepo "github.com/econumo/econumo/internal/infra/repo/passwordrequest"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -64,9 +66,11 @@ func newContainer(ctx context.Context) (*container, error) {
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
 	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
+	passwordReqRepo := passwordrequestrepo.New(cfg.DatabaseDriver, txm)
+	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailerDSN), cfg.FromEmail, cfg.ReplyToEmail)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, nil, currencyLookup, budgetExistence, clk,
-		cfg.AllowRegistration, cfg.ConnectUsers,
+		userRepo, txm, encodeSvc, hasher, nil, currencyLookup, budgetExistence,
+		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration, cfg.ConnectUsers,
 	)
 
 	// Currency write service + the Open Exchange Rates loader.

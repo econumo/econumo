@@ -43,6 +43,13 @@ type Querier interface {
 	// SET NULL FK, matching the PHP delete behaviour.
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	DeleteUserPasswordRequest(ctx context.Context, id string) error
+	// Password-reset request queries (users_password_requests). The reset flow:
+	// remind-password deletes the user's old codes and inserts a fresh one;
+	// reset-password looks it up by (user, code), checks expiry in Go, then deletes
+	// it. Expiry is compared in the app layer (Go time.Time), not in SQL, to avoid
+	// engine date-format differences.
+	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByIdentifier(ctx context.Context, identifier string) (int64, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
 	// to connected users; users_connections is the symmetric user link. Roles are
@@ -188,6 +195,7 @@ type Querier interface {
 	// engine-specific (SQLite=insertion, PostgreSQL=unspecified). Ordering by id as
 	// the secondary key makes SQLite and PostgreSQL agree byte-for-byte.
 	GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error)
+	GetUserPasswordRequestByUserAndCode(ctx context.Context, arg GetUserPasswordRequestByUserAndCodeParams) (UsersPasswordRequest, error)
 	// Read-model queries for the user module (CQRS read side). These are tailored
 	// to the response shape and bypass the domain aggregate. They live separately
 	// from the write queries (users.sql / users_options.sql) to keep the read and
@@ -215,6 +223,7 @@ type Querier interface {
 	// (GetOperationId) so a duplicate create is rejected.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to
