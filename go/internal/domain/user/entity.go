@@ -83,6 +83,15 @@ func (o *UserOption) setValue(value *string, now time.Time) {
 	o.updatedAt = now
 }
 
+// Header is a lightweight read projection of a user's public display fields
+// (id, name, avatar) — no options, no credentials. Owner/author embeds use it so
+// they need only a single user-row query rather than hydrating the full aggregate.
+type Header struct {
+	ID        string
+	Name      string
+	AvatarURL string
+}
+
 // User is the user aggregate root. Strings that are encrypted at rest (email)
 // or hashed (password, identifier) are stored opaquely here; the service layer
 // applies/reverses the crypto via infra/auth. The aggregate owns its options

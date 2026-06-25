@@ -110,6 +110,21 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*user.User, error) {
 	return r.hydrate(ctx, row)
 }
 
+// GetHeaderByID loads ONLY a user's public display header (id, name, avatar)
+// without the options rows. Owner/author embeds use this instead of GetByID so a
+// list of N rows costs one user-row query per distinct user, not two (GetByID
+// also issues a GetUserOptions query that those embeds never read).
+func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error) {
+	row, err := r.q.GetUserByID(ctx, r.db(ctx), id.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return user.Header{}, errs.NewNotFound("User not found")
+		}
+		return user.Header{}, err
+	}
+	return user.Header{ID: row.ID, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
+}
+
 // GetByIdentifier loads a user with its options by the md5 auth identifier.
 func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*user.User, error) {
 	row, err := r.q.GetUserByIdentifier(ctx, r.db(ctx), identifier)

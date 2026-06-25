@@ -42,7 +42,7 @@ func (l *CurrencyLookup) GetByID(ctx context.Context, id string) (appaccount.Cur
 
 // userByID is the minimal user-repo surface this adapter needs.
 type userByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*domuser.User, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
 }
 
 // UserLookup adapts the user repository to app/account.UserLookup (owner embed).
@@ -63,9 +63,9 @@ func (l *UserLookup) GetOwner(ctx context.Context, userID string) (appaccount.Ow
 	if err != nil {
 		return appaccount.OwnerView{}, err
 	}
-	u, err := l.users.GetByID(ctx, id)
+	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
 		return appaccount.OwnerView{}, err
 	}
-	return appaccount.OwnerView{ID: u.Id().String(), Name: u.Name(), Avatar: u.AvatarURL()}, nil
+	return appaccount.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }

@@ -52,7 +52,7 @@ func (v *VisibleAccounts) VisibleAccountIDs(ctx context.Context, userID vo.Id) (
 
 // userByID is the minimal user-repo surface for the author embed.
 type userByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*domuser.User, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
 }
 
 // UserLookup adapts the user repository to app/transaction.UserLookup.
@@ -68,11 +68,11 @@ func (l *UserLookup) GetOwner(ctx context.Context, userID string) (apptransactio
 	if err != nil {
 		return apptransaction.AuthorView{}, err
 	}
-	u, err := l.users.GetByID(ctx, id)
+	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
 		return apptransaction.AuthorView{}, err
 	}
-	return apptransaction.AuthorView{ID: u.Id().String(), Name: u.Name(), Avatar: u.AvatarURL()}, nil
+	return apptransaction.AuthorView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
 
 // --- export lookup ---

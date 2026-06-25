@@ -115,7 +115,7 @@ func (p *OptionPort) SavePosition(ctx context.Context, accountID, userID vo.Id, 
 // --- UserLookup over the user repository ---
 
 type userByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*domuser.User, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
 }
 
 // UserLookup adapts the user repository to app/connection.UserLookup.
@@ -132,11 +132,11 @@ func (l *UserLookup) GetOwner(ctx context.Context, userID string) (appconnection
 	if err != nil {
 		return appconnection.OwnerView{}, err
 	}
-	u, err := l.users.GetByID(ctx, id)
+	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
 		return appconnection.OwnerView{}, err
 	}
-	return appconnection.OwnerView{ID: u.Id().String(), Name: u.Name(), Avatar: u.AvatarURL()}, nil
+	return appconnection.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
 
 // --- SharedAccessLookup over the connection AccountAccess repo ---

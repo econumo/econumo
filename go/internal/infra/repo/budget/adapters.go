@@ -26,6 +26,7 @@ import (
 
 type userRepo interface {
 	GetByID(ctx context.Context, id vo.Id) (*domuser.User, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
 	Save(ctx context.Context, u *domuser.User) error
 }
 
@@ -48,11 +49,11 @@ func (l *UserLookup) GetOwner(ctx context.Context, userID string) (appbudget.Own
 	if err != nil {
 		return appbudget.OwnerView{}, err
 	}
-	u, err := l.users.GetByID(ctx, id)
+	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
 		return appbudget.OwnerView{}, err
 	}
-	return appbudget.OwnerView{ID: u.Id().String(), Name: u.Name(), Avatar: u.AvatarURL()}, nil
+	return appbudget.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
 
 // CurrencyCode returns the user's default currency code (the currency option).
