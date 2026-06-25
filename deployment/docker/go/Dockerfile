@@ -29,6 +29,16 @@ RUN npm install -g pnpm@10
 COPY web/package.json web/pnpm-lock.yaml* ./
 RUN pnpm install --shamefully-hoist
 COPY web/ ./
+# Edition + version LABEL are baked into the SPA at build time (Quasar reads
+# web/.env). Override per build, mirroring the PHP CI:
+#   --build-arg ECONUMO_EDITION=ce  --build-arg ECONUMO_VERSION=beta
+# ECONUMO_EDITION selects web/.env.<edition> (ce|cloud); ECONUMO_VERSION replaces
+# the __VERSION__ placeholder (the value shown as ECONUMO_EDITION_LABEL in the UI).
+# With neither arg the committed web/.env is used unchanged.
+ARG ECONUMO_EDITION=""
+ARG ECONUMO_VERSION=""
+RUN if [ -n "$ECONUMO_EDITION" ]; then rm -f .env && cp ".env.${ECONUMO_EDITION}" .env; fi; \
+    if [ -n "$ECONUMO_VERSION" ]; then sed -i "s/__VERSION__/${ECONUMO_VERSION}/g" .env; fi
 RUN pnpm run build
 # -> /build/web/dist/spa (includes the default econumo-config.js)
 
