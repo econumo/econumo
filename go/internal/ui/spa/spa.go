@@ -47,6 +47,20 @@ func Handler(dir string) http.Handler {
 			return
 		}
 
+		// A missing path that LOOKS like a static asset (has a file extension) must
+		// 404, not fall back to the SPA shell. Returning index.html (200) for a
+		// missing .svg/.js/.png masks the error: an <object data="...">, <img>, or
+		// fetch() for that asset receives HTML with a 200 and never triggers its
+		// error/fallback path. (Concretely: the app-header logo uses
+		// <object data="~assets/econumo.svg"> with an <img> fallback; under nginx
+		// the missing data URL 404'd so the <img> rendered, but the SPA-shell
+		// fallback hid that 404 and the logo vanished.) Client routes are
+		// extensionless and still fall through to index.html below.
+		if path.Ext(cleaned) != "" {
+			http.NotFound(w, r)
+			return
+		}
+
 		// SPA fallback: serve index.html for client-side routes.
 		http.ServeFile(w, r, filepath.Join(dir, indexFile))
 	})
