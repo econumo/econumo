@@ -151,12 +151,12 @@ func (s *Service) balanceBefore() time.Time {
 // containing the account among the user's folders), per-user position, the
 // supplied balance, and an empty sharedAccess (until the connection module
 // lands). memberships maps folderID -> account ids (pass nil to load lazily).
-func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *domaccount.Account, balance string, foldersSorted []*domaccount.Folder, memberships map[string][]string) (AccountResult, error) {
-	owner, err := s.users.GetOwner(ctx, acct.UserId().String())
+func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *domaccount.Account, balance string, foldersSorted []*domaccount.Folder, memberships map[string][]string, cache *accountEmbedCache) (AccountResult, error) {
+	ownerRes, err := s.resolveOwner(ctx, cache, acct.UserId().String())
 	if err != nil {
 		return AccountResult{}, err
 	}
-	cur, err := s.currency.GetByID(ctx, acct.CurrencyId().String())
+	curRes, err := s.resolveCurrency(ctx, cache, acct.CurrencyId().String())
 	if err != nil {
 		return AccountResult{}, err
 	}
@@ -183,24 +183,18 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *do
 		return AccountResult{}, err
 	}
 
-	shared, err := s.sharedAccessFor(ctx, acct.Id())
+	shared, err := s.sharedAccessFor(ctx, acct.Id(), cache)
 	if err != nil {
 		return AccountResult{}, err
 	}
 
 	return AccountResult{
-		Id:       acct.Id().String(),
-		Owner:    OwnerResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
-		FolderId: folderID,
-		Name:     acct.Name(),
-		Position: int(pos),
-		Currency: CurrencyResult{
-			Id:             cur.ID,
-			Code:           cur.Code,
-			Name:           cur.Name,
-			Symbol:         cur.Symbol,
-			FractionDigits: cur.FractionDigits,
-		},
+		Id:           acct.Id().String(),
+		Owner:        ownerRes,
+		FolderId:     folderID,
+		Name:         acct.Name(),
+		Position:     int(pos),
+		Currency:     curRes,
 		Balance:      vo.NewDecimal(balance).String(),
 		Type:         int(acct.Type().Int16()),
 		Icon:         acct.Icon(),
@@ -208,10 +202,60 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *do
 	}, nil
 }
 
+// accountEmbedCache memoizes the owner and currency embeds across one account-list
+// build. The owner (usually the user themselves) and currency (one or two) repeat
+// across every account, so without this each account re-fetches them — the owner
+// lookup alone is two queries (user row + options). A nil cache disables
+// memoization (single-account callers like create/update pass nil).
+type accountEmbedCache struct {
+	owners     map[string]OwnerResult
+	currencies map[string]CurrencyResult
+}
+
+func newAccountEmbedCache() *accountEmbedCache {
+	return &accountEmbedCache{owners: map[string]OwnerResult{}, currencies: map[string]CurrencyResult{}}
+}
+
+// resolveOwner returns the owner embed for a user id, via the cache when present.
+func (s *Service) resolveOwner(ctx context.Context, cache *accountEmbedCache, userID string) (OwnerResult, error) {
+	if cache != nil {
+		if o, ok := cache.owners[userID]; ok {
+			return o, nil
+		}
+	}
+	owner, err := s.users.GetOwner(ctx, userID)
+	if err != nil {
+		return OwnerResult{}, err
+	}
+	res := OwnerResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
+	if cache != nil {
+		cache.owners[userID] = res
+	}
+	return res, nil
+}
+
+// resolveCurrency returns the currency embed for a currency id, via the cache when present.
+func (s *Service) resolveCurrency(ctx context.Context, cache *accountEmbedCache, currencyID string) (CurrencyResult, error) {
+	if cache != nil {
+		if c, ok := cache.currencies[currencyID]; ok {
+			return c, nil
+		}
+	}
+	cur, err := s.currency.GetByID(ctx, currencyID)
+	if err != nil {
+		return CurrencyResult{}, err
+	}
+	res := CurrencyResult{Id: cur.ID, Code: cur.Code, Name: cur.Name, Symbol: cur.Symbol, FractionDigits: cur.FractionDigits}
+	if cache != nil {
+		cache.currencies[currencyID] = res
+	}
+	return res, nil
+}
+
 // sharedAccessFor builds the account's sharedAccess[] embed: one entry per
 // accounts_access grant, with the granted user resolved (id/avatar/name). Always
 // returns a non-nil slice (empty when no connection module or no grants).
-func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id) ([]SharedAccess, error) {
+func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *accountEmbedCache) ([]SharedAccess, error) {
 	out := []SharedAccess{}
 	if s.shared == nil {
 		return out, nil
@@ -221,14 +265,11 @@ func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id) ([]Share
 		return nil, err
 	}
 	for _, g := range grants {
-		u, uerr := s.users.GetOwner(ctx, g.UserID)
+		u, uerr := s.resolveOwner(ctx, cache, g.UserID)
 		if uerr != nil {
 			return nil, uerr
 		}
-		out = append(out, SharedAccess{
-			User: OwnerResult{Id: u.ID, Avatar: u.Avatar, Name: u.Name},
-			Role: g.Role,
-		})
+		out = append(out, SharedAccess{User: u, Role: g.Role})
 	}
 	return out, nil
 }
@@ -254,13 +295,14 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 		return nil, err
 	}
 
+	cache := newAccountEmbedCache()
 	items := make([]AccountResult, 0, len(accts))
 	for _, a := range accts {
 		bal := balances[a.Id().String()]
 		if bal == "" {
 			bal = "0"
 		}
-		item, berr := s.buildAccountResult(ctx, userID, a, bal, folders, memberships)
+		item, berr := s.buildAccountResult(ctx, userID, a, bal, folders, memberships, cache)
 		if berr != nil {
 			return nil, berr
 		}

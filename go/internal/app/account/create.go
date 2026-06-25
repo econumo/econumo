@@ -134,7 +134,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	if err != nil {
 		return nil, err
 	}
-	item, err := s.buildAccountResult(ctx, userID, created, bal, folders, memberships)
+	item, err := s.buildAccountResult(ctx, userID, created, bal, folders, memberships, nil)
 	if err != nil {
 		return nil, err
 	}

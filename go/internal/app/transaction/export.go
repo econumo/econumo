@@ -96,8 +96,11 @@ func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accou
 		return nil, err
 	}
 
+	// Category/tag/payee names repeat heavily across an export (a few dozen
+	// distinct ids over thousands of rows); resolve each name once per request.
+	names := newExportNameCache()
 	for _, t := range txs {
-		built, berr := s.buildExportRows(ctx, t, selectedByID, allAccountsByID)
+		built, berr := s.buildExportRows(ctx, t, selectedByID, allAccountsByID, names)
 		if berr != nil {
 			return nil, berr
 		}
@@ -106,10 +109,34 @@ func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accou
 	return rows, nil
 }
 
+// exportNameCache memoizes category/tag/payee name lookups for one export so a
+// repeated id is not re-queried per transaction.
+type exportNameCache struct {
+	categories, tags, payees map[string]string
+}
+
+func newExportNameCache() *exportNameCache {
+	return &exportNameCache{categories: map[string]string{}, tags: map[string]string{}, payees: map[string]string{}}
+}
+
+// cachedName returns the name for id from cache, fetching (and caching) on a miss.
+func cachedName(ctx context.Context, cache map[string]string, id vo.Id, fetch func(context.Context, vo.Id) (string, error)) (string, error) {
+	key := id.String()
+	if v, ok := cache[key]; ok {
+		return v, nil
+	}
+	v, err := fetch(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	cache[key] = v
+	return v, nil
+}
+
 // buildExportRows emits the 0, 1, or 2 CSV rows for one transaction (PHP
 // buildExportRows): a row on the source account if it is selected, plus a second
 // row on the recipient account if this is a transfer whose recipient is selected.
-func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transaction, selectedByID, allAccountsByID map[string]ExportAccount) ([][]string, error) {
+func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transaction, selectedByID, allAccountsByID map[string]ExportAccount, names *exportNameCache) ([][]string, error) {
 	var rows [][]string
 	accountID := t.AccountId().String()
 
@@ -126,7 +153,7 @@ func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transac
 			description = applyTransferNote(transferNote, t.Description())
 		}
 
-		category, tag, payee, nerr := s.resolveNames(ctx, t)
+		category, tag, payee, nerr := s.resolveNames(ctx, t, names)
 		if nerr != nil {
 			return nil, nerr
 		}
@@ -183,19 +210,19 @@ func (s *Service) buildExportRow(t *domtransaction.Transaction, account ExportAc
 
 // resolveNames resolves the optional category/tag/payee names for a transaction
 // (empty when absent or missing), mirroring the eager-loaded entity getters.
-func (s *Service) resolveNames(ctx context.Context, t *domtransaction.Transaction) (category, tag, payee string, err error) {
+func (s *Service) resolveNames(ctx context.Context, t *domtransaction.Transaction, names *exportNameCache) (category, tag, payee string, err error) {
 	if id := t.CategoryId(); id != nil {
-		if category, err = s.export.CategoryName(ctx, *id); err != nil {
+		if category, err = cachedName(ctx, names.categories, *id, s.export.CategoryName); err != nil {
 			return "", "", "", err
 		}
 	}
 	if id := t.TagId(); id != nil {
-		if tag, err = s.export.TagName(ctx, *id); err != nil {
+		if tag, err = cachedName(ctx, names.tags, *id, s.export.TagName); err != nil {
 			return "", "", "", err
 		}
 	}
 	if id := t.PayeeId(); id != nil {
-		if payee, err = s.export.PayeeName(ctx, *id); err != nil {
+		if payee, err = cachedName(ctx, names.payees, *id, s.export.PayeeName); err != nil {
 			return "", "", "", err
 		}
 	}

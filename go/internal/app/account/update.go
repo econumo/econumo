@@ -136,7 +136,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 	if err != nil {
 		return nil, err
 	}
-	item, err := s.buildAccountResult(ctx, userID, updated, bal, folders, memberships)
+	item, err := s.buildAccountResult(ctx, userID, updated, bal, folders, memberships, nil)
 	if err != nil {
 		return nil, err
 	}
