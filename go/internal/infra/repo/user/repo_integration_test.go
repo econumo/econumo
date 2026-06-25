@@ -73,6 +73,36 @@ func TestUserRepo_GetByID_NotFound(t *testing.T) {
 	}
 }
 
+// TestUserRepo_GetHeaderByID covers the lightweight owner/author-embed lookup:
+// it returns id/name/avatar from the user row (no options query) and a
+// NotFoundError for a missing id.
+func TestUserRepo_GetHeaderByID(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	u := user.FromState(
+		vo.MustParseId(userA), "ident-a", "enc-email", "Alice", "https://av/a",
+		"hash", "salt-a", true, fixedTime, fixedTime, nil,
+	)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	h, err := repo.GetHeaderByID(ctx, vo.MustParseId(userA))
+	if err != nil {
+		t.Fatalf("GetHeaderByID: %v", err)
+	}
+	if h.ID != userA || h.Name != "Alice" || h.AvatarURL != "https://av/a" {
+		t.Errorf("header mismatch: %+v", h)
+	}
+
+	_, err = repo.GetHeaderByID(ctx, vo.NewId())
+	var nf *errs.NotFoundError
+	if !errors.As(err, &nf) {
+		t.Fatalf("want NotFoundError for missing id, got %v", err)
+	}
+}
+
 func TestUserRepo_GetByIdentifier(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
