@@ -51,13 +51,25 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 		txs = list
 	}
 
+	// Resolve each transaction's author embed through a per-request cache. A list
+	// can contain thousands of rows that nearly all share the same author (the
+	// owner, plus a few connected users on shared accounts), and each GetOwner is
+	// a DB round-trip (user row + options). Without this cache that is an N+1 that
+	// dominated the endpoint's latency; PHP avoids it via Doctrine's identity map.
+	authors := make(map[string]AuthorResult)
 	items := make([]TransactionResult, 0, len(txs))
 	for _, t := range txs {
-		r, err := s.toResult(ctx, t)
-		if err != nil {
-			return nil, err
+		uid := t.UserId().String()
+		author, ok := authors[uid]
+		if !ok {
+			av, err := s.users.GetOwner(ctx, uid)
+			if err != nil {
+				return nil, err
+			}
+			author = AuthorResult{Id: av.ID, Avatar: av.Avatar, Name: av.Name}
+			authors[uid] = author
 		}
-		items = append(items, r)
+		items = append(items, s.buildResult(t, author))
 	}
 	return &GetTransactionListResult{Items: items}, nil
 }

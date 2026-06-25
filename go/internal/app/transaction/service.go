@@ -138,11 +138,20 @@ func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) 
 
 // toResult builds the transaction result, resolving the author embed. The
 // amountRecipient falls back to amount when nil (matching the PHP assembler).
+// Single-transaction callers (create/update/delete) use this; the list endpoint
+// uses buildResult with a per-request author cache to avoid an N+1 (see
+// GetTransactionList).
 func (s *Service) toResult(ctx context.Context, t *domtransaction.Transaction) (TransactionResult, error) {
 	author, err := s.users.GetOwner(ctx, t.UserId().String())
 	if err != nil {
 		return TransactionResult{}, err
 	}
+	return s.buildResult(t, AuthorResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}), nil
+}
+
+// buildResult assembles the wire DTO from an already-resolved author (no DB
+// access), so callers control author resolution / caching.
+func (s *Service) buildResult(t *domtransaction.Transaction, author AuthorResult) TransactionResult {
 	amountRecipient := t.Amount()
 	if ar := t.AmountRecipient(); ar != nil {
 		amountRecipient = *ar
@@ -166,7 +175,7 @@ func (s *Service) toResult(ctx context.Context, t *domtransaction.Transaction) (
 	}
 	return TransactionResult{
 		Id:                 t.Id().String(),
-		Author:             AuthorResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name},
+		Author:             author,
 		Type:               t.Type().Alias(),
 		AccountId:          t.AccountId().String(),
 		AccountRecipientId: recipID,
@@ -177,7 +186,7 @@ func (s *Service) toResult(ctx context.Context, t *domtransaction.Transaction) (
 		PayeeId:            payeeID,
 		TagId:              tagID,
 		Date:               t.SpentAt().Format(apiDatetimeLayout),
-	}, nil
+	}
 }
 
 // strPtrDecimal normalizes a decimal string and returns a pointer to it.
