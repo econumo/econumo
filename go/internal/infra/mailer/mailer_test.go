@@ -6,57 +6,15 @@ import (
 	"testing"
 )
 
-func TestNew_DSNParsing(t *testing.T) {
+func TestNew_EmptyKeyIsNoop(t *testing.T) {
 	if _, ok := New("").(noop); !ok {
-		t.Error("empty DSN should give a no-op mailer")
+		t.Error("empty API key should give a no-op mailer")
 	}
-	if _, ok := New("null://null").(noop); !ok {
-		t.Error("null:// should give a no-op mailer")
+	if _, ok := New("   ").(noop); !ok {
+		t.Error("blank API key should give a no-op mailer")
 	}
-
-	m, ok := New("smtp://user:pass@mail.example.com:587").(*smtpMailer)
-	if !ok {
-		t.Fatal("smtp:// should give an smtpMailer")
-	}
-	if m.addr != "mail.example.com:587" || m.host != "mail.example.com" || m.user != "user" || m.pass != "pass" || m.implicitTLS {
-		t.Errorf("smtp parse = %+v", m)
-	}
-
-	s, ok := New("smtps://user:pass@mail.example.com:465").(*smtpMailer)
-	if !ok || !s.implicitTLS {
-		t.Errorf("smtps should set implicitTLS: %+v", s)
-	}
-
-	// Default ports by scheme.
-	if d := New("smtp://h").(*smtpMailer); d.addr != "h:587" {
-		t.Errorf("smtp default port = %q, want h:587", d.addr)
-	}
-	if d := New("smtps://h").(*smtpMailer); d.addr != "h:465" {
-		t.Errorf("smtps default port = %q, want h:465", d.addr)
-	}
-	// encryption=ssl forces implicit TLS.
-	if d := New("smtp://h:465?encryption=ssl").(*smtpMailer); !d.implicitTLS {
-		t.Error("encryption=ssl should force implicit TLS")
-	}
-	// No userinfo -> no auth.
-	if d := New("smtp://relay:25").(*smtpMailer); d.user != "" {
-		t.Errorf("expected no auth, got user %q", d.user)
-	}
-}
-
-func TestBuildMessage(t *testing.T) {
-	raw := string(buildMessage(Message{From: "f@x", To: "t@x", ReplyTo: "r@x", Subject: "Subj", Text: "line1\nline2"}))
-	for _, want := range []string{
-		"From: f@x\r\n", "To: t@x\r\n", "Reply-To: r@x\r\n", "Subject: Subj\r\n",
-		"Content-Type: text/plain; charset=UTF-8\r\n", "\r\n\r\nline1\r\nline2",
-	} {
-		if !strings.Contains(raw, want) {
-			t.Errorf("message missing %q\n---\n%s", want, raw)
-		}
-	}
-	// No Reply-To header when unset.
-	if strings.Contains(string(buildMessage(Message{From: "f", To: "t"})), "Reply-To:") {
-		t.Error("Reply-To header should be omitted when empty")
+	if _, ok := New("re_test_123").(*resendMailer); !ok {
+		t.Error("a non-empty API key should give a Resend-backed mailer")
 	}
 }
 

@@ -37,7 +37,7 @@ type Config struct {
 	CORSAllowOrigin string // default "*"
 
 	// Integrations
-	MailerDSN              string
+	ResendAPIKey           string
 	OpenExchangeRatesToken string
 
 	// SPA
@@ -65,7 +65,7 @@ func Load() (Config, error) {
 		JWTPassphrase:          os.Getenv("JWT_PASSPHRASE"),
 		Port:                   os.Getenv("PORT"),
 		CORSAllowOrigin:        getEnv("CORS_ALLOW_ORIGIN", "*"),
-		MailerDSN:              os.Getenv("MAILER_DSN"),
+		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
 		SPADir:                 getEnv("ECONUMO_SPA_DIR", "web/dist/spa"),
 	}
