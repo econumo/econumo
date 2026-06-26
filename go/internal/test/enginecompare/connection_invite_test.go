@@ -51,6 +51,29 @@ func TestConnectionInviteFlow_PerEngine(t *testing.T) {
 		if len(code) != 5 {
 			t.Fatalf("invite code = %q, want 5 chars", code)
 		}
+		if c := countActiveInvite(t, db, apiOwnerID); c != 1 {
+			t.Errorf("active invite after generate = %d, want 1", c)
+		}
+
+		// 1b. delete-invite clears the code (the row's code becomes NULL) and the
+		//     cleared code can no longer be redeemed.
+		st, body = h.call(t, http.MethodPost, "/api/v1/connection/delete-invite", ownerTok, map[string]any{})
+		if st != http.StatusOK {
+			t.Fatalf("delete-invite = %d; body: %s", st, body)
+		}
+		if c := countActiveInvite(t, db, apiOwnerID); c != 0 {
+			t.Errorf("active invite after delete-invite = %d, want 0", c)
+		}
+		if st, _ := h.call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code}); st == http.StatusOK {
+			t.Fatal("a deleted invite code should not be redeemable")
+		}
+
+		// 1c. Re-generate a fresh code for the accept flow below.
+		st, body = h.call(t, http.MethodPost, "/api/v1/connection/generate-invite", ownerTok, map[string]any{})
+		if st != http.StatusOK {
+			t.Fatalf("generate-invite (2) = %d; body: %s", st, body)
+		}
+		code = extractInviteCode(t, body)
 
 		// 2. Carol redeems it -> 200, and the response lists her new connection.
 		st, body = h.call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code})
@@ -100,6 +123,18 @@ func extractInviteCode(t *testing.T, raw []byte) string {
 		t.Fatalf("decode generate-invite envelope: %v\nbody: %s", err, raw)
 	}
 	return env.Data.Item.Code
+}
+
+// countActiveInvite returns how many non-cleared invites the user has (code set).
+// delete-invite clears the code (sets it NULL) rather than deleting the row.
+func countActiveInvite(t *testing.T, db *dbtest.DB, userID string) int {
+	t.Helper()
+	var n int
+	q := "SELECT COUNT(*) FROM users_connections_invites WHERE user_id = " + placeholder(db, 1) + " AND code IS NOT NULL"
+	if err := db.Raw.QueryRow(q, userID).Scan(&n); err != nil {
+		t.Fatalf("count active invite (%s): %v", db.Engine, err)
+	}
+	return n
 }
 
 // countConnection returns how many users_connections rows link userID -> connectedID.
