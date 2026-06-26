@@ -102,8 +102,17 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	// --- Tags ---
 	for tagID, tag := range f.tags {
 		index := elementKey(tagID, dombudget.ElementTag)
-		es, ok := spending[index]
-		if !ok {
+		bud := limits[index]
+		budgeted, budgetedBefore := orZero(bud.budgeted, zero), orZero(bud.budgetedBefore, zero)
+		es, hasSpending := spending[index]
+		// A tag shows only if it participates in this budget: it has spending in or
+		// before the period, OR a limit assigned (current or carried-over). Without
+		// either it is just one of the user's many unrelated tags and stays hidden.
+		// ("Non-zero available" reduces to budgetedBefore != 0 or spentBefore != 0,
+		// both already covered here.) This intentionally diverges from PHP, which
+		// drops a budgeted-but-unspent tag — making a tag's limit vanish the moment
+		// its last transaction is removed.
+		if !hasSpending && budgeted.IsZero() && budgetedBefore.IsZero() {
 			continue
 		}
 		opt := options[index]
@@ -111,24 +120,24 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		if opt.currencyID != nil {
 			currencyID = *opt.currencyID
 		}
-		bud := limits[index]
-		budgeted, budgetedBefore := orZero(bud.budgeted, zero), orZero(bud.budgetedBefore, zero)
 		el := &structElement{
 			id: tagID, typ: dombudget.ElementTag, name: tag.Name, icon: "tag",
 			ownerID: strPtr(tag.OwnerID), currencyID: currencyID, isArchived: tag.IsArchived,
 			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
-		for catID, cs := range es.spendingInCategories {
-			cat, ok := f.categories[catID]
-			if !ok {
-				continue
+		if es != nil {
+			for catID, cs := range es.spendingInCategories {
+				cat, ok := f.categories[catID]
+				if !ok {
+					continue
+				}
+				subIndex := elementKey(catID, dombudget.ElementCategory)
+				addSpendingConvert(toConvert, index, subIndex, cs, currencyID, budgetCurrencyID)
+				el.children = append(el.children, structChild{
+					id: catID, typ: dombudget.ElementCategory, name: cat.Name, icon: cat.Icon,
+					ownerID: cat.OwnerID, isArchived: cat.IsArchived, subIndex: subIndex,
+				})
 			}
-			subIndex := elementKey(catID, dombudget.ElementCategory)
-			addSpendingConvert(toConvert, index, subIndex, cs, currencyID, budgetCurrencyID)
-			el.children = append(el.children, structChild{
-				id: catID, typ: dombudget.ElementCategory, name: cat.Name, icon: cat.Icon,
-				ownerID: cat.OwnerID, isArchived: cat.IsArchived, subIndex: subIndex,
-			})
 		}
 		if !tag.IsArchived || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
 			elements = append(elements, el)
