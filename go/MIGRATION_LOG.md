@@ -269,6 +269,36 @@ paths, and unknown-command → exit 2.
 
 ---
 
+## Phase 11 — Budget: keep tags with a limit but no transactions visible
+
+**Commit:** `fix(go): keep budget tags with a limit but no transactions visible`
+
+A reported bug: a tag given a budget limit for a period, then left with no
+transactions in (or before) that period, vanished from `get-budget` despite its
+limit. Root cause is in the structure builder (`builder_structure_build.go`): the
+per-element spending map is built **only from transactions** (`CountSpending`),
+and the tag loop skipped any tag with no spending entry **before** its limit was
+considered — so deleting a tag's last transaction dropped the tag entirely.
+
+Fixed by gating a tag on **participation** — show it when it has spending **or** a
+limit (current or carried-over) — matching how envelopes and standalone
+categories are already handled. ("Non-zero available" reduces to
+`budgetedBefore != 0` or `spentBefore != 0`, both already covered.)
+
+> **Known, accepted divergence from PHP.** PHP's `BudgetStructureBuilder` has the
+> identical latent bug (its `elementsSpending` is transactions-only and it drops a
+> budgeted-but-unspent tag at the same `array_key_exists` guard). This is the
+> *intended* rule per the product owner, never actually implemented in PHP, so the
+> Go version now intentionally differs. `available` stays carryover-based
+> (`budgetedBefore − spentBefore − spent`), still matching PHP. The local
+> `mutatecompare budget/set-limit` case targets an **envelope** (always shown), so
+> it does **not** surface this as a false DIFF; the committed sqlite-vs-pgsql
+> regression is unaffected (both engines move together). Locked with handler tests
+> (visible with a limit / after its tagged transaction is deleted; hidden with
+> neither limit nor transactions) and a per-engine `enginecompare` test.
+
+---
+
 ## How verification works today
 
 - **Everyday:** `make go-test` — smoke tier (build + vet + gofmt + unit + sqlite
