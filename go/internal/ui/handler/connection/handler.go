@@ -1,8 +1,8 @@
 // Package connection wires the connection module's HTTP edge: 7 endpoints under
-// /api/v1/connection/, all JWT-protected. In the self-hosted product four are
-// 501 stubs ("Not supported in Econumo One"): generate-invite, delete-invite,
-// accept-invite, delete-connection. The three live endpoints are
-// set-account-access, revoke-account-access, and get-connection-list. Each live
+// /api/v1/connection/, all JWT-protected and fully live. Three serve account
+// sharing (get-connection-list, set-account-access, revoke-account-access); the
+// other four — generate-invite, delete-invite, accept-invite, delete-connection
+// — were ported from EconumoCloudBundle (this build has no CE/cloud split). Each
 // handler is a thin adapter (decode + tier-1 Validate, pull userID, call the
 // service, emit the frozen envelope).
 package connection
@@ -21,9 +21,6 @@ import (
 // _ references the apidoc envelope schemas so the swag annotations resolve the
 // apidoc import alias. No runtime effect.
 var _ = apidoc.JsonResponseOk{}
-
-// notImplementedMessage matches the self-hosted PHP stub bodies.
-const notImplementedMessage = "Not supported in Econumo One"
 
 // Handlers holds the connection service and the dev flag.
 type Handlers struct {
