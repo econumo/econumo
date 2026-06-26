@@ -58,6 +58,12 @@ type harness struct {
 }
 
 func newHarness(t *testing.T) *harness {
+	return newHarnessWithClock(t, clock.New())
+}
+
+// newHarnessWithClock is newHarness with an injectable account-service clock, for
+// tests that need a deterministic "now" (the balance day boundary depends on it).
+func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
 	t.Helper()
 
 	tdb := dbtest.NewSQLite(t)
@@ -93,7 +99,7 @@ func newHarness(t *testing.T) *harness {
 	)
 	sharedLookup := connectionrepo.NewSharedAccessLookup(connRepo)
 	revoker := connectionrepo.NewAccessRevoker(connRepo, connSvc)
-	svc := appaccount.NewService(repo, folderRepo, accCur, accUser, sharedLookup, revoker, txm, opGuard, clock.New())
+	svc := appaccount.NewService(repo, folderRepo, accCur, accUser, sharedLookup, revoker, txm, opGuard, clk)
 	handlers := handleraccount.NewHandlers(svc, cfg.IsDev())
 
 	h := router.New(router.Deps{
@@ -127,6 +133,11 @@ func (h *harness) token(t *testing.T) string {
 }
 
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {
+	return h.doH(t, method, path, token, body, nil)
+}
+
+// doH is do with optional extra request headers (e.g. X-Timezone).
+func (h *harness) doH(t *testing.T, method, path, token string, body any, headers map[string]string) (int, envelope) {
 	t.Helper()
 	var rdr io.Reader
 	if body != nil {
@@ -142,6 +153,9 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 	resp, err := h.srv.Client().Do(req)
 	if err != nil {

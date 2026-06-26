@@ -19,6 +19,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
@@ -44,7 +45,6 @@ type ctxKey int
 
 const (
 	ctxKeyRequestID ctxKey = iota
-	ctxKeyLocation
 )
 
 // ---- RequestID ----
@@ -152,18 +152,16 @@ func Timezone(next http.Handler) http.Handler {
 				loc = l
 			}
 		}
-		ctx := context.WithValue(r.Context(), ctxKeyLocation, loc)
+		ctx := reqctx.WithLocation(r.Context(), loc)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
 // LocationFromCtx returns the *time.Location stored by Timezone, or time.UTC if
-// none was set.
+// none was set. It delegates to reqctx so the app layer can read the same value
+// without importing this (ui) package.
 func LocationFromCtx(ctx context.Context) *time.Location {
-	if l, ok := ctx.Value(ctxKeyLocation).(*time.Location); ok && l != nil {
-		return l
-	}
-	return time.UTC
+	return reqctx.Location(ctx)
 }
 
 // ---- JWT (placeholder) ----

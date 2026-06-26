@@ -299,6 +299,41 @@ categories are already handled. ("Non-zero available" reduces to
 
 ---
 
+## Phase 12 — Account balance: day boundary in the caller's timezone
+
+**Commit:** `fix(go): compute account balance day boundary in the request timezone`
+
+An account's balance is "as of end of TODAY" — `SUM(transactions WHERE spent_at <
+cutoff)` with `cutoff = start of tomorrow`. Both Go and PHP computed that cutoff
+in the server's **UTC** day. But `spent_at` is the user's local wall-clock date,
+so for a caller behind UTC, once UTC rolls past midnight the server's "tomorrow"
+is two of the user's days away — and their next-day (future) transactions get
+counted. (Confirmed by research; identical in PHP.)
+
+Fix: compute the boundary in the **request's** timezone. The `Timezone`
+middleware already resolved the `X-Timezone` header into a `*time.Location` but
+nothing consumed it. Introduced a stdlib-only leaf package `internal/reqctx`
+(imported by both the middleware that sets the location and the app that reads
+it, so the app never imports `ui`); `account.balanceBefore` now takes the
+caller's date in that location and builds the cutoff as a UTC-typed wall-clock
+(so the driver serializes the bare `Y-m-d H:i:s` that matches `spent_at`).
+
+Also **embedded the tz database** (`_ "time/tzdata"` in `cmd/econumo`): the
+production image is distroless (no `/usr/share/zoneinfo`), so without it
+`time.LoadLocation` would fail and every request would silently fall back to UTC,
+making the fix a no-op in production.
+
+> **Known, accepted divergence from PHP.** PHP computes the boundary in the
+> container's UTC day (`DatetimeService::getNextDay`), so it has the same bug; the
+> Go version now uses the caller's timezone. When no `X-Timezone` is sent the
+> behaviour is unchanged (UTC). Locked with: a `tomorrowIn` unit test across
+> behind/ahead-of-UTC zones, a `balanceBefore` white-box test (reads clock +
+> request location), a repo test (the SQL excludes future-dated rows), and an
+> end-to-end handler test (the `X-Timezone` header flips a boundary transaction's
+> inclusion through the real stack).
+
+---
+
 ## How verification works today
 
 - **Everyday:** `make go-test` — smoke tier (build + vet + gofmt + unit + sqlite

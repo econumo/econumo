@@ -68,7 +68,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 		// reconcile balance: correction = actual - requested (PHP
 		// AccountService::updateBalance -> transactionService.updateBalance with
 		// actualBalance.sub(balance)). A correction of 0 writes nothing.
-		actualStr, berr := s.repo.Balance(ctx, id, s.balanceBefore())
+		actualStr, berr := s.repo.Balance(ctx, id, s.balanceBefore(ctx))
 		if berr != nil {
 			return berr
 		}
@@ -132,7 +132,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 	if err != nil {
 		return nil, err
 	}
-	bal, err := s.repo.Balance(ctx, id, s.balanceBefore())
+	bal, err := s.repo.Balance(ctx, id, s.balanceBefore(ctx))
 	if err != nil {
 		return nil, err
 	}

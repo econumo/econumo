@@ -130,7 +130,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	if err != nil {
 		return nil, err
 	}
-	bal, err := s.repo.Balance(ctx, id, s.balanceBefore())
+	bal, err := s.repo.Balance(ctx, id, s.balanceBefore(ctx))
 	if err != nil {
 		return nil, err
 	}

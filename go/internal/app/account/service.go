@@ -17,6 +17,7 @@ import (
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/reqctx"
 )
 
 // apiDatetimeLayout is the wire format for dates ("2006-01-02 15:04:05").
@@ -134,12 +135,32 @@ func NewService(
 // ---------------------------------------------------------------------------
 
 // balanceBefore is the exclusive upper bound for the balance SUM: the start of
-// tomorrow (today's date + 1 day at 00:00:00), so the balance includes
-// everything spent through today. Mirrors PHP datetimeService->getNextDay().
-func (s *Service) balanceBefore() time.Time {
-	now := s.clock.Now()
-	y, m, d := now.Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1)
+// tomorrow, so the balance includes everything spent through end of today and
+// excludes future-dated transactions. "Today" is the CALLER's day (from the
+// request timezone), not the server's UTC day — see tomorrowIn.
+func (s *Service) balanceBefore(ctx context.Context) time.Time {
+	return tomorrowIn(s.clock.Now(), reqctx.Location(ctx))
+}
+
+// tomorrowIn returns the start of the day after now's calendar date in loc,
+// expressed as a UTC-typed wall-clock time.
+//
+// spent_at is stored as a naive "Y-m-d H:i:s" wall-clock (the date the user
+// picked, no zone), and the balance query compares spent_at < cutoff as such.
+// We therefore take the user's LOCAL calendar date (now.In(loc)) but build the
+// cutoff as a UTC-typed time, so the DB driver serializes it as that bare
+// wall-clock — making "balance as of end of today" use the USER's day boundary.
+//
+// Computing the boundary in UTC instead (the old behaviour, and PHP's) lets a
+// user behind UTC see their next-day, future transactions counted: once UTC has
+// rolled past midnight, the server's "tomorrow" is two of the user's days away.
+// This is an intentional, documented divergence from PHP.
+func tomorrowIn(now time.Time, loc *time.Location) time.Time {
+	if loc == nil {
+		loc = time.UTC
+	}
+	y, m, d := now.In(loc).Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 }
 
 // ---------------------------------------------------------------------------
@@ -282,7 +303,7 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 	if err != nil {
 		return nil, err
 	}
-	balances, err := s.repo.Balances(ctx, userID, s.balanceBefore())
+	balances, err := s.repo.Balances(ctx, userID, s.balanceBefore(ctx))
 	if err != nil {
 		return nil, err
 	}

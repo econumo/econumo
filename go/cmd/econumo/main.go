@@ -34,6 +34,12 @@ import (
 
 	"github.com/joho/godotenv"
 
+	// Embed the IANA timezone database into the binary. The production image is
+	// distroless (no system /usr/share/zoneinfo), so without this time.LoadLocation
+	// would fail for the X-Timezone header and the per-user day boundary (account
+	// balance "as of end of today") would silently fall back to UTC.
+	_ "time/tzdata"
+
 	// Blank-import the concrete DB backends so their init() registers them in
 	// the backend registry. Both are linked in; the DATABASE_URL scheme selects
 	// one at runtime. CGO stays off (both drivers are pure Go).
