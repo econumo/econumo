@@ -19,7 +19,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/econumo/econumo/internal/reqctx"
+	"github.com/econumo/econumo/internal/app/reqctx"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
