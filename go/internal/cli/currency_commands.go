@@ -79,17 +79,5 @@ func currencyCommands() []command {
 				return nil
 			},
 		},
-		{
-			name:    "app:restore-currency-fraction-digits",
-			summary: "Reset fraction digits to ICU defaults: app:restore-currency-fraction-digits [codes...]",
-			run: func(ctx context.Context, c *container, args []string) error {
-				n, err := c.currency.RestoreFractionDigits(ctx, args)
-				if err != nil {
-					return err
-				}
-				fmt.Printf("Restored fraction digits for %d currenc(ies)\n", n)
-				return nil
-			},
-		},
 	}
 }

@@ -78,7 +78,7 @@ type ListCurrencyCodesRow struct {
 }
 
 // Write-side queries for the currency module: the CLI admin commands
-// (app:add-currency, app:restore-currency-fraction-digits) and the rate loader
+// (app:add-currency) and the rate loader
 // (app:update-currency-rates). Kept separate from currencies.sql (the user-module
 // lookup) and currency_read.sql (the CQRS read model) so the write concern is
 // visibly distinct. The HTTP API has no currency write path; these run only from
@@ -111,22 +111,6 @@ func (q *Queries) ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow
 		return nil, err
 	}
 	return items, nil
-}
-
-const updateCurrencyFractionDigitsByCode = `-- name: UpdateCurrencyFractionDigitsByCode :exec
-UPDATE currencies SET fraction_digits = ? WHERE code = ?
-`
-
-type UpdateCurrencyFractionDigitsByCodeParams struct {
-	FractionDigits int16
-	Code           string
-}
-
-// Reset a currency's fraction digits to the ICU default. Mirrors
-// CurrencyUpdateService::restoreFractionDigits.
-func (q *Queries) UpdateCurrencyFractionDigitsByCode(ctx context.Context, arg UpdateCurrencyFractionDigitsByCodeParams) error {
-	_, err := q.db.ExecContext(ctx, updateCurrencyFractionDigitsByCode, arg.FractionDigits, arg.Code)
-	return err
 }
 
 const upsertCurrencyRate = `-- name: UpsertCurrencyRate :exec

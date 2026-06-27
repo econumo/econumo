@@ -1,8 +1,8 @@
 // Write side of the currency module. The HTTP API exposes no currency
 // mutations; these use cases exist only for the CLI admin commands
-// (app:update-currency-rates, app:add-currency,
-// app:restore-currency-fraction-digits), porting the PHP CurrencyUpdateService
-// and CurrencyRatesUpdateService. The read side (read.go) is unchanged.
+// (app:update-currency-rates, app:add-currency), porting the PHP
+// CurrencyUpdateService and CurrencyRatesUpdateService. The read side (read.go)
+// is unchanged.
 package currency
 
 import (
@@ -28,8 +28,6 @@ type WriteModel interface {
 	CurrencyExists(ctx context.Context, code string) (bool, error)
 	// InsertCurrency adds a new currency row.
 	InsertCurrency(ctx context.Context, c CurrencyRow) error
-	// SetFractionDigits sets a currency's fraction_digits by code.
-	SetFractionDigits(ctx context.Context, code string, digits int) error
 	// UpsertRate inserts or updates a single (date, currency, base) rate.
 	UpsertRate(ctx context.Context, r RateRow) error
 }
@@ -177,45 +175,6 @@ func (s *WriteService) AddCurrency(ctx context.Context, code string, name *strin
 		return false, err
 	}
 	return true, nil
-}
-
-// RestoreFractionDigits resets each given currency's fraction digits to the ICU
-// default for its code. With no codes, it restores every stored currency.
-// Returns the number of currencies updated. Ports
-// CurrencyUpdateService::restoreFractionDigits.
-func (s *WriteService) RestoreFractionDigits(ctx context.Context, codes []string) (int, error) {
-	targets := make([]string, 0, len(codes))
-	if len(codes) == 0 {
-		all, err := s.write.CurrencyCodes(ctx)
-		if err != nil {
-			return 0, err
-		}
-		for code := range all {
-			targets = append(targets, code)
-		}
-	} else {
-		for _, code := range codes {
-			c, err := validateCode(code)
-			if err != nil {
-				return 0, err
-			}
-			targets = append(targets, c)
-		}
-	}
-	count := 0
-	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		for _, code := range targets {
-			if err := s.write.SetFractionDigits(ctx, code, domcurrency.FractionDigits(code)); err != nil {
-				return err
-			}
-			count++
-		}
-		return nil
-	})
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
 }
 
 // normalizeCode upppercases and trims a currency code for map lookup. The stored

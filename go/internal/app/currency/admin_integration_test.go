@@ -84,41 +84,6 @@ func TestAddCurrency(t *testing.T) {
 	}
 }
 
-func TestRestoreFractionDigits(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	svc := newCurrencySvc(t, db)
-	ctx := context.Background()
-
-	// Add JPY with a deliberately wrong fraction-digit count.
-	wrong := 9
-	if _, err := svc.AddCurrency(ctx, "JPY", nil, &wrong); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, fd := readCurrency(t, db, "JPY"); fd != 9 {
-		t.Fatalf("precondition: JPY fd = %d, want 9", fd)
-	}
-
-	n, err := svc.RestoreFractionDigits(ctx, []string{"jpy"})
-	if err != nil {
-		t.Fatalf("RestoreFractionDigits([jpy]): %v", err)
-	}
-	if n != 1 {
-		t.Errorf("restored %d, want 1", n)
-	}
-	if _, _, fd := readCurrency(t, db, "JPY"); fd != 0 {
-		t.Errorf("JPY fd = %d, want 0 (ICU default)", fd)
-	}
-
-	// No codes -> restore every currency (USD + JPY here).
-	n, err = svc.RestoreFractionDigits(ctx, nil)
-	if err != nil {
-		t.Fatalf("RestoreFractionDigits(all): %v", err)
-	}
-	if n != 2 {
-		t.Errorf("restored %d, want 2 (USD + JPY)", n)
-	}
-}
-
 func TestUpdateRates(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	svc := newCurrencySvc(t, db)

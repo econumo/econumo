@@ -230,7 +230,7 @@ user- and currency-management commands and preserved the legacy invocation.
 - Cloud-user (toggle the core `users.is_active`): `app:activate-user`,
   `app:deactivate-users --date=YYYY-MM-DD`.
 - Currency: `app:update-currency-rates [date]` (Open Exchange Rates loader +
-  rate upsert), `app:add-currency`, `app:restore-currency-fraction-digits`.
+  rate upsert), `app:add-currency`.
 
 **Shape.** The binary is subcommand-driven (stdlib only, no cobra, per the
 stdlib-first decision): `cmd/econumo` dispatches on the first arg — `serve` runs

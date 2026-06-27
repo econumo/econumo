@@ -85,7 +85,7 @@ func TestCommandRegistry(t *testing.T) {
 	want := []string{
 		"app:create-user", "app:change-user-email", "app:change-user-password",
 		"app:activate-user", "app:deactivate-users",
-		"app:update-currency-rates", "app:add-currency", "app:restore-currency-fraction-digits",
+		"app:update-currency-rates", "app:add-currency",
 		"app:generate-jwt-keypair",
 	}
 	for _, name := range want {

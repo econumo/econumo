@@ -107,23 +107,6 @@ func (r *WriteRepo) InsertCurrency(ctx context.Context, c appcurrency.CurrencyRo
 	}
 }
 
-// SetFractionDigits sets a currency's fraction_digits by code.
-func (r *WriteRepo) SetFractionDigits(ctx context.Context, code string, digits int) error {
-	db := r.db(ctx)
-	switch r.driver {
-	case "sqlite":
-		return sqlitegen.New(db).UpdateCurrencyFractionDigitsByCode(ctx, sqlitegen.UpdateCurrencyFractionDigitsByCodeParams{
-			FractionDigits: int16(digits),
-			Code:           code,
-		})
-	default:
-		return pgsqlgen.New(db).UpdateCurrencyFractionDigitsByCode(ctx, pgsqlgen.UpdateCurrencyFractionDigitsByCodeParams{
-			FractionDigits: int16(digits),
-			Code:           code,
-		})
-	}
-}
-
 // UpsertRate inserts or updates a single rate. The published date is truncated
 // to midnight UTC so the value is stable per day (SQLite stores it ISO8601 via
 // modernc; PostgreSQL as a native DATE) and the per-day ON CONFLICT upsert

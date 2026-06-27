@@ -1,5 +1,5 @@
 -- Write-side queries for the currency module: the CLI admin commands
--- (app:add-currency, app:restore-currency-fraction-digits) and the rate loader
+-- (app:add-currency) and the rate loader
 -- (app:update-currency-rates). Kept separate from currencies.sql (the user-module
 -- lookup) and currency_read.sql (the CQRS read model) so the write concern is
 -- visibly distinct. The HTTP API has no currency write path; these run only from
@@ -20,11 +20,6 @@ WHERE code = $1;
 -- Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 INSERT INTO currencies (id, code, symbol, name, fraction_digits, created_at)
 VALUES ($1, $2, $3, $4, $5, $6);
-
--- name: UpdateCurrencyFractionDigitsByCode :exec
--- Reset a currency's fraction digits to the ICU default. Mirrors
--- CurrencyUpdateService::restoreFractionDigits.
-UPDATE currencies SET fraction_digits = $1 WHERE code = $2;
 
 -- name: UpsertCurrencyRate :exec
 -- Insert or update a rate for (published_at, currency, base). published_at is a
