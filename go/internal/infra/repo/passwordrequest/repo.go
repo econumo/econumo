@@ -1,8 +1,15 @@
 // Package passwordrequestrepo persists password-reset codes
-// (users_password_requests) for the user module's remind/reset flow. Like the
-// currency lookup it selects the engine with a per-method driver switch — the
-// table has only a handful of tiny queries. Expiry is evaluated in the domain
-// (PasswordRequest.IsExpired), not in SQL.
+// (users_password_requests) for the user module's remind/reset flow.
+//
+// Engine duality, minimized — the same approach as the tag/category/user repos.
+// Every method is written ONCE against a single `querier` interface expressed in
+// the canonical (sqlite-generated) types. The sqlite adapter (sqlite.go) is a
+// native passthrough; the pgsql adapter (pgsql.go) is a thin whole-struct
+// conversion shim. The engine is chosen once at construction, so the method
+// bodies carry no per-driver branching. Every query runs through
+// TxManager.Querier(ctx) so it transparently joins the active transaction.
+//
+// Expiry is evaluated in the domain (PasswordRequest.IsExpired), not in SQL.
 package passwordrequestrepo
 
 import (
@@ -16,23 +23,43 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
-	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
+// Canonical row/param types: the sqlc-generated types are field-identical across
+// engines, so the repo speaks one engine's types (sqlite's) everywhere and the
+// pgsql shim copies into them.
+type (
+	passwordRequestRow     = sqlitegen.UsersPasswordRequest
+	getByUserAndCodeParams = sqlitegen.GetUserPasswordRequestByUserAndCodeParams
+	insertParams           = sqlitegen.InsertUserPasswordRequestParams
+)
+
+// querier is the engine-agnostic query surface this repo needs, expressed in the
+// canonical types. The two engine adapters (sqlite.go / pgsql.go) implement it.
+type querier interface {
+	DeleteUserPasswordRequestsByUser(ctx context.Context, db backend.DBTX, userID string) error
+	InsertUserPasswordRequest(ctx context.Context, db backend.DBTX, p insertParams) error
+	GetUserPasswordRequestByUserAndCode(ctx context.Context, db backend.DBTX, p getByUserAndCodeParams) (passwordRequestRow, error)
+	DeleteUserPasswordRequest(ctx context.Context, db backend.DBTX, id string) error
+}
+
 // Repo implements app/user.PasswordRequests.
 type Repo struct {
-	tx     *backend.TxManager
-	driver string
+	tx *backend.TxManager
+	q  querier
 }
 
 var _ appuser.PasswordRequests = (*Repo)(nil)
 
-// New builds the password-request repository for the given engine.
+// New selects the engine querier by driver name, panicking on an unknown driver.
+// driver matches config.DatabaseDriver: "sqlite" | "postgresql".
 func New(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
-	case "sqlite", "postgresql":
-		return &Repo{tx: tx, driver: driver}
+	case "sqlite":
+		return &Repo{tx: tx, q: sqliteQuerier{}}
+	case "postgresql":
+		return &Repo{tx: tx, q: pgsqlQuerier{}}
 	default:
 		panic("passwordrequestrepo: unknown database driver " + driver)
 	}
@@ -42,68 +69,33 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 // DeleteByUser removes all of a user's pending reset codes.
 func (r *Repo) DeleteByUser(ctx context.Context, userID vo.Id) error {
-	db := r.db(ctx)
-	switch r.driver {
-	case "sqlite":
-		return sqlitegen.New(db).DeleteUserPasswordRequestsByUser(ctx, userID.String())
-	default:
-		return pgsqlgen.New(db).DeleteUserPasswordRequestsByUser(ctx, userID.String())
-	}
+	return r.q.DeleteUserPasswordRequestsByUser(ctx, r.db(ctx), userID.String())
 }
 
 // Save inserts a new reset request.
 func (r *Repo) Save(ctx context.Context, pr *domuser.PasswordRequest) error {
-	db := r.db(ctx)
-	switch r.driver {
-	case "sqlite":
-		return sqlitegen.New(db).InsertUserPasswordRequest(ctx, sqlitegen.InsertUserPasswordRequestParams{
-			ID:        pr.Id().String(),
-			UserID:    pr.UserId().String(),
-			Code:      pr.Code(),
-			CreatedAt: pr.CreatedAt(),
-			UpdatedAt: pr.UpdatedAt(),
-			ExpiredAt: pr.ExpiredAt(),
-		})
-	default:
-		return pgsqlgen.New(db).InsertUserPasswordRequest(ctx, pgsqlgen.InsertUserPasswordRequestParams{
-			ID:        pr.Id().String(),
-			UserID:    pr.UserId().String(),
-			Code:      pr.Code(),
-			CreatedAt: pr.CreatedAt(),
-			UpdatedAt: pr.UpdatedAt(),
-			ExpiredAt: pr.ExpiredAt(),
-		})
-	}
+	return r.q.InsertUserPasswordRequest(ctx, r.db(ctx), insertParams{
+		ID:        pr.Id().String(),
+		UserID:    pr.UserId().String(),
+		Code:      pr.Code(),
+		CreatedAt: pr.CreatedAt(),
+		UpdatedAt: pr.UpdatedAt(),
+		ExpiredAt: pr.ExpiredAt(),
+	})
 }
 
 // GetByUserAndCode loads a user's request matching code, or NotFound.
 func (r *Repo) GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*domuser.PasswordRequest, error) {
-	db := r.db(ctx)
-	switch r.driver {
-	case "sqlite":
-		row, err := sqlitegen.New(db).GetUserPasswordRequestByUserAndCode(ctx, sqlitegen.GetUserPasswordRequestByUserAndCodeParams{UserID: userID.String(), Code: code})
-		if err != nil {
-			return nil, mapErr(err)
-		}
-		return reconstitute(row.ID, row.UserID, row.Code, row.CreatedAt, row.UpdatedAt, row.ExpiredAt)
-	default:
-		row, err := pgsqlgen.New(db).GetUserPasswordRequestByUserAndCode(ctx, pgsqlgen.GetUserPasswordRequestByUserAndCodeParams{UserID: userID.String(), Code: code})
-		if err != nil {
-			return nil, mapErr(err)
-		}
-		return reconstitute(row.ID, row.UserID, row.Code, row.CreatedAt, row.UpdatedAt, row.ExpiredAt)
+	row, err := r.q.GetUserPasswordRequestByUserAndCode(ctx, r.db(ctx), getByUserAndCodeParams{UserID: userID.String(), Code: code})
+	if err != nil {
+		return nil, mapErr(err)
 	}
+	return reconstitute(row.ID, row.UserID, row.Code, row.CreatedAt, row.UpdatedAt, row.ExpiredAt)
 }
 
 // Delete removes a request by id.
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
-	db := r.db(ctx)
-	switch r.driver {
-	case "sqlite":
-		return sqlitegen.New(db).DeleteUserPasswordRequest(ctx, id.String())
-	default:
-		return pgsqlgen.New(db).DeleteUserPasswordRequest(ctx, id.String())
-	}
+	return r.q.DeleteUserPasswordRequest(ctx, r.db(ctx), id.String())
 }
 
 // reconstitute rebuilds the domain entity from row fields.
