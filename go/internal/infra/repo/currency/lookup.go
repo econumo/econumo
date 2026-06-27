@@ -22,14 +22,19 @@ import (
 // defaultCode is the base/fallback currency, matching UserOption::DEFAULT_CURRENCY.
 const defaultCode = "USD"
 
-// getIDByCode is the engine-agnostic query closure chosen at construction.
-type getIDByCode func(ctx context.Context, db backend.DBTX, code string) (string, error)
+// currencyViewRow is the canonical (sqlite-generated) GetCurrencyByIDView row.
+type currencyViewRow = sqlitegen.GetCurrencyByIDViewRow
+
+// lookupQuerier is the engine-agnostic lookup surface, in the canonical types.
+type lookupQuerier interface {
+	GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error)
+	GetCurrencyByIDView(ctx context.Context, db backend.DBTX, id string) (currencyViewRow, error)
+}
 
 // Lookup implements app/user.CurrencyLookup over the currencies table.
 type Lookup struct {
-	tx     *backend.TxManager
-	driver string
-	q      getIDByCode
+	tx *backend.TxManager
+	q  lookupQuerier
 }
 
 var _ appuser.CurrencyLookup = (*Lookup)(nil)
@@ -39,13 +44,9 @@ var _ appuser.CurrencyLookup = (*Lookup)(nil)
 func New(driver string, tx *backend.TxManager) *Lookup {
 	switch driver {
 	case "sqlite":
-		return &Lookup{tx: tx, driver: driver, q: func(ctx context.Context, db backend.DBTX, code string) (string, error) {
-			return sqlitegen.New(db).GetCurrencyIDByCode(ctx, code)
-		}}
+		return &Lookup{tx: tx, q: sqliteLookupQuerier{}}
 	case "postgresql":
-		return &Lookup{tx: tx, driver: driver, q: func(ctx context.Context, db backend.DBTX, code string) (string, error) {
-			return pgsqlgen.New(db).GetCurrencyIDByCode(ctx, code)
-		}}
+		return &Lookup{tx: tx, q: pgsqlLookupQuerier{}}
 	default:
 		panic("currencyrepo: unknown database driver " + driver)
 	}
@@ -53,7 +54,7 @@ func New(driver string, tx *backend.TxManager) *Lookup {
 
 // GetIDByCode returns the currency uuid for a code, or a NotFoundError.
 func (l *Lookup) GetIDByCode(ctx context.Context, code string) (string, error) {
-	id, err := l.q(ctx, l.tx.Querier(ctx), code)
+	id, err := l.q.GetCurrencyIDByCode(ctx, l.tx.Querier(ctx), code)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", errs.NewNotFound(fmt.Sprintf("Currency %s not found", code))
@@ -79,25 +80,7 @@ type CurrencyView struct {
 // GetByID returns the currency for an id, with the display name resolved from
 // the Intl table (the stored name is NULL in practice). Missing -> NotFound.
 func (l *Lookup) GetByID(ctx context.Context, id string) (CurrencyView, error) {
-	db := l.tx.Querier(ctx)
-	var (
-		row struct {
-			ID, Code, Symbol string
-			Name             *string
-			FractionDigits   int16
-		}
-		err error
-	)
-	switch l.driver {
-	case "sqlite":
-		r, e := sqlitegen.New(db).GetCurrencyByIDView(ctx, id)
-		row.ID, row.Code, row.Symbol, row.Name, row.FractionDigits = r.ID, r.Code, r.Symbol, r.Name, r.FractionDigits
-		err = e
-	default:
-		r, e := pgsqlgen.New(db).GetCurrencyByIDView(ctx, id)
-		row.ID, row.Code, row.Symbol, row.Name, row.FractionDigits = r.ID, r.Code, r.Symbol, r.Name, r.FractionDigits
-		err = e
-	}
+	row, err := l.q.GetCurrencyByIDView(ctx, l.tx.Querier(ctx), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return CurrencyView{}, errs.NewNotFound("Currency not found")
@@ -118,4 +101,31 @@ func (l *Lookup) GetByID(ctx context.Context, id string) (CurrencyView, error) {
 		Symbol:         row.Symbol,
 		FractionDigits: int(row.FractionDigits),
 	}, nil
+}
+
+// sqliteLookupQuerier is the native passthrough.
+type sqliteLookupQuerier struct{}
+
+var _ lookupQuerier = sqliteLookupQuerier{}
+
+func (sqliteLookupQuerier) GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error) {
+	return sqlitegen.New(db).GetCurrencyIDByCode(ctx, code)
+}
+
+func (sqliteLookupQuerier) GetCurrencyByIDView(ctx context.Context, db backend.DBTX, id string) (currencyViewRow, error) {
+	return sqlitegen.New(db).GetCurrencyByIDView(ctx, id)
+}
+
+// pgsqlLookupQuerier is the thin whole-struct conversion shim.
+type pgsqlLookupQuerier struct{}
+
+var _ lookupQuerier = pgsqlLookupQuerier{}
+
+func (pgsqlLookupQuerier) GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error) {
+	return pgsqlgen.New(db).GetCurrencyIDByCode(ctx, code)
+}
+
+func (pgsqlLookupQuerier) GetCurrencyByIDView(ctx context.Context, db backend.DBTX, id string) (currencyViewRow, error) {
+	row, err := pgsqlgen.New(db).GetCurrencyByIDView(ctx, id)
+	return currencyViewRow(row), err
 }
