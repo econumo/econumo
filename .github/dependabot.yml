@@ -23,7 +23,7 @@ updates:
 
   # Enable version updates for Go modules
   - package-ecosystem: "gomod"
-    directory: "/go/"
+    directory: "/"
     schedule:
       interval: "weekly"
     commit-message:

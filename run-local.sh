@@ -12,12 +12,11 @@ cd "$(dirname "$0")"
 
 DB=/tmp/econumo-local.sqlite
 SALT=0123456789abcdef                  # ECONUMO_DATA_SALT (16 bytes, AES-128)
-PASSPHRASE=d78eedcb16c13bd949ede5d1b8b910cd  # JWT_PASSPHRASE (repo dev key)
 PORT=${PORT:-8181}
 
 # Fresh copy of the dev DB so we never mutate the original.
 if [ ! -f "$DB" ]; then
-  cp ../var/db/db1.sqlite "$DB"
+  cp var/db/db1.sqlite "$DB"
   echo "copied dev DB -> $DB"
   CGO_ENABLED=0 go run ./cmd/seed -dsn "$DB" -email test@econumo.test -password password -salt "$SALT"
 fi
@@ -27,13 +26,11 @@ CGO_ENABLED=0 go build -o /tmp/econumo-local ./cmd/econumo
 
 echo "starting on http://localhost:$PORT  (login: test@econumo.test / password)"
 # The engine is derived from the DATABASE_URL scheme (sqlite://) — no DATABASE_DRIVER.
+# JWT keys auto-generate on first run into var/jwt (persisted across runs).
 DATABASE_URL="sqlite://$DB" \
-JWT_SECRET_KEY=../config/jwt/private.pem \
-JWT_PUBLIC_KEY=../config/jwt/public.pem \
-JWT_PASSPHRASE="$PASSPHRASE" \
 ECONUMO_DATA_SALT="$SALT" \
 ECONUMO_ALLOW_REGISTRATION=true \
-ECONUMO_SPA_DIR=../web/dist/spa \
+ECONUMO_SPA_DIR=web/dist/spa \
 APP_ENV=dev \
 PORT="$PORT" \
 exec /tmp/econumo-local serve

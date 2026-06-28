@@ -11,7 +11,7 @@ help:
 	@echo "  make bundle       - Bundle web for production"
 	@echo "  make lint         - Run web linter"
 	@echo ""
-	@echo "Go backend (go/):"
+	@echo "Go backend:"
 	@echo "  make go-test       - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make go-regression - REGRESSION suite: go-test + sqlite-vs-pgsql comparison"
 	@echo "  make go-test-fast  - Just the fast sqlite tests, no lint/coverage (CGO off)"
@@ -62,7 +62,7 @@ go-test: go-lint go-test-cover
 
 # Just the fast sqlite-only tests, no lint/coverage (CGO off). A building block.
 go-test-fast:
-	cd go && CGO_ENABLED=0 go test ./...
+	CGO_ENABLED=0 go test ./...
 
 # Coverage threshold for go-test-cover (true cross-package %). Override on the
 # command line: make go-test-cover GO_COVER_MIN=70
@@ -78,18 +78,18 @@ GO_COVER_MIN ?= 64
 # gate nondeterministic: the same commit scored ~66% cold and ~63% warm. Forcing
 # a fresh run keeps the merged profile complete and the gate reproducible.
 go-test-cover:
-	cd go && CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/... -coverprofile=coverage.out
-	cd go && go tool cover -func=coverage.out | tail -1
-	@cd go && pct=$$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1); \
+	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/... -coverprofile=coverage.out
+	go tool cover -func=coverage.out | tail -1
+	@pct=$$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1); \
 		echo "total coverage: $$pct% (min $(GO_COVER_MIN)%)"; \
 		awk "BEGIN{exit !($$pct >= $(GO_COVER_MIN))}" || \
 		{ echo "FAIL: coverage $$pct% is below the $(GO_COVER_MIN)% gate"; exit 1; }
 
 # Lint gate: build, vet, and gofmt check (fails if any file is unformatted).
 go-lint:
-	cd go && CGO_ENABLED=0 go build ./...
-	cd go && CGO_ENABLED=0 go vet ./...
-	@cd go && unformatted=$$(gofmt -l . | grep -v '/gen/' || true); \
+	CGO_ENABLED=0 go build ./...
+	CGO_ENABLED=0 go vet ./...
+	@unformatted=$$(gofmt -l . | grep -v '/gen/' || true); \
 		if [ -n "$$unformatted" ]; then echo "gofmt needed:"; echo "$$unformatted"; exit 1; fi; \
 		echo "gofmt: clean"
 
@@ -120,7 +120,7 @@ go-pg-ensure:
 # PostgreSQL at DATABASE_TEST_PGSQL_URL and asserts identical results. The pgsql
 # half SKIPS if the URL is empty/unreachable; the sqlite half still runs.
 go-test-engines:
-	cd go && CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
+	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare ./...
 
 # Build the Go backend Docker image (context is the repo root).

@@ -2,14 +2,22 @@
 .idea
 .DS_Store
 
-# Runtime data (local sqlite db, logs, cache)
-/var/
-
-# Local env overrides
+# Local env (holds secrets like JWT_PASSPHRASE; committed template is .env.example)
+.env
 /.env.local*
 
-# Local-only PHP↔Go comparison tooling (kept out of the repo)
+# Runtime data (local sqlite db, JWT keypair, logs, cache)
+/var/
+
+# Go build/test artifacts
+/econumo
+/apicompare
+/mutatecompare
+coverage.out
+
+# Local-only PHP↔Go comparison tooling + devtools (kept out of the repo)
 deployment/compare/
+/cmd/devtools/
 
 # Local dev-machine -> homelab transfer script (contains the homelab host/path).
 /sync-to-homelab.sh

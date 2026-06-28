@@ -42,9 +42,11 @@ RUN pnpm run build
 FROM golang:1.26-alpine AS gobuild
 WORKDIR /src
 # Module files first for layer-cached `go mod download`.
-COPY go/go.mod go/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
-COPY go/ ./
+# Only the Go source (the module lives at the repo root alongside web/, etc.).
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
 # Build to /econumo (the same absolute path it lives at in the final image) so the
 # bin/console symlink below is NOT dangling in this stage — BuildKit must be able
 # to resolve a symlink's target to COPY it across stages.

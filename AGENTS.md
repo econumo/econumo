@@ -5,7 +5,7 @@ This file provides guidance to AI agents when working with code in this reposito
 ## Project Overview
 
 Econumo is a self-hosted personal finance and budgeting application. It consists of:
-- **Backend**: Go (HTTP API + static SPA server) with hexagonal architecture, in `go/`.
+- **Backend**: Go (HTTP API + static SPA server) with hexagonal architecture (the Go module is the repo root).
 - **Frontend**: Vue 3 + Quasar 2 SPA with TypeScript, in `web/`.
 - **Database**: SQLite (default) or PostgreSQL — selected at runtime by `DATABASE_URL`.
 
@@ -19,10 +19,10 @@ runs database migrations on boot.
 
 ## Development Commands
 
-### Go backend (in `go/`)
+### Go backend
 
-The Go module lives in `go/` (`go.work` at the repo root ties it together). Tests
-run with the standard toolchain — no Docker required for the smoke tier.
+The Go module is the repo root. Tests run with the standard toolchain — no Docker
+required for the smoke tier.
 
 ```bash
 make go-test         # SMOKE: build + vet + gofmt + sqlite unit/integration + coverage gate
@@ -30,11 +30,11 @@ make go-regression   # REGRESSION: go-test + the sqlite-vs-PostgreSQL engine-com
 make go-test-fast    # Just the fast sqlite tests (no lint/coverage)
 make go-image        # Build the Go backend Docker image locally (single-arch, --load)
 
-# Inside go/ directly:
-cd go && go test ./...                        # all tests
-cd go && go build ./...                        # build everything
-cd go && go run ./cmd/econumo serve            # run the server (reads go/.env)
-cd go && go run ./cmd/econumo app:create-user "Name" user@example.test secret
+# Or directly with the go toolchain (run from the repo root):
+go test ./...                        # all tests
+go build ./...                        # build everything
+go run ./cmd/econumo serve            # run the server (reads .env)
+go run ./cmd/econumo app:create-user "Name" user@example.test secret
 ```
 
 The regression suite needs a PostgreSQL; `make go-regression` auto-provisions one
@@ -68,7 +68,7 @@ dependency rule points inward: **ui → app → domain**; `infra` implements dom
 interfaces. The app layer never imports `ui` or `infra`.
 
 ```
-go/
+. (repo root = the Go module; web/ and deployment/ live alongside)
 ├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / app:* commands
 ├── internal/
 │   ├── domain/ .................... entities, value objects, repository INTERFACES, domain services (pure)
@@ -121,7 +121,7 @@ the `ECONUMO_VERSION` build arg.
 
 ## Testing
 
-Tests live alongside the Go code in `go/`:
+Tests live alongside the Go code:
 - `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`).
 - `internal/test/enginecompare/` — the strongest contract: runs the REAL production
   handler (`server.BuildAPI`) on BOTH SQLite and PostgreSQL and asserts byte-identical
@@ -134,7 +134,7 @@ artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
 
-The Go server reads its environment from `go/.env` (see `go/.env.example`). Key vars:
+The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 
 - `DATABASE_URL` — `sqlite:///abs/path/db.sqlite` or `postgres://…`. Selects the engine.
 - `PORT` — HTTP listen port (required).
@@ -157,9 +157,9 @@ The Go server reads its environment from `go/.env` (see `go/.env.example`). Key 
 
 - **SQLite** (default): pure-Go `modernc.org/sqlite` driver (CGO off).
 - **PostgreSQL**: `jackc/pgx/v5` (stdlib), simple protocol (PgBouncer-safe).
-- Migrations live in `go/internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
+- Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
-  `sqlc generate` (config at `go/internal/infra/storage/sqlc/sqlc.yaml`).
+  `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 
 ## CLI / management commands
 

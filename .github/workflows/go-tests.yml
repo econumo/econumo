@@ -1,17 +1,25 @@
 name: Go tests
 
-# Guards the Go backend (go/) on every push + PR with two tiers:
+# Guards the Go backend on every push + PR with two tiers:
 #   - smoke:      unit + sqlite + lint + coverage gate (fast, no dependencies)
 #   - regression: the sqlite-vs-PostgreSQL engine comparison against a real
 #                 Postgres service container
 on:
   push:
     paths:
-      - 'go/**'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
       - '.github/workflows/go-tests.yml'
   pull_request:
     paths:
-      - 'go/**'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
       - '.github/workflows/go-tests.yml'
 
 permissions:
@@ -26,7 +34,7 @@ jobs:
     env:
       CGO_ENABLED: '0'
       # Lock the go driver and its tools to the single SDK setup-go installs
-      # (from go/go.mod). With 'auto', the runner's newer default Go can leak in
+      # (from go.mod). With 'auto', the runner's newer default Go can leak in
       # via toolchain re-exec, mixing a 1.25 driver with 1.26-compiled objects
       # ("compile: version ... does not match go tool version ...").
       GOTOOLCHAIN: local
@@ -34,8 +42,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go/go.mod
-          cache-dependency-path: go/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
       - name: Smoke suite (lint + sqlite tests + coverage gate)
         run: make go-test
       - name: Coverage summary
@@ -43,7 +51,6 @@ jobs:
         env:
           GO_COVER_MIN: '64'
         run: |
-          cd go
           if [ ! -f coverage.out ]; then
             echo "No coverage profile was produced." >> "$GITHUB_STEP_SUMMARY"
             exit 0
@@ -68,14 +75,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: go/coverage.out
+          path: coverage.out
           if-no-files-found: ignore
       - name: Upload HTML coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: go/coverage.html
+          path: coverage.html
           if-no-files-found: ignore
 
   # REGRESSION: the sqlite-vs-PostgreSQL engine comparison against a real
@@ -107,8 +114,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go/go.mod
-          cache-dependency-path: go/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
       # The Postgres service container already provisions econumo_test, so call
       # the engine suite directly (skip go-pg-ensure, which expects compose).
       - name: Engine-comparison suite
