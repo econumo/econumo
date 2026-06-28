@@ -21,7 +21,6 @@ type Config struct {
 	BaseURL           string
 	CurrencyBase      string // default "USD"
 	AllowRegistration bool
-	ConnectUsers      bool
 	FromEmail         string
 	ReplyToEmail      string
 	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt
@@ -55,7 +54,6 @@ func Load() (Config, error) {
 		BaseURL:                os.Getenv("ECONUMO_BASE_URL"),
 		CurrencyBase:           getEnv("ECONUMO_CURRENCY_BASE", "USD"),
 		AllowRegistration:      getBool("ECONUMO_ALLOW_REGISTRATION", false),
-		ConnectUsers:           getBool("ECONUMO_CONNECT_USERS", false),
 		FromEmail:              os.Getenv("ECONUMO_FROM_EMAIL"),
 		ReplyToEmail:           os.Getenv("ECONUMO_REPLY_TO_EMAIL"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),

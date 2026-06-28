@@ -78,7 +78,6 @@ func newAPIHarness(t *testing.T, db *dbtest.DB) *apiHarness {
 		DatabaseDriver:    db.Engine, // "sqlite" | "postgresql" — selects sqlc adapters
 		CurrencyBase:      "USD",
 		AllowRegistration: true,
-		ConnectUsers:      false,
 		DataSalt:          apiDataSalt,
 		CORSAllowOrigin:   "*",
 	}

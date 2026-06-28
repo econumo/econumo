@@ -194,6 +194,31 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 	}
 }
 
+// TestRegisterUser_DoesNotAutoConnect locks the behaviour after removing
+// ECONUMO_CONNECT_USERS: a newly registered user is never auto-connected to any
+// existing user. The harness already seeds one user; after registering another,
+// the users_connections join table must stay empty (connections are created only
+// by accepting an invite).
+func TestRegisterUser_DoesNotAutoConnect(t *testing.T) {
+	h := newHarness(t)
+
+	if st, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
+		"email":    "second@example.test",
+		"password": "hunter2",
+		"name":     "Second",
+	}); st != http.StatusOK {
+		t.Fatalf("register status = %d; body: %s", st, env.raw)
+	}
+
+	var n int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM users_connections`).Scan(&n); err != nil {
+		t.Fatalf("count users_connections: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("users_connections has %d row(s) after registration; registration must not auto-connect", n)
+	}
+}
+
 func TestUpdateName_ChangesName(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)

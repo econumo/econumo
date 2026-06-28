@@ -108,7 +108,6 @@ type Service struct {
 	mailer            ResetMailer
 	clock             Clock
 	allowRegistration bool
-	connectUsers      bool
 }
 
 // NewService wires the user service.
@@ -124,7 +123,6 @@ func NewService(
 	mailer ResetMailer,
 	clock Clock,
 	allowRegistration bool,
-	connectUsers bool,
 ) *Service {
 	return &Service{
 		repo:              repo,
@@ -138,7 +136,6 @@ func NewService(
 		mailer:            mailer,
 		clock:             clock,
 		allowRegistration: allowRegistration,
-		connectUsers:      connectUsers,
 	}
 }
 

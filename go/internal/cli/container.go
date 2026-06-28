@@ -70,7 +70,7 @@ func newContainer(ctx context.Context) (*container, error) {
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.ResendAPIKey), cfg.FromEmail, cfg.ReplyToEmail)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, nil, currencyLookup, budgetExistence,
-		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration, cfg.ConnectUsers,
+		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration,
 	)
 
 	// Currency write service + the Open Exchange Rates loader.

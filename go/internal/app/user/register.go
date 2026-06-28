@@ -33,9 +33,10 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 // createUser is the shared, UNGATED account-creation core used by Register
 // (which adds the registration gate) and AdminCreateUser (the CLI, which does
 // not). It generates a salt, hashes the password, encrypts the email, seeds the
-// four default options, persists, and optionally connects the user to all
-// existing users. It returns the saved aggregate. A duplicate email -> a
-// validation error ("User already exists").
+// four default options, and persists. It returns the saved aggregate. A
+// duplicate email -> a validation error ("User already exists"). New users are
+// never auto-connected to existing users; connections are created only by
+// accepting an invite.
 func (s *Service) createUser(ctx context.Context, name, email, password string) (*domuser.User, error) {
 	loweredEmail := strings.ToLower(strings.TrimSpace(email))
 	identifier := s.encode.Hash(loweredEmail)
@@ -64,20 +65,7 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.repo.Save(ctx, u); err != nil {
-			return err
-		}
-		if s.connectUsers {
-			// TODO(connection-module): registration should also create a first
-			// "All accounts" folder and a connection invite, and (when
-			// ECONUMO_CONNECT_USERS) connect the new user to every existing
-			// user bidirectionally. Connections live in the not-yet-ported
-			// connection module (users_connections table). Wire this once that
-			// module exists; for now connect-users is a no-op so registration
-			// still succeeds. See notes.
-			_ = ctx
-		}
-		return nil
+		return s.repo.Save(ctx, u)
 	}); err != nil {
 		return nil, err
 	}

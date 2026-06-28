@@ -129,7 +129,7 @@ func newHarness(t *testing.T) *harness {
 	resetMailer := mailer.NewResetSender(mailer.New(""), "", "")
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*", AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwt, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration, cfg.ConnectUsers)
+	svc := appuser.NewService(repo, txm, encode, hasher, jwt, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 

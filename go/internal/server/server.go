@@ -85,7 +85,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.ResendAPIKey), cfg.FromEmail, cfg.ReplyToEmail)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, jwt, currencyLookup, budgetExistence,
-		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration, cfg.ConnectUsers,
+		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
