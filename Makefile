@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint test test-fast test-cover lint regression test-engines pg-ensure up down publish publish-buildx-ensure
+.PHONY: help web-install web-dev web-bundle web-lint build run test test-fast test-cover lint regression test-engines pg-ensure up down publish publish-buildx-ensure
 
 # Default target
 .DEFAULT_GOAL := help
@@ -6,6 +6,8 @@
 # Show available targets
 help:
 	@echo "Backend (Go):"
+	@echo "  make build        - Compile the binary to ./econumo (CGO off)"
+	@echo "  make run          - Run the server locally (go run ./cmd/econumo serve, reads .env)"
 	@echo "  make test         - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
 	@echo "  make test-fast    - Just the fast sqlite tests, no lint/coverage (CGO off)"
@@ -39,6 +41,16 @@ web-lint:
 	cd web && npm run lint
 
 # --- Backend (Go) ---
+
+# Compile the self-contained binary to ./econumo (gitignored). CGO off so the
+# pure-Go sqlite/pgx drivers are linked in, matching the production build.
+build:
+	CGO_ENABLED=0 go build -o econumo ./cmd/econumo
+
+# Run the server locally without Docker. Reads ./.env (cp .env.example .env
+# first); migrations run on boot and the JWT keypair is generated if missing.
+run:
+	go run ./cmd/econumo serve
 
 # The Go suite is split into two tiers:
 #
