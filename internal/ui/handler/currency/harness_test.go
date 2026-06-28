@@ -74,7 +74,7 @@ func newHarness(t *testing.T) *harness {
 
 	readRepo := currencyrepo.NewReadRepo("sqlite", tdb.TX)
 
-	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
+	cfg := config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}}
 	readSvc := appcurrency.NewReadService(readRepo)
 	handlers := handlercurrency.NewHandlers(readSvc, cfg.IsDev())
 

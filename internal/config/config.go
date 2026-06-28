@@ -32,8 +32,8 @@ type Config struct {
 	JWTPassphrase    string
 
 	// HTTP
-	Port            string // PORT: HTTP listen port ("8181" or ":8181"); required, no default
-	CORSAllowOrigin string // default "*"
+	Port               string   // PORT: HTTP listen port ("8181" or ":8181"); required, no default
+	CORSAllowedOrigins []string // CORS_ALLOW_ORIGIN: comma-separated allowlist; empty = same-domain only; "*" = allow all
 
 	// Logging
 	LogLevel string // LOG_LEVEL: base slog level (debug|info|warn|error); default "info". Raised to DEBUG by -v/-vv/-vvv.
@@ -65,7 +65,7 @@ func Load() (Config, error) {
 		JWTPublicKeyPath:       getEnv("JWT_PUBLIC_KEY", "var/jwt/public.pem"),
 		JWTPassphrase:          os.Getenv("JWT_PASSPHRASE"),
 		Port:                   os.Getenv("PORT"),
-		CORSAllowOrigin:        getEnv("CORS_ALLOW_ORIGIN", "*"),
+		CORSAllowedOrigins:     getStringList("CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("LOG_LEVEL", "info"),
 		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
@@ -161,6 +161,25 @@ func getBool(key string, def bool) bool {
 		return def
 	}
 	return b
+}
+
+// getStringList reads a comma-separated env var into a slice, trimming each item
+// and dropping empties. An unset or all-empty value yields def.
+func getStringList(key string, def []string) []string {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def
+	}
+	var out []string
+	for _, item := range strings.Split(v, ",") {
+		if s := strings.TrimSpace(item); s != "" {
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return def
+	}
+	return out
 }
 
 func getInt(key string, def int) int {

@@ -54,6 +54,43 @@ func TestResolveProjectDir(t *testing.T) {
 	}
 }
 
+func TestGetStringList(t *testing.T) {
+	const key = "ECONUMO_TEST_STRING_LIST"
+	def := []string{"d"}
+
+	cases := []struct {
+		name string
+		set  bool
+		val  string
+		want []string
+	}{
+		{"unset returns default", false, "", def},
+		{"empty returns default", true, "", def},
+		{"all-empty returns default", true, " , , ", def},
+		{"simple list", true, "a,b", []string{"a", "b"}},
+		{"trims and drops empties", true, " a , ,b ", []string{"a", "b"}},
+		{"single value", true, "https://app.example.com", []string{"https://app.example.com"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.set {
+				t.Setenv(key, tc.val)
+			} else {
+				os.Unsetenv(key)
+			}
+			got := getStringList(key, def)
+			if len(got) != len(tc.want) {
+				t.Fatalf("getStringList(%q) = %v, want %v", tc.val, got, tc.want)
+			}
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Fatalf("getStringList(%q) = %v, want %v", tc.val, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
 func TestLoadLogLevel(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 

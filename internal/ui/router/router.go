@@ -55,7 +55,7 @@ func Compose(fns ...RegisterAPI) RegisterAPI {
 // this foundational stage so the router is mountable before later phases wire
 // the database and API modules.
 type Deps struct {
-	// Cfg supplies CORS origin, dev flag, and the SPA directory.
+	// Cfg supplies the CORS allowlist, dev flag, and the SPA directory.
 	Cfg config.Config
 
 	// DB is used by the health-check. May be nil (reports database: true).
@@ -81,7 +81,7 @@ func New(deps Deps) http.Handler {
 		middleware.RequestID,
 		middleware.AccessLog,
 		middleware.Recover(deps.Cfg.IsDev()),
-		middleware.CORS(deps.Cfg.CORSAllowOrigin),
+		middleware.CORS(deps.Cfg.CORSAllowedOrigins),
 		middleware.Timezone,
 	)
 

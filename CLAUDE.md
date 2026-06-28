@@ -155,6 +155,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   **Deprecated — will be removed in a future version.** Migrate to plaintext with
   `data:remove-salt` (below) and leave it unset.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
+- `CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
+  only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
+  just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `RESEND_API_KEY` + `ECONUMO_FROM_EMAIL` (+ optional `ECONUMO_REPLY_TO_EMAIL`) — enable
   password-reset email via Resend; without them the code is still written but no mail is sent.

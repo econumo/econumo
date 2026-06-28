@@ -106,7 +106,7 @@ func newHarness(t *testing.T) *harness {
 		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)),
 		txm, clock.New(),
 	)
-	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
+	cfg := config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}}
 	handlers := handlerconnection.NewHandlers(svc, cfg.IsDev())
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, jwtSvc, cfg.IsDev())})
 	srv := httptest.NewServer(h)

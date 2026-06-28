@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -122,21 +123,49 @@ func Recover(dev bool) Middleware {
 
 // ---- CORS ----
 
-// CORS sets the frozen CORS headers (wire-compatible with existing clients, see
-// CLAUDE.md) and short-circuits preflight OPTIONS requests with 200. The
-// allowed origin comes
-// from config (CORS_ALLOW_ORIGIN, default "*").
-func CORS(origin string) Middleware {
-	if origin == "" {
-		origin = "*"
+// CORS controls cross-origin access via an allowlist (CORS_ALLOW_ORIGIN). The
+// default (empty list) is same-domain only: no Access-Control-Allow-Origin is
+// emitted, so cross-origin reads are blocked while same-origin requests — which
+// the browser never subjects to CORS — keep working (the bundled SPA and API
+// share an origin). A configured list reflects a matching request Origin back
+// (with Vary: Origin); an unmatched Origin gets no CORS headers. The special
+// entry "*" restores allow-all.
+//
+// The method/header/max-age values are frozen (wire-compatible with existing
+// clients, see CLAUDE.md) and are emitted only when an origin is allowed.
+// Preflight OPTIONS requests short-circuit with 200.
+func CORS(origins []string) Middleware {
+	allowAll := false
+	allowed := make(map[string]struct{}, len(origins))
+	for _, o := range origins {
+		o = strings.TrimSpace(o)
+		switch {
+		case o == "":
+			continue
+		case o == "*":
+			allowAll = true
+		default:
+			allowed[o] = struct{}{}
+		}
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			h := w.Header()
-			h.Set("Access-Control-Allow-Origin", origin)
-			h.Set("Access-Control-Allow-Methods", "OPTIONS, POST, GET")
-			h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Timezone")
-			h.Set("Access-Control-Max-Age", "3600")
+			origin := r.Header.Get("Origin")
+			switch {
+			case allowAll:
+				h.Set("Access-Control-Allow-Origin", "*")
+			case origin != "":
+				if _, ok := allowed[origin]; ok {
+					h.Set("Access-Control-Allow-Origin", origin)
+					h.Add("Vary", "Origin")
+				}
+			}
+			if h.Get("Access-Control-Allow-Origin") != "" {
+				h.Set("Access-Control-Allow-Methods", "OPTIONS, POST, GET")
+				h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Timezone")
+				h.Set("Access-Control-Max-Age", "3600")
+			}
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusOK)
 				return

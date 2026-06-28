@@ -25,7 +25,7 @@ func newServer(t *testing.T, reg router.RegisterAPI) *httptest.Server {
 		t.Fatalf("write favicon: %v", err)
 	}
 	h := router.New(router.Deps{
-		Cfg:         config.Config{AppEnv: "test", CORSAllowOrigin: "*", SPADir: dir},
+		Cfg:         config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}, SPADir: dir},
 		RegisterAPI: reg,
 	})
 	srv := httptest.NewServer(h)

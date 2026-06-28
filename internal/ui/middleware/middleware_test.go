@@ -129,9 +129,11 @@ func TestRecover_NoPanicPassesThrough(t *testing.T) {
 
 func TestCORS_Preflight_ShortCircuits(t *testing.T) {
 	var ran bool
-	h := CORS("https://app.example")(okHandler(&ran))
+	h := CORS([]string{"https://app.example"})(okHandler(&ran))
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodOptions, "/api/x", nil))
+	req := httptest.NewRequest(http.MethodOptions, "/api/x", nil)
+	req.Header.Set("Origin", "https://app.example")
+	h.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("preflight status=%d want 200", rec.Code)
@@ -156,7 +158,7 @@ func TestCORS_Preflight_ShortCircuits(t *testing.T) {
 
 func TestCORS_NonOptionsPassesThrough(t *testing.T) {
 	var ran bool
-	h := CORS("*")(okHandler(&ran))
+	h := CORS([]string{"*"})(okHandler(&ran))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/x", nil))
 	if !ran {
@@ -167,12 +169,44 @@ func TestCORS_NonOptionsPassesThrough(t *testing.T) {
 	}
 }
 
-func TestCORS_EmptyOriginDefaultsToStar(t *testing.T) {
-	h := CORS("")(okHandler(nil))
+func TestCORS_EmptyConfig_NoCORSHeaders(t *testing.T) {
+	var ran bool
+	h := CORS(nil)(okHandler(&ran))
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/x", nil))
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
-		t.Fatalf("Allow-Origin=%q want * (empty config default)", got)
+	req := httptest.NewRequest(http.MethodGet, "/api/x", nil)
+	req.Header.Set("Origin", "https://other.example")
+	h.ServeHTTP(rec, req)
+	if !ran {
+		t.Fatal("non-OPTIONS must pass through even with no CORS config")
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Fatalf("Allow-Origin=%q want empty (same-domain only default)", got)
+	}
+}
+
+func TestCORS_AllowedOriginReflected(t *testing.T) {
+	h := CORS([]string{"https://a.example", "https://b.example"})(okHandler(nil))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/x", nil)
+	req.Header.Set("Origin", "https://b.example")
+	h.ServeHTTP(rec, req)
+	hdr := rec.Header()
+	if got := hdr.Get("Access-Control-Allow-Origin"); got != "https://b.example" {
+		t.Fatalf("Allow-Origin=%q want https://b.example (reflected)", got)
+	}
+	if got := hdr.Get("Vary"); got != "Origin" {
+		t.Fatalf("Vary=%q want Origin", got)
+	}
+}
+
+func TestCORS_DisallowedOriginGetsNoHeaders(t *testing.T) {
+	h := CORS([]string{"https://a.example"})(okHandler(nil))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/x", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	h.ServeHTTP(rec, req)
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Fatalf("Allow-Origin=%q want empty (origin not in allowlist)", got)
 	}
 }
 
