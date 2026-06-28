@@ -7,7 +7,9 @@ services:
       - "8181:80"
     volumes:
       - db:/var/www/var/db
-      #- ./jwt:/var/www/config/jwt
+      # JWT keypair (auto-generated on first boot). Persist it so logins survive
+      # container recreation. Mount your own keys here instead if you prefer.
+      - jwt:/var/www/var/jwt
     restart: unless-stopped
 
     # Example of the healthcheck
@@ -21,3 +23,4 @@ services:
 
 volumes:
   db:
+  jwt:

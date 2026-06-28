@@ -25,8 +25,8 @@ func setupCommands() []command {
 						force = true
 					}
 				}
-				privPath := config.ResolveProjectDir(envOr("JWT_SECRET_KEY", "config/jwt/private.pem"))
-				pubPath := config.ResolveProjectDir(envOr("JWT_PUBLIC_KEY", "config/jwt/public.pem"))
+				privPath := config.ResolveProjectDir(envOr("JWT_SECRET_KEY", "var/jwt/private.pem"))
+				pubPath := config.ResolveProjectDir(envOr("JWT_PUBLIC_KEY", "var/jwt/public.pem"))
 				passphrase := os.Getenv("JWT_PASSPHRASE")
 
 				if err := auth.GenerateKeypair(privPath, pubPath, passphrase, force); err != nil {

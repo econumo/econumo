@@ -8,13 +8,12 @@
 #
 # Runtime contract (see deployment/docker-compose/docker-compose.go.yml):
 #   - DATABASE_URL is REQUIRED  (sqlite:///var/www/var/db/db.sqlite by default).
-#   - JWT_PUBLIC_KEY is REQUIRED; mount an RSA keypair at /var/www/config/jwt.
-#     Generate one with the binary itself (writes to JWT_SECRET_KEY/JWT_PUBLIC_KEY,
-#     sealed with JWT_PASSPHRASE), e.g. into a host ./jwt dir. The ENTRYPOINT is
-#     `serve`, so override it to run the setup command:
-#       docker run --rm -v "$PWD/jwt:/jwt" --entrypoint /econumo \
-#         -e JWT_SECRET_KEY=/jwt/private.pem -e JWT_PUBLIC_KEY=/jwt/public.pem \
-#         -e JWT_PASSPHRASE=change-me econumo/econumo-go app:generate-jwt-keypair
+#   - The JWT keypair is generated automatically on first boot if it does not
+#     already exist (default /var/www/var/jwt/{private,public}.pem). NOTHING is
+#     baked in at build time — keys are unique per deployment. Mount a volume at
+#     /var/www/var/jwt so they (and an auto-generated passphrase, unless you set
+#     JWT_PASSPHRASE) survive restarts. Override paths with JWT_SECRET_KEY/
+#     JWT_PUBLIC_KEY if you prefer to mount your own keys.
 #   - Migrations run inside the binary on boot (baseline-aware), so there is no
 #     entrypoint script — distroless has no shell and needs none.
 #   - econumo-config.js ships with a working default (API_URL:null -> same
@@ -57,6 +56,10 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /econumo ./cmd/econumo
 # `econumo app:create-user …`. Made here (alpine has a shell); the distroless
 # stage cannot RUN. The target /econumo exists in this stage AND in the final image.
 RUN mkdir -p /out/bin && ln -s /econumo /out/bin/console
+# Pre-create the runtime data dirs so they are owned by the non-root user in the
+# final image: the sqlite db (var/db) and the auto-generated JWT keypair (var/jwt)
+# must be writable on first boot, and distroless cannot mkdir/chown (no shell).
+RUN mkdir -p /out/var/db /out/var/jwt
 
 # --- 3. Runtime (distroless: no shell, no package manager, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
@@ -68,14 +71,14 @@ COPY --from=gobuild /econumo /econumo
 # inside a copied directory. `docker exec <c> /econumo app:…` also works directly.
 COPY --from=gobuild /out/bin /var/www/bin
 COPY --from=frontend /build/web/dist/spa /app/web/spa
+# Runtime data dirs, owned by the non-root user, for the sqlite db and the JWT
+# keypair the server generates on first boot. Mount volumes over these to persist.
+COPY --from=gobuild --chown=nonroot:nonroot /out/var /var/www/var
 
-# Serve the SPA the frontend stage built; listen on :80 (the compose maps 8181:80
-# exactly like the PHP stack). Sensible self-hosted defaults; override via env.
-#
-# JWT_PUBLIC_KEY (required) + JWT_SECRET_KEY are NOT defaulted here — they are
-# paths to runtime-mounted RSA keys (see the compose file), and baking key paths
-# into ENV trips image-scanner "secret in ENV" heuristics. Provide them at run
-# time; the conventional mount is /var/www/config/jwt/{private,public}.pem.
+# Serve the SPA the frontend stage built; listen on :80 (the compose maps 8181:80).
+# Sensible self-hosted defaults; override via env. The JWT keypair defaults to
+# /var/www/var/jwt and is auto-generated on first boot (config defaults), so no
+# key paths are baked into ENV here.
 ENV ECONUMO_SPA_DIR=/app/web/spa \
     PORT=80 \
     APP_ENV=prod \

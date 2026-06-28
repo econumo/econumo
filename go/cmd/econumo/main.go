@@ -160,9 +160,6 @@ func run() error {
 	if cfg.Port == "" {
 		return errors.New("PORT is required")
 	}
-	if cfg.JWTPublicKeyPath == "" {
-		return errors.New("JWT_PUBLIC_KEY is required")
-	}
 
 	// Select the linked backend for the engine derived from the DATABASE_URL
 	// scheme. A miss is fatal with a clear message listing what is actually
@@ -194,7 +191,14 @@ func run() error {
 	// full handler. The module wiring lives in internal/server.BuildAPI so the
 	// production binary and the test harnesses build the IDENTICAL router from one
 	// code path (see internal/server for why).
-	jwt, err := auth.NewJWT(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase)
+	// Generate the JWT keypair on first boot if it is missing (no keys are
+	// committed or baked into the image). Persist the key directory on a volume to
+	// keep tokens valid across restarts.
+	passphrase, err := auth.EnsureKeypair(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase)
+	if err != nil {
+		return err
+	}
+	jwt, err := auth.NewJWT(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, passphrase)
 	if err != nil {
 		return err
 	}

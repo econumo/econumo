@@ -140,7 +140,9 @@ The Go server reads its environment from `go/.env` (see `go/.env.example`). Key 
 - `PORT` — HTTP listen port (required).
 - `JWT_SECRET_KEY` / `JWT_PUBLIC_KEY` / `JWT_PASSPHRASE` — RS256 keypair (paths may use
   the Symfony-style `%kernel.project_dir%` placeholder, which is expanded to the cwd).
-  Generate with `app:generate-jwt-keypair`. A committed dev keypair lives in `config/jwt/`.
+  Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first boot if
+  missing (no keys are committed or baked into the image). `app:generate-jwt-keypair`
+  generates one explicitly. Persist `var/jwt` on a volume to keep tokens valid.
 - `ECONUMO_DATA_SALT` — AES key + identifier-hash salt (must match the data it reads).
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
