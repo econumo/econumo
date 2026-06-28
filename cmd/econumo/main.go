@@ -1,8 +1,8 @@
 // Command econumo is the Econumo binary. It is subcommand-driven:
 //
-//	econumo serve            run the HTTP API + SPA server
-//	econumo healthcheck      probe a running server's health endpoint (exit 0/1)
-//	econumo app:<command>    management commands ported from Symfony (see cli)
+//	econumo serve                  run the HTTP API + SPA server
+//	econumo healthcheck            probe a running server's health endpoint (exit 0/1)
+//	econumo <resource>:<action>    management commands, e.g. user:create (see cli)
 //
 // `serve` is explicit so a bare invocation can never accidentally start a second
 // server — with no command it prints usage and exits.
@@ -81,7 +81,7 @@ func main() {
 		os.Exit(0)
 
 	default:
-		// Management commands (the `app:*` set ported from Symfony). Apply
+		// Management commands (the resource:action set, e.g. user:create). Apply
 		// Symfony-style verbosity (-v/-vv/-vvv/-q) FIRST so it also governs the
 		// startup logs (.env load, database open); it strips those flags from the
 		// args the command then sees.
@@ -201,7 +201,7 @@ func run(serveArgs []string) error {
 	// committed or baked into the image). force=false: an existing keypair is left
 	// untouched so a restart never invalidates issued tokens. Persist the key
 	// directory on a volume to keep tokens valid across restarts. This is the same
-	// jwt.EnsureKeypair path the app:generate-jwt-keypair CLI command uses.
+	// jwt.EnsureKeypair path the jwt:generate CLI command uses.
 	passphrase, _, err := jwt.EnsureKeypair(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase, false)
 	if err != nil {
 		return err

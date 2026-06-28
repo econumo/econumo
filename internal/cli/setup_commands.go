@@ -15,7 +15,7 @@ import (
 func setupCommands() []command {
 	return []command{
 		{
-			name:        "app:generate-jwt-keypair",
+			name:        "jwt:generate",
 			summary:     "Generate the RS256 JWT keypair, skipping if present (--force overwrites)",
 			noContainer: true,
 			run: func(_ context.Context, _ *container, args []string) error {

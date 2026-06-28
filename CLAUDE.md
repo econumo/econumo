@@ -36,7 +36,7 @@ make swagger         # Regenerate the committed OpenAPI docs (swag, pinned to go
 go test ./...                        # all tests
 go build ./...                        # build everything
 go run ./cmd/econumo serve            # run the server (reads .env)
-go run ./cmd/econumo app:create-user "Name" user@example.test secret
+go run ./cmd/econumo user:create "Name" user@example.test secret
 ```
 
 The regression suite needs a PostgreSQL; `make regression` auto-provisions one
@@ -71,7 +71,7 @@ interfaces. The app layer never imports `ui` or `infra`.
 
 ```
 . (repo root = the Go module; web/, pkg/ and deployment/ live alongside)
-├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / app:* commands
+├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / resource:action commands
 ├── pkg/
 │   └── jwt/ ...................... RS256 JWT issue/verify + keypair generation (EnsureKeypair); self-contained, no internal deps
 ├── internal/
@@ -86,7 +86,7 @@ interfaces. The app layer never imports `ui` or `infra`.
 │   │   └── mailer/ ............. transactional email via the Resend API
 │   ├── ui/ ..................... HTTP edge: handlers, middleware, router, response envelope (httpx), SPA + apidoc
 │   ├── server/ ................. composition root: server.BuildAPI wires every module (used by the binary AND tests)
-│   ├── cli/ ................... the `app:*` management commands (stdlib dispatch; no cobra)
+│   ├── cli/ ................... the resource:action management commands (stdlib dispatch; no cobra)
 │   ├── config/ ............... environment configuration loading
 │   └── test/ ................. shared test support: dbtest, fixture, testkeys, enginecompare
 ```
@@ -148,12 +148,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `JWT_SECRET_KEY` / `JWT_PUBLIC_KEY` / `JWT_PASSPHRASE` — RS256 keypair (paths may use
   the Symfony-style `%kernel.project_dir%` placeholder, which is expanded to the cwd).
   Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first boot if
-  missing (no keys are committed or baked into the image). `app:generate-jwt-keypair`
+  missing (no keys are committed or baked into the image). `jwt:generate`
   generates one explicitly. In the image these resolve under `/app/var/jwt`; persist
   the `/app/var` volume (db + keys) to keep data and tokens valid.
 - `ECONUMO_DATA_SALT` — AES key + identifier-hash salt (must match the data it reads).
   **Deprecated — will be removed in a future version.** Migrate to plaintext with
-  `app:remove-data-salt` (below) and leave it unset.
+  `data:remove-salt` (below) and leave it unset.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `RESEND_API_KEY` + `ECONUMO_FROM_EMAIL` (+ optional `ECONUMO_REPLY_TO_EMAIL`) — enable
@@ -161,7 +161,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
 - `ECONUMO_SPA_DIR` — path to the built SPA the binary serves.
 - `LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
-  (`serve` and all `app:*`) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
+  (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
   and `-q` (quiet); flags override `LOG_LEVEL`. Resolution lives in `internal/logging`.
 - `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
   (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
@@ -198,18 +198,18 @@ The binary is subcommand-driven (`cmd/econumo/main.go`): `serve` runs the server
 `healthcheck` probes a running one, and everything else routes to `internal/cli`:
 
 ```
-app:create-user <name> <email> <password>
-app:change-user-email <old> <new>
-app:change-user-password <email> <password>
-app:activate-user <email>
-app:deactivate-users --date=YYYY-MM-DD
-app:update-currency-rates [date]
-app:add-currency <code> [name] [fraction-digits]
-app:generate-jwt-keypair
-app:remove-data-salt
+user:create <name> <email> <password>
+user:change-email <old> <new>
+user:change-password <email> <password>
+user:activate <email>
+user:deactivate --before=YYYY-MM-DD
+currency:update-rates [date]
+currency:add <code> [name] [fraction-digits]
+jwt:generate
+data:remove-salt
 ```
 
-`app:remove-data-salt` is a one-off migration that decrypts every user's email
+`data:remove-salt` is a one-off migration that decrypts every user's email
 back to plaintext and re-derives the identifier as `md5(lower(email))` (no salt),
 so `ECONUMO_DATA_SALT` can be removed. Run it **while the old salt is still set**
 (it needs it to decrypt), then unset `ECONUMO_DATA_SALT` and restart. It refuses
@@ -217,7 +217,7 @@ to run with an empty salt, and is idempotent (already-plaintext rows are skipped
 Back up the DB first — the decryption is one-way in practice.
 
 In the distroless image these run via the binary directly, e.g.
-`docker exec <container> /app/econumo app:create-user …`.
+`docker exec <container> /app/econumo user:create …`.
 
 ## API conventions
 
@@ -262,7 +262,7 @@ data unreadable. Most are also asserted by the test suite.
 - **Password hash**: sha512, 500 iterations, base64 (88 chars). Salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`. Verify rejects len≠88 or a `$`, constant-time.
 - **User identifier**: `hex(md5(lower(email) || ECONUMO_DATA_SALT))` — 32-char hex; the primary user lookup key.
 - **Email encryption**: AES-128-CBC, key = raw `ECONUMO_DATA_SALT` (exactly 16 bytes); layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified (constant-time) before decrypt. Empty salt → passthrough.
-- **Empty-salt (plaintext) mode**: an unset `ECONUMO_DATA_SALT` is fully supported — the email column holds plaintext and the identifier is `md5(lower(email))` (no salt). To move an existing salted database into this mode, run `app:remove-data-salt` (above) before unsetting the salt.
+- **Empty-salt (plaintext) mode**: an unset `ECONUMO_DATA_SALT` is fully supported — the email column holds plaintext and the identifier is `md5(lower(email))` (no salt). To move an existing salted database into this mode, run `data:remove-salt` (above) before unsetting the salt.
 
 ### JWT (`pkg/jwt/jwt.go`)
 - RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).

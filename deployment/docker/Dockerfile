@@ -56,7 +56,7 @@ RUN mkdir -p /out/var/db /out/var/jwt
 # --- 3. Runtime (distroless: no shell, no package manager, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
 COPY --from=gobuild /app/econumo /app/econumo
-# Management commands run via the binary directly: `docker exec <c> /app/econumo app:…`
+# Management commands run via the binary directly: `docker exec <c> /app/econumo user:create …`
 # (the binary dispatches a non-flag first argument to the CLI).
 COPY --from=frontend /build/web/dist/spa /app/spa
 # Runtime data dir, owned by the non-root user: the sqlite db (var/db) and the JWT

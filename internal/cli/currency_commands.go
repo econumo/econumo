@@ -14,8 +14,8 @@ import (
 func currencyCommands() []command {
 	return []command{
 		{
-			name:    "app:update-currency-rates",
-			summary: "Load exchange rates from Open Exchange Rates: app:update-currency-rates [YYYY-MM-DD]",
+			name:    "currency:update-rates",
+			summary: "Load exchange rates from Open Exchange Rates: currency:update-rates [YYYY-MM-DD]",
 			run: func(ctx context.Context, c *container, args []string) error {
 				date := c.clk.Now()
 				// The single optional positional is the date. Ignore any leading-dash
@@ -45,11 +45,11 @@ func currencyCommands() []command {
 			},
 		},
 		{
-			name:    "app:add-currency",
-			summary: "Add a currency: app:add-currency <code> [name] [fraction-digits]",
+			name:    "currency:add",
+			summary: "Add a currency: currency:add <code> [name] [fraction-digits]",
 			run: func(ctx context.Context, c *container, args []string) error {
 				if len(args) < 1 || len(args) > 3 {
-					return usageErr("app:add-currency <code> [name] [fraction-digits]")
+					return usageErr("currency:add <code> [name] [fraction-digits]")
 				}
 				code := strings.TrimSpace(args[0])
 

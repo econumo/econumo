@@ -1,7 +1,8 @@
 // Package cli is the command-line shell for the econumo binary: the operational
-// `app:*` commands (user + currency management). The cmd/econumo binary routes a
-// non-flag first argument here (see cmd/econumo/main.go), so `econumo app:<cmd>`
-// (or `docker exec <container> /econumo app:<cmd>` in the image) runs a command.
+// management commands (user, currency, jwt, data), named with a `resource:action`
+// scheme. The cmd/econumo binary routes a non-flag first argument here (see
+// cmd/econumo/main.go), so `econumo <resource>:<action>` (or
+// `docker exec <container> /econumo <resource>:<action>` in the image) runs a command.
 //
 // It is deliberately stdlib-only (no cobra), matching the rest of the codebase.
 // Command implementations live in user_commands.go and currency_commands.go; the
@@ -18,14 +19,14 @@ import (
 	"strings"
 )
 
-// command is one CLI subcommand. name is the exact Symfony command string (e.g.
-// "app:create-user"); run receives the (possibly nil) container and the args
+// command is one CLI subcommand. name is the resource:action command string (e.g.
+// "user:create"); run receives the (possibly nil) container and the args
 // following the command name.
 type command struct {
 	name    string
 	summary string
 	// noContainer marks a command that does NOT need the DB-backed service
-	// container (e.g. app:generate-jwt-keypair, a setup step that may run before a
+	// container (e.g. jwt:generate, a setup step that may run before a
 	// database exists). For such commands Run passes a nil container and never
 	// opens the database. Default false = the container is built.
 	noContainer bool
@@ -112,7 +113,7 @@ func printUsage(w io.Writer) {
 
 // WriteCommandList writes the registered management commands (sorted by name)
 // with one-line summaries. Exported so the binary's top-level usage can include
-// the app:* commands alongside its own (serve, healthcheck).
+// the resource:action commands alongside its own (serve, healthcheck).
 func WriteCommandList(w io.Writer) {
 	cs := commandList()
 	sort.Slice(cs, func(i, j int) bool { return cs[i].name < cs[j].name })

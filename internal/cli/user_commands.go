@@ -15,11 +15,11 @@ import (
 func userCommands() []command {
 	return []command{
 		{
-			name:    "app:create-user",
-			summary: "Create a user: app:create-user <name> <email> <password>",
+			name:    "user:create",
+			summary: "Create a user: user:create <name> <email> <password>",
 			run: func(ctx context.Context, c *container, args []string) error {
 				if len(args) != 3 {
-					return usageErr("app:create-user <name> <email> <password>")
+					return usageErr("user:create <name> <email> <password>")
 				}
 				name := strings.TrimSpace(args[0])
 				id, err := c.user.AdminCreateUser(ctx, name, strings.TrimSpace(args[1]), strings.TrimSpace(args[2]))
@@ -31,11 +31,11 @@ func userCommands() []command {
 			},
 		},
 		{
-			name:    "app:change-user-email",
-			summary: "Change a user's email: app:change-user-email <old-email> <new-email>",
+			name:    "user:change-email",
+			summary: "Change a user's email: user:change-email <old-email> <new-email>",
 			run: func(ctx context.Context, c *container, args []string) error {
 				if len(args) != 2 {
-					return usageErr("app:change-user-email <old-email> <new-email>")
+					return usageErr("user:change-email <old-email> <new-email>")
 				}
 				oldEmail, newEmail := strings.TrimSpace(args[0]), strings.TrimSpace(args[1])
 				if err := c.user.AdminChangeEmail(ctx, oldEmail, newEmail); err != nil {
@@ -46,11 +46,11 @@ func userCommands() []command {
 			},
 		},
 		{
-			name:    "app:change-user-password",
-			summary: "Change a user's password: app:change-user-password <email> <password>",
+			name:    "user:change-password",
+			summary: "Change a user's password: user:change-password <email> <password>",
 			run: func(ctx context.Context, c *container, args []string) error {
 				if len(args) != 2 {
-					return usageErr("app:change-user-password <email> <password>")
+					return usageErr("user:change-password <email> <password>")
 				}
 				email := strings.TrimSpace(args[0])
 				if err := c.user.AdminChangePassword(ctx, email, strings.TrimSpace(args[1])); err != nil {
@@ -61,11 +61,11 @@ func userCommands() []command {
 			},
 		},
 		{
-			name:    "app:activate-user",
-			summary: "Activate a user: app:activate-user <email>",
+			name:    "user:activate",
+			summary: "Activate a user: user:activate <email>",
 			run: func(ctx context.Context, c *container, args []string) error {
 				if len(args) != 1 {
-					return usageErr("app:activate-user <email>")
+					return usageErr("user:activate <email>")
 				}
 				email := strings.TrimSpace(args[0])
 				if err := c.user.AdminActivate(ctx, email); err != nil {
@@ -76,22 +76,22 @@ func userCommands() []command {
 			},
 		},
 		{
-			name:    "app:deactivate-users",
-			summary: "Deactivate users created before a date: app:deactivate-users --date=YYYY-MM-DD",
+			name:    "user:deactivate",
+			summary: "Deactivate users created before a date: user:deactivate --before=YYYY-MM-DD",
 			run: func(ctx context.Context, c *container, args []string) error {
-				fs := flag.NewFlagSet("app:deactivate-users", flag.ContinueOnError)
+				fs := flag.NewFlagSet("user:deactivate", flag.ContinueOnError)
 				var dateStr string
-				fs.StringVar(&dateStr, "date", "", "cutoff date (YYYY-MM-DD); users created before it are deactivated")
-				fs.StringVar(&dateStr, "d", "", "alias for --date")
+				fs.StringVar(&dateStr, "before", "", "cutoff date (YYYY-MM-DD); users created before it are deactivated")
+				fs.StringVar(&dateStr, "d", "", "alias for --before")
 				if err := fs.Parse(args); err != nil {
 					return err
 				}
 				if strings.TrimSpace(dateStr) == "" {
-					return usageErr("app:deactivate-users --date=YYYY-MM-DD")
+					return usageErr("user:deactivate --before=YYYY-MM-DD")
 				}
 				cutoff, err := time.Parse("2006-01-02", strings.TrimSpace(dateStr))
 				if err != nil {
-					return fmt.Errorf("invalid --date %q (want YYYY-MM-DD): %w", dateStr, err)
+					return fmt.Errorf("invalid --before %q (want YYYY-MM-DD): %w", dateStr, err)
 				}
 				n, err := c.user.AdminDeactivateOlderThan(ctx, cutoff)
 				if err != nil {
@@ -102,7 +102,7 @@ func userCommands() []command {
 			},
 		},
 		{
-			name:    "app:remove-data-salt",
+			name:    "data:remove-salt",
 			summary: "Decrypt emails to plaintext + re-hash identifiers so ECONUMO_DATA_SALT can be removed",
 			run: func(ctx context.Context, c *container, args []string) error {
 				// Guard the catastrophic case: with an empty salt Decode is a
