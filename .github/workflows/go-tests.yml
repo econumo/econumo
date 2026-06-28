@@ -38,12 +38,44 @@ jobs:
           cache-dependency-path: go/go.sum
       - name: Smoke suite (lint + sqlite tests + coverage gate)
         run: make go-test
+      - name: Coverage summary
+        if: always()
+        env:
+          GO_COVER_MIN: '64'
+        run: |
+          cd go
+          if [ ! -f coverage.out ]; then
+            echo "No coverage profile was produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          total=$(go tool cover -func=coverage.out | tail -1 | awk '{print $NF}')
+          {
+            echo "## Go test coverage"
+            echo ""
+            echo "**Total: ${total}** (gate: ${GO_COVER_MIN}%)"
+            echo ""
+            echo "<details><summary>Per-function coverage</summary>"
+            echo ""
+            echo '```'
+            go tool cover -func=coverage.out
+            echo '```'
+            echo ""
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+          go tool cover -html=coverage.out -o coverage.html
       - name: Upload coverage profile
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: go/coverage.out
+          if-no-files-found: ignore
+      - name: Upload HTML coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: go/coverage.html
           if-no-files-found: ignore
 
   # REGRESSION: the sqlite-vs-PostgreSQL engine comparison against a real
