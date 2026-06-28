@@ -15,8 +15,7 @@
 /mutatecompare
 coverage.out
 
-# Local-only PHP↔Go comparison tooling + devtools (kept out of the repo)
-deployment/compare/
+# Local-only devtools (kept out of the repo)
 /cmd/devtools/
 
 # Local dev-machine -> homelab transfer script (contains the homelab host/path).

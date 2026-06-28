@@ -6,7 +6,6 @@ replacement** for the Symfony PHP API, and how each step was verified. It is the
 
 - [`COMPATIBILITY.md`](./COMPATIBILITY.md) — the frozen wire/JWT/DB/crypto contracts the Go code must honor.
 - [`TESTING.md`](./TESTING.md) — how to run the test tiers (smoke / regression) today.
-- `deployment/compare/README.md` (local-only) — how to diff Go against the **real PHP** backend.
 
 > Goal of the whole effort: swap the Symfony backend for Go **without touching the
 > frontend, the database, already-issued JWTs, stored password hashes, or
@@ -340,8 +339,6 @@ making the fix a no-op in production.
   tests + coverage gate). No external dependencies.
 - **Before merge/release:** `make go-regression` — smoke + the sqlite-vs-PostgreSQL
   engine-parity suite (repo-level + full HTTP API parity) against a real Postgres.
-- **Against the real PHP backend (optional, local-only):** the `apicompare` /
-  `mutatecompare` harness — see `deployment/compare/README.md`.
 
 CI (`.github/workflows/go-tests.yml`) runs smoke on every push/PR and regression
 against a `postgres:17` service container.
