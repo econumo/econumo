@@ -100,9 +100,9 @@ func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	httpx.OK(w, res)
 }
 
-// RemindPassword handles POST /api/v1/user/remind-password (public). Always
-// returns success (anti-enumeration). The actual email send is not yet wired
-// (see service TODO).
+// RemindPassword handles POST /api/v1/user/remind-password (public). It issues a
+// fresh reset code and emails it (when a mailer is configured), always returning
+// success to avoid account enumeration.
 //
 // @Summary     Remind password
 // @Description Triggers a password reminder email. Always returns success (anti-enumeration).
@@ -129,9 +129,8 @@ func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
 	httpx.OK(w, res)
 }
 
-// ResetPassword handles POST /api/v1/user/reset-password (public). Not yet
-// fully implemented (depends on the password-request flow); returns the success
-// envelope as a placeholder (see service TODO).
+// ResetPassword handles POST /api/v1/user/reset-password (public). It validates
+// the (email, code) pair, sets the new password, and consumes the code.
 //
 // @Summary     Reset password
 // @Description Resets a user's password using a reminder code. Returns an empty success envelope.
