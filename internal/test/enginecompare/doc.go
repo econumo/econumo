@@ -31,5 +31,5 @@
 //	  go test -tags enginecompare ./internal/enginecompare/...              # full comparison
 //
 // CI runs the second form against a Postgres service container (see the Makefile
-// `go-test-engines` target and the GitHub Actions workflow).
+// `test-engines` target and the GitHub Actions workflow).
 package enginecompare

@@ -25,10 +25,10 @@ The Go module is the repo root. Tests run with the standard toolchain — no Doc
 required for the smoke tier.
 
 ```bash
-make go-test         # SMOKE: build + vet + gofmt + sqlite unit/integration + coverage gate
-make go-regression   # REGRESSION: go-test + the sqlite-vs-PostgreSQL engine-comparison suite
-make go-test-fast    # Just the fast sqlite tests (no lint/coverage)
-make go-image        # Build the Go backend Docker image locally (single-arch, --load)
+make test            # SMOKE: build + vet + gofmt + sqlite unit/integration + coverage gate
+make regression      # REGRESSION: test + the sqlite-vs-PostgreSQL engine-comparison suite
+make test-fast       # Just the fast sqlite tests (no lint/coverage)
+make image           # Build the backend Docker image locally (single-arch, --load)
 
 # Or directly with the go toolchain (run from the repo root):
 go test ./...                        # all tests
@@ -37,16 +37,16 @@ go run ./cmd/econumo serve            # run the server (reads .env)
 go run ./cmd/econumo app:create-user "Name" user@example.test secret
 ```
 
-The regression suite needs a PostgreSQL; `make go-regression` auto-provisions one
+The regression suite needs a PostgreSQL; `make regression` auto-provisions one
 via the compose stack, or set `DATABASE_TEST_PGSQL_URL` to an existing database.
 
 ### Frontend (Vue/Quasar) — in `web/`
 
 ```bash
-make install   # cd web && pnpm install
-make dev       # cd web && npm run dev      (dev server)
-make bundle    # cd web && npm run build    (production SPA build)
-make lint      # cd web && npm run lint
+make web-install   # cd web && pnpm install
+make web-dev       # cd web && npm run dev      (dev server)
+make web-bundle    # cd web && npm run build    (production SPA build)
+make web-lint      # cd web && npm run lint
 ```
 
 ### Publishing
@@ -128,7 +128,7 @@ Tests live alongside the Go code:
   responses (build tag `enginecompare`).
 - `internal/test/{fixture,testkeys}` — shared fixture builder + embedded JWT keypair.
 
-Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
+Coverage gate: `make test` enforces a cross-package minimum (`GO_COVER_MIN`,
 default 64). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
 
@@ -238,5 +238,5 @@ data unreadable. Most are also asserted by the test suite.
 
 ## Code Quality Tools
 
-- `gofmt` (formatting), `go vet` (static analysis), the coverage gate (`make go-test`).
-- Frontend: ESLint (`make lint`).
+- `gofmt` (formatting), `go vet` (static analysis), the coverage gate (`make test`).
+- Frontend: ESLint (`make web-lint`).

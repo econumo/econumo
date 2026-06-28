@@ -45,7 +45,7 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
       - name: Smoke suite (lint + sqlite tests + coverage gate)
-        run: make go-test
+        run: make test
       - name: Coverage summary
         if: always()
         env:
@@ -117,6 +117,6 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
       # The Postgres service container already provisions econumo_test, so call
-      # the engine suite directly (skip go-pg-ensure, which expects compose).
+      # the engine suite directly (skip pg-ensure, which expects compose).
       - name: Engine-comparison suite
-        run: make go-test-engines
+        run: make test-engines

@@ -1,71 +1,70 @@
-.PHONY: help install dev bundle lint go-test go-build go-image go-up go-down go-test-fast go-regression go-test-cover go-test-engines go-lint go-pg-ensure publish publish-buildx-ensure
+.PHONY: help web-install web-dev web-bundle web-lint test test-fast test-cover lint regression test-engines pg-ensure image up down publish publish-buildx-ensure
 
 # Default target
 .DEFAULT_GOAL := help
 
 # Show available targets
 help:
-	@echo "Frontend (web/):"
-	@echo "  make install      - Install web dependencies"
-	@echo "  make dev          - Start web development server"
-	@echo "  make bundle       - Bundle web for production"
-	@echo "  make lint         - Run web linter"
-	@echo ""
-	@echo "Go backend:"
-	@echo "  make go-test       - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
-	@echo "  make go-regression - REGRESSION suite: go-test + sqlite-vs-pgsql comparison"
-	@echo "  make go-test-fast  - Just the fast sqlite tests, no lint/coverage (CGO off)"
-	@echo "  make go-image     - Build the Go backend Docker image"
-	@echo "  make go-up        - Start the Go stack (compose)"
-	@echo "  make go-down      - Stop the Go stack"
+	@echo "Backend (Go):"
+	@echo "  make test         - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
+	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
+	@echo "  make test-fast    - Just the fast sqlite tests, no lint/coverage (CGO off)"
+	@echo "  make lint         - build + vet + gofmt check"
+	@echo "  make image        - Build the backend Docker image locally"
+	@echo "  make up           - Start the stack (compose, builds from source)"
+	@echo "  make down         - Stop the stack"
 	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
+	@echo ""
+	@echo "Frontend (web/):"
+	@echo "  make web-install  - Install web dependencies"
+	@echo "  make web-dev      - Start web development server"
+	@echo "  make web-bundle   - Bundle web for production"
+	@echo "  make web-lint     - Run web linter"
 
-# Install web dependencies
-install:
+# --- Frontend (web/) ---
+
+web-install:
 	@echo "Installing web dependencies..."
 	cd web && pnpm install
 
-# Start web development server
-dev:
+web-dev:
 	@echo "Starting web development server..."
 	cd web && npm run dev
 
-# Bundle web for production
-bundle:
+web-bundle:
 	@echo "Bundling web for production..."
 	cd web && npm run build
 
-# Run web linter
-lint:
+web-lint:
 	@echo "Running web linter..."
 	cd web && npm run lint
 
-# --- Go backend ---
+# --- Backend (Go) ---
 
 # The Go suite is split into two tiers:
 #
-#   make go-test        SMOKE: unit + sqlite + lint + coverage gate. Fast, zero
-#                       external dependencies. Run this constantly / before commit.
-#   make go-regression  REGRESSION: everything in go-test PLUS the sqlite-vs-pgsql
-#                       engine comparison against a real PostgreSQL. Run before
-#                       merging / releasing.
+#   make test        SMOKE: unit + sqlite + lint + coverage gate. Fast, zero
+#                    external dependencies. Run this constantly / before commit.
+#   make regression  REGRESSION: everything in test PLUS the sqlite-vs-pgsql
+#                    engine comparison against a real PostgreSQL. Run before
+#                    merging / releasing.
 #
-# The granular targets below (go-test-fast, go-test-cover, go-test-engines,
-# go-lint) remain as the building blocks the two tiers compose.
+# The granular targets below (test-fast, test-cover, test-engines, lint) remain
+# as the building blocks the two tiers compose.
 
 # ---- SMOKE (unit + sqlite, no dependencies) -------------------------------
 
 # Smoke suite: lint + the sqlite-only tests with a coverage gate. The everyday
 # command; no external dependencies.
-go-test: go-lint go-test-cover
+test: lint test-cover
 	@echo "SMOKE suite passed (unit + sqlite, no external deps)."
 
 # Just the fast sqlite-only tests, no lint/coverage (CGO off). A building block.
-go-test-fast:
+test-fast:
 	CGO_ENABLED=0 go test ./...
 
-# Coverage threshold for go-test-cover (true cross-package %). Override on the
-# command line: make go-test-cover GO_COVER_MIN=70
+# Coverage threshold for test-cover (true cross-package %). Override on the
+# command line: make test-cover GO_COVER_MIN=70
 GO_COVER_MIN ?= 64
 
 # Fast suite WITH a coverage gate: measures true cross-package coverage of all
@@ -77,7 +76,7 @@ GO_COVER_MIN ?= 64
 # cache is warm (e.g. CI restoring the Go build cache between runs). That made the
 # gate nondeterministic: the same commit scored ~66% cold and ~63% warm. Forcing
 # a fresh run keeps the merged profile complete and the gate reproducible.
-go-test-cover:
+test-cover:
 	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/... -coverprofile=coverage.out
 	go tool cover -func=coverage.out | tail -1
 	@pct=$$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1); \
@@ -86,7 +85,7 @@ go-test-cover:
 		{ echo "FAIL: coverage $$pct% is below the $(GO_COVER_MIN)% gate"; exit 1; }
 
 # Lint gate: build, vet, and gofmt check (fails if any file is unformatted).
-go-lint:
+lint:
 	CGO_ENABLED=0 go build ./...
 	CGO_ENABLED=0 go vet ./...
 	@unformatted=$$(gofmt -l . | grep -v '/gen/' || true); \
@@ -96,21 +95,21 @@ go-lint:
 # ---- REGRESSION (smoke + sqlite-vs-pgsql comparison) ----------------------
 
 # Where the regression suite finds PostgreSQL. If DATABASE_TEST_PGSQL_URL is set
-# in the environment it is used as-is; otherwise go-regression auto-provisions a
+# in the environment it is used as-is; otherwise regression auto-provisions a
 # throwaway DB in the compose `postgres` service at this URL.
 DATABASE_TEST_PGSQL_URL ?= postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
 
 # Regression suite: the full smoke suite + the engine-comparison suite against a
 # real PostgreSQL. If no Postgres is reachable it auto-creates a throwaway test
-# DB in the compose `postgres` service (start it with `make go-up` or
+# DB in the compose `postgres` service (start it with `make up` or
 # `docker compose up -d postgres` first).
-go-regression: go-test go-pg-ensure go-test-engines
+regression: test pg-ensure test-engines
 	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison)."
 
 # Ensure the throwaway test database exists in the compose postgres service.
 # No-op if it already exists; harmless if you point DATABASE_TEST_PGSQL_URL at
 # an external Postgres (the CREATE just runs against the compose one).
-go-pg-ensure:
+pg-ensure:
 	@docker compose exec -T postgres psql -U econumo -d econumo -tAc \
 		"SELECT 1 FROM pg_database WHERE datname='econumo_test'" 2>/dev/null | grep -q 1 \
 		|| docker compose exec -T postgres psql -U econumo -d econumo -c "CREATE DATABASE econumo_test" \
@@ -119,24 +118,24 @@ go-pg-ensure:
 # Engine-comparison suite: runs each repo operation against BOTH sqlite and the
 # PostgreSQL at DATABASE_TEST_PGSQL_URL and asserts identical results. The pgsql
 # half SKIPS if the URL is empty/unreachable; the sqlite half still runs.
-go-test-engines:
+test-engines:
 	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare ./...
 
-# Build the Go backend Docker image (context is the repo root).
-go-image:
-	@echo "Building Go backend Docker image..."
+# Build the backend Docker image (context is the repo root).
+image:
+	@echo "Building backend Docker image..."
 	docker buildx build \
 		--file deployment/docker/Dockerfile \
 		--target prod \
-		--tag econumo/econumo-go:local \
+		--tag econumo/econumo:local \
 		--load \
 		.
 
 # --- Publishing (GitHub Container Registry only) ---------------------------
-# `make publish` builds the multi-arch Go image locally and pushes the "dev"
-# tag to ghcr.io/econumo/econumo. Releases ("latest" + vX.Y.Z) are published by
-# the GitHub release workflow, NOT here. Requires `docker login ghcr.io` first.
+# `make publish` builds the multi-arch image locally and pushes the "dev" tag to
+# ghcr.io/econumo/econumo. Releases ("latest" + vX.Y.Z) are published by the
+# GitHub release workflow, NOT here. Requires `docker login ghcr.io` first.
 # Override any of these on the command line, e.g. `make publish PUBLISH_TAG=foo`.
 GHCR_IMAGE        ?= ghcr.io/econumo/econumo
 PUBLISH_TAG       ?= dev
@@ -161,10 +160,10 @@ publish: publish-buildx-ensure
 		--push \
 		.
 
-# Build + run the Go stack locally from source (host port 8182).
-go-up:
+# Start the stack locally from source (host port 8182).
+up:
 	docker compose -f deployment/docker-compose/docker-compose.go.yml up -d --build
 
-# Stop the Go stack.
-go-down:
+# Stop the stack.
+down:
 	docker compose -f deployment/docker-compose/docker-compose.go.yml down --remove-orphans
