@@ -11,13 +11,10 @@ import (
 
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
-
-// apiDatetimeLayout is the wire format for createdAt/updatedAt: "2006-01-02
-// 15:04:05" (space separator, no timezone). See CLAUDE.md.
-const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 // Clock supplies the current time. A seam so tests can pin timestamps for
 // byte-stable golden output.
@@ -173,8 +170,8 @@ func toResult(p *dompayee.Payee) PayeeResult {
 		Name:        p.Name(),
 		Position:    int(p.Position()),
 		IsArchived:  archived,
-		CreatedAt:   p.CreatedAt().Format(apiDatetimeLayout),
-		UpdatedAt:   p.UpdatedAt().Format(apiDatetimeLayout),
+		CreatedAt:   p.CreatedAt().Format(datetime.Layout),
+		UpdatedAt:   p.UpdatedAt().Format(datetime.Layout),
 	}
 }
 

@@ -20,9 +20,6 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// apiDatetimeLayout is the wire format for dates ("2006-01-02 15:04:05").
-const apiDatetimeLayout = "2006-01-02 15:04:05"
-
 // correctionComment is the description stamped on the balance-correction
 // transaction that update-account writes. PHP uses
 // trans('account.correction.message'); that key IS defined in

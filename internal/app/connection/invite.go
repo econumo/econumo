@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -50,7 +51,7 @@ func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateIn
 	}
 	return &GenerateInviteResult{Item: ConnectionInviteResult{
 		Code:      inv.Code().Value(),
-		ExpiredAt: inv.ExpiredAt().Format(apiDatetimeLayout),
+		ExpiredAt: inv.ExpiredAt().Format(datetime.Layout),
 	}}, nil
 }
 

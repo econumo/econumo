@@ -7,6 +7,7 @@ import (
 	"time"
 
 	domaccount "github.com/econumo/econumo/internal/domain/account"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -36,7 +37,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 		}
 		currencyID = &cid
 	}
-	updatedAt, err := time.Parse(apiDatetimeLayout, req.UpdatedAt)
+	updatedAt, err := time.Parse(datetime.Layout, req.UpdatedAt)
 	if err != nil {
 		return nil, errs.NewValidation("Invalid updatedAt",
 			errs.FieldError{Key: "updatedAt", Message: "Invalid date format, expected Y-m-d H:i:s"})
@@ -115,7 +116,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 				Description:        correctionComment,
 				PayeeId:            nil,
 				TagId:              nil,
-				Date:               updatedAt.Format(apiDatetimeLayout),
+				Date:               updatedAt.Format(datetime.Layout),
 			}
 		}
 		updated = acct

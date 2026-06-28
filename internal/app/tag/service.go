@@ -10,14 +10,11 @@ import (
 	"time"
 
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 )
-
-// apiDatetimeLayout is the wire format for createdAt/updatedAt: "2006-01-02
-// 15:04:05" (space separator, no timezone). See CLAUDE.md.
-const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 // Clock supplies the current time. A seam so tests can pin timestamps for
 // byte-stable golden output.
@@ -173,8 +170,8 @@ func toResult(t *domtag.Tag) TagResult {
 		Name:        t.Name(),
 		Position:    int(t.Position()),
 		IsArchived:  archived,
-		CreatedAt:   t.CreatedAt().Format(apiDatetimeLayout),
-		UpdatedAt:   t.UpdatedAt().Format(apiDatetimeLayout),
+		CreatedAt:   t.CreatedAt().Format(datetime.Layout),
+		UpdatedAt:   t.UpdatedAt().Format(datetime.Layout),
 	}
 }
 
