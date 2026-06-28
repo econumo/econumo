@@ -14,7 +14,7 @@ services:
     build:
       # Build context is the repo root (two levels up).
       context: ../..
-      dockerfile: deployment/docker/go/Dockerfile
+      dockerfile: deployment/docker/Dockerfile
       target: prod
     image: econumo/econumo-go:latest
     env_file:

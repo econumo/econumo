@@ -127,7 +127,7 @@ go-test-engines:
 go-image:
 	@echo "Building Go backend Docker image..."
 	docker buildx build \
-		--file deployment/docker/go/Dockerfile \
+		--file deployment/docker/Dockerfile \
 		--target prod \
 		--tag econumo/econumo-go:local \
 		--load \
@@ -154,14 +154,14 @@ publish: publish-buildx-ensure
 	docker buildx build \
 		--builder $(BUILDX_BUILDER) \
 		--platform $(PUBLISH_PLATFORMS) \
-		--file deployment/docker/go/Dockerfile \
+		--file deployment/docker/Dockerfile \
 		--target prod \
 		--build-arg ECONUMO_VERSION=$(ECONUMO_VERSION) \
 		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
 		--push \
 		.
 
-# Start the Go stack side-by-side with the PHP stack (host port 8182).
+# Build + run the Go stack locally from source (host port 8182).
 go-up:
 	docker compose -f deployment/docker-compose/docker-compose.go.yml up -d --build
 

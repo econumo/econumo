@@ -53,7 +53,7 @@
 > Econumo ships as a single, self-contained Go binary (a distroless image), so it
 > starts in seconds and runs migrations automatically on boot. The image is
 > published to `ghcr.io/econumo/econumo`; the `Dockerfile` lives in this
-> repository under [`deployment/docker/go/`](deployment/docker/go/Dockerfile).
+> repository under [`deployment/docker/`](deployment/docker/Dockerfile).
 > Health is reported at `/_/health-check`.
 
 

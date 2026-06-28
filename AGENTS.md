@@ -192,7 +192,7 @@ The distroless image creates a `bin/console` symlink to the binary, so legacy
   - `:dev` — published locally via `make publish`.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Self-hosting: see `deployment/docker-compose/` (`docker-compose.yml` + `.env.example`)
-  and the README quick-start. The Dockerfile is `deployment/docker/go/Dockerfile`.
+  and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
 
 ## Code Quality Tools
 

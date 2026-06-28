@@ -1,10 +1,9 @@
 # Econumo backend image. The Go binary is ONE static process that serves both
 # the JSON API and the SPA on a single port (no nginx/php-fpm/supervisor).
 #
-# Build context is the REPOSITORY ROOT (same as the PHP image), so the COPY
-# paths below are root-relative:
+# Build context is the REPOSITORY ROOT, so the COPY paths below are root-relative:
 #
-#   docker build -f deployment/docker/go/Dockerfile -t econumo/econumo-go:latest .
+#   docker build -f deployment/docker/Dockerfile -t econumo/econumo-go:latest .
 #
 # Runtime contract (see deployment/docker-compose/docker-compose.go.yml):
 #   - DATABASE_URL is REQUIRED  (sqlite:///var/www/var/db/db.sqlite by default).
@@ -20,7 +19,7 @@
 #     origin) baked into the SPA build; override it by mounting your own file
 #     over /app/web/spa/econumo-config.js.
 
-# --- 1. Frontend build (identical to the PHP image's frontend-builder) ---
+# --- 1. Frontend build ---
 FROM node:25-alpine AS frontend
 WORKDIR /build/web
 RUN npm install -g pnpm@10
@@ -87,7 +86,7 @@ ENV ECONUMO_SPA_DIR=/app/web/spa \
 EXPOSE 80
 
 # WORKDIR so a relative `bin/console` (the symlink at /var/www/bin/console)
-# resolves under `docker exec`, matching the PHP image's /var/www layout.
+# resolves under `docker exec` (the /var/www working layout).
 WORKDIR /var/www
 
 # distroless ships a non-root `nonroot` user (uid 65532); the SQLite db dir +

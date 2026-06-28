@@ -15,7 +15,7 @@ updates:
 
   # Enable version updates for Docker
   - package-ecosystem: "docker"
-    directory: "/deployment/docker/go/"
+    directory: "/deployment/docker/"
     schedule:
       interval: "weekly"
     commit-message:
