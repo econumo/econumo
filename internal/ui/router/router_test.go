@@ -45,7 +45,7 @@ func get(t *testing.T, srv *httptest.Server, method, path string) *http.Response
 
 func TestHealthCheck_OK(t *testing.T) {
 	srv := newServer(t, nil)
-	resp := get(t, srv, http.MethodGet, "/_/health-check")
+	resp := get(t, srv, http.MethodGet, "/health")
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status=%d want 200", resp.StatusCode)
@@ -159,7 +159,7 @@ func TestHealthCheck_DBDown_ReportsFalse(t *testing.T) {
 	})
 	srv := httptest.NewServer(h)
 	defer srv.Close()
-	resp := get(t, srv, http.MethodGet, "/_/health-check")
+	resp := get(t, srv, http.MethodGet, "/health")
 	defer resp.Body.Close()
 	var env struct {
 		Data map[string]bool `json:"data"`

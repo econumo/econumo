@@ -53,7 +53,7 @@ func TestSPA_Serving(t *testing.T) {
 		{"missing png -> 404", "/img/nope.png", http.StatusNotFound, ""},
 		// API / internal routes never masquerade as the SPA shell.
 		{"api 404", "/api/v1/whatever", http.StatusNotFound, ""},
-		{"internal 404", "/_/health-check", http.StatusNotFound, ""},
+		{"reserved internal 404", "/_/anything", http.StatusNotFound, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

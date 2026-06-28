@@ -101,7 +101,7 @@ func printUsage(w io.Writer) {
 	cli.WriteCommandList(w)
 }
 
-// healthcheck GETs /_/health-check on the local listen port and returns a
+// healthcheck GETs /health on the local listen port and returns a
 // process exit code (0 healthy, 1 otherwise).
 func healthcheck() int {
 	port := os.Getenv("PORT")
@@ -110,7 +110,7 @@ func healthcheck() int {
 	}
 	port = strings.TrimPrefix(port, ":")
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("http://127.0.0.1:" + port + "/_/health-check")
+	resp, err := client.Get("http://127.0.0.1:" + port + "/health")
 	if err != nil {
 		return 1
 	}

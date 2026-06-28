@@ -57,7 +57,7 @@
 > starts in seconds and runs migrations automatically on boot. The image is
 > published to `ghcr.io/econumo/econumo`; the `Dockerfile` lives in this
 > repository under [`deployment/docker/`](deployment/docker/Dockerfile).
-> Health is reported at `/_/health-check`.
+> Health is reported at `/health`.
 
 
 ### Next steps

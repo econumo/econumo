@@ -14,7 +14,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-// healthCheckHandler returns a handler for GET /_/health-check. It returns an
+// healthCheckHandler returns a handler for GET /health. It returns an
 // OK envelope wrapping {"database": <bool>}. When db is
 // nil the database is reported as healthy (true) — used before a backend is
 // wired so the route is always mountable.

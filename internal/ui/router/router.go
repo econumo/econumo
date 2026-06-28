@@ -5,7 +5,7 @@
 //
 // Route layout:
 //
-//	/_/health-check   (GET)  -> internal health, wrapped in the global chain
+//	/health           (GET)  -> health check, wrapped in the global chain
 //	/api/...          (*)    -> API groups, wrapped in the global chain; the
 //	                            module-supplied RegisterAPI seam attaches the
 //	                            public group (login/register/remind/reset, plus
@@ -82,11 +82,10 @@ func New(deps Deps) http.Handler {
 		middleware.Timezone,
 	)
 
-	// Internal: health-check. Mounted on its own mux so the global chain wraps
-	// it (CORS + recover + requestid apply here too).
-	internalMux := http.NewServeMux()
-	internalMux.Handle("GET /_/health-check", healthCheckHandler(deps.DB))
-	root.Handle("/_/", global(internalMux))
+	// Health check. Registered directly on root; the GET /health pattern is more
+	// specific than the SPA "/" catch-all, so ServeMux routes it here. Wrapped in
+	// the global chain (recover + requestid + cors apply here too).
+	root.Handle("GET /health", global(healthCheckHandler(deps.DB)))
 
 	// API subtree. Modules register their concrete routes via RegisterAPI; the
 	// router wraps the whole subtree in the global chain. Public vs
