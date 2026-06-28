@@ -71,7 +71,7 @@ func Load() (Config, error) {
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
-		SPADir:                 getEnv("ECONUMO_SPA_DIR", "web/dist/spa"),
+		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist/spa"),
 	}
 
 	// JWT key paths copied from a Symfony/lexik .env often contain the

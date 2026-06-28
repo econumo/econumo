@@ -168,7 +168,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
 - `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
-- `ECONUMO_SPA_DIR` — path to the built SPA the binary serves.
+- `ECONUMO_WEB_DIST` — path to the built SPA the binary serves.
 - `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
   (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
   and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.
