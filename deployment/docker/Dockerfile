@@ -6,7 +6,8 @@
 #   docker build -f deployment/docker/Dockerfile -t ghcr.io/econumo/econumo:latest .
 #
 # Runtime contract (see docker-compose.yml at the repo root):
-#   - DATABASE_URL is REQUIRED  (sqlite:///app/var/db/db.sqlite by default).
+#   - DATABASE_URL is REQUIRED and comes from the environment / .env (it is NOT
+#     baked into the image); e.g. sqlite:///app/var/db/db.sqlite.
 #   - The JWT keypair is generated automatically on first boot if it does not
 #     already exist (default /app/var/jwt/{private,public}.pem). NOTHING is
 #     baked in at build time — keys are unique per deployment. Mount a volume at
@@ -64,13 +65,13 @@ COPY --from=frontend /build/web/dist/spa /app/spa
 COPY --from=gobuild --chown=nonroot:nonroot /out/var /app/var
 
 # Serve the SPA the frontend stage built; the container always listens on :80
-# (map it to any host port in compose). The JWT keypair defaults to /app/var/jwt
-# and is auto-generated on first boot (config defaults), so no key paths are baked
-# into ENV here.
+# (map it to any host port in compose). DATABASE_URL is intentionally NOT set here
+# — it comes from .env (the compose env_file). The JWT keypair defaults to
+# /app/var/jwt and is auto-generated on first boot (config defaults), so no key
+# paths are baked into ENV here.
 ENV ECONUMO_SPA_DIR=/app/spa \
     PORT=80 \
-    APP_ENV=prod \
-    DATABASE_URL=sqlite:///app/var/db/db.sqlite
+    APP_ENV=prod
 
 EXPOSE 80
 

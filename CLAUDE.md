@@ -138,9 +138,10 @@ artifact (`.github/workflows/go-tests.yml`).
 The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 
 - `DATABASE_URL` — `sqlite:///abs/path/db.sqlite` or `postgres://…`. Selects the engine.
-- `PORT` — HTTP listen port (required by the server). Not kept in `.env`: the image
-  hardcodes `80` (map it to any host port in compose) and `make go-run` sets it (default
-  8181, override `RUN_PORT`). Set it yourself only for a bare `go run`.
+  Required, and sourced from `.env` only — it is NOT baked into the image.
+- `PORT` — HTTP listen port (required by the server), from `.env`. The image keeps a
+  fallback `PORT=80` (compose maps `8181:80`); for a host `go run`, set a non-privileged
+  port (e.g. `8181`) in `.env`.
 - `JWT_SECRET_KEY` / `JWT_PUBLIC_KEY` / `JWT_PASSPHRASE` — RS256 keypair (paths may use
   the Symfony-style `%kernel.project_dir%` placeholder, which is expanded to the cwd).
   Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first boot if
