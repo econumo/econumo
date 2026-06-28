@@ -76,7 +76,7 @@ keep working.
 **1. Point v1.x at your existing data.**
 
 - **SQLite** — your v0.x database lived at `var/db/db.sqlite`. Place that file
-  where the new container reads it (`/app/var/db/db.sqlite` inside the `data`
+  where the new container reads it (`/app/var/db/db.sqlite` inside the `db`
   volume; `DATABASE_URL=sqlite:///app/var/db/db.sqlite` is the default).
 - **PostgreSQL** — keep your database where it is and set `DATABASE_URL` to it,
   e.g. `DATABASE_URL=postgres://econumo:econumo@your-db-host:5432/econumo`. The
@@ -112,7 +112,7 @@ v0.x migrations, so it won't try to re-create the schema.
   was already empty, do nothing.
 
 **3. Replace your `docker-compose.yml`** with the v1.x single-service stack from
-this repo (one `econumo` service, the `data` volume, port `8181:80`). Then:
+this repo (one `econumo` service, the `db` + `jwt` volumes, port `8181:80`). Then:
 
 ```console
 $ docker compose pull && docker compose up -d
