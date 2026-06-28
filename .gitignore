@@ -11,8 +11,6 @@
 
 # Go build/test artifacts
 /econumo
-/apicompare
-/mutatecompare
 coverage.out
 
 # Local-only devtools (kept out of the repo)
