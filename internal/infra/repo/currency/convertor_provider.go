@@ -13,6 +13,7 @@ import (
 	"time"
 
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -146,7 +147,7 @@ func (sqliteProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, st
 	// "2025-04-01" is INCLUDED (a time.Time renders "...00:00:00", which lexically
 	// excludes it). AVG is a float -> %.8f (round) to match PHP's DecimalNumber.
 	rows, err := sqlitegen.New(db).GetAverageCurrencyRates(ctx, sqlitegen.GetAverageCurrencyRatesParams{
-		Date: start.Format("2006-01-02"), Date_2: end.Format("2006-01-02"), BaseCurrencyID: baseID,
+		Date: start.Format(datetime.DateLayout), Date_2: end.Format(datetime.DateLayout), BaseCurrencyID: baseID,
 	})
 	if err != nil {
 		return nil, err
@@ -161,7 +162,7 @@ func (sqliteProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX,
 	// datetime(published_at) < datetime(?): bind the bound as a 'Y-m-d H:i:s'
 	// string so rows at/after the boundary are excluded (a time.Time bound leaks
 	// them in, snapping the rate period to the wrong month).
-	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, Datetime: before.Format("2006-01-02 15:04:05")})
+	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, Datetime: before.Format(datetime.Layout)})
 }
 
 type pgsqlProviderQuerier struct{}

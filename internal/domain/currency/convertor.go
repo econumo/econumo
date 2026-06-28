@@ -19,6 +19,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -189,7 +190,7 @@ func summarize(items []ConvertItem) []ConvertItem {
 	idx := map[key]int{}
 	var out []ConvertItem
 	for _, it := range items {
-		k := key{it.From.String(), it.To.String(), it.PeriodStart.Format("2006-01-02"), it.PeriodEnd.Format("2006-01-02")}
+		k := key{it.From.String(), it.To.String(), it.PeriodStart.Format(datetime.DateLayout), it.PeriodEnd.Format(datetime.DateLayout)}
 		if i, ok := idx[k]; ok {
 			out[i].Amount = out[i].Amount.Add(it.Amount)
 			continue
