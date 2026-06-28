@@ -18,6 +18,7 @@ import (
 	"time"
 
 	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 )
 
 // apiBaseURL is the Open Exchange Rates API root. The latest/historical endpoints
@@ -61,8 +62,8 @@ func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols 
 		return nil, fmt.Errorf("OPEN_EXCHANGE_RATES_TOKEN is not set")
 	}
 
-	endpoint := fmt.Sprintf("%s/historical/%s.json", l.baseURL, date.Format("2006-01-02"))
-	if date.Format("2006-01-02") == l.now().Format("2006-01-02") {
+	endpoint := fmt.Sprintf("%s/historical/%s.json", l.baseURL, date.Format(datetime.DateLayout))
+	if date.Format(datetime.DateLayout) == l.now().Format(datetime.DateLayout) {
 		endpoint = l.baseURL + "/latest.json"
 	}
 

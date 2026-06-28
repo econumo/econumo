@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 )
 
 // currencyCommands returns the currency-management subcommands (ports of the PHP
@@ -22,7 +24,7 @@ func currencyCommands() []command {
 				// tokens (e.g. a Symfony-style -vvv/-q/-n carried over by muscle memory)
 				// so they don't get misread as the date.
 				if arg := firstPositional(args); arg != "" {
-					d, err := time.Parse("2006-01-02", arg)
+					d, err := time.Parse(datetime.DateLayout, arg)
 					if err != nil {
 						return fmt.Errorf("invalid date %q (want YYYY-MM-DD): %w", arg, err)
 					}

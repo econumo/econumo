@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 )
 
 // userCommands returns the user-management subcommands (ports of the PHP
@@ -89,7 +91,7 @@ func userCommands() []command {
 				if strings.TrimSpace(dateStr) == "" {
 					return usageErr("user:deactivate --before=YYYY-MM-DD")
 				}
-				cutoff, err := time.Parse("2006-01-02", strings.TrimSpace(dateStr))
+				cutoff, err := time.Parse(datetime.DateLayout, strings.TrimSpace(dateStr))
 				if err != nil {
 					return fmt.Errorf("invalid --before %q (want YYYY-MM-DD): %w", dateStr, err)
 				}
@@ -97,7 +99,7 @@ func userCommands() []command {
 				if err != nil {
 					return err
 				}
-				fmt.Printf("Deactivated %d user(s) created before %s\n", n, cutoff.Format("2006-01-02"))
+				fmt.Printf("Deactivated %d user(s) created before %s\n", n, cutoff.Format(datetime.DateLayout))
 				return nil
 			},
 		},
