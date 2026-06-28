@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint build run test test-fast test-cover lint regression test-engines pg-ensure up down publish publish-buildx-ensure
+.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish publish-buildx-ensure
 
 # Default target
 .DEFAULT_GOAL := help
@@ -6,12 +6,11 @@
 # Show available targets
 help:
 	@echo "Backend (Go):"
-	@echo "  make build        - Compile the binary to ./econumo (CGO off)"
-	@echo "  make run          - Run the server locally (go run ./cmd/econumo serve, reads .env)"
+	@echo "  make go-build     - Compile the binary to ./econumo (CGO off)"
+	@echo "  make go-run       - Run the server locally (go run ./cmd/econumo serve, reads .env)"
 	@echo "  make test         - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
-	@echo "  make test-fast    - Just the fast sqlite tests, no lint/coverage (CGO off)"
-	@echo "  make lint         - build + vet + gofmt check"
+	@echo "  make go-lint      - build + vet + gofmt check"
 	@echo "  make up           - Start the stack (compose, builds from source)"
 	@echo "  make down         - Stop the stack"
 	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
@@ -44,16 +43,16 @@ web-lint:
 
 # Compile the self-contained binary to ./econumo (gitignored). CGO off so the
 # pure-Go sqlite/pgx drivers are linked in, matching the production build.
-build:
+go-build:
 	CGO_ENABLED=0 go build -o econumo ./cmd/econumo
 
 # Run the server locally without Docker. The listen port and a local sqlite DB are
 # passed explicitly (PORT/DATABASE_URL are no longer kept in .env — they are build-
 # /run-controlled); ./.env is still auto-loaded for the rest. Migrations run on boot
-# and the JWT keypair is generated if missing. Override: make run RUN_PORT=9000
+# and the JWT keypair is generated if missing. Override: make go-run RUN_PORT=9000
 RUN_PORT         ?= 8181
 RUN_DATABASE_URL ?= sqlite://var/db/db.sqlite
-run:
+go-run:
 	@mkdir -p var/db
 	APP_ENV=dev PORT=$(RUN_PORT) DATABASE_URL=$(RUN_DATABASE_URL) go run ./cmd/econumo serve
 
@@ -65,19 +64,15 @@ run:
 #                    engine comparison against a real PostgreSQL. Run before
 #                    merging / releasing.
 #
-# The granular targets below (test-fast, test-cover, test-engines, lint) remain
-# as the building blocks the two tiers compose.
+# The granular targets below (test-cover, test-engines, go-lint) remain as the
+# building blocks the two tiers compose.
 
 # ---- SMOKE (unit + sqlite, no dependencies) -------------------------------
 
 # Smoke suite: lint + the sqlite-only tests with a coverage gate. The everyday
 # command; no external dependencies.
-test: lint test-cover
+test: go-lint test-cover
 	@echo "SMOKE suite passed (unit + sqlite, no external deps)."
-
-# Just the fast sqlite-only tests, no lint/coverage (CGO off). A building block.
-test-fast:
-	CGO_ENABLED=0 go test ./...
 
 # Coverage threshold for test-cover (true cross-package %). Override on the
 # command line: make test-cover GO_COVER_MIN=70
@@ -101,7 +96,7 @@ test-cover:
 		{ echo "FAIL: coverage $$pct% is below the $(GO_COVER_MIN)% gate"; exit 1; }
 
 # Lint gate: build, vet, and gofmt check (fails if any file is unformatted).
-lint:
+go-lint:
 	CGO_ENABLED=0 go build ./...
 	CGO_ENABLED=0 go vet ./...
 	@unformatted=$$(gofmt -l . | grep -v '/gen/' || true); \

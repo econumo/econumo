@@ -27,7 +27,9 @@ required for the smoke tier.
 ```bash
 make test            # SMOKE: build + vet + gofmt + sqlite unit/integration + coverage gate
 make regression      # REGRESSION: test + the sqlite-vs-PostgreSQL engine-comparison suite
-make test-fast       # Just the fast sqlite tests (no lint/coverage)
+make go-build        # Compile the binary to ./econumo
+make go-run          # Run the server locally (reads .env)
+make go-lint         # build + vet + gofmt check
 
 # Or directly with the go toolchain (run from the repo root):
 go test ./...                        # all tests
@@ -137,7 +139,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 
 - `DATABASE_URL` — `sqlite:///abs/path/db.sqlite` or `postgres://…`. Selects the engine.
 - `PORT` — HTTP listen port (required by the server). Not kept in `.env`: the image
-  hardcodes `80` (map it to any host port in compose) and `make run` sets it (default
+  hardcodes `80` (map it to any host port in compose) and `make go-run` sets it (default
   8181, override `RUN_PORT`). Set it yourself only for a bare `go run`.
 - `JWT_SECRET_KEY` / `JWT_PUBLIC_KEY` / `JWT_PASSPHRASE` — RS256 keypair (paths may use
   the Symfony-style `%kernel.project_dir%` placeholder, which is expanded to the cwd).
