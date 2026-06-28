@@ -195,6 +195,23 @@ Back up the DB first — the decryption is one-way in practice.
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo app:create-user …`.
 
+## API conventions
+
+- **Methods — only two.** `GET` for reads; `POST` for every write — create, update,
+  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs.
+- **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
+  verb leading. List endpoints end in `-list`. Examples from the source:
+  - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
+    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`.
+  - Writes (`POST`): `/api/v1/category/create-category`, `/api/v1/account/update-account`,
+    `/api/v1/category/delete-category`, `/api/v1/connection/generate-invite`,
+    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`.
+- **Authentication is header-based:** send `Authorization: Bearer <token>` (RS256 JWT;
+  the scheme is case-insensitive). The JWT middleware verifies the signature, rejects
+  expired/invalid tokens with the 401 envelope, and puts the `id` claim (user UUID)
+  into the request context for handlers. Public routes (login, register, remind-password,
+  reset-password, `/api/doc`, `/api/doc.json`) need no header; everything else does.
+
 ## Authentication
 
 - **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/infra/auth`.
