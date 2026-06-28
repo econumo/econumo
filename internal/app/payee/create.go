@@ -35,14 +35,22 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 		return nil, err
 	}
 
-	// accountId, when present, selects which user owns the new payee in the full
-	// app (an account may belong to a connected user). The connection module is
-	// not ported yet, so we always create for the current user and ignore
-	// accountId beyond validating its shape.
+	// accountId, when present, selects which user owns the new payee: an account
+	// may belong to a connected user, and a payee added in the context of a shared
+	// account is owned by the ACCOUNT OWNER (PHP createPayeeForAccount), gated by
+	// an owner/admin access check (canAddPayee == isAdmin). Absent accountId ->
+	// owned by the caller.
+	ownerID := userID
 	if req.AccountId != nil && *req.AccountId != "" {
-		if _, perr := vo.ParseId(*req.AccountId); perr != nil {
+		accountID, perr := vo.ParseId(*req.AccountId)
+		if perr != nil {
 			return nil, perr
 		}
+		resolved, aerr := s.resolveAccountOwner(ctx, userID, accountID)
+		if aerr != nil {
+			return nil, aerr
+		}
+		ownerID = resolved
 	}
 
 	var created *dompayee.Payee
@@ -55,16 +63,16 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 			return errs.NewValidation("Operation is locked")
 		}
 
-		if uerr := s.ensureNameUnique(txCtx, userID, name, vo.Id{}); uerr != nil {
+		if uerr := s.ensureNameUnique(txCtx, ownerID, name, vo.Id{}); uerr != nil {
 			return uerr
 		}
 
-		count, cerr := s.repo.CountByOwner(txCtx, userID)
+		count, cerr := s.repo.CountByOwner(txCtx, ownerID)
 		if cerr != nil {
 			return cerr
 		}
 		now := s.clock.Now()
-		p := dompayee.NewPayee(id, userID, name, now)
+		p := dompayee.NewPayee(id, ownerID, name, now)
 		p.SetPosition(int16(count))
 		if serr := s.repo.Save(txCtx, p); serr != nil {
 			return serr

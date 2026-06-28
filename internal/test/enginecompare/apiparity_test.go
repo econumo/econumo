@@ -301,6 +301,25 @@ func TestAPIParity_TransactionWriteRead_SharedAccount(t *testing.T) {
 	})
 }
 
+// TestAPIParity_CreateForSharedAccount_DeniedParity exercises the
+// create-for-account access path for category/tag/payee on apiSharedAccount,
+// where the owner holds only a USER grant (role 1) — insufficient for
+// create-for-account, which requires owner/admin. The denial runs the
+// account-owner + grant-role lookups (engine-specific SQL) and must be
+// byte-identical across SQLite and PostgreSQL.
+func TestAPIParity_CreateForSharedAccount_DeniedParity(t *testing.T) {
+	runAPIOnBoth(t, "create_for_shared_account_denied", func() []apiCall {
+		return []apiCall{
+			{"create-category-shared", "POST", "/api/v1/category/create-category", "owner",
+				map[string]any{"id": "c0000000-0000-0000-0000-0000000000fd", "name": "Shared", "type": 0, "icon": "tag", "accountId": apiSharedAccount}},
+			{"create-tag-shared", "POST", "/api/v1/tag/create-tag", "owner",
+				map[string]any{"id": "10000000-0000-0000-0000-0000000000fd", "name": "SharedTag", "accountId": apiSharedAccount}},
+			{"create-payee-shared", "POST", "/api/v1/payee/create-payee", "owner",
+				map[string]any{"id": "20000000-0000-0000-0000-0000000000fd", "name": "SharedPayee", "accountId": apiSharedAccount}},
+		}
+	})
+}
+
 func TestAPIParity_BudgetWriteRead(t *testing.T) {
 	runAPIOnBoth(t, "budget_write_read", func() []apiCall {
 		const newBudget = "b0000000-0000-0000-0000-0000000000ff"

@@ -92,6 +92,23 @@ func TestCreateTransaction_SharedAccount_NoGrant_Denied(t *testing.T) {
 	assertValidationDenied(t, status, env)
 }
 
+// TestGetTransactionList_SharedAccount_GuestCanView is the positive read-access
+// counterpart to TestGetTransactionList_ForbiddenAccount: a guest grant confers
+// VIEW access to the shared account's transactions (view access = any visible /
+// shared account, independent of the write role), so the list returns 200.
+func TestGetTransactionList_SharedAccount_GuestCanView(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, roleGuest, true)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+sharedAcctID, tok, nil)
+	if status != http.StatusOK {
+		t.Fatalf("guest get-transaction-list = %d, want 200; body: %s", status, env.raw)
+	}
+	if !env.Success {
+		t.Fatalf("success=false, want true for a guest with view access; body: %s", env.raw)
+	}
+}
+
 // assertValidationDenied checks the frozen denial envelope: HTTP 400, success
 // false, message "Form validation error" (the Go edge collapses every
 // ValidationError to that message — see ui/httpx/errors.go), code 400.
