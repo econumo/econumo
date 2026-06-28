@@ -72,11 +72,14 @@ func New(deps Deps) http.Handler {
 	root := http.NewServeMux()
 
 	// Global middleware chain applied to the server-side route groups
-	// (internal + API). Order is outer -> inner: requestid -> recover -> cors
-	// -> timezone. (JWT is added per-group inside RegisterAPI by the user
-	// module — see package doc.)
+	// (internal + API). Order is outer -> inner: requestid -> accesslog ->
+	// recover -> cors -> timezone. (JWT is added per-group inside RegisterAPI by
+	// the user module — see package doc.) AccessLog sits inside RequestID (so the
+	// request_id is in context) and outside Recover (so it observes the 500 that
+	// Recover writes for a panic).
 	global := middleware.Chain(
 		middleware.RequestID,
+		middleware.AccessLog,
 		middleware.Recover(deps.Cfg.IsDev()),
 		middleware.CORS(deps.Cfg.CORSAllowOrigin),
 		middleware.Timezone,

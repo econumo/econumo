@@ -17,6 +17,7 @@ import (
 //
 // dev controls whether the 500 path includes a stack trace.
 func WriteError(w http.ResponseWriter, err error, dev bool) {
+	recordError(w, err)
 	if v, ok := errs.AsValidation(err); ok {
 		// PHP's Symfony form layer reports validation failures with the envelope
 		// message "Form validation error" and code 400, regardless of the
@@ -61,4 +62,16 @@ func typeName(err error) string {
 		return ""
 	}
 	return "" // populated later if a specific exceptionType string is needed
+}
+
+// errorRecorder is satisfied by the access-log response writer
+// (internal/ui/middleware). recordError surfaces the error that produced a
+// response to the access log without coupling httpx to the middleware package or
+// changing any handler signature; it is a no-op when the writer is not wrapped.
+type errorRecorder interface{ SetError(error) }
+
+func recordError(w http.ResponseWriter, err error) {
+	if r, ok := w.(errorRecorder); ok {
+		r.SetError(err)
+	}
 }

@@ -12,12 +12,13 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/econumo/econumo/internal/app/reqctx"
 	"github.com/econumo/econumo/internal/ui/httpx"
@@ -72,13 +73,14 @@ func RequestIDFromCtx(ctx context.Context) string {
 }
 
 func newRequestID() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		// crypto/rand failing is effectively fatal for the process, but a
-		// request-id is non-essential; fall back to a timestamp-derived value.
-		return hex.EncodeToString([]byte(time.Now().UTC().Format("20060102150405.000000000")))
+	// UUIDv7: time-ordered, so request ids sort by arrival and correlate cleanly
+	// across log lines. Same lib/idiom as domain ids (vo.NewId). NewV7 only fails
+	// if the OS entropy source fails (effectively never); fall back to a random
+	// UUID so a request id is always present.
+	if u, err := uuid.NewV7(); err == nil {
+		return u.String()
 	}
-	return hex.EncodeToString(b[:])
+	return uuid.NewString()
 }
 
 // ---- Recover ----
@@ -99,6 +101,11 @@ func Recover(dev bool) Middleware {
 						"panic", rec,
 						"stack", string(stack),
 					)
+					// Surface the panic to the access log's operation line too
+					// (the detailed stack stays in the dedicated record above).
+					if lw, ok := w.(*logResponseWriter); ok {
+						lw.SetError(fmt.Errorf("panic: %v", rec))
+					}
 					// stackTrace payload is only surfaced in dev (Exception
 					// honors the dev flag internally).
 					var trace any
@@ -153,6 +160,9 @@ func Timezone(next http.Handler) http.Handler {
 			}
 		}
 		ctx := reqctx.WithLocation(r.Context(), loc)
+		// Record the resolved timezone as a log dimension. Timezone runs inside
+		// AccessLog, so the pointer accumulator carries it back out to both lines.
+		reqctx.AddLogAttr(ctx, "timezone", loc.String())
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

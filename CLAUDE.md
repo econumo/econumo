@@ -160,8 +160,29 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   password-reset email via Resend; without them the code is still written but no mail is sent.
 - `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
 - `ECONUMO_SPA_DIR` — path to the built SPA the binary serves.
+- `LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
+  (`serve` and all `app:*`) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
+  and `-q` (quiet); flags override `LOG_LEVEL`. Resolution lives in `internal/logging`.
 - `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
   (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
+
+### Logging
+
+Two tiers of structured `log/slog` output, both with **static messages** and details as
+fields (custom dimensions) — UUIDs only, never PII (no emails, bodies, or query strings):
+
+- **Operation result** — one line per request, message = the static operation name (e.g.
+  `create-category`), at INFO (2xx) / WARN (4xx) / ERROR (5xx & recovered panics). Always
+  carries `request_id`, `status`, `route`, the user dimensions `user_id` + `timezone`, and
+  `err`/`err_type` on failure.
+- **Edge/transport** — a DEBUG `"http request"` line with `method`, `route`, `status`,
+  `duration_ms`.
+
+`request_id` is a UUIDv7 minted in the `RequestID` middleware and echoed on `X-Request-Id`.
+The `AccessLog` middleware (`internal/ui/middleware/accesslog.go`) installs a request-scoped
+accumulator (`reqctx.WithLogAttrs`) and emits both lines; any layer enriches the operation
+line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.g.
+`category_id`). `/health` logs the transport line only; `OPTIONS` preflight is skipped.
 
 ## Database
 

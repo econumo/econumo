@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/econumo/econumo/pkg/jwt"
 )
 
@@ -48,6 +50,21 @@ func TestRequestID_SetsHeaderAndContext(t *testing.T) {
 func TestRequestIDFromCtx_AbsentIsEmpty(t *testing.T) {
 	if got := RequestIDFromCtx(context.Background()); got != "" {
 		t.Fatalf("RequestIDFromCtx(empty)=%q want \"\"", got)
+	}
+}
+
+func TestRequestID_IsUUIDv7(t *testing.T) {
+	h := RequestID(okHandler(nil))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
+
+	id := rec.Header().Get("X-Request-Id")
+	u, err := uuid.Parse(id)
+	if err != nil {
+		t.Fatalf("X-Request-Id %q is not a UUID: %v", id, err)
+	}
+	if u.Version() != 7 {
+		t.Fatalf("X-Request-Id version=%d want 7 (uuidv7)", u.Version())
 	}
 }
 

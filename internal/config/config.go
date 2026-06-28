@@ -35,6 +35,9 @@ type Config struct {
 	Port            string // PORT: HTTP listen port ("8181" or ":8181"); required, no default
 	CORSAllowOrigin string // default "*"
 
+	// Logging
+	LogLevel string // LOG_LEVEL: base slog level (debug|info|warn|error); default "info". Raised to DEBUG by -v/-vv/-vvv.
+
 	// Integrations
 	ResendAPIKey           string
 	OpenExchangeRatesToken string
@@ -63,6 +66,7 @@ func Load() (Config, error) {
 		JWTPassphrase:          os.Getenv("JWT_PASSPHRASE"),
 		Port:                   os.Getenv("PORT"),
 		CORSAllowOrigin:        getEnv("CORS_ALLOW_ORIGIN", "*"),
+		LogLevel:               getEnv("LOG_LEVEL", "info"),
 		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
 		SPADir:                 getEnv("ECONUMO_SPA_DIR", "web/dist/spa"),

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
+	"github.com/econumo/econumo/internal/app/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
@@ -34,6 +35,7 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
+	reqctx.AddLogAttr(r.Context(), "account_id", req.Id)
 	res, err := h.svc.CreateAccount(r.Context(), userID, req)
 	if err != nil {
 		httpx.WriteError(w, err, h.dev)

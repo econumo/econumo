@@ -28,6 +28,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
+	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/pkg/jwt"
 
@@ -58,11 +59,13 @@ func main() {
 
 	switch args[0] {
 	case "serve":
-		// Server path: default INFO logging, then load .env and run. Returning
-		// from run() (server stopped) exits 0; an error exits 1.
+		// Server path: bootstrap INFO logging for the earliest diagnostics, then
+		// load .env and run. run() re-applies the logger from LOG_LEVEL plus any
+		// -v/-vv/-vvv/-q flags once config is loaded. Returning from run() (server
+		// stopped) exits 0; an error exits 1.
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 		loadDotEnv()
-		if err := run(); err != nil {
+		if err := run(args[1:]); err != nil {
 			slog.Error("startup failed", "err", err)
 			os.Exit(1)
 		}
@@ -137,7 +140,7 @@ func loadDotEnv() {
 	slog.Info("loaded .env", "file", envFile)
 }
 
-func run() error {
+func run(serveArgs []string) error {
 	ctx := context.Background()
 
 	// .env is loaded once in main() (before CLI/server dispatch); nothing to do
@@ -147,6 +150,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// Re-apply the logger now that LOG_LEVEL is known: the baseline is
+	// cfg.LogLevel (default info), raised to DEBUG by -v/-vv/-vvv on the serve
+	// command line (flags win); -q silences. From here on every log honors it.
+	logging.Setup(cfg.LogLevel, serveArgs)
 	slog.Info("configuration loaded",
 		"app_env", cfg.AppEnv,
 		"database_driver", cfg.DatabaseDriver,

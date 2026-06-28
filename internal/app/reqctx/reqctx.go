@@ -12,12 +12,17 @@ package reqctx
 
 import (
 	"context"
+	"log/slog"
+	"sync"
 	"time"
 )
 
 type ctxKey int
 
-const locationKey ctxKey = iota
+const (
+	locationKey ctxKey = iota
+	logAttrsKey
+)
 
 // WithLocation returns a context carrying the request's timezone.
 func WithLocation(ctx context.Context, loc *time.Location) context.Context {
@@ -31,4 +36,51 @@ func Location(ctx context.Context) *time.Location {
 		return loc
 	}
 	return time.UTC
+}
+
+// logAccumulator is a request-scoped, pointer-backed bag of structured log
+// attributes. A single pointer is placed in the context once (by the access-log
+// middleware); every layer that knows something worth logging — the JWT
+// middleware, handlers, application services — appends to the SAME instance via
+// AddLogAttr, and the middleware reads them all back with LogAttrs when it emits
+// the operation line. The mutex tolerates a handler that fans work out to
+// goroutines sharing the request context.
+type logAccumulator struct {
+	mu    sync.Mutex
+	attrs []slog.Attr
+}
+
+// WithLogAttrs installs a fresh, empty log accumulator in the context. Call it
+// once at the start of a request; downstream AddLogAttr calls then have somewhere
+// to record.
+func WithLogAttrs(ctx context.Context) context.Context {
+	return context.WithValue(ctx, logAttrsKey, &logAccumulator{})
+}
+
+// AddLogAttr records one structured attribute (custom dimension) on the
+// request's log accumulator. It is a no-op when no accumulator is present (e.g.
+// background jobs, CLI, or tests not wired through the middleware), so callers
+// never need to check. Keep values to ids/counts — never PII.
+func AddLogAttr(ctx context.Context, key string, value any) {
+	acc, ok := ctx.Value(logAttrsKey).(*logAccumulator)
+	if !ok || acc == nil {
+		return
+	}
+	acc.mu.Lock()
+	acc.attrs = append(acc.attrs, slog.Any(key, value))
+	acc.mu.Unlock()
+}
+
+// LogAttrs returns a copy of the attributes accumulated for this request, or nil
+// when no accumulator is present.
+func LogAttrs(ctx context.Context) []slog.Attr {
+	acc, ok := ctx.Value(logAttrsKey).(*logAccumulator)
+	if !ok || acc == nil {
+		return nil
+	}
+	acc.mu.Lock()
+	defer acc.mu.Unlock()
+	out := make([]slog.Attr, len(acc.attrs))
+	copy(out, acc.attrs)
+	return out
 }

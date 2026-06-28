@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/econumo/econumo/internal/app/reqctx"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/ui/httpx"
@@ -54,6 +55,7 @@ func JWT(verifier TokenVerifier, dev bool) Middleware {
 				return
 			}
 			ctx := context.WithValue(r.Context(), ctxKeyUserID, id)
+			reqctx.AddLogAttr(ctx, "user_id", id.String())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

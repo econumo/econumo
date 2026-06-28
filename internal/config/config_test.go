@@ -53,3 +53,27 @@ func TestResolveProjectDir(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadLogLevel(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+
+	// Default when unset.
+	t.Setenv("LOG_LEVEL", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.LogLevel != "info" {
+		t.Errorf("default LogLevel = %q, want %q", cfg.LogLevel, "info")
+	}
+
+	// Honored when set.
+	t.Setenv("LOG_LEVEL", "debug")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.LogLevel != "debug" {
+		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
+}

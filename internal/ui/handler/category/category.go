@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	appcategory "github.com/econumo/econumo/internal/app/category"
+	"github.com/econumo/econumo/internal/app/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
@@ -36,6 +37,7 @@ func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
+	reqctx.AddLogAttr(r.Context(), "category_id", req.Id)
 	res, err := h.svc.CreateCategory(r.Context(), userID, req)
 	if err != nil {
 		httpx.WriteError(w, err, h.dev)
@@ -68,6 +70,7 @@ func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
+	reqctx.AddLogAttr(r.Context(), "category_id", req.Id)
 	res, err := h.svc.UpdateCategory(r.Context(), userID, req)
 	if err != nil {
 		httpx.WriteError(w, err, h.dev)
@@ -164,6 +167,7 @@ func (h *Handlers) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
+	reqctx.AddLogAttr(r.Context(), "category_id", req.Id)
 	res, err := h.svc.DeleteCategory(r.Context(), userID, req)
 	if err != nil {
 		httpx.WriteError(w, err, h.dev)

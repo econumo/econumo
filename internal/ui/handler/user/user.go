@@ -3,6 +3,7 @@ package user
 import (
 	"net/http"
 
+	"github.com/econumo/econumo/internal/app/reqctx"
 	appuser "github.com/econumo/econumo/internal/app/user"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
@@ -39,6 +40,9 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
+	// Record the user on this public route's operation log line (login has no JWT
+	// middleware to do it).
+	reqctx.AddLogAttr(r.Context(), "user_id", res.User.Id)
 	// PHP's LoginUserV1Controller returns `new JsonResponse($result)` — the raw
 	// {token,user} at the top level, NOT the {success,message,data} envelope. The
 	// SPA reads response.token off the top level, so emit the body unwrapped.
