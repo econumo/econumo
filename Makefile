@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint test test-fast test-cover lint regression test-engines pg-ensure image up down publish publish-buildx-ensure
+.PHONY: help web-install web-dev web-bundle web-lint test test-fast test-cover lint regression test-engines pg-ensure up down publish publish-buildx-ensure
 
 # Default target
 .DEFAULT_GOAL := help
@@ -10,7 +10,6 @@ help:
 	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
 	@echo "  make test-fast    - Just the fast sqlite tests, no lint/coverage (CGO off)"
 	@echo "  make lint         - build + vet + gofmt check"
-	@echo "  make image        - Build the backend Docker image locally"
 	@echo "  make up           - Start the stack (compose, builds from source)"
 	@echo "  make down         - Stop the stack"
 	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
@@ -121,16 +120,6 @@ pg-ensure:
 test-engines:
 	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare ./...
-
-# Build the backend Docker image (context is the repo root).
-image:
-	@echo "Building backend Docker image..."
-	docker buildx build \
-		--file deployment/docker/Dockerfile \
-		--target prod \
-		--tag econumo/econumo:local \
-		--load \
-		.
 
 # --- Publishing (GitHub Container Registry only) ---------------------------
 # `make publish` builds the multi-arch image locally and pushes the "dev" tag to

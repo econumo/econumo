@@ -28,7 +28,6 @@ required for the smoke tier.
 make test            # SMOKE: build + vet + gofmt + sqlite unit/integration + coverage gate
 make regression      # REGRESSION: test + the sqlite-vs-PostgreSQL engine-comparison suite
 make test-fast       # Just the fast sqlite tests (no lint/coverage)
-make image           # Build the backend Docker image locally (single-arch, --load)
 
 # Or directly with the go toolchain (run from the repo root):
 go test ./...                        # all tests
