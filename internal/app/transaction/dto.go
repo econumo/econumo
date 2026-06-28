@@ -14,6 +14,7 @@ import (
 	"time"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -185,7 +186,7 @@ func (r GetTransactionListRequest) Validate() error {
 		if strings.TrimSpace(f.val) == "" {
 			continue
 		}
-		if _, err := time.Parse("2006-01-02 15:04:05", f.val); err != nil {
+		if _, err := time.Parse(datetime.Layout, f.val); err != nil {
 			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value is not a valid datetime."})
 		}
 	}

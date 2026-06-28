@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 )
@@ -204,7 +205,7 @@ func (s *Service) buildExportRow(t *domtransaction.Transaction, account ExportAc
 		sanitizeExportValue(tag),
 		sanitizeExportValue(payee),
 		amount,
-		t.SpentAt().Format(apiDatetimeLayout),
+		t.SpentAt().Format(datetime.Layout),
 	}
 }
 

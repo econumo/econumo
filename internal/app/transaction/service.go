@@ -11,13 +11,11 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 )
-
-// apiDatetimeLayout is the wire datetime format ("2006-01-02 15:04:05").
-const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 // Clock supplies the current time.
 type Clock interface {
@@ -204,7 +202,7 @@ func (s *Service) buildResult(t *domtransaction.Transaction, author AuthorResult
 		Description:        t.Description(),
 		PayeeId:            payeeID,
 		TagId:              tagID,
-		Date:               t.SpentAt().Format(apiDatetimeLayout),
+		Date:               t.SpentAt().Format(datetime.Layout),
 	}
 }
 

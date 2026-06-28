@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
@@ -93,7 +94,7 @@ func parseCSVRecords(data []byte) (header []string, records []map[string]string,
 }
 
 // utf8BOM is the UTF-8 byte-order mark (EF BB BF).
-const utf8BOM = "\uFEFF"
+const utf8BOM = "﻿"
 
 // stripUTF8BOM removes a leading UTF-8 BOM from a header key.
 func stripUTF8BOM(s string) string {
@@ -104,7 +105,7 @@ func stripUTF8BOM(s string) string {
 // order, translated to Go layouts. Date-only formats parse at midnight (PHP '!'
 // resets unspecified fields). Covers the default export format + common inputs.
 var importDateFormats = []string{
-	"2006-01-02",          // Y-m-d
+	datetime.DateLayout,   // Y-m-d
 	"02/01/2006",          // d/m/Y
 	"01/02/2006",          // m/d/Y
 	"2006/01/02",          // Y/m/d
@@ -114,7 +115,7 @@ var importDateFormats = []string{
 	"01.02.2006",          // m.d.Y
 	"2006.01.02",          // Y.m.d
 	"20060102",            // Ymd
-	"2006-01-02 15:04:05", // Y-m-d H:i:s
+	datetime.Layout,       // Y-m-d H:i:s
 	"2006-01-02 15:04",    // Y-m-d H:i
 	"02/01/2006 15:04:05", // d/m/Y H:i:s
 	"02/01/2006 15:04",    // d/m/Y H:i

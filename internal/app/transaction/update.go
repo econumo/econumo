@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
@@ -12,7 +13,7 @@ import (
 
 // parseSpentAt parses the wire date ("Y-m-d H:i:s").
 func parseSpentAt(v string) (time.Time, error) {
-	t, err := time.Parse(apiDatetimeLayout, v)
+	t, err := time.Parse(datetime.Layout, v)
 	if err != nil {
 		return time.Time{}, errs.NewValidation("Validation failed",
 			errs.FieldError{Key: "date", Message: "Invalid date format, expected Y-m-d H:i:s"})

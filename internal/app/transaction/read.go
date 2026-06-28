@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 )
@@ -77,8 +78,8 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 // parseFlexible parses a period bound, accepting both "Y-m-d H:i:s" and
 // "Y-m-d" (the frontend sends either; PHP's DateTimeImmutable is lenient).
 func parseFlexible(v string) (time.Time, error) {
-	if t, err := time.Parse(apiDatetimeLayout, v); err == nil {
+	if t, err := time.Parse(datetime.Layout, v); err == nil {
 		return t, nil
 	}
-	return time.Parse("2006-01-02", v)
+	return time.Parse(datetime.DateLayout, v)
 }
