@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish publish-buildx-ensure
+.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish publish-buildx-ensure swagger swagger-check
 
 # Default target
 .DEFAULT_GOAL := help
@@ -10,7 +10,8 @@ help:
 	@echo "  make go-run       - Run the server locally (go run ./cmd/econumo serve, reads .env)"
 	@echo "  make test         - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
-	@echo "  make go-lint      - build + vet + gofmt check"
+	@echo "  make go-lint      - build + vet + gofmt + OpenAPI-docs-fresh check"
+	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/ui/apidoc/docs)"
 	@echo "  make up           - Start the stack (compose, builds from source)"
 	@echo "  make down         - Stop the stack"
 	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
@@ -43,13 +44,16 @@ web-lint:
 
 # Compile the self-contained binary to ./econumo (gitignored). CGO off so the
 # pure-Go sqlite/pgx drivers are linked in, matching the production build.
-go-build:
+# Depends on `swagger` so the embedded OpenAPI docs are always regenerated from
+# the current handler annotations before the binary is built.
+go-build: swagger
 	CGO_ENABLED=0 go build -o econumo ./cmd/econumo
 
 # Run the server locally without Docker. All configuration (PORT, DATABASE_URL, …)
 # comes from ./.env, which the binary auto-loads — copy .env.example to .env first.
 # Migrations run on boot and the JWT keypair is generated if missing.
-go-run:
+# Regenerates the OpenAPI docs first (see go-build).
+go-run: swagger
 	go run ./cmd/econumo serve
 
 # The Go suite is split into two tiers:
@@ -91,13 +95,42 @@ test-cover:
 		awk "BEGIN{exit !($$pct >= $(GO_COVER_MIN))}" || \
 		{ echo "FAIL: coverage $$pct% is below the $(GO_COVER_MIN)% gate"; exit 1; }
 
-# Lint gate: build, vet, and gofmt check (fails if any file is unformatted).
-go-lint:
+# Lint gate: build, vet, gofmt check (fails if any file is unformatted), and an
+# OpenAPI-docs-fresh check (fails if the committed docs are stale vs the current
+# annotations — keeps the published spec honest; run `make swagger` to fix).
+go-lint: swagger-check
 	CGO_ENABLED=0 go build ./...
 	CGO_ENABLED=0 go vet ./...
 	@unformatted=$$(gofmt -l . | grep -v '/gen/' || true); \
 		if [ -n "$$unformatted" ]; then echo "gofmt needed:"; echo "$$unformatted"; exit 1; fi; \
 		echo "gofmt: clean"
+
+# ---- OpenAPI docs (swaggo/swag) -------------------------------------------
+
+# swag is pinned to the version in go.mod so generation is reproducible (the
+# go:generate directive in internal/ui/apidoc/doc.go uses @latest for ad-hoc
+# runs; the build pipeline uses this pinned version). `go run <pkg>@<ver>` needs
+# the module cache (network on first use).
+SWAG_VERSION := $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag 2>/dev/null || echo v1.16.6)
+SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../handler,../../app --parseInternal --parseDependency
+
+# Regenerate the committed OpenAPI docs from the handler/DTO annotations. This is
+# a prerequisite of go-build / go-run / publish / up so a built artifact never
+# embeds stale docs.
+swagger:
+	@echo "Regenerating OpenAPI docs (swag $(SWAG_VERSION))..."
+	cd internal/ui/apidoc && $(SWAG_INIT) -o ./docs
+
+# Fail if the committed docs differ from a fresh generation (stale annotations
+# not regenerated + committed). Generates into a temp dir and diffs, so it never
+# mutates the working tree. Wired into go-lint (and thus `make test` / CI).
+swagger-check:
+	@tmp=$$(mktemp -d); \
+		( cd internal/ui/apidoc && $(SWAG_INIT) -o "$$tmp" >/dev/null 2>&1 ) || \
+			{ echo "FAIL: could not run swag (need network/module cache for swag $(SWAG_VERSION))"; rm -rf "$$tmp"; exit 1; }; \
+		if ! diff -q "$$tmp/swagger.json" internal/ui/apidoc/docs/swagger.json >/dev/null 2>&1; then \
+			echo "FAIL: OpenAPI docs are stale — run 'make swagger' and commit the result"; rm -rf "$$tmp"; exit 1; fi; \
+		rm -rf "$$tmp"; echo "swagger: docs up to date"
 
 # ---- REGRESSION (smoke + sqlite-vs-pgsql comparison) ----------------------
 
@@ -145,7 +178,9 @@ publish-buildx-ensure:
 	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || \
 		docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --bootstrap
 
-publish: publish-buildx-ensure
+# Regenerates the OpenAPI docs (swagger) first so the image built from source
+# embeds the current spec.
+publish: swagger publish-buildx-ensure
 	@echo "Publishing $(GHCR_IMAGE):$(PUBLISH_TAG) ($(PUBLISH_PLATFORMS))..."
 	docker buildx build \
 		--builder $(BUILDX_BUILDER) \
@@ -158,7 +193,8 @@ publish: publish-buildx-ensure
 		.
 
 # Start the stack locally, building the image from source (host port 8181).
-up:
+# Regenerates the OpenAPI docs first so the built image embeds the current spec.
+up: swagger
 	docker compose up -d --build
 
 # Stop the stack.

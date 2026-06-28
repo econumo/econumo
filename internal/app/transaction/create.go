@@ -10,8 +10,9 @@ import (
 )
 
 // CreateTransaction creates a transaction for the current user and returns it
-// plus the refreshed account list (balances updated). The user must have access
-// to the account (ownership, in the single-user reduction).
+// plus the refreshed account list (balances updated). The user must have write
+// access to the account: they own it, or hold an admin/user grant on it (see
+// checkWriteAccess).
 func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req CreateTransactionRequest) (*CreateTransactionResult, error) {
 	// req.Id is the operation/idempotency id (PHP locks on it); the entity id is
 	// freshly minted (PHP transactionRepository->getNextIdentity()).

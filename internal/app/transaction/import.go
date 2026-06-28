@@ -76,7 +76,8 @@ type Importer interface {
 	// AccountByID returns an available account by id (nil if not found).
 	AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*ImportAccount, error)
 	// CanAddTransaction reports whether the user may add a transaction to the
-	// account (ownership, in the single-user reduction).
+	// account: they own it, or hold an admin/user grant on it (PHP
+	// canAddTransaction == isUser).
 	CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error)
 	// CreateAccount creates a new account (base currency, first/new folder, icon
 	// 'wallet', balance 0) and returns its view.

@@ -109,6 +109,32 @@ func TestGetTransactionList_SharedAccount_GuestCanView(t *testing.T) {
 	}
 }
 
+// TestImport_SharedAccount_UserRole_LandsInSharedAccount: a CSV import whose row
+// names an account SHARED with the caller (user-role grant) must import the
+// transaction INTO that shared account, not silently fork a duplicate own
+// account. Regression for the import "single-user reduction" (owner-only
+// CanAddTransaction). importMapping/doImport/importResult live in
+// import_endpoints_test.go (same package).
+func TestImport_SharedAccount_UserRole_LandsInSharedAccount(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, roleUser, true) // ownerTwo owns sharedAcctID, named "Shared"; seed user has a user grant
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Shared,2024-03-01,-42.50,Food,groceries,Market\n"
+	status, env := h.doImport(t, tok, csv, importMapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	if res := mustUnmarshal[importResult](t, env.Data); res.Imported != 1 {
+		t.Fatalf("imported=%d want 1; errors=%v", res.Imported, res.Errors)
+	}
+	// The transaction must be on the shared account, not a duplicated own account.
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+sharedAcctID, tok, nil)
+	if list := mustUnmarshal[listResult](t, listEnv.Data); len(list.Items) != 1 {
+		t.Fatalf("shared account has %d transactions, want 1 (import forked a duplicate own account instead of using the shared one); body=%s", len(list.Items), listEnv.raw)
+	}
+}
+
 // assertValidationDenied checks the frozen denial envelope: HTTP 400, success
 // false, message "Form validation error" (the Go edge collapses every
 // ValidationError to that message — see ui/httpx/errors.go), code 400.

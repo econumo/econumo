@@ -154,7 +154,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	txUserLookup := transactionrepo.NewUserLookup(userRepo)
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, categoryRepo, tagRepo, payeeRepo)
 	txImportLookup := transactionrepo.NewImportLookup(
-		accountSvc, accountRepo, folderRepo, categorySvc, payeeSvc, tagSvc,
+		accountSvc, accountAccessResolver, accountRepo, folderRepo, categorySvc, payeeSvc, tagSvc,
 		categoryRepo, tagRepo, payeeRepo, currencyLookup, transactionRepo, cfg.CurrencyBase,
 	)
 	transactionSvc := apptransaction.NewService(

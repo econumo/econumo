@@ -2454,18 +2454,63 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Redeems an invite code, connecting the user with the invite's owner.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Connection"
                 ],
-                "summary": "Accept an invite (not supported in self-hosted)",
+                "summary": "Accept an invite",
+                "parameters": [
+                    {
+                        "description": "Accept invite request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "501": {
-                        "description": "Not Implemented",
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
                         }
                     }
                 }
@@ -2478,18 +2523,63 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Disconnects the user from a connected user, revoking shared access.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Connection"
                 ],
-                "summary": "Delete a connection (not supported in self-hosted)",
+                "summary": "Delete a connection",
+                "parameters": [
+                    {
+                        "description": "Delete connection request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest"
+                        }
+                    }
+                ],
                 "responses": {
-                    "501": {
-                        "description": "Not Implemented",
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
                         }
                     }
                 }
@@ -2502,18 +2592,56 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Clears the user's outstanding connection invite (no-op if none).",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Connection"
                 ],
-                "summary": "Delete an invite (not supported in self-hosted)",
-                "responses": {
-                    "501": {
-                        "description": "Not Implemented",
+                "summary": "Delete an invite",
+                "parameters": [
+                    {
+                        "description": "Delete invite request",
+                        "name": "request",
+                        "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
                         }
                     }
                 }
@@ -2526,18 +2654,56 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Generates (or refreshes) the user's connection invite code.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Connection"
                 ],
-                "summary": "Generate an invite (not supported in self-hosted)",
-                "responses": {
-                    "501": {
-                        "description": "Not Implemented",
+                "summary": "Generate an invite",
+                "parameters": [
+                    {
+                        "description": "Generate invite request",
+                        "name": "request",
+                        "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
                         }
                     }
                 }
@@ -4638,19 +4804,51 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Sets the authenticated user's active budget. Not yet implemented — currently returns a 501 NotImplemented envelope.",
+                "description": "Sets the authenticated user's default budget and returns the refreshed user.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "User"
                 ],
-                "summary": "Update budget (not implemented)",
+                "summary": "Update budget",
+                "parameters": [
+                    {
+                        "description": "Update budget request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseOk"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "401": {
@@ -4661,12 +4859,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    },
-                    "501": {
-                        "description": "Not Implemented",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseException"
                         }
@@ -5420,9 +5612,6 @@ const docTemplate = `{
                 },
                 "position": {
                     "type": "integer"
-                },
-                "type": {
-                    "type": "string"
                 }
             }
         },
@@ -5607,6 +5796,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.ConnectionInviteResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "expiredAt": {
                     "type": "string"
                 }
             }
@@ -6109,7 +6309,7 @@ const docTemplate = `{
                 "accountId": {
                     "type": "string"
                 },
-                "budgetId": {
+                "id": {
                     "type": "string"
                 }
             }
@@ -6183,7 +6383,7 @@ const docTemplate = `{
                 "accountId": {
                     "type": "string"
                 },
-                "budgetId": {
+                "id": {
                     "type": "string"
                 }
             }
@@ -6486,6 +6686,53 @@ const docTemplate = `{
         },
         "github_com_econumo_econumo_internal_app_category.UpdateCategoryResult": {
             "type": "object"
+        },
+        "github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_econumo_econumo_internal_app_connection.AcceptInviteResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/connection.ConnectionResult"
+                    }
+                }
+            }
+        },
+        "github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult": {
+            "type": "object"
+        },
+        "github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest": {
+            "type": "object"
+        },
+        "github_com_econumo_econumo_internal_app_connection.DeleteInviteResult": {
+            "type": "object"
+        },
+        "github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest": {
+            "type": "object"
+        },
+        "github_com_econumo_econumo_internal_app_connection.GenerateInviteResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/connection.ConnectionInviteResult"
+                }
+            }
         },
         "github_com_econumo_econumo_internal_app_connection.GetConnectionListResult": {
             "type": "object",
@@ -6996,7 +7243,12 @@ const docTemplate = `{
             }
         },
         "github_com_econumo_econumo_internal_app_user.LogoutResult": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "string"
+                }
+            }
         },
         "github_com_econumo_econumo_internal_app_user.RegisterRequest": {
             "type": "object",
@@ -7039,6 +7291,22 @@ const docTemplate = `{
         },
         "github_com_econumo_econumo_internal_app_user.ResetPasswordResult": {
             "type": "object"
+        },
+        "github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_econumo_econumo_internal_app_user.UpdateBudgetResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
         },
         "github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest": {
             "type": "object",

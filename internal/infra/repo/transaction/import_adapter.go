@@ -15,6 +15,7 @@ import (
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domcategory "github.com/econumo/econumo/internal/domain/category"
+	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
@@ -26,6 +27,14 @@ type importAccountService interface {
 	CreateAccount(ctx context.Context, userID vo.Id, req appaccount.CreateAccountRequest) (*appaccount.CreateAccountResult, error)
 	CreateFolder(ctx context.Context, userID vo.Id, req appaccount.CreateFolderRequest) (*appaccount.CreateFolderResult, error)
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+}
+
+// importAccountAccess resolves account ownership + a connected user's grant role,
+// for the import write-access check (CanAddTransaction). Backed by the connection
+// AccountAccess repo; a missing grant is reported as ok=false (nil error).
+type importAccountAccess interface {
+	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error)
 }
 
 // importAccountRepo / importFolderRepo are the read surfaces over the account +
@@ -70,6 +79,7 @@ type payeeEntityLister interface {
 // ImportLookup adapts the collaborators to app/transaction.Importer.
 type ImportLookup struct {
 	accountSvc  importAccountService
+	access      importAccountAccess
 	accountRepo importAccountRepo
 	folderRepo  importFolderRepo
 	categorySvc importCategoryService
@@ -89,6 +99,7 @@ var _ apptransaction.Importer = (*ImportLookup)(nil)
 // currency code used when creating accounts for unknown account names.
 func NewImportLookup(
 	accountSvc importAccountService,
+	access importAccountAccess,
 	accountRepo importAccountRepo,
 	folderRepo importFolderRepo,
 	categorySvc importCategoryService,
@@ -102,7 +113,7 @@ func NewImportLookup(
 	baseCode string,
 ) *ImportLookup {
 	return &ImportLookup{
-		accountSvc: accountSvc, accountRepo: accountRepo, folderRepo: folderRepo,
+		accountSvc: accountSvc, access: access, accountRepo: accountRepo, folderRepo: folderRepo,
 		categorySvc: categorySvc, payeeSvc: payeeSvc, tagSvc: tagSvc,
 		categories: categories, tags: tags, payees: payees,
 		currency: currency, transRepo: transRepo, baseCode: baseCode,
@@ -133,12 +144,24 @@ func (l *ImportLookup) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) 
 	return &apptransaction.ImportAccount{ID: a.Id().String(), Name: a.Name(), OwnerID: a.UserId().String()}, nil
 }
 
+// CanAddTransaction reports whether the user may add a transaction to the
+// account: they own it, or hold an admin/user grant on it (PHP
+// AccountAccessService.canAddTransaction == isUser; a guest grant or no grant is
+// denied). A missing account yields false (the importer then creates a new own
+// account), preserving the find-or-create flow.
 func (l *ImportLookup) CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error) {
-	owner, err := l.accountSvc.AccountOwner(ctx, accountID)
+	owner, err := l.access.AccountOwner(ctx, accountID)
 	if err != nil {
 		return false, nil
 	}
-	return owner.Equal(userID), nil
+	if owner.Equal(userID) {
+		return true, nil
+	}
+	role, ok, err := l.access.GrantRole(ctx, accountID, userID)
+	if err != nil {
+		return false, err
+	}
+	return ok && (role == domconnection.RoleAdmin || role == domconnection.RoleUser), nil
 }
 
 func (l *ImportLookup) CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error) {

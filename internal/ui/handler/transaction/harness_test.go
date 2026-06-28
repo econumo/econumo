@@ -111,7 +111,8 @@ func newHarness(t *testing.T) *harness {
 	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), payeerepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	txImport := transactionrepo.NewImportLookup(
-		accSvc, accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
+		accSvc, connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
+		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
 		catSvc, pySvc, tgSvc, catRepo, tgRepo, pyRepo, curLookup, txRepo, "USD",
 	)
 	svc := apptransaction.NewService(

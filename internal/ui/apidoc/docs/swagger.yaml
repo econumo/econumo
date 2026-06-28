@@ -310,8 +310,6 @@ definitions:
         type: string
       position:
         type: integer
-      type:
-        type: string
     type: object
   budget.OrderFolderListItem:
     properties:
@@ -431,6 +429,13 @@ definitions:
       ownerUserId:
         type: string
       role:
+        type: string
+    type: object
+  connection.ConnectionInviteResult:
+    properties:
+      code:
+        type: string
+      expiredAt:
         type: string
     type: object
   connection.ConnectionResult:
@@ -753,7 +758,7 @@ definitions:
     properties:
       accountId:
         type: string
-      budgetId:
+      id:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_budget.ExcludeAccountResult:
@@ -800,7 +805,7 @@ definitions:
     properties:
       accountId:
         type: string
-      budgetId:
+      id:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_budget.IncludeAccountResult:
@@ -994,6 +999,36 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_category.UpdateCategoryResult:
+    type: object
+  github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_connection.AcceptInviteResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/connection.ConnectionResult'
+        type: array
+    type: object
+  github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult:
+    type: object
+  github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest:
+    type: object
+  github_com_econumo_econumo_internal_app_connection.DeleteInviteResult:
+    type: object
+  github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest:
+    type: object
+  github_com_econumo_econumo_internal_app_connection.GenerateInviteResult:
+    properties:
+      item:
+        $ref: '#/definitions/connection.ConnectionInviteResult'
     type: object
   github_com_econumo_econumo_internal_app_connection.GetConnectionListResult:
     properties:
@@ -1322,6 +1357,9 @@ definitions:
         $ref: '#/definitions/user.CurrentUserResult'
     type: object
   github_com_econumo_econumo_internal_app_user.LogoutResult:
+    properties:
+      result:
+        type: string
     type: object
   github_com_econumo_econumo_internal_app_user.RegisterRequest:
     properties:
@@ -1349,6 +1387,16 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_user.ResetPasswordResult:
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  github_com_econumo_econumo_internal_app_user.UpdateBudgetResult:
+    properties:
+      user:
+        $ref: '#/definitions/user.CurrentUserResult'
     type: object
   github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest:
     properties:
@@ -2924,58 +2972,156 @@ paths:
       - Category
   /api/v1/connection/accept-invite:
     post:
+      consumes:
+      - application/json
+      description: Redeems an invite code, connecting the user with the invite's owner.
+      parameters:
+      - description: Accept invite request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest'
       produces:
       - application/json
       responses:
-        "501":
-          description: Not Implemented
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteResult'
+              type: object
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Accept an invite (not supported in self-hosted)
+      summary: Accept an invite
       tags:
       - Connection
   /api/v1/connection/delete-connection:
     post:
+      consumes:
+      - application/json
+      description: Disconnects the user from a connected user, revoking shared access.
+      parameters:
+      - description: Delete connection request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest'
       produces:
       - application/json
       responses:
-        "501":
-          description: Not Implemented
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult'
+              type: object
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Delete a connection (not supported in self-hosted)
+      summary: Delete a connection
       tags:
       - Connection
   /api/v1/connection/delete-invite:
     post:
+      consumes:
+      - application/json
+      description: Clears the user's outstanding connection invite (no-op if none).
+      parameters:
+      - description: Delete invite request
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest'
       produces:
       - application/json
       responses:
-        "501":
-          description: Not Implemented
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Delete an invite (not supported in self-hosted)
+      summary: Delete an invite
       tags:
       - Connection
   /api/v1/connection/generate-invite:
     post:
+      consumes:
+      - application/json
+      description: Generates (or refreshes) the user's connection invite code.
+      parameters:
+      - description: Generate invite request
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest'
       produces:
       - application/json
       responses:
-        "501":
-          description: Not Implemented
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Generate an invite (not supported in self-hosted)
+      summary: Generate an invite
       tags:
       - Connection
   /api/v1/connection/get-connection-list:
@@ -4249,15 +4395,33 @@ paths:
       - User
   /api/v1/user/update-budget:
     post:
-      description: Sets the authenticated user's active budget. Not yet implemented
-        — currently returns a 501 NotImplemented envelope.
+      consumes:
+      - application/json
+      description: Sets the authenticated user's default budget and returns the refreshed
+        user.
+      parameters:
+      - description: Update budget request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/apidoc.JsonResponseOk'
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "401":
           description: Unauthorized
           schema:
@@ -4266,13 +4430,9 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
-        "501":
-          description: Not Implemented
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Update budget (not implemented)
+      summary: Update budget
       tags:
       - User
   /api/v1/user/update-currency:

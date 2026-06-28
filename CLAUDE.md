@@ -25,11 +25,12 @@ The Go module is the repo root. Tests run with the standard toolchain — no Doc
 required for the smoke tier.
 
 ```bash
-make test            # SMOKE: build + vet + gofmt + sqlite unit/integration + coverage gate
+make test            # SMOKE: build + vet + gofmt + OpenAPI-docs-fresh + sqlite unit/integration + coverage gate
 make regression      # REGRESSION: test + the sqlite-vs-PostgreSQL engine-comparison suite
-make go-build        # Compile the binary to ./econumo
-make go-run          # Run the server locally (reads .env)
-make go-lint         # build + vet + gofmt check
+make go-build        # Compile the binary to ./econumo (regenerates OpenAPI docs first)
+make go-run          # Run the server locally (reads .env; regenerates OpenAPI docs first)
+make go-lint         # build + vet + gofmt + OpenAPI-docs-fresh check
+make swagger         # Regenerate the committed OpenAPI docs (swag, pinned to go.mod)
 
 # Or directly with the go toolchain (run from the repo root):
 go test ./...                        # all tests
