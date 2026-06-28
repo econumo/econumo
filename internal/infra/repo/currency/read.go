@@ -13,16 +13,12 @@ import (
 	"context"
 
 	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
-
-// rateDatetimeLayout is the wire datetime form for a rate's published date:
-// the DATE rendered as midnight, matching PHP's
-// publishedAt->format('Y-m-d H:i:s') where publishedAt is the date at 00:00:00.
-const rateDatetimeLayout = "2006-01-02 15:04:05"
 
 // Canonical read-row types: the sqlite-generated ones (the pgsql shim copies
 // into them). The list-view query selects a column subset, so sqlc emits a
@@ -98,8 +94,9 @@ func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]appcurrenc
 			// Normalize the NUMERIC(19,8) string to the PHP DecimalNumber wire
 			// form (trailing zeros trimmed). PostgreSQL returns "0.92000000";
 			// SQLite affinity returns "0.92"; both must render PHP-identically.
-			Rate:      vo.NewDecimal(rt.Rate).String(),
-			UpdatedAt: rt.PublishedAt.Format(rateDatetimeLayout),
+			Rate: vo.NewDecimal(rt.Rate).String(),
+			// PublishedAt is the rate DATE at midnight, rendered Y-m-d H:i:s.
+			UpdatedAt: rt.PublishedAt.Format(datetime.Layout),
 		})
 	}
 	return out, nil

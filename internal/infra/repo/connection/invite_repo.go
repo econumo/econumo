@@ -7,6 +7,7 @@ import (
 	"time"
 
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -112,7 +113,7 @@ func (sqliteInviteQuerier) GetByCode(ctx context.Context, db backend.DBTX, code 
 	// sqlite compares datetime(expired_at) >= datetime(?) with a 'Y-m-d H:i:s'
 	// string bound (a time.Time mis-compares against the stored datetime TEXT).
 	row, err := sqlitegen.New(db).GetConnectionInviteByCode(ctx, sqlitegen.GetConnectionInviteByCodeParams{
-		Code: &code, Datetime: now.Format("2006-01-02 15:04:05"),
+		Code: &code, Datetime: now.Format(datetime.Layout),
 	})
 	return inviteRow{UserID: row.UserID, Code: row.Code, ExpiredAt: row.ExpiredAt}, err
 }
@@ -125,7 +126,7 @@ func (sqliteInviteQuerier) Upsert(ctx context.Context, db backend.DBTX, userID s
 	// *time.Time. (Same SQLite datetime-binding gotcha handled in the budget repo.)
 	var exp any
 	if expiredAt != nil {
-		exp = expiredAt.Format("2006-01-02 15:04:05")
+		exp = expiredAt.Format(datetime.Layout)
 	}
 	_, err := db.ExecContext(ctx,
 		`INSERT INTO users_connections_invites (user_id, code, expired_at) VALUES (?, ?, ?)

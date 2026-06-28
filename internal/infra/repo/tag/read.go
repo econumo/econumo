@@ -12,14 +12,11 @@ import (
 	"context"
 
 	apptag "github.com/econumo/econumo/internal/app/tag"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
-
-// apiDatetimeLayout is the wire datetime format for createdAt/updatedAt
-// (space separator, no timezone).
-const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 // readQuerier is the engine-agnostic read surface, expressed in the canonical
 // (sqlite-generated) shape. Implemented per engine below.
@@ -66,8 +63,8 @@ func (r *ReadRepo) TagListView(ctx context.Context, userID string) ([]apptag.Tag
 			Name:       t.Name,
 			Position:   t.Position,
 			IsArchived: t.IsArchived,
-			CreatedAt:  t.CreatedAt.Format(apiDatetimeLayout),
-			UpdatedAt:  t.UpdatedAt.Format(apiDatetimeLayout),
+			CreatedAt:  t.CreatedAt.Format(datetime.Layout),
+			UpdatedAt:  t.UpdatedAt.Format(datetime.Layout),
 		})
 	}
 	return out, nil

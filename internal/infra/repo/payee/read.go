@@ -12,14 +12,11 @@ import (
 	"context"
 
 	apppayee "github.com/econumo/econumo/internal/app/payee"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
-
-// apiDatetimeLayout is the wire datetime format for createdAt/updatedAt
-// (space separator, no timezone).
-const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 // readQuerier is the engine-agnostic read surface, expressed in the canonical
 // (sqlite-generated) shape. Implemented per engine below.
@@ -66,8 +63,8 @@ func (r *ReadRepo) PayeeListView(ctx context.Context, userID string) ([]apppayee
 			Name:       p.Name,
 			Position:   p.Position,
 			IsArchived: p.IsArchived,
-			CreatedAt:  p.CreatedAt.Format(apiDatetimeLayout),
-			UpdatedAt:  p.UpdatedAt.Format(apiDatetimeLayout),
+			CreatedAt:  p.CreatedAt.Format(datetime.Layout),
+			UpdatedAt:  p.UpdatedAt.Format(datetime.Layout),
 		})
 	}
 	return out, nil
