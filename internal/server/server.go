@@ -90,10 +90,15 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
 
+	// Shared-account access resolver (account owner + connected-user grant role),
+	// used by the category/tag create-for-account paths. Backed by the connection
+	// AccountAccess repo (stateless adapter over the driver + tx manager).
+	accountAccessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(cfg.DatabaseDriver, txm))
+
 	// Category module.
 	categoryRepo := categoryrepo.NewRepo(cfg.DatabaseDriver, txm)
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo)
+	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo, accountAccessResolver)
 	categoryReadSvc := appcategory.NewReadService(categoryReadRepo)
 	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc, cfg.IsDev())
 
@@ -101,7 +106,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
 	tagRepo := tagrepo.NewRepo(cfg.DatabaseDriver, txm)
 	tagReadRepo := tagrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo)
+	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo, accountAccessResolver)
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
 	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc, cfg.IsDev())
 

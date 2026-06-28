@@ -46,14 +46,22 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 		return nil, err
 	}
 
-	// accountId, when present, selects which user owns the new category in the
-	// full app (an account may belong to a connected user). The connection module
-	// is not ported yet, so we always create for the current user and ignore
-	// accountId beyond validating its shape. See notes/README.
+	// accountId, when present, selects which user owns the new category: an
+	// account may belong to a connected user, and a category added in the context
+	// of a shared account is owned by the ACCOUNT OWNER (PHP
+	// createCategoryForAccount), gated by an owner/admin access check
+	// (checkAddCategory == isAdmin). Absent accountId -> owned by the caller.
+	ownerID := userID
 	if req.AccountId != nil && *req.AccountId != "" {
-		if _, perr := vo.ParseId(*req.AccountId); perr != nil {
+		accountID, perr := vo.ParseId(*req.AccountId)
+		if perr != nil {
 			return nil, perr
 		}
+		resolved, aerr := s.resolveAccountOwner(ctx, userID, accountID)
+		if aerr != nil {
+			return nil, aerr
+		}
+		ownerID = resolved
 	}
 
 	var created *domcategory.Category
@@ -66,12 +74,12 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 			return errs.NewValidation("Operation is locked")
 		}
 
-		count, cerr := s.repo.CountByOwner(ctx, userID)
+		count, cerr := s.repo.CountByOwner(ctx, ownerID)
 		if cerr != nil {
 			return cerr
 		}
 		now := s.clock.Now()
-		c := domcategory.NewCategory(id, userID, name, typ, icon, now)
+		c := domcategory.NewCategory(id, ownerID, name, typ, icon, now)
 		c.SetPosition(int16(count))
 		if serr := s.repo.Save(ctx, c); serr != nil {
 			return serr

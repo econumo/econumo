@@ -26,6 +26,7 @@ import (
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/auth"
+	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -99,7 +100,8 @@ func newHarness(t *testing.T) *harness {
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
-	svc := apptag.NewService(repo, txm, opGuard, clk, readRepo)
+	accountAccess := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
+	svc := apptag.NewService(repo, txm, opGuard, clk, readRepo, accountAccess)
 	readSvc := apptag.NewReadService(readRepo)
 	handlers := handlertag.NewHandlers(svc, readSvc, cfg.IsDev())
 

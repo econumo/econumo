@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
@@ -43,21 +44,55 @@ type OperationGuard interface {
 	MarkHandled(ctx context.Context, id vo.Id, now time.Time) error
 }
 
+// AccountAccess resolves shared-account ownership/role for the
+// create-for-account path: which user owns an account, and what role a connected
+// user holds on it. Backed by the connection module's AccountAccess repo. A
+// missing grant is reported as ok=false (nil error).
+type AccountAccess interface {
+	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	GrantRole(ctx context.Context, accountID, userID vo.Id) (role domconnection.Role, ok bool, err error)
+}
+
 // Service is the tag write-side use-case orchestrator. It owns the tx boundary
 // and builds the response-shaped *Result structs directly.
 type Service struct {
-	repo  domtag.Repository
-	tx    TxRunner
-	ops   OperationGuard
-	clock Clock
-	read  ReadModel
+	repo   domtag.Repository
+	tx     TxRunner
+	ops    OperationGuard
+	clock  Clock
+	read   ReadModel
+	access AccountAccess
 }
 
 // NewService wires the tag service. read is the own+shared tag view (the same
 // ReadModel get-tag-list uses); order-tag-list returns that full available list,
-// mirroring PHP's OrderTagListV1ResultAssembler (findAvailableForUserId).
-func NewService(repo domtag.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel) *Service {
-	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read}
+// mirroring PHP's OrderTagListV1ResultAssembler (findAvailableForUserId). access
+// resolves shared-account ownership for create-tag-for-account.
+func NewService(repo domtag.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
+	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
+}
+
+// resolveAccountOwner returns the user a tag created in the context of accountID
+// must be owned by — the account owner. The caller must own the account or hold
+// an admin grant on it (PHP AccountAccessService.checkAddTag == isAdmin);
+// otherwise AccessDenied. Mirrors createTagForAccount, which assigns ownership to
+// the account owner.
+func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.Id) (vo.Id, error) {
+	owner, err := s.access.AccountOwner(ctx, accountID)
+	if err != nil {
+		return vo.Id{}, err
+	}
+	if owner.Equal(userID) {
+		return owner, nil
+	}
+	role, ok, err := s.access.GrantRole(ctx, accountID, userID)
+	if err != nil {
+		return vo.Id{}, err
+	}
+	if ok && role == domconnection.RoleAdmin {
+		return owner, nil
+	}
+	return vo.Id{}, errs.NewAccessDenied("Access is not allowed")
 }
 
 // ---------------------------------------------------------------------------

@@ -6,15 +6,60 @@ package connectionrepo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
 	appconnection "github.com/econumo/econumo/internal/app/connection"
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
 )
+
+// --- AccountAccessResolver over the AccountAccess repo ---
+
+// accountAccessFull is the subset of the connection AccountAccess repo used to
+// resolve an account's owner and a connected user's grant role for the
+// create-for-account path (category/tag create with an accountId).
+type accountAccessFull interface {
+	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	Get(ctx context.Context, accountID, userID vo.Id) (*domconnection.AccountAccess, error)
+}
+
+// AccountAccessResolver answers "who owns this account" and "what role does this
+// user hold on it" — the two questions the category and tag create-for-account
+// paths need to mirror PHP AccountAccessService.checkAddCategory/checkAddTag
+// (== isAdmin) and createCategoryForAccount/createTagForAccount (ownership goes
+// to the account owner). It structurally satisfies the AccountAccess port that
+// the category and tag app services declare.
+type AccountAccessResolver struct{ access accountAccessFull }
+
+// NewAccountAccessResolver wraps the connection AccountAccess repo.
+func NewAccountAccessResolver(access accountAccessFull) *AccountAccessResolver {
+	return &AccountAccessResolver{access: access}
+}
+
+// AccountOwner returns the owner user id of an account.
+func (r *AccountAccessResolver) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
+	return r.access.AccountOwner(ctx, accountID)
+}
+
+// GrantRole returns the user's granted role on the account. A missing grant
+// (the repo's *errs.NotFoundError) is reported as ok=false, nil error; other
+// errors propagate.
+func (r *AccountAccessResolver) GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error) {
+	grant, err := r.access.Get(ctx, accountID, userID)
+	if err != nil {
+		var nf *errs.NotFoundError
+		if errors.As(err, &nf) {
+			return 0, false, nil
+		}
+		return 0, false, err
+	}
+	return grant.Role(), true, nil
+}
 
 // --- FolderPort over the account FolderRepository ---
 

@@ -35,14 +35,22 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 		return nil, err
 	}
 
-	// accountId, when present, selects which user owns the new tag in the full
-	// app (an account may belong to a connected user). The connection module is
-	// not ported yet, so we always create for the current user and ignore
-	// accountId beyond validating its shape.
+	// accountId, when present, selects which user owns the new tag: an account
+	// may belong to a connected user, and a tag added in the context of a shared
+	// account is owned by the ACCOUNT OWNER (PHP createTagForAccount), gated by an
+	// owner/admin access check (checkAddTag == isAdmin). Absent accountId -> owned
+	// by the caller.
+	ownerID := userID
 	if req.AccountId != nil && *req.AccountId != "" {
-		if _, perr := vo.ParseId(*req.AccountId); perr != nil {
+		accountID, perr := vo.ParseId(*req.AccountId)
+		if perr != nil {
 			return nil, perr
 		}
+		resolved, aerr := s.resolveAccountOwner(ctx, userID, accountID)
+		if aerr != nil {
+			return nil, aerr
+		}
+		ownerID = resolved
 	}
 
 	var created *domtag.Tag
@@ -55,16 +63,16 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 			return errs.NewValidation("Operation is locked")
 		}
 
-		if uerr := s.ensureNameUnique(ctx, userID, name, vo.Id{}); uerr != nil {
+		if uerr := s.ensureNameUnique(ctx, ownerID, name, vo.Id{}); uerr != nil {
 			return uerr
 		}
 
-		count, cerr := s.repo.CountByOwner(ctx, userID)
+		count, cerr := s.repo.CountByOwner(ctx, ownerID)
 		if cerr != nil {
 			return cerr
 		}
 		now := s.clock.Now()
-		t := domtag.NewTag(id, userID, name, now)
+		t := domtag.NewTag(id, ownerID, name, now)
 		t.SetPosition(int16(count))
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
