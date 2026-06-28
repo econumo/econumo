@@ -107,7 +107,6 @@ jobs:
           push: true
           tags: ${{ needs.create-tag.outputs.tags }}
           build-args: |
-            ECONUMO_EDITION=ce
             ECONUMO_VERSION=${{ needs.create-tag.outputs.version }}
 
   create-github-release:

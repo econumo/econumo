@@ -5,7 +5,6 @@ declare namespace NodeJS {
     readonly NODE_ENV: string;
     readonly VUE_ROUTER_MODE: 'hash' | 'history' | 'abstract' | undefined;
     readonly VUE_ROUTER_BASE: string | undefined;
-    readonly ECONUMO_EDITION: string;
     readonly WEBSITE_URL: string;
   }
 }

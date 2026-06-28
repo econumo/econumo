@@ -83,16 +83,13 @@ lint:
 	@echo "Running web linter..."
 	cd web && npm run lint
 
-# Build for production
+# Build for production (legacy PHP image; the committed web/.env is the config)
 build:
-	@echo "Setting up frontend environment..."
-	rm -f web/.env
-	cp web/.env.ce web/.env
 	@echo "Building production Docker image..."
 	docker buildx build \
 		--file deployment/docker/app/Dockerfile \
 		--target prod \
-		--tag econumo/econumo-ce:local \
+		--tag econumo/econumo:local \
 		--load \
 		.
 
@@ -198,7 +195,6 @@ GHCR_IMAGE        ?= ghcr.io/econumo/econumo
 PUBLISH_TAG       ?= dev
 PUBLISH_PLATFORMS ?= linux/amd64,linux/arm64
 BUILDX_BUILDER    ?= econumo-mb
-ECONUMO_EDITION   ?= ce
 ECONUMO_VERSION   ?= dev
 
 # Ensure a docker-container buildx builder exists (multi-arch push needs it).
@@ -213,7 +209,6 @@ publish: publish-buildx-ensure
 		--platform $(PUBLISH_PLATFORMS) \
 		--file deployment/docker/go/Dockerfile \
 		--target prod \
-		--build-arg ECONUMO_EDITION=$(ECONUMO_EDITION) \
 		--build-arg ECONUMO_VERSION=$(ECONUMO_VERSION) \
 		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
 		--push \

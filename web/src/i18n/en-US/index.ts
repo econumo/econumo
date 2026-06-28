@@ -759,18 +759,7 @@ export default {
           'menu_item': 'Shared access',
           'header': 'Shared access',
           'generate_invite': 'Create an invitation',
-          'accept_invite': 'Accept an invitation',
-          'info': {
-            'header': '<b>Econumo CE</b> does not support user connection management and offers two modes suitable for families and individuals:',
-            'list': {
-              'all_users_connected': 'All users connected automatically',
-              'all_users_connected_description': 'Ideal for families, allowing easy sharing of accounts or budgets.',
-              'no_connections': 'No connections between users',
-              'no_connections_description': 'No shared accounts or budgets.',
-            },
-            'link': 'Read more',
-            'link_url': 'https://econumo.com/docs/edition/'
-          }
+          'accept_invite': 'Accept an invitation'
         }
       },
       'accounts': {
