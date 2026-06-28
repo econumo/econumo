@@ -26,7 +26,7 @@ var signingMethod = jwtv5.SigningMethodRS256
 //
 // Claim ordering in the JSON does not affect signature verification
 // (verification re-signs the raw, already-encoded payload bytes), so wire
-// compatibility does not depend on field order here. See COMPATIBILITY.md.
+// compatibility does not depend on field order here. See CLAUDE.md.
 type Claims struct {
 	Iat      int64    `json:"iat"`
 	Exp      int64    `json:"exp"`
@@ -59,7 +59,7 @@ func (c Claims) GetSubject() (string, error) { return "", nil }
 func (c Claims) GetAudience() (jwtv5.ClaimStrings, error) { return nil, nil }
 
 // JWT issues and verifies RS256 tokens that are wire-compatible with existing
-// API clients (see COMPATIBILITY.md). The public key is always loaded
+// API clients (see CLAUDE.md). The public key is always loaded
 // (verification is always possible); the private key is loaded only when its
 // path is readable, so a verify-only deployment need not ship the signing key.
 type JWT struct {

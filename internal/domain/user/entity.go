@@ -102,7 +102,7 @@ type User struct {
 	email      string // AES-encrypted ciphertext (opaque here)
 	name       string
 	avatarURL  string
-	password   string // sha512, 500 iterations, base64-encoded (see COMPATIBILITY.md)
+	password   string // sha512, 500 iterations, base64-encoded (see CLAUDE.md)
 	salt       string // sha1(random) hex, 40 chars
 	isActive   bool
 	createdAt  time.Time

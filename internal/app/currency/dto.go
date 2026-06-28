@@ -4,7 +4,7 @@
 // port. There is no write Service.
 //
 // JSON field names are frozen to the existing API wire contract; see
-// COMPATIBILITY.md.
+// CLAUDE.md.
 package currency
 
 // ---------------------------------------------------------------------------
@@ -13,7 +13,7 @@ package currency
 
 // CurrencyResult is one currency in the API. name is the English display name
 // resolved from the Intl table (the stored currencies.name is NULL in practice);
-// fractionDigits is an int. Frozen wire shape; see COMPATIBILITY.md.
+// fractionDigits is an int. Frozen wire shape; see CLAUDE.md.
 type CurrencyResult struct {
 	Id             string `json:"id"`
 	Code           string `json:"code"`

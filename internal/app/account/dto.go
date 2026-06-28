@@ -3,7 +3,7 @@
 // tx boundary, builds response DTOs directly), and the read side.
 //
 // JSON field names are frozen to the existing API wire contract; see
-// COMPATIBILITY.md. The account result embeds the owner (User), the full
+// CLAUDE.md. The account result embeds the owner (User), the full
 // currency, the folder id, the per-user position, the computed balance, and
 // sharedAccess (stubbed empty until the connection module lands).
 package account
@@ -40,7 +40,7 @@ type CurrencyResult struct {
 // AccountResult is one account in the API. balance is a normalized decimal
 // string; type is the int (1 cash / 2 credit-card); sharedAccess is [] until the
 // connection module lands. folderId is the first folder containing the account
-// (or null). These wire shapes are frozen; see COMPATIBILITY.md.
+// (or null). These wire shapes are frozen; see CLAUDE.md.
 type AccountResult struct {
 	Id           string         `json:"id"`
 	Owner        OwnerResult    `json:"owner"`

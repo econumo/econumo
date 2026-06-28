@@ -4,7 +4,7 @@
 // read-side ReadService for the pure get-tag-list read.
 //
 // JSON field names are frozen to the existing API wire contract; see
-// COMPATIBILITY.md. Note the tag result shape has NO type and NO icon field
+// CLAUDE.md. Note the tag result shape has NO type and NO icon field
 // (unlike category) — a tag has neither.
 package tag
 
@@ -21,7 +21,7 @@ import (
 // TagResult is one tag in the API. isArchived is an int 0/1 (NOT bool);
 // createdAt/updatedAt are "2006-01-02 15:04:05" (space separator, no timezone).
 // There is no type or icon field. These wire shapes are frozen; see
-// COMPATIBILITY.md.
+// CLAUDE.md.
 type TagResult struct {
 	Id          string `json:"id"`
 	OwnerUserId string `json:"ownerUserId"`

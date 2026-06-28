@@ -244,7 +244,7 @@ func newReportPeriod(v string) (string, error) {
 }
 
 // newSalt generates a salt as sha1(10 random bytes) -> 40 hex chars. See
-// COMPATIBILITY.md.
+// CLAUDE.md.
 func newSalt() (string, error) {
 	b := make([]byte, 10)
 	if _, err := io.ReadFull(rand.Reader, b); err != nil {
@@ -255,7 +255,7 @@ func newSalt() (string, error) {
 }
 
 // md5Hex returns hex(md5(v)) — the gravatar hash: the plain md5 of the
-// lowercased email. See COMPATIBILITY.md.
+// lowercased email. See CLAUDE.md.
 func md5Hex(v string) string {
 	sum := md5.Sum([]byte(v))
 	return hex.EncodeToString(sum[:])

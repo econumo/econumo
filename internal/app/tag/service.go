@@ -15,7 +15,7 @@ import (
 )
 
 // apiDatetimeLayout is the wire format for createdAt/updatedAt: "2006-01-02
-// 15:04:05" (space separator, no timezone). See COMPATIBILITY.md.
+// 15:04:05" (space separator, no timezone). See CLAUDE.md.
 const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 // Clock supplies the current time. A seam so tests can pin timestamps for
@@ -126,7 +126,7 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 
 // toResult is the single entity->DTO conversion in the module. It formats the
 // timestamps in the "2006-01-02 15:04:05" wire form and maps the archived bool
-// to the wire shape (isArchived int 0/1). See COMPATIBILITY.md.
+// to the wire shape (isArchived int 0/1). See CLAUDE.md.
 func toResult(t *domtag.Tag) TagResult {
 	archived := 0
 	if t.IsArchived() {
@@ -186,7 +186,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 // message is EXACTLY "Tag name must be 3-64 characters" (wire-compat with
 // existing API clients) and the field key is "name". This mirrors the PHP
 // GenericName validator (label derived from the VO short name "TagName" ->
-// "Tag name"). See COMPATIBILITY.md.
+// "Tag name"). See CLAUDE.md.
 func newTagName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {

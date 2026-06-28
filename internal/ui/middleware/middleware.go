@@ -116,7 +116,7 @@ func Recover(dev bool) Middleware {
 // ---- CORS ----
 
 // CORS sets the frozen CORS headers (wire-compatible with existing clients, see
-// COMPATIBILITY.md) and short-circuits preflight OPTIONS requests with 200. The
+// CLAUDE.md) and short-circuits preflight OPTIONS requests with 200. The
 // allowed origin comes
 // from config (CORS_ALLOW_ORIGIN, default "*").
 func CORS(origin string) Middleware {

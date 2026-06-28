@@ -4,7 +4,7 @@
 // read-side ReadService for the pure get-payee-list read.
 //
 // JSON field names are frozen to the existing API wire contract; see
-// COMPATIBILITY.md. The payee result shape has NO type and NO icon field (same
+// CLAUDE.md. The payee result shape has NO type and NO icon field (same
 // as tag) — a payee has neither.
 package payee
 
@@ -21,7 +21,7 @@ import (
 // PayeeResult is one payee in the API. isArchived is an int 0/1 (NOT bool);
 // createdAt/updatedAt are "2006-01-02 15:04:05" (space separator, no timezone).
 // There is no type or icon field. These wire shapes are frozen; see
-// COMPATIBILITY.md.
+// CLAUDE.md.
 type PayeeResult struct {
 	Id          string `json:"id"`
 	OwnerUserId string `json:"ownerUserId"`

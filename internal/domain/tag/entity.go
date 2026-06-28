@@ -5,7 +5,7 @@
 //
 // Unlike a category, a tag has no type and no persisted icon: its icon is a
 // fixed "tag" and is not stored or returned on the wire (the TagResult DTO has
-// no icon field). See COMPATIBILITY.md.
+// no icon field). See CLAUDE.md.
 package tag
 
 import (

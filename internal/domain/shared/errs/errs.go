@@ -17,7 +17,7 @@ type FieldError struct {
 	// translation layer decides which to use per endpoint.
 	Key string
 	// Message is the human-readable, already-translated message. The exact
-	// strings are frozen (see COMPATIBILITY.md) and asserted by the test suite.
+	// strings are frozen (see CLAUDE.md) and asserted by the test suite.
 	Message string
 	// Code is an optional error code string carried in errors[].
 	Code string

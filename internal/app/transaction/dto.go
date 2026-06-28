@@ -4,7 +4,7 @@
 // export).
 //
 // JSON field names are frozen to the existing API wire contract; see
-// COMPATIBILITY.md. create/update/delete results embed the full account list
+// CLAUDE.md. create/update/delete results embed the full account list
 // (built by the account module's service); the transaction result itself embeds
 // the author (minimal user shape).
 package transaction

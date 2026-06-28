@@ -23,7 +23,7 @@ import (
 // TRUNCATE toward zero at scale 8 (bcmul/bcdiv semantics); Round uses PHP
 // round()'s half-away-from-zero. Golden vectors against PHP bcmath live in
 // decimal_test.go + testdata. DecimalNumber is the flagged silent-drift hotspot
-// (see COMPATIBILITY.md and the rewrite plan).
+// (see CLAUDE.md).
 type DecimalNumber struct {
 	value string // already normalized
 }

@@ -10,7 +10,7 @@ import (
 	domuser "github.com/econumo/econumo/internal/domain/user"
 )
 
-// Register creates a new user (no token returned; see COMPATIBILITY.md). It is
+// Register creates a new user (no token returned; see CLAUDE.md). It is
 // gated on ECONUMO_ALLOW_REGISTRATION; the actual creation is shared with the
 // ungated CLI admin path via createUser.
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterResult, error) {

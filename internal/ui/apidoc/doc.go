@@ -6,7 +6,7 @@
 //
 // Serving: ui/router wires Swagger UI at /api/doc and the raw spec at
 // /api/doc.json (both public; paths are wire-compatible with existing clients,
-// see COMPATIBILITY.md). The frontend does not consume these; the spec is for
+// see CLAUDE.md). The frontend does not consume these; the spec is for
 // human/tooling use, so it describes the endpoints accurately.
 //
 // @title                      Econumo API

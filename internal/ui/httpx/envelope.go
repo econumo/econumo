@@ -1,6 +1,6 @@
 // Package httpx implements the frozen JSON response envelope and the
 // domain-error -> HTTP-status mapping. The envelope shape is wire-compatible
-// with existing API clients (see COMPATIBILITY.md).
+// with existing API clients (see CLAUDE.md).
 //
 // IMPORTANT: the validation errors[] payload is NOT an array of
 // {key,message,code} — it is a MAP of field-name -> []string (list of
@@ -109,7 +109,7 @@ func Exception(w http.ResponseWriter, message, exceptionType string, stackTrace 
 }
 
 // NotImplemented writes the 501 envelope: success:false, code:0, errors:[].
-// Note errors is emitted as [] here, not {} — see COMPATIBILITY.md.
+// Note errors is emitted as [] here, not {} — see CLAUDE.md.
 func NotImplemented(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)

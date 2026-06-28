@@ -12,7 +12,7 @@ import (
 
 // Type is the category type value object. The DB stores it as a SMALLINT
 // (expense=0, income=1); the wire contract uses the alias string ("expense" /
-// "income"). See COMPATIBILITY.md.
+// "income"). See CLAUDE.md.
 type Type int16
 
 const (

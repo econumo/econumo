@@ -186,6 +186,48 @@ The distroless image creates a `bin/console` symlink to the binary, so legacy
 - Login lives under `internal/ui/handler/user` (`/api/v1/user/login-user`).
 - Token refresh is not implemented (clients re-authenticate).
 
+## Wire & data contract (frozen)
+
+These behaviours are **frozen**: the web SPA and other clients parse exact JSON,
+and the production database holds data written in these formats. Don't "clean
+them up" — changing one breaks live clients, locks users out, or makes stored
+data unreadable. Most are also asserted by the test suite.
+
+### Response envelope (`internal/ui/httpx/envelope.go`)
+- Success (200): `{"success": true, "message": "", "data": <payload>}`
+- Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
+- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `APP_ENV=dev`.
+- Not implemented (501): `{"success": false, "message": <string>, "code": 0, "errors": []}` — here `errors` is an array `[]` (the lone exception to the object rule).
+- JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
+
+### Auth crypto (`internal/infra/auth/`)
+- **Password hash**: sha512, 500 iterations, base64 (88 chars). Salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`. Verify rejects len≠88 or a `$`, constant-time.
+- **User identifier**: `hex(md5(lower(email) || ECONUMO_DATA_SALT))` — 32-char hex; the primary user lookup key.
+- **Email encryption**: AES-128-CBC, key = raw `ECONUMO_DATA_SALT` (exactly 16 bytes); layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified (constant-time) before decrypt. Empty salt → passthrough.
+
+### JWT (`internal/infra/auth/jwt.go`)
+- RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
+- Claims: `iat`; `exp = iat + 2592000` (30-day TTL); `roles = ["ROLE_USER"]`; `username` = plaintext email; `id` = user UUID. No `nbf`/`iss`/`sub`/`aud`.
+
+### Encodings, messages, routes
+- Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
+- `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
+- Validation strings are exact and asserted by clients/tests, e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `IS_BLANK_ERROR`).
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid JWT.
+- Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're JWT claims, FK targets, and held by clients).
+
+## Key design decisions
+
+- **One binary, two engines, runtime-selected** — both DB backends are linked in and chosen by `DATABASE_URL`; no Go plugins.
+- **sqlc for compile-checked SQL** — a wrong column/arg fails `go build`; per-engine query variants only where the dialects diverge (see the engine-adapter pattern).
+- **stdlib-first** — `net/http.ServeMux` routing, `func(http.Handler) http.Handler` middleware, hand-written `Validate()` (no tag DSL), stdlib CLI. Third-party deps only where stdlib can't deliver (decimal, JWT, DB drivers, uuid, sqlc, Resend).
+- **No assembler layer** — app services build and return the result DTOs directly.
+- **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
+
+### Notable behaviours
+- **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
+- **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
+
 ## Deployment
 
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).

@@ -9,7 +9,7 @@ import (
 
 // PasswordHasher computes stored-password hashes: sha512, 500 iterations,
 // base64-std encoded. Wire/data-compatible with existing accounts (see
-// COMPATIBILITY.md).
+// CLAUDE.md).
 //
 // Algorithm:
 //

@@ -16,7 +16,7 @@ import (
 )
 
 // Type is the transaction type value object. DB SMALLINT; wire uses the alias
-// string (expense/income/transfer). See COMPATIBILITY.md.
+// string (expense/income/transfer). See CLAUDE.md.
 type Type int16
 
 const (

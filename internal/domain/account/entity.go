@@ -18,7 +18,7 @@ import (
 // Type is the account type value object. The DB stores it as a SMALLINT and the
 // wire contract uses the same int (NOT an alias string, unlike category): CASH=1,
 // CREDIT_CARD=2. New accounts are always created as CREDIT_CARD (matching the PHP
-// AccountService::create, which hardcodes the type). See COMPATIBILITY.md.
+// AccountService::create, which hardcodes the type). See CLAUDE.md.
 type Type int16
 
 const (

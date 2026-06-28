@@ -1,6 +1,6 @@
 // Package auth implements Econumo's crypto: the EncodeService (identifier
 // hashing + reversible email encryption) and the password hasher. These are
-// wire/data-compatible with existing accounts (see COMPATIBILITY.md), locked
+// wire/data-compatible with existing accounts (see CLAUDE.md), locked
 // down by golden vectors in *_test.go.
 package auth
 

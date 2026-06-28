@@ -5,7 +5,7 @@
 // conversion is the trivial inline toCurrentUser in service.go.
 //
 // JSON field names are frozen to the existing API wire contract; see
-// COMPATIBILITY.md.
+// CLAUDE.md.
 package user
 
 import (
@@ -311,7 +311,7 @@ type LogoutResult struct {
 
 // validateEmailField checks NotBlank, RFC-ish email, and optional max length.
 // maxLen <= 0 disables the length check. The messages are frozen exact strings;
-// see COMPATIBILITY.md.
+// see CLAUDE.md.
 func validateEmailField(key, v string, maxLen int) []errs.FieldError {
 	if strings.TrimSpace(v) == "" {
 		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"}}

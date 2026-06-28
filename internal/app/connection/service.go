@@ -63,7 +63,7 @@ type OptionPort interface {
 // Service is the connection write+read orchestrator. It owns the tx boundary and
 // builds response-shaped *Result structs directly.
 // apiDatetimeLayout is the wire format for datetimes (e.g. an invite's
-// expiredAt): "2006-01-02 15:04:05", space separator, no zone. See COMPATIBILITY.
+// expiredAt): "2006-01-02 15:04:05", space separator, no zone. See CLAUDE.md.
 const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 type Service struct {

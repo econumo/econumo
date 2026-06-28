@@ -16,7 +16,7 @@ import (
 )
 
 // apiDatetimeLayout is the wire format for createdAt/updatedAt: "2006-01-02
-// 15:04:05" (space separator, no timezone). See COMPATIBILITY.md.
+// 15:04:05" (space separator, no timezone). See CLAUDE.md.
 const apiDatetimeLayout = "2006-01-02 15:04:05"
 
 // defaultIcon is the create fallback: an empty icon becomes "local_offer".
@@ -100,7 +100,7 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *domca
 
 // toResult is the single entity->DTO conversion in the module. It formats the
 // timestamps in the "2006-01-02 15:04:05" wire form and maps the bool/type to
-// the wire shapes (isArchived int 0/1, type alias string). See COMPATIBILITY.md.
+// the wire shapes (isArchived int 0/1, type alias string). See CLAUDE.md.
 func toResult(c *domcategory.Category) CategoryResult {
 	archived := 0
 	if c.IsArchived() {
@@ -142,7 +142,7 @@ func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]CategoryResu
 
 // newCategoryName enforces the category name invariant: rune length 3..64. The
 // error message is EXACTLY "Category name must be 3-64 characters" (wire-compat
-// with existing API clients) and the field key is "name". See COMPATIBILITY.md.
+// with existing API clients) and the field key is "name". See CLAUDE.md.
 func newCategoryName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {

@@ -4,7 +4,7 @@
 // directly), and the read-side ReadService for the pure get-category-list read.
 //
 // JSON field names are frozen to the existing API wire contract; see
-// COMPATIBILITY.md.
+// CLAUDE.md.
 package category
 
 import (
@@ -20,7 +20,7 @@ import (
 // CategoryResult is one category in the API. type is the alias string
 // ("expense"/"income"); isArchived is an int 0/1 (NOT bool); createdAt/updatedAt
 // are "2006-01-02 15:04:05" (space separator, no timezone). These wire shapes
-// are frozen; see COMPATIBILITY.md.
+// are frozen; see CLAUDE.md.
 type CategoryResult struct {
 	Id          string `json:"id"`
 	OwnerUserId string `json:"ownerUserId"`

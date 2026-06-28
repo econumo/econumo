@@ -11,7 +11,7 @@ import (
 
 // DeleteCategory deletes the category. The user must own it; an ownership
 // failure surfaces as a ValidationError (HTTP 400, "Category not found"), NOT an
-// AccessDenied. See COMPATIBILITY.md.
+// AccessDenied. See CLAUDE.md.
 //
 //   - mode=delete: just delete the category. Transactions referencing it have
 //     category_id set to NULL via the ON DELETE SET NULL FK.

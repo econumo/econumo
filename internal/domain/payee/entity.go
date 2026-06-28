@@ -4,7 +4,7 @@
 // intent-revealing mutators below and persists the whole aggregate.
 //
 // A payee has the same shape as a tag: no type and no icon (the PayeeResult DTO
-// carries only id/name/position/isArchived/timestamps). See COMPATIBILITY.md.
+// carries only id/name/position/isArchived/timestamps). See CLAUDE.md.
 package payee
 
 import (
