@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"strings"
@@ -97,6 +98,25 @@ func userCommands() []command {
 					return err
 				}
 				fmt.Printf("Deactivated %d user(s) created before %s\n", n, cutoff.Format("2006-01-02"))
+				return nil
+			},
+		},
+		{
+			name:    "app:remove-data-salt",
+			summary: "Decrypt emails to plaintext + re-hash identifiers so ECONUMO_DATA_SALT can be removed",
+			run: func(ctx context.Context, c *container, args []string) error {
+				// Guard the catastrophic case: with an empty salt Decode is a
+				// passthrough, so the sweep would store ciphertext AS plaintext.
+				// The salt the data was written with MUST still be configured.
+				if strings.TrimSpace(c.cfg.DataSalt) == "" {
+					return errors.New("ECONUMO_DATA_SALT is empty; set it to the salt the data was written with before running this migration")
+				}
+				migrated, skipped, err := c.user.MigrateRemoveDataSalt(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("Migrated %d user(s) to plaintext; skipped %d already-plaintext.\n", migrated, skipped)
+				fmt.Println("Now remove ECONUMO_DATA_SALT from your environment and restart.")
 				return nil
 			},
 		},

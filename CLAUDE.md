@@ -136,13 +136,18 @@ artifact (`.github/workflows/go-tests.yml`).
 The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 
 - `DATABASE_URL` — `sqlite:///abs/path/db.sqlite` or `postgres://…`. Selects the engine.
-- `PORT` — HTTP listen port (required).
+- `PORT` — HTTP listen port (required by the server). Not kept in `.env`: the image
+  hardcodes `80` (map it to any host port in compose) and `make run` sets it (default
+  8181, override `RUN_PORT`). Set it yourself only for a bare `go run`.
 - `JWT_SECRET_KEY` / `JWT_PUBLIC_KEY` / `JWT_PASSPHRASE` — RS256 keypair (paths may use
   the Symfony-style `%kernel.project_dir%` placeholder, which is expanded to the cwd).
   Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first boot if
   missing (no keys are committed or baked into the image). `app:generate-jwt-keypair`
-  generates one explicitly. Persist `var/jwt` on a volume to keep tokens valid.
+  generates one explicitly. In the image these resolve under `/app/var/jwt`; persist
+  the `/app/var` volume (db + keys) to keep data and tokens valid.
 - `ECONUMO_DATA_SALT` — AES key + identifier-hash salt (must match the data it reads).
+  **Deprecated — will be removed in a future version.** Migrate to plaintext with
+  `app:remove-data-salt` (below) and leave it unset.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `RESEND_API_KEY` + `ECONUMO_FROM_EMAIL` (+ optional `ECONUMO_REPLY_TO_EMAIL`) — enable
@@ -174,10 +179,18 @@ app:deactivate-users --date=YYYY-MM-DD
 app:update-currency-rates [date]
 app:add-currency <code> [name] [fraction-digits]
 app:generate-jwt-keypair
+app:remove-data-salt
 ```
 
-The distroless image creates a `bin/console` symlink to the binary, so legacy
-`bin/console app:…` invocations keep working.
+`app:remove-data-salt` is a one-off migration that decrypts every user's email
+back to plaintext and re-derives the identifier as `md5(lower(email))` (no salt),
+so `ECONUMO_DATA_SALT` can be removed. Run it **while the old salt is still set**
+(it needs it to decrypt), then unset `ECONUMO_DATA_SALT` and restart. It refuses
+to run with an empty salt, and is idempotent (already-plaintext rows are skipped).
+Back up the DB first — the decryption is one-way in practice.
+
+In the distroless image these run via the binary directly, e.g.
+`docker exec <container> /app/econumo app:create-user …`.
 
 ## Authentication
 
@@ -203,6 +216,7 @@ data unreadable. Most are also asserted by the test suite.
 - **Password hash**: sha512, 500 iterations, base64 (88 chars). Salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`. Verify rejects len≠88 or a `$`, constant-time.
 - **User identifier**: `hex(md5(lower(email) || ECONUMO_DATA_SALT))` — 32-char hex; the primary user lookup key.
 - **Email encryption**: AES-128-CBC, key = raw `ECONUMO_DATA_SALT` (exactly 16 bytes); layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified (constant-time) before decrypt. Empty salt → passthrough.
+- **Empty-salt (plaintext) mode**: an unset `ECONUMO_DATA_SALT` is fully supported — the email column holds plaintext and the identifier is `md5(lower(email))` (no salt). To move an existing salted database into this mode, run `app:remove-data-salt` (above) before unsetting the salt.
 
 ### JWT (`internal/infra/auth/jwt.go`)
 - RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
@@ -232,7 +246,7 @@ data unreadable. Most are also asserted by the test suite.
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
   - `:dev` — published locally via `make publish`.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
-- Self-hosting: see `deployment/docker-compose/` (`docker-compose.yml` + `.env.example`)
+- Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
 
 ## Code Quality Tools

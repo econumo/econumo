@@ -47,10 +47,15 @@ web-lint:
 build:
 	CGO_ENABLED=0 go build -o econumo ./cmd/econumo
 
-# Run the server locally without Docker. Reads ./.env (cp .env.example .env
-# first); migrations run on boot and the JWT keypair is generated if missing.
+# Run the server locally without Docker. The listen port and a local sqlite DB are
+# passed explicitly (PORT/DATABASE_URL are no longer kept in .env — they are build-
+# /run-controlled); ./.env is still auto-loaded for the rest. Migrations run on boot
+# and the JWT keypair is generated if missing. Override: make run RUN_PORT=9000
+RUN_PORT         ?= 8181
+RUN_DATABASE_URL ?= sqlite://var/db/db.sqlite
 run:
-	go run ./cmd/econumo serve
+	@mkdir -p var/db
+	APP_ENV=dev PORT=$(RUN_PORT) DATABASE_URL=$(RUN_DATABASE_URL) go run ./cmd/econumo serve
 
 # The Go suite is split into two tiers:
 #
@@ -161,10 +166,10 @@ publish: publish-buildx-ensure
 		--push \
 		.
 
-# Start the stack locally from source (host port 8182).
+# Start the stack locally, building the image from source (host port 8181).
 up:
-	docker compose -f deployment/docker-compose/docker-compose.go.yml up -d --build
+	docker compose up -d --build
 
 # Stop the stack.
 down:
-	docker compose -f deployment/docker-compose/docker-compose.go.yml down --remove-orphans
+	docker compose down --remove-orphans

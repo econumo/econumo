@@ -3,21 +3,20 @@
 #
 # Build context is the REPOSITORY ROOT, so the COPY paths below are root-relative:
 #
-#   docker build -f deployment/docker/Dockerfile -t econumo/econumo-go:latest .
+#   docker build -f deployment/docker/Dockerfile -t ghcr.io/econumo/econumo:latest .
 #
-# Runtime contract (see deployment/docker-compose/docker-compose.go.yml):
-#   - DATABASE_URL is REQUIRED  (sqlite:///var/www/var/db/db.sqlite by default).
+# Runtime contract (see docker-compose.yml at the repo root):
+#   - DATABASE_URL is REQUIRED  (sqlite:///app/var/db/db.sqlite by default).
 #   - The JWT keypair is generated automatically on first boot if it does not
-#     already exist (default /var/www/var/jwt/{private,public}.pem). NOTHING is
+#     already exist (default /app/var/jwt/{private,public}.pem). NOTHING is
 #     baked in at build time — keys are unique per deployment. Mount a volume at
-#     /var/www/var/jwt so they (and an auto-generated passphrase, unless you set
-#     JWT_PASSPHRASE) survive restarts. Override paths with JWT_SECRET_KEY/
-#     JWT_PUBLIC_KEY if you prefer to mount your own keys.
+#     /app/var so the keypair, passphrase, and the sqlite db survive restarts.
+#     Override paths with JWT_SECRET_KEY/JWT_PUBLIC_KEY to mount your own keys.
 #   - Migrations run inside the binary on boot (baseline-aware), so there is no
 #     entrypoint script — distroless has no shell and needs none.
 #   - econumo-config.js ships with a working default (API_URL:null -> same
 #     origin) baked into the SPA build; override it by mounting your own file
-#     over /app/web/spa/econumo-config.js.
+#     over /app/spa/econumo-config.js.
 
 # --- 1. Frontend build ---
 FROM node:25-alpine AS frontend
@@ -47,16 +46,7 @@ RUN go mod download
 # Only the Go source (the module lives at the repo root alongside web/, etc.).
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-# Build to /econumo (the same absolute path it lives at in the final image) so the
-# bin/console symlink below is NOT dangling in this stage — BuildKit must be able
-# to resolve a symlink's target to COPY it across stages.
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /econumo ./cmd/econumo
-# Backward-compatible `bin/console` entry: a symlink to the single binary. The
-# binary dispatches a non-flag first argument to the CLI (the ported `app:*`
-# management commands), so `bin/console app:create-user …` works exactly like
-# `econumo app:create-user …`. Made here (alpine has a shell); the distroless
-# stage cannot RUN. The target /econumo exists in this stage AND in the final image.
-RUN mkdir -p /out/bin && ln -s /econumo /out/bin/console
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/econumo ./cmd/econumo
 # Pre-create the runtime data dirs so they are owned by the non-root user in the
 # final image: the sqlite db (var/db) and the auto-generated JWT keypair (var/jwt)
 # must be writable on first boot, and distroless cannot mkdir/chown (no shell).
@@ -64,32 +54,29 @@ RUN mkdir -p /out/var/db /out/var/jwt
 
 # --- 3. Runtime (distroless: no shell, no package manager, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
-COPY --from=gobuild /econumo /econumo
-# bin/console -> /econumo symlink, resolved relative to WORKDIR below so
-# `docker exec <c> bin/console app:…` works (distroless has no shell to expand a
-# PATH lookup). Copy the DIRECTORY, not the link itself: BuildKit dereferences a
-# directly-copied symlink (duplicating the 26MB binary) but preserves symlinks
-# inside a copied directory. `docker exec <c> /econumo app:…` also works directly.
-COPY --from=gobuild /out/bin /var/www/bin
-COPY --from=frontend /build/web/dist/spa /app/web/spa
-# Runtime data dirs, owned by the non-root user, for the sqlite db and the JWT
-# keypair the server generates on first boot. Mount volumes over these to persist.
-COPY --from=gobuild --chown=nonroot:nonroot /out/var /var/www/var
+COPY --from=gobuild /app/econumo /app/econumo
+# Management commands run via the binary directly: `docker exec <c> /app/econumo app:…`
+# (the binary dispatches a non-flag first argument to the CLI).
+COPY --from=frontend /build/web/dist/spa /app/spa
+# Runtime data dir, owned by the non-root user: the sqlite db (var/db) and the JWT
+# keypair (var/jwt) the server generates on first boot. Mount a volume over
+# /app/var to persist both.
+COPY --from=gobuild --chown=nonroot:nonroot /out/var /app/var
 
-# Serve the SPA the frontend stage built; listen on :80 (the compose maps 8181:80).
-# Sensible self-hosted defaults; override via env. The JWT keypair defaults to
-# /var/www/var/jwt and is auto-generated on first boot (config defaults), so no
-# key paths are baked into ENV here.
-ENV ECONUMO_SPA_DIR=/app/web/spa \
+# Serve the SPA the frontend stage built; the container always listens on :80
+# (map it to any host port in compose). The JWT keypair defaults to /app/var/jwt
+# and is auto-generated on first boot (config defaults), so no key paths are baked
+# into ENV here.
+ENV ECONUMO_SPA_DIR=/app/spa \
     PORT=80 \
     APP_ENV=prod \
-    DATABASE_URL=sqlite:///var/www/var/db/db.sqlite
+    DATABASE_URL=sqlite:///app/var/db/db.sqlite
 
 EXPOSE 80
 
-# WORKDIR so a relative `bin/console` (the symlink at /var/www/bin/console)
-# resolves under `docker exec` (the /var/www working layout).
-WORKDIR /var/www
+# WORKDIR sets the /app working layout so the default relative paths resolve here
+# — notably the JWT keypair (var/jwt → /app/var/jwt, auto-generated on first boot).
+WORKDIR /app
 
 # distroless ships a non-root `nonroot` user (uid 65532); the SQLite db dir +
 # jwt keys mounted at runtime must be readable/writable by it.
@@ -97,4 +84,4 @@ USER nonroot:nonroot
 
 # `serve` is explicit: the binary prints usage (and does not start a server) when
 # invoked with no command, so the server start is always intentional.
-ENTRYPOINT ["/econumo", "serve"]
+ENTRYPOINT ["/app/econumo", "serve"]

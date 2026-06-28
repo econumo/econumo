@@ -23,7 +23,7 @@ type Config struct {
 	AllowRegistration bool
 	FromEmail         string
 	ReplyToEmail      string
-	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt
+	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt. DEPRECATED: to be removed; migrate to plaintext via app:remove-data-salt.
 	SQLiteBusyTimeout int
 
 	// Auth / JWT
@@ -119,7 +119,7 @@ func driverFromURL(url string) (string, error) {
 const projectDirPlaceholder = "%kernel.project_dir%"
 
 // ResolveProjectDir expands the Symfony "%kernel.project_dir%" placeholder in a
-// path to the process working directory (the app root — /var/www in the Docker
+// path to the process working directory (the app root — /app in the Docker
 // image), so JWT key paths taken from a Symfony/lexik .env resolve here. A path
 // without the placeholder is returned unchanged.
 func ResolveProjectDir(path string) string {

@@ -2,7 +2,8 @@
 .idea
 .DS_Store
 
-# Local env (holds secrets like JWT_PASSPHRASE; committed template is .env.example)
+# Local env (holds secrets like JWT_PASSPHRASE; committed template is .env.example).
+# Used by both `go run` and docker compose (env_file).
 .env
 /.env.local*
 

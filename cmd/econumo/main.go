@@ -5,8 +5,7 @@
 //	econumo app:<command>    management commands ported from Symfony (see cli)
 //
 // `serve` is explicit so a bare invocation can never accidentally start a second
-// server — with no command it prints usage and exits. The legacy `bin/console`
-// symlink resolves to this same binary, so `bin/console app:...` works too.
+// server — with no command it prints usage and exits.
 //
 // Both database backends are linked into this single binary and chosen at
 // runtime; the concrete backend packages register themselves via init() and are
@@ -51,7 +50,7 @@ func main() {
 	args := os.Args[1:]
 
 	// No command: print usage and exit. Deliberately does NOT start the server,
-	// so a stray `econumo` (or `bin/console`) can't boot a second instance.
+	// so a stray `econumo` can't boot a second instance.
 	if len(args) == 0 {
 		printUsage(os.Stderr)
 		os.Exit(2)

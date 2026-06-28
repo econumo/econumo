@@ -1,8 +1,7 @@
-// Package cli is the command-line shell for the econumo binary: it ports the
-// operational `bin/console app:*` commands (user + currency management) from the
-// Symfony app. The cmd/econumo binary routes a non-flag first argument here
-// (see cmd/econumo/main.go); a build-time symlink bin/console -> /econumo makes
-// the legacy `bin/console <command>` invocation work inside the distroless image.
+// Package cli is the command-line shell for the econumo binary: the operational
+// `app:*` commands (user + currency management). The cmd/econumo binary routes a
+// non-flag first argument here (see cmd/econumo/main.go), so `econumo app:<cmd>`
+// (or `docker exec <container> /econumo app:<cmd>` in the image) runs a command.
 //
 // It is deliberately stdlib-only (no cobra), matching the rest of the codebase.
 // Command implementations live in user_commands.go and currency_commands.go; the
@@ -103,9 +102,9 @@ func index(cs []command) map[string]command {
 }
 
 // printUsage writes the management-command list with a header (used when the CLI
-// is invoked directly, e.g. via the bin/console symlink, with no/unknown command).
+// is invoked with no/unknown command).
 func printUsage(w io.Writer) {
-	fmt.Fprintln(w, "Usage: bin/console <command> [args]")
+	fmt.Fprintln(w, "Usage: econumo <command> [args]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Available commands:")
 	WriteCommandList(w)
@@ -125,7 +124,7 @@ func WriteCommandList(w io.Writer) {
 // usageErr formats a usage error for a command (exit code 1; the message tells
 // the operator the correct invocation).
 func usageErr(usage string) error {
-	return fmt.Errorf("usage: bin/console %s", usage)
+	return fmt.Errorf("usage: econumo %s", usage)
 }
 
 // firstPositional returns the first non-flag, non-empty argument (trimmed), or

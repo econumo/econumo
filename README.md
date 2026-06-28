@@ -28,9 +28,9 @@
     remote: Total 13 (delta 0), reused 7 (delta 0), pack-reused 3 (from 1)
     Receiving objects: 100% (13/13), done.
 
-    $ cd econumo/deployment/docker-compose
+    $ cd econumo
 
-    $ ls -1
+    $ ls -1 docker-compose.yml .env.example
     docker-compose.yml
     .env.example
     ```
@@ -41,11 +41,14 @@
     $ cp .env.example .env
     ```
 
-3. Start the services with Docker Compose:
+3. Pull the published image and start the services:
 
     ```console
-    $ docker-compose up -d
+    $ docker compose pull
+    $ docker compose up -d
     ```
+
+    > To build the image from source instead of pulling, run `docker compose up -d --build`.
 
 4. Visit your instance at `http://localhost:8181` and create the first user.
 

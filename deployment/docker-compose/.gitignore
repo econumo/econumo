@@ -1,4 +1,0 @@
-# Local compose environment + mounted secrets — never commit these.
-# The committed template is .env.example.
-.env
-jwt/

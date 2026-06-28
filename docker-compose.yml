@@ -1,0 +1,34 @@
+# Econumo self-hosted stack.
+#
+#   End users (published image):  docker compose pull && docker compose up -d
+#   Developers (build from src):  docker compose up -d --build   (or `make up`)
+#
+# Config lives in .env (copy .env.example). The single `data` volume holds
+# everything mutable — the sqlite db (/app/var/db) and the auto-generated JWT
+# keypair + passphrase (/app/var/jwt) — so logins and data survive recreation.
+services:
+  econumo:
+    image: ghcr.io/econumo/econumo:latest
+    # `build` is only used with `--build`; a plain `up` uses the image above.
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile
+      target: prod
+    env_file:
+      - .env
+    ports:
+      - "8181:80"
+    volumes:
+      - data:/app/var
+      # Override the SPA runtime config by mounting your own file:
+      #- ./econumo-config.js:/app/spa/econumo-config.js:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/econumo", "healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  data:
