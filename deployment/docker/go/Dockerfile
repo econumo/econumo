@@ -1,6 +1,5 @@
-# Drop-in Go backend image (parallel to deployment/docker/app/Dockerfile, the
-# PHP image). The Go binary collapses nginx + php-fpm + supervisor into ONE
-# static process that serves both the JSON API and the SPA on a single port.
+# Econumo backend image. The Go binary is ONE static process that serves both
+# the JSON API and the SPA on a single port (no nginx/php-fpm/supervisor).
 #
 # Build context is the REPOSITORY ROOT (same as the PHP image), so the COPY
 # paths below are root-relative:

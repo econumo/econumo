@@ -50,9 +50,11 @@
 4. Visit your instance at `http://localhost:8181` and create the first user.
 
 > [!NOTE]
-> Please note that **it may take up to 90 seconds for the initial run**. When you see `nginx entered RUNNING` state in the logs, it means Econumo is ready.
-> 
-> If you're interested, you can find the `Dockerfile` and `entrypoint.sh` script in the [repository](https://github.com/econumo/build-configuration).
+> Econumo ships as a single, self-contained Go binary (a distroless image), so it
+> starts in seconds and runs migrations automatically on boot. The image is
+> published to `ghcr.io/econumo/econumo`; the `Dockerfile` lives in this
+> repository under [`deployment/docker/go/`](deployment/docker/go/Dockerfile).
+> Health is reported at `/_/health-check`.
 
 
 ### Next steps

@@ -1,4 +1,0 @@
----
-controllers:
-    resource: ../../src/EconumoBundle/UI/Controller/
-    type: annotation

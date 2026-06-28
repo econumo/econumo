@@ -1,36 +1,14 @@
-###> econumo ###
 .secret*
 .idea
 .DS_Store
-src/*Bundle/
-!src/EconumoBundle/
-!src/EconumoToolsBundle/
-!src/EconumoDemoBundle/
-src/*Bundle/.disabled*
-###< econumo ###
 
-
-###> symfony/framework-bundle ###
-/.env.local*
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
+# Runtime data (local sqlite db, logs, cache)
 /var/
-/vendor/
-###< symfony/framework-bundle ###
 
-###> lexik/jwt-authentication-bundle ###
-#/config/jwt/*.pem
-###< lexik/jwt-authentication-bundle ###
+# Local env overrides
+/.env.local*
 
-###> phpunit/phpunit ###
-/phpunit.xml
-.phpunit.result.cache
-###< phpunit/phpunit ###
-###> phpstan/phpstan ###
-phpstan.neon
-###< phpstan/phpstan ###
+# Local-only PHP↔Go comparison tooling (kept out of the repo)
 deployment/compare/
 
 # Local dev-machine -> homelab transfer script (contains the homelab host/path).

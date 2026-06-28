@@ -1,67 +1,24 @@
-.PHONY: help up down sh run test install dev bundle lint build go-test go-build go-image go-up go-down go-test-fast go-regression go-test-cover go-test-engines go-lint go-pg-ensure publish publish-buildx-ensure
+.PHONY: help install dev bundle lint go-test go-build go-image go-up go-down go-test-fast go-regression go-test-cover go-test-engines go-lint go-pg-ensure publish publish-buildx-ensure
 
 # Default target
 .DEFAULT_GOAL := help
 
-# Docker Compose v2 plugin.
-DC := docker compose
-
-# Run container commands as the host user so files written to the bind-mounted
-# tree (vendor/, var/) stay owned by the host and stay writable. HOME is set
-# because the host UID has no passwd entry in the image (composer needs it).
-DC_EXEC := $(DC) exec -u $(shell id -u):$(shell id -g) -e HOME=/tmp -e COMPOSER_HOME=/tmp/composer app
-
 # Show available targets
 help:
-	@echo "Backend commands:"
-	@echo "  make up           - Start application with migrations"
-	@echo "  make down         - Stop application"
-	@echo "  make sh           - Open shell in application container"
-	@echo "  make test ARGS='...' - Run tests (recreates test DB)"
-	@echo ""
-	@echo "Frontend commands:"
+	@echo "Frontend (web/):"
 	@echo "  make install      - Install web dependencies"
 	@echo "  make dev          - Start web development server"
 	@echo "  make bundle       - Bundle web for production"
 	@echo "  make lint         - Run web linter"
 	@echo ""
-	@echo "Production:"
-	@echo "  make build        - Build frontend and Docker images for production"
-	@echo ""
-	@echo "Go backend (drop-in rewrite, in go/):"
+	@echo "Go backend (go/):"
 	@echo "  make go-test       - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make go-regression - REGRESSION suite: go-test + sqlite-vs-pgsql comparison"
 	@echo "  make go-test-fast  - Just the fast sqlite tests, no lint/coverage (CGO off)"
 	@echo "  make go-image     - Build the Go backend Docker image"
-	@echo "  make go-up        - Start the Go stack (compose, port 8182) side-by-side"
+	@echo "  make go-up        - Start the Go stack (compose)"
 	@echo "  make go-down      - Stop the Go stack"
 	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
-
-# Start application
-up:
-	$(DC) up -d --build
-	@if [ ! -d vendor ]; then \
-		$(DC_EXEC) composer install; \
-	fi
-	$(DC_EXEC) bin/console doctrine:migrations:migrate -n
-
-# Stop application
-down:
-	$(DC) down --remove-orphans
-
-# Open shell in application container
-sh:
-	$(DC_EXEC) sh
-
-# Run tests
-# Usage: make test ARGS='unit'
-test:
-	$(DC) up -d
-	-$(DC_EXEC) bin/console doctrine:database:drop --force --env=test -vvv
-	$(DC_EXEC) bin/console doctrine:database:create --env=test -vvv
-	$(DC_EXEC) bin/console doctrine:migration:migrate -n --env=test -vvv
-	$(DC_EXEC) bin/console doctrine:fixtures:load --purge-with-truncate -n --env=test -vvv
-	-$(DC_EXEC) php -d register_argc_argv=1 vendor/bin/codecept run $(ARGS) --steps -v
 
 # Install web dependencies
 install:
@@ -83,17 +40,7 @@ lint:
 	@echo "Running web linter..."
 	cd web && npm run lint
 
-# Build for production (legacy PHP image; the committed web/.env is the config)
-build:
-	@echo "Building production Docker image..."
-	docker buildx build \
-		--file deployment/docker/app/Dockerfile \
-		--target prod \
-		--tag econumo/econumo:local \
-		--load \
-		.
-
-# --- Go backend (drop-in rewrite) ---
+# --- Go backend ---
 
 # The Go suite is split into two tiers:
 #
