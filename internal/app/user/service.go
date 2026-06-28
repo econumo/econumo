@@ -18,6 +18,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // Clock supplies the current time. A seam (rather than calling time.Now
@@ -116,7 +117,7 @@ func NewService(
 	tx TxRunner,
 	encode *auth.EncodeService,
 	hasher *auth.PasswordHasher,
-	jwt *auth.JWT,
+	jwtSvc *jwt.JWT,
 	currency CurrencyLookup,
 	budgets BudgetExistence,
 	passwordRequests PasswordRequests,
@@ -129,7 +130,7 @@ func NewService(
 		tx:                tx,
 		encode:            encode,
 		hasher:            hasher,
-		jwt:               jwt,
+		jwt:               jwtSvc,
 		currency:          currency,
 		budgets:           budgets,
 		passwordRequests:  passwordRequests,

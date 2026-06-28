@@ -25,7 +25,6 @@ import (
 
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/infra/auth"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
@@ -37,6 +36,7 @@ import (
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlertag "github.com/econumo/econumo/internal/ui/handler/tag"
 	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // Fixed test data. The JWT keypair comes from the shared testkeys package
@@ -62,7 +62,7 @@ type harness struct {
 	srv   *httptest.Server
 	db    *sql.DB
 	tdb   *dbtest.DB
-	jwt   *auth.JWT
+	jwt   *jwt.JWT
 	clock fixedClock
 }
 
@@ -84,7 +84,7 @@ func newHarness(t *testing.T) *harness {
 	}
 
 	priv, pub := testkeys.Paths(t)
-	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
+	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
@@ -108,12 +108,12 @@ func newHarness(t *testing.T) *harness {
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handlertag.RegisterAPI(handlers, jwt, cfg.IsDev()),
+		RegisterAPI: handlertag.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, tdb: tdb, jwt: jwt, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, jwt: jwtSvc, clock: clk}
 }
 
 // seedUsers inserts the seeded user (the JWT subject) and a second user used to

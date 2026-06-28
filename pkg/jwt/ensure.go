@@ -1,4 +1,4 @@
-package auth
+package jwt
 
 import (
 	"crypto/rand"
@@ -10,10 +10,13 @@ import (
 	"strings"
 )
 
-// EnsureKeypair makes the server self-sufficient on first boot: if the RS256
-// keypair at privatePath/publicPath does not exist it is generated, so no keys
-// are committed to the repo or baked into the image. It returns the passphrase
-// the caller must pass to NewJWT.
+// EnsureKeypair is the single key-generation entry point shared by the server
+// (serve, force=false) and the app:generate-jwt-keypair CLI command. It makes a
+// deployment self-sufficient: if the RS256 keypair at privatePath/publicPath does
+// not exist it is generated, so no keys are committed to the repo or baked into
+// the image. It returns the passphrase the caller must pass to New, and whether
+// it actually generated a keypair on this call (false when an existing one was
+// left untouched).
 //
 // Passphrase handling:
 //   - If passphrase is non-empty (JWT_PASSPHRASE) it is used as-is.
@@ -22,25 +25,28 @@ import (
 //     deployment works with zero JWT configuration as long as the key directory
 //     is on a persistent volume. Set JWT_PASSPHRASE to avoid writing that file.
 //
-// Existing keys are never overwritten (GenerateKeypair is called only when a key
-// is missing), so a restart can't invalidate already-issued tokens.
-func EnsureKeypair(privatePath, publicPath, passphrase string) (string, error) {
+// Generation rule: keys are written when force is true OR either key file is
+// missing. With force=false an existing keypair is left untouched, so a restart
+// can't invalidate already-issued tokens; force=true regenerates unconditionally.
+func EnsureKeypair(privatePath, publicPath, passphrase string, force bool) (string, bool, error) {
 	if passphrase == "" {
 		p, err := loadOrCreatePassphrase(filepath.Join(filepath.Dir(privatePath), ".jwt-passphrase"))
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 		passphrase = p
 	}
 
 	_, errPriv := os.Stat(privatePath)
 	_, errPub := os.Stat(publicPath)
-	if errors.Is(errPriv, os.ErrNotExist) || errors.Is(errPub, os.ErrNotExist) {
-		if err := GenerateKeypair(privatePath, publicPath, passphrase, false); err != nil {
-			return "", err
+	missing := errors.Is(errPriv, os.ErrNotExist) || errors.Is(errPub, os.ErrNotExist)
+	if force || missing {
+		if err := GenerateKeypair(privatePath, publicPath, passphrase, force); err != nil {
+			return "", false, err
 		}
+		return passphrase, true, nil
 	}
-	return passphrase, nil
+	return passphrase, false, nil
 }
 
 // loadOrCreatePassphrase returns the passphrase stored at path, creating a fresh

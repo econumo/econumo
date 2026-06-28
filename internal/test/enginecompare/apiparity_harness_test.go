@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // Fixed crypto material shared by both engines so seeded users + minted tokens
@@ -53,7 +53,7 @@ func (c apiFixedClock) Now() time.Time { return c.t }
 type apiHarness struct {
 	srv    *httptest.Server
 	engine string
-	jwt    *auth.JWT
+	jwt    *jwt.JWT
 	clock  apiFixedClock
 }
 
@@ -63,7 +63,7 @@ func newAPIHarness(t *testing.T, db *dbtest.DB) *apiHarness {
 	t.Helper()
 
 	priv, pub := testkeys.Paths(t)
-	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
+	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
@@ -84,11 +84,11 @@ func newAPIHarness(t *testing.T, db *dbtest.DB) *apiHarness {
 
 	seedAPIFixture(t, db)
 
-	handler := server.BuildAPI(cfg, db.Raw, jwt, clk)
+	handler := server.BuildAPI(cfg, db.Raw, jwtSvc, clk)
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &apiHarness{srv: srv, engine: db.Engine, jwt: jwt, clock: clk}
+	return &apiHarness{srv: srv, engine: db.Engine, jwt: jwtSvc, clock: clk}
 }
 
 // apiClockTime is the fixed instant used for token issuance + any created rows.

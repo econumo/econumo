@@ -70,17 +70,19 @@ dependency rule points inward: **ui → app → domain**; `infra` implements dom
 interfaces. The app layer never imports `ui` or `infra`.
 
 ```
-. (repo root = the Go module; web/ and deployment/ live alongside)
+. (repo root = the Go module; web/, pkg/ and deployment/ live alongside)
 ├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / app:* commands
+├── pkg/
+│   └── jwt/ ...................... RS256 JWT issue/verify + keypair generation (EnsureKeypair); self-contained, no internal deps
 ├── internal/
 │   ├── domain/ .................... entities, value objects, repository INTERFACES, domain services (pure)
 │   ├── app/ ...................... use-case services + request/result DTOs (depends on domain only)
 │   │   └── reqctx/ .............. request-scoped values carried via context (e.g. caller timezone)
-│   ├── infra/ ................... implementations: sqlc repos, auth/JWT, mailer, storage
+│   ├── infra/ ................... implementations: sqlc repos, auth, mailer, storage
 │   │   ├── repo/<feature>/ ...... repository implementations (engine-adapter pattern, see below)
 │   │   ├── storage/sqlc/ ........ sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
 │   │   ├── storage/migrations/ .. SQL migrations per engine ({sqlite,pgsql}); run on boot
-│   │   ├── auth/ ............... JWT (RS256) + password hashing + AES email encryption
+│   │   ├── auth/ ............... password hashing + AES email encryption + user-identifier hashing
 │   │   └── mailer/ ............. transactional email via the Resend API
 │   ├── ui/ ..................... HTTP edge: handlers, middleware, router, response envelope (httpx), SPA + apidoc
 │   ├── server/ ................. composition root: server.BuildAPI wires every module (used by the binary AND tests)
@@ -215,7 +217,9 @@ In the distroless image these run via the binary directly, e.g.
 
 ## Authentication
 
-- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/infra/auth`.
+- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `pkg/jwt` (a
+  self-contained package: token issue/verify, keypair generation, and the shared
+  `EnsureKeypair` boot/CLI entry point; no `internal/*` dependency).
 - Login lives under `internal/ui/handler/user` (`/api/v1/user/login-user`).
 - Token refresh is not implemented (clients re-authenticate).
 
@@ -239,7 +243,7 @@ data unreadable. Most are also asserted by the test suite.
 - **Email encryption**: AES-128-CBC, key = raw `ECONUMO_DATA_SALT` (exactly 16 bytes); layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified (constant-time) before decrypt. Empty salt → passthrough.
 - **Empty-salt (plaintext) mode**: an unset `ECONUMO_DATA_SALT` is fully supported — the email column holds plaintext and the identifier is `md5(lower(email))` (no salt). To move an existing salted database into this mode, run `app:remove-data-salt` (above) before unsetting the salt.
 
-### JWT (`internal/infra/auth/jwt.go`)
+### JWT (`pkg/jwt/jwt.go`)
 - RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
 - Claims: `iat`; `exp = iat + 2592000` (30-day TTL); `roles = ["ROLE_USER"]`; `username` = plaintext email; `id` = user UUID. No `nbf`/`iss`/`sub`/`aud`.
 

@@ -1,4 +1,4 @@
-package auth
+package jwt
 
 import (
 	"crypto/rand"
@@ -24,9 +24,9 @@ const testPassphrase = testkeys.Passphrase
 func newTestJWT(t *testing.T) *JWT {
 	t.Helper()
 	priv, pub := testkeys.Paths(t)
-	j, err := NewJWT(priv, pub, testPassphrase)
+	j, err := New(priv, pub, testPassphrase)
 	if err != nil {
-		t.Fatalf("NewJWT: %v", err)
+		t.Fatalf("New: %v", err)
 	}
 	return j
 }
@@ -243,9 +243,9 @@ func TestVerifyRejectsForeignKey(t *testing.T) {
 // private key can still verify but refuses to issue.
 func TestVerifyOnlyWithoutPrivateKey(t *testing.T) {
 	_, pub := testkeys.Paths(t)
-	j, err := NewJWT("testdata/does-not-exist.pem", pub, testPassphrase)
+	j, err := New("testdata/does-not-exist.pem", pub, testPassphrase)
 	if err != nil {
-		t.Fatalf("NewJWT verify-only: %v", err)
+		t.Fatalf("New verify-only: %v", err)
 	}
 	if _, err := j.Issue("id", "x@y.z", time.Now()); err == nil {
 		t.Fatal("expected Issue to fail without private key")

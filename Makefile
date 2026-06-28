@@ -79,7 +79,7 @@ test: go-lint test-cover
 GO_COVER_MIN ?= 64
 
 # Fast suite WITH a coverage gate: measures true cross-package coverage of all
-# internal packages and fails if it drops below GO_COVER_MIN.
+# internal + pkg packages and fails if it drops below GO_COVER_MIN.
 #
 # -count=1 forces every package's tests to actually run. Without it, `go test`
 # replays cached results — and a cached package's coverage is printed but NOT
@@ -88,7 +88,7 @@ GO_COVER_MIN ?= 64
 # gate nondeterministic: the same commit scored ~66% cold and ~63% warm. Forcing
 # a fresh run keeps the merged profile complete and the gate reproducible.
 test-cover:
-	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/... -coverprofile=coverage.out
+	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/...,./pkg/... -coverprofile=coverage.out
 	go tool cover -func=coverage.out | tail -1
 	@pct=$$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1); \
 		echo "total coverage: $$pct% (min $(GO_COVER_MIN)%)"; \

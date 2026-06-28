@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // okHandler is a trivial downstream handler that records that it ran and writes 200.
@@ -209,11 +209,11 @@ func TestLocationFromCtx_AbsentIsUTC(t *testing.T) {
 
 // stubVerifier returns fixed claims / error for the JWT middleware tests.
 type stubVerifier struct {
-	claims auth.Claims
+	claims jwt.Claims
 	err    error
 }
 
-func (s stubVerifier) Verify(token string) (auth.Claims, error) { return s.claims, s.err }
+func (s stubVerifier) Verify(token string) (jwt.Claims, error) { return s.claims, s.err }
 
 const jwtTestUserID = "11111111-1111-1111-1111-111111111111"
 
@@ -257,7 +257,7 @@ func TestJWT_VerifyError_401(t *testing.T) {
 }
 
 func TestJWT_BadClaimID_401(t *testing.T) {
-	h := JWT(stubVerifier{claims: auth.Claims{ID: "not-a-uuid"}}, false)(okHandler(nil))
+	h := JWT(stubVerifier{claims: jwt.Claims{ID: "not-a-uuid"}}, false)(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	req.Header.Set("Authorization", "Bearer some.jwt.token")
 	rec := httptest.NewRecorder()
@@ -270,7 +270,7 @@ func TestJWT_BadClaimID_401(t *testing.T) {
 func TestJWT_Valid_PutsUserIDInContext(t *testing.T) {
 	var gotID string
 	var present bool
-	h := JWT(stubVerifier{claims: auth.Claims{ID: jwtTestUserID}}, false)(
+	h := JWT(stubVerifier{claims: jwt.Claims{ID: jwtTestUserID}}, false)(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id, ok := UserIDFromCtx(r.Context())
 			present = ok

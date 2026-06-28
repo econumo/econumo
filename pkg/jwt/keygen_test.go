@@ -1,4 +1,4 @@
-package auth
+package jwt
 
 import (
 	"os"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// TestGenerateKeypair_RoundTrip generates a keypair and proves NewJWT can load it
+// TestGenerateKeypair_RoundTrip generates a keypair and proves New can load it
 // and issue/verify a token — i.e. the generated formats match what the server reads.
 func TestGenerateKeypair_RoundTrip(t *testing.T) {
 	dir := t.TempDir()
@@ -26,9 +26,9 @@ func TestGenerateKeypair_RoundTrip(t *testing.T) {
 		t.Errorf("private key mode = %v, want 0600", fi.Mode().Perm())
 	}
 
-	j, err := NewJWT(priv, pub, pass)
+	j, err := New(priv, pub, pass)
 	if err != nil {
-		t.Fatalf("NewJWT on generated keys: %v", err)
+		t.Fatalf("New on generated keys: %v", err)
 	}
 	tok, err := j.Issue("user-1", "e@example.test", time.Now())
 	if err != nil {

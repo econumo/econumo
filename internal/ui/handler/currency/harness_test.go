@@ -21,13 +21,13 @@ import (
 
 	appcurrency "github.com/econumo/econumo/internal/app/currency"
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/infra/auth"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlercurrency "github.com/econumo/econumo/internal/ui/handler/currency"
 	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 const (
@@ -51,7 +51,7 @@ func (c fixedClock) Now() time.Time { return c.t }
 type harness struct {
 	srv   *httptest.Server
 	db    *sql.DB
-	jwt   *auth.JWT
+	jwt   *jwt.JWT
 	clock fixedClock
 	f     *fixture.Builder
 }
@@ -63,7 +63,7 @@ func newHarness(t *testing.T) *harness {
 	db := tdb.Raw
 
 	priv, pub := testkeys.Paths(t)
-	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
+	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
@@ -81,12 +81,12 @@ func newHarness(t *testing.T) *harness {
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handlercurrency.RegisterAPI(handlers, jwt, cfg.IsDev()),
+		RegisterAPI: handlercurrency.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, jwt: jwt, clock: clk, f: f}
+	return &harness{srv: srv, db: db, jwt: jwtSvc, clock: clk, f: f}
 }
 
 // resetCurrencies clears the currencies + rates tables so a test controls the

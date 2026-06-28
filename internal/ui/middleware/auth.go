@@ -7,15 +7,15 @@ import (
 
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
-	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
-// TokenVerifier is the narrow contract the JWT middleware needs. infra/auth.JWT
+// TokenVerifier is the narrow contract the JWT middleware needs. pkg/jwt.JWT
 // satisfies it. Defining it here keeps the middleware from hard-depending on the
 // concrete type, so tests (and any future verifier) can substitute their own.
 type TokenVerifier interface {
-	Verify(token string) (auth.Claims, error)
+	Verify(token string) (jwt.Claims, error)
 }
 
 // ctxKeyUserID is the context key under which the authenticated user id is

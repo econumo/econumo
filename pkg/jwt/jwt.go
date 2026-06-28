@@ -1,4 +1,8 @@
-package auth
+// Package jwt issues and verifies the RS256 JSON Web Tokens Econumo uses for API
+// authentication, and generates/loads the RS256 keypair they are signed with. It
+// depends only on the standard library plus golang-jwt and youmark/pkcs8, so it
+// is self-contained and free of any econumo/internal dependency.
+package jwt
 
 import (
 	"crypto/rsa"
@@ -67,11 +71,11 @@ type JWT struct {
 	private *rsa.PrivateKey // nil when only verification is configured
 }
 
-// NewJWT loads the keys from the configured paths. The public key (SPKI PEM) is
+// New loads the keys from the configured paths. The public key (SPKI PEM) is
 // required. The private key (an encrypted PKCS#8 PEM, PBES2) is decrypted with
 // the passphrase when its file is readable; if the file is absent the JWT can
 // still verify tokens but Issue returns an error.
-func NewJWT(privateKeyPath, publicKeyPath, passphrase string) (*JWT, error) {
+func New(privateKeyPath, publicKeyPath, passphrase string) (*JWT, error) {
 	pubPEM, err := os.ReadFile(publicKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("jwt: read public key: %w", err)

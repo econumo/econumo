@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // newSaltFreeUserSvc builds a user Service with an EMPTY data salt — the state
@@ -28,11 +29,11 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	budgets := userbudgetrepo.New("sqlite", db.TX)
 	// Login issues a JWT; reuse the embedded test keypair.
 	priv, pub := testkeys.Paths(t)
-	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
+	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("NewJWT: %v", err)
 	}
-	svc := appuser.NewService(repo, db.TX, enc, hasher, jwt, lookup, budgets, nil, nil, clock.New(), false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, jwtSvc, lookup, budgets, nil, nil, clock.New(), false)
 	return svc, hasher
 }
 

@@ -23,7 +23,6 @@ import (
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	"github.com/econumo/econumo/internal/config"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
-	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
@@ -40,6 +39,7 @@ import (
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
 	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 const (
@@ -61,7 +61,7 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
-	jwt *auth.JWT
+	jwt *jwt.JWT
 }
 
 func newHarness(t *testing.T) *harness {
@@ -78,7 +78,7 @@ func newHarness(t *testing.T) *harness {
 	}
 
 	priv, pub := testkeys.Paths(t)
-	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
+	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
@@ -122,10 +122,10 @@ func newHarness(t *testing.T) *harness {
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}
 	handlers := handlerbudget.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, jwt, cfg.IsDev())})
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, jwtSvc, cfg.IsDev())})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db, jwt: jwt}
+	return &harness{srv: srv, db: db, jwt: jwtSvc}
 }
 
 func toMigrations(files []migrations.File) []migrate.Migration {

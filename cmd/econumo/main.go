@@ -25,11 +25,11 @@ import (
 
 	"github.com/econumo/econumo/internal/cli"
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/pkg/jwt"
 
 	"github.com/joho/godotenv"
 
@@ -191,18 +191,20 @@ func run() error {
 	// production binary and the test harnesses build the IDENTICAL router from one
 	// code path (see internal/server for why).
 	// Generate the JWT keypair on first boot if it is missing (no keys are
-	// committed or baked into the image). Persist the key directory on a volume to
-	// keep tokens valid across restarts.
-	passphrase, err := auth.EnsureKeypair(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase)
+	// committed or baked into the image). force=false: an existing keypair is left
+	// untouched so a restart never invalidates issued tokens. Persist the key
+	// directory on a volume to keep tokens valid across restarts. This is the same
+	// jwt.EnsureKeypair path the app:generate-jwt-keypair CLI command uses.
+	passphrase, _, err := jwt.EnsureKeypair(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase, false)
 	if err != nil {
 		return err
 	}
-	jwt, err := auth.NewJWT(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, passphrase)
+	jwtSvc, err := jwt.New(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, passphrase)
 	if err != nil {
 		return err
 	}
 
-	handler := server.BuildAPI(cfg, db, jwt, clock.New())
+	handler := server.BuildAPI(cfg, db, jwtSvc, clock.New())
 
 	srv := &http.Server{
 		Addr:              addr(cfg.Port),

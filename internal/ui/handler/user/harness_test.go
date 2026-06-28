@@ -44,6 +44,7 @@ import (
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handleruser "github.com/econumo/econumo/internal/ui/handler/user"
 	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // Fixed test data. The data salt is a 16-byte string (AES-128 requires exactly
@@ -79,7 +80,7 @@ type harness struct {
 	tdb    *dbtest.DB
 	encode *auth.EncodeService
 	hasher *auth.PasswordHasher
-	jwt    *auth.JWT
+	jwt    *jwt.JWT
 	clock  fixedClock
 }
 
@@ -106,7 +107,7 @@ func newHarness(t *testing.T) *harness {
 	encode := auth.NewEncodeService(testDataSalt)
 	hasher := auth.NewPasswordHasher()
 	priv, pub := testkeys.Paths(t)
-	jwt, err := auth.NewJWT(priv, pub, testkeys.Passphrase)
+	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
 	if err != nil {
 		t.Fatalf("jwt: %v", err)
 	}
@@ -129,19 +130,19 @@ func newHarness(t *testing.T) *harness {
 	resetMailer := mailer.NewResetSender(mailer.New(""), "", "")
 
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*", AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwt, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration)
+	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleruser.RegisterAPI(handlers, jwt, cfg.IsDev()),
+		RegisterAPI: handleruser.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, jwt: jwt, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, jwt: jwtSvc, clock: clk}
 }
 
 // seed inserts a known user (with hashed password and encrypted email) plus the

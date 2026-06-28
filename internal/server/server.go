@@ -53,23 +53,24 @@ import (
 	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
 	handleruser "github.com/econumo/econumo/internal/ui/handler/user"
 	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // BuildAPI wires every resource module over the given database and returns the
 // full HTTP handler (global middleware chain + all /api/v1 routes + Swagger +
 // SPA + health-check). The DB must already be opened and migrated. clk is the
-// clock used for timestamps and JWT issuance time; jwt is the configured RS256
+// clock used for timestamps and JWT issuance time; jwtSvc is the configured RS256
 // signer/verifier. The engine is read from cfg.DatabaseDriver, which selects the
 // per-engine sqlc query adapters in every repository constructor.
 //
 // This is the SAME assembly cmd/econumo uses; the only difference is that the
-// caller owns opening the DB and constructing jwt/clk (so tests can inject
+// caller owns opening the DB and constructing jwtSvc/clk (so tests can inject
 // deterministic ones and point at either engine).
 //
 // clk is a Clock (Now() time.Time) — clock.Real in production, a fixed clock in
 // tests. The module services/handlers each take their own duck-typed Clock
 // interface; this single value satisfies all of them.
-func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Handler {
+func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Handler {
 	txm := backend.NewTxManager(db)
 
 	encodeSvc := auth.NewEncodeService(cfg.DataSalt)
@@ -84,7 +85,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	passwordReqRepo := passwordrequestrepo.New(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.ResendAPIKey), cfg.FromEmail, cfg.ReplyToEmail)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, jwt, currencyLookup, budgetExistence,
+		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
 		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
@@ -181,15 +182,15 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
 
 	registerAPI := router.Compose(
-		handleruser.RegisterAPI(userHandlers, jwt, cfg.IsDev()),
-		handlercategory.RegisterAPI(categoryHandlers, jwt, cfg.IsDev()),
-		handlertag.RegisterAPI(tagHandlers, jwt, cfg.IsDev()),
-		handlerpayee.RegisterAPI(payeeHandlers, jwt, cfg.IsDev()),
-		handlercurrency.RegisterAPI(currencyHandlers, jwt, cfg.IsDev()),
-		handleraccount.RegisterAPI(accountHandlers, jwt, cfg.IsDev()),
-		handlertransaction.RegisterAPI(transactionHandlers, jwt, cfg.IsDev()),
-		handlerconnection.RegisterAPI(connectionHandlers, jwt, cfg.IsDev()),
-		handlerbudget.RegisterAPI(budgetHandlers, jwt, cfg.IsDev()),
+		handleruser.RegisterAPI(userHandlers, jwtSvc, cfg.IsDev()),
+		handlercategory.RegisterAPI(categoryHandlers, jwtSvc, cfg.IsDev()),
+		handlertag.RegisterAPI(tagHandlers, jwtSvc, cfg.IsDev()),
+		handlerpayee.RegisterAPI(payeeHandlers, jwtSvc, cfg.IsDev()),
+		handlercurrency.RegisterAPI(currencyHandlers, jwtSvc, cfg.IsDev()),
+		handleraccount.RegisterAPI(accountHandlers, jwtSvc, cfg.IsDev()),
+		handlertransaction.RegisterAPI(transactionHandlers, jwtSvc, cfg.IsDev()),
+		handlerconnection.RegisterAPI(connectionHandlers, jwtSvc, cfg.IsDev()),
+		handlerbudget.RegisterAPI(budgetHandlers, jwtSvc, cfg.IsDev()),
 		apidoc.RegisterAPI(),
 	)
 
