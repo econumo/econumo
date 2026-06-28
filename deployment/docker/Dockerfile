@@ -70,8 +70,7 @@ COPY --from=gobuild --chown=nonroot:nonroot /out/var /app/var
 # /app/var/jwt and is auto-generated on first boot (config defaults), so no key
 # paths are baked into ENV here.
 ENV ECONUMO_SPA_DIR=/app/spa \
-    PORT=80 \
-    APP_ENV=prod
+    PORT=80
 
 EXPOSE 80
 
