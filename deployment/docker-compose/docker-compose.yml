@@ -1,6 +1,6 @@
 services:
   econumo:
-    image: econumo/econumo-ce:latest
+    image: ghcr.io/econumo/econumo:latest
     env_file:
       - .env
     ports:

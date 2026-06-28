@@ -1,4 +1,4 @@
-.PHONY: help up down sh run test install dev bundle lint build go-test go-build go-image go-up go-down go-test-fast go-regression go-test-cover go-test-engines go-lint go-pg-ensure
+.PHONY: help up down sh run test install dev bundle lint build go-test go-build go-image go-up go-down go-test-fast go-regression go-test-cover go-test-engines go-lint go-pg-ensure publish publish-buildx-ensure
 
 # Default target
 .DEFAULT_GOAL := help
@@ -35,6 +35,7 @@ help:
 	@echo "  make go-image     - Build the Go backend Docker image"
 	@echo "  make go-up        - Start the Go stack (compose, port 8182) side-by-side"
 	@echo "  make go-down      - Stop the Go stack"
+	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
 
 # Start application
 up:
@@ -186,6 +187,36 @@ go-image:
 		--target prod \
 		--tag econumo/econumo-go:local \
 		--load \
+		.
+
+# --- Publishing (GitHub Container Registry only) ---------------------------
+# `make publish` builds the multi-arch Go image locally and pushes the "dev"
+# tag to ghcr.io/econumo/econumo. Releases ("latest" + vX.Y.Z) are published by
+# the GitHub release workflow, NOT here. Requires `docker login ghcr.io` first.
+# Override any of these on the command line, e.g. `make publish PUBLISH_TAG=foo`.
+GHCR_IMAGE        ?= ghcr.io/econumo/econumo
+PUBLISH_TAG       ?= dev
+PUBLISH_PLATFORMS ?= linux/amd64,linux/arm64
+BUILDX_BUILDER    ?= econumo-mb
+ECONUMO_EDITION   ?= ce
+ECONUMO_VERSION   ?= dev
+
+# Ensure a docker-container buildx builder exists (multi-arch push needs it).
+publish-buildx-ensure:
+	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || \
+		docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --bootstrap
+
+publish: publish-buildx-ensure
+	@echo "Publishing $(GHCR_IMAGE):$(PUBLISH_TAG) ($(PUBLISH_PLATFORMS))..."
+	docker buildx build \
+		--builder $(BUILDX_BUILDER) \
+		--platform $(PUBLISH_PLATFORMS) \
+		--file deployment/docker/go/Dockerfile \
+		--target prod \
+		--build-arg ECONUMO_EDITION=$(ECONUMO_EDITION) \
+		--build-arg ECONUMO_VERSION=$(ECONUMO_VERSION) \
+		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
+		--push \
 		.
 
 # Start the Go stack side-by-side with the PHP stack (host port 8182).
