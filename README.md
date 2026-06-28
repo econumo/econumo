@@ -60,6 +60,68 @@
 > Health is reported at `/health`.
 
 
+### Upgrading from v0.x (PHP) to v1.x
+
+v1.x replaces the PHP/Symfony backend with a single Go binary, but it reuses your
+existing database **in place** — there is no export/import. v0.x already ran on
+SQLite or PostgreSQL (the same two engines v1.x supports), the schema is carried
+forward unchanged, and the Go binary detects your old Doctrine migrations on boot
+and applies only the genuinely new ones. Your accounts, passwords, and data all
+keep working.
+
+> [!IMPORTANT]
+> **Back up your database before upgrading.** For SQLite, copy the `.sqlite`
+> file; for PostgreSQL, take a `pg_dump`.
+
+**1. Point v1.x at your existing data.**
+
+- **SQLite** — your v0.x database lived at `var/db/db.sqlite`. Place that file
+  where the new container reads it (`/app/var/db/db.sqlite` inside the `data`
+  volume; `DATABASE_URL=sqlite:///app/var/db/db.sqlite` is the default).
+- **PostgreSQL** — keep your database where it is and set `DATABASE_URL` to it,
+  e.g. `DATABASE_URL=postgres://econumo:econumo@your-db-host:5432/econumo`. The
+  Postgres service is no longer part of the bundled compose file; manage it
+  yourself or migrate to SQLite.
+
+On first boot v1.x runs migrations automatically and recognizes your already-applied
+v0.x migrations, so it won't try to re-create the schema.
+
+**2. Rewrite your `.env`.** The Symfony variables are gone; start from the new
+[`.env.example`](.env.example). The mapping:
+
+| v0.x (PHP) | v1.x (Go) | Notes |
+|---|---|---|
+| `DATABASE_DRIVER` + `SQLITE_DATABASE_URL` / `POSTGRES_DATABASE_URL` | `DATABASE_URL` | Set the DSN directly; the scheme picks the engine. |
+| `APP_ENV=dev` | `ECONUMO_DEBUG=true` | Only the dev stack-trace behavior carries over. |
+| `JWT_PASSPHRASE` | `ECONUMO_JWT_PASSPHRASE` | Optional; keys auto-generate (see below). |
+| `CORS_ALLOW_ORIGIN` | `ECONUMO_CORS_ALLOW_ORIGIN` | Empty now means same-domain only. |
+| `ECONUMO_SQLITE_BUSY_TIMEOUT` | `SQLITE_BUSY_TIMEOUT` | Renamed. |
+| `ECONUMO_FROM_EMAIL` / `ECONUMO_REPLY_TO_EMAIL` + mail transport | `MAILER_DSN` | Consolidated — see the gotcha below. |
+| `ECONUMO_CURRENCY_BASE`, `ECONUMO_ALLOW_REGISTRATION`, `OPEN_EXCHANGE_RATES_TOKEN`, `ECONUMO_DATA_SALT` | _unchanged_ | |
+| `APP_SECRET`, `ECONUMO_BASE_URL`, `ECONUMO_SYSTEM_API_KEY`, `ECONUMO_CONNECT_USERS`, `MESSENGER_TRANSPORT_DSN`, `LOCK_DSN`, New Relic / Qase vars | _removed_ | Symfony-only; drop them. |
+
+**Watch out for these:**
+
+- **`MAILER_DSN` changed meaning.** In v0.x it was a Symfony Mailer DSN
+  (`null://null`, `mailjet+api://…`). In v1.x the scheme is `console://` (the
+  default — prints to stdout) or `resend://<api_key>?from=…&reply_to=…`. A
+  leftover v0.x value will **fail at boot**, so clear it or set the new form.
+- **`ECONUMO_DATA_SALT`** is deprecated. If your v0.x instance set it, leave it
+  set so v1.x can read your encrypted emails; optionally run
+  `data:remove-salt` (decrypts to plaintext, idempotent) and then unset it. If it
+  was already empty, do nothing.
+
+**3. Replace your `docker-compose.yml`** with the v1.x single-service stack from
+this repo (one `econumo` service, the `data` volume, port `8181:80`). Then:
+
+```console
+$ docker compose pull && docker compose up -d
+```
+
+**Note:** v1.x generates a fresh JWT keypair on first boot, so existing login
+tokens are invalidated and everyone signs in again once — passwords are unchanged.
+
+
 ### Next steps
 
 After installation, you may need to complete additional configuration. Please refer to the following guides:
