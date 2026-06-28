@@ -10,6 +10,7 @@ import (
 	"time"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
+	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
@@ -66,10 +67,18 @@ type VisibleAccounts interface {
 	VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
+// AccountGrants reads a connected (non-owner) user's shared-access grant on an
+// account, for the write-access check. Backed by the connection module's
+// AccountAccess repository. ok=false (nil error) means the user holds no grant.
+type AccountGrants interface {
+	GrantRole(ctx context.Context, accountID, userID vo.Id) (role domconnection.Role, ok bool, err error)
+}
+
 // Service is the transaction write-side orchestrator.
 type Service struct {
 	repo     domtransaction.Repository
 	accounts AccountResolver
+	grants   AccountGrants
 	visible  VisibleAccounts
 	users    UserLookup
 	export   ExportLookup
@@ -83,6 +92,7 @@ type Service struct {
 func NewService(
 	repo domtransaction.Repository,
 	accounts AccountResolver,
+	grants AccountGrants,
 	visible VisibleAccounts,
 	users UserLookup,
 	export ExportLookup,
@@ -91,27 +101,36 @@ func NewService(
 	ops OperationGuard,
 	clock Clock,
 ) *Service {
-	return &Service{repo: repo, accounts: accounts, visible: visible, users: users, export: export, importer: importer, tx: tx, ops: ops, clock: clock}
+	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, tx: tx, ops: ops, clock: clock}
 }
 
 // ---------------------------------------------------------------------------
 // access
 // ---------------------------------------------------------------------------
 
-// checkAccountOwned verifies the user owns the account (the single-user
-// reduction of the PHP AccountAccessService.can*Transaction checks; shared-
-// account access is a connection-module concern, not ported). A non-owned or
-// missing account yields a ValidationError ("account.account.not_available"),
-// matching the PHP create/update path.
-func (s *Service) checkAccountOwned(ctx context.Context, userID, accountID vo.Id) error {
+// checkWriteAccess verifies the user may add/update/delete a transaction on the
+// account: they own it, or they hold an admin/user grant on it. Mirrors the PHP
+// AccountAccessService.canAddTransaction / canUpdate / canDelete (== isUser): a
+// guest grant — or no grant at all — is denied. A denied or missing account
+// yields a ValidationError carrying notAvailableMsg, matching the PHP path
+// (create/update use "account.account.not_available"; delete uses
+// "transaction.transaction.not_available").
+func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id, notAvailableMsg string) error {
 	owner, err := s.accounts.AccountOwner(ctx, accountID)
 	if err != nil {
-		return errs.NewValidation("account.account.not_available")
+		return errs.NewValidation(notAvailableMsg)
 	}
-	if !owner.Equal(userID) {
-		return errs.NewValidation("account.account.not_available")
+	if owner.Equal(userID) {
+		return nil
 	}
-	return nil
+	role, ok, err := s.grants.GrantRole(ctx, accountID, userID)
+	if err != nil {
+		return err
+	}
+	if ok && (role == domconnection.RoleAdmin || role == domconnection.RoleUser) {
+		return nil
+	}
+	return errs.NewValidation(notAvailableMsg)
 }
 
 // checkViewAccess verifies the user may VIEW the account's transactions: owner

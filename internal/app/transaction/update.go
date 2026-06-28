@@ -46,7 +46,7 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req Updat
 
 	var updated *domtransaction.Transaction
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if aerr := s.checkAccountOwned(ctx, userID, accountID); aerr != nil {
+		if aerr := s.checkWriteAccess(ctx, userID, accountID, "account.account.not_available"); aerr != nil {
 			return aerr
 		}
 		t, gerr := s.repo.GetByID(ctx, id)

@@ -6,11 +6,14 @@ package transactionrepo
 
 import (
 	"context"
+	"errors"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	domcategory "github.com/econumo/econumo/internal/domain/category"
+	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
+	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 	domuser "github.com/econumo/econumo/internal/domain/user"
@@ -36,6 +39,39 @@ func (a *AccountResolver) AccountOwner(ctx context.Context, accountID vo.Id) (vo
 }
 func (a *AccountResolver) AccountListForUser(ctx context.Context, userID vo.Id) ([]appaccount.AccountResult, error) {
 	return a.svc.AccountListForUser(ctx, userID)
+}
+
+// accountGrantReader is the subset of the connection AccountAccess repo used to
+// read a single (account, user) grant for the transaction write-access check.
+type accountGrantReader interface {
+	Get(ctx context.Context, accountID, userID vo.Id) (*domconnection.AccountAccess, error)
+}
+
+// AccountGrants adapts the connection AccountAccess repo to
+// app/transaction.AccountGrants.
+type AccountGrants struct{ access accountGrantReader }
+
+var _ apptransaction.AccountGrants = (*AccountGrants)(nil)
+
+// NewAccountGrants wraps the connection AccountAccess repo.
+func NewAccountGrants(access accountGrantReader) *AccountGrants {
+	return &AccountGrants{access: access}
+}
+
+// GrantRole returns the user's granted role on the account. A missing grant
+// (the repo's *errs.NotFoundError) is reported as ok=false, nil error — the
+// "no access" case the write-access check treats as denied; other errors
+// propagate.
+func (g *AccountGrants) GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error) {
+	grant, err := g.access.Get(ctx, accountID, userID)
+	if err != nil {
+		var nf *errs.NotFoundError
+		if errors.As(err, &nf) {
+			return 0, false, nil
+		}
+		return 0, false, err
+	}
+	return grant.Role(), true, nil
 }
 
 // VisibleAccounts adapts the account service to app/transaction.VisibleAccounts.

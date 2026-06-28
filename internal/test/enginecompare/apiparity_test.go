@@ -278,6 +278,29 @@ func TestAPIParity_TransactionWriteRead(t *testing.T) {
 	})
 }
 
+// TestAPIParity_TransactionWriteRead_SharedAccount creates and deletes a
+// transaction on an account SHARED with the caller (the owner holds a user-role
+// grant on the guest-owned apiSharedAccount). Exercises the shared-account
+// write-access path through the real server.BuildAPI on both engines — the
+// regression where the Go port had reduced the check to owner-only and returned
+// a 400 here.
+func TestAPIParity_TransactionWriteRead_SharedAccount(t *testing.T) {
+	runAPIOnBoth(t, "transaction_write_read_shared", func() []apiCall {
+		const newTxn = "d0000000-0000-0000-0000-0000000000fe"
+		return []apiCall{
+			{"create-on-shared", "POST", "/api/v1/transaction/create-transaction", "owner",
+				map[string]any{
+					"id": newTxn, "accountId": apiSharedAccount, "type": 1,
+					"amount": "7.25", "categoryId": apiCatFood, "date": "2024-04-03 10:00:00",
+				}},
+			{"read-after-create", "POST", "/api/v1/transaction/get-transaction-list", "owner", map[string]any{}},
+			{"account-list-after-create", "POST", "/api/v1/account/get-account-list", "owner", map[string]any{}},
+			{"delete-on-shared", "POST", "/api/v1/transaction/delete-transaction", "owner", map[string]any{"id": newTxn}},
+			{"read-after-delete", "POST", "/api/v1/transaction/get-transaction-list", "owner", map[string]any{}},
+		}
+	})
+}
+
 func TestAPIParity_BudgetWriteRead(t *testing.T) {
 	runAPIOnBoth(t, "budget_write_read", func() []apiCall {
 		const newBudget = "b0000000-0000-0000-0000-0000000000ff"

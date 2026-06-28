@@ -28,6 +28,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
+	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
@@ -114,7 +115,9 @@ func newHarness(t *testing.T) *harness {
 		catSvc, pySvc, tgSvc, catRepo, tgRepo, pyRepo, curLookup, txRepo, "USD",
 	)
 	svc := apptransaction.NewService(
-		txRepo, transactionrepo.NewAccountResolver(accSvc), transactionrepo.NewVisibleAccounts(accSvc),
+		txRepo, transactionrepo.NewAccountResolver(accSvc),
+		transactionrepo.NewAccountGrants(connectionrepo.NewRepo("sqlite", txm)),
+		transactionrepo.NewVisibleAccounts(accSvc),
 		transactionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{AppEnv: "test", CORSAllowOrigin: "*"}

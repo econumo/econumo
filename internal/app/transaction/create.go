@@ -39,7 +39,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 
 	var created *domtransaction.Transaction
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if aerr := s.checkAccountOwned(ctx, userID, accountID); aerr != nil {
+		if aerr := s.checkWriteAccess(ctx, userID, accountID, "account.account.not_available"); aerr != nil {
 			return aerr
 		}
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())

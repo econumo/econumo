@@ -144,6 +144,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 	// Transaction module.
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	txAccountResolver := transactionrepo.NewAccountResolver(accountSvc)
+	txAccountGrants := transactionrepo.NewAccountGrants(connectionRepo)
 	txVisible := transactionrepo.NewVisibleAccounts(accountSvc)
 	txUserLookup := transactionrepo.NewUserLookup(userRepo)
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, categoryRepo, tagRepo, payeeRepo)
@@ -152,7 +153,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwt *auth.JWT, clk Clock) http.Hand
 		categoryRepo, tagRepo, payeeRepo, currencyLookup, transactionRepo, cfg.CurrencyBase,
 	)
 	transactionSvc := apptransaction.NewService(
-		transactionRepo, txAccountResolver, txVisible, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
+		transactionRepo, txAccountResolver, txAccountGrants, txVisible, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 
