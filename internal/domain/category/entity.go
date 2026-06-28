@@ -5,6 +5,7 @@
 package category
 
 import (
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/domain/shared/vo"
@@ -25,6 +26,9 @@ const (
 	aliasIncome  = "income"
 )
 
+// DefaultIcon is the create-time fallback icon used when none is provided.
+const DefaultIcon = "local_offer"
+
 // Int16 returns the persisted SMALLINT value.
 func (t Type) Int16() int16 { return int16(t) }
 
@@ -34,6 +38,19 @@ func (t Type) Alias() string {
 		return aliasIncome
 	}
 	return aliasExpense
+}
+
+// TypeFromAlias parses a wire alias ("expense"/"income", case-insensitive and
+// space-trimmed) into a Type. ok is false for any other value.
+func TypeFromAlias(alias string) (Type, bool) {
+	switch strings.ToLower(strings.TrimSpace(alias)) {
+	case aliasExpense:
+		return TypeExpense, true
+	case aliasIncome:
+		return TypeIncome, true
+	default:
+		return 0, false
+	}
 }
 
 // Category is the category aggregate root. Strings/ints are validated on the way

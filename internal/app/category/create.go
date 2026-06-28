@@ -37,7 +37,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 	if err != nil {
 		return nil, err
 	}
-	iconVal := defaultIcon
+	iconVal := domcategory.DefaultIcon
 	if req.Icon != nil && *req.Icon != "" {
 		iconVal = *req.Icon
 	}

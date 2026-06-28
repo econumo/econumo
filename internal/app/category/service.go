@@ -7,21 +7,14 @@ package category
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
-
-// apiDatetimeLayout is the wire format for createdAt/updatedAt: "2006-01-02
-// 15:04:05" (space separator, no timezone). See CLAUDE.md.
-const apiDatetimeLayout = "2006-01-02 15:04:05"
-
-// defaultIcon is the create fallback: an empty icon becomes "local_offer".
-const defaultIcon = "local_offer"
 
 // Clock supplies the current time. A seam so tests can pin timestamps for
 // byte-stable golden output.
@@ -149,8 +142,8 @@ func toResult(c *domcategory.Category) CategoryResult {
 		Type:        c.Type().Alias(),
 		Icon:        c.Icon(),
 		IsArchived:  archived,
-		CreatedAt:   c.CreatedAt().Format(apiDatetimeLayout),
-		UpdatedAt:   c.UpdatedAt().Format(apiDatetimeLayout),
+		CreatedAt:   c.CreatedAt().Format(datetime.Layout),
+		UpdatedAt:   c.UpdatedAt().Format(datetime.Layout),
 	}
 }
 
@@ -196,21 +189,13 @@ func newIcon(v string) (string, error) {
 	return v, nil
 }
 
-// newCategoryType parses a type alias: lowercase+trim, accept only
+// newCategoryType parses a type alias via the domain parser, accepting only
 // "expense"/"income". The field key is "type".
 func newCategoryType(alias string) (domcategory.Type, error) {
-	switch strings.ToLower(strings.TrimSpace(alias)) {
-	case aliasExpense:
-		return domcategory.TypeExpense, nil
-	case aliasIncome:
-		return domcategory.TypeIncome, nil
-	default:
+	typ, ok := domcategory.TypeFromAlias(alias)
+	if !ok {
 		return 0, errs.NewValidation("CategoryType not exists",
 			errs.FieldError{Key: "type", Message: "CategoryType not exists"})
 	}
+	return typ, nil
 }
-
-const (
-	aliasExpense = "expense"
-	aliasIncome  = "income"
-)
