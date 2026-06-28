@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -20,10 +21,16 @@ type Config struct {
 	// Econumo behavior
 	CurrencyBase      string // default "USD"
 	AllowRegistration bool
-	MailFrom          string
-	MailReplyTo       string
 	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt. DEPRECATED: to be removed; migrate to plaintext via app:remove-data-salt.
 	SQLiteBusyTimeout int
+
+	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
+	// (empty/console/log -> console to stdout; resend://<key> -> Resend).
+	MailerDSN    string // raw MAILER_DSN, kept for reference/logging
+	MailProvider string // "console" | "resend"
+	MailAPIKey   string // transport credential (the Resend API key)
+	MailFrom     string // from query param
+	MailReplyTo  string // reply_to query param
 
 	// Auth / JWT
 	JWTPrivateKeyPath string
@@ -38,7 +45,6 @@ type Config struct {
 	LogLevel string // ECONUMO_LOG_LEVEL: base slog level (debug|info|warn|error); default "info". Raised to DEBUG by -v/-vv/-vvv.
 
 	// Integrations
-	ResendAPIKey           string
 	OpenExchangeRatesToken string
 
 	// SPA
@@ -55,8 +61,7 @@ func Load() (Config, error) {
 		DatabaseURL:            os.Getenv("DATABASE_URL"),
 		CurrencyBase:           getEnv("ECONUMO_CURRENCY_BASE", "USD"),
 		AllowRegistration:      getBool("ECONUMO_ALLOW_REGISTRATION", false),
-		MailFrom:               os.Getenv("ECONUMO_MAIL_FROM"),
-		MailReplyTo:            os.Getenv("ECONUMO_MAIL_REPLY_TO"),
+		MailerDSN:              os.Getenv("MAILER_DSN"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),
 		SQLiteBusyTimeout:      getInt("SQLITE_BUSY_TIMEOUT", 0),
 		JWTPrivateKeyPath:      getEnv("ECONUMO_JWT_PRIVATE_KEY_PATH", "var/jwt/private.pem"),
@@ -65,7 +70,6 @@ func Load() (Config, error) {
 		Port:                   os.Getenv("PORT"),
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
-		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
 		SPADir:                 getEnv("ECONUMO_SPA_DIR", "web/dist/spa"),
 	}
@@ -86,6 +90,16 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.DatabaseDriver = driver
+
+	// The mail transport is likewise derived from a single scheme-prefixed DSN.
+	// An empty MAILER_DSN is valid (the console transport), so this only errors on
+	// a malformed/unsupported DSN — surfacing the typo at boot, like DATABASE_URL.
+	provider, apiKey, from, replyTo, err := parseMailerDSN(c.MailerDSN)
+	if err != nil {
+		return Config{}, err
+	}
+	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
+
 	// NOTE: PORT and the JWT public key are required by the HTTP server only, and
 	// are validated at server startup (cmd/econumo run()). They are intentionally
 	// NOT required here because config.Load is also the CLI's composition entry
@@ -113,6 +127,43 @@ func driverFromURL(url string) (string, error) {
 		return "postgresql", nil
 	default:
 		return "", fmt.Errorf("unsupported DATABASE_URL scheme %q (want sqlite, postgres, or postgresql)", scheme)
+	}
+}
+
+// parseMailerDSN maps a MAILER_DSN to the mail transport and envelope. The scheme
+// selects the provider, the host carries the credential, and from / reply_to come
+// from the query — mirroring how driverFromURL reads the DATABASE_URL scheme.
+//
+//	(empty)              -> console, no envelope
+//	console:// | log://  -> console; from / reply_to from the query
+//	resend://<api_key>   -> resend; from / reply_to from the query (api_key required)
+//
+// An empty DSN is the supported default (console), so only a malformed or
+// unsupported DSN returns an error.
+func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err error) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		return "console", "", "", "", nil
+	}
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("MAILER_DSN %q is not a valid URL: %w", dsn, err)
+	}
+	q := u.Query()
+	from, replyTo = q.Get("from"), q.Get("reply_to")
+	switch strings.ToLower(u.Scheme) {
+	case "console", "log":
+		return "console", "", from, replyTo, nil
+	case "resend":
+		// url.Parse keeps the host verbatim (no case-folding), so a "re_…" key
+		// survives intact in u.Hostname().
+		key := u.Hostname()
+		if key == "" {
+			return "", "", "", "", fmt.Errorf("MAILER_DSN %q is missing the Resend API key (want resend://<api_key>)", dsn)
+		}
+		return "resend", key, from, replyTo, nil
+	default:
+		return "", "", "", "", fmt.Errorf("unsupported MAILER_DSN scheme %q (want resend, console/log, or empty)", u.Scheme)
 	}
 }
 

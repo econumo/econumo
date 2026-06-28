@@ -19,18 +19,16 @@ type ResetSender struct {
 }
 
 // NewResetSender wires the reset email sender over a Mailer with the configured
-// From / Reply-To addresses (ECONUMO_MAIL_FROM / ECONUMO_MAIL_REPLY_TO).
+// From / Reply-To addresses (the from / reply_to query params of MAILER_DSN).
 func NewResetSender(m Mailer, from, replyTo string) *ResetSender {
 	return &ResetSender{m: m, from: from, replyTo: replyTo}
 }
 
-// SendResetPasswordCode emails the reset code to the user. With no From address
-// configured it is a no-op (matching the PHP EmailService), so the remind flow
-// still succeeds on a deployment without mail set up.
+// SendResetPasswordCode emails the reset code to the user. "Mail not configured"
+// is now expressed by the console transport (the empty-MAILER_DSN default), which
+// always renders the message and returns nil — so the remind flow still succeeds
+// out of the box, and an empty From no longer silently swallows that output.
 func (s *ResetSender) SendResetPasswordCode(ctx context.Context, to, name, code string) error {
-	if s.from == "" {
-		return nil
-	}
 	body := fmt.Sprintf(
 		"Hi %s,\nYour confirmation code is: %s.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n",
 		name, code,

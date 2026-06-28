@@ -38,6 +38,44 @@ func TestDriverFromURL(t *testing.T) {
 	}
 }
 
+func TestParseMailerDSN(t *testing.T) {
+	cases := []struct {
+		name                            string
+		dsn                             string
+		provider, apiKey, from, replyTo string
+		wantErr                         bool
+	}{
+		{name: "empty defaults to console", dsn: "", provider: "console"},
+		{name: "blank defaults to console", dsn: "   ", provider: "console"},
+		{name: "console scheme", dsn: "console://", provider: "console"},
+		{name: "log scheme", dsn: "log://", provider: "console"},
+		{name: "console with envelope", dsn: "console://?from=a@x.test&reply_to=b@x.test", provider: "console", from: "a@x.test", replyTo: "b@x.test"},
+		{name: "resend with key", dsn: "resend://re_Abc_123", provider: "resend", apiKey: "re_Abc_123"},
+		{name: "resend with envelope", dsn: "resend://re_Abc_123?from=a@x.test&reply_to=b@x.test", provider: "resend", apiKey: "re_Abc_123", from: "a@x.test", replyTo: "b@x.test"},
+		{name: "scheme is case-insensitive", dsn: "RESEND://re_Abc_123", provider: "resend", apiKey: "re_Abc_123"},
+		{name: "resend without key errors", dsn: "resend://", wantErr: true},
+		{name: "unsupported scheme errors", dsn: "smtp://localhost", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			provider, apiKey, from, replyTo, err := parseMailerDSN(tc.dsn)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("parseMailerDSN(%q) = (%q,%q,%q,%q), want error", tc.dsn, provider, apiKey, from, replyTo)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseMailerDSN(%q) unexpected error: %v", tc.dsn, err)
+			}
+			if provider != tc.provider || apiKey != tc.apiKey || from != tc.from || replyTo != tc.replyTo {
+				t.Errorf("parseMailerDSN(%q) = (%q,%q,%q,%q), want (%q,%q,%q,%q)",
+					tc.dsn, provider, apiKey, from, replyTo, tc.provider, tc.apiKey, tc.from, tc.replyTo)
+			}
+		})
+	}
+}
+
 func TestResolveProjectDir(t *testing.T) {
 	wd, _ := os.Getwd()
 	cases := []struct {

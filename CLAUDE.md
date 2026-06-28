@@ -83,7 +83,7 @@ interfaces. The app layer never imports `ui` or `infra`.
 │   │   ├── storage/sqlc/ ........ sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
 │   │   ├── storage/migrations/ .. SQL migrations per engine ({sqlite,pgsql}); run on boot
 │   │   ├── auth/ ............... password hashing + AES email encryption + user-identifier hashing
-│   │   └── mailer/ ............. transactional email via the Resend API
+│   │   └── mailer/ ............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── ui/ ..................... HTTP edge: handlers, middleware, router, response envelope (httpx), SPA + apidoc
 │   ├── server/ ................. composition root: server.BuildAPI wires every module (used by the binary AND tests)
 │   ├── cli/ ................... the resource:action management commands (stdlib dispatch; no cobra)
@@ -160,8 +160,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
-- `RESEND_API_KEY` + `ECONUMO_MAIL_FROM` (+ optional `ECONUMO_MAIL_REPLY_TO`) — enable
-  password-reset email via Resend; without them the code is still written but no mail is sent.
+- `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
+  as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
+  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
+  From / Reply-To fold in as query params: `resend://<key>?from=…&reply_to=…` (also accepted by
+  `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
+  `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
 - `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_SPA_DIR` — path to the built SPA the binary serves.
@@ -170,8 +174,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.
 
   > **Env naming convention:** app-owned config is prefixed `ECONUMO_`; bare names are reserved for
-  > ecosystem standards (`PORT`, `DATABASE_URL`) and names the engine/vendor owns (`SQLITE_BUSY_TIMEOUT`,
-  > `RESEND_API_KEY`, `OPEN_EXCHANGE_RATES_TOKEN`).
+  > ecosystem standards (`PORT`, `DATABASE_URL`, `MAILER_DSN`) and names the engine/vendor owns
+  > (`SQLITE_BUSY_TIMEOUT`, `OPEN_EXCHANGE_RATES_TOKEN`).
 - `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
   (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
 

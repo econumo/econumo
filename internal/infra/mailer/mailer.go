@@ -1,21 +1,23 @@
-// Package mailer sends transactional email through the Resend HTTP API
-// (https://resend.com), configured by a single API key (RESEND_API_KEY).
+// Package mailer sends transactional email through one of two transports,
+// selected by the MAILER_DSN scheme (parsed in internal/config):
 //
-// Resend is the only supported transport: there is deliberately no SMTP or
-// other protocol path. The HTTP API needs no STARTTLS/auth-mechanism handling,
-// propagates request context, and works with the addresses verified on the
-// Resend account.
+//	(empty)              -> console: render the message to stdout
+//	console:// | log://  -> console: render the message to stdout
+//	resend://<api_key>   -> Resend HTTP API (https://resend.com)
 //
-// When the API key is empty the mailer is a no-op (sends nothing), so a
-// deployment without mail configured simply doesn't send rather than erroring.
-// A no-op is likewise used by ResetSender when the From address is empty,
-// matching the PHP EmailService, which skips sending when no from is set.
+// The console transport is the default so a deployment without mail configured
+// still surfaces what it would have sent (e.g. a password-reset code during
+// local development) instead of silently dropping it. The Resend HTTP API needs
+// no STARTTLS/auth-mechanism handling, propagates request context, and works
+// with the addresses verified on the Resend account; there is deliberately no
+// SMTP or other protocol path.
 package mailer
 
 import (
 	"context"
 	"fmt"
-	"strings"
+	"io"
+	"os"
 
 	"github.com/resend/resend-go/v3"
 )
@@ -34,20 +36,34 @@ type Mailer interface {
 	Send(ctx context.Context, msg Message) error
 }
 
-// New returns a Mailer backed by the Resend API. An empty API key yields a
-// no-op mailer, so a deployment without mail configured simply doesn't send.
-func New(apiKey string) Mailer {
-	apiKey = strings.TrimSpace(apiKey)
-	if apiKey == "" {
-		return noop{}
+// New returns the Mailer for the given provider (as derived from MAILER_DSN by
+// internal/config). "resend" yields a Resend-backed mailer using apiKey; every
+// other value (notably "console" and the empty default) yields the console
+// mailer, which renders each message to stdout.
+func New(provider, apiKey string) Mailer {
+	switch provider {
+	case "resend":
+		return &resendMailer{client: resend.NewClient(apiKey)}
+	default:
+		return console{out: os.Stdout}
 	}
-	return &resendMailer{client: resend.NewClient(apiKey)}
 }
 
-// noop is the disabled mailer.
-type noop struct{}
+// console renders each message to out (stdout in production) instead of sending
+// it — the default transport, and a readable dev aid. It writes plaintext (To,
+// Subject, body and friends) directly rather than through the structured logger,
+// which deliberately keeps such PII out of its fields.
+type console struct {
+	out io.Writer
+}
 
-func (noop) Send(context.Context, Message) error { return nil }
+func (c console) Send(_ context.Context, msg Message) error {
+	_, err := fmt.Fprintf(c.out,
+		"--- email (console transport) ---\nFrom: %s\nTo: %s\nReply-To: %s\nSubject: %s\n\n%s\n---------------------------------\n",
+		msg.From, msg.To, msg.ReplyTo, msg.Subject, msg.Text,
+	)
+	return err
+}
 
 // resendMailer sends via the Resend API.
 type resendMailer struct {

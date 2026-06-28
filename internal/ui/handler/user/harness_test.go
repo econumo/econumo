@@ -126,8 +126,9 @@ func newHarness(t *testing.T) *harness {
 	currency := currencyrepo.New("sqlite", txm)
 	budgets := userbudgetrepo.New("sqlite", txm)
 	passwordReqs := passwordrequestrepo.New("sqlite", txm)
-	// No-op mailer (empty DSN/From) — the reset test reads the code from the DB.
-	resetMailer := mailer.NewResetSender(mailer.New(""), "", "")
+	// Discard mailer — the reset test reads the code from the DB, so email output
+	// is irrelevant here (and we keep it off stdout, unlike the console default).
+	resetMailer := mailer.NewResetSender(discardMailer{}, "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration)
@@ -144,6 +145,12 @@ func newHarness(t *testing.T) *harness {
 
 	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, jwt: jwtSvc, clock: clk}
 }
+
+// discardMailer drops every message; it keeps the reset test silent (the console
+// default would print to stdout) without re-exposing a no-op transport in prod.
+type discardMailer struct{}
+
+func (discardMailer) Send(context.Context, mailer.Message) error { return nil }
 
 // seed inserts a known user (with hashed password and encrypted email) plus the
 // four default user options so login and get-user-data work. USD currency is
