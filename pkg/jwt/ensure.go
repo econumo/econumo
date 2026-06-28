@@ -19,11 +19,11 @@ import (
 // left untouched).
 //
 // Passphrase handling:
-//   - If passphrase is non-empty (JWT_PASSPHRASE) it is used as-is.
+//   - If passphrase is non-empty (ECONUMO_JWT_PASSPHRASE) it is used as-is.
 //   - If it is empty, a random passphrase is generated once and persisted in
 //     ".jwt-passphrase" beside the private key, then reused on later boots — so a
 //     deployment works with zero JWT configuration as long as the key directory
-//     is on a persistent volume. Set JWT_PASSPHRASE to avoid writing that file.
+//     is on a persistent volume. Set ECONUMO_JWT_PASSPHRASE to avoid writing that file.
 //
 // Generation rule: keys are written when force is true OR either key file is
 // missing. With force=false an existing keypair is left untouched, so a restart

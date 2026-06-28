@@ -129,7 +129,7 @@ func newHarness(t *testing.T) *harness {
 	// No-op mailer (empty DSN/From) — the reset test reads the code from the DB.
 	resetMailer := mailer.NewResetSender(mailer.New(""), "", "")
 
-	cfg := config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)

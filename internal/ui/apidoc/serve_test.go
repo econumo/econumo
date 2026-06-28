@@ -17,7 +17,7 @@ import (
 // global middleware chain applied.
 func TestSwaggerRoutes(t *testing.T) {
 	h := router.New(router.Deps{
-		Cfg:         config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}},
+		Cfg:         config.Config{CORSAllowedOrigins: []string{"*"}},
 		RegisterAPI: apidoc.RegisterAPI(),
 	})
 	srv := httptest.NewServer(h)

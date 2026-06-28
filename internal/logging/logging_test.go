@@ -31,34 +31,27 @@ func TestResolveVerbosity(t *testing.T) {
 	cases := []struct {
 		name      string
 		args      []string
-		shellEnv  string
 		wantLevel int
 		wantQuiet bool
 		wantRest  []string
 	}{
-		{"none", []string{"app:add-currency", "EUR"}, "", 0, false, []string{"app:add-currency", "EUR"}},
-		{"-v", []string{"app:x", "-v"}, "", 1, false, []string{"app:x"}},
-		{"-vv", []string{"-vv", "app:x"}, "", 2, false, []string{"app:x"}},
-		{"-vvv", []string{"app:x", "-vvv"}, "", 3, false, []string{"app:x"}},
-		{"--verbose", []string{"--verbose", "app:x"}, "", 1, false, []string{"app:x"}},
-		{"--verbose=2", []string{"app:x", "--verbose=2"}, "", 2, false, []string{"app:x"}},
+		{"none", []string{"app:add-currency", "EUR"}, 0, false, []string{"app:add-currency", "EUR"}},
+		{"-v", []string{"app:x", "-v"}, 1, false, []string{"app:x"}},
+		{"-vv", []string{"-vv", "app:x"}, 2, false, []string{"app:x"}},
+		{"-vvv", []string{"app:x", "-vvv"}, 3, false, []string{"app:x"}},
+		{"--verbose", []string{"--verbose", "app:x"}, 1, false, []string{"app:x"}},
+		{"--verbose=2", []string{"app:x", "--verbose=2"}, 2, false, []string{"app:x"}},
 		// Priority, NOT additive: two -v stay verbose (Symfony semantics).
-		{"-v -v stays verbose", []string{"app:x", "-v", "-v"}, "", 1, false, []string{"app:x"}},
+		{"-v -v stays verbose", []string{"app:x", "-v", "-v"}, 1, false, []string{"app:x"}},
 		// Highest flag wins regardless of order.
-		{"mixed -v -vvv", []string{"-v", "app:x", "-vvv"}, "", 3, false, []string{"app:x"}},
-		{"quiet beats -vvv", []string{"app:x", "-q", "-vvv"}, "", 0, true, []string{"app:x"}},
-		{"--quiet", []string{"--quiet", "app:x"}, "", 0, true, []string{"app:x"}},
-		{"flags interleaved kept in order", []string{"app:update-currency-rates", "-vv", "2025-04-01"}, "", 2, false, []string{"app:update-currency-rates", "2025-04-01"}},
-		// SHELL_VERBOSITY baseline applies when no flag is given...
-		{"env baseline 2", []string{"app:x"}, "2", 2, false, []string{"app:x"}},
-		{"env quiet -1", []string{"app:x"}, "-1", 0, true, []string{"app:x"}},
-		// ...and a flag overrides the env baseline.
-		{"flag overrides env", []string{"app:x", "-vvv"}, "1", 3, false, []string{"app:x"}},
-		{"-v overrides env quiet", []string{"app:x", "-v"}, "-1", 1, false, []string{"app:x"}},
+		{"mixed -v -vvv", []string{"-v", "app:x", "-vvv"}, 3, false, []string{"app:x"}},
+		{"quiet beats -vvv", []string{"app:x", "-q", "-vvv"}, 0, true, []string{"app:x"}},
+		{"--quiet", []string{"--quiet", "app:x"}, 0, true, []string{"app:x"}},
+		{"flags interleaved kept in order", []string{"app:update-currency-rates", "-vv", "2025-04-01"}, 2, false, []string{"app:update-currency-rates", "2025-04-01"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			level, quiet, rest := resolveVerbosity(tc.args, tc.shellEnv)
+			level, quiet, rest := resolveVerbosity(tc.args)
 			if level != tc.wantLevel || quiet != tc.wantQuiet {
 				t.Errorf("level=%d quiet=%v, want %d/%v", level, quiet, tc.wantLevel, tc.wantQuiet)
 			}
@@ -101,7 +94,6 @@ func TestEffectiveLevel(t *testing.T) {
 // TestSetup confirms it strips flags from the returned args and installs a
 // handler at the resolved level.
 func TestSetup(t *testing.T) {
-	t.Setenv("SHELL_VERBOSITY", "")
 	rest := Setup("warn", []string{"app:x", "-vvv", "pos"})
 	if !reflect.DeepEqual(rest, []string{"app:x", "pos"}) {
 		t.Fatalf("rest = %v, want [app:x pos]", rest)

@@ -99,7 +99,7 @@ func AccessDenied(w http.ResponseWriter, message string) {
 }
 
 // Exception writes the 500 exception envelope. stackTrace is included only when
-// dev is true (matching APP_ENV=dev behavior).
+// dev is true (matching ECONUMO_DEBUG=true behavior).
 func Exception(w http.ResponseWriter, message, exceptionType string, stackTrace any, dev bool) {
 	env := exceptionEnvelope{Success: false, Message: message, Code: 0, ExceptionType: exceptionType}
 	if dev {

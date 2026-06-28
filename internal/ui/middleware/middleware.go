@@ -123,7 +123,7 @@ func Recover(dev bool) Middleware {
 
 // ---- CORS ----
 
-// CORS controls cross-origin access via an allowlist (CORS_ALLOW_ORIGIN). The
+// CORS controls cross-origin access via an allowlist (ECONUMO_CORS_ALLOW_ORIGIN). The
 // default (empty list) is same-domain only: no Access-Control-Allow-Origin is
 // emitted, so cross-origin reads are blocked while same-origin requests — which
 // the browser never subjects to CORS — keep working (the bundled SPA and API

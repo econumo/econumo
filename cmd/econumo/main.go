@@ -60,7 +60,7 @@ func main() {
 	switch args[0] {
 	case "serve":
 		// Server path: bootstrap INFO logging for the earliest diagnostics, then
-		// load .env and run. run() re-applies the logger from LOG_LEVEL plus any
+		// load .env and run. run() re-applies the logger from ECONUMO_LOG_LEVEL plus any
 		// -v/-vv/-vvv/-q flags once config is loaded. Returning from run() (server
 		// stopped) exits 0; an error exits 1.
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
@@ -150,19 +150,19 @@ func run(serveArgs []string) error {
 	if err != nil {
 		return err
 	}
-	// Re-apply the logger now that LOG_LEVEL is known: the baseline is
+	// Re-apply the logger now that ECONUMO_LOG_LEVEL is known: the baseline is
 	// cfg.LogLevel (default info), raised to DEBUG by -v/-vv/-vvv on the serve
 	// command line (flags win); -q silences. From here on every log honors it.
 	logging.Setup(cfg.LogLevel, serveArgs)
 	slog.Info("configuration loaded",
-		"app_env", cfg.AppEnv,
+		"debug", cfg.Debug,
 		"database_driver", cfg.DatabaseDriver,
 		"spa_dir", cfg.SPADir,
 	)
 
 	// Server-only requirements (the CLI path validated via config.Load does not
 	// need these). PORT is never defaulted so the bound port is never an implicit
-	// surprise; JWT_PUBLIC_KEY is needed to verify auth tokens.
+	// surprise; the JWT public key is needed to verify auth tokens.
 	if cfg.Port == "" {
 		return errors.New("PORT is required")
 	}
@@ -202,11 +202,11 @@ func run(serveArgs []string) error {
 	// untouched so a restart never invalidates issued tokens. Persist the key
 	// directory on a volume to keep tokens valid across restarts. This is the same
 	// jwt.EnsureKeypair path the jwt:generate CLI command uses.
-	passphrase, _, err := jwt.EnsureKeypair(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase, false)
+	passphrase, _, err := jwt.EnsureKeypair(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase, false)
 	if err != nil {
 		return err
 	}
-	jwtSvc, err := jwt.New(cfg.JWTSecretKeyPath, cfg.JWTPublicKeyPath, passphrase)
+	jwtSvc, err := jwt.New(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, passphrase)
 	if err != nil {
 		return err
 	}

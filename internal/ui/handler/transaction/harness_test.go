@@ -121,7 +121,7 @@ func newHarness(t *testing.T) *harness {
 		transactionrepo.NewVisibleAccounts(accSvc),
 		transactionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
-	cfg := config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlertransaction.NewHandlers(svc, cfg.IsDev())
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlertransaction.RegisterAPI(handlers, jwtSvc, cfg.IsDev())})
 	srv := httptest.NewServer(h)

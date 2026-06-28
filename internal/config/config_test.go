@@ -95,7 +95,7 @@ func TestLoadLogLevel(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 
 	// Default when unset.
-	t.Setenv("LOG_LEVEL", "")
+	t.Setenv("ECONUMO_LOG_LEVEL", "")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -105,7 +105,7 @@ func TestLoadLogLevel(t *testing.T) {
 	}
 
 	// Honored when set.
-	t.Setenv("LOG_LEVEL", "debug")
+	t.Setenv("ECONUMO_LOG_LEVEL", "debug")
 	cfg, err = Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)

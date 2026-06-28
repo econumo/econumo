@@ -87,7 +87,7 @@ func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
 	accUser := accountrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm))
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
-	cfg := config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	// Wire the real connection module so sharedAccess[] + the delete-account
 	// non-owner revoke branch are exercised against actual accounts_access rows.
 	connRepo := connectionrepo.NewRepo("sqlite", txm)

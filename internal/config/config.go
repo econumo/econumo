@@ -11,32 +11,31 @@ import (
 
 // Config is the fully-resolved application configuration.
 type Config struct {
-	AppEnv string // "dev" | "prod" | "test"; controls stackTrace in the 500 envelope
+	Debug bool // ECONUMO_DEBUG: expose stackTrace in the 500 envelope
 
 	// Database
 	DatabaseURL    string // DSN passed to the selected Backend; its scheme picks the engine
 	DatabaseDriver string // "sqlite" | "postgresql" — DERIVED from DatabaseURL's scheme
 
 	// Econumo behavior
-	BaseURL           string
 	CurrencyBase      string // default "USD"
 	AllowRegistration bool
-	FromEmail         string
-	ReplyToEmail      string
+	MailFrom          string
+	MailReplyTo       string
 	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt. DEPRECATED: to be removed; migrate to plaintext via app:remove-data-salt.
 	SQLiteBusyTimeout int
 
 	// Auth / JWT
-	JWTSecretKeyPath string
-	JWTPublicKeyPath string
-	JWTPassphrase    string
+	JWTPrivateKeyPath string
+	JWTPublicKeyPath  string
+	JWTPassphrase     string
 
 	// HTTP
 	Port               string   // PORT: HTTP listen port ("8181" or ":8181"); required, no default
-	CORSAllowedOrigins []string // CORS_ALLOW_ORIGIN: comma-separated allowlist; empty = same-domain only; "*" = allow all
+	CORSAllowedOrigins []string // ECONUMO_CORS_ALLOW_ORIGIN: comma-separated allowlist; empty = same-domain only; "*" = allow all
 
 	// Logging
-	LogLevel string // LOG_LEVEL: base slog level (debug|info|warn|error); default "info". Raised to DEBUG by -v/-vv/-vvv.
+	LogLevel string // ECONUMO_LOG_LEVEL: base slog level (debug|info|warn|error); default "info". Raised to DEBUG by -v/-vv/-vvv.
 
 	// Integrations
 	ResendAPIKey           string
@@ -47,26 +46,25 @@ type Config struct {
 }
 
 // IsDev reports whether stack traces should be exposed in the 500 envelope.
-func (c Config) IsDev() bool { return c.AppEnv == "dev" }
+func (c Config) IsDev() bool { return c.Debug }
 
 // Load reads and validates configuration from the environment.
 func Load() (Config, error) {
 	c := Config{
-		AppEnv:                 getEnv("APP_ENV", "prod"),
+		Debug:                  getBool("ECONUMO_DEBUG", false),
 		DatabaseURL:            os.Getenv("DATABASE_URL"),
-		BaseURL:                os.Getenv("ECONUMO_BASE_URL"),
 		CurrencyBase:           getEnv("ECONUMO_CURRENCY_BASE", "USD"),
 		AllowRegistration:      getBool("ECONUMO_ALLOW_REGISTRATION", false),
-		FromEmail:              os.Getenv("ECONUMO_FROM_EMAIL"),
-		ReplyToEmail:           os.Getenv("ECONUMO_REPLY_TO_EMAIL"),
+		MailFrom:               os.Getenv("ECONUMO_MAIL_FROM"),
+		MailReplyTo:            os.Getenv("ECONUMO_MAIL_REPLY_TO"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),
-		SQLiteBusyTimeout:      getInt("ECONUMO_SQLITE_BUSY_TIMEOUT", 0),
-		JWTSecretKeyPath:       getEnv("JWT_SECRET_KEY", "var/jwt/private.pem"),
-		JWTPublicKeyPath:       getEnv("JWT_PUBLIC_KEY", "var/jwt/public.pem"),
-		JWTPassphrase:          os.Getenv("JWT_PASSPHRASE"),
+		SQLiteBusyTimeout:      getInt("SQLITE_BUSY_TIMEOUT", 0),
+		JWTPrivateKeyPath:      getEnv("ECONUMO_JWT_PRIVATE_KEY_PATH", "var/jwt/private.pem"),
+		JWTPublicKeyPath:       getEnv("ECONUMO_JWT_PUBLIC_KEY_PATH", "var/jwt/public.pem"),
+		JWTPassphrase:          os.Getenv("ECONUMO_JWT_PASSPHRASE"),
 		Port:                   os.Getenv("PORT"),
-		CORSAllowedOrigins:     getStringList("CORS_ALLOW_ORIGIN", nil),
-		LogLevel:               getEnv("LOG_LEVEL", "info"),
+		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
+		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		ResendAPIKey:           os.Getenv("RESEND_API_KEY"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
 		SPADir:                 getEnv("ECONUMO_SPA_DIR", "web/dist/spa"),
@@ -76,7 +74,7 @@ func Load() (Config, error) {
 	// "%kernel.project_dir%" placeholder (which Symfony resolves to the app root).
 	// Expand it to the working directory so such a .env works here unchanged.
 	c.JWTPublicKeyPath = ResolveProjectDir(c.JWTPublicKeyPath)
-	c.JWTSecretKeyPath = ResolveProjectDir(c.JWTSecretKeyPath)
+	c.JWTPrivateKeyPath = ResolveProjectDir(c.JWTPrivateKeyPath)
 
 	if c.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
@@ -88,10 +86,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.DatabaseDriver = driver
-	// NOTE: PORT and JWT_PUBLIC_KEY are required by the HTTP server only, and are
-	// validated at server startup (cmd/econumo run()). They are intentionally NOT
-	// required here because config.Load is also the CLI's composition entry point
-	// (bin/console app:*), and those commands neither bind a port nor issue JWTs.
+	// NOTE: PORT and the JWT public key are required by the HTTP server only, and
+	// are validated at server startup (cmd/econumo run()). They are intentionally
+	// NOT required here because config.Load is also the CLI's composition entry
+	// point (app:*), and those commands neither bind a port nor issue JWTs.
 	// Only DATABASE_URL (checked above) is universally required.
 	return c, nil
 }

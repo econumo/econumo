@@ -98,7 +98,7 @@ func newHarness(t *testing.T) *harness {
 	repo := categoryrepo.NewSQLiteRepo(txm)
 	readRepo := categoryrepo.NewReadRepo("sqlite", txm)
 
-	cfg := config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	accountAccess := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
 	svc := appcategory.NewService(repo, txm, repo, clk, readRepo, accountAccess)
 	readSvc := appcategory.NewReadService(readRepo)

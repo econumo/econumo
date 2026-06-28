@@ -12,7 +12,8 @@
 #     already exist (default /app/var/jwt/{private,public}.pem). NOTHING is
 #     baked in at build time — keys are unique per deployment. Mount a volume at
 #     /app/var so the keypair, passphrase, and the sqlite db survive restarts.
-#     Override paths with JWT_SECRET_KEY/JWT_PUBLIC_KEY to mount your own keys.
+#     Override paths with ECONUMO_JWT_PRIVATE_KEY_PATH/ECONUMO_JWT_PUBLIC_KEY_PATH
+#     to mount your own keys.
 #   - Migrations run inside the binary on boot (baseline-aware), so there is no
 #     entrypoint script — distroless has no shell and needs none.
 #   - econumo-config.js ships with a working default (API_URL:null -> same
@@ -33,7 +34,7 @@ COPY web/ ./
 ARG ECONUMO_VERSION=""
 RUN cp .env.dist .env && \
     if [ -n "$ECONUMO_VERSION" ]; then \
-        sed -i "s/^ECONUMO_EDITION_LABEL=.*/ECONUMO_EDITION_LABEL=\"${ECONUMO_VERSION}\"/" .env; \
+        sed -i "s/^ECONUMO_VERSION=.*/ECONUMO_VERSION=\"${ECONUMO_VERSION}\"/" .env; \
     fi
 RUN pnpm run build
 # -> /build/web/dist/spa (includes the default econumo-config.js)

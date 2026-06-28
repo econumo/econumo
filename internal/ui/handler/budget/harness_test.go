@@ -120,7 +120,7 @@ func newHarness(t *testing.T) *harness {
 		txm, clk,
 	)
 
-	cfg := config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlerbudget.NewHandlers(svc, cfg.IsDev())
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, jwtSvc, cfg.IsDev())})
 	srv := httptest.NewServer(h)

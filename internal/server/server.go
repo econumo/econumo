@@ -83,7 +83,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
 
 	passwordReqRepo := passwordrequestrepo.New(cfg.DatabaseDriver, txm)
-	resetMailer := mailer.NewResetSender(mailer.New(cfg.ResendAPIKey), cfg.FromEmail, cfg.ReplyToEmail)
+	resetMailer := mailer.NewResetSender(mailer.New(cfg.ResendAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
 		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration,

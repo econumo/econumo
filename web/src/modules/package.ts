@@ -9,7 +9,7 @@ interface EconumoPackage {
 }
 
 function getEditionLabel(): string {
-  return String(process.env.ECONUMO_EDITION_LABEL);
+  return String(process.env.ECONUMO_VERSION);
 }
 
 function isPaywallEnabled(): boolean {

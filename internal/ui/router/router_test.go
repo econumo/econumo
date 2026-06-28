@@ -25,7 +25,7 @@ func newServer(t *testing.T, reg router.RegisterAPI) *httptest.Server {
 		t.Fatalf("write favicon: %v", err)
 	}
 	h := router.New(router.Deps{
-		Cfg:         config.Config{AppEnv: "test", CORSAllowedOrigins: []string{"*"}, SPADir: dir},
+		Cfg:         config.Config{CORSAllowedOrigins: []string{"*"}, SPADir: dir},
 		RegisterAPI: reg,
 	})
 	srv := httptest.NewServer(h)
@@ -154,7 +154,7 @@ func TestHealthCheck_DBDown_ReportsFalse(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "index.html"), []byte("x"), 0o644)
 	h := router.New(router.Deps{
-		Cfg: config.Config{AppEnv: "test", SPADir: dir},
+		Cfg: config.Config{SPADir: dir},
 		DB:  stubPinger{err: context.DeadlineExceeded},
 	})
 	srv := httptest.NewServer(h)

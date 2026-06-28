@@ -22,13 +22,13 @@ const keyBits = 4096
 // encrypted PKCS#8 ("ENCRYPTED PRIVATE KEY", PBES2) PEM sealed with passphrase.
 // This is the Go equivalent of `bin/console lexik:jwt:generate-keypair`.
 //
-// A non-empty passphrase is required (it is the JWT_PASSPHRASE the server uses to
+// A non-empty passphrase is required (it is the ECONUMO_JWT_PASSPHRASE the server uses to
 // decrypt the key). Existing files are left untouched unless force is true, so a
 // stray run cannot silently invalidate every issued token. Parent directories are
 // created; the private key is written 0600, the public key 0644.
 func GenerateKeypair(privatePath, publicPath, passphrase string, force bool) error {
 	if passphrase == "" {
-		return errors.New("a passphrase is required (set JWT_PASSPHRASE) to encrypt the private key")
+		return errors.New("a passphrase is required (set ECONUMO_JWT_PASSPHRASE) to encrypt the private key")
 	}
 	if !force {
 		for _, p := range []string{privatePath, publicPath} {

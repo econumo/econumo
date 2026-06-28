@@ -19,7 +19,7 @@ type ResetSender struct {
 }
 
 // NewResetSender wires the reset email sender over a Mailer with the configured
-// From / Reply-To addresses (ECONUMO_FROM_EMAIL / ECONUMO_REPLY_TO_EMAIL).
+// From / Reply-To addresses (ECONUMO_MAIL_FROM / ECONUMO_MAIL_REPLY_TO).
 func NewResetSender(m Mailer, from, replyTo string) *ResetSender {
 	return &ResetSender{m: m, from: from, replyTo: replyTo}
 }

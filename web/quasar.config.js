@@ -63,9 +63,9 @@ module.exports = configure(function (ctx) {
     build: {
       vueRouterMode: 'hash', // available values: 'hash', 'history'
       env: {
-        ECONUMO_EDITION_LABEL: process.env.ECONUMO_EDITION_LABEL,
-        WEBSITE_URL: process.env.ECONUMO_CONFIG_WEBSITE_URL,
-        ALLOW_CUSTOM_API: process.env.ECONUMO_CONFIG_ALLOW_CUSTOM_API,
+        ECONUMO_VERSION: process.env.ECONUMO_VERSION,
+        WEBSITE_URL: process.env.ECONUMO_WEBSITE_URL,
+        ALLOW_CUSTOM_API: process.env.ECONUMO_ALLOW_CUSTOM_API,
       },
 
       // transpile: false,

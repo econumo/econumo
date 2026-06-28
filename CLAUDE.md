@@ -120,8 +120,8 @@ in `routes.go` (`RegisterAPI`). Request/result DTOs live in `internal/app/<featu
 Directory structure in `web/src/`: `pages/` (routes), `components/`, `composables/`,
 `modules/api/v1/` (typed API clients), `stores/` (Pinia), `router/`, `i18n/`.
 Build-time config comes from `web/.env.dist` (copied to `.env` at image build); the
-version label shown in the UI is `ECONUMO_EDITION_LABEL`, overridden per build by
-the `ECONUMO_VERSION` build arg.
+version label shown in the UI is `ECONUMO_VERSION` (same name as the Docker build arg
+that overrides it per build).
 
 ## Testing
 
@@ -145,27 +145,33 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `PORT` — HTTP listen port (required by the server), from `.env`. The image keeps a
   fallback `PORT=80` (compose maps `8181:80`); for a host `go run`, set a non-privileged
   port (e.g. `8181`) in `.env`.
-- `JWT_SECRET_KEY` / `JWT_PUBLIC_KEY` / `JWT_PASSPHRASE` — RS256 keypair (paths may use
-  the Symfony-style `%kernel.project_dir%` placeholder, which is expanded to the cwd).
-  Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first boot if
-  missing (no keys are committed or baked into the image). `jwt:generate`
+- `ECONUMO_JWT_PRIVATE_KEY_PATH` / `ECONUMO_JWT_PUBLIC_KEY_PATH` / `ECONUMO_JWT_PASSPHRASE` —
+  RS256 keypair (paths may use the Symfony-style `%kernel.project_dir%` placeholder, which is
+  expanded to the cwd). Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first
+  boot if missing (no keys are committed or baked into the image). `jwt:generate`
   generates one explicitly. In the image these resolve under `/app/var/jwt`; persist
   the `/app/var` volume (db + keys) to keep data and tokens valid.
 - `ECONUMO_DATA_SALT` — AES key + identifier-hash salt (must match the data it reads).
   **Deprecated — will be removed in a future version.** Migrate to plaintext with
   `data:remove-salt` (below) and leave it unset.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
-- `CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
+- `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
-- `RESEND_API_KEY` + `ECONUMO_FROM_EMAIL` (+ optional `ECONUMO_REPLY_TO_EMAIL`) — enable
+- `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
+- `RESEND_API_KEY` + `ECONUMO_MAIL_FROM` (+ optional `ECONUMO_MAIL_REPLY_TO`) — enable
   password-reset email via Resend; without them the code is still written but no mail is sent.
 - `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
+- `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_SPA_DIR` — path to the built SPA the binary serves.
-- `LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
+- `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
   (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
-  and `-q` (quiet); flags override `LOG_LEVEL`. Resolution lives in `internal/logging`.
+  and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.
+
+  > **Env naming convention:** app-owned config is prefixed `ECONUMO_`; bare names are reserved for
+  > ecosystem standards (`PORT`, `DATABASE_URL`) and names the engine/vendor owns (`SQLITE_BUSY_TIMEOUT`,
+  > `RESEND_API_KEY`, `OPEN_EXCHANGE_RATES_TOKEN`).
 - `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
   (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
 
@@ -257,7 +263,7 @@ data unreadable. Most are also asserted by the test suite.
 ### Response envelope (`internal/ui/httpx/envelope.go`)
 - Success (200): `{"success": true, "message": "", "data": <payload>}`
 - Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
-- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `APP_ENV=dev`.
+- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `ECONUMO_DEBUG=true`.
 - Not implemented (501): `{"success": false, "message": <string>, "code": 0, "errors": []}` — here `errors` is an array `[]` (the lone exception to the object rule).
 - JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
 

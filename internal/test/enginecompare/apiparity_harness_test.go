@@ -74,7 +74,6 @@ func newAPIHarness(t *testing.T, db *dbtest.DB) *apiHarness {
 	clk := apiFixedClock{t: apiClockTime}
 
 	cfg := config.Config{
-		AppEnv:             "test",
 		DatabaseDriver:     db.Engine, // "sqlite" | "postgresql" — selects sqlc adapters
 		CurrencyBase:       "USD",
 		AllowRegistration:  true,

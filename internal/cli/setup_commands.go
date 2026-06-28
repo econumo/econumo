@@ -25,14 +25,14 @@ func setupCommands() []command {
 						force = true
 					}
 				}
-				privPath := config.ResolveProjectDir(envOr("JWT_SECRET_KEY", "var/jwt/private.pem"))
-				pubPath := config.ResolveProjectDir(envOr("JWT_PUBLIC_KEY", "var/jwt/public.pem"))
-				passphrase := os.Getenv("JWT_PASSPHRASE")
+				privPath := config.ResolveProjectDir(envOr("ECONUMO_JWT_PRIVATE_KEY_PATH", "var/jwt/private.pem"))
+				pubPath := config.ResolveProjectDir(envOr("ECONUMO_JWT_PUBLIC_KEY_PATH", "var/jwt/public.pem"))
+				passphrase := os.Getenv("ECONUMO_JWT_PASSPHRASE")
 
 				// Same shared path the server runs on boot: skip when a keypair
 				// already exists, generate when missing, regenerate with --force. A
-				// passphrase is auto-generated and persisted when JWT_PASSPHRASE is
-				// unset, so this works with zero configuration.
+				// passphrase is auto-generated and persisted when ECONUMO_JWT_PASSPHRASE
+				// is unset, so this works with zero configuration.
 				_, generated, err := jwt.EnsureKeypair(privPath, pubPath, passphrase, force)
 				if err != nil {
 					return err
@@ -42,7 +42,7 @@ func setupCommands() []command {
 					return nil
 				}
 				fmt.Printf("Generated RS256 JWT keypair:\n  private key: %s\n  public key:  %s\n", privPath, pubPath)
-				fmt.Println("Ensure the server runs with matching JWT_SECRET_KEY, JWT_PUBLIC_KEY and JWT_PASSPHRASE.")
+				fmt.Println("Ensure the server runs with matching ECONUMO_JWT_PRIVATE_KEY_PATH, ECONUMO_JWT_PUBLIC_KEY_PATH and ECONUMO_JWT_PASSPHRASE.")
 				return nil
 			},
 		},

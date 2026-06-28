@@ -132,7 +132,7 @@ func TestEnsureKeypair_ExplicitPassphrase(t *testing.T) {
 		t.Errorf("passphrase = %q, want s3cret", pass)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".jwt-passphrase")); !os.IsNotExist(err) {
-		t.Error("a passphrase file must NOT be written when JWT_PASSPHRASE is set")
+		t.Error("a passphrase file must NOT be written when ECONUMO_JWT_PASSPHRASE is set")
 	}
 	if _, err := New(priv, pub, "s3cret"); err != nil {
 		t.Fatalf("New: %v", err)

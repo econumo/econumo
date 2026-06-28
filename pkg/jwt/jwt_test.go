@@ -18,7 +18,7 @@ import (
 // a temp file by testkeys.Paths). These tests use it so there is a single home
 // for the keypair. lexik_token.json (the golden token signed with this key by the
 // PHP backend) stays in this package's local testdata. The passphrase is the
-// repo's dev JWT_PASSPHRASE from .env.dist (not a production secret).
+// repo's dev ECONUMO_JWT_PASSPHRASE (not a production secret).
 const testPassphrase = testkeys.Passphrase
 
 func newTestJWT(t *testing.T) *JWT {
