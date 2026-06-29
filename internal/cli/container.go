@@ -54,7 +54,10 @@ func newContainer(ctx context.Context) (*container, error) {
 	slog.Debug("cli: database opened", "driver", cfg.DatabaseDriver)
 
 	txm := backend.NewTxManager(db)
-	encodeSvc := auth.NewEncodeService(cfg.DataSalt)
+	// Salt-free, like the API: every CLI user command runs in plaintext mode so a
+	// CLI-created/edited user is readable by the running server. Only data:remove-salt
+	// consumes cfg.DataSalt, and it builds its own salted encoder from it.
+	encodeSvc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 	clk := clock.New()
 

@@ -60,7 +60,10 @@ import (
 func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Handler {
 	txm := backend.NewTxManager(db)
 
-	encodeSvc := auth.NewEncodeService(cfg.DataSalt)
+	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
+	// md5(lower(email)) identifier). The salt is consumed only by the data:remove-salt
+	// migration, so a still-salted database must be migrated before its users can log in.
+	encodeSvc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)

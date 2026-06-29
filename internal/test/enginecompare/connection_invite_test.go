@@ -36,7 +36,7 @@ func TestConnectionInviteFlow_PerEngine(t *testing.T) {
 
 		// Seed a third, unconnected user to redeem the invite (owner+guest are
 		// already connected by the shared fixture).
-		fixture.New(t, db).WithCrypto(apiDataSalt).User(fixture.User{ID: apiCarolID, Email: apiCarolEmail, Name: "Carol"})
+		fixture.New(t, db).WithCrypto("").User(fixture.User{ID: apiCarolID, Email: apiCarolEmail, Name: "Carol"})
 		fixture.New(t, db).DefaultOptions(apiCarolID)
 
 		ownerTok := h.token(t, apiOwnerID, apiOwnerEmail)

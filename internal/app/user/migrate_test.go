@@ -62,7 +62,7 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 		}
 	}
 
-	migrated, skipped, err := svc.MigrateRemoveDataSalt(ctx)
+	migrated, skipped, err := svc.MigrateRemoveDataSalt(ctx, testSalt)
 	if err != nil {
 		t.Fatalf("MigrateRemoveDataSalt: %v", err)
 	}
@@ -88,8 +88,8 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 		}
 	}
 
-	// Idempotent: a second run (service still salted) decrypts nothing new.
-	migrated2, skipped2, err := svc.MigrateRemoveDataSalt(ctx)
+	// Idempotent: a second run with the same salt decrypts nothing new.
+	migrated2, skipped2, err := svc.MigrateRemoveDataSalt(ctx, testSalt)
 	if err != nil {
 		t.Fatalf("second MigrateRemoveDataSalt: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestMigrateThenLoginSaltFree(t *testing.T) {
 	const password = "secret-pw" // the fixture default
 	fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: email, Password: password})
 
-	if _, _, err := saltedSvc.MigrateRemoveDataSalt(ctx); err != nil {
+	if _, _, err := saltedSvc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -121,5 +121,16 @@ func TestMigrateThenLoginSaltFree(t *testing.T) {
 	}
 	if res.Token == "" {
 		t.Error("login returned an empty token")
+	}
+}
+
+// TestMigrateRemoveDataSaltEmptySaltRefused guards the catastrophic case: with an
+// empty salt Decode is a passthrough, so the sweep would store ciphertext AS
+// plaintext. The method must refuse rather than corrupt the data.
+func TestMigrateRemoveDataSaltEmptySaltRefused(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	svc, _, _ := newUserSvc(t, db)
+	if _, _, err := svc.MigrateRemoveDataSalt(context.Background(), ""); err == nil {
+		t.Fatal("expected an error for an empty salt, got nil")
 	}
 }

@@ -21,7 +21,7 @@ type Config struct {
 	// Econumo behavior
 	CurrencyBase      string // default "USD"
 	AllowRegistration bool
-	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt. DEPRECATED: to be removed; migrate to plaintext via data:remove-salt.
+	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport

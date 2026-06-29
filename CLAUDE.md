@@ -151,9 +151,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   boot if missing (no keys are committed or baked into the image). `jwt:generate`
   generates one explicitly. In the image these resolve under `/app/var/jwt`; persist
   the `/app/var` volume (db + keys) to keep data and tokens valid.
-- `ECONUMO_DATA_SALT` — AES key + identifier-hash salt (must match the data it reads).
-  **Deprecated — will be removed in a future version.** Migrate to plaintext with
-  `data:remove-salt` (below) and leave it unset.
+- `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
+  salt-free (plaintext emails, `md5(lower(email))` identifiers). It is consumed by exactly one
+  code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
+  Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
+  database has unreadable emails / mismatched identifiers, so those users cannot log in (the
+  intended push to migrate); `serve` logs a WARN at boot while it is set.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
@@ -273,9 +276,9 @@ data unreadable. Most are also asserted by the test suite.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: sha512, 500 iterations, base64 (88 chars). Salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`. Verify rejects len≠88 or a `$`, constant-time.
-- **User identifier**: `hex(md5(lower(email) || ECONUMO_DATA_SALT))` — 32-char hex; the primary user lookup key.
-- **Email encryption**: AES-128-CBC, key = raw `ECONUMO_DATA_SALT` (exactly 16 bytes); layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified (constant-time) before decrypt. Empty salt → passthrough.
-- **Empty-salt (plaintext) mode**: an unset `ECONUMO_DATA_SALT` is fully supported — the email column holds plaintext and the identifier is `md5(lower(email))` (no salt). To move an existing salted database into this mode, run `data:remove-salt` (above) before unsetting the salt.
+- **User identifier**: `hex(md5(lower(email)))` — 32-char hex; the primary user lookup key. (`EncodeService` still supports a salted form `hex(md5(lower(email) || salt))`, but only the `data:remove-salt` migration uses it — see below.)
+- **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
+- **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
 
 ### JWT (`pkg/jwt/jwt.go`)
 - RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).

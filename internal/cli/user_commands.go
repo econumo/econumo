@@ -96,7 +96,7 @@ func userCommands() []command {
 				if strings.TrimSpace(c.cfg.DataSalt) == "" {
 					return errors.New("ECONUMO_DATA_SALT is empty; set it to the salt the data was written with before running this migration")
 				}
-				migrated, skipped, err := c.user.MigrateRemoveDataSalt(ctx)
+				migrated, skipped, err := c.user.MigrateRemoveDataSalt(ctx, c.cfg.DataSalt)
 				if err != nil {
 					return err
 				}

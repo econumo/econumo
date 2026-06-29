@@ -34,11 +34,14 @@ import (
 )
 
 // Fixed crypto material shared by both engines so seeded users + minted tokens
-// are identical. The data salt is exactly 16 bytes (AES-128). The JWT keypair
-// comes from the shared testkeys helper (embedded, written to a temp file) so no
-// fragile relative path to it is needed.
+// are identical. The JWT keypair comes from the shared testkeys helper (embedded,
+// written to a temp file) so no fragile relative path to it is needed.
+//
+// ignoredDataSalt is set on cfg.DataSalt but the seeded fixture is plaintext
+// (WithCrypto("")). The login + parity scenarios still pass, which asserts that
+// server.BuildAPI ignores ECONUMO_DATA_SALT and always runs salt-free.
 const (
-	apiDataSalt     = "0123456789abcdef"
+	ignoredDataSalt = "0123456789abcdef" // 16 bytes; deliberately ignored by the API
 	apiSeedPassword = "secret-pw"
 )
 
@@ -77,7 +80,7 @@ func newAPIHarness(t *testing.T, db *dbtest.DB) *apiHarness {
 		DatabaseDriver:     db.Engine, // "sqlite" | "postgresql" — selects sqlc adapters
 		CurrencyBase:       "USD",
 		AllowRegistration:  true,
-		DataSalt:           apiDataSalt,
+		DataSalt:           ignoredDataSalt, // set on purpose; the API must ignore it
 		CORSAllowedOrigins: []string{"*"},
 	}
 
@@ -174,7 +177,9 @@ const (
 // them in request bodies); the comparison is over the API RESPONSES.
 func seedAPIFixture(t *testing.T, db *dbtest.DB) {
 	t.Helper()
-	f := fixture.New(t, db).WithCrypto(apiDataSalt)
+	// Plaintext seed (empty salt) to match the salt-free API; cfg.DataSalt is set
+	// but ignored, so seeding salted data would make login + lookups mismatch.
+	f := fixture.New(t, db).WithCrypto("")
 
 	f.User(fixture.User{ID: apiOwnerID, Email: apiOwnerEmail, Name: "User " + apiOwnerID[:4], Password: apiSeedPassword})
 	f.DefaultOptions(apiOwnerID)

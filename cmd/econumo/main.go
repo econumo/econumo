@@ -158,6 +158,13 @@ func run(serveArgs []string) error {
 		"database_driver", cfg.DatabaseDriver,
 		"spa_dir", cfg.SPADir,
 	)
+	// The API ignores ECONUMO_DATA_SALT (it always runs salt-free). If the salt is
+	// still set, a database written with it has unreadable emails / mismatched
+	// identifiers, so those users cannot authenticate until migrated.
+	if cfg.DataSalt != "" {
+		slog.Warn("ECONUMO_DATA_SALT is set but ignored by the API; existing salted users " +
+			"cannot authenticate until you run `econumo data:remove-salt`, then unset ECONUMO_DATA_SALT")
+	}
 
 	// Server-only requirements (the CLI path validated via config.Load does not
 	// need these). PORT is never defaulted so the bound port is never an implicit
