@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -142,7 +143,7 @@ func (sqliteQuerier) DeleteBudgetElement(ctx context.Context, db backend.DBTX, i
 
 // limitPeriodArg renders a limit period as the 'Y-m-d H:i:s' string the
 // datetime() comparison normalizes against (SQLite only).
-func limitPeriodArg(period time.Time) string { return period.Format("2006-01-02 15:04:05") }
+func limitPeriodArg(period time.Time) string { return period.Format(datetime.Layout) }
 
 func (sqliteQuerier) ListBudgetLimitsForPeriod(ctx context.Context, db backend.DBTX, budgetID string, period time.Time) ([]limitRow, error) {
 	// The query is datetime(l.period) = datetime(?); bind the period as a
@@ -166,7 +167,7 @@ func (sqliteQuerier) UpsertBudgetLimit(ctx context.Context, db backend.DBTX, p u
 		`INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)
 		 VALUES (?, ?, ?, ?, ?, ?)
 		 ON CONFLICT (id) DO UPDATE SET amount = excluded.amount, updated_at = excluded.updated_at`,
-		p.ID, p.ElementID, p.Period.Format("2006-01-02 15:04:05"), p.CreatedAt, p.UpdatedAt, p.Amount)
+		p.ID, p.ElementID, p.Period.Format(datetime.Layout), p.CreatedAt, p.UpdatedAt, p.Amount)
 	return err
 }
 func (sqliteQuerier) DeleteBudgetLimit(ctx context.Context, db backend.DBTX, id string) error {

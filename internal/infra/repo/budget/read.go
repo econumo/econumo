@@ -13,6 +13,7 @@ import (
 	"time"
 
 	appbudget "github.com/econumo/econumo/internal/app/budget"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 )
@@ -119,7 +120,7 @@ FROM accounts a LEFT JOIN (
 // datetimes in, so range comparisons against the TEXT spent_at/period columns
 // include the boundary rows (a bound time.Time is serialized differently by the
 // driver and silently drops them). PHP binds this same Y-m-d H:i:s form.
-func sqliteDatetime(t time.Time) string { return t.Format("2006-01-02 15:04:05") }
+func sqliteDatetime(t time.Time) string { return t.Format(datetime.Layout) }
 
 // phFrom is ph for pgsql numbered params starting at `start` (sqlite ignores start).
 func (r *ReadRepo) phFrom(start, n int) string { return r.ph(start, n) }

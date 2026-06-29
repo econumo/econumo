@@ -12,11 +12,9 @@ import (
 	"time"
 
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
-
-const apiDatetime = "2006-01-02 15:04:05"
-const apiDate = "2006-01-02"
 
 // CategoryMeta is a category's display metadata for the structure.
 type CategoryMeta struct {
@@ -113,8 +111,8 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 	return BudgetResult{
 		Meta: meta,
 		Filters: FiltersResult{
-			PeriodStart:         f.periodStart.Format(apiDatetime),
-			PeriodEnd:           f.periodEnd.Format(apiDatetime),
+			PeriodStart:         f.periodStart.Format(datetime.Layout),
+			PeriodEnd:           f.periodEnd.Format(datetime.Layout),
 			ExcludedAccountsIds: idStrings(f.excludedAccountIDs),
 		},
 		Balances:      balances,
@@ -150,7 +148,7 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (MetaResult
 		Id:          b.budget.Id().String(),
 		OwnerUserId: b.budget.UserId().String(),
 		Name:        b.budget.Name(),
-		StartedAt:   b.budget.StartedAt().Format(apiDatetime),
+		StartedAt:   b.budget.StartedAt().Format(datetime.Layout),
 		CurrencyId:  b.budget.CurrencyId().String(),
 		Access:      access,
 	}, nil

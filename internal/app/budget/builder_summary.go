@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
@@ -113,8 +114,8 @@ func (s *Service) buildAverageRates(ctx context.Context, periodStart, periodEnd 
 			CurrencyId:     r.CurrencyID.String(),
 			BaseCurrencyId: base.String(),
 			Rate:           r.Rate.String(),
-			PeriodStart:    rateStart.Format(apiDate),
-			PeriodEnd:      rateEnd.Format(apiDate),
+			PeriodStart:    rateStart.Format(datetime.DateLayout),
+			PeriodEnd:      rateEnd.Format(datetime.DateLayout),
 		})
 	}
 	return out, nil
