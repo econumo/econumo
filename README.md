@@ -70,10 +70,29 @@ and applies only the genuinely new ones. Your accounts, passwords, and data all
 keep working.
 
 > [!IMPORTANT]
-> **Back up your database before upgrading.** For SQLite, copy the `.sqlite`
-> file; for PostgreSQL, take a `pg_dump`.
+> The upgrade reuses your database in place and runs migrations on first boot.
+> **Always back up your database first** (step 1) — it is your only rollback if
+> anything goes wrong.
 
-**1. Point v1.x at your existing data.**
+**1. Back up your database.** Do this before changing anything, while the old
+stack is stopped.
+
+- **SQLite** — copy the database file (and ideally the rest of `var/`):
+
+    ```console
+    $ docker compose down
+    $ cp var/db/db.sqlite "var/db/db.sqlite.bak-$(date +%Y%m%d)"
+    ```
+
+- **PostgreSQL** — take a `pg_dump` you can restore from:
+
+    ```console
+    $ pg_dump "$DATABASE_URL" > "econumo-backup-$(date +%Y%m%d).sql"
+    ```
+
+  Restore later with `psql "$DATABASE_URL" < econumo-backup-YYYYMMDD.sql` if needed.
+
+**2. Point v1.x at your existing data.**
 
 - **SQLite** — your v0.x database lived at `var/db/db.sqlite`. Place that file
   where the new container reads it (`/app/var/db/db.sqlite` inside the `db`
@@ -86,7 +105,7 @@ keep working.
 On first boot v1.x runs migrations automatically and recognizes your already-applied
 v0.x migrations, so it won't try to re-create the schema.
 
-**2. Rewrite your `.env`.** The Symfony variables are gone; start from the new
+**3. Rewrite your `.env`.** The Symfony variables are gone; start from the new
 [`.env.example`](.env.example). The mapping:
 
 | v0.x (PHP) | v1.x (Go) | Notes |
@@ -111,7 +130,7 @@ v0.x migrations, so it won't try to re-create the schema.
   `data:remove-salt` (decrypts to plaintext, idempotent) and then unset it. If it
   was already empty, do nothing.
 
-**3. Replace your `docker-compose.yml`** with the v1.x single-service stack from
+**4. Replace your `docker-compose.yml`** with the v1.x single-service stack from
 this repo (one `econumo` service, the `db` + `jwt` volumes, port `8181:80`). Then:
 
 ```console
