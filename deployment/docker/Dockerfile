@@ -37,11 +37,11 @@ RUN mkdir -p /out/var/db /out/var/jwt
 # --- 3. Runtime (distroless: no shell, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
 COPY --from=gobuild /app/econumo /app/econumo
-COPY --from=frontend /build/web/dist/spa /app/spa
+COPY --from=frontend /build/web/dist/spa /app/web
 # Runtime data dir (sqlite db + auto-generated JWT keypair); mount a volume here to persist.
 COPY --from=gobuild --chown=nonroot:nonroot /out/var /app/var
 
-ENV ECONUMO_WEB_DIST=/app/spa \
+ENV ECONUMO_WEB_DIST=/app/web \
     PORT=80
 
 EXPOSE 80
