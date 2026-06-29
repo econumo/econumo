@@ -9,15 +9,15 @@ import (
 //
 // The Quasar frontend sends money fields (amount, amountRecipient, balance, the
 // budget limit) as JSON numbers — it runs Number(...) over them before posting —
-// while the API contract treats those fields as normalized decimal strings. PHP
-// deserialized scalars leniently, so a numeric body Just Worked; Go's strict
-// encoding/json rejects a number decoded into a plain string field. FlexString
-// restores the lenient behavior.
+// while the API contract treats those fields as normalized decimal strings. The
+// frozen contract was set when scalars deserialized leniently, so a numeric body
+// Just Worked; Go's strict encoding/json rejects a number decoded into a plain
+// string field. FlexString restores the lenient behavior.
 //
 // A JSON number is captured VERBATIM (its source bytes), not via float parsing,
 // so no precision is lost — "123.45" stays "123.45". The captured value flows
 // into NewDecimal downstream, which already normalizes plain and scientific
-// forms to the PHP getValue() shape.
+// forms to the canonical decimal shape.
 type FlexString string
 
 // UnmarshalJSON accepts a JSON string, a JSON number, or null (-> ""). For a

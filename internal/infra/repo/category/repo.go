@@ -1,14 +1,5 @@
-// Package categoryrepo implements domain/category.Repository (and the app-layer
-// OperationGuard) over the sqlc-generated queries, working uniformly across both
-// database engines.
-//
-// Engine duality, minimized — identical to the user repo's approach. The whole
-// repository (every method, plus row<->domain mapping) is written ONCE here
-// against a single `querier` interface expressed in the canonical (sqlite-
-// generated) types. The sqlite adapter (sqlite.go) is a near-native passthrough;
-// the pgsql adapter (pgsql.go) is a thin whole-struct conversion shim. The
-// engine is chosen once at construction; every query runs through
-// TxManager.Querier(ctx) so it transparently joins the active transaction.
+// Package categoryrepo implements domain/category.Repository and the app-layer
+// OperationGuard.
 package categoryrepo
 
 import (
@@ -24,9 +15,6 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// Canonical row/param types: the sqlc-generated types are field-identical across
-// engines, so the repo speaks one engine's types (sqlite's) everywhere and the
-// pgsql shim copies into them.
 type (
 	categoryRow    = sqlitegen.Category
 	upsertParams   = sqlitegen.UpsertCategoryParams
@@ -36,8 +24,6 @@ type (
 	reassignParams = sqlitegen.ReassignCategoryTransactionsParams
 )
 
-// querier is the engine-agnostic query surface this repo needs, expressed in the
-// canonical types. The two engine adapters (sqlite.go / pgsql.go) implement it.
 type querier interface {
 	GetCategoryByID(ctx context.Context, db backend.DBTX, id string) (categoryRow, error)
 	ListCategoriesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]categoryRow, error)
@@ -50,9 +36,6 @@ type querier interface {
 	MarkOperationHandled(ctx context.Context, db backend.DBTX, p markOpParams) error
 }
 
-// Repo is the concrete category repository. It holds the TxManager (source of
-// the context-bound DBTX) and the engine querier. It satisfies
-// domain/category.Repository and app/category.OperationGuard.
 type Repo struct {
 	tx *backend.TxManager
 	q  querier
@@ -60,8 +43,6 @@ type Repo struct {
 
 var _ domcategory.Repository = (*Repo)(nil)
 
-// NewRepo selects the engine querier by driver name, panicking on an unknown
-// driver. driver matches config.DatabaseDriver: "sqlite" | "postgresql".
 func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	switch driver {
 	case "sqlite":
@@ -73,22 +54,18 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 	}
 }
 
-// NewSQLiteRepo builds a category repository backed by the sqlite queries.
 func NewSQLiteRepo(tx *backend.TxManager) *Repo {
 	return &Repo{tx: tx, q: sqliteQuerier{}}
 }
 
-// NewPgsqlRepo builds a category repository backed by the pgsql queries.
 func NewPgsqlRepo(tx *backend.TxManager) *Repo {
 	return &Repo{tx: tx, q: pgsqlQuerier{}}
 }
 
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-// NextIdentity allocates a fresh category id.
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
-// GetByID loads a category by id.
 func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domcategory.Category, error) {
 	row, err := r.q.GetCategoryByID(ctx, r.db(ctx), id.String())
 	if err != nil {
@@ -100,7 +77,6 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domcategory.Category, er
 	return hydrate(row)
 }
 
-// ListByOwner returns the owner's categories ordered by position.
 func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*domcategory.Category, error) {
 	rows, err := r.q.ListCategoriesByOwner(ctx, r.db(ctx), userID.String())
 	if err != nil {
@@ -117,7 +93,6 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*domcategory.Ca
 	return out, nil
 }
 
-// CountByOwner returns the number of categories the owner has.
 func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 	n, err := r.q.CountCategoriesByOwner(ctx, r.db(ctx), userID.String())
 	if err != nil {
@@ -126,7 +101,7 @@ func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 	return int(n), nil
 }
 
-// Save upserts a category. The caller runs this inside TxManager.WithTx.
+// Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, c *domcategory.Category) error {
 	return r.q.UpsertCategory(ctx, r.db(ctx), upsertParams{
 		ID:         c.Id().String(),
@@ -141,7 +116,6 @@ func (r *Repo) Save(ctx context.Context, c *domcategory.Category) error {
 	})
 }
 
-// Delete removes a category by id.
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteCategory(ctx, r.db(ctx), id.String())
 }
@@ -156,17 +130,13 @@ func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) err
 	})
 }
 
-// --- OperationGuard (app/category.OperationGuard) -------------------------
-//
-// Row-based idempotency on operation_requests_ids. Claim attempts to read an
-// existing row first (a duplicate request); if absent it inserts a fresh,
-// not-yet-handled row. The pre-check + insert run inside the caller's tx (or
-// savepoint), so concurrent duplicates either see the existing row or collide on
-// the PK insert (surfaced as an error and rolled back) — either way only one
-// create wins. The row is the durable dedup, valid cross-process. See the
-// package README.
-
-// Claim records the operation id, reporting already=true if it pre-existed.
+// OperationGuard (app/category.OperationGuard): row-based idempotency on
+// operation_requests_ids. Claim reads an existing row first (a duplicate
+// request); if absent it inserts a fresh, not-yet-handled row. The pre-check +
+// insert run inside the caller's tx (or savepoint), so concurrent duplicates
+// either see the existing row or collide on the PK insert (surfaced as an error
+// and rolled back) — either way only one create wins. The row is the durable
+// dedup, valid cross-process.
 func (r *Repo) Claim(ctx context.Context, id vo.Id, now time.Time) (bool, error) {
 	db := r.db(ctx)
 	if _, err := r.q.GetOperationId(ctx, db, id.String()); err == nil {
@@ -194,7 +164,6 @@ func (r *Repo) MarkHandled(ctx context.Context, id vo.Id, now time.Time) error {
 	})
 }
 
-// hydrate reconstitutes a Category aggregate from a row.
 func hydrate(row categoryRow) (*domcategory.Category, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {

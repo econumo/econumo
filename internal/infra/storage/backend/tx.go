@@ -20,7 +20,6 @@ type TxManager struct {
 	db *sql.DB
 }
 
-// NewTxManager wraps a *sql.DB in a TxManager.
 func NewTxManager(db *sql.DB) *TxManager {
 	return &TxManager{db: db}
 }

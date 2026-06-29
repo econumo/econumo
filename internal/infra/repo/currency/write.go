@@ -1,11 +1,7 @@
 // Write side of the currency repository: implements app/currency.WriteModel for
-// the CLI admin commands (the HTTP API has no currency mutations). It follows the
-// same canonical-type + engine-adapter shape as read.go: each method is written
-// once against a writeQuerier interface expressed in the canonical (sqlite-
-// generated) types, the engine is chosen once in NewWriteRepo, and the pgsql
-// adapter whole-struct-converts at the boundary. Every method runs on the
-// context-bound DBTX, so the WriteService transaction (TxManager.WithTx) wraps
-// them transparently.
+// the CLI admin commands (the HTTP API has no currency mutations). Every method
+// runs on the context-bound DBTX, so the WriteService transaction
+// (TxManager.WithTx) wraps them transparently.
 package currencyrepo
 
 import (

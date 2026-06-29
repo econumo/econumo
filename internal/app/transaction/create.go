@@ -1,4 +1,3 @@
-// Create use case: create a transaction (idempotent on the request id).
 package transaction
 
 import (
@@ -14,8 +13,7 @@ import (
 // access to the account: they own it, or hold an admin/user grant on it (see
 // checkWriteAccess).
 func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req CreateTransactionRequest) (*CreateTransactionResult, error) {
-	// req.Id is the operation/idempotency id (PHP locks on it); the entity id is
-	// freshly minted (PHP transactionRepository->getNextIdentity()).
+	// req.Id is the operation/idempotency id; the entity id is freshly minted.
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err

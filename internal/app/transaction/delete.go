@@ -1,4 +1,3 @@
-// Delete use case: remove a transaction the user has access to.
 package transaction
 
 import (
@@ -9,9 +8,9 @@ import (
 )
 
 // DeleteTransaction deletes the transaction and returns it (the deleted item)
-// plus the refreshed account list. Access is checked on the transaction's
-// account (PHP checks canDeleteTransaction on the transaction's accountId);
-// non-access yields a ValidationError ("transaction.transaction.not_available").
+// plus the refreshed account list. Write access is checked on the transaction's
+// account; non-access yields a ValidationError
+// ("transaction.transaction.not_available").
 func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req DeleteTransactionRequest) (*DeleteTransactionResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

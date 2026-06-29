@@ -7,11 +7,6 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// sqliteQuerier implements querier over the sqlite-generated queries. Because
-// the canonical types ARE the sqlite types, every method is a direct passthrough
-// — the only adaptation is ExistsUserByIdentifier, which sqlc emits as int64.
-// It is stateless: each call binds a fresh *Queries to the caller-supplied DBTX
-// (the pool or the active tx), so the same value is safe to share.
 type sqliteQuerier struct{}
 
 var _ querier = sqliteQuerier{}

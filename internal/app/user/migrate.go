@@ -1,4 +1,4 @@
-// One-off data migration driven by the CLI (app:remove-data-salt). It rewrites
+// One-off data migration driven by the CLI (data:remove-salt). It rewrites
 // every user row from the ECONUMO_DATA_SALT-encrypted form to plaintext so the
 // salt can be removed from the environment afterwards. See CLAUDE.md.
 package user

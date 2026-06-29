@@ -30,7 +30,7 @@ func (s *Service) IncludeAccount(ctx context.Context, userID vo.Id, req IncludeA
 }
 
 // toggleAccount excludes (exclude=true) or includes an account; the account must
-// be owned by the requester (PHP throws AccessDenied otherwise).
+// be owned by the requester (access denied otherwise).
 func (s *Service) toggleAccount(ctx context.Context, userID vo.Id, rawBudget, rawAccount string, exclude bool) (MetaResult, error) {
 	budgetID, err := vo.ParseId(rawBudget)
 	if err != nil {

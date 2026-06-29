@@ -1,8 +1,5 @@
 package payeerepo_test
 
-// Integration tests for the payee write Repo and ReadRepo (own + shared via
-// accounts_access) against a real migrated in-memory SQLite.
-
 import (
 	"context"
 	"errors"

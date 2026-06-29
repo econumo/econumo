@@ -36,11 +36,10 @@ func decodeEnvelope(t *testing.T, rec *httptest.ResponseRecorder) envelope {
 	return e
 }
 
-// TestWriteError_ValidationEnvelope locks the validation envelope to PHP's
-// Symfony form shape: message "Form validation error", code 400, HTTP 400, with
-// the field errors carried through — regardless of the ValidationError's own
-// Msg. Regression for the api-compare finding (Go previously sent "Validation
-// failed" / code 0).
+// TestWriteError_ValidationEnvelope locks the frozen validation envelope:
+// message "Form validation error", code 400, HTTP 400, with the field errors
+// carried through — regardless of the ValidationError's own Msg (clients parse
+// this exact shape; not "Validation failed" / code 0).
 func TestWriteError_ValidationEnvelope(t *testing.T) {
 	rec := httptest.NewRecorder()
 	err := errs.NewValidation("anything-here-is-ignored",

@@ -8,7 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// _ keeps the apidoc import alias visible to swag's per-file annotation parser.
+// _ keeps the apidoc import alias visible to swag's annotation parser.
 var _ = apidoc.JsonResponseError{}
 
 // UpdateName handles POST /api/v1/user/update-name (auth). Validates the name

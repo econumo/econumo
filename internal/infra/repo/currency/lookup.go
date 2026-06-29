@@ -19,7 +19,7 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// defaultCode is the base/fallback currency, matching UserOption::DEFAULT_CURRENCY.
+// defaultCode is the base/fallback currency (matches the user module's default).
 const defaultCode = "USD"
 
 // currencyViewRow is the canonical (sqlite-generated) GetCurrencyByIDView row.

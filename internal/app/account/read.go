@@ -12,8 +12,7 @@ import (
 )
 
 // GetAccountList returns all the user's available accounts (each with the full
-// embed) in reverse order, matching the PHP GetAccountListV1ResultAssembler
-// (which array_reverses the accounts).
+// embed) in reverse order (the list is reversed before returning).
 func (s *Service) GetAccountList(ctx context.Context, userID vo.Id) (*GetAccountListResult, error) {
 	items, err := s.buildAccountList(ctx, userID, true)
 	if err != nil {
@@ -43,7 +42,7 @@ func (s *Service) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, err
 
 // VisibleAccountIDs returns the ids of the user's available (non-deleted)
 // accounts that are NOT in a hidden folder — the set whose transactions the user
-// may list. Mirrors the PHP getTransactionsForVisibleAccounts exclusion.
+// may list.
 func (s *Service) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
 	accts, err := s.repo.ListAvailable(ctx, userID)
 	if err != nil {

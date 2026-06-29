@@ -9,19 +9,15 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// formatSQLiteBalance renders a SQLite float SUM the way PHP's DecimalNumber
-// constructor handles a float: PHP does sprintf('%.8F', $num) — round to 8
-// decimal places (bcmath SCALE) — so e.g. the summed float 358.34999999999127
-// becomes "358.35000000", which DecimalNumber then normalizes to "358.35".
-// strconv 'f' with precision 8 is the exact equivalent (both round half-away at
-// the 8th place for these magnitudes). This is the SQLite-only path; PostgreSQL
-// returns an exact NUMERIC string and needs no float rounding.
+// formatSQLiteBalance rounds a SQLite float SUM to 8 decimal places: e.g. the
+// summed float 358.34999999999127 becomes "358.35000000", which downstream
+// normalization then trims to "358.35". This is the SQLite-only path;
+// PostgreSQL returns an exact NUMERIC string and needs no float rounding.
 func formatSQLiteBalance(f float64) string {
 	return strconv.FormatFloat(f, 'f', 8, 64)
 }
 
-// sqliteQuerier is the passthrough adapter over the sqlite-generated queries
-// (the canonical types ARE the sqlite types).
+// sqliteQuerier is the passthrough adapter (the canonical types ARE sqlite's).
 type sqliteQuerier struct{}
 
 var _ querier = sqliteQuerier{}

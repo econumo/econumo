@@ -1,10 +1,9 @@
 package currencyrepo_test
 
-// Integration tests for the currency Lookup and ReadRepo against a real migrated
-// in-memory SQLite (USD is seeded by the baseline migration). Note: the
-// usdID/setup/toMigrations helpers in convertor_provider_test.go DELETE and
-// re-seed currencies with a different id, so these tests use dbtest's pristine
-// migrated DB (seeded USD = dffc2a06...) and their own distinct identifiers.
+// USD is seeded by the baseline migration. Note: the setup helper in
+// convertor_provider_test.go DELETEs and re-seeds currencies with a different id,
+// so these tests use dbtest's pristine migrated DB (seeded USD = dffc2a06...) and
+// their own distinct identifiers.
 
 import (
 	"context"
@@ -98,7 +97,7 @@ func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed a second currency + a rate; the rate's NUMERIC(19,8) must normalize to
-	// the PHP DecimalNumber wire form (trailing zeros trimmed).
+	// the frozen wire form (trailing zeros trimmed).
 	eur := "1ae5bfd5-03e8-412b-80d2-c0ecf3ce32fe"
 	f := fixture.New(t, db)
 	f.Currency(fixture.Currency{ID: eur, Code: "EUR", Symbol: "E"})

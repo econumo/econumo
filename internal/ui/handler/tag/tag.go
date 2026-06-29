@@ -8,8 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// _ keeps the apidoc import alias visible to swag's per-file annotation parser
-// (the @Success {object} apidoc.* references below). No runtime effect.
+// _ keeps the apidoc import alias visible to swag's annotation parser.
 var _ = apidoc.JsonResponseError{}
 
 // CreateTag handles POST /api/v1/tag/create-tag (auth).

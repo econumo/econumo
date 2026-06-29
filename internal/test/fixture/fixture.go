@@ -1,10 +1,9 @@
 // Package fixture is the single, typed, engine-portable way tests seed database
-// rows. It replaces the hand-written `INSERT INTO ...` statements that were
-// scattered across ~33 test files (and the recurring gotchas they each had to
-// remember): the `?`-vs-`$N` placeholder difference between SQLite and
-// PostgreSQL, BOOLEAN columns rejecting integer 1/0 on Postgres, and time.Time
-// values needing to be bound as a bare "Y-m-d H:i:s" string (modernc serializes
-// time.Time to RFC3339, which SQLite's datetime() cannot parse).
+// rows. It centralizes the cross-engine gotchas in one place: the `?`-vs-`$N`
+// placeholder difference between SQLite and PostgreSQL, BOOLEAN columns rejecting
+// integer 1/0 on Postgres, and time.Time values needing to be bound as a bare
+// "Y-m-d H:i:s" string (the sqlite driver serializes time.Time to RFC3339, which
+// SQLite's datetime() cannot parse).
 //
 // All of that is handled in ONE place here, so a test reads as intent:
 //

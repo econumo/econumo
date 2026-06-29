@@ -8,8 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// _ keeps the apidoc and appuser import aliases visible to swag's per-file
-// annotation parser. No runtime effect.
+// _ keeps the apidoc and appuser import aliases visible to swag's annotation parser.
 var (
 	_ = apidoc.JsonResponseError{}
 	_ = appuser.CompleteOnboardingResult{}

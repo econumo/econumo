@@ -2,9 +2,7 @@
 // mapping (+ optional overrides), find-or-creating accounts/categories/payees/
 // tags, and creating one transaction per valid row inside a single transaction.
 // Row-level failures are caught, counted as skipped, and recorded in the errors
-// map (message -> [rowNumbers]); they do not abort the import. Ports
-// TransactionListService::importTransactionList + ImportTransactionService::
-// importFromCsv.
+// map (message -> [rowNumbers]); they do not abort the import.
 package transaction
 
 import (
@@ -31,8 +29,8 @@ type ImportMapping struct {
 }
 
 // ImportRequest is the decoded import request: the CSV bytes, the mapping, and
-// the optional per-import overrides (nil pointer = not provided; PHP treats a
-// blank string the same as absent for ids).
+// the optional per-import overrides (nil pointer = not provided; a blank string
+// is treated the same as absent for ids).
 type ImportRequest struct {
 	File        []byte
 	Mapping     ImportMapping
@@ -76,8 +74,7 @@ type Importer interface {
 	// AccountByID returns an available account by id (nil if not found).
 	AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*ImportAccount, error)
 	// CanAddTransaction reports whether the user may add a transaction to the
-	// account: they own it, or hold an admin/user grant on it (PHP
-	// canAddTransaction == isUser).
+	// account: they own it, or hold an admin/user grant on it.
 	CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error)
 	// CreateAccount creates a new account (base currency, first/new folder, icon
 	// 'wallet', balance 0) and returns its view.
@@ -150,10 +147,9 @@ func (s *Service) ImportTransactionList(ctx context.Context, userID vo.Id, req I
 }
 
 // runImport performs the in-transaction work: resolve overrides, build the
-// find-or-create caches, then process each row. Returns a non-nil error only for
-// override-resolution failures that abort the whole import (PHP returns early
-// with a single top-level error); those are recorded in the result and a nil
-// error is returned to keep the 200 envelope, except true infra errors.
+// find-or-create caches, then process each row. Override-resolution failures
+// abort the whole import with a single top-level error recorded in the result,
+// returning nil to keep the 200 envelope; only true infra errors return non-nil.
 func (s *Service) runImport(ctx context.Context, userID vo.Id, req ImportRequest, overrideAccountID, overrideDateStr string, dualMode bool, header []string, records []map[string]string, result *ImportResult) error {
 	imp := s.importer
 
@@ -270,8 +266,8 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req ImportRequest
 // importRow processes a single CSV row, creating a transaction on success. A
 // returned error is a row-level failure (recorded + skipped by the caller); a
 // nil error with no transaction created means the row was already skipped
-// internally (missing required field) — to mirror PHP's continue, those paths
-// record the error + increment skipped here and return nil.
+// internally (missing required field) — those paths record the error + increment
+// skipped here and return nil so the import continues to the next row.
 func (s *Service) importRow(
 	ctx context.Context, userID, accountOwnerID vo.Id, req ImportRequest, dualMode bool,
 	row map[string]string, rowNumber int,
@@ -438,10 +434,8 @@ func (s *Service) findOrCreateNamed(ctx context.Context, name string, cache *nam
 	return created, nil
 }
 
-// --- helpers ---
-
-// trimPtr returns the trimmed pointee, or "" when nil/blank (PHP treats a blank
-// override the same as absent).
+// trimPtr returns the trimmed pointee, or "" when nil/blank (a blank override is
+// treated the same as absent).
 func trimPtr(p *string) string {
 	if p == nil {
 		return ""

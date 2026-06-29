@@ -41,15 +41,11 @@ func Chain(mws ...Middleware) Middleware {
 	}
 }
 
-// ---- context keys (unexported; exported accessors below) ----
-
 type ctxKey int
 
 const (
 	ctxKeyRequestID ctxKey = iota
 )
-
-// ---- RequestID ----
 
 // requestIDHeader is the response header carrying the generated id.
 const requestIDHeader = "X-Request-Id"
@@ -83,8 +79,6 @@ func newRequestID() string {
 	}
 	return uuid.NewString()
 }
-
-// ---- Recover ----
 
 // Recover catches panics from downstream handlers, logs them with the request
 // id, and writes the frozen 500 exception envelope. The recovered value and
@@ -120,8 +114,6 @@ func Recover(dev bool) Middleware {
 		})
 	}
 }
-
-// ---- CORS ----
 
 // CORS controls cross-origin access via an allowlist (ECONUMO_CORS_ALLOW_ORIGIN). The
 // default (empty list) is same-domain only: no Access-Control-Allow-Origin is
@@ -175,8 +167,6 @@ func CORS(origins []string) Middleware {
 	}
 }
 
-// ---- Timezone ----
-
 // Timezone reads the X-Timezone request header, resolves it to a *time.Location
 // via time.LoadLocation, and stashes it in the request context. On a missing or
 // invalid header the location defaults to UTC.
@@ -202,18 +192,3 @@ func Timezone(next http.Handler) http.Handler {
 func LocationFromCtx(ctx context.Context) *time.Location {
 	return reqctx.Location(ctx)
 }
-
-// ---- JWT (placeholder) ----
-//
-// The JWT authentication middleware is built in the user module (Phase 2). It
-// will:
-//   - read the "Authorization: Bearer <token>" header,
-//   - verify the RS256 signature against the configured public key,
-//   - reject expired/invalid tokens with the 401 envelope (httpx.WriteError on
-//     an *errs.UnauthorizedError),
-//   - extract the "id" claim (user UUID) and place a typed user id into the
-//     request context for downstream handlers.
-//
-// It will be exposed as a Middleware (func(http.Handler) http.Handler) so the
-// router can wrap the authenticated route group with it. Do NOT implement JWT
-// parsing here — keep crypto isolated in infra/auth for separate review.

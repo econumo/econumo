@@ -26,9 +26,8 @@ func createAccountReq(id, name, balance string) map[string]any {
 }
 
 // createAccount POSTs create-account and returns the SERVER-MINTED entity id from
-// the {item} response. The request `id` is only the operation id (PHP mints a
-// fresh entity id; Go now does too), so callers must not assume the entity id
-// equals the request id.
+// the {item} response. The request `id` is only the operation id, so callers must
+// not assume the entity id equals the request id.
 func (h *harness) createAccount(t *testing.T, opID, name, balance string) (string, accountItem) {
 	t.Helper()
 	tok := h.token(t)
@@ -78,11 +77,11 @@ func TestCreateAccount_Success_EmbedsOwnerCurrencyFolder(t *testing.T) {
 	if it.SharedAccess == nil {
 		t.Fatalf("sharedAccess must be [] not null; body: %s", env.raw)
 	}
-	// PHP's create-account result is {item} ONLY — there is no accounts list.
+	// The create-account result is {item} ONLY — there is no accounts list.
 	var rawObj map[string]json.RawMessage
 	mustDecode(t, env.Data, &rawObj)
 	if _, ok := rawObj["accounts"]; ok {
-		t.Fatalf("create-account response must not carry an 'accounts' field (PHP returns {item} only); body: %s", env.raw)
+		t.Fatalf("create-account response must not carry an 'accounts' field ({item} only); body: %s", env.raw)
 	}
 }
 
@@ -176,8 +175,8 @@ func TestUpdateAccount_BalanceCorrection(t *testing.T) {
 	if tr.Type != "income" || tr.Amount != "150" {
 		t.Fatalf("correction type/amount = %s/%s, want income/150", tr.Type, tr.Amount)
 	}
-	// The correction transaction is the FULL PHP TransactionResultDto shape:
-	// author embedded, amountRecipient = amount, the auto comment, and null
+	// The correction transaction is the full transaction result shape: author
+	// embedded, amountRecipient = amount, the auto comment, and null
 	// account-recipient/category/payee/tag.
 	if tr.Author.ID != seedUserID || tr.Author.Name != seedName {
 		t.Fatalf("correction author = %+v, want seed user", tr.Author)

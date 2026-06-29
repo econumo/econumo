@@ -1,4 +1,3 @@
-// Read side: get-transaction-list and export-transaction-list.
 package transaction
 
 import (
@@ -12,8 +11,7 @@ import (
 
 // GetTransactionList returns transactions for: a single account (if accountId
 // given, access-checked), or a [periodStart, periodEnd) window across the user's
-// visible accounts, or all visible-account transactions. Matches the PHP
-// TransactionListService.getTransactionList branching.
+// visible accounts, or all visible-account transactions.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetTransactionListRequest) (*GetTransactionListResult, error) {
 	var txs []*domtransaction.Transaction
 
@@ -56,7 +54,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 	// can contain thousands of rows that nearly all share the same author (the
 	// owner, plus a few connected users on shared accounts), and each GetOwner is
 	// a DB round-trip (user row + options). Without this cache that is an N+1 that
-	// dominated the endpoint's latency; PHP avoids it via Doctrine's identity map.
+	// dominates the endpoint's latency.
 	authors := make(map[string]AuthorResult)
 	items := make([]TransactionResult, 0, len(txs))
 	for _, t := range txs {
@@ -75,8 +73,8 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 	return &GetTransactionListResult{Items: items}, nil
 }
 
-// parseFlexible parses a period bound, accepting both "Y-m-d H:i:s" and
-// "Y-m-d" (the frontend sends either; PHP's DateTimeImmutable is lenient).
+// parseFlexible parses a period bound, accepting both "Y-m-d H:i:s" and "Y-m-d"
+// (the frontend sends either).
 func parseFlexible(v string) (time.Time, error) {
 	if t, err := time.Parse(datetime.Layout, v); err == nil {
 		return t, nil

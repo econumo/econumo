@@ -19,7 +19,7 @@ type budgetRepoPort interface {
 
 // BudgetAccessRevoker drops budget-sharing between two users in both directions.
 // It implements app/connection.BudgetAccessRevoker, used by delete-connection to
-// mirror PHP ConnectionService's BudgetSharedAccessServiceInterface side effects.
+// tear down the budget-sharing side effects of a connection.
 type BudgetAccessRevoker struct {
 	budgets budgetRepoPort
 }
@@ -33,8 +33,7 @@ func NewBudgetAccessRevoker(budgets budgetRepoPort) *BudgetAccessRevoker {
 
 // RevokeBetween removes any budget-access grants shared between users a and b:
 // for each budget A owns where B has access, revoke B; and symmetrically for
-// budgets B owns where A has access. Mirrors PHP ConnectionService::delete's two
-// budget loops.
+// budgets B owns where A has access.
 func (r *BudgetAccessRevoker) RevokeBetween(ctx context.Context, a, b vo.Id) error {
 	if err := r.revokeDirection(ctx, a, b); err != nil {
 		return err

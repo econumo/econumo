@@ -1,8 +1,7 @@
 // Package user is the user aggregate's domain layer: the User entity, its
 // UserOption members, the repository interface, and the option-name constants.
-// It is pure — no framework, persistence, JSON, or crypto imports. Crypto
-// (password hashing, email encryption, identifier hashing) lives in infra/auth
-// and is invoked by the application service, not here.
+// Crypto (password hashing, email encryption, identifier hashing) lives in the
+// infra auth layer and is invoked by the application service, not here.
 package user
 
 import (
@@ -53,12 +52,10 @@ func NewUserOption(id vo.Id, name string, value *string, now time.Time) UserOpti
 	return UserOption{id: id, name: name, value: value, createdAt: now, updatedAt: now}
 }
 
-// ReconstituteUserOption rebuilds an option from persisted state (repo use only).
 func ReconstituteUserOption(id vo.Id, name string, value *string, createdAt, updatedAt time.Time) UserOption {
 	return UserOption{id: id, name: name, value: value, createdAt: createdAt, updatedAt: updatedAt}
 }
 
-// Id returns the option's identifier.
 func (o UserOption) Id() vo.Id { return o.id }
 
 // Name returns the option name (one of the Option* constants).
@@ -67,14 +64,11 @@ func (o UserOption) Name() string { return o.name }
 // Value returns the option value, which may be nil (SQL NULL).
 func (o UserOption) Value() *string { return o.value }
 
-// CreatedAt returns when the option was first created.
 func (o UserOption) CreatedAt() time.Time { return o.createdAt }
 
-// UpdatedAt returns when the option was last changed.
 func (o UserOption) UpdatedAt() time.Time { return o.updatedAt }
 
 // setValue mutates the option in place, bumping updatedAt only on a real change.
-// now is supplied by the service's clock.
 func (o *UserOption) setValue(value *string, now time.Time) {
 	if equalStrPtr(o.value, value) {
 		return
@@ -94,8 +88,7 @@ type Header struct {
 
 // User is the user aggregate root. Strings that are encrypted at rest (email)
 // or hashed (password, identifier) are stored opaquely here; the service layer
-// applies/reverses the crypto via infra/auth. The aggregate owns its options
-// and exposes intent-revealing mutators rather than raw setters.
+// applies/reverses the crypto. The aggregate owns its options.
 type User struct {
 	id         vo.Id
 	identifier string // md5(lower(email)+salt) — the auth lookup key
@@ -112,7 +105,7 @@ type User struct {
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
 // already computed identifier, encrypted email, avatar URL, password hash and
-// salt via infra/auth. Options are seeded separately via SeedDefaultOptions.
+// salt. Options are seeded separately via SeedDefaultOptions.
 func NewUser(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash, salt string, now time.Time) *User {
 	return &User{
 		id:         id,
@@ -128,8 +121,8 @@ func NewUser(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash
 	}
 }
 
-// FromState rebuilds a User from persisted row data (repo reconstruction). The
-// repo loads options separately and passes them in.
+// FromState rebuilds a User from persisted row data. The repo loads options
+// separately and passes them in.
 func FromState(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash, salt string, isActive bool, createdAt, updatedAt time.Time, options []UserOption) *User {
 	return &User{
 		id:         id,
@@ -146,7 +139,6 @@ func FromState(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHa
 	}
 }
 
-// Id returns the user id.
 func (u *User) Id() vo.Id { return u.id }
 
 // Identifier returns the md5 lookup identifier.
@@ -155,10 +147,8 @@ func (u *User) Identifier() string { return u.identifier }
 // Email returns the encrypted-at-rest email ciphertext.
 func (u *User) Email() string { return u.email }
 
-// Name returns the display name.
 func (u *User) Name() string { return u.name }
 
-// AvatarURL returns the gravatar URL.
 func (u *User) AvatarURL() string { return u.avatarURL }
 
 // Password returns the stored password hash.
@@ -167,13 +157,10 @@ func (u *User) Password() string { return u.password }
 // Salt returns the per-user salt used by the password hasher.
 func (u *User) Salt() string { return u.salt }
 
-// IsActive reports whether the account is active.
 func (u *User) IsActive() bool { return u.isActive }
 
-// CreatedAt returns the creation time.
 func (u *User) CreatedAt() time.Time { return u.createdAt }
 
-// UpdatedAt returns the last-modification time.
 func (u *User) UpdatedAt() time.Time { return u.updatedAt }
 
 // Options returns the user's options (currency_id is NOT among these — it is
@@ -207,14 +194,13 @@ func (u *User) ReportPeriod() string {
 	return DefaultReportPeriod
 }
 
-// UpdateName changes the display name.
 func (u *User) UpdateName(name string, now time.Time) {
 	u.name = name
 	u.updatedAt = now
 }
 
-// Activate marks the account active (PHP User::activate). Bumps updatedAt only
-// when the state actually changes, so a no-op activate leaves the row untouched.
+// Activate marks the account active, bumping updatedAt only when the state
+// actually changes so a no-op activate leaves the row untouched.
 func (u *User) Activate(now time.Time) {
 	if u.isActive {
 		return
@@ -223,8 +209,8 @@ func (u *User) Activate(now time.Time) {
 	u.updatedAt = now
 }
 
-// Deactivate marks the account inactive (PHP User::deactivate). Bumps updatedAt
-// only on a real state change.
+// Deactivate marks the account inactive, bumping updatedAt only on a real state
+// change.
 func (u *User) Deactivate(now time.Time) {
 	if !u.isActive {
 		return
@@ -234,14 +220,14 @@ func (u *User) Deactivate(now time.Time) {
 }
 
 // UpdatePassword replaces the stored password hash. The caller hashes the
-// plaintext via infra/auth using this user's salt first.
+// plaintext using this user's salt first.
 func (u *User) UpdatePassword(passwordHash string, now time.Time) {
 	u.password = passwordHash
 	u.updatedAt = now
 }
 
 // UpdateEmail replaces the encrypted email, identifier and avatar URL together,
-// all derived by the service via infra/auth.
+// all derived by the service.
 func (u *User) UpdateEmail(identifier, encryptedEmail, avatarURL string, now time.Time) {
 	u.identifier = identifier
 	u.email = encryptedEmail
@@ -257,16 +243,13 @@ func (u *User) UpdateCurrency(code string, now time.Time) {
 	}
 }
 
-// UpdateReportPeriod replicates PHP's User::updateReportPeriod. NOTE: the PHP
-// implementation has a long-standing bug — it iterates the options and, when it
-// finds the CURRENCY option (not REPORT_PERIOD), overwrites THAT option's value
-// with the report-period string. The REPORT_PERIOD option is never touched.
-//
-// As a drop-in replacement we must byte-match this behavior: after the call the
-// currency option holds the period string (e.g. "monthly"), which then fails the
-// currency_id lookup and falls back to USD in the result, while the deprecated
-// reportPeriod field still reads "monthly" from its own (unchanged) option. See
-// the user-settings mutation-compare harness.
+// UpdateReportPeriod preserves a long-standing bug that clients depend on: it
+// writes the period string into the CURRENCY option, not REPORT_PERIOD, which
+// is never touched. After the call the currency option holds the period string
+// (e.g. "monthly"), which then fails the currency_id lookup and falls back to
+// USD in the result, while the deprecated reportPeriod field still reads
+// "monthly" from its own (unchanged) option. This behavior is asserted by the
+// user-settings mutation-compare harness.
 func (u *User) UpdateReportPeriod(period string, now time.Time) {
 	if o := u.Option(OptionCurrency); o != nil {
 		v := period
@@ -274,7 +257,7 @@ func (u *User) UpdateReportPeriod(period string, now time.Time) {
 	}
 }
 
-// UpdateBudget sets the user's active budget option (PHP userService.updateBudget).
+// UpdateBudget sets the user's active budget option.
 func (u *User) UpdateBudget(budgetID string, now time.Time) {
 	if o := u.Option(OptionBudget); o != nil {
 		v := budgetID

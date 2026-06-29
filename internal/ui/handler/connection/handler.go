@@ -1,10 +1,3 @@
-// Package connection wires the connection module's HTTP edge: 7 endpoints under
-// /api/v1/connection/, all JWT-protected and fully live. Three serve account
-// sharing (get-connection-list, set-account-access, revoke-account-access); the
-// other four — generate-invite, delete-invite, accept-invite, delete-connection
-// — were ported from EconumoCloudBundle (this build has no CE/cloud split). Each
-// handler is a thin adapter (decode + tier-1 Validate, pull userID, call the
-// service, emit the frozen envelope).
 package connection
 
 import (
@@ -18,17 +11,14 @@ import (
 	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
-// _ references the apidoc envelope schemas so the swag annotations resolve the
-// apidoc import alias. No runtime effect.
+// Forces the apidoc import so swag annotations can resolve its envelope schemas.
 var _ = apidoc.JsonResponseOk{}
 
-// Handlers holds the connection service and the dev flag.
 type Handlers struct {
 	svc *appconnection.Service
 	dev bool
 }
 
-// NewHandlers constructs the handler set.
 func NewHandlers(svc *appconnection.Service, dev bool) *Handlers {
 	return &Handlers{svc: svc, dev: dev}
 }

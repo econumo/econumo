@@ -38,8 +38,6 @@ func (h *harness) seedFolder(t *testing.T, id, ownerID, name string) {
 	h.f.Folder(fixture.Folder{ID: id, UserID: ownerID, Name: name, Position: 0})
 }
 
-// --- update-account ---
-
 func TestUpdateAccount_NonOwner_403(t *testing.T) {
 	h := newHarness(t)
 	h.seedAccount(t, victimAccountID, otherUserID, "Theirs")
@@ -51,8 +49,6 @@ func TestUpdateAccount_NonOwner_403(t *testing.T) {
 	assertDenied(t, status, env)
 }
 
-// --- delete-account (stranger, no grant) ---
-
 func TestDeleteAccount_StrangerNoGrant_403(t *testing.T) {
 	h := newHarness(t)
 	h.seedAccount(t, victimAccountID, otherUserID, "Theirs")
@@ -60,8 +56,6 @@ func TestDeleteAccount_StrangerNoGrant_403(t *testing.T) {
 	status, env := h.do(t, http.MethodPost, "/api/v1/account/delete-account", tok, map[string]any{"id": victimAccountID})
 	assertDenied(t, status, env)
 }
-
-// --- update-folder / hide-folder / show-folder (non-owner) ---
 
 func TestUpdateFolder_NonOwner_403(t *testing.T) {
 	h := newHarness(t)
@@ -81,8 +75,6 @@ func TestHideFolder_NonOwner_403(t *testing.T) {
 	assertDenied(t, status, env)
 }
 
-// --- replace-folder: a foreign source folder must be rejected ---
-
 func TestReplaceFolder_ForeignSource_403(t *testing.T) {
 	h := newHarness(t)
 	h.seedFolder(t, victimFolderID, otherUserID, "Theirs")
@@ -94,8 +86,6 @@ func TestReplaceFolder_ForeignSource_403(t *testing.T) {
 	assertDenied(t, status, env)
 }
 
-// --- create-account referencing a folder owned by another user ---
-
 func TestCreateAccount_ForeignFolder_403(t *testing.T) {
 	h := newHarness(t)
 	h.seedFolder(t, victimFolderID, otherUserID, "Theirs")
@@ -106,8 +96,6 @@ func TestCreateAccount_ForeignFolder_403(t *testing.T) {
 	})
 	assertDenied(t, status, env)
 }
-
-// --- read isolation: another user's unshared account never appears in my list ---
 
 func TestGetAccountList_ExcludesUnsharedAccount(t *testing.T) {
 	h := newHarness(t)

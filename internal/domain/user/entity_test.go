@@ -249,7 +249,8 @@ func TestUser_CompleteOnboarding(t *testing.T) {
 
 // TestUser_UpdateReportPeriod_ReplicatesPHPBug pins the documented quirk: the
 // method writes the period string into the CURRENCY option, never the
-// report_period option. This is an intentional byte-for-byte port of the PHP bug.
+// report_period option. The wrong target is preserved deliberately — a frozen
+// behavior clients depend on, not a bug to fix.
 func TestUser_UpdateReportPeriod_ReplicatesPHPBug(t *testing.T) {
 	u := seeded(t)
 	u.UpdateReportPeriod("weekly", tu1)

@@ -14,7 +14,7 @@ import (
 //
 // Simplification: a full archive also touches budget-element archival and
 // position effects; until those modules are ported this just toggles
-// is_archived, matching the entity's archive() semantics. See README.
+// is_archived, matching the entity's archive() semantics.
 func (s *Service) ArchiveCategory(ctx context.Context, userID vo.Id, req ArchiveCategoryRequest) (*ArchiveCategoryResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

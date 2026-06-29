@@ -111,8 +111,6 @@ func (l *UserLookup) GetOwner(ctx context.Context, userID string) (apptransactio
 	return apptransaction.AuthorView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
 
-// --- export lookup ---
-
 // exportAccountLister is the subset of the transaction repo the export adapter
 // uses to read the accessible-account set.
 type exportAccountLister interface {
@@ -120,7 +118,7 @@ type exportAccountLister interface {
 }
 
 // categoryByID/tagByID/payeeByID are the minimal metadata-repo surfaces for name
-// resolution (mirroring the eager-loaded Category/Tag/Payee getters in PHP).
+// resolution.
 type categoryByID interface {
 	GetByID(ctx context.Context, id vo.Id) (*domcategory.Category, error)
 }
@@ -133,8 +131,7 @@ type payeeByID interface {
 
 // ExportLookup adapts the transaction + metadata repos to
 // app/transaction.ExportLookup. Name lookups return "" when the entity cannot be
-// resolved (e.g. a related entity owned by another user on a shared account) —
-// matching PHP, which simply reads the eager-loaded relation's name or null.
+// resolved (e.g. a related entity owned by another user on a shared account).
 type ExportLookup struct {
 	accounts   exportAccountLister
 	categories categoryByID

@@ -39,12 +39,11 @@ func (t ElementType) Alias() string {
 	return elementAliases[t]
 }
 
-// Int16 returns the stored numeric value.
 func (t ElementType) Int16() int16 { return int16(t) }
 
-// UserRole is a budget participant's role: owner=-1, admin=0, user=1, guest=2
-// (mirrors BudgetUserRole). owner is synthetic — never stored (budgets_access
-// holds admin/user/guest); the meta builder stamps the budget's owner with it.
+// UserRole is a budget participant's role: owner=-1, admin=0, user=1, guest=2.
+// owner is synthetic — never stored (only admin/user/guest are persisted); the
+// meta builder stamps the budget's owner with it.
 type UserRole int16
 
 const (
@@ -79,7 +78,6 @@ func RoleFromAlias(alias string) (UserRole, error) {
 // Alias returns the wire alias for the role.
 func (r UserRole) Alias() string { return roleAliasByValue[r] }
 
-// Int16 returns the stored numeric value.
 func (r UserRole) Int16() int16 { return int16(r) }
 
 // ValidateName enforces the generic 3-64 char rule shared by budget, folder, and

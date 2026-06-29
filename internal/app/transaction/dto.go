@@ -1,12 +1,3 @@
-// Package transaction is the transaction aggregate's application layer: the
-// request/result DTOs (with tier-1 Validate()), the write-side Service (owns the
-// tx boundary, builds response DTOs), and the read side (get-transaction-list,
-// export).
-//
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md. create/update/delete results embed the full account list
-// (built by the account module's service); the transaction result itself embeds
-// the author (minimal user shape).
 package transaction
 
 import (
@@ -44,10 +35,6 @@ type TransactionResult struct {
 	Date               string       `json:"date"`
 }
 
-// ---------------------------------------------------------------------------
-// create-transaction
-// ---------------------------------------------------------------------------
-
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
 // are vo.FlexString: the frontend posts them as JSON numbers, the contract treats
 // them as decimal strings, and FlexString accepts either (see its doc).
@@ -65,9 +52,9 @@ type CreateTransactionRequest struct {
 	TagId              *string        `json:"tagId"`
 }
 
-// Validate enforces tier-1 constraints: id/type/amount/accountId/date NotBlank,
-// and for non-transfers categoryId is required (the PHP assembler dereferences
-// categoryId unconditionally for non-transfers).
+// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date. (For
+// non-transfers categoryId is required, but that is re-checked tier-2 in
+// buildState.)
 func (r CreateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
@@ -89,10 +76,6 @@ type CreateTransactionResult struct {
 	Item     TransactionResult          `json:"item"`
 	Accounts []appaccount.AccountResult `json:"accounts"`
 }
-
-// ---------------------------------------------------------------------------
-// update-transaction
-// ---------------------------------------------------------------------------
 
 // UpdateTransactionRequest is the update-transaction body (same fields as create
 // minus the operation-id semantics; id is the transaction id).
@@ -133,16 +116,11 @@ type UpdateTransactionResult struct {
 	Accounts []appaccount.AccountResult `json:"accounts"`
 }
 
-// ---------------------------------------------------------------------------
-// delete-transaction
-// ---------------------------------------------------------------------------
-
 // DeleteTransactionRequest is the delete-transaction body (id NotBlank).
 type DeleteTransactionRequest struct {
 	Id string `json:"id"`
 }
 
-// Validate enforces id NotBlank.
 func (r DeleteTransactionRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
@@ -156,10 +134,6 @@ type DeleteTransactionResult struct {
 	Accounts []appaccount.AccountResult `json:"accounts"`
 }
 
-// ---------------------------------------------------------------------------
-// get-transaction-list
-// ---------------------------------------------------------------------------
-
 // GetTransactionListRequest is the get-transaction-list query (all optional):
 // by accountId, or by [periodStart, periodEnd), or neither (all visible).
 type GetTransactionListRequest struct {
@@ -168,10 +142,9 @@ type GetTransactionListRequest struct {
 	PeriodEnd   string `json:"periodEnd"`
 }
 
-// Validate mirrors PHP GetTransactionListV1Form: every field is optional, but
-// when present accountId must be a UUID and periodStart/periodEnd must match the
-// strict "Y-m-d H:i:s" datetime format. Messages + field grouping match PHP's
-// Symfony Uuid / DateTime constraints byte-for-byte.
+// Validate: every field is optional, but when present accountId must be a UUID
+// and periodStart/periodEnd must match the strict "Y-m-d H:i:s" datetime format.
+// The exact messages and field grouping are wire-frozen.
 func (r GetTransactionListRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.AccountId) != "" {

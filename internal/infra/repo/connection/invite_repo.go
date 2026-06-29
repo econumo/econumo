@@ -101,8 +101,6 @@ func hydrateInvite(row inviteRow) (*domconnection.ConnectionInvite, error) {
 	return domconnection.InviteFromState(userID, code, row.ExpiredAt), nil
 }
 
-// --- engine adapters ---
-
 type sqliteInviteQuerier struct{}
 
 func (sqliteInviteQuerier) GetByUser(ctx context.Context, db backend.DBTX, userID string) (inviteRow, error) {
@@ -121,9 +119,9 @@ func (sqliteInviteQuerier) Upsert(ctx context.Context, db backend.DBTX, userID s
 	// Store expired_at as a 'Y-m-d H:i:s' string (not a *time.Time): the modernc
 	// driver serializes time.Time as RFC3339 with a 'T'/'Z'/fractional seconds,
 	// which SQLite's datetime() CANNOT parse (it returns ""), breaking the
-	// by-code expiry comparison. A plain string is what PHP stores and what
-	// datetime() expects. Done via a raw upsert since the generated param type is
-	// *time.Time. (Same SQLite datetime-binding gotcha handled in the budget repo.)
+	// by-code expiry comparison. A plain 'Y-m-d H:i:s' string is what datetime()
+	// expects. Done via a raw upsert since the generated param type is *time.Time.
+	// (Same SQLite datetime-binding gotcha handled in the budget repo.)
 	var exp any
 	if expiredAt != nil {
 		exp = expiredAt.Format(datetime.Layout)

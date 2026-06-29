@@ -1,10 +1,5 @@
 package accountrepo_test
 
-// Integration tests for the account Repo + FolderRepo against a real migrated
-// in-memory SQLite. Locks CRUD round-trips, NotFound mapping, accounts_options
-// positions, folder membership, and the float-balance SUM rendering (including
-// the "-0"/exact-string regression) end-to-end through the repo.
-
 import (
 	"context"
 	"errors"

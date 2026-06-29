@@ -31,9 +31,8 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateBudg
 	now := s.clock.Now()
 	var created *dombudget.BudgetFolder
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		// PHP's BudgetFolderService::create inserts the new folder at position 0
-		// (factory default) and renumbers the existing folders 1,2,3,... in their
-		// current repository (position-ASC) order. The new folder therefore lands at
+		// Insert the new folder at position 0 and renumber the existing folders
+		// 1,2,3,... in their current position-ASC order, so the new folder lands at
 		// the FRONT, not appended at the end.
 		created = dombudget.NewBudgetFolder(folderID, budgetID, req.Name, 0, now)
 		if serr := s.repo.SaveFolder(txCtx, created); serr != nil {

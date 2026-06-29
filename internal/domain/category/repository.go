@@ -6,18 +6,13 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// Repository is the category aggregate's persistence port. The infra layer
-// implements it over the sqlc-generated queries; the application service depends
-// only on this interface. A missing category returns an *errs.NotFoundError so
-// the HTTP layer maps it consistently.
-//
-// Persistence is whole-aggregate: Save upserts the category row (the service
-// runs it inside WithTx).
+// Repository is the category aggregate's persistence port; the application
+// service depends only on this interface. A missing category returns an
+// *errs.NotFoundError so the HTTP layer maps it consistently.
 type Repository interface {
 	// NextIdentity allocates a fresh aggregate id (no DB round-trip).
 	NextIdentity() vo.Id
 
-	// GetByID loads a category by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*Category, error)
 
 	// ListByOwner returns the owner's categories ordered by position.
@@ -27,7 +22,6 @@ type Repository interface {
 	// a new category's position).
 	CountByOwner(ctx context.Context, userID vo.Id) (int, error)
 
-	// Save upserts a category. Intended to run inside WithTx.
 	Save(ctx context.Context, c *Category) error
 
 	// Delete removes a category. Transactions referencing it have category_id set

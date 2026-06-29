@@ -9,11 +9,10 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-// TestGetTransactionList_ValidationEnvelope verifies tier-1 validation matches
-// PHP GetTransactionListV1Form: accountId must be a UUID, periodStart/periodEnd
-// must be strict "Y-m-d H:i:s". Failures return the PHP envelope (message
-// "Form validation error", code 400, per-field messages). Regression for the
-// api-compare finding where Go returned code 0 / no field errors.
+// TestGetTransactionList_ValidationEnvelope verifies tier-1 validation:
+// accountId must be a UUID, periodStart/periodEnd must be strict
+// "2006-01-02 15:04:05". Failures return the validation envelope (message
+// "Form validation error", code 400, per-field messages) — not the bare-500 form.
 func TestGetTransactionList_ValidationEnvelope(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -49,7 +48,7 @@ func TestGetTransactionList_ValidationEnvelope(t *testing.T) {
 }
 
 // TestGetTransactionList_ValidParams: empty params and well-formed params both
-// succeed (every field optional, like PHP).
+// succeed (every field is optional).
 func TestGetTransactionList_ValidParams(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -67,9 +66,7 @@ func TestGetTransactionList_ValidParams(t *testing.T) {
 }
 
 // TestGetTransactionList_ForbiddenAccount: requesting an account the user has no
-// access to returns 403, matching PHP checkViewTransactionsAccess
-// (AccessDeniedException). Regression for the finding where Go returned 400 with
-// a raw i18n key.
+// access to returns 403 (not a 400 with a raw i18n key).
 func TestGetTransactionList_ForbiddenAccount(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

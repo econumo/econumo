@@ -2,13 +2,11 @@ package accountrepo
 
 import "testing"
 
-// TestFormatSQLiteBalance locks the SQLite float-balance rendering to match PHP
-// DecimalNumber's float path (sprintf('%.8F', $float) -> round to 8 decimals).
-// The float inputs are the exact doubles SQLite's SUM produces for the seed DB;
-// the expected outputs were verified against the live PHP backend (see the
-// api-compare work): e.g. the summed balance 358.34999999999127 must render
-// "358.35000000" (which vo.DecimalNumber then normalizes to "358.35"), NOT the
-// full-precision "358.34999999999127" / 14-sig-digit "358.34999999".
+// TestFormatSQLiteBalance locks the SQLite float-balance rendering to the frozen
+// wire format: a float rounded to 8 decimals via "%.8f". The inputs are the exact
+// doubles SQLite's SUM produces for the seed DB; e.g. the summed balance
+// 358.34999999999127 must render "358.35000000" (which vo.DecimalNumber then
+// normalizes to "358.35"), NOT the full-precision "358.34999999999127".
 func TestFormatSQLiteBalance(t *testing.T) {
 	cases := map[float64]string{
 		// Float-drift sums round at the 8th decimal to a clean value:

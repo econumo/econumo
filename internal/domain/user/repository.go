@@ -6,13 +6,10 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// Repository is the user aggregate's persistence port. The infra layer
-// implements it over the sqlc-generated queries; the application service
+// Repository is the user aggregate's persistence port; the application service
 // depends only on this interface. Methods that look up a missing user return an
-// *errs.NotFoundError so the HTTP layer maps it consistently.
-//
-// Persistence of an aggregate is whole-aggregate: Save upserts the user row and
-// all of its option rows in one call (the service runs it inside WithTx).
+// *errs.NotFoundError so the HTTP layer maps it consistently. Save upserts the
+// user row and all of its option rows in one call.
 type Repository interface {
 	// NextIdentity allocates a fresh aggregate id (no DB round-trip).
 	NextIdentity() vo.Id
@@ -28,7 +25,7 @@ type Repository interface {
 	// by registration to detect a duplicate without loading the row.
 	ExistsByIdentifier(ctx context.Context, identifier string) (bool, error)
 
-	// Save upserts the user row and its options. Intended to run inside WithTx.
+	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *User) error
 
 	// ListIDs returns all user ids (for the optional connect-users flow on

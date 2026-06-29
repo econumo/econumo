@@ -23,10 +23,8 @@ func init() { backend.Register(Name, New()) }
 // Backend implements backend.Backend for SQLite.
 type Backend struct{ busyTimeoutMS int }
 
-// New returns a SQLite backend.
 func New() *Backend { return &Backend{} }
 
-// Name returns "sqlite".
 func (b *Backend) Name() string { return Name }
 
 // Open opens the SQLite database. The DSN may be the existing
@@ -41,7 +39,7 @@ func (b *Backend) Open(ctx context.Context, dsn string) (*sql.DB, error) {
 	}
 	// Single writer: serialize access through one connection.
 	db.SetMaxOpenConns(1)
-	// Enforce foreign keys (the legacy schema relies on FK cascade semantics).
+	// Enforce foreign keys: the schema relies on FK cascade semantics.
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("sqlite pragma foreign_keys: %w", err)
@@ -53,7 +51,6 @@ func (b *Backend) Open(ctx context.Context, dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
-// Migrations returns the embedded SQLite migrations.
 func (b *Backend) Migrations() []backend.Migration {
 	files := migrations.SQLite()
 	out := make([]backend.Migration, len(files))

@@ -14,16 +14,14 @@ import (
 // Idempotency: the request id doubles as the operation id. Inside the tx we
 // Claim the id in operation_requests_ids; a second request with the same id
 // finds the row already present and is rejected with a ValidationError
-// ("Operation is locked"). See repo/category for the row semantics and the
-// package README for the rationale.
+// ("Operation is locked"). See repo/category for the row semantics.
 //
 // New-category position = count(user's existing categories); the new category is
 // active with created/updated = now.
 func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCategoryRequest) (*CreateCategoryResult, error) {
 	// The request id is the OPERATION id (idempotency key), NOT the new entity's
-	// id. PHP ignores $dto->id for the entity and mints a fresh UUIDv7 via
-	// getNextIdentity() (CategoryFactory::create); the dto id is consumed only by
-	// the operation-id middleware. Mirror that: claim opID, generate a new entity id.
+	// id: the request id is consumed only by the operation guard, while a fresh
+	// UUIDv7 is minted for the entity. So claim opID, then generate a new entity id.
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -48,9 +46,8 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 
 	// accountId, when present, selects which user owns the new category: an
 	// account may belong to a connected user, and a category added in the context
-	// of a shared account is owned by the ACCOUNT OWNER (PHP
-	// createCategoryForAccount), gated by an owner/admin access check
-	// (checkAddCategory == isAdmin). Absent accountId -> owned by the caller.
+	// of a shared account is owned by the ACCOUNT OWNER, gated by an owner/admin
+	// access check. Absent accountId -> owned by the caller.
 	ownerID := userID
 	if req.AccountId != nil && *req.AccountId != "" {
 		accountID, perr := vo.ParseId(*req.AccountId)

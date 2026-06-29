@@ -12,8 +12,7 @@ import (
 // SetAccountAccess grants or updates a connected user's role on an account the
 // requesting user owns (or admins). On a FIRST grant to the affected user it
 // also seeds that user's per-account ordering row (accounts_options at max+1)
-// and adds the account to their last folder -- mirroring PHP
-// ConnectionAccountService::setAccountAccess.
+// and adds the account to their last folder.
 func (s *Service) SetAccountAccess(ctx context.Context, userID vo.Id, req SetAccountAccessRequest) (*SetAccountAccessResult, error) {
 	accountID, err := parseID("accountId", req.AccountId)
 	if err != nil {

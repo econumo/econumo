@@ -1,13 +1,9 @@
 // Package server assembles the full Econumo HTTP API from its modules. The
-// wiring lives here (rather than in cmd/econumo) so that the production binary
-// AND the test harnesses build the IDENTICAL handler from the same code path —
-// the engine-comparison API suite (internal/test/enginecompare) depends on this
-// to exercise the real production router on both SQLite and PostgreSQL without
-// duplicating ~150 lines of module wiring (which would silently drift).
-//
-// BuildAPI takes an already-opened, already-migrated *sql.DB plus the auth/clock
-// collaborators (injected so tests can pin deterministic JWT keys and time), and
-// returns the same http.Handler cmd/econumo serves.
+// wiring lives here (rather than in cmd/econumo) so the production binary AND
+// the test harnesses build the IDENTICAL handler from the same code path — the
+// engine-comparison suite (internal/test/enginecompare) exercises the real
+// production router on both SQLite and PostgreSQL without re-wiring the modules
+// (which would silently drift).
 package server
 
 import (
@@ -56,27 +52,17 @@ import (
 	"github.com/econumo/econumo/pkg/jwt"
 )
 
-// BuildAPI wires every resource module over the given database and returns the
-// full HTTP handler (global middleware chain + all /api/v1 routes + Swagger +
-// SPA + health-check). The DB must already be opened and migrated. clk is the
-// clock used for timestamps and JWT issuance time; jwtSvc is the configured RS256
-// signer/verifier. The engine is read from cfg.DatabaseDriver, which selects the
-// per-engine sqlc query adapters in every repository constructor.
-//
-// This is the SAME assembly cmd/econumo uses; the only difference is that the
-// caller owns opening the DB and constructing jwtSvc/clk (so tests can inject
-// deterministic ones and point at either engine).
-//
-// clk is a Clock (Now() time.Time) — clock.Real in production, a fixed clock in
-// tests. The module services/handlers each take their own duck-typed Clock
-// interface; this single value satisfies all of them.
+// BuildAPI wires every resource module over the given (already opened+migrated)
+// database and returns the full HTTP handler. The caller owns the DB, jwtSvc and
+// clk so tests can inject deterministic ones and point at either engine; the
+// engine is read from cfg.DatabaseDriver, which selects the per-engine sqlc query
+// adapters in every repository constructor.
 func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Handler {
 	txm := backend.NewTxManager(db)
 
 	encodeSvc := auth.NewEncodeService(cfg.DataSalt)
 	hasher := auth.NewPasswordHasher()
 
-	// User module.
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
@@ -92,18 +78,16 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
-	// used by the category/tag create-for-account paths. Backed by the connection
-	// AccountAccess repo (stateless adapter over the driver + tx manager).
+	// used by the category/tag create-for-account paths.
 	accountAccessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(cfg.DatabaseDriver, txm))
 
-	// Category module.
 	categoryRepo := categoryrepo.NewRepo(cfg.DatabaseDriver, txm)
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo, accountAccessResolver)
 	categoryReadSvc := appcategory.NewReadService(categoryReadRepo)
 	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc, cfg.IsDev())
 
-	// Tag module (shared operation guard built here, reused by payee/account/transaction).
+	// Shared operation guard built here, reused by payee/account/transaction.
 	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
 	tagRepo := tagrepo.NewRepo(cfg.DatabaseDriver, txm)
 	tagReadRepo := tagrepo.NewReadRepo(cfg.DatabaseDriver, txm)
@@ -111,20 +95,18 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
 	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc, cfg.IsDev())
 
-	// Payee module.
 	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
 	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo, accountAccessResolver)
 	payeeReadSvc := apppayee.NewReadService(payeeReadRepo)
 	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc, cfg.IsDev())
 
-	// Currency module (read-only).
 	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
 	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, cfg.IsDev())
 
-	// Account + folder module; connection service is built first (account result
-	// embeds sharedAccess[] and delete-account revokes the caller's own access).
+	// Connection service is built first: the account result embeds sharedAccess[]
+	// and delete-account revokes the caller's own access.
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
 	accountCurrencyLookup := accountrepo.NewCurrencyLookup(currencyLookup)
@@ -147,7 +129,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
 
-	// Transaction module.
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	txAccountResolver := transactionrepo.NewAccountResolver(accountSvc)
 	txAccountGrants := transactionrepo.NewAccountGrants(connectionRepo)
@@ -163,10 +144,8 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 
-	// Connection module handlers (service built above).
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
 
-	// Budget module (heavy get-budget read runs the BudgetBuilder + convertor).
 	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
@@ -201,14 +180,12 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	})
 }
 
-// Clock is the time seam BuildAPI threads into every module. clock.Real
-// satisfies it in production; tests pass a fixed clock for deterministic
-// timestamps and JWT issuance time.
+// Clock is the time seam BuildAPI threads into every module: the real clock in
+// production, a fixed clock in tests for deterministic timestamps and JWT iat.
 type Clock interface {
 	Now() time.Time
 }
 
-// pinger adapts *sql.DB to the router's Pinger interface (Ping(ctx) error).
 type pinger struct{ db *sql.DB }
 
 var _ router.Pinger = pinger{}

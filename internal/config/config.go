@@ -21,7 +21,7 @@ type Config struct {
 	// Econumo behavior
 	CurrencyBase      string // default "USD"
 	AllowRegistration bool
-	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt. DEPRECATED: to be removed; migrate to plaintext via app:remove-data-salt.
+	DataSalt          string // ECONUMO_DATA_SALT: AES key + md5 identifier salt. DEPRECATED: to be removed; migrate to plaintext via data:remove-salt.
 	SQLiteBusyTimeout int
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
@@ -74,9 +74,9 @@ func Load() (Config, error) {
 		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist/spa"),
 	}
 
-	// JWT key paths copied from a Symfony/lexik .env often contain the
-	// "%kernel.project_dir%" placeholder (which Symfony resolves to the app root).
-	// Expand it to the working directory so such a .env works here unchanged.
+	// Some legacy .env files carry the "%kernel.project_dir%" placeholder in their
+	// JWT key paths; expand it to the working directory so such a .env works here
+	// unchanged.
 	c.JWTPublicKeyPath = ResolveProjectDir(c.JWTPublicKeyPath)
 	c.JWTPrivateKeyPath = ResolveProjectDir(c.JWTPrivateKeyPath)
 
@@ -100,11 +100,10 @@ func Load() (Config, error) {
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
 
-	// NOTE: PORT and the JWT public key are required by the HTTP server only, and
-	// are validated at server startup (cmd/econumo run()). They are intentionally
-	// NOT required here because config.Load is also the CLI's composition entry
-	// point (app:*), and those commands neither bind a port nor issue JWTs.
-	// Only DATABASE_URL (checked above) is universally required.
+	// PORT and the JWT public key are required by the HTTP server only and are
+	// validated at server startup; they are intentionally NOT required here because
+	// config.Load is also the CLI's composition entry point, and those commands
+	// neither bind a port nor issue JWTs. Only DATABASE_URL is universally required.
 	return c, nil
 }
 
@@ -167,14 +166,15 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 	}
 }
 
-// projectDirPlaceholder is the Symfony container parameter commonly embedded in
-// lexik JWT key paths (e.g. "%kernel.project_dir%/config/jwt/private.pem").
+// projectDirPlaceholder is the legacy "%kernel.project_dir%" placeholder some
+// .env files still carry in their JWT key paths (e.g.
+// "%kernel.project_dir%/config/jwt/private.pem").
 const projectDirPlaceholder = "%kernel.project_dir%"
 
-// ResolveProjectDir expands the Symfony "%kernel.project_dir%" placeholder in a
+// ResolveProjectDir expands the legacy "%kernel.project_dir%" placeholder in a
 // path to the process working directory (the app root — /app in the Docker
-// image), so JWT key paths taken from a Symfony/lexik .env resolve here. A path
-// without the placeholder is returned unchanged.
+// image), so JWT key paths from such a .env resolve here. A path without the
+// placeholder is returned unchanged.
 func ResolveProjectDir(path string) string {
 	if !strings.Contains(path, projectDirPlaceholder) {
 		return path
@@ -198,7 +198,6 @@ func getBool(key string, def bool) bool {
 	if !ok || v == "" {
 		return def
 	}
-	// Accept common truthy/falsy string values.
 	switch strings.ToLower(v) {
 	case "1", "true", "yes", "on":
 		return true

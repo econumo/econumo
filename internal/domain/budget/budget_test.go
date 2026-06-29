@@ -22,8 +22,6 @@ var (
 	t1 = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 )
 
-// --- ElementType ---
-
 func TestElementType_AliasRoundTrip(t *testing.T) {
 	cases := []struct {
 		typ   ElementType
@@ -71,8 +69,6 @@ func TestElementType_AliasOutOfRange(t *testing.T) {
 	}
 }
 
-// --- UserRole ---
-
 func TestUserRole_Values(t *testing.T) {
 	if RoleOwner != -1 || RoleAdmin != 0 || RoleUser != 1 || RoleGuest != 2 {
 		t.Fatalf("role values drifted: owner=%d admin=%d user=%d guest=%d", RoleOwner, RoleAdmin, RoleUser, RoleGuest)
@@ -115,8 +111,6 @@ func TestRoleFromAlias_Invalid(t *testing.T) {
 		t.Fatal("want error for unknown role alias")
 	}
 }
-
-// --- ValidateName (the shared 3-64 rule) ---
 
 func TestValidateName(t *testing.T) {
 	cases := []struct {
@@ -162,8 +156,6 @@ func TestValidateName_MessageUsesLabel(t *testing.T) {
 		t.Fatalf("message=%+v want 'Envelope name must be 3-64 characters'", ve.Fields)
 	}
 }
-
-// --- Budget entity ---
 
 func TestNewBudget_SnapsStartToFirstOfMonth(t *testing.T) {
 	b := NewBudget(id(t, "11111111-1111-1111-1111-111111111111"),
@@ -221,8 +213,6 @@ func TestBudget_StartFrom_SnapsAndAlwaysBumps(t *testing.T) {
 	}
 }
 
-// --- BudgetAccess ---
-
 func TestNewBudgetAccess_StartsPending(t *testing.T) {
 	a := NewBudgetAccess(id(t, "11111111-1111-1111-1111-111111111111"),
 		id(t, "22222222-2222-2222-2222-222222222222"),
@@ -263,8 +253,6 @@ func TestBudgetAccess_UpdateRole_OnlyBumpsOnChange(t *testing.T) {
 		t.Fatalf("role change: role=%d updatedAt=%v", a.Role(), a.UpdatedAt())
 	}
 }
-
-// --- BudgetElement ---
 
 func TestBudgetElement_PositionUnset(t *testing.T) {
 	e := NewBudgetElement(id(t, "11111111-1111-1111-1111-111111111111"),
@@ -318,8 +306,6 @@ func TestBudgetElement_UpdateFolder_NilTransitions(t *testing.T) {
 	}
 }
 
-// --- BudgetElementLimit ---
-
 func TestNewBudgetElementLimit_SnapsPeriod(t *testing.T) {
 	l := NewBudgetElementLimit(id(t, "11111111-1111-1111-1111-111111111111"),
 		id(t, "22222222-2222-2222-2222-222222222222"), vo.NewDecimal("200"), t0, t0)
@@ -346,8 +332,6 @@ func TestBudgetElementLimit_UpdateAmount_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-// --- BudgetEnvelope ---
-
 func TestBudgetEnvelope_SetArchived_OnlyBumpsOnChange(t *testing.T) {
 	e := NewBudgetEnvelope(id(t, "11111111-1111-1111-1111-111111111111"),
 		id(t, "22222222-2222-2222-2222-222222222222"), "Travel", "plane", t0)
@@ -363,8 +347,6 @@ func TestBudgetEnvelope_SetArchived_OnlyBumpsOnChange(t *testing.T) {
 		t.Fatalf("archive: archived=%v updatedAt=%v", e.IsArchived(), e.UpdatedAt())
 	}
 }
-
-// --- helpers ---
 
 func TestFirstOfMonth(t *testing.T) {
 	in := time.Date(2024, 7, 31, 23, 59, 59, 0, time.UTC)

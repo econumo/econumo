@@ -135,9 +135,9 @@ func (l *ImportLookup) AvailableAccounts(ctx context.Context, userID vo.Id) ([]a
 func (l *ImportLookup) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*apptransaction.ImportAccount, error) {
 	a, err := l.accountRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, nil // not found -> nil (PHP findAccountById returns null)
+		return nil, nil // not found -> nil
 	}
-	// Only available (own) accounts qualify (PHP loads getAvailableForUserId).
+	// Only available (own) accounts qualify.
 	if !a.UserId().Equal(userID) {
 		return nil, nil
 	}
@@ -145,10 +145,9 @@ func (l *ImportLookup) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) 
 }
 
 // CanAddTransaction reports whether the user may add a transaction to the
-// account: they own it, or hold an admin/user grant on it (PHP
-// AccountAccessService.canAddTransaction == isUser; a guest grant or no grant is
-// denied). A missing account yields false (the importer then creates a new own
-// account), preserving the find-or-create flow.
+// account: they own it, or hold an admin/user grant on it (a guest grant or no
+// grant is denied). A missing account yields false (the importer then creates a
+// new own account), preserving the find-or-create flow.
 func (l *ImportLookup) CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error) {
 	owner, err := l.access.AccountOwner(ctx, accountID)
 	if err != nil {

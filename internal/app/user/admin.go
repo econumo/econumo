@@ -1,9 +1,7 @@
-// Admin use cases driven by the CLI (bin/console app:*), not the HTTP API:
-// create-user, change-user-email, change-user-password, activate-user,
+// Admin use cases driven by the CLI (the resource:action commands), not the HTTP
+// API: create-user, change-user-email, change-user-password, activate-user,
 // deactivate-users. They reuse the same repo/encode/hasher/clock/tx seams the
-// HTTP handlers use, so behavior matches the API exactly. Ports the PHP
-// CreateUserCommand / ChangeUserEmailCommand / ChangeUserPasswordCommand and the
-// EconumoCloudBundle ActivateUserCommand / DeactivateUsersCommand.
+// HTTP handlers use, so behavior matches the API exactly.
 package user
 
 import (
@@ -17,7 +15,7 @@ import (
 )
 
 // AdminCreateUser creates a user regardless of ECONUMO_ALLOW_REGISTRATION and
-// returns the new id. Ports CreateUserCommand (UserService::register).
+// returns the new id.
 func (s *Service) AdminCreateUser(ctx context.Context, name, email, password string) (vo.Id, error) {
 	u, err := s.createUser(ctx, name, email, password)
 	if err != nil {
@@ -27,8 +25,7 @@ func (s *Service) AdminCreateUser(ctx context.Context, name, email, password str
 }
 
 // AdminChangeEmail changes a user's email (identifier, ciphertext, avatar),
-// looked up by the current email. Ports ChangeUserEmailCommand
-// (UserService::updateEmail).
+// looked up by the current email.
 func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail string) error {
 	u, err := s.userByEmail(ctx, oldEmail)
 	if err != nil {
@@ -60,8 +57,7 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 }
 
 // AdminChangePassword sets a user's password (hashed with the user's salt),
-// looked up by email. Ports ChangeUserPasswordCommand
-// (UserPasswordService::updatePassword).
+// looked up by email.
 func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
@@ -73,8 +69,7 @@ func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword st
 	})
 }
 
-// AdminActivate marks the user active, looked up by email. Ports
-// ActivateUserCommand (User::activate).
+// AdminActivate marks the user active, looked up by email.
 func (s *Service) AdminActivate(ctx context.Context, email string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
@@ -86,8 +81,7 @@ func (s *Service) AdminActivate(ctx context.Context, email string) error {
 	})
 }
 
-// AdminDeactivate marks the user inactive, looked up by email. Ports
-// DeactivateUsersCommand (User::deactivate).
+// AdminDeactivate marks the user inactive, looked up by email.
 func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {

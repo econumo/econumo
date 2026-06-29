@@ -1,13 +1,6 @@
-// CQRS read side for the user module. These methods bypass the domain aggregate
-// entirely: they run purpose-built read queries and return lightweight row
-// structs shaped for the response, which the app-layer query-service assembles
-// into the DTO. This avoids the load-aggregate-then-enrich pattern (and its
-// extra round trips) that the read endpoints would otherwise incur.
-//
-// The same engine-selection mechanism as the write Repo is used: a small
-// readQuerier interface implemented per engine, chosen at construction. Read
-// queries also run through TxManager.Querier(ctx), so a read issued inside a
-// WithTx sees that transaction (used by the per-test outer-tx harness).
+// CQRS read side for the user module: purpose-built read queries returning
+// lightweight row structs the app-layer query-service assembles into the DTO,
+// bypassing the domain aggregate to avoid the load-then-enrich round trips.
 package userrepo
 
 import (
@@ -22,21 +15,12 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// ReadRepo returns the app-layer read-model row types directly so it satisfies
-// app/user.ReadModel with no bridging adapter. (infra adapters may depend inward
-// on app; app does not import infra, so there is no cycle.)
-
-// readQuerier is the engine-agnostic read surface, expressed in canonical
-// (sqlite-generated) shapes where applicable. Implemented per engine below.
 type readQuerier interface {
 	GetUserView(ctx context.Context, db backend.DBTX, id string) (sqlitegen.GetUserViewRow, error)
 	GetUserOptionsView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.GetUserOptionsViewRow, error)
 	GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error)
 }
 
-// ReadRepo is the user read model. It is a separate type from the write Repo to
-// keep the CQRS boundary explicit, but shares the TxManager + driver-selection.
-// It satisfies app/user.ReadModel.
 type ReadRepo struct {
 	tx *backend.TxManager
 	q  readQuerier
@@ -44,7 +28,6 @@ type ReadRepo struct {
 
 var _ appuser.ReadModel = (*ReadRepo)(nil)
 
-// NewReadRepo selects the engine read querier by driver name.
 func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 	switch driver {
 	case "sqlite":
@@ -58,7 +41,6 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-// UserView returns the user's display fields, or a NotFound error.
 func (r *ReadRepo) UserView(ctx context.Context, id string) (appuser.UserViewRow, error) {
 	row, err := r.q.GetUserView(ctx, r.db(ctx), id)
 	if err != nil {
@@ -70,7 +52,6 @@ func (r *ReadRepo) UserView(ctx context.Context, id string) (appuser.UserViewRow
 	return appuser.UserViewRow{ID: row.ID, Email: row.Email, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
 }
 
-// OptionViews returns the user's persisted options in stable order.
 func (r *ReadRepo) OptionViews(ctx context.Context, userID string) ([]appuser.OptionViewRow, error) {
 	rows, err := r.q.GetUserOptionsView(ctx, r.db(ctx), userID)
 	if err != nil {
@@ -88,8 +69,6 @@ func (r *ReadRepo) OptionViews(ctx context.Context, userID string) ([]appuser.Op
 func (r *ReadRepo) CurrencyIDByCode(ctx context.Context, code string) (string, error) {
 	return r.q.GetCurrencyIDByCode(ctx, r.db(ctx), code)
 }
-
-// --- engine adapters -------------------------------------------------------
 
 type sqliteReadQuerier struct{}
 

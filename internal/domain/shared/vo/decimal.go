@@ -5,40 +5,34 @@ import (
 	"strings"
 )
 
-// DecimalNumber is the wire representation of a money/rate value. It mirrors the
-// PHP DecimalNumber value object's *normalized string form* — the exact output
-// of its getValue()/__toString() — so values serialize byte-identically to the
-// existing API regardless of how the database stored them.
+// DecimalNumber is the wire representation of a money/rate value, held as a
+// *normalized string form* so values serialize byte-identically to the frozen
+// API regardless of how the database stored them.
 //
-// Scope: this type currently covers NORMALIZATION ONLY (the form in which a
-// stored NUMERIC(19,8) is rendered on the wire). PHP normalize() trims trailing
-// zeros in the fraction and leading zeros in the integer part, so e.g. the
-// stored "0.92000000" and "0.92" both render as "0.92" — which is what the API
-// emits. The SQLite engine already strips trailing zeros via NUMERIC affinity,
+// Normalization trims trailing zeros in the fraction and leading zeros in the
+// integer part, so e.g. the stored "0.92000000" and "0.92" both render as
+// "0.92". The SQLite engine already strips trailing zeros via NUMERIC affinity,
 // but PostgreSQL returns the padded "0.92000000"; normalizing here makes both
-// engines byte-identical to PHP.
+// engines byte-identical.
 //
-// Arithmetic (Add/Sub/Mul/Div/Round at bcmath scale 8) IS implemented, backed by
-// math/big in exact integer space scaled by 10^8 (no shopspring needed). Mul/Div
-// TRUNCATE toward zero at scale 8 (bcmul/bcdiv semantics); Round uses PHP
-// round()'s half-away-from-zero. Golden vectors against PHP bcmath live in
-// decimal_test.go + testdata. DecimalNumber is the flagged silent-drift hotspot
-// (see CLAUDE.md).
+// Arithmetic (Add/Sub/Mul/Div/Round at scale 8) is backed by math/big in exact
+// integer space scaled by 10^8. Mul/Div TRUNCATE toward zero at scale 8; Round
+// is half-away-from-zero. Golden vectors live in decimal_test.go + testdata.
+// This type is a silent-drift hotspot — changing the rounding/truncation
+// behavior shifts stored and emitted values, breaking the frozen wire contract.
 type DecimalNumber struct {
 	value string // already normalized
 }
 
-// scale is PHP DecimalNumber::SCALE (bcmath scale).
 const decimalScale = 8
 
 // NewDecimal builds a DecimalNumber from a raw numeric string (as read from the
-// DB), normalizing it to the PHP getValue() form. A non-numeric or empty input
-// normalizes to "0", matching PHP's handling (empty/"0" -> "0").
+// DB), normalizing it. A non-numeric or empty input normalizes to "0".
 func NewDecimal(raw string) DecimalNumber {
 	return DecimalNumber{value: normalizeDecimal(raw)}
 }
 
-// String returns the normalized wire form (PHP getValue()).
+// String returns the normalized wire form.
 func (d DecimalNumber) String() string {
 	if d.value == "" {
 		return "0"
@@ -46,9 +40,9 @@ func (d DecimalNumber) String() string {
 	return d.value
 }
 
-// scaled returns the value as a big.Int scaled by 10^8 (bcmath scale). It is
-// exact for the fixed-point decimals the app handles. A malformed value scales
-// to 0 (NewDecimal already normalized the input, so this should not happen).
+// scaled returns the value as a big.Int scaled by 10^8. It is exact for the
+// fixed-point decimals the app handles. A malformed value scales to 0
+// (NewDecimal already normalized the input, so this should not happen).
 func (d DecimalNumber) scaled() *big.Int {
 	s := d.value
 	if s == "" {
@@ -94,8 +88,7 @@ func fromScaled(n *big.Int) DecimalNumber {
 	return NewDecimal(raw)
 }
 
-// Sub returns d - other at bcmath scale 8 (exact), matching PHP
-// DecimalNumber::sub.
+// Sub returns d - other at scale 8 (exact).
 func (d DecimalNumber) Sub(other DecimalNumber) DecimalNumber {
 	return fromScaled(new(big.Int).Sub(d.scaled(), other.scaled()))
 }
@@ -106,7 +99,7 @@ func (d DecimalNumber) IsZero() bool { return d.scaled().Sign() == 0 }
 // IsNegative reports whether the value is strictly less than zero.
 func (d DecimalNumber) IsNegative() bool { return d.scaled().Sign() < 0 }
 
-// Equals reports whether d and other are numerically equal (PHP equals()).
+// Equals reports whether d and other are numerically equal.
 func (d DecimalNumber) Equals(other DecimalNumber) bool {
 	return d.scaled().Cmp(other.scaled()) == 0
 }
@@ -116,25 +109,23 @@ func (d DecimalNumber) Abs() DecimalNumber {
 	return fromScaled(new(big.Int).Abs(d.scaled()))
 }
 
-// Add returns d + other at bcmath scale 8 (exact), matching PHP
-// DecimalNumber::add.
+// Add returns d + other at scale 8 (exact).
 func (d DecimalNumber) Add(other DecimalNumber) DecimalNumber {
 	return fromScaled(new(big.Int).Add(d.scaled(), other.scaled()))
 }
 
-// Mul returns d * other at bcmath scale 8. bcmul computes the full product then
-// TRUNCATES toward zero to 8 fraction digits (bcmath does not round). With both
-// operands scaled by 10^8, the raw product is scaled by 10^16; truncating to
-// scale 8 means dividing by 10^8 toward zero.
+// Mul returns d * other at scale 8: the full product is computed exactly then
+// TRUNCATED toward zero to 8 fraction digits (no rounding). With both operands
+// scaled by 10^8, the raw product is scaled by 10^16; truncating to scale 8
+// means dividing by 10^8 toward zero.
 func (d DecimalNumber) Mul(other DecimalNumber) DecimalNumber {
 	prod := new(big.Int).Mul(d.scaled(), other.scaled()) // scale 16
 	q := new(big.Int).Quo(prod, decimalPow8)             // Quo truncates toward zero
 	return fromScaled(q)
 }
 
-// Div returns d / other at bcmath scale 8, truncated toward zero (bcdiv
-// semantics). Panics on division by zero (PHP throws DivisionByZeroError).
-// Computed as floor_toward_zero((d_scaled * 10^8) / other_scaled).
+// Div returns d / other at scale 8, truncated toward zero. Panics on division
+// by zero. Computed as floor_toward_zero((d_scaled * 10^8) / other_scaled).
 func (d DecimalNumber) Div(other DecimalNumber) DecimalNumber {
 	den := other.scaled()
 	if den.Sign() == 0 {
@@ -145,8 +136,7 @@ func (d DecimalNumber) Div(other DecimalNumber) DecimalNumber {
 	return fromScaled(q)
 }
 
-// Round rounds to `precision` decimal places using PHP's round() semantics
-// (round half AWAY from zero), matching DecimalNumber::round. precision may be 0.
+// Round rounds to `precision` decimal places, half AWAY from zero. precision may be 0.
 // Implemented in exact integer space: the scale-8 value is taken to `precision`
 // places by dividing by 10^(8-precision) with half-away rounding on the
 // remainder, then re-scaled.
@@ -176,12 +166,12 @@ func (d DecimalNumber) Round(precision int) DecimalNumber {
 	return fromScaled(q)
 }
 
-// IsGreaterThan reports whether d > other (PHP isGreaterThan).
+// IsGreaterThan reports whether d > other.
 func (d DecimalNumber) IsGreaterThan(other DecimalNumber) bool {
 	return d.scaled().Cmp(other.scaled()) == 1
 }
 
-// IsLessThan reports whether d < other (PHP isLessThan).
+// IsLessThan reports whether d < other.
 func (d DecimalNumber) IsLessThan(other DecimalNumber) bool {
 	return d.scaled().Cmp(other.scaled()) == -1
 }
@@ -189,13 +179,12 @@ func (d DecimalNumber) IsLessThan(other DecimalNumber) bool {
 // decimalPow8 is 10^8 (the scale factor) as a big.Int, computed once.
 var decimalPow8 = new(big.Int).Exp(big.NewInt(10), big.NewInt(decimalScale), nil)
 
-// normalizeDecimal reproduces PHP DecimalNumber::normalize() for string inputs
-// that are plain decimals (the only form the DB yields: a fixed-point
-// NUMERIC(19,8) string, optionally signed). Scientific notation and float
-// formatting are not needed for DB-sourced values, so they are intentionally
-// omitted; the integer/fraction zero-trimming rules match PHP exactly.
+// normalizeDecimal normalizes string inputs that are plain decimals (the only
+// form the DB yields: a fixed-point NUMERIC(19,8) string, optionally signed).
+// Scientific notation and float formatting are not needed for DB-sourced
+// values, so they are intentionally omitted.
 //
-// Rules (from PHP normalize()):
+// Rules:
 //   - "" or "0" -> "0"
 //   - strip a leading '-' (re-applied at the end), so "-0" cases collapse to "0"
 //   - if it has a '.': trim the integer part's leading zeros (keeping one "0"),
@@ -205,10 +194,9 @@ var decimalPow8 = new(big.Int).Exp(big.NewInt(10), big.NewInt(decimalScale), nil
 //   - a value of just "0" after trimming is returned unsigned ("0", never "-0")
 //
 // expandScientific converts a scientific-notation string into a normalized
-// fixed-point decimal at scale 8, mirroring PHP DecimalNumber::normalize's
-// bcmul/bcdiv path. num[i] is the 'e'/'E'. The base part is itself a plain
-// decimal; the exponent is an integer. base*10^exp uses exact integer math at
-// scale 8 (bcdiv truncates toward zero at scale 8 — fromScaled does the same).
+// fixed-point decimal at scale 8. num[i] is the 'e'/'E'. The base part is itself
+// a plain decimal; the exponent is an integer. base*10^exp uses exact integer
+// math at scale 8 (division truncates toward zero — fromScaled does the same).
 func expandScientific(num string, i int) string {
 	base := num[:i]
 	expStr := num[i+1:]
@@ -220,7 +208,7 @@ func expandScientific(num string, i int) string {
 	}
 	for _, c := range expStr {
 		if c < '0' || c > '9' {
-			// Malformed exponent: fall back to PHP's "not a number" -> "0".
+			// Malformed exponent: fall back to "not a number" -> "0".
 			return "0"
 		}
 		exp = exp*10 + int(c-'0')
@@ -232,7 +220,7 @@ func expandScientific(num string, i int) string {
 	pow := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(exp)), nil)
 	var resScaled *big.Int
 	if expNeg {
-		// base / 10^|exp| — Quo truncates toward zero (bcdiv scale-8 semantics).
+		// base / 10^|exp| — Quo truncates toward zero at scale 8.
 		resScaled = new(big.Int).Quo(baseScaled, pow)
 	} else {
 		resScaled = new(big.Int).Mul(baseScaled, pow)
@@ -294,8 +282,8 @@ func normalizeDecimal(num string) string {
 	}
 
 	// Scientific notation (e.g. "2.586E-5", "1.2e-05"): databases sometimes store
-	// rates this way. Mirror PHP DecimalNumber::normalize — split on 'e', then
-	// base * 10^exp (exp>=0) or base / 10^|exp| (exp<0) at scale 8 — before the
+	// rates this way. Split on 'e', then base * 10^exp (exp>=0) or
+	// base / 10^|exp| (exp<0) at scale 8 — before the
 	// normal normalization runs on the expanded value.
 	if i := strings.IndexAny(num, "eE"); i >= 0 {
 		num = expandScientific(num, i)
@@ -335,15 +323,15 @@ func normalizeDecimal(num string) string {
 		}
 	}
 
-	// PHP adds a leading zero for ".x" forms; our integer-part handling already
+	// Add a leading zero for ".x" forms; our integer-part handling already
 	// guarantees a leading "0", so this is belt-and-suspenders.
 	if strings.HasPrefix(num, ".") {
 		num = "0" + num
 	}
 
-	// PHP DecimalNumber::normalize PRESERVES a leading "-" even when the magnitude
-	// is zero: only the literal inputs "" and "0" are caught by the early return
-	// (before sign handling), so a stored "-0" / "-0.00000000" normalizes to "-0"
+	// A leading "-" is PRESERVED even when the magnitude is zero: only the literal
+	// inputs "" and "0" are caught by the early return (before sign handling), so a
+	// stored "-0" / "-0.00000000" normalizes to "-0"
 	// (not "0"). SQLite's SUM() yields "-0" for some netted-to-zero account
 	// balances, and the API emits that byte-for-byte. Do NOT suppress the sign.
 	if negative {

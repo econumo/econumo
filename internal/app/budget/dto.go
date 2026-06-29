@@ -1,7 +1,5 @@
-// Budget module application DTOs: the request bodies (with tier-1 Validate())
-// and the response result shapes, frozen to the existing wire contract. The
-// get-budget result (BudgetResult) is produced by the BudgetBuilder; the
-// lighter results (meta list, folder/envelope, empty acks) are built directly.
+// Budget module application DTOs: request bodies (with tier-1 Validate()) and
+// response result shapes, frozen to the existing wire contract.
 package budget
 
 import (
@@ -10,10 +8,6 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
-
-// ---------------------------------------------------------------------------
-// shared result shapes
-// ---------------------------------------------------------------------------
 
 // UserResult is the embedded user shape in a budget access entry: {id, avatar, name}.
 type UserResult struct {
@@ -119,10 +113,6 @@ type BudgetResult struct {
 	Structure     StructureResult             `json:"structure"`
 }
 
-// ---------------------------------------------------------------------------
-// create-budget
-// ---------------------------------------------------------------------------
-
 // CreateBudgetRequest is the create-budget body.
 type CreateBudgetRequest struct {
 	Id               string   `json:"id"`
@@ -142,10 +132,6 @@ type CreateBudgetResult struct {
 	Item BudgetResult `json:"item"`
 }
 
-// ---------------------------------------------------------------------------
-// update-budget
-// ---------------------------------------------------------------------------
-
 // UpdateBudgetRequest is the update-budget body.
 type UpdateBudgetRequest struct {
 	Id               string   `json:"id"`
@@ -163,10 +149,6 @@ func (r UpdateBudgetRequest) Validate() error {
 type UpdateBudgetResult struct {
 	Item MetaResult `json:"item"`
 }
-
-// ---------------------------------------------------------------------------
-// delete / reset / get-budget / get-budget-list
-// ---------------------------------------------------------------------------
 
 // DeleteBudgetRequest / ResetBudgetRequest / GetBudgetRequest bodies.
 type DeleteBudgetRequest struct {
@@ -210,10 +192,6 @@ type GetBudgetResult struct {
 type GetBudgetListResult struct {
 	Items []MetaResult `json:"items"`
 }
-
-// ---------------------------------------------------------------------------
-// folders
-// ---------------------------------------------------------------------------
 
 // CreateBudgetFolderRequest / UpdateBudgetFolderRequest bodies.
 type CreateBudgetFolderRequest struct {
@@ -279,10 +257,6 @@ func (r OrderBudgetFolderListRequest) Validate() error {
 // OrderBudgetFolderListResult is empty.
 type OrderBudgetFolderListResult struct{}
 
-// ---------------------------------------------------------------------------
-// envelopes
-// ---------------------------------------------------------------------------
-
 // CreateEnvelopeRequest creates an envelope (+ its budget element).
 type CreateEnvelopeRequest struct {
 	BudgetId   string   `json:"budgetId"`
@@ -335,10 +309,6 @@ func (r DeleteEnvelopeRequest) Validate() error {
 
 // DeleteEnvelopeResult is empty.
 type DeleteEnvelopeResult struct{}
-
-// ---------------------------------------------------------------------------
-// access
-// ---------------------------------------------------------------------------
 
 // GrantAccessRequest grants a user access to a budget.
 type GrantAccessRequest struct {
@@ -395,14 +365,10 @@ func (r RevokeAccessRequest) Validate() error {
 // RevokeAccessResult is empty.
 type RevokeAccessResult struct{}
 
-// ---------------------------------------------------------------------------
-// accounts / element currency / limit / move
-// ---------------------------------------------------------------------------
-
 // ExcludeAccountRequest / IncludeAccountRequest toggle an account in the budget.
 // The request field for the budget id is "id" (not "budgetId") — the exclude/
-// include forms + DTOs use $dto->id for the budget. Validation reports the blank
-// field under "id" to match Symfony.
+// include forms carry the budget under "id", and validation reports the blank
+// field under "id" to match the frozen wire contract.
 type ExcludeAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
@@ -464,8 +430,8 @@ type SetLimitResult struct{}
 
 // MoveElementListItem is one element move/reorder instruction. The wire shape is
 // {id, position, folderId?} — the element is identified by its EXTERNAL id alone
-// (no type); PHP keys $affectedElements by $item->id and matches the budget
-// element whose external id equals it (first-seen wins).
+// (no type), matched against the budget element whose external id equals it
+// (first-seen wins).
 type MoveElementListItem struct {
 	Id       string  `json:"id"`
 	FolderId *string `json:"folderId"`
@@ -484,10 +450,6 @@ func (r MoveElementListRequest) Validate() error {
 
 // MoveElementListResult is empty.
 type MoveElementListResult struct{}
-
-// ---------------------------------------------------------------------------
-// get-transaction-list
-// ---------------------------------------------------------------------------
 
 // GetTransactionListRequest is the budget transaction-list query.
 type GetTransactionListRequest struct {
@@ -531,12 +493,8 @@ type GetBudgetTransactionListResult struct {
 	Items []BudgetTransactionResult `json:"items"`
 }
 
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-
-// validateBlank returns a ValidationError listing every blank field, matching
-// the Symfony NotBlank message.
+// validateBlank returns a ValidationError listing every blank field with the
+// frozen "This value should not be blank." message.
 func validateBlank(fields map[string]string) error {
 	var fe []errs.FieldError
 	for key, val := range fields {

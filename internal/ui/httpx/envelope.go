@@ -13,16 +13,14 @@ import (
 	"net/http"
 )
 
-// okEnvelope is the success response.
 type okEnvelope struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
 	Data    any    `json:"data"`
 }
 
-// errEnvelope is the error response (validation / handled HTTP errors).
-// Errors is a map field-name -> messages (see package doc). The key is always
-// present, even when empty.
+// errEnvelope is the handled-error response. Errors is a map field-name ->
+// messages (see package doc); the key is always present, even when empty.
 type errEnvelope struct {
 	Success bool                `json:"success"`
 	Message string              `json:"message"`
@@ -50,16 +48,13 @@ func writeJSON(w http.ResponseWriter, httpCode int, payload any) {
 	_ = enc.Encode(payload)
 }
 
-// OK writes a 200 success envelope wrapping data.
 func OK(w http.ResponseWriter, data any) {
 	writeJSON(w, http.StatusOK, okEnvelope{Success: true, Message: "", Data: data})
 }
 
 // Raw writes a 200 with the payload serialized AT THE TOP LEVEL — no
-// {success,message,data} envelope. This mirrors the few PHP controllers that
-// return `new JsonResponse($result)` directly instead of going through
-// ResponseFactory: the login endpoint (LoginUserV1Controller) emits the raw
-// {token,user} object, and the Vue SPA reads response.token off the top level
+// {success,message,data} envelope. The login endpoint emits the raw {token,user}
+// object this way, and the SPA reads response.token off the top level
 // (web/src/stores/users.ts), so wrapping it would break login.
 func Raw(w http.ResponseWriter, payload any) {
 	writeJSON(w, http.StatusOK, payload)
@@ -77,11 +72,10 @@ func Err(w http.ResponseWriter, message string, code int, errors map[string][]st
 	writeJSON(w, httpCode, errEnvelope{Success: false, Message: message, Code: code, Errors: errors})
 }
 
-// accessDeniedEnvelope is the 403 response. PHP renders it via
-// ResponseFactory::createErrorResponse(msg, code, [], HTTP_FORBIDDEN) — note the
-// errors argument is an empty PHP ARRAY, which serializes as [] (NOT the {} that
-// the validation path's field-map produces). The message is the domain
-// exception's own message, which for resource-ownership denials is empty.
+// accessDeniedEnvelope is the 403 response. Its errors field is an empty ARRAY,
+// serializing as [] — NOT the {} that the validation path's field-map produces;
+// this asymmetry is frozen wire contract. The message is the domain error's own
+// message, which for resource-ownership denials is empty.
 type accessDeniedEnvelope struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
@@ -89,9 +83,8 @@ type accessDeniedEnvelope struct {
 	Errors  []any  `json:"errors"`
 }
 
-// AccessDenied writes the 403 envelope: errors serialized as [] (an empty array,
-// matching PHP), message taken verbatim from the domain error (empty for bare
-// ownership denials).
+// AccessDenied writes the 403 envelope: errors serialized as [] (an empty array),
+// message taken verbatim from the domain error (empty for bare ownership denials).
 func AccessDenied(w http.ResponseWriter, message string) {
 	writeJSON(w, http.StatusForbidden, accessDeniedEnvelope{
 		Success: false, Message: message, Code: 0, Errors: []any{},

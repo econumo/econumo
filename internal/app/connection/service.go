@@ -1,8 +1,7 @@
 // Service wiring for the connection module: the use-case orchestrator, its
 // dependency seams (the AccountAccessRepository, the folder/options ports needed
-// to mirror the PHP side effects, and the user-embed lookup), the constructor,
-// and shared helpers. Individual use cases live in sibling files (setaccess.go,
-// revoke.go, read.go).
+// for the access side effects, and the user-embed lookup), the constructor, and
+// shared helpers.
 package connection
 
 import (
@@ -74,9 +73,9 @@ type Service struct {
 }
 
 // NewService wires the connection service. invites backs the generate/accept/
-// delete-invite + delete-connection flows (the endpoints EconumoCloudBundle
-// enables). budgetAccess drops budget sharing on delete-connection; it may be
-// nil (delete-connection then only unwinds account access + the connection link).
+// delete-invite + delete-connection flows (the cloud-edition endpoints).
+// budgetAccess drops budget sharing on delete-connection; it may be nil
+// (delete-connection then only unwinds account access + the connection link).
 func NewService(
 	access domconnection.AccountAccessRepository,
 	invites domconnection.InviteRepository,
@@ -94,7 +93,7 @@ func NewService(
 }
 
 // parseID converts a primitive id string to a vo.Id, surfacing a validation
-// error (matching the PHP `new Id($s)` invalid-uuid path).
+// error on an invalid UUID.
 func parseID(field, s string) (vo.Id, error) {
 	id, err := vo.ParseId(s)
 	if err != nil {
@@ -106,8 +105,7 @@ func parseID(field, s string) (vo.Id, error) {
 }
 
 // requireOwnerAdmin checks the requesting user may UPDATE the account: they own
-// it, or they hold an admin grant on it. Mirrors PHP
-// AccountAccessService::canUpdateAccount. Returns AccessDenied otherwise.
+// it, or they hold an admin grant on it. Returns AccessDenied otherwise.
 func (s *Service) requireOwnerAdmin(ctx context.Context, userID, accountID vo.Id) error {
 	owner, err := s.access.AccountOwner(ctx, accountID)
 	if err != nil {

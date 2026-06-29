@@ -1,6 +1,3 @@
-// Package budget wires the budget module's HTTP edge: the /api/v1/budget/*
-// endpoints, all JWT-protected. Each handler is a thin adapter (decode + tier-1
-// Validate, pull userID, call the service, emit the frozen envelope).
 package budget
 
 import (
@@ -16,13 +13,11 @@ import (
 
 var _ = apidoc.JsonResponseOk{}
 
-// Handlers holds the budget service and the dev flag.
 type Handlers struct {
 	svc *appbudget.Service
 	dev bool
 }
 
-// NewHandlers constructs the handler set.
 func NewHandlers(svc *appbudget.Service, dev bool) *Handlers {
 	return &Handlers{svc: svc, dev: dev}
 }

@@ -22,8 +22,6 @@ import (
 	domuser "github.com/econumo/econumo/internal/domain/user"
 )
 
-// --- UserLookup ---
-
 type userRepo interface {
 	GetByID(ctx context.Context, id vo.Id) (*domuser.User, error)
 	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
@@ -82,8 +80,6 @@ func (l *UserLookup) SetActiveBudget(ctx context.Context, userID, budgetID vo.Id
 	return l.users.Save(ctx, u)
 }
 
-// --- AccountLookup ---
-
 type accountRepo interface {
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*domaccount.Account, error)
 	GetByID(ctx context.Context, id vo.Id) (*domaccount.Account, error)
@@ -100,11 +96,10 @@ var _ appbudget.AccountLookup = (*AccountLookup)(nil)
 func NewAccountLookup(accounts accountRepo) *AccountLookup { return &AccountLookup{accounts: accounts} }
 
 // AccountsForOwners returns the accounts OWNED by the given users. Budget
-// membership is owner-only: PHP BudgetFiltersBuilder uses
-// AccountRepository::findByOwnersIds (a.user IN :users), NOT the own+shared
-// "available" set. ListAvailable returns own + shared accounts, so we filter to
-// accounts actually owned by one of the participants — otherwise shared accounts
-// inflate the budget's start balance.
+// membership is owner-only (a.user IN :users), NOT the own+shared "available"
+// set. ListAvailable returns own + shared accounts, so we filter to accounts
+// actually owned by one of the participants — otherwise shared accounts inflate
+// the budget's start balance.
 func (l *AccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.AccountView, error) {
 	owners := make(map[string]bool, len(userIDs))
 	for _, uid := range userIDs {
@@ -119,7 +114,7 @@ func (l *AccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) 
 		}
 		for _, a := range accts {
 			if !owners[a.UserId().String()] {
-				continue // shared-with-participant but not owned by one (PHP findByOwnersIds)
+				continue // shared with a participant but not owned by one
 			}
 			if seen[a.Id().String()] {
 				continue
@@ -141,8 +136,6 @@ func (l *AccountLookup) AccountOwner(ctx context.Context, accountID vo.Id) (vo.I
 	}
 	return a.UserId(), nil
 }
-
-// --- MetadataLookup ---
 
 type categoryRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*domcategory.Category, error)

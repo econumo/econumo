@@ -16,7 +16,7 @@ import (
 )
 
 // passwordCodeBytes is the random byte count for a reset code; hex-encoded it
-// yields a 12-character code (matching the PHP UserPasswordRequestCode length).
+// yields the frozen 12-character code length.
 const passwordCodeBytes = 6
 
 // generatePasswordCode returns a fresh 12-char hex reset code.
@@ -28,7 +28,6 @@ func generatePasswordCode() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// isNotFound reports whether err is the domain NotFound error.
 func isNotFound(err error) bool {
 	var nf *errs.NotFoundError
 	return errors.As(err, &nf)
@@ -52,8 +51,7 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req UpdatePa
 
 // RemindPassword issues a password-reset code: it replaces the user's existing
 // codes with a fresh one (10-min expiry) and emails it. A missing user is hidden
-// (returns success) to avoid account enumeration, matching PHP. Ports
-// PasswordUserReminderService::remindPassword.
+// (returns success) to avoid account enumeration.
 func (s *Service) RemindPassword(ctx context.Context, req RemindPasswordRequest) (*RemindPasswordResult, error) {
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
@@ -89,7 +87,7 @@ func (s *Service) RemindPassword(ctx context.Context, req RemindPasswordRequest)
 
 // ResetPassword validates the (email, code) reset request, and on success sets
 // the new password and consumes the code. An unknown user/code yields a generic
-// validation error; an expired code yields "The code is expired" (matching PHP).
+// validation error; an expired code yields the frozen "The code is expired".
 func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (*ResetPasswordResult, error) {
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))

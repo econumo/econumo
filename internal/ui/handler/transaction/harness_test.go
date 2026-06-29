@@ -1,9 +1,7 @@
 package transaction_test
 
-// HTTP test harness for the transaction module: fresh in-memory sqlite, real
-// migrations, seeded user + currency + folder + account, the REAL router with
-// the transaction RegisterAPI behind real JWT. The transaction service depends
-// on the account service (for the embed + access), so both are wired here.
+// The transaction service depends on the account service (for the embed + access
+// checks), so both are wired here.
 
 import (
 	"bytes"
@@ -86,10 +84,9 @@ func newHarness(t *testing.T) *harness {
 
 	txm := backend.NewTxManager(db)
 
-	// Seed via the shared fixture builder over the same DB handle.
 	f := fixture.New(t, &dbtest.DB{Raw: db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
 	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
-	// folder + account + a category (for non-transfer transactions).
+	// A category is needed for non-transfer transactions.
 	f.Folder(fixture.Folder{ID: folderID, UserID: seedUserID, Name: "Main"})
 	f.Account(fixture.Account{ID: accountID, UserID: seedUserID, CurrencyID: usdID, Name: "Cash"})
 	f.AccountInFolder(folderID, accountID)
@@ -195,9 +192,8 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 }
 
 // errorsMap decodes the validation-form errors object (field -> messages).
-// Access-denied / exception responses emit an empty array ([]) instead, which
-// leaves the returned map empty. Added because the access-denied envelope's
-// errors is [] (PHP shape), which won't unmarshal into a map.
+// Access-denied / exception responses emit an empty array ([]) instead of an
+// object, which won't unmarshal into a map and leaves the result empty.
 func (e envelope) errorsMap() map[string][]string {
 	m := map[string][]string{}
 	if len(e.Errors) > 0 {

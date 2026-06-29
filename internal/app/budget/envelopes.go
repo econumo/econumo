@@ -8,7 +8,7 @@ import (
 )
 
 // CreateEnvelope creates an envelope + its budget element, assigns categories,
-// and returns the new element (canUpdate). New envelope: zero budgeted/spent.
+// and returns the new element (canUpdate). A new envelope has zero budgeted/spent.
 func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEnvelopeRequest) (*CreateEnvelopeResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
@@ -40,16 +40,16 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEn
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
-	// PHP creates the envelope element at position 0 (the front of its group) and
-	// then runs restoreElementsOrder, which renumbers the rest. The RESPONSE
-	// reports the element's position as created (0) — the assembler reads the
-	// just-created element before restore mutates the freshly-reloaded rows.
+	// The new envelope element is created at position 0 (the front of its group);
+	// restoreElementsOrder then renumbers the rest. The response reports position 0
+	// because it is built from the just-created element, before restore mutates the
+	// reloaded rows.
 	const newPosition = 0
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		// PHP shifts existing same-group (same folder) elements up by one to free
-		// position 0 for the new envelope, so the new element is the unique
-		// position-0 row in its group before restoreElementsOrder runs.
+		// Shift existing same-group (same folder) elements up by one to free
+		// position 0, so the new element is the unique position-0 row in its group
+		// before restoreElementsOrder runs.
 		if serr := s.shiftElements(txCtx, b, folderID, newPosition, now); serr != nil {
 			return serr
 		}
@@ -120,7 +120,6 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 		if serr := s.repo.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		// element: update display currency.
 		el, eerr := s.repo.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
 			el.UpdateCurrency(&curID, now)
@@ -130,7 +129,7 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 			position = el.Position()
 			folderID = el.FolderId()
 		}
-		// replace category assignments.
+		// Replace category assignments.
 		existing, cerr := s.repo.EnvelopeCategoryIDs(txCtx, envelopeID)
 		if cerr != nil {
 			return cerr
@@ -214,8 +213,7 @@ func nextElementPosition(b *budgetAggregate) int {
 
 // newEnvelopeElementResult builds the ParentElementResult for a freshly
 // created/updated envelope (no spending yet -> zero money fields). children are
-// the envelope's category children (also zero spending), matching PHP's
-// assembleEnvelope.
+// the envelope's category children (also zero spending).
 func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, folderID *vo.Id, position int, archived bool, children []ChildElementResult) ParentElementResult {
 	var fid *string
 	if folderID != nil {
@@ -234,8 +232,8 @@ func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, fol
 }
 
 // envelopeChildren resolves a set of category ids to the response child shape
-// (category metadata + zero spending), matching PHP's assembleEnvelope. Order
-// follows the requested category ids; the API comparison is order-insensitive.
+// (category metadata + zero spending). Order follows the requested category ids;
+// the API comparison is order-insensitive.
 func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, categoryIDs []string) ([]ChildElementResult, error) {
 	if len(categoryIDs) == 0 {
 		return []ChildElementResult{}, nil
@@ -252,7 +250,7 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	}
 	byID := map[string]CategoryMeta{}
 	for _, c := range cats {
-		if c.IsIncome { // eligibility = expense-only participant categories (getCategories)
+		if c.IsIncome { // only expense categories are eligible participants
 			continue
 		}
 		byID[c.ID] = c

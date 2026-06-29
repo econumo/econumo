@@ -22,7 +22,6 @@ import (
 	"github.com/resend/resend-go/v3"
 )
 
-// Message is one email to send.
 type Message struct {
 	From    string
 	To      string
@@ -31,7 +30,6 @@ type Message struct {
 	Text    string
 }
 
-// Mailer sends a Message.
 type Mailer interface {
 	Send(ctx context.Context, msg Message) error
 }

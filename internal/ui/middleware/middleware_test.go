@@ -24,8 +24,6 @@ func okHandler(ran *bool) http.Handler {
 	})
 }
 
-// --- RequestID ---
-
 func TestRequestID_SetsHeaderAndContext(t *testing.T) {
 	var ctxID string
 	h := RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +65,6 @@ func TestRequestID_IsUUIDv7(t *testing.T) {
 		t.Fatalf("X-Request-Id version=%d want 7 (uuidv7)", u.Version())
 	}
 }
-
-// --- Recover ---
 
 func TestRecover_PanicYields500Exception(t *testing.T) {
 	panicking := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -124,8 +120,6 @@ func TestRecover_NoPanicPassesThrough(t *testing.T) {
 		t.Fatalf("ran=%v code=%d want true/200", ran, rec.Code)
 	}
 }
-
-// --- CORS ---
 
 func TestCORS_Preflight_ShortCircuits(t *testing.T) {
 	var ran bool
@@ -210,8 +204,6 @@ func TestCORS_DisallowedOriginGetsNoHeaders(t *testing.T) {
 	}
 }
 
-// --- Timezone ---
-
 func TestTimezone_ValidHeaderParsedIntoContext(t *testing.T) {
 	var loc *time.Location
 	h := Timezone(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -255,8 +247,6 @@ func TestLocationFromCtx_AbsentIsUTC(t *testing.T) {
 		t.Fatalf("LocationFromCtx(empty)=%v want UTC", got)
 	}
 }
-
-// --- JWT ---
 
 // stubVerifier returns fixed claims / error for the JWT middleware tests.
 type stubVerifier struct {
@@ -361,8 +351,6 @@ func TestUserIDFromCtx_Absent(t *testing.T) {
 		t.Fatal("UserIDFromCtx(empty) reported present")
 	}
 }
-
-// --- Chain ordering ---
 
 func TestChain_OuterToInnerOrder(t *testing.T) {
 	var order []string

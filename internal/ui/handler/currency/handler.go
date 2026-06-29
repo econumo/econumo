@@ -1,10 +1,4 @@
-// Package currency wires the currency module's HTTP edge: the two read endpoints
-// (get-currency-list, get-currency-rate-list) plus the route registration func.
-// Both are JWT-protected GET reads with no request body.
-//
-// Each handler is a thin adapter: pull the authenticated user id from the
-// request context (middleware.UserIDFromCtx), call the read service, and emit
-// the frozen envelope via httpx.OK / httpx.WriteError. No business logic here.
+// Package currency wires the currency module's HTTP edge.
 package currency
 
 import (
@@ -18,18 +12,14 @@ import (
 	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
-// _ references the apidoc envelope schemas so the swaggo annotations resolve the
-// apidoc import alias during swag init. No runtime effect.
+// _ keeps the apidoc import alias visible to swag's annotation parser.
 var _ = apidoc.JsonResponseOk{}
 
-// Handlers holds the read-side service and the dev flag (for the 500 envelope's
-// stack trace). The currency module is read-only, so there is no write service.
 type Handlers struct {
 	read *appcurrency.ReadService
 	dev  bool
 }
 
-// NewHandlers constructs the handler set.
 func NewHandlers(read *appcurrency.ReadService, dev bool) *Handlers {
 	return &Handlers{read: read, dev: dev}
 }

@@ -26,8 +26,6 @@ type listResult struct {
 	Items []connItem `json:"items"`
 }
 
-// --- invites + delete-connection (ported from EconumoCloudBundle) ---
-
 // inviteResult is the {item:{code,expiredAt}} generate-invite response.
 type inviteResult struct {
 	Item struct {
@@ -186,8 +184,6 @@ func TestDeleteConnection_Self_400(t *testing.T) {
 	}
 }
 
-// --- set-account-access ---
-
 func TestSetAccountAccess_GrantsToConnectedUser(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t, ownerUserID, ownerEmail)
@@ -265,8 +261,6 @@ func TestSetAccountAccess_Blank_400(t *testing.T) {
 	}
 }
 
-// --- revoke-account-access ---
-
 func TestRevokeAccountAccess_RemovesGrantAndCleansUp(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t, ownerUserID, ownerEmail)
@@ -294,15 +288,13 @@ func TestRevokeAccountAccess_RemovesGrantAndCleansUp(t *testing.T) {
 func TestRevokeAccountAccess_Missing_400(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t, ownerUserID, ownerEmail)
-	// No grant exists -> domain NotFound. The Go error map sends NotFound -> 400
-	// (documented convention; PHP's bare NotFoundException is unhandled -> 500).
+	// No grant exists -> domain NotFound, which the error map sends as 400
+	// (documented convention).
 	status, _ := h.do(t, http.MethodPost, "/api/v1/connection/revoke-account-access", tok, map[string]any{"accountId": ownerAccount, "userId": guestUserID})
 	if status != http.StatusBadRequest {
 		t.Fatalf("status=%d want 400 (no grant to revoke)", status)
 	}
 }
-
-// --- get-connection-list ---
 
 func TestGetConnectionList_ReflectsSharedAccounts(t *testing.T) {
 	h := newHarness(t)

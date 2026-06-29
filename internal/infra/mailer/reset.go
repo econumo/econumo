@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-// resetSubject mirrors translations/messages.en.yaml
-// email.reset_password_confirmation_code.subject.
 const resetSubject = "Reset password confirmation code"
 
 // ResetSender builds and sends the password-reset confirmation-code email. It

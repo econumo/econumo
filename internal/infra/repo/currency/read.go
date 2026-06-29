@@ -2,8 +2,7 @@
 // LatestCurrencyRateListView run purpose-built read queries and return the
 // app-layer view-row types directly (so they satisfy app/currency.ReadModel with
 // no bridging adapter). The rate's published date is formatted "Y-m-d 00:00:00"
-// here, at the edge of persistence (matching the PHP CurrencyRate publishedAt
-// which is built from the DATE at midnight).
+// here, at the edge of persistence (the stored value is the DATE at midnight).
 //
 // Reads run through TxManager.Querier(ctx); these endpoints are not wrapped in a
 // WithTx, so they run on the pooled connection.
@@ -91,9 +90,9 @@ func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]appcurrenc
 		out = append(out, appcurrency.CurrencyRateViewRow{
 			CurrencyID:     rt.CurrencyID,
 			BaseCurrencyID: rt.BaseCurrencyID,
-			// Normalize the NUMERIC(19,8) string to the PHP DecimalNumber wire
+			// Normalize the NUMERIC(19,8) string to the canonical decimal wire
 			// form (trailing zeros trimmed). PostgreSQL returns "0.92000000";
-			// SQLite affinity returns "0.92"; both must render PHP-identically.
+			// SQLite affinity returns "0.92"; both must render identically.
 			Rate: vo.NewDecimal(rt.Rate).String(),
 			// PublishedAt is the rate DATE at midnight, rendered Y-m-d H:i:s.
 			UpdatedAt: rt.PublishedAt.Format(datetime.Layout),
@@ -101,8 +100,6 @@ func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]appcurrenc
 	}
 	return out, nil
 }
-
-// --- engine adapters -------------------------------------------------------
 
 type sqliteReadQuerier struct{}
 

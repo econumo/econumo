@@ -21,10 +21,10 @@ func createReq(id, name string) map[string]any {
 	return map[string]any{"id": id, "name": name}
 }
 
-// createTag creates a tag via the API endpoint and returns the server-minted
-// entity id. The request id is the operation/idempotency id only; the server
-// mints a fresh entity id (a different UUIDv7), so follow-up operations must use
-// the returned id rather than the request id.
+// createTag creates a tag via the API and returns the server-minted entity id.
+// The request id is the operation/idempotency id only; the server mints a fresh
+// entity id (a different UUIDv7), so follow-up operations must use the returned
+// id rather than the request id.
 func createTag(t *testing.T, h *harness, token, opID, name string) string {
 	t.Helper()
 	_, env := h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(opID, name))
@@ -35,7 +35,6 @@ func createTag(t *testing.T, h *harness, token, opID, name string) string {
 	return res.Item.ID
 }
 
-// itemWrapper / itemsWrapper are the {item} / {items} data shapes.
 type itemWrapper struct {
 	Item tagItem `json:"item"`
 }
@@ -55,7 +54,6 @@ func TestCreateTag_Success(t *testing.T) {
 		t.Fatalf("success=false; body: %s", env.raw)
 	}
 
-	// Exact data keys: must be {item: {...}}.
 	var probe map[string]json.RawMessage
 	if err := json.Unmarshal(env.Data, &probe); err != nil {
 		t.Fatalf("decode data: %v; body: %s", err, env.raw)
@@ -66,7 +64,6 @@ func TestCreateTag_Success(t *testing.T) {
 
 	res := mustUnmarshal[itemWrapper](t, env.Data)
 	it := res.Item
-	// The server mints a fresh entity id distinct from the request (operation) id.
 	if it.ID == "" || it.ID == tagID1 {
 		t.Fatalf("item.id = %q, want a fresh server id (non-empty and != %q)", it.ID, tagID1)
 	}
@@ -89,7 +86,7 @@ func TestCreateTag_Success(t *testing.T) {
 		t.Fatalf("item.updatedAt = %q, want 2006-01-02 15:04:05", it.UpdatedAt)
 	}
 
-	// The tag result must NOT carry a type or icon field (unlike category).
+	// The tag result must NOT carry a type or icon field.
 	itemObj := mustObject(t, probe["item"])
 	if _, ok := itemObj["type"]; ok {
 		t.Fatalf("tag item must not have a type field; body: %s", env.raw)
@@ -149,7 +146,6 @@ func TestCreateTag_DuplicateName_400(t *testing.T) {
 	if st, env := h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID1, "#dup")); st != http.StatusOK {
 		t.Fatalf("first create status = %d; body: %s", st, env.raw)
 	}
-	// A different id but the same name -> rejected by the uniqueness check.
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID2, "#dup"))
 	if status != http.StatusBadRequest {
 		t.Fatalf("duplicate-name create status = %d, want 400; body: %s", status, env.raw)
@@ -175,7 +171,6 @@ func TestCreateTag_DuplicateId_Idempotency_400(t *testing.T) {
 	if st, env := h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID1, "#first")); st != http.StatusOK {
 		t.Fatalf("first create status = %d; body: %s", st, env.raw)
 	}
-	// Same request id again (different name) -> rejected by the operation-id guard.
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/create-tag", token, createReq(tagID1, "#other"))
 	if status != http.StatusBadRequest {
 		t.Fatalf("duplicate-id create status = %d, want 400; body: %s", status, env.raw)
@@ -199,7 +194,6 @@ func TestUpdateTag_ChangesName(t *testing.T) {
 		t.Fatalf("returned name = %q, want #groceries", res.Item.Name)
 	}
 
-	// Verify persistence via get-tag-list.
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/tag/get-tag-list", token, nil)
 	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
 	if len(list.Items) != 1 || list.Items[0].Name != "#groceries" {
@@ -214,7 +208,6 @@ func TestUpdateTag_DuplicateName_400(t *testing.T) {
 	h.seedTag(t, tagID1, seedUserID, "#a", 0, false)
 	h.seedTag(t, tagID2, seedUserID, "#b", 1, false)
 
-	// Renaming #b to #a collides.
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/update-tag", token, map[string]any{
 		"id": tagID2, "name": "#a",
 	})
@@ -248,7 +241,6 @@ func TestArchiveTag_ThenListShowsArchived(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("archive status = %d, want 200; body: %s", status, env.raw)
 	}
-	// archive-tag returns empty data ({}).
 	if string(env.Data) != "{}" {
 		t.Fatalf("archive data = %s, want empty object {}", env.Data)
 	}
@@ -260,7 +252,6 @@ func TestArchiveTag_ThenListShowsArchived(t *testing.T) {
 		t.Fatalf("list = %+v, want one item (id %s) with isArchived=1", list.Items, id)
 	}
 
-	// Unarchive flips it back; also returns empty data.
 	_, unEnv := h.do(t, http.MethodPost, "/api/v1/tag/unarchive-tag", token, map[string]any{"id": id})
 	if string(unEnv.Data) != "{}" {
 		t.Fatalf("unarchive data = %s, want empty object {}", unEnv.Data)
@@ -280,7 +271,6 @@ func TestOrderTagList_Reorders(t *testing.T) {
 	id2 := createTag(t, h, token, tagID2, "#second") // pos 1
 	id3 := createTag(t, h, token, tagID3, "#third")  // pos 2
 
-	// Reverse: id3 -> 0, id1 -> 2.
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/order-tag-list", token, map[string]any{
 		"changes": []map[string]any{
 			{"id": id3, "position": 0},
@@ -322,7 +312,6 @@ func TestGetTagList_OrderedByPosition(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	// Seed out-of-order positions directly.
 	h.seedTag(t, tagID1, seedUserID, "#c", 2, false)
 	h.seedTag(t, tagID2, seedUserID, "#a", 0, false)
 	h.seedTag(t, tagID3, seedUserID, "#b", 1, true) // archived, still listed
@@ -354,13 +343,11 @@ func TestDeleteTag_RemovesIt(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("delete status = %d, want 200; body: %s", status, env.raw)
 	}
-	// Result data is an empty object ({}).
 	probe := mustObject(t, env.Data)
 	if len(probe) != 0 {
 		t.Fatalf("delete data = %s, want empty object", env.Data)
 	}
 
-	// get-tag-list now empty.
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/tag/get-tag-list", token, nil)
 	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
 	if len(list.Items) != 0 {
@@ -372,7 +359,6 @@ func TestUpdateTag_NotOwned_403(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	// Tag owned by the OTHER user.
 	h.seedTag(t, tagID1, otherUserID, "#theirs", 0, false)
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/update-tag", token, map[string]any{

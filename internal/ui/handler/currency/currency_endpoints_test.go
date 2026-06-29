@@ -63,8 +63,8 @@ func TestGetCurrencyList_UnknownCode_FallsBackToCode(t *testing.T) {
 	token := h.issueToken(t)
 	h.resetCurrencies(t)
 
-	// A code with no Intl entry must fall back to the code itself (matching the
-	// PHP MissingResourceException catch). "ZZZ" is not a real ISO code.
+	// A code with no Intl entry must fall back to the code itself. "ZZZ" is not a
+	// real ISO code.
 	h.seedCurrency(t, usdID, "ZZZ", "?", 0)
 
 	_, env := h.do(t, http.MethodGet, "/api/v1/currency/get-currency-list", token)
@@ -116,8 +116,8 @@ func TestGetCurrencyRateList_LatestDateOnly(t *testing.T) {
 			t.Fatalf("rate baseCurrencyId = %q, want %q", it.BaseCurrencyID, usdID)
 		}
 	}
-	// Rates are normalized to the PHP DecimalNumber wire form (trailing zeros
-	// trimmed): stored "0.92000000" -> "0.92", "95.00000000" -> "95".
+	// Rates are normalized to the decimal wire form (trailing zeros trimmed):
+	// stored "0.92000000" -> "0.92", "95.00000000" -> "95".
 	byCur := map[string]rateItem{}
 	for _, it := range res.Items {
 		byCur[it.CurrencyID] = it

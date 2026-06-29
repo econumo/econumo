@@ -1,9 +1,5 @@
 package currencyrepo_test
 
-// Integration test for the currency RateProvider against a seeded in-memory
-// sqlite: verifies AverageRates snaps the period to the latest rate month and
-// averages each currency's rate, matching a direct SQL AVG.
-
 import (
 	"context"
 	"testing"
@@ -81,12 +77,12 @@ func TestRateProvider_AverageRates_SnapsToLatestMonth(t *testing.T) {
 	}
 }
 
-// TestRateProvider_AverageRates_IncludesFirstOfMonth is the regression for the
-// api-compare finding: a rate published on the FIRST day of the snapped month
-// (stored date-only, e.g. "2026-01-01") must be included in the average. A
-// time.Time lower bound renders as "2026-01-01 00:00:00", which lexically
-// EXCLUDES the date-only row; the query/binding uses date()+'Y-m-d' to include
-// it. Also checks the AVG is rounded to 8 decimals (%.8f), not truncated.
+// TestRateProvider_AverageRates_IncludesFirstOfMonth: a rate published on the
+// FIRST day of the snapped month (stored date-only, e.g. "2026-01-01") must be
+// included in the average. A time.Time lower bound renders as
+// "2026-01-01 00:00:00", which lexically EXCLUDES the date-only row; the query
+// binds via date()+"Y-m-d" to include it. Also checks the AVG is rounded to 8
+// decimals ("%.8f"), not truncated.
 func TestRateProvider_AverageRates_IncludesFirstOfMonth(t *testing.T) {
 	ctx := context.Background()
 	db, txm := setup(t)
@@ -119,7 +115,7 @@ func TestRateProvider_AverageRates_IncludesFirstOfMonth(t *testing.T) {
 }
 
 // TestRateProvider_SnappedRatePeriod verifies the reported budget rate period is
-// the latest-rate month, not the requested period (PHP getLatestDate snap).
+// the latest-rate month, not the requested period.
 func TestRateProvider_SnappedRatePeriod(t *testing.T) {
 	ctx := context.Background()
 	_, txm := setup(t) // seed has latest rate 2026-01-20

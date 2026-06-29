@@ -46,9 +46,8 @@ func TestCreateTransaction_Success_EmbedsAuthorAndAccounts(t *testing.T) {
 	}
 	res := mustUnmarshal[writeResult](t, env.Data)
 	it := res.Item
-	// The entity id is server-minted (NOT the request/operation id txID1); PHP
-	// mints a fresh id via getNextIdentity(). Just assert it is present and
-	// differs from the operation id.
+	// The entity id is server-minted (NOT the request/operation id txID1); assert
+	// it is present and differs from the operation id.
 	if it.ID == "" || it.ID == txID1 || it.Type != "expense" || it.Amount != "42.5" {
 		t.Fatalf("item = %+v, want fresh id != %s, expense/42.5", it, txID1)
 	}
@@ -70,7 +69,7 @@ func TestCreateTransaction_Success_EmbedsAuthorAndAccounts(t *testing.T) {
 
 // The Quasar frontend sends amount/amountRecipient as JSON numbers (it does
 // Number(...) before posting), while the API contract treats them as decimal
-// strings. PHP coerced scalars leniently; Go must accept both. Regression for
+// strings. Both must be accepted. Regression for
 // "json: cannot unmarshal number into Go struct field ...amount of type string".
 func TestCreateTransaction_NumericAmount_Accepted(t *testing.T) {
 	h := newHarness(t)

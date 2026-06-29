@@ -26,7 +26,7 @@ func TestParseLevel(t *testing.T) {
 	}
 }
 
-// TestResolveVerbosity covers the Symfony-compatible aliases and flag stripping.
+// TestResolveVerbosity covers the verbosity-flag aliases and flag stripping.
 func TestResolveVerbosity(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -41,7 +41,7 @@ func TestResolveVerbosity(t *testing.T) {
 		{"-vvv", []string{"app:x", "-vvv"}, 3, false, []string{"app:x"}},
 		{"--verbose", []string{"--verbose", "app:x"}, 1, false, []string{"app:x"}},
 		{"--verbose=2", []string{"app:x", "--verbose=2"}, 2, false, []string{"app:x"}},
-		// Priority, NOT additive: two -v stay verbose (Symfony semantics).
+		// Priority, NOT additive: two -v stay verbose (level is a max, not a count).
 		{"-v -v stays verbose", []string{"app:x", "-v", "-v"}, 1, false, []string{"app:x"}},
 		// Highest flag wins regardless of order.
 		{"mixed -v -vvv", []string{"-v", "app:x", "-vvv"}, 3, false, []string{"app:x"}},

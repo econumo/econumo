@@ -79,7 +79,7 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req AcceptAcce
 		if serr := s.repo.SaveAccess(txCtx, grant); serr != nil {
 			return serr
 		}
-		// Seed the newly-accepted user's category + tag elements (PHP path).
+		// Seed the newly-accepted user's category + tag elements.
 		pos, serr := s.seedCategoryElements(txCtx, userID, budgetID, nextElementPosition(b), now)
 		if serr != nil {
 			return serr

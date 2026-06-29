@@ -16,7 +16,7 @@ func TestDisplayName_KnownCode(t *testing.T) {
 }
 
 func TestDisplayName_UnknownFallsBackToCode(t *testing.T) {
-	// Matches the PHP MissingResourceException catch: return the code itself.
+	// An unknown code returns the code itself.
 	for _, code := range []string{"ZZZ", "", "not-a-code"} {
 		if got := DisplayName(code); got != code {
 			t.Errorf("DisplayName(%q)=%q want fallback to the code", code, got)

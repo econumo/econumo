@@ -1,4 +1,3 @@
-// Order use case: apply position changes to the user's payees.
 package payee
 
 import (
@@ -9,9 +8,8 @@ import (
 
 // OrderPayeeList applies each {id, position} change to the matching payee in the
 // user's AVAILABLE set (own + shared via account access), saving those that
-// changed, then returns the full ordered list. Mirrors PHP's
-// PayeeService::orderPayees, which iterates findAvailableForUserId and updates+
-// saves each named payee (a SHARED payee's position is updated too).
+// changed, then returns the full ordered list. A SHARED payee's position is
+// updated too.
 func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req OrderPayeeListRequest) (*OrderPayeeListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
 	order := make([]string, 0, len(req.Changes))

@@ -11,12 +11,12 @@ import (
 )
 
 // EnsureKeypair is the single key-generation entry point shared by the server
-// (serve, force=false) and the app:generate-jwt-keypair CLI command. It makes a
-// deployment self-sufficient: if the RS256 keypair at privatePath/publicPath does
-// not exist it is generated, so no keys are committed to the repo or baked into
-// the image. It returns the passphrase the caller must pass to New, and whether
-// it actually generated a keypair on this call (false when an existing one was
-// left untouched).
+// (serve, force=false) and the jwt:generate CLI command. It makes a deployment
+// self-sufficient: if the RS256 keypair at privatePath/publicPath does not exist
+// it is generated, so no keys are committed to the repo or baked into the image.
+// It returns the passphrase the caller must pass to New, and whether it actually
+// generated a keypair on this call (false when an existing one was left
+// untouched).
 //
 // Passphrase handling:
 //   - If passphrase is non-empty (ECONUMO_JWT_PASSPHRASE) it is used as-is.

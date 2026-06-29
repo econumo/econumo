@@ -7,12 +7,6 @@ import (
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 )
 
-// pgsqlQuerier implements querier over the pgsql-generated queries. The pgsql
-// row/param structs are field-identical to the canonical (sqlite) types, but Go
-// treats them as distinct types, so this shim field-copies across the boundary.
-// That copy is the entire per-engine cost; there is no shape divergence to
-// reconcile. Like sqliteQuerier it is stateless and binds a fresh *Queries to
-// the caller-supplied DBTX on every call.
 type pgsqlQuerier struct{}
 
 var _ querier = pgsqlQuerier{}

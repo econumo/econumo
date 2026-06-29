@@ -20,27 +20,26 @@ import (
 
 // EncodeService hashes identifiers and reversibly encrypts emails.
 //
-// PHP passes the raw ECONUMO_DATA_SALT straight to openssl_encrypt with
-// "AES-128-CBC". When the salt is longer than the 16-byte AES-128 key, OpenSSL
-// silently uses only its first 16 bytes (verified empirically); a shorter salt
-// is zero-padded to 16. We replicate that: the AES key is the salt coerced to
-// exactly 16 bytes, while the HMAC key and the md5 identifier use the FULL salt
-// (PHP keys hash_hmac and md5 with the whole salt). This keeps real deployments
-// whose salt is not exactly 16 bytes wire-compatible.
+// AES-128-CBC takes a 16-byte key, but the raw ECONUMO_DATA_SALT may be any
+// length. To stay wire-compatible with already-stored emails, an over-long salt
+// is truncated to its first 16 bytes for the AES key and a short one is
+// zero-padded to 16, while the HMAC key and the md5 identifier deliberately use
+// the FULL salt. This asymmetry is part of the frozen data format: existing rows
+// were written this way, so deployments whose salt is not exactly 16 bytes must
+// keep decrypting.
 type EncodeService struct {
 	salt   []byte // full salt: HMAC key + md5 identifier salt
-	aesKey []byte // salt coerced to 16 bytes: the AES-128 key (matches OpenSSL)
+	aesKey []byte // salt coerced to 16 bytes: the AES-128 key
 }
 
-// NewEncodeService constructs the service from the raw data salt.
 func NewEncodeService(salt string) *EncodeService {
 	s := []byte(salt)
 	return &EncodeService{salt: s, aesKey: coerceAESKey(s)}
 }
 
-// coerceAESKey reproduces OpenSSL's handling of an AES-128-CBC key whose length
-// is not exactly 16: take the first 16 bytes, zero-padding if shorter. For an
-// empty salt it returns nil (Encode/Decode short-circuit to passthrough before
+// coerceAESKey forces the salt to the 16-byte AES-128-CBC key length the stored
+// data was encrypted under: take the first 16 bytes, zero-padding if shorter. For
+// an empty salt it returns nil (Encode/Decode short-circuit to passthrough before
 // the key is used, so the value is never consulted).
 func coerceAESKey(salt []byte) []byte {
 	if len(salt) == 0 {

@@ -14,13 +14,10 @@ type Repository interface {
 	// NextIdentity allocates a fresh transaction id.
 	NextIdentity() vo.Id
 
-	// GetByID loads a transaction by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*Transaction, error)
 
-	// Save upserts a transaction. Runs inside WithTx.
 	Save(ctx context.Context, t *Transaction) error
 
-	// Delete removes a transaction by id. Runs inside WithTx.
 	Delete(ctx context.Context, id vo.Id) error
 
 	// ListByAccount returns transactions where the account is source or recipient,

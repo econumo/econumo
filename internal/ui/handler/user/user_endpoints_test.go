@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-// loginResult is the {token, user} login response data.
 type loginResult struct {
 	Token string      `json:"token"`
 	User  currentUser `json:"user"`
@@ -24,9 +23,9 @@ func TestLoginUser_Success(t *testing.T) {
 		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
 	}
 	// Login is the one endpoint that does NOT use the {success,message,data}
-	// envelope: PHP returns `new JsonResponse($result)` and the SPA reads
-	// response.token off the TOP LEVEL. So the body is the raw {token,user}, with
-	// no "success"/"data" keys — assert against env.raw, not env.Data.
+	// envelope: the SPA reads response.token off the TOP LEVEL, so the body is the
+	// raw {token,user} with no "success"/"data" keys — assert against env.raw, not
+	// env.Data.
 	if env.Success || env.Data != nil {
 		t.Fatalf("login must NOT be enveloped (no success/data keys); body: %s", env.raw)
 	}
@@ -272,8 +271,8 @@ func TestLogoutUser_Success(t *testing.T) {
 	if !env.Success {
 		t.Fatalf("success=false; body: %s", env.raw)
 	}
-	// PHP's LogoutUserV1ResultAssembler hard-codes result = 'test', so the data
-	// payload must be {"result":"test"} (NOT {}). Byte-match the reference.
+	// The logout result hard-codes result = "test", so the data payload must be
+	// {"result":"test"} (NOT {}) — a frozen wire value clients rely on.
 	res := mustUnmarshal[struct {
 		Result string `json:"result"`
 	}](t, env.Data)
@@ -333,11 +332,11 @@ func TestUpdateBudget_BadUUID_400(t *testing.T) {
 	}
 }
 
-// TestUpdateReportPeriod_OverwritesCurrencyOption pins PHP's long-standing bug:
-// User::updateReportPeriod writes the period value onto the CURRENCY option (not
-// report_period). As a drop-in replacement Go replicates it: after the call the
-// currency option holds "monthly", the currency_id falls back to USD, and the
-// deprecated reportPeriod field still reads "monthly".
+// TestUpdateReportPeriod_OverwritesCurrencyOption pins a long-standing,
+// intentionally-preserved bug: update-report-period writes the period value onto
+// the CURRENCY option (not report_period). After the call the currency option
+// holds "monthly", the currency_id falls back to USD, and the deprecated
+// reportPeriod field still reads "monthly".
 func TestUpdateReportPeriod_OverwritesCurrencyOption(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
@@ -352,10 +351,10 @@ func TestUpdateReportPeriod_OverwritesCurrencyOption(t *testing.T) {
 		User currentUser `json:"user"`
 	}](t, env.Data)
 
-	// The currency option must now hold the period string (the replicated bug).
+	// The currency option must now hold the period string (the preserved bug).
 	cur, ok := res.User.optionValue("currency")
 	if !ok || cur == nil || *cur != "monthly" {
-		t.Fatalf("currency option = %v (ok=%v), want %q (PHP bug); body: %s", cur, ok, "monthly", env.raw)
+		t.Fatalf("currency option = %v (ok=%v), want %q (preserved bug); body: %s", cur, ok, "monthly", env.raw)
 	}
 	// "monthly" is not a currency code -> currency_id falls back to USD and the
 	// deprecated top-level currency field reads back "USD".

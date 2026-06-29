@@ -24,10 +24,8 @@ type File struct {
 	SQL     string
 }
 
-// SQLite returns the SQLite migrations ordered by version.
 func SQLite() []File { return load(sqliteFS, "sqlite") }
 
-// Pgsql returns the PostgreSQL migrations ordered by version.
 func Pgsql() []File { return load(pgsqlFS, "pgsql") }
 
 func load(fsys embed.FS, dir string) []File {

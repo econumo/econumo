@@ -21,8 +21,8 @@ func createReq(id, name string) map[string]any {
 	return map[string]any{"id": id, "name": name}
 }
 
-// createPayee calls the create-payee endpoint and returns the MINTED entity id
-// from the response (which is NOT equal to the operation/idempotency opID).
+// createPayee calls the create-payee endpoint and returns the minted entity id
+// from the response, which is NOT equal to the operation/idempotency opID.
 func createPayee(t *testing.T, h *harness, token, opID, name string) string {
 	t.Helper()
 	_, env := h.do(t, http.MethodPost, "/api/v1/payee/create-payee", token, createReq(opID, name))
@@ -33,7 +33,6 @@ func createPayee(t *testing.T, h *harness, token, opID, name string) string {
 	return res.Item.ID
 }
 
-// itemWrapper / itemsWrapper are the {item} / {items} data shapes.
 type itemWrapper struct {
 	Item payeeItem `json:"item"`
 }
@@ -88,7 +87,7 @@ func TestCreatePayee_Success(t *testing.T) {
 		t.Fatalf("item.updatedAt = %q, want 2006-01-02 15:04:05", it.UpdatedAt)
 	}
 
-	// The payee result must NOT carry a type or icon field (same as tag).
+	// The payee result must NOT carry a type or icon field.
 	itemObj := mustObject(t, probe["item"])
 	if _, ok := itemObj["type"]; ok {
 		t.Fatalf("payee item must not have a type field; body: %s", env.raw)

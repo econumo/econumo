@@ -8,7 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// _ keeps the apidoc import alias visible to swag's per-file annotation parser.
+// Forces the apidoc import so swag annotations can resolve its envelope schemas.
 var _ = apidoc.JsonResponseError{}
 
 // OrderCategoryList handles POST /api/v1/category/order-category-list (auth).

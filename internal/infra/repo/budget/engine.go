@@ -10,10 +10,10 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// querier is the engine-agnostic budget query surface, expressed in the
-// canonical (sqlite) types. The pgsql adapter converts whole structs where the
-// generated models are field-identical, and field-by-field for the limit
-// row/params (whose column order diverges across engines).
+// querier is the engine-agnostic budget query surface, in the canonical
+// (sqlite) types. The pgsql adapter converts whole structs where the generated
+// models are field-identical, and field-by-field for the limit row/params
+// (whose column order diverges across engines).
 type querier interface {
 	GetBudget(ctx context.Context, db backend.DBTX, id string) (budgetRow, error)
 	ListBudgetsForUser(ctx context.Context, db backend.DBTX, userID string) ([]budgetRow, error)
@@ -54,8 +54,6 @@ type querier interface {
 	DeleteBudgetLimit(ctx context.Context, db backend.DBTX, id string) error
 	DeleteBudgetLimitsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error
 }
-
-// --- sqlite adapter (passthrough) ---
 
 type sqliteQuerier struct{}
 
@@ -177,8 +175,7 @@ func (sqliteQuerier) DeleteBudgetLimitsByBudget(ctx context.Context, db backend.
 	return sqlitegen.New(db).DeleteBudgetLimitsByBudget(ctx, budgetID)
 }
 
-// --- pgsql adapter (whole-struct shim; field-by-field for the limit) ---
-
+// pgsqlQuerier is the whole-struct shim (field-by-field for the limit row/params).
 type pgsqlQuerier struct{}
 
 func (pgsqlQuerier) GetBudget(ctx context.Context, db backend.DBTX, id string) (budgetRow, error) {

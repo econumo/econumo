@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// vectors mirrors testdata/vectors.json (see testdata/gen_vectors.php for how
-// the fixtures were generated). These lock the password hasher and
-// EncodeService to the wire/data format of existing accounts.
+// vectors holds the golden fixtures from testdata/vectors.json that lock the
+// password hasher and EncodeService to the stored data format of existing
+// accounts — changing either would make live account rows unreadable.
 type vectors struct {
 	PasswordHasher []struct {
 		Password string `json:"password"`

@@ -1,11 +1,7 @@
 // Package user is the user aggregate's application layer: the request/result
-// DTOs (with their tier-1 Validate() methods) and the UserService that
-// orchestrates the domain, repository and auth crypto. The service builds and
-// returns the response-shaped *Result directly, and the only entity->DTO
-// conversion is the trivial inline toCurrentUser in service.go.
+// DTOs (with their tier-1 Validate() methods) and the UserService.
 //
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md.
+// JSON field names are frozen to the existing API wire contract; see CLAUDE.md.
 package user
 
 import (
@@ -226,14 +222,14 @@ type CompleteOnboardingResult struct {
 // update-budget
 // ---------------------------------------------------------------------------
 
-// UpdateBudgetRequest is the update-budget request body. The field name is
-// "value" (a budget id), matching PHP UpdateUserBudgetV1RequestDto.
+// UpdateBudgetRequest is the update-budget request body. The wire field name is
+// "value" (a budget id) — frozen, do not rename.
 type UpdateBudgetRequest struct {
 	Value string `json:"value"`
 }
 
-// Validate mirrors PHP UpdateBudgetV1Form: value NotBlank + Uuid. The
-// budget-existence check (-> "Plan not found") is tier 2, in the service.
+// Validate enforces value NotBlank + Uuid. The budget-existence check
+// (-> "Plan not found") is tier 2, in the service.
 func (r UpdateBudgetRequest) Validate() error {
 	if strings.TrimSpace(r.Value) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
@@ -297,10 +293,9 @@ type ResetPasswordResult struct{}
 // logout-user
 // ---------------------------------------------------------------------------
 
-// LogoutResult is the logout response. PHP's LogoutUserV1ResultAssembler sets a
-// dynamic `result = 'test'` property on the (otherwise empty) DTO, so the wire
-// shape is {"result":"test"} — NOT {}. We replicate the exact constant to
-// byte-match the reference backend.
+// LogoutResult is the logout response. The wire shape is the frozen
+// {"result":"test"} — NOT {}; the literal "test" constant is a preserved quirk
+// clients depend on, do not change it.
 type LogoutResult struct {
 	Result string `json:"result"`
 }

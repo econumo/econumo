@@ -2,17 +2,16 @@ package budgetrepo
 
 // reportSQLSqlite / reportSQLPg build the per-account flow report (incomes,
 // transfer_incomes, exchange_incomes, expenses, transfer_expenses,
-// exchange_expenses) over [start, end). Mirrors AccountRepository::getAccountsReport.
+// exchange_expenses) over [start, end).
 // sqlite repeats the start/end positionally (8 pairs); pgsql reuses $1/$2.
 // `in` is the pre-built account-id placeholder list.
 
 func reportSQLSqlite(in string) string {
 	// CAST each aggregate to TEXT so SQLite renders the float SUM with its own
-	// shortest round-trip string (e.g. "19024.7"), matching what PHP's PDO_SQLite
-	// returns for the same scalar query. Scanning the REAL column into a Go float64
-	// first (then formatting at scale 8) accumulates per-row rounding error across
-	// accounts, diverging from PHP (e.g. "19024.69999999"). Returning TEXT keeps
-	// the per-account value exact for the bcmath-style DecimalNumber summation.
+	// shortest round-trip string (e.g. "19024.7"). Scanning the REAL column into a
+	// Go float64 first (then formatting at scale 8) accumulates per-row rounding
+	// error across accounts (e.g. "19024.69999999"). Returning TEXT keeps the
+	// per-account value exact for the decimal summation downstream.
 	return `SELECT a.id as account_id, a.currency_id,
  CAST(COALESCE(incomes,0) AS TEXT) as incomes, CAST(COALESCE(transfer_incomes,0) AS TEXT) as transfer_incomes, CAST(COALESCE(exchange_incomes,0) AS TEXT) as exchange_incomes,
  CAST(COALESCE(expenses,0) AS TEXT) as expenses, CAST(COALESCE(transfer_expenses,0) AS TEXT) as transfer_expenses, CAST(COALESCE(exchange_expenses,0) AS TEXT) as exchange_expenses

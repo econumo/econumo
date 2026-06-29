@@ -7,9 +7,7 @@ import (
 	"strings"
 )
 
-// userCommands returns the user-management subcommands (ports of the PHP
-// CreateUserCommand / ChangeUserEmailCommand / ChangeUserPasswordCommand and the
-// EconumoCloudBundle ActivateUserCommand / DeactivateUsersCommand).
+// userCommands returns the user-management subcommands.
 func userCommands() []command {
 	return []command{
 		{

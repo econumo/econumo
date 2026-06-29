@@ -23,9 +23,8 @@ import (
 
 // container is the CLI composition root: an opened DB plus the services the
 // commands use. It mirrors the constructors server.BuildAPI uses so CLI behavior
-// matches the HTTP API exactly. Unlike the server it does NOT run migrations —
-// the CLI assumes an already-migrated database (the server migrates on boot, and
-// PHP's commands likewise assume a migrated schema).
+// matches the HTTP API exactly. Unlike the server it does NOT run migrations: the
+// CLI assumes an already-migrated database (the server migrates on boot).
 type container struct {
 	db       *sql.DB
 	cfg      config.Config
@@ -73,7 +72,6 @@ func newContainer(ctx context.Context) (*container, error) {
 		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration,
 	)
 
-	// Currency write service + the Open Exchange Rates loader.
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
 	currencySvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
 	loader := openexchangerates.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)

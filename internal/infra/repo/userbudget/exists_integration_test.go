@@ -1,8 +1,5 @@
 package userbudget_test
 
-// Integration tests for the userbudget existence-probe Lookup against a real
-// migrated in-memory SQLite.
-
 import (
 	"context"
 	"testing"

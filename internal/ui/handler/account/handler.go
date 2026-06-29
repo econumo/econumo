@@ -1,7 +1,3 @@
-// Package account wires the account+folder module's HTTP edge: 12 endpoints
-// (5 account + 7 folder) under /api/v1/account/, all JWT-protected. Each handler
-// is a thin adapter (decode + tier-1 Validate, pull userID, call the service,
-// emit the frozen envelope); the service owns all logic.
 package account
 
 import (
@@ -15,17 +11,14 @@ import (
 	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
-// _ references the apidoc envelope schemas so the swag annotations resolve the
-// apidoc import alias. No runtime effect.
+// Forces the apidoc import so swag annotations can resolve its envelope schemas.
 var _ = apidoc.JsonResponseOk{}
 
-// Handlers holds the account+folder service and the dev flag.
 type Handlers struct {
 	svc *appaccount.Service
 	dev bool
 }
 
-// NewHandlers constructs the handler set.
 func NewHandlers(svc *appaccount.Service, dev bool) *Handlers {
 	return &Handlers{svc: svc, dev: dev}
 }

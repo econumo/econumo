@@ -19,17 +19,15 @@ import (
 func WriteError(w http.ResponseWriter, err error, dev bool) {
 	recordError(w, err)
 	if v, ok := errs.AsValidation(err); ok {
-		// PHP's Symfony form layer reports validation failures with the envelope
+		// Frozen wire contract: validation failures always carry the envelope
 		// message "Form validation error" and code 400, regardless of the
-		// per-field messages. Match that wire shape centrally so every endpoint's
-		// validation envelope is byte-identical, rather than relying on each call
-		// site passing the right Msg/code.
+		// per-field messages. Setting it centrally keeps every endpoint's
+		// validation envelope byte-identical instead of relying on each call site.
 		Err(w, "Form validation error", http.StatusBadRequest, fieldsToMap(v.Fields), http.StatusBadRequest)
 		return
 	}
 	if v, ok := errs.AsAccessDenied(err); ok {
-		// 403 with errors:[] (empty ARRAY, not {}) and the domain message verbatim
-		// — matches PHP's HttpApiExceptionListener access-denied branch.
+		// 403 with errors:[] (empty ARRAY, not {}) and the domain message verbatim.
 		AccessDenied(w, v.Msg)
 		return
 	}

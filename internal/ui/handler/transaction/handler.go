@@ -1,7 +1,4 @@
-// Package transaction wires the transaction module's HTTP edge. Ported now:
-// create/update/delete/get-list (5 of 6; import is deferred — it needs the
-// account+folder create paths via findOrCreate; export is a later CSV add). All
-// JWT-protected under /api/v1/transaction/.
+// Package transaction wires the transaction module's HTTP edge.
 package transaction
 
 import (
@@ -17,13 +14,11 @@ import (
 
 var _ = apidoc.JsonResponseOk{}
 
-// Handlers holds the transaction service and the dev flag.
 type Handlers struct {
 	svc *apptransaction.Service
 	dev bool
 }
 
-// NewHandlers constructs the handler set.
 func NewHandlers(svc *apptransaction.Service, dev bool) *Handlers {
 	return &Handlers{svc: svc, dev: dev}
 }

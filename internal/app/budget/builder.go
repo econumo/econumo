@@ -1,9 +1,9 @@
-// The BudgetBuilder: the heaviest read in the rewrite. It assembles the full
+// The BudgetBuilder: the heaviest read in the module. It assembles the full
 // get-budget BudgetResult from the budget aggregate + the financial reports +
 // per-element limits & spending, converting multi-currency amounts through the
-// budget/element currency via the currency convertor. Ports the PHP
-// BudgetBuilder + its 6 sub-builders (Meta/Filters/FinancialSummary/
-// ElementsLimits/ElementsSpending/Structure).
+// budget/element currency via the currency convertor. The work splits into six
+// sub-builders: meta, filters, financial summary, element limits, element
+// spending, and structure.
 package budget
 
 import (
@@ -61,12 +61,12 @@ type AverageRateLookup interface {
 	AverageRates(ctx context.Context, start, end time.Time) ([]domcurrency.FullRate, error)
 	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
 	// latest-rate month <= end, or the requested period when no rate exists).
-	// The currencyRates block reports THIS period, matching PHP.
+	// The currencyRates block reports THIS period.
 	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 }
 
-// filters is the internal filter set the builder derives (PHP BudgetFiltersDto).
+// filters is the internal filter set the builder derives.
 type filters struct {
 	periodStart, periodEnd time.Time
 	userIDs                []vo.Id
@@ -121,7 +121,7 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 	}, nil
 }
 
-// buildMeta ports BudgetMetaBuilder: the access list + a synthetic owner entry.
+// buildMeta builds the access list plus a synthetic owner entry.
 func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (MetaResult, error) {
 	access := make([]AccessResult, 0, len(b.access)+1)
 	for _, a := range b.access {
@@ -154,7 +154,6 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (MetaResult
 	}, nil
 }
 
-// buildFilters ports BudgetFiltersBuilder.
 func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd time.Time) (filters, error) {
 	// userIds = owner + accepted non-reader access users (reader == guest).
 	userIDs := []vo.Id{b.budget.UserId()}
@@ -217,7 +216,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	}
 	catMap := map[string]CategoryMeta{}
 	for _, c := range cats {
-		if !c.IsIncome { // expense only (PHP isExpense)
+		if !c.IsIncome { // expense categories only
 			catMap[c.ID] = c
 		}
 	}

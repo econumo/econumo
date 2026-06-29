@@ -1,4 +1,3 @@
-// Archive / unarchive use cases: toggle the is_archived flag.
 package payee
 
 import (
@@ -9,8 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// ArchivePayee loads the payee, checks ownership (403 otherwise), marks it
-// archived, and returns the refreshed item.
+// ArchivePayee marks the payee archived; ownership failure is a 403.
 func (s *Service) ArchivePayee(ctx context.Context, userID vo.Id, req ArchivePayeeRequest) (*ArchivePayeeResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -24,8 +22,7 @@ func (s *Service) ArchivePayee(ctx context.Context, userID vo.Id, req ArchivePay
 	return &ArchivePayeeResult{}, nil
 }
 
-// UnarchivePayee loads the payee, checks ownership (403 otherwise), clears the
-// archived flag, and returns the refreshed item.
+// UnarchivePayee clears the archived flag; ownership failure is a 403.
 func (s *Service) UnarchivePayee(ctx context.Context, userID vo.Id, req UnarchivePayeeRequest) (*UnarchivePayeeResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

@@ -18,8 +18,6 @@ import (
 	domuser "github.com/econumo/econumo/internal/domain/user"
 )
 
-// --- AccountAccessResolver over the AccountAccess repo ---
-
 // accountAccessFull is the subset of the connection AccountAccess repo used to
 // resolve an account's owner and a connected user's grant role for the
 // create-for-account path (category/tag create with an accountId).
@@ -30,10 +28,9 @@ type accountAccessFull interface {
 
 // AccountAccessResolver answers "who owns this account" and "what role does this
 // user hold on it" — the two questions the category and tag create-for-account
-// paths need to mirror PHP AccountAccessService.checkAddCategory/checkAddTag
-// (== isAdmin) and createCategoryForAccount/createTagForAccount (ownership goes
-// to the account owner). It structurally satisfies the AccountAccess port that
-// the category and tag app services declare.
+// paths need: the add check requires an admin grant, and ownership of the new
+// entity goes to the account owner. It structurally satisfies the AccountAccess
+// port that the category and tag app services declare.
 type AccountAccessResolver struct{ access accountAccessFull }
 
 // NewAccountAccessResolver wraps the connection AccountAccess repo.
@@ -60,8 +57,6 @@ func (r *AccountAccessResolver) GrantRole(ctx context.Context, accountID, userID
 	}
 	return grant.Role(), true, nil
 }
-
-// --- FolderPort over the account FolderRepository ---
 
 // folderRepo is the slice of the account FolderRepository the connection side
 // effects need.
@@ -130,8 +125,6 @@ func (p *FolderPort) RemoveAccount(ctx context.Context, folderID, accountID vo.I
 	return p.folders.RemoveAccount(ctx, folderID, accountID)
 }
 
-// --- OptionPort over the account Repository ---
-
 // optionRepo is the slice of the account Repository the connection side effects
 // need (accounts_options position).
 type optionRepo interface {
@@ -157,8 +150,6 @@ func (p *OptionPort) SavePosition(ctx context.Context, accountID, userID vo.Id, 
 	return p.accounts.SavePosition(ctx, accountID, userID, position, now)
 }
 
-// --- UserLookup over the user repository ---
-
 type userByID interface {
 	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
 }
@@ -183,8 +174,6 @@ func (l *UserLookup) GetOwner(ctx context.Context, userID string) (appconnection
 	}
 	return appconnection.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
-
-// --- SharedAccessLookup over the connection AccountAccess repo ---
 
 // accountAccessLister is the slice of the connection repo the account module's
 // sharedAccess[] embed needs.
@@ -216,8 +205,6 @@ func (l *SharedAccessLookup) ListByAccount(ctx context.Context, accountID vo.Id)
 	return out, nil
 }
 
-// --- AccessRevoker over the connection repo + service ---
-
 // accessRevokerDeps is the slice of the connection repo + service the account
 // module's delete-account non-owner branch needs.
 type accessRevokerDeps interface {
@@ -246,7 +233,7 @@ func NewAccessRevoker(repo accessRevokerDeps, svc ownAccessRevoker) *AccessRevok
 }
 
 // HasAccess reports whether the user owns the account or holds a grant on it
-// (PHP canDeleteAccount = hasAccess).
+// (the delete-account precondition).
 func (a *AccessRevoker) HasAccess(ctx context.Context, userID, accountID vo.Id) (bool, error) {
 	owner, err := a.repo.AccountOwner(ctx, accountID)
 	if err == nil && owner.Equal(userID) {

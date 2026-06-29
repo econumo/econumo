@@ -22,10 +22,9 @@ func createReq(id, name, typ string) map[string]any {
 }
 
 // createCategory POSTs create-category and returns the SERVER-MINTED entity id
-// from the response. The request id is only the operation/idempotency key — PHP
-// (and now Go) ignore it for the entity id and mint a fresh UUIDv7 — so callers
-// that need to update/archive/delete the category must use this returned id, not
-// the request id.
+// from the response. The request id is only the operation/idempotency key — the
+// entity id is a fresh UUIDv7 — so callers that need to update/archive/delete the
+// category must use this returned id, not the request id.
 func createCategory(t *testing.T, h *harness, token, opID, name, typ string) string {
 	t.Helper()
 	_, env := h.do(t, http.MethodPost, "/api/v1/category/create-category", token, createReq(opID, name, typ))
@@ -183,7 +182,7 @@ func TestUpdateCategory_ChangesName(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("update status = %d, want 200; body: %s", status, env.raw)
 	}
-	// update-category returns an EMPTY data object ({}), mirroring PHP's empty DTO.
+	// update-category returns an EMPTY data object ({}).
 	var probe map[string]json.RawMessage
 	if err := json.Unmarshal(env.Data, &probe); err != nil {
 		t.Fatalf("decode data: %v; body: %s", err, env.raw)

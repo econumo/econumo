@@ -6,8 +6,6 @@ import (
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 )
 
-// --- folders ---
-
 // CreateFolder handles POST /api/v1/budget/create-folder.
 //
 // @Summary Create a budget folder
@@ -72,8 +70,6 @@ func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// --- envelopes ---
-
 // CreateEnvelope handles POST /api/v1/budget/create-envelope.
 //
 // @Summary Create an envelope
@@ -121,8 +117,6 @@ func (h *Handlers) DeleteEnvelope(w http.ResponseWriter, r *http.Request) {
 		return h.svc.DeleteEnvelope(c.r.Context(), c.id, req)
 	})
 }
-
-// --- access ---
 
 // GrantAccess handles POST /api/v1/budget/grant-access.
 //
@@ -187,8 +181,6 @@ func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
 		return h.svc.DeclineAccess(c.r.Context(), c.id, req)
 	})
 }
-
-// --- accounts / element currency / limit / move ---
 
 // ExcludeAccount handles POST /api/v1/budget/exclude-account.
 //

@@ -149,7 +149,7 @@ func (r *Repo) DeleteConnection(ctx context.Context, a, b vo.Id) error {
 }
 
 // ConnectUsers creates the symmetric link between two users (both directions),
-// idempotent. Mirrors PHP User::connectUser called on both sides of accept.
+// idempotent.
 func (r *Repo) ConnectUsers(ctx context.Context, a, b vo.Id) error {
 	db := r.db(ctx)
 	if err := r.q.InsertConnectionLink(ctx, db, a.String(), b.String()); err != nil {
@@ -186,8 +186,6 @@ func hydrateAll(rows []accessRow) ([]*domconnection.AccountAccess, error) {
 	}
 	return out, nil
 }
-
-// --- engine adapters ---
 
 type sqliteQuerier struct{}
 

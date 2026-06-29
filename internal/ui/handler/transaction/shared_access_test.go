@@ -1,12 +1,11 @@
 package transaction_test
 
 // Coverage for adding/updating/deleting transactions on accounts SHARED with the
-// caller by another user, across every access level. Mirrors the PHP
-// AccountAccessService rules: write access (add/update/delete transaction) is
-// allowed for the owner and for connected users holding an admin or user grant;
-// a guest grant (or no grant) is denied. Regression for the Go migration having
-// reduced the check to owner-only, which locked shared users out of creating
-// transactions.
+// caller by another user, across every access level. Write access (add/update/
+// delete transaction) is allowed for the owner and for connected users holding an
+// admin or user grant; a guest grant (or no grant) is denied. Regression guard
+// against reducing the check to owner-only, which would lock shared users out of
+// creating transactions.
 
 import (
 	"net/http"
@@ -112,9 +111,7 @@ func TestGetTransactionList_SharedAccount_GuestCanView(t *testing.T) {
 // TestImport_SharedAccount_UserRole_LandsInSharedAccount: a CSV import whose row
 // names an account SHARED with the caller (user-role grant) must import the
 // transaction INTO that shared account, not silently fork a duplicate own
-// account. Regression for the import "single-user reduction" (owner-only
-// CanAddTransaction). importMapping/doImport/importResult live in
-// import_endpoints_test.go (same package).
+// account. Regression guard against an owner-only add-transaction check.
 func TestImport_SharedAccount_UserRole_LandsInSharedAccount(t *testing.T) {
 	h := newHarness(t)
 	h.shareAccount(t, roleUser, true) // ownerTwo owns sharedAcctID, named "Shared"; seed user has a user grant

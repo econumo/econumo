@@ -37,9 +37,9 @@ type structChild struct {
 	subIndex   string // for looking up converted amounts
 }
 
-// buildStructure ports BudgetStructureBuilder: walks envelopes -> tags ->
-// standalone categories, accumulates a toConvert map, runs one bulkConvert, then
-// emits the pruned, sorted parent elements.
+// buildStructure walks envelopes -> tags -> standalone categories, accumulates a
+// toConvert map, runs one bulkConvert, then emits the pruned, sorted parent
+// elements.
 func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (StructureResult, error) {
 	options := s.elementOptions(b)
 	folders := make([]FolderResult, 0, len(b.folders))
@@ -55,8 +55,8 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 
 	zero := vo.NewDecimal("0")
 
-	// envelope/category/tag categories must be resolvable; categories map is
-	// expense-only (PHP filters), so envelope children reference it.
+	// envelope/category/tag categories must be resolvable; the categories map is
+	// expense-only, so envelope children reference it.
 	envelopeCats, err := s.envelopeCategories(ctx, b)
 	if err != nil {
 		return StructureResult{}, err
@@ -109,9 +109,9 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		// before the period, OR a limit assigned (current or carried-over). Without
 		// either it is just one of the user's many unrelated tags and stays hidden.
 		// ("Non-zero available" reduces to budgetedBefore != 0 or spentBefore != 0,
-		// both already covered here.) This intentionally diverges from PHP, which
-		// drops a budgeted-but-unspent tag — making a tag's limit vanish the moment
-		// its last transaction is removed.
+		// both already covered here.) This deliberately keeps a budgeted-but-unspent
+		// tag visible, rather than dropping it the moment its last transaction is
+		// removed and making its limit vanish.
 		if !hasSpending && budgeted.IsZero() && budgetedBefore.IsZero() {
 			continue
 		}
@@ -199,9 +199,8 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		spentBudget := get(fmt.Sprintf("spent-budget_%s", index))
 		spentBefore := get(fmt.Sprintf("spent-before_%s", index))
 
-		// PHP serializes an element's children as an array, so an element with no
-		// children emits "children":[] — never null. Start from a non-nil empty
-		// slice so the JSON matches (a nil slice would marshal to null).
+		// An element with no children must emit "children":[], never null. Start from
+		// a non-nil empty slice so the JSON matches (a nil slice marshals to null).
 		children := []ChildElementResult{}
 		for _, ch := range el.children {
 			subSpent := get(fmt.Sprintf("%s_spent_%s", index, ch.subIndex))
@@ -244,7 +243,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 
 // addSpendingConvert appends the spent / spent-budget / spent-before convert
 // items for a child category under a parent (envelope or tag), keyed both
-// per-child and per-parent (PHP keys both forms).
+// per-child and per-parent.
 func addSpendingConvert(toConvert map[string][]domcurrency.ConvertItem, index, subIndex string, cs *categorySpending, elementCurrency, budgetCurrency vo.Id) {
 	if cs == nil {
 		return

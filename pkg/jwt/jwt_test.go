@@ -16,9 +16,9 @@ import (
 
 // The repo dev keypair lives in the shared testkeys package (embedded, written to
 // a temp file by testkeys.Paths). These tests use it so there is a single home
-// for the keypair. lexik_token.json (the golden token signed with this key by the
-// PHP backend) stays in this package's local testdata. The passphrase is the
-// repo's dev ECONUMO_JWT_PASSPHRASE (not a production secret).
+// for the keypair. testdata/lexik_token.json (a golden token signed with this key)
+// stays in this package's local testdata. The passphrase is the repo's dev
+// ECONUMO_JWT_PASSPHRASE (not a production secret).
 const testPassphrase = testkeys.Passphrase
 
 func newTestJWT(t *testing.T) *JWT {
@@ -68,8 +68,8 @@ func TestIssueVerifyRoundTrip(t *testing.T) {
 	}
 }
 
-// tokenFixture mirrors testdata/lexik_token.json, a token signed with the repo
-// private key by the existing backend (see testdata/gen_jwt.php).
+// tokenFixture mirrors testdata/lexik_token.json, a golden token signed with the
+// repo private key by an external issuer (the cross-compatibility witness).
 type tokenFixture struct {
 	Token    string `json:"token"`
 	Expected struct {

@@ -25,8 +25,6 @@ func (h *harness) seedGrant(t *testing.T, accountID, userID string, role int) {
 	fixture.New(t, h.tdb).AccountAccess(accountID, userID, role)
 }
 
-// TestGetPayeeList_IncludesSharedOwners: own + payees of users who shared an
-// account with this user (PHP PayeeRepository::findAvailableForUserId).
 func TestGetPayeeList_IncludesSharedOwners(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
@@ -52,8 +50,6 @@ func TestGetPayeeList_IncludesSharedOwners(t *testing.T) {
 	}
 }
 
-// TestGetPayeeList_ExcludesUnsharedOwners: without a grant, another user's
-// payees are hidden.
 func TestGetPayeeList_ExcludesUnsharedOwners(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)

@@ -187,8 +187,7 @@ func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req ReplaceFo
 }
 
 // resetFolderPositions renumbers the user's folders to 0..n-1 ordered by their
-// current position (PHP FolderService::resetOrderFolders). Runs inside the
-// caller's tx.
+// current position. Runs inside the caller's tx.
 func (s *Service) resetFolderPositions(ctx context.Context, userID vo.Id) error {
 	folders, err := s.folders.ListByUser(ctx, userID)
 	if err != nil {

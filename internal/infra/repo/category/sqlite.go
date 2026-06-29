@@ -7,10 +7,6 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// sqliteQuerier implements querier over the sqlite-generated queries. Because
-// the canonical types ARE the sqlite types, every method is a direct
-// passthrough. It is stateless: each call binds a fresh *Queries to the
-// caller-supplied DBTX (the pool or the active tx).
 type sqliteQuerier struct{}
 
 var _ querier = sqliteQuerier{}

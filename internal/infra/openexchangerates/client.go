@@ -1,8 +1,8 @@
 // Package openexchangerates is the infra adapter that loads exchange rates from
-// the Open Exchange Rates API for the app:update-currency-rates CLI command. It
-// ports the PHP EconumoToolsBundle CurrencyRatesLoaderService: pick the latest
-// or historical endpoint by date, request the configured base + symbols, and
-// map the response into app/currency.RateInput values keyed by ISO code.
+// the Open Exchange Rates API for the app:update-currency-rates CLI command: it
+// picks the latest or historical endpoint by date, requests the configured base +
+// symbols, and maps the response into app/currency.RateInput values keyed by ISO
+// code.
 package openexchangerates
 
 import (
@@ -54,9 +54,8 @@ type apiResponse struct {
 
 // Load fetches rates for the given date and base currency, limited to symbols
 // (when non-empty). It uses the latest endpoint when date is today, else the
-// historical endpoint, mirroring the PHP loader. The returned rates carry the
-// published date derived from the response timestamp (at midnight UTC), matching
-// PHP's CurrencyRate published_at.
+// historical endpoint. The returned rates carry the published date derived from
+// the response timestamp (at midnight UTC).
 func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols []string) ([]appcurrency.RateInput, error) {
 	if l.token == "" {
 		return nil, fmt.Errorf("OPEN_EXCHANGE_RATES_TOKEN is not set")

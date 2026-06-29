@@ -1,8 +1,6 @@
-// Service wiring: the use-case orchestrator, its dependency seams, the
-// constructor, and the shared private helpers (entity->DTO conversion, the
-// value-object constructors, and the operation-id idempotency helper). The
-// individual use cases live in sibling files (create.go, update.go, archive.go,
-// delete.go, order.go); the pure read lives in read.go.
+// Service wiring for the category module: the use-case orchestrator, its
+// dependency seams, and the shared private helpers (entity->DTO conversion and
+// the value-object constructors).
 package category
 
 import (
@@ -63,18 +61,15 @@ type Service struct {
 
 // NewService wires the category service. read is the own+shared category view
 // (the same ReadModel get-category-list uses); order-category-list returns that
-// full available list, mirroring PHP's OrderCategoryListV1ResultAssembler, which
-// calls findAvailableForUserId (NOT owner-only). access resolves shared-account
-// ownership for create-category-for-account.
+// full available list (own + shared, NOT owner-only). access resolves
+// shared-account ownership for create-category-for-account.
 func NewService(repo domcategory.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
 	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
 }
 
 // resolveAccountOwner returns the user a category created in the context of
 // accountID must be owned by — the account owner. The caller must own the
-// account or hold an admin grant on it (PHP AccountAccessService.checkAddCategory
-// == isAdmin); otherwise AccessDenied. Mirrors createCategoryForAccount, which
-// assigns ownership to the account owner.
+// account or hold an admin grant on it; otherwise AccessDenied.
 func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.Id) (vo.Id, error) {
 	owner, err := s.access.AccountOwner(ctx, accountID)
 	if err != nil {
@@ -93,10 +88,6 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 	return vo.Id{}, errs.NewAccessDenied("Access is not allowed")
 }
 
-// ---------------------------------------------------------------------------
-// shared private helpers used across the use cases
-// ---------------------------------------------------------------------------
-
 // mutate loads the category, checks ownership, applies fn inside a transaction,
 // and saves. It returns the mutated (in-memory) aggregate so the caller can
 // build its result without a second read. Ownership failure -> AccessDenied
@@ -109,8 +100,8 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *domca
 			return err
 		}
 		if !c.UserId().Equal(userID) {
-			// PHP throws a bare AccessDeniedException() here (CategoryService
-			// updateCategory/archive/etc.), so the 403 envelope message is EMPTY.
+			// The 403 envelope message is intentionally EMPTY here (frozen wire
+			// behaviour for the ownership-denied path).
 			return errs.NewAccessDenied("")
 		}
 		fn(c, s.clock.Now())
@@ -150,8 +141,7 @@ func toResult(c *domcategory.Category) CategoryResult {
 // listResults returns the user's AVAILABLE categories (own + shared via account
 // access), ordered by position, in the wire shape — used by order-category-list.
 // It reads through the same own+shared view as get-category-list so the order
-// response carries the full list (PHP's assembler uses findAvailableForUserId,
-// not owner-only).
+// response carries the full list (own + shared, not owner-only).
 func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]CategoryResult, error) {
 	rows, err := s.read.CategoryListView(ctx, userID.String())
 	if err != nil {
@@ -163,10 +153,6 @@ func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]CategoryResu
 	}
 	return items, nil
 }
-
-// ---------------------------------------------------------------------------
-// tier-2 value-object constructors (category-module invariants)
-// ---------------------------------------------------------------------------
 
 // newCategoryName enforces the category name invariant: rune length 3..64. The
 // error message is EXACTLY "Category name must be 3-64 characters" (wire-compat

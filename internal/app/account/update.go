@@ -66,19 +66,18 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 			return serr
 		}
 
-		// reconcile balance: correction = actual - requested (PHP
-		// AccountService::updateBalance -> transactionService.updateBalance with
-		// actualBalance.sub(balance)). A correction of 0 writes nothing.
+		// reconcile balance: correction = actual - requested. A correction of 0
+		// writes nothing.
 		actualStr, berr := s.repo.Balance(ctx, id, s.balanceBefore(ctx))
 		if berr != nil {
 			return berr
 		}
 		diff := vo.NewDecimal(actualStr).Sub(requested)
 		if !diff.IsZero() {
-			// PHP createCorrection sign rule: correction < 0 -> INCOME(1),
-			// else EXPENSE(0). (Opposite of createTransaction.) diff = actual -
-			// requested: diff<0 means the account has less than requested, so add
-			// money (income); diff>0 means it has more, so remove (expense).
+			// Correction sign rule (opposite of a normal transaction): diff =
+			// actual - requested. diff<0 means the account has less than requested,
+			// so add money -> INCOME(1); diff>0 means it has more, so remove ->
+			// EXPENSE(0).
 			corrType := int16(0) // expense
 			if diff.IsNegative() {
 				corrType = 1 // income
@@ -101,10 +100,9 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 			if corrType == 1 {
 				typeAlias = "income"
 			}
-			// Mirror PHP TransactionToDtoResultAssembler exactly: amountRecipient
-			// falls back to amount when null; accountRecipientId/categoryId/payeeId/
-			// tagId are null for a balance correction. author is filled in after the
-			// tx (needs a UserLookup read).
+			// amountRecipient falls back to amount when null; accountRecipientId/
+			// categoryId/payeeId/tagId are null for a balance correction. author is
+			// filled in after the tx (needs a UserLookup read).
 			correction = &CorrectionResult{
 				Id:                 corrID.String(),
 				Type:               typeAlias,
@@ -141,8 +139,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 	if err != nil {
 		return nil, err
 	}
-	// Fill the correction's author (the account owner = the requesting user), to
-	// mirror PHP's TransactionToDtoResultAssembler embedding $transaction->getUser().
+	// Fill the correction's author (the account owner = the requesting user).
 	if correction != nil {
 		owner, oerr := s.users.GetOwner(ctx, userID.String())
 		if oerr != nil {

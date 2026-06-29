@@ -156,8 +156,8 @@ func TestImport_BadDateRow_SkippedWithErrorMap(t *testing.T) {
 func TestImport_MissingMapping_400(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
-	// No account/date mapping and no overrides -> top-level error (still 200 with
-	// an error entry, mirroring PHP's early-return result).
+	// No account/date mapping and no overrides -> top-level error (still 200, with
+	// the failure reported as an error entry rather than an HTTP error status).
 	csv := "Amount\n-10\n"
 	status, env := h.doImport(t, tok, csv, `{"amount":"Amount"}`, nil)
 	if status != http.StatusOK {

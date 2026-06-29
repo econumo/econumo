@@ -14,7 +14,6 @@ type Repository interface {
 	// NextIdentity allocates a fresh account id.
 	NextIdentity() vo.Id
 
-	// GetByID loads an account by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*Account, error)
 
 	// ListAvailable returns the user's non-deleted accounts.
@@ -24,23 +23,16 @@ type Repository interface {
 	// new account's position when no options rows exist).
 	CountAvailable(ctx context.Context, userID vo.Id) (int, error)
 
-	// Save upserts an account row. Runs inside WithTx.
 	Save(ctx context.Context, a *Account) error
 
-	// --- per-user position (accounts_options) ---
-
-	// GetPosition returns the account's position for the given user (the
-	// accounts_options row). missing -> ok=false.
+	// GetPosition returns the account's per-user position. missing -> ok=false.
 	GetPosition(ctx context.Context, accountID, userID vo.Id) (position int16, ok bool, err error)
 
-	// MaxPosition returns the highest accounts_options.position for the user (0
-	// if none).
+	// MaxPosition returns the highest per-user position for the user (0 if none).
 	MaxPosition(ctx context.Context, userID vo.Id) (int16, error)
 
-	// SavePosition upserts an accounts_options row.
+	// SavePosition upserts a per-user position row.
 	SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error
-
-	// --- balance (computed from transactions) ---
 
 	// Balance returns one account's balance as of `before` (exclusive on
 	// spent_at), normalized to the wire decimal form.
@@ -50,10 +42,8 @@ type Repository interface {
 	// `before`, keyed by account id (normalized decimal strings).
 	Balances(ctx context.Context, userID vo.Id, before time.Time) (map[string]string, error)
 
-	// --- balance-correction transaction ---
-
 	// SaveCorrection inserts a balance-correction transaction (type income/expense
-	// by sign; amount is the absolute value). Runs inside WithTx.
+	// by sign; amount is the absolute value).
 	SaveCorrection(ctx context.Context, c Correction) error
 }
 
@@ -70,13 +60,12 @@ type Correction struct {
 	CreatedAt   time.Time
 }
 
-// FolderRepository is the folder aggregate's persistence port (folders +
-// accounts_folders membership).
+// FolderRepository is the folder aggregate's persistence port (folders + their
+// account membership).
 type FolderRepository interface {
 	// NextIdentity allocates a fresh folder id.
 	NextIdentity() vo.Id
 
-	// GetByID loads a folder by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*Folder, error)
 
 	// ListByUser returns the user's folders (unordered; the caller sorts by
@@ -86,10 +75,9 @@ type FolderRepository interface {
 	// CountByUser returns how many folders the user has.
 	CountByUser(ctx context.Context, userID vo.Id) (int, error)
 
-	// Save upserts a folder row.
 	Save(ctx context.Context, f *Folder) error
 
-	// Delete removes a folder row (its accounts_folders rows cascade).
+	// Delete removes a folder row (its membership rows cascade).
 	Delete(ctx context.Context, id vo.Id) error
 
 	// MembershipsByUser returns folderID -> []accountID for the user's folders.

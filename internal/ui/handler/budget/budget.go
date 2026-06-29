@@ -11,9 +11,9 @@ import (
 
 var _ = apidoc.JsonResponseError{}
 
-// handle is the shared adapter: require user, decode+validate the request, call
-// fn, emit the OK envelope (or the mapped error). For GET endpoints with no body
-// pass a zero request type and a Validate() that always passes.
+// handle is the shared adapter: require user, optionally decode+validate the
+// request, call fn, emit the OK envelope (or the mapped error). Pass decode=false
+// for GET endpoints with no body.
 func handle[Req any, Res any](h *Handlers, w http.ResponseWriter, r *http.Request, decode bool, fn func(ctx ctxUser, req Req) (*Res, error)) {
 	userID, ok := h.requireUser(w, r)
 	if !ok {
@@ -34,13 +34,10 @@ func handle[Req any, Res any](h *Handlers, w http.ResponseWriter, r *http.Reques
 	httpx.OK(w, res)
 }
 
-// ctxUser bundles the request context + the authenticated user id.
 type ctxUser struct {
 	r  *http.Request
 	id vo.Id
 }
-
-// --- budget CRUD ---
 
 // CreateBudget handles POST /api/v1/budget/create-budget.
 //
@@ -168,7 +165,6 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 	httpx.OK(w, res)
 }
 
-// optQuery returns nil for an empty query param, else a pointer to it.
 func optQuery(v string) *string {
 	if v == "" {
 		return nil

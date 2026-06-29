@@ -1,6 +1,3 @@
-// Export side: export-transaction-list. Produces CSV rows (a slice of string
-// cells per row, header first) byte-faithful to PHP TransactionService::
-// exportTransactionList + buildExportRows. The handler writes them as text/csv.
 package transaction
 
 import (
@@ -14,10 +11,8 @@ import (
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 )
 
-// crlfRun matches one or more CR/LF characters (PHP preg_replace("/[\r\n]+/")).
 var crlfRun = regexp.MustCompile(`[\r\n]+`)
 
-// exportHeaders is the fixed CSV header row (PHP getExportHeaders).
 var exportHeaders = []string{
 	"transaction_id",
 	"account_name",
@@ -31,7 +26,7 @@ var exportHeaders = []string{
 }
 
 // ExportAccount is one accessible account in the export universe: id, name, and
-// currency code. Mirrors what PHP reads off the Account entity in buildExportRow.
+// currency code.
 type ExportAccount struct {
 	ID           string
 	Name         string
@@ -52,8 +47,7 @@ type ExportLookup interface {
 
 // ExportTransactionList builds the CSV rows for the given user, optionally
 // restricted to a set of account ids (nil = all accessible accounts). The first
-// row is the header. Mirrors TransactionListService::exportTransactionList +
-// TransactionService::exportTransactionList/buildExportRows exactly.
+// row is the header.
 func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accountIDs []vo.Id) ([][]string, error) {
 	// allAccountsById = the user's accessible accounts (own + shared, not
 	// deleted), keyed by id. accountsById = that set intersected with the
@@ -134,9 +128,9 @@ func cachedName(ctx context.Context, cache map[string]string, id vo.Id, fetch fu
 	return v, nil
 }
 
-// buildExportRows emits the 0, 1, or 2 CSV rows for one transaction (PHP
-// buildExportRows): a row on the source account if it is selected, plus a second
-// row on the recipient account if this is a transfer whose recipient is selected.
+// buildExportRows emits the 0, 1, or 2 CSV rows for one transaction: a row on
+// the source account if it is selected, plus a second row on the recipient
+// account if this is a transfer whose recipient is selected.
 func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transaction, selectedByID, allAccountsByID map[string]ExportAccount, names *exportNameCache) ([][]string, error) {
 	var rows [][]string
 	accountID := t.AccountId().String()
@@ -192,9 +186,8 @@ func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transac
 	return rows, nil
 }
 
-// buildExportRow assembles one CSV row in the fixed column order (PHP
-// buildExportRow): id, account_name, account_currency, category, description,
-// tag, payee, amount, date.
+// buildExportRow assembles one CSV row in the fixed column order: id,
+// account_name, account_currency, category, description, tag, payee, amount, date.
 func (s *Service) buildExportRow(t *domtransaction.Transaction, account ExportAccount, amount, category, tag, payee, description string) []string {
 	return []string{
 		t.Id().String(),
@@ -210,7 +203,7 @@ func (s *Service) buildExportRow(t *domtransaction.Transaction, account ExportAc
 }
 
 // resolveNames resolves the optional category/tag/payee names for a transaction
-// (empty when absent or missing), mirroring the eager-loaded entity getters.
+// (empty when absent or missing).
 func (s *Service) resolveNames(ctx context.Context, t *domtransaction.Transaction, names *exportNameCache) (category, tag, payee string, err error) {
 	if id := t.CategoryId(); id != nil {
 		if category, err = cachedName(ctx, names.categories, *id, s.export.CategoryName); err != nil {
@@ -230,8 +223,8 @@ func (s *Service) resolveNames(ctx context.Context, t *domtransaction.Transactio
 	return category, tag, payee, nil
 }
 
-// applyTransferNote combines the auto note with any existing description (PHP:
-// empty -> note; else "note [trimmed-desc]").
+// applyTransferNote combines the auto note with any existing description (empty
+// description -> note; else "note [trimmed-desc]").
 func applyTransferNote(note, description string) string {
 	if strings.TrimSpace(description) == "" {
 		return note
@@ -240,8 +233,7 @@ func applyTransferNote(note, description string) string {
 }
 
 // formatAmount returns the normalized decimal string with the sign forced
-// (negative=true -> leading '-'; negative=false -> stripped). Mirrors PHP
-// formatAmount over DecimalNumber::getValue().
+// (negative=true -> leading '-'; negative=false -> stripped).
 func formatAmount(amount string, negative bool) string {
 	value := vo.NewDecimal(amount).String()
 	if negative {
@@ -258,8 +250,7 @@ func formatAmountForDescription(amount string) string {
 	return strings.TrimPrefix(vo.NewDecimal(amount).String(), "-")
 }
 
-// sanitizeExportValue collapses CR/LF runs to a single space and trims, matching
-// PHP sanitizeExportValue (null -> "").
+// sanitizeExportValue collapses CR/LF runs to a single space and trims.
 func sanitizeExportValue(value string) string {
 	if value == "" {
 		return ""

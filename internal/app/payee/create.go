@@ -1,4 +1,3 @@
-// Create use case: create a payee, idempotent on the request id.
 package payee
 
 import (
@@ -9,22 +8,12 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// CreatePayee creates a payee for the current user and returns it.
-//
-// Idempotency: the request id doubles as the operation id. Inside the tx we
-// Claim the id in operation_requests_ids; a second request with the same id
-// finds the row already present and is rejected with a ValidationError
-// ("Operation is locked").
-//
-// Uniqueness: a payee name must be unique among the owner's payees; a duplicate
-// is rejected with "Payee already exists." (mirrors PHP
-// PayeeAlreadyExistsException).
-//
-// New-payee position = count(user's existing payees); the new payee is active
-// with created/updated = now.
+// CreatePayee is idempotent on the request id: inside the tx we Claim the id in
+// operation_requests_ids; a second request with the same id finds the row
+// already present and is rejected ("Operation is locked"). The new payee's
+// position is count(user's existing payees).
 func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayeeRequest) (*CreatePayeeResult, error) {
-	// Request id is the OPERATION id; PHP mints a fresh entity UUIDv7 via
-	// payeeFactory->create (getNextIdentity). Mirror that.
+	// The request id is the OPERATION id; the entity gets a fresh UUIDv7.
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -35,11 +24,10 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 		return nil, err
 	}
 
-	// accountId, when present, selects which user owns the new payee: an account
-	// may belong to a connected user, and a payee added in the context of a shared
-	// account is owned by the ACCOUNT OWNER (PHP createPayeeForAccount), gated by
-	// an owner/admin access check (canAddPayee == isAdmin). Absent accountId ->
-	// owned by the caller.
+	// accountId, when present, selects which user owns the new payee: a payee
+	// added in the context of a shared account is owned by the ACCOUNT OWNER,
+	// gated by an owner/admin access check. Absent accountId -> owned by the
+	// caller.
 	ownerID := userID
 	if req.AccountId != nil && *req.AccountId != "" {
 		accountID, perr := vo.ParseId(*req.AccountId)

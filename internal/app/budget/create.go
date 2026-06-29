@@ -10,8 +10,7 @@ import (
 )
 
 // CreateBudget creates a budget, seeds its category + tag elements, marks it the
-// user's active budget, and returns the full built budget. Mirrors
-// BudgetService.createBudget + BudgetElementService.create{Categories,Tags}Elements.
+// user's active budget, and returns the full built budget.
 func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudgetRequest) (*CreateBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -86,9 +85,9 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 	return &CreateBudgetResult{Item: result}, nil
 }
 
-// seedCategoryElements creates a budget element for each NON-INCOME category of
-// the user; archived categories get POSITION_UNSET, others get an incrementing
-// position. Returns the next free position.
+// seedCategoryElements creates a budget element for each non-income category of
+// the user; archived categories get the unset position, others get an
+// incrementing position. Returns the next free position.
 func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time) (int, error) {
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{userID})
 	if err != nil {
@@ -117,7 +116,7 @@ func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.
 }
 
 // seedTagElements creates a budget element for each tag of the user (archived ->
-// POSITION_UNSET).
+// unset position).
 func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time) error {
 	tags, err := s.metadata.TagsByOwners(ctx, []vo.Id{userID})
 	if err != nil {

@@ -1,13 +1,12 @@
 package payee_test
 
 // Coverage for creating a payee in the context of an account SHARED with the
-// caller (the create-payee request carries an accountId — the transaction modal
+// caller. The create-payee request carries an accountId — the transaction modal
 // sends it when a payee is added inline while entering a transaction on the
-// selected account). Mirrors the PHP PayeeService.createPayee +
-// AccountAccessService.checkAddPayee rules: only the account owner or an admin
-// grantee may add a payee for the account, and the payee is created owned by the
-// ACCOUNT OWNER (so it is visible to the owner and co-sharers). Regression for
-// the Go migration ignoring accountId (created for the caller, no access check).
+// selected account. Rules: only the account owner or an admin grantee may add a
+// payee for the account, and the payee is created owned by the ACCOUNT OWNER (so
+// it is visible to the owner and co-sharers). Regression guard against ignoring
+// accountId (creating for the caller with no access check).
 
 import (
 	"net/http"
@@ -73,8 +72,6 @@ func TestCreatePayee_SharedAccount_NoGrant_Denied(t *testing.T) {
 	assertAccessDenied(t, status, env)
 }
 
-// TestCreatePayee_OwnAccount_OwnedByCaller guards the owner path: an accountId
-// the caller owns creates the payee owned by the caller.
 func TestCreatePayee_OwnAccount_OwnedByCaller(t *testing.T) {
 	h := newHarness(t)
 	f := fixture.New(t, h.tdb).WithCrypto(testDataSalt)

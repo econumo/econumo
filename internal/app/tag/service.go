@@ -1,8 +1,3 @@
-// Service wiring: the use-case orchestrator, its dependency seams, the
-// constructor, and the shared private helpers (entity->DTO conversion, the
-// value-object constructor, and the duplicate-name check). The individual use
-// cases live in sibling files (create.go, update.go, archive.go, delete.go,
-// order.go); the pure read lives in read.go.
 package tag
 
 import (
@@ -42,16 +37,13 @@ type OperationGuard interface {
 }
 
 // AccountAccess resolves shared-account ownership/role for the
-// create-for-account path: which user owns an account, and what role a connected
-// user holds on it. Backed by the connection module's AccountAccess repo. A
-// missing grant is reported as ok=false (nil error).
+// create-for-account path. A missing grant is reported as ok=false (nil error).
 type AccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 	GrantRole(ctx context.Context, accountID, userID vo.Id) (role domconnection.Role, ok bool, err error)
 }
 
-// Service is the tag write-side use-case orchestrator. It owns the tx boundary
-// and builds the response-shaped *Result structs directly.
+// Service is the tag write-side use-case orchestrator; it owns the tx boundary.
 type Service struct {
 	repo   domtag.Repository
 	tx     TxRunner
@@ -62,18 +54,15 @@ type Service struct {
 }
 
 // NewService wires the tag service. read is the own+shared tag view (the same
-// ReadModel get-tag-list uses); order-tag-list returns that full available list,
-// mirroring PHP's OrderTagListV1ResultAssembler (findAvailableForUserId). access
-// resolves shared-account ownership for create-tag-for-account.
+// ReadModel get-tag-list uses); order-tag-list returns that full available list.
+// access resolves shared-account ownership for create-tag-for-account.
 func NewService(repo domtag.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
 	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
 }
 
 // resolveAccountOwner returns the user a tag created in the context of accountID
 // must be owned by — the account owner. The caller must own the account or hold
-// an admin grant on it (PHP AccountAccessService.checkAddTag == isAdmin);
-// otherwise AccessDenied. Mirrors createTagForAccount, which assigns ownership to
-// the account owner.
+// an admin grant on it; otherwise AccessDenied.
 func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.Id) (vo.Id, error) {
 	owner, err := s.access.AccountOwner(ctx, accountID)
 	if err != nil {
@@ -91,10 +80,6 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 	}
 	return vo.Id{}, errs.NewAccessDenied("Access is not allowed")
 }
-
-// ---------------------------------------------------------------------------
-// shared private helpers used across the use cases
-// ---------------------------------------------------------------------------
 
 // mutate loads the tag, checks ownership, applies fn inside a transaction, and
 // saves. It returns the mutated (in-memory) aggregate so the caller can build
@@ -156,9 +141,8 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 	return loaded, nil
 }
 
-// toResult is the single entity->DTO conversion in the module. It formats the
-// timestamps in the "2006-01-02 15:04:05" wire form and maps the archived bool
-// to the wire shape (isArchived int 0/1). See CLAUDE.md.
+// toResult formats the timestamps in the "2006-01-02 15:04:05" wire form and
+// maps the archived bool to the wire shape (isArchived int 0/1). See CLAUDE.md.
 func toResult(t *domtag.Tag) TagResult {
 	archived := 0
 	if t.IsArchived() {
@@ -177,8 +161,7 @@ func toResult(t *domtag.Tag) TagResult {
 
 // listResults returns the user's AVAILABLE tags (own + shared via account
 // access), ordered by position, in the wire shape — used by order-tag-list. It
-// reads through the same own+shared view as get-tag-list (PHP's order assembler
-// uses findAvailableForUserId, not owner-only).
+// reads through the same own+shared view as get-tag-list, not owner-only.
 func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]TagResult, error) {
 	rows, err := s.read.TagListView(ctx, userID.String())
 	if err != nil {
@@ -191,12 +174,9 @@ func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]TagResult, e
 	return items, nil
 }
 
-// ensureNameUnique enforces the per-owner name-uniqueness rule (PHP
-// TagService::createTag / updateTag throw TagAlreadyExistsException). exceptID,
-// when non-empty, is excluded from the comparison (for updates of the tag
-// itself). The duplicate error message is "Tag already exists." (mirrors the
-// PHP ValidationException for the missing 'tag.tag.already_exists' translation
-// key — reconcile vs the real Cest if the PHP suite is ever run as oracle).
+// ensureNameUnique enforces the per-owner name-uniqueness rule. exceptID, when
+// non-empty, is excluded from the comparison (for updates of the tag itself).
+// The duplicate error message is exactly "Tag already exists." (wire-compat).
 func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name string, exceptID vo.Id) error {
 	tags, err := s.repo.ListByOwner(ctx, userID)
 	if err != nil {
@@ -210,15 +190,9 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 	return nil
 }
 
-// ---------------------------------------------------------------------------
-// tier-2 value-object constructor (tag-module invariant)
-// ---------------------------------------------------------------------------
-
 // newTagName enforces the tag name invariant: rune length 3..64. The error
 // message is EXACTLY "Tag name must be 3-64 characters" (wire-compat with
-// existing API clients) and the field key is "name". This mirrors the PHP
-// GenericName validator (label derived from the VO short name "TagName" ->
-// "Tag name"). See CLAUDE.md.
+// existing API clients) and the field key is "name". See CLAUDE.md.
 func newTagName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {

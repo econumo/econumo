@@ -1,8 +1,8 @@
 // Package logging is the single source of truth for configuring the default
 // slog logger from a base level (ECONUMO_LOG_LEVEL / config) combined with
 // verbosity flags (-v/-vv/-vvv/-q). It is reused by both the server (`serve`)
-// and the management CLI (`app:*`) so every command shares one level-resolution
-// scheme and one handler setup.
+// and the management CLI so every command shares one level-resolution scheme
+// and one handler setup.
 //
 // Resolution order (highest priority wins):
 //
@@ -45,9 +45,7 @@ func Setup(baseline string, args []string) []string {
 }
 
 // resolveVerbosity computes the verbosity level (0..3) and quiet flag from the
-// command-line flags, and returns args with the recognized flags removed.
-//
-// Inputs match Symfony Console exactly (see Application::configureIO):
+// command-line flags, and returns args with the recognized flags removed:
 //
 //	-q | --quiet                   -> QUIET
 //	-v | --verbose | --verbose=1   -> 1
@@ -70,8 +68,7 @@ func resolveVerbosity(args []string) (level int, quiet bool, rest []string) {
 		case a == "-v" || a == "--verbose" || a == "--verbose=1":
 			hasV1 = true
 		case strings.HasPrefix(a, "--verbose="):
-			// Any other --verbose=<x> means "verbose" (Symfony treats a truthy
-			// --verbose value as at least VERBOSE).
+			// Any other --verbose=<x> counts as at least level 1.
 			hasV1 = true
 		default:
 			rest = append(rest, a)

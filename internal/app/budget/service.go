@@ -34,7 +34,7 @@ type UserLookup interface {
 	// CurrencyCode returns the user's default currency code (for createBudget when
 	// no currencyId is supplied).
 	CurrencyCode(ctx context.Context, userID string) (string, error)
-	// SetActiveBudget records the user's active budget id (PHP userService.updateBudget).
+	// SetActiveBudget records the user's active budget id.
 	SetActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 }
 
@@ -76,7 +76,6 @@ type Service struct {
 	accountOwners map[string]string
 }
 
-// NewService wires the budget service.
 func NewService(
 	repo dombudget.Repository,
 	read ReadModel,
@@ -108,7 +107,6 @@ type budgetAggregate struct {
 	elements           []*dombudget.BudgetElement
 }
 
-// loadAggregate loads a budget and its related rows.
 func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAggregate, error) {
 	b, err := s.repo.GetByID(ctx, budgetID)
 	if err != nil {
@@ -137,7 +135,7 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	return &budgetAggregate{budget: b, access: access, excludedAccountIDs: excluded, folders: folders, envelopes: envelopes, elements: elements}, nil
 }
 
-// roleGuest returns the guest role (a "reader" in PHP terms).
+// roleGuest returns the guest role (the read-only "reader" role).
 func roleGuest() dombudget.UserRole { return dombudget.RoleGuest }
 
 // firstOfMonth returns the first of t's month at 00:00 in t's location.

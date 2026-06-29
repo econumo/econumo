@@ -8,9 +8,9 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// buildFinancialSummary ports BudgetFinancialSummaryBuilder + CurrencyBalanceDtoAssembler.
-// Returns per-currency balances (budget currency first) and the period average
-// rates. Balance amount fields are nil when the period has not started/ended.
+// buildFinancialSummary returns per-currency balances (budget currency first) and
+// the period average rates. Balance amount fields are nil when the period has not
+// started/ended.
 func (s *Service) buildFinancialSummary(ctx context.Context, budgetCurrencyID vo.Id, f filters, now time.Time) ([]CurrencyBalanceResult, []AverageCurrencyRateResult, error) {
 	periodStarted := !f.periodStart.After(now)
 	periodEnded := !f.periodEnd.After(now)
@@ -92,7 +92,7 @@ func (s *Service) buildFinancialSummary(ctx context.Context, budgetCurrencyID vo
 	return balances, rates, nil
 }
 
-// buildAverageRates ports AverageCurrencyRateDtoAssembler (all rates, no filter).
+// buildAverageRates returns all currency rates (no filter).
 func (s *Service) buildAverageRates(ctx context.Context, periodStart, periodEnd time.Time) ([]AverageCurrencyRateResult, error) {
 	base, err := s.rates.BaseCurrencyID(ctx)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *Service) buildAverageRates(ctx context.Context, periodStart, periodEnd 
 		return nil, err
 	}
 	// The reported period is the SNAPPED one (latest-rate month), not the
-	// requested period — PHP stamps $averageCurrencyRatesDto->periodStart/End.
+	// requested period — the currencyRates block stamps this snapped range.
 	rateStart, rateEnd, err := s.rates.SnappedRatePeriod(ctx, periodStart, periodEnd)
 	if err != nil {
 		return nil, err

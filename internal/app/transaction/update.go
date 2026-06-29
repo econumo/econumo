@@ -1,4 +1,3 @@
-// Update + delete use cases.
 package transaction
 
 import (

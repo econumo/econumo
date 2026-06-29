@@ -75,7 +75,7 @@ func TestGetBudget_ElementBudgetedFromLimit(t *testing.T) {
 
 	// Find the budget element created for the seeded Food category (external_id =
 	// the category id), then seed a 1700 limit for the April-2025 period. The
-	// period is stored the way PHP fixtures store it: "Y-m-d H:i:s" text.
+	// period is stored as "Y-m-d H:i:s" text.
 	var elementID string
 	// category element type = 1 (envelope=0, category=1, tag=2).
 	if err := h.db.QueryRowContext(ctx,

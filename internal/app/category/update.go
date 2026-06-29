@@ -31,6 +31,6 @@ func (s *Service) UpdateCategory(ctx context.Context, userID vo.Id, req UpdateCa
 	}); err != nil {
 		return nil, err
 	}
-	// PHP returns an empty DTO -> {"data":{}}; the entity is not echoed.
+	// Empty body ({"data":{}}); the entity is not echoed (frozen wire shape).
 	return &UpdateCategoryResult{}, nil
 }

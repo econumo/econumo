@@ -1,10 +1,5 @@
 package budgetrepo_test
 
-// Integration tests for the budget write Repo across all eight budget tables,
-// plus the heavy ReadRepo reports. Covers CRUD + NotFound for every aggregate,
-// the exact scale-8 decimal limit round-trip, and the month-boundary datetime
-// binding for limit/spending reads (regression-lock).
-
 import (
 	"context"
 	"errors"
@@ -288,10 +283,10 @@ func TestBudgetRepo_SaveLimit_Decimal(t *testing.T) {
 }
 
 // TestBudgetRepo_GetLimit_DatetimeBinding regression-locks the period datetime
-// comparison. Periods are stored as 'Y-m-d H:i:s' TEXT (as PHP / fixtures write
-// them); GetLimit / ListLimitsForPeriod normalize via datetime() and bind the
-// period as that same string. Seeding the row directly in the canonical form,
-// GetLimit must find it and ListLimitsForPeriod must scope to the right month.
+// comparison. Periods are stored as bare "Y-m-d H:i:s" TEXT; GetLimit /
+// ListLimitsForPeriod normalize via datetime() and bind the period as that same
+// string. Seeding the row directly in the canonical form, GetLimit must find it
+// and ListLimitsForPeriod must scope to the right month.
 func TestBudgetRepo_GetLimit_DatetimeBinding(t *testing.T) {
 	repo, db := newRepo(t)
 	ctx := context.Background()

@@ -3,12 +3,9 @@ package category_test
 // Coverage for creating a category in the context of an account SHARED with the
 // caller (the create-category request carries an accountId — the transaction
 // modal sends it when a category is added inline while entering a transaction on
-// the selected account). Mirrors the PHP CategoryService.createCategory +
-// AccountAccessService.checkAddCategory rules: only the account owner or an
-// admin grantee may add a category for the account, and the category is created
-// owned by the ACCOUNT OWNER (so it is visible to the owner and co-sharers).
-// Regression for the Go migration ignoring accountId (created for the caller, no
-// access check).
+// the selected account). The rule: only the account owner or an admin grantee
+// may add a category for the account, and the category is created owned by the
+// ACCOUNT OWNER (so it is visible to the owner and co-sharers).
 
 import (
 	"net/http"
@@ -53,7 +50,7 @@ func TestCreateCategory_SharedAccount_AdminRole_OwnedByAccountOwner(t *testing.T
 	item := mustUnmarshal[struct {
 		Item categoryItem `json:"item"`
 	}](t, env.Data).Item
-	// PHP createCategoryForAccount assigns ownership to the account owner.
+	// Creating for an account assigns ownership to the account owner.
 	if item.OwnerUserID != otherUserID {
 		t.Fatalf("ownerUserId = %q, want account owner %q", item.OwnerUserID, otherUserID)
 	}
@@ -98,8 +95,8 @@ func TestCreateCategory_OwnAccount_OwnedByCaller(t *testing.T) {
 	}
 }
 
-// assertAccessDenied checks the PHP access-denied envelope: HTTP 403, success
-// false, message "Access is not allowed".
+// assertAccessDenied checks the access-denied envelope: HTTP 403, success false,
+// message "Access is not allowed".
 func assertAccessDenied(t *testing.T, status int, env envelope) {
 	t.Helper()
 	if status != http.StatusForbidden {

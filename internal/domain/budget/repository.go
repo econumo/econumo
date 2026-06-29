@@ -13,31 +13,26 @@ import (
 type Repository interface {
 	NextIdentity() vo.Id
 
-	// --- budgets ---
 	GetByID(ctx context.Context, id vo.Id) (*Budget, error)
 	// ListForUser returns budgets the user owns or has (any) access to.
 	ListForUser(ctx context.Context, userID vo.Id) ([]*Budget, error)
 	Save(ctx context.Context, b *Budget) error
 	Delete(ctx context.Context, id vo.Id) error
 
-	// --- excluded accounts ---
 	ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
 	ExcludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
 	IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
 
-	// --- access ---
 	ListAccess(ctx context.Context, budgetID vo.Id) ([]*BudgetAccess, error)
 	GetAccess(ctx context.Context, budgetID, userID vo.Id) (*BudgetAccess, error)
 	SaveAccess(ctx context.Context, a *BudgetAccess) error
 	DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error
 
-	// --- folders ---
 	ListFolders(ctx context.Context, budgetID vo.Id) ([]*BudgetFolder, error)
 	GetFolder(ctx context.Context, id vo.Id) (*BudgetFolder, error)
 	SaveFolder(ctx context.Context, f *BudgetFolder) error
 	DeleteFolder(ctx context.Context, id vo.Id) error
 
-	// --- envelopes ---
 	ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*BudgetEnvelope, error)
 	GetEnvelope(ctx context.Context, id vo.Id) (*BudgetEnvelope, error)
 	SaveEnvelope(ctx context.Context, e *BudgetEnvelope) error
@@ -47,7 +42,6 @@ type Repository interface {
 	AddEnvelopeCategory(ctx context.Context, envelopeID, categoryID vo.Id) error
 	RemoveEnvelopeCategory(ctx context.Context, envelopeID, categoryID vo.Id) error
 
-	// --- elements ---
 	ListElements(ctx context.Context, budgetID vo.Id) ([]*BudgetElement, error)
 	GetElement(ctx context.Context, id vo.Id) (*BudgetElement, error)
 	// GetElementByExternal finds an element by its (budget, externalId) pair.
@@ -55,7 +49,6 @@ type Repository interface {
 	SaveElement(ctx context.Context, e *BudgetElement) error
 	DeleteElement(ctx context.Context, id vo.Id) error
 
-	// --- element limits ---
 	// ListLimitsForPeriod returns the limits for a budget's elements in a period.
 	ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*BudgetElementLimit, error)
 	GetLimit(ctx context.Context, elementID vo.Id, period time.Time) (*BudgetElementLimit, error)

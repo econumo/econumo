@@ -82,9 +82,8 @@ func main() {
 
 	default:
 		// Management commands (the resource:action set, e.g. user:create). Apply
-		// Symfony-style verbosity (-v/-vv/-vvv/-q) FIRST so it also governs the
-		// startup logs (.env load, database open); it strips those flags from the
-		// args the command then sees.
+		// verbosity (-v/-vv/-vvv/-q) FIRST so it also governs the startup logs (.env
+		// load, database open); it strips those flags from the args the command sees.
 		cmdArgs := cli.ConfigureLogging(args)
 		loadDotEnv()
 		os.Exit(cli.Run(cmdArgs))
@@ -193,15 +192,11 @@ func run(serveArgs []string) error {
 	}
 	slog.Info("migrations applied", "backend", be.Name())
 
-	// Construct the auth crypto + clock the API assembly needs, then build the
-	// full handler. The module wiring lives in internal/server.BuildAPI so the
-	// production binary and the test harnesses build the IDENTICAL router from one
-	// code path (see internal/server for why).
 	// Generate the JWT keypair on first boot if it is missing (no keys are
 	// committed or baked into the image). force=false: an existing keypair is left
 	// untouched so a restart never invalidates issued tokens. Persist the key
-	// directory on a volume to keep tokens valid across restarts. This is the same
-	// jwt.EnsureKeypair path the jwt:generate CLI command uses.
+	// directory on a volume to keep tokens valid across restarts. Same path the
+	// jwt:generate CLI command uses.
 	passphrase, _, err := jwt.EnsureKeypair(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase, false)
 	if err != nil {
 		return err

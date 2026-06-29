@@ -1,8 +1,8 @@
 // Package connection is the connection aggregate's domain layer: the
 // AccountAccess entity (a per-account grant of a Role to a connected user) and
-// the AccountUserRole value object (admin=0, user=1, guest=2). The symmetric
-// users_connections link itself carries no behavior beyond existence, so it is
-// modeled as plain ids at the repository boundary rather than an entity.
+// the Role value object (admin=0, user=1, guest=2). The symmetric user-to-user
+// link itself carries no behavior beyond existence, so it is modeled as plain
+// ids at the repository boundary rather than an entity.
 package connection
 
 import (
@@ -13,7 +13,8 @@ import (
 )
 
 // Role is the access level a connected user has on a shared account.
-// admin=0, user=1, guest=2 (matches PHP AccountUserRole int values + aliases).
+// admin=0, user=1, guest=2 — the stored numeric values and wire aliases are a
+// frozen contract.
 type Role int16
 
 const (
@@ -26,7 +27,7 @@ const (
 var roleAliases = [...]string{RoleAdmin: "admin", RoleUser: "user", RoleGuest: "guest"}
 
 // RoleFromAlias parses a role alias ("admin"/"user"/"guest"). Unknown aliases
-// return a validation error matching the PHP DomainException path.
+// return a validation error.
 func RoleFromAlias(alias string) (Role, error) {
 	for v, a := range roleAliases {
 		if a == alias {
@@ -46,7 +47,6 @@ func (r Role) Alias() string {
 	return roleAliases[r]
 }
 
-// Int16 returns the stored numeric value.
 func (r Role) Int16() int16 { return int16(r) }
 
 // AccountAccess is a grant: connected user `userID` may act on account
@@ -64,13 +64,11 @@ func NewAccountAccess(accountID, userID vo.Id, role Role, now time.Time) *Accoun
 	return &AccountAccess{accountID: accountID, userID: userID, role: role, createdAt: now, updatedAt: now}
 }
 
-// FromState rehydrates an AccountAccess from storage.
 func FromState(accountID, userID vo.Id, role Role, createdAt, updatedAt time.Time) *AccountAccess {
 	return &AccountAccess{accountID: accountID, userID: userID, role: role, createdAt: createdAt, updatedAt: updatedAt}
 }
 
-// UpdateRole changes the role, bumping updated_at only when it actually changes
-// (mirrors PHP AccountAccess::updateRole).
+// UpdateRole changes the role, bumping updated_at only when it actually changes.
 func (a *AccountAccess) UpdateRole(role Role, now time.Time) {
 	if a.role != role {
 		a.role = role

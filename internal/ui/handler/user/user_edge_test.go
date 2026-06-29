@@ -1,18 +1,10 @@
 package user_test
 
-// Edge-case coverage for the user module through the real HTTP stack: currency
-// update (success + unknown code), password change (success + wrong old),
-// onboarding, option list, remind/reset placeholders, and register failure
-// branches (duplicate email, blank fields). State is verified via get-user-data
-// / get-option-list / a follow-up login.
-
 import (
 	"context"
 	"net/http"
 	"testing"
 )
-
-// --- update-currency ---
 
 func TestUpdateCurrency_Success(t *testing.T) {
 	h := newHarness(t)
@@ -73,8 +65,6 @@ func TestUpdateCurrency_NoToken_401(t *testing.T) {
 	}
 }
 
-// --- update-password ---
-
 func TestUpdatePassword_Success_ThenLoginWithNew(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
@@ -130,8 +120,6 @@ func TestUpdatePassword_ShortNew_400(t *testing.T) {
 	}
 }
 
-// --- complete-onboarding ---
-
 func TestCompleteOnboarding_SetsOption(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
@@ -147,8 +135,6 @@ func TestCompleteOnboarding_SetsOption(t *testing.T) {
 		t.Fatalf("onboarding option=%v (ok=%v) want a value", v, ok)
 	}
 }
-
-// --- get-option-list ---
 
 func TestGetOptionList_ReturnsRawOptions(t *testing.T) {
 	h := newHarness(t)
@@ -186,8 +172,6 @@ func TestGetOptionList_NoToken_401(t *testing.T) {
 		t.Fatalf("get-option-list no token=%d want 401", status)
 	}
 }
-
-// --- remind / reset password (placeholders, always success) ---
 
 func TestRemindPassword_AlwaysSuccess(t *testing.T) {
 	h := newHarness(t)
@@ -240,8 +224,6 @@ func TestResetPassword_BlankCode_400(t *testing.T) {
 	}
 }
 
-// --- register failures ---
-
 func TestRegisterUser_DuplicateEmail_400(t *testing.T) {
 	h := newHarness(t)
 	// The seed user already exists with seedEmail.
@@ -288,8 +270,6 @@ func TestRegisterUser_BadEmail_400(t *testing.T) {
 	}
 }
 
-// --- login: inactive user ---
-
 func TestLoginUser_InactiveUser_401(t *testing.T) {
 	h := newHarness(t)
 	// Deactivate the seed user.
@@ -314,8 +294,6 @@ func TestLoginUser_UnknownUser_401(t *testing.T) {
 		t.Fatalf("login unknown user=%d want 401", status)
 	}
 }
-
-// --- update-report-period: blank ---
 
 func TestUpdateReportPeriod_Blank_400(t *testing.T) {
 	h := newHarness(t)

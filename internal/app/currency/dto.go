@@ -1,15 +1,9 @@
 // Package currency is the currency aggregate's application layer. Both currency
-// endpoints (get-currency-list, get-currency-rate-list) are pure reads, so this
-// module is read-only: a ReadService plus its result DTOs and the ReadModel
-// port. There is no write Service.
+// endpoints (get-currency-list, get-currency-rate-list) are pure reads; the
+// write side (admin.go) exists only for the CLI commands.
 //
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md.
+// JSON field names are frozen to the existing API wire contract; see CLAUDE.md.
 package currency
-
-// ---------------------------------------------------------------------------
-// get-currency-list
-// ---------------------------------------------------------------------------
 
 // CurrencyResult is one currency in the API. name is the English display name
 // resolved from the Intl table (the stored currencies.name is NULL in practice);
@@ -26,10 +20,6 @@ type CurrencyResult struct {
 type GetCurrencyListResult struct {
 	Items []CurrencyResult `json:"items"`
 }
-
-// ---------------------------------------------------------------------------
-// get-currency-rate-list
-// ---------------------------------------------------------------------------
 
 // CurrencyRateResult is one rate in the API. rate is a decimal string; updatedAt
 // is the published date formatted "Y-m-d 00:00:00". Frozen wire shape.

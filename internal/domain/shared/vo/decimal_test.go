@@ -2,14 +2,14 @@ package vo
 
 import "testing"
 
-// TestNewDecimal_Normalize covers the PHP DecimalNumber::normalize() behaviour
-// for DB-sourced fixed-point strings: trailing-zero trimming in the fraction,
-// leading-zero trimming in the integer part, sign handling, and the empty/zero
-// collapse. These are the exact getValue() outputs the API emits.
+// TestNewDecimal_Normalize covers the frozen normalize behaviour for DB-sourced
+// fixed-point strings: trailing-zero trimming in the fraction, leading-zero
+// trimming in the integer part, sign handling, and the empty/zero collapse.
+// These are the exact byte outputs the API emits.
 func TestNewDecimal_Normalize(t *testing.T) {
 	cases := []struct{ in, want string }{
 		// trailing-zero trimming (the engine-divergence case: pgsql NUMERIC pads
-		// to scale 8, sqlite affinity strips; both must render PHP-identically).
+		// to scale 8, sqlite affinity strips; both must render identically).
 		{"0.92000000", "0.92"},
 		{"0.92", "0.92"},
 		{"95.00000000", "95"},
@@ -26,11 +26,10 @@ func TestNewDecimal_Normalize(t *testing.T) {
 		{"0", "0"},
 		{"0.00000000", "0"},
 		{"0.0", "0"},
-		// negative-zero PRESERVES the sign (verified against real PHP
-		// DecimalNumber: new DecimalNumber("-0")->getValue() === "-0"). Only the
-		// literal "" and "0" inputs collapse to "0" (caught before sign handling).
-		// SQLite SUM() emits "-0" for some netted-to-zero balances; the API does
-		// too, so Go must match byte-for-byte.
+		// negative-zero PRESERVES the sign: "-0" stays "-0". Only the literal ""
+		// and "0" inputs collapse to "0" (caught before sign handling). SQLite
+		// SUM() emits "-0" for some netted-to-zero balances and the API surfaces
+		// that, so this must match byte-for-byte.
 		{"-0", "-0"},
 		{"-0.00000000", "-0"},
 		// negatives keep the sign.
@@ -54,9 +53,9 @@ func TestDecimal_ZeroValueString(t *testing.T) {
 	}
 }
 
-// TestDecimal_Sub covers exact scale-8 subtraction (PHP DecimalNumber::sub),
-// the operation update-account uses to compute a balance correction
-// (actual - requested). Results are normalized (trailing zeros trimmed).
+// TestDecimal_Sub covers exact scale-8 subtraction, the operation update-account
+// uses to compute a balance correction (actual - requested). Results are
+// normalized (trailing zeros trimmed).
 func TestDecimal_Sub(t *testing.T) {
 	cases := []struct{ a, b, want string }{
 		{"100", "30", "70"},

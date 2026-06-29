@@ -23,7 +23,7 @@ type ReadModel interface {
 
 // CurrencyViewRow is the read-side currency row. Name is the raw (nullable) DB
 // value, which is NULL in practice — the service resolves the wire name from the
-// Intl display-name table, mirroring the PHP Currency::getName() fallback.
+// Intl display-name table as a fallback.
 type CurrencyViewRow struct {
 	ID             string
 	Code           string
@@ -53,7 +53,7 @@ func NewReadService(read ReadModel) *ReadService {
 
 // GetCurrencyList returns all currencies ordered by code, in the wire shape.
 // The display name comes from the Intl table (currencies.name is NULL), with a
-// fallback to the code when no entry exists — matching the PHP behaviour.
+// fallback to the code when no entry exists.
 func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*GetCurrencyListResult, error) {
 	rows, err := s.read.CurrencyListView(ctx)
 	if err != nil {
@@ -72,10 +72,9 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*GetCurrenc
 	return &GetCurrencyListResult{Items: items}, nil
 }
 
-// currencyName resolves the wire display name: a non-empty stored name wins
-// (PHP returns it directly), otherwise the Intl table by code (which itself
-// falls back to the code). In the live data the stored name is always NULL, so
-// this resolves via the Intl table.
+// currencyName resolves the wire display name: a non-empty stored name wins,
+// otherwise the Intl table by code (which itself falls back to the code). In the
+// live data the stored name is always NULL, so this resolves via the Intl table.
 func currencyName(r CurrencyViewRow) string {
 	if r.Name != nil && *r.Name != "" {
 		return *r.Name

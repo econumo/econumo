@@ -8,12 +8,12 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// DeleteAccount handles delete-account. Access is gated by canDeleteAccount
-// (PHP = hasAccess: the owner OR any accounts_access grant). The OWNER soft-
-// deletes the account (sets is_deleted); a NON-owner with a grant instead drops
-// their own access via the connection module (RevokeOwnAccess), unwinding their
-// folder memberships + accounts_options. Without a connection module wired, a
-// non-owner gets AccessDenied (403). Returns an empty result ({}).
+// DeleteAccount handles delete-account. Access requires the owner OR any
+// accounts_access grant. The OWNER soft-deletes the account (sets is_deleted); a
+// NON-owner with a grant instead drops their own access via the connection module
+// (RevokeOwnAccess), unwinding their folder memberships + accounts_options.
+// Without a connection module wired, a non-owner gets AccessDenied (403). Returns
+// an empty result ({}).
 func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req DeleteAccountRequest) (*DeleteAccountResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -35,8 +35,8 @@ func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req DeleteAcc
 		return &DeleteAccountResult{}, nil
 	}
 
-	// Non-owner: must have a grant (canDeleteAccount = hasAccess), then revoke
-	// their own access. No connection module -> AccessDenied.
+	// Non-owner: must have a grant, then revoke their own access. No connection
+	// module -> AccessDenied.
 	if s.revoker == nil {
 		return nil, errs.NewAccessDenied("Access denied")
 	}

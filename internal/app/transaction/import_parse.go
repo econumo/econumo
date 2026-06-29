@@ -1,10 +1,9 @@
 // Import parsing helpers: a case-insensitive name cache (find-or-create dedup),
 // CSV record parsing (header-keyed, UTF-8 BOM stripped), date parsing (a
-// practical subset of PHP parseDate: Ymd, unix 10/13-digit, and the common
-// explicit formats), and amount parsing (PHP parseAmount: currency-symbol strip,
-// ./,-separator heuristics, ()-negatives). All stay byte-faithful to
-// ImportTransactionService where it matters for the default frontend export
-// format (single amount, Y-m-d H:i:s / Y-m-d).
+// practical subset of formats: Ymd, unix 10/13-digit, and the common explicit
+// formats), and amount parsing (currency-symbol strip, ./,-separator heuristics,
+// ()-negatives). Tuned for the default frontend export format (single amount,
+// "Y-m-d H:i:s" / "Y-m-d").
 package transaction
 
 import (
@@ -21,15 +20,13 @@ import (
 )
 
 // nameCache maps a lowercased name to an entity view (ImportAccount or
-// ImportNamed); it is mutated as new entities are created so later rows reuse
-// them (PHP appends to the in-memory list).
+// ImportNamed); it is mutated as new entities are created so later rows reuse them.
 type nameCache struct {
 	m map[string]any
 }
 
 func newNameCache() *nameCache { return &nameCache{m: map[string]any{}} }
 
-// newNamedCache builds a cache pre-populated from a slice of ImportNamed.
 func newNamedCache(items []ImportNamed) *nameCache {
 	c := newNameCache()
 	for _, it := range items {
@@ -43,8 +40,8 @@ func (c *nameCache) get(name string) (any, bool) {
 	return v, ok
 }
 
-// put stores under the lowercased name (first writer wins, matching PHP's
-// linear find which returns the first case-insensitive match).
+// put stores under the lowercased name; first writer wins, so a later duplicate
+// (case-insensitive) name resolves to the entity created first.
 func (c *nameCache) put(name string, v any) {
 	k := strings.ToLower(strings.TrimSpace(name))
 	if _, exists := c.m[k]; !exists {
@@ -57,7 +54,7 @@ func (c *nameCache) put(name string, v any) {
 // column-name -> value map. Fields are not pre-trimmed (fieldValue trims).
 func parseCSVRecords(data []byte) (header []string, records []map[string]string, err error) {
 	r := csv.NewReader(bytes.NewReader(data))
-	r.FieldsPerRecord = -1 // tolerate ragged rows like League\Csv
+	r.FieldsPerRecord = -1 // tolerate ragged rows (rows shorter/longer than the header)
 	r.TrimLeadingSpace = false
 
 	rawHeader, err := r.Read()
@@ -93,19 +90,17 @@ func parseCSVRecords(data []byte) (header []string, records []map[string]string,
 	return header, records, nil
 }
 
-// utf8BOM is the UTF-8 byte-order mark (EF BB BF). Built from explicit bytes so
-// the source file carries no literal BOM rune (which the Go scanner rejects
-// outside the first character).
+// utf8BOM is built from explicit bytes so the source carries no literal BOM rune,
+// which the Go scanner rejects outside the first character.
 var utf8BOM = string([]byte{0xEF, 0xBB, 0xBF})
 
-// stripUTF8BOM removes a leading UTF-8 BOM from a header key.
 func stripUTF8BOM(s string) string {
 	return strings.TrimPrefix(s, utf8BOM)
 }
 
-// importDateFormats is the subset of PHP parseDate explicit formats, in PHP
-// order, translated to Go layouts. Date-only formats parse at midnight (PHP '!'
-// resets unspecified fields). Covers the default export format + common inputs.
+// importDateFormats is the explicit format list, tried in this order. Date-only
+// formats parse at midnight (unspecified fields reset to zero). Covers the
+// default export format + common inputs.
 var importDateFormats = []string{
 	datetime.DateLayout,   // Y-m-d
 	"02/01/2006",          // d/m/Y
@@ -130,9 +125,9 @@ var importDateFormats = []string{
 	time.RFC3339,          // Y-m-d\TH:i:sP
 }
 
-// parseImportDate parses a date string (PHP parseDate): trims quotes/space;
-// 8-digit -> Ymd; 10/13-digit -> unix seconds/millis; else the explicit format
-// list. Returns (time, false) when nothing matches.
+// parseImportDate parses a date string: trims quotes/space; 8-digit -> Ymd;
+// 10/13-digit -> unix seconds/millis; else the explicit format list. Returns
+// (time, false) when nothing matches.
 func parseImportDate(s string) (time.Time, bool) {
 	s = strings.Trim(s, " \t\n\r\x00\x0B\"'")
 	if s == "" {
@@ -176,15 +171,13 @@ func isAllDigits(s string) bool {
 	return true
 }
 
-// nonAmountChars matches everything except digits, dot, and comma (PHP
-// preg_replace('/[^\d.,]/', ”)).
+// nonAmountChars matches everything except digits, dot, and comma.
 var nonAmountChars = regexp.MustCompile(`[^\d.,]`)
 
 // parseImportAmount parses a localized amount string into a signed
-// DecimalNumber (PHP parseAmount): negatives from a leading '-' or surrounding
-// parentheses; strips currency symbols; resolves ./,-as decimal-vs-thousands
-// separators by the last-separator heuristic. Returns (_, false) when not
-// numeric.
+// DecimalNumber: negatives from a leading '-' or surrounding parentheses; strips
+// currency symbols; resolves ./, as decimal-vs-thousands separators by the
+// last-separator heuristic. Returns (_, false) when not numeric.
 func parseImportAmount(s string) (vo.DecimalNumber, bool) {
 	trimmed := strings.TrimSpace(s)
 	if trimmed == "" {
@@ -219,7 +212,7 @@ func parseImportAmount(s string) (vo.DecimalNumber, bool) {
 			cleaned = strings.ReplaceAll(cleaned, ",", "")
 		}
 	}
-	// strip any remaining commas (PHP final str_replace)
+	// strip any remaining commas
 	cleaned = strings.ReplaceAll(cleaned, ",", "")
 
 	if !isNumericDecimal(cleaned) {
@@ -234,7 +227,7 @@ func parseImportAmount(s string) (vo.DecimalNumber, bool) {
 }
 
 // isNumericDecimal reports whether s is a plain decimal numeric string (digits
-// with at most one dot), mirroring PHP is_numeric for the cleaned value.
+// with at most one dot).
 func isNumericDecimal(s string) bool {
 	if s == "" {
 		return false
@@ -257,7 +250,6 @@ func isNumericDecimal(s string) bool {
 	return digits > 0
 }
 
-// negateDecimal returns -v.
 func negateDecimal(v vo.DecimalNumber) vo.DecimalNumber {
 	return vo.NewDecimal("0").Sub(v)
 }

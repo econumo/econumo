@@ -1,19 +1,17 @@
-// Code generated from vendor/symfony/intl/Resources/data/currencies/{en,meta}.php. DO NOT EDIT.
+// Code generated from Intl currency data (en locale). DO NOT EDIT.
 //
-// The Econumo PHP backend resolves currency metadata via Symfony Intl's
-// Currencies against the en locale (config default_locale: en). To stay
-// consistent, the Go currency module looks these up in the same ICU tables:
-//   - currencyNames          <- en.php element [1]  (getName)
-//   - currencySymbols        <- en.php element [0]  (getSymbol)
-//   - currencyFractionDigits <- meta.php Meta[code][0] (getFractionDigits),
-//                               with the ICU DEFAULT of 2 for absent codes.
+// Currency metadata is resolved against the ICU en-locale tables:
+//   - currencyNames          <- getName
+//   - currencySymbols        <- getSymbol
+//   - currencyFractionDigits <- getFractionDigits, with the ICU DEFAULT of 2
+//                               for absent codes.
 // Each helper falls back to a safe value for an unknown code (the code itself for
-// names/symbols, 2 for fraction digits), mirroring the PHP fallbacks.
+// names/symbols, 2 for fraction digits).
 // Regenerate with gen_names.sh.
 
 package currency
 
-// defaultFractionDigits is the ICU DEFAULT fraction digits (meta.php 'DEFAULT').
+// defaultFractionDigits is the ICU DEFAULT fraction digits.
 const defaultFractionDigits = 2
 
 // currencyNames maps an ISO 4217 code to its English display name.
@@ -670,7 +668,7 @@ var currencyFractionDigits = map[string]int{
 }
 
 // DisplayName returns the English currency name for a code, or the code itself
-// when the table has no entry (matching the PHP fallback).
+// when the table has no entry.
 func DisplayName(code string) string {
 	if n, ok := currencyNames[code]; ok {
 		return n
@@ -679,7 +677,7 @@ func DisplayName(code string) string {
 }
 
 // Symbol returns the narrow currency symbol for a code, or the code itself when
-// the table has no entry (matching PHP Currencies::getSymbol's fallback).
+// the table has no entry.
 func Symbol(code string) string {
 	if s, ok := currencySymbols[code]; ok {
 		return s
@@ -687,8 +685,7 @@ func Symbol(code string) string {
 	return code
 }
 
-// FractionDigits returns the ICU fraction digits for a code, defaulting to 2
-// (matching PHP Currencies::getFractionDigits' DEFAULT fallback).
+// FractionDigits returns the ICU fraction digits for a code, defaulting to 2.
 func FractionDigits(code string) int {
 	if d, ok := currencyFractionDigits[code]; ok {
 		return d

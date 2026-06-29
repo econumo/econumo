@@ -1,8 +1,5 @@
 package accountrepo_test
 
-// Integration tests for the account FolderRepo: folder CRUD, NotFound, delete,
-// per-user listing/count, and accounts_folders membership maps.
-
 import (
 	"context"
 	"errors"

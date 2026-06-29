@@ -7,13 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
-// RegisterAPI returns a router.RegisterAPI that mounts all 7 tag endpoints on
-// the API mux with their exact API paths and methods. Every tag endpoint is
-// authenticated, so each handler is wrapped in the JWT middleware (an
-// absent/invalid token yields the 401 envelope before the handler runs).
-//
-// The router already wraps the whole /api subtree in the global chain
-// (requestid -> recover -> cors -> timezone); RegisterAPI must not re-add it.
+// RegisterAPI mounts the 7 tag endpoints, each wrapped in the JWT middleware.
 func RegisterAPI(h *Handlers, verifier middleware.TokenVerifier, dev bool) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
 		jwt := middleware.JWT(verifier, dev)

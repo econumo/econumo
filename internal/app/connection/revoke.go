@@ -9,7 +9,7 @@ import (
 // RevokeAccountAccess removes a connected user's grant on an account the
 // requesting user owns (or admins). It also unwinds the affected user's view of
 // the account: removes it from their folders and drops their accounts_options
-// row -- mirroring PHP ConnectionAccountService::revokeAccountAccess.
+// row.
 func (s *Service) RevokeAccountAccess(ctx context.Context, userID vo.Id, req RevokeAccountAccessRequest) (*RevokeAccountAccessResult, error) {
 	accountID, err := parseID("accountId", req.AccountId)
 	if err != nil {
@@ -31,21 +31,19 @@ func (s *Service) RevokeAccountAccess(ctx context.Context, userID vo.Id, req Rev
 }
 
 // RevokeOwnAccess removes the caller's OWN grant on a shared account (the
-// delete-account non-owner branch in PHP: connectionAccountService->
-// revokeAccountAccess($userId, $accountId)). No owner/admin gate -- the caller is
-// dropping their own access. The account module calls this via a port.
+// delete-account non-owner branch). No owner/admin gate -- the caller is dropping
+// their own access. The account module calls this via a port.
 func (s *Service) RevokeOwnAccess(ctx context.Context, userID, accountID vo.Id) error {
 	return s.revokeGrant(ctx, accountID, userID)
 }
 
 // revokeGrant removes affectedUserID's grant on accountID and unwinds their view
 // of it (folder memberships + accounts_options), inside one tx. Shared by
-// RevokeAccountAccess and RevokeOwnAccess. Mirrors PHP
-// ConnectionAccountService::revokeAccountAccess.
+// RevokeAccountAccess and RevokeOwnAccess.
 func (s *Service) revokeGrant(ctx context.Context, accountID, affectedUserID vo.Id) error {
 	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		// Loads the grant first so a missing one surfaces NotFound (matches PHP,
-		// which does accountAccessRepository->get before the cleanup).
+		// Load the grant first so a missing one surfaces NotFound before the
+		// cleanup.
 		if _, gerr := s.access.Get(txCtx, accountID, affectedUserID); gerr != nil {
 			return gerr
 		}

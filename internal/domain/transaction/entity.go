@@ -1,12 +1,10 @@
 // Package transaction is the transaction aggregate's domain layer: the
-// Transaction entity, its Type value object, and the repository interface. Pure
-// — no framework/persistence/JSON imports.
+// Transaction entity, its Type value object, and the repository interface.
 //
 // A transaction is an expense (type 0), income (1), or transfer (2). Transfers
 // carry a recipient account + recipient amount and no category/payee/tag;
 // non-transfers carry an optional category/payee/tag and no recipient. The
-// entity enforces those type-dependent field rules in its mutators (matching the
-// PHP Transaction entity).
+// entity enforces those type-dependent field rules in its mutators.
 package transaction
 
 import (
@@ -16,7 +14,7 @@ import (
 )
 
 // Type is the transaction type value object. DB SMALLINT; wire uses the alias
-// string (expense/income/transfer). See CLAUDE.md.
+// string (expense/income/transfer).
 type Type int16
 
 const (
@@ -28,7 +26,6 @@ const (
 	TypeTransfer Type = 2
 )
 
-// Int16 returns the persisted SMALLINT value.
 func (t Type) Int16() int16 { return int16(t) }
 
 // Alias returns the wire alias.
@@ -99,7 +96,6 @@ func New(s NewState) *Transaction {
 	}
 }
 
-// FromState rebuilds a Transaction from a persisted row.
 func FromState(s NewState) *Transaction {
 	return &Transaction{
 		id: s.ID, userID: s.UserID, typ: s.Type, accountID: s.AccountID,
@@ -109,7 +105,6 @@ func FromState(s NewState) *Transaction {
 	}
 }
 
-// Accessors.
 func (t *Transaction) Id() vo.Id                  { return t.id }
 func (t *Transaction) UserId() vo.Id              { return t.userID }
 func (t *Transaction) Type() Type                 { return t.typ }
@@ -128,9 +123,8 @@ func (t *Transaction) UpdatedAt() time.Time       { return t.updatedAt }
 // Update applies a full update from the given state, enforcing the
 // type-dependent field rules: a transfer clears category/payee/tag and keeps
 // recipient account+amount; a non-transfer clears recipient and keeps
-// category/payee/tag. Always stamps updatedAt = now (matching the PHP
-// Transaction::update, which sets fields then the per-field mutators bump it; we
-// always refresh since a full update replaces the mutable state).
+// category/payee/tag. Always stamps updatedAt = now, since a full update
+// replaces the mutable state.
 func (t *Transaction) Update(s NewState, now time.Time) {
 	t.typ = s.Type
 	t.accountID = s.AccountID

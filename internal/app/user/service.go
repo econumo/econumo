@@ -1,7 +1,6 @@
 // Service wiring: the use-case orchestrator, its dependency seams, the
 // constructor, and the shared private helpers. The individual use cases live in
-// sibling files (login.go, register.go, profile.go, password.go, onboarding.go,
-// userdata.go).
+// sibling files (login.go, register.go, profile.go, password.go, onboarding.go).
 package user
 
 import (
@@ -29,10 +28,7 @@ type Clock interface {
 
 // CurrencyLookup resolves a currency code to its currency-id (the synthetic
 // currency_id option in CurrentUserResult). DefaultCode returns the fallback
-// used when the user's code can't be resolved. The currency module isn't built
-// yet, so this is a minimal seam; userrepo-style sql impl lives in
-// infra/repo/currency (see notes — a stub is acceptable until that module lands,
-// but the interface must exist because CurrentUserResult depends on it).
+// used when the user's code can't be resolved.
 type CurrencyLookup interface {
 	// GetIDByCode returns the currency uuid for the given code, or an error if
 	// not found. The service falls back to DefaultCode on error.
@@ -42,11 +38,10 @@ type CurrencyLookup interface {
 }
 
 // BudgetExistence is the minimal budget lookup the update-budget use case needs:
-// confirm a budget id exists before setting it as the user's default. PHP's
-// BudgetService.updateBudget does an existence-only get (no ownership/access
-// check) and maps a miss to the "Plan not found" validation error. The full
-// budget module owns the table; this is the read-only port the user service
-// depends on (mirrors CurrencyLookup).
+// confirm a budget id exists before setting it as the user's default. The check
+// is existence-only (no ownership/access check) and a miss maps to the "Plan not
+// found" validation error. The full budget module owns the table; this is the
+// read-only port the user service depends on.
 type BudgetExistence interface {
 	// Exists reports whether a budget with the given id exists.
 	Exists(ctx context.Context, budgetID string) (bool, error)
@@ -111,7 +106,6 @@ type Service struct {
 	allowRegistration bool
 }
 
-// NewService wires the user service.
 func NewService(
 	repo domuser.Repository,
 	tx TxRunner,
@@ -143,13 +137,9 @@ func NewService(
 // Logout is stateless (JWT); nothing to invalidate server-side.
 func (s *Service) Logout(ctx context.Context) (*LogoutResult, error) {
 	_ = ctx
-	// PHP's assembler hard-codes result = 'test'; replicate it verbatim.
+	// The "test" literal is a frozen wire constant clients depend on (see LogoutResult).
 	return &LogoutResult{Result: "test"}, nil
 }
-
-// ---------------------------------------------------------------------------
-// shared private helpers used across the use cases
-// ---------------------------------------------------------------------------
 
 // mutate loads the user, applies fn inside a transaction, and saves. It returns
 // the mutated (in-memory) aggregate so the caller can build its result without
@@ -176,7 +166,6 @@ func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *domuser.U
 	return loaded, nil
 }
 
-// toCurrentUser builds the CurrentUserResult, decoding the email itself.
 func (s *Service) toCurrentUser(ctx context.Context, u *domuser.User) (CurrentUserResult, error) {
 	email, err := s.encode.Decode(u.Email())
 	if err != nil {
@@ -219,10 +208,6 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *domuser.User, e
 		ReportPeriod: u.ReportPeriod(),
 	}, nil
 }
-
-// ---------------------------------------------------------------------------
-// tier-2 value-object constructors (user-module invariants)
-// ---------------------------------------------------------------------------
 
 // newCurrencyCode enforces the currency-code invariant: trim, uppercase, must be
 // exactly 3 chars. Returns a *ValidationError on failure (HTTP 400).

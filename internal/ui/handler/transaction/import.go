@@ -10,7 +10,7 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// maxImportUpload bounds the multipart parse (PHP File constraint maxSize 10M).
+// maxImportUpload bounds the multipart parse at 10M — a frozen upload-size limit.
 const maxImportUpload = 10 << 20
 
 // ImportTransactionList handles POST /api/v1/transaction/import-transaction-list
@@ -49,7 +49,6 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// mapping: a JSON object string -> ImportMapping.
 	mapping, merr := parseImportMapping(r.FormValue("mapping"))
 	if merr != nil {
 		httpx.WriteError(w, merr, h.dev)
@@ -86,8 +85,7 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 }
 
 // parseImportMapping decodes the mapping JSON object into an ImportMapping. An
-// invalid JSON object is a 400 ValidationError (mirrors the PHP controller's
-// "Invalid mapping JSON" branch).
+// invalid JSON object is a 400 ValidationError ("Invalid mapping JSON").
 func parseImportMapping(raw string) (apptransaction.ImportMapping, error) {
 	var m apptransaction.ImportMapping
 	if raw == "" {
@@ -119,8 +117,8 @@ func parseImportMapping(raw string) (apptransaction.ImportMapping, error) {
 }
 
 // optFormValue returns a pointer to the form value, or nil when the field is
-// absent (PHP distinguishes a missing override from a blank one only for
-// description; ids treat blank as absent in the service).
+// absent — the service distinguishes a missing override from a blank one only
+// for description; ids treat blank as absent.
 func optFormValue(r *http.Request, key string) *string {
 	if _, ok := r.Form[key]; !ok {
 		if r.MultipartForm == nil || r.MultipartForm.Value[key] == nil {

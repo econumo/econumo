@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-// These tests lock in the budget write-endpoint contract corrections found by the
-// PHP/Go mutation-comparison harness:
+// These tests lock in the budget write-endpoint wire contract:
 //   - exclude/include-account take the budget id under "id" (not "budgetId")
 //   - create-envelope places the new element at position 0 (front of its group)
 //   - move-element-list identifies elements by id alone (no "type" field) and
@@ -41,9 +40,9 @@ func seedBudget(t *testing.T, h *harness, tok string) {
 	}
 }
 
-// TestExcludeAccount_UsesIdField verifies the budget id arrives under "id" (the
-// open-source ExcludeAccount form/DTO field), not "budgetId". Sending it under
-// "id" must succeed; the account must then be recorded as excluded.
+// TestExcludeAccount_UsesIdField verifies the budget id arrives under "id", not
+// "budgetId". Sending it under "id" must succeed; the account must then be
+// recorded as excluded.
 func TestExcludeAccount_UsesIdField(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -95,8 +94,8 @@ func TestIncludeAccount_UsesIdField(t *testing.T) {
 }
 
 // TestCreateEnvelope_AtPositionZero verifies the new envelope element lands at
-// position 0 (PHP inserts at the front of its group), and the response carries
-// the requested category as a child with zero spending.
+// position 0 (front of its group), and the response carries the requested
+// category as a child with zero spending.
 func TestCreateEnvelope_AtPositionZero(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -139,9 +138,9 @@ func TestCreateEnvelope_AtPositionZero(t *testing.T) {
 }
 
 // TestMoveElementList_NoTypeField verifies move-element-list identifies the
-// element by id ALONE (the open-source form has no "type" field) and applies a
-// folder change + position. The request omits "type"; it must still succeed and
-// move the element into the folder.
+// element by id ALONE (the form has no "type" field) and applies a folder change
+// + position. The request omits "type"; it must still succeed and move the
+// element into the folder.
 func TestMoveElementList_NoTypeField(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

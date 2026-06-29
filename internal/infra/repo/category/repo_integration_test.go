@@ -1,9 +1,5 @@
 package categoryrepo_test
 
-// Integration tests for the category write Repo, ReadRepo (own + shared via
-// accounts_access), and the OperationGuard idempotency, against a real migrated
-// in-memory SQLite.
-
 import (
 	"context"
 	"errors"

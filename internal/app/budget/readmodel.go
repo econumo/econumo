@@ -1,8 +1,8 @@
 // Package budget's read model: the row types the budget read repo returns and
-// the ReadModel port the BudgetBuilder depends on. These mirror the PHP native
-// budget reports (account balances/report/holdings + per-element spending) and
-// the limit aggregations. All money values are raw NUMERIC(19,8) strings; the
-// builder normalizes via vo.DecimalNumber.
+// the ReadModel port the BudgetBuilder depends on — the budget reports (account
+// balances/report/holdings + per-element spending) and the limit aggregations.
+// All money values are raw NUMERIC(19,8) strings; the builder normalizes via
+// vo.DecimalNumber.
 package budget
 
 import (
@@ -40,7 +40,7 @@ type HoldingsRow struct {
 }
 
 // SpendingRow is one (category, optional tag, currency) spending total in a
-// period (PHP countSpending: GROUP BY category_id, tag_id, currency_id).
+// period (grouped by category_id, tag_id, currency_id).
 type SpendingRow struct {
 	CategoryID string
 	TagID      *string

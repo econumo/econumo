@@ -10,8 +10,7 @@ import (
 )
 
 // MoveElementList repositions budget elements and moves them between folders
-// (canUpdate). Each item identifies an element by its external id + type. Mirrors
-// BudgetService.moveElements / BudgetElementsActionsService.moveElements.
+// (canUpdate). Each item identifies an element by its external id + type.
 func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveElementListRequest) (*MoveElementListResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
@@ -25,8 +24,8 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 		return nil, accessDenied()
 	}
 
-	// Index elements by their EXTERNAL id (first-seen wins), mirroring PHP which
-	// keys $affectedElements by $item->id with no type discriminator.
+	// Index elements by their EXTERNAL id (first-seen wins): the move request keys
+	// elements by external id with no type discriminator.
 	byExternal := map[string]*dombudget.BudgetElement{}
 	for _, e := range b.elements {
 		k := e.ExternalId().String()
@@ -56,9 +55,9 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 				return serr
 			}
 		}
-		// PHP's moveElements always finishes with restoreElementsOrder, which
-		// renumbers every element's position contiguously within its folder (and
-		// the no-folder group) in position order, skipping position-unset rows.
+		// Always finish with restoreElementsOrder, which renumbers every element's
+		// position contiguously within its folder (and the no-folder group) in
+		// position order, skipping position-unset rows.
 		return s.restoreElementsOrder(txCtx, b.budget.Id(), now)
 	})
 	if err != nil {
@@ -69,8 +68,8 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 
 // shiftElements bumps the positions of same-group (same folder) elements with
 // position >= startPosition up by one, freeing startPosition for a new element.
-// Mirrors BudgetElementsActionsService::shiftElements (iterating in position
-// order; counter starts at startPosition and pre-increments per match).
+// Iterates in position order; the counter starts at startPosition and
+// pre-increments per match.
 func (s *Service) shiftElements(ctx context.Context, b *budgetAggregate, folderID *vo.Id, startPosition int16, now time.Time) error {
 	elems := append([]*dombudget.BudgetElement(nil), b.elements...)
 	sort.SliceStable(elems, func(i, j int) bool {
@@ -104,28 +103,25 @@ func (s *Service) shiftElements(ctx context.Context, b *budgetAggregate, folderI
 }
 
 // posMax is the in-memory sort sentinel for "position unset but participating"
-// elements (PHP uses PHP_INT_MAX). It only affects ordering before renumbering;
-// it is never persisted (every such element is renumbered to a real position or
-// stays unset).
+// elements. It only affects ordering before renumbering; it is never persisted
+// (every such element is renumbered to a real position or stays unset).
 const posMax = int16(0x7fff)
 
-// restoreElementsOrder is a faithful port of
-// BudgetElementsActionsService::restoreElementsOrder. It guarantees every
-// participant envelope / expense-category / tag has a budget element, normalizes
-// archived → position-unset and live-but-unset → end-of-list, forces
-// envelope-child categories to unset + no-folder, then renumbers every live
-// element contiguously (0-based) within each folder and within the no-folder
-// group — iterating in position order (PHP getByBudgetId is position ASC).
+// restoreElementsOrder guarantees every participant envelope / expense-category /
+// tag has a budget element, normalizes archived → position-unset and
+// live-but-unset → end-of-list, forces envelope-child categories to unset +
+// no-folder, then renumbers every live element contiguously (0-based) within each
+// folder and within the no-folder group — iterating in position-ASC order.
 // Finally it deletes elements whose entity no longer participates.
 //
-// All budget element-mutating use cases (move, envelope create/update/delete)
-// run this as their last step, matching PHP.
+// All budget element-mutating use cases (move, envelope create/update/delete) run
+// this as their last step.
 func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now time.Time) error {
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
 		return err
 	}
-	// Participant users = owner + accepted non-reader access (BudgetFiltersBuilder).
+	// Participant users = owner + accepted non-reader access.
 	userIDs := []vo.Id{b.budget.UserId()}
 	for _, a := range b.access {
 		if a.IsAccepted() && a.Role() != roleGuest() {
@@ -153,7 +149,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 			return e, key
 		}
 		// Missing element: create it at posMax so it sorts to the END of its group
-		// during renumber (PHP creates it at PHP_INT_MAX).
+		// during renumber.
 		e := dombudget.NewBudgetElement(s.repo.NextIdentity(), budgetID, externalID, typ, nil, nil, posMax, now)
 		byKey[key] = e
 		created[key] = e
@@ -192,7 +188,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	}
 	for _, c := range cats {
 		if c.IsIncome {
-			continue // PHP getCategories is expense-only
+			continue // expense categories only
 		}
 		cid, perr := vo.ParseId(c.ID)
 		if perr != nil {

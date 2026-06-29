@@ -131,8 +131,6 @@ func TestUpdateRates(t *testing.T) {
 	}
 }
 
-// --- helpers -------------------------------------------------------------
-
 func readCurrency(t *testing.T, db *dbtest.DB, code string) (symbol string, name sql.NullString, fractionDigits int) {
 	t.Helper()
 	row := db.Raw.QueryRow(`SELECT symbol, name, fraction_digits FROM currencies WHERE code = ?`, code)

@@ -1,15 +1,5 @@
 package payee_test
 
-// HTTP test harness for the payee module: open a fresh in-memory sqlite DB per
-// test, run the real migrations, seed a user, build the REAL router (global
-// middleware + the payee RegisterAPI with real JWT middleware), and exercise it
-// through an httptest.Server with the production envelope on the wire.
-//
-// Fresh-DB-per-test isolation (same rationale as the tag/category harnesses):
-// the request flows through net/http, which builds its own per-request context,
-// so the savepoint-rollback-per-test optimization is not wired here. Fresh
-// :memory: is correct and cheap.
-
 import (
 	"bytes"
 	"context"
@@ -39,8 +29,6 @@ import (
 	"github.com/econumo/econumo/pkg/jwt"
 )
 
-// Fixed test data. The JWT keypair comes from the shared testkeys package
-// (testkeys.Paths + testkeys.Passphrase).
 const (
 	testDataSalt = "0123456789abcdef" // 16 bytes -> AES-128
 
@@ -57,7 +45,6 @@ type fixedClock struct{ t time.Time }
 
 func (c fixedClock) Now() time.Time { return c.t }
 
-// harness bundles the running server and the collaborators a test needs.
 type harness struct {
 	srv   *httptest.Server
 	db    *sql.DB
@@ -66,8 +53,6 @@ type harness struct {
 	clock fixedClock
 }
 
-// newHarness builds a fully-wired payee module over a fresh in-memory sqlite DB
-// with one seeded user (and a second user, to test ownership boundaries).
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	ctx := context.Background()
@@ -116,8 +101,6 @@ func newHarness(t *testing.T) *harness {
 	return &harness{srv: srv, db: db, tdb: tdb, jwt: jwtSvc, clock: clk}
 }
 
-// seedUsers inserts the seeded user (the JWT subject) and a second user used to
-// test ownership boundaries. Payees are created via the API in each test.
 func seedUsers(t *testing.T, tdb *dbtest.DB) {
 	t.Helper()
 	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
@@ -144,9 +127,8 @@ func toMigrations(files []migrations.File) []migrate.Migration {
 	return out
 }
 
-// seedPayee inserts a payee row directly (bypassing the API) for the given owner
-// — handy for tests that need a pre-existing payee (e.g. ownership setups). The
-// payees table has no type/icon columns.
+// seedPayee inserts a payee row directly (bypassing the API) for the given owner,
+// for tests that need a pre-existing payee.
 func (h *harness) seedPayee(t *testing.T, id, ownerID, name string, position int, archived bool) {
 	t.Helper()
 	fixture.New(t, h.tdb).Payee(fixture.Payee{
@@ -157,8 +139,6 @@ func (h *harness) seedPayee(t *testing.T, id, ownerID, name string, position int
 		Archived: archived,
 	})
 }
-
-// ---- request helpers ----
 
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {
 	t.Helper()
@@ -206,7 +186,6 @@ func (h *harness) issueToken(t *testing.T) string {
 	return tok
 }
 
-// envelope is the decoded response envelope (success or error).
 type envelope struct {
 	Success bool            `json:"success"`
 	Message string          `json:"message"`
@@ -216,9 +195,9 @@ type envelope struct {
 	raw     []byte
 }
 
-// payeeItem is the wire shape of a PayeeResult, with exact JSON keys (the tests
-// assert key presence + types, including isArchived as a number, the
-// "Y-m-d H:i:s" timestamp format, and the ABSENCE of type/icon).
+// payeeItem is the wire shape of a payee result. Tests assert key presence and
+// types, including isArchived as a number, the "2006-01-02 15:04:05" timestamp
+// format, and the absence of type/icon.
 type payeeItem struct {
 	ID          string `json:"id"`
 	OwnerUserID string `json:"ownerUserId"`
@@ -239,9 +218,8 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 }
 
 // errorsMap decodes the validation-form errors object (field -> messages).
-// Access-denied / exception responses emit an empty array ([]) instead, which
-// leaves the returned map empty. Added because the access-denied envelope's
-// errors is [] (PHP shape), which won't unmarshal into a map.
+// Access-denied / exception responses emit an empty array ([]) instead of an
+// object, which won't unmarshal into a map and leaves the result empty.
 func (e envelope) errorsMap() map[string][]string {
 	m := map[string][]string{}
 	if len(e.Errors) > 0 {

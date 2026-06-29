@@ -76,7 +76,7 @@ func TestConvert_FractionDigitsOtherError_Propagates(t *testing.T) {
 }
 
 // When the from/to currency is absent from the rates slice, that hop is skipped
-// (no division/multiplication), matching the PHP loop-with-no-match behavior.
+// (no division/multiplication) — a no-match leaves the amount unchanged.
 func TestConvert_MissingRate_SkipsHop(t *testing.T) {
 	usd, eur := ids(t)
 	f := flexRates{

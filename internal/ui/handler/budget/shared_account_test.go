@@ -18,11 +18,10 @@ const (
 	jan2026      = "2026-01-15"
 )
 
-// TestGetBudget_ExcludesSharedAccountBalance is the regression for the
-// api-compare C4 finding: a budget's per-currency startBalance must sum only the
-// accounts OWNED by the budget participants (PHP findByOwnersIds), NOT accounts
-// merely shared with them via accounts_access. A shared account's balance was
-// previously inflating the start balance.
+// TestGetBudget_ExcludesSharedAccountBalance: a budget's per-currency
+// startBalance must sum only the accounts OWNED by the budget participants, NOT
+// accounts merely shared with them via accounts_access. A shared account's
+// balance was previously inflating the start balance.
 func TestGetBudget_ExcludesSharedAccountBalance(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

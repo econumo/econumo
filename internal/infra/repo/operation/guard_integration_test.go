@@ -1,9 +1,5 @@
 package operation_test
 
-// Integration tests for the shared operation idempotency Guard against a real
-// migrated in-memory SQLite: Claim is already=false the first time, already=true
-// on the second Claim of the same id; MarkHandled flips is_handled.
-
 import (
 	"context"
 	"testing"

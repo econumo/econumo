@@ -13,14 +13,13 @@ import (
 	"github.com/youmark/pkcs8"
 )
 
-// keyBits is the RSA key size for generated JWT keypairs. 4096 matches the
-// Symfony/lexik default and the keys this repo ships.
+// keyBits is the RSA key size for generated JWT keypairs, matching the keys this
+// repo ships.
 const keyBits = 4096
 
-// GenerateKeypair writes a fresh RS256 JWT keypair in the exact formats NewJWT
+// GenerateKeypair writes a fresh RS256 JWT keypair in the exact formats New
 // reads: the public key as an SPKI ("PUBLIC KEY") PEM and the private key as an
 // encrypted PKCS#8 ("ENCRYPTED PRIVATE KEY", PBES2) PEM sealed with passphrase.
-// This is the Go equivalent of `bin/console lexik:jwt:generate-keypair`.
 //
 // A non-empty passphrase is required (it is the ECONUMO_JWT_PASSPHRASE the server uses to
 // decrypt the key). Existing files are left untouched unless force is true, so a
@@ -48,7 +47,7 @@ func GenerateKeypair(privatePath, publicPath, passphrase string, force bool) err
 		return fmt.Errorf("marshal public key: %w", err)
 	}
 	// Encrypted PKCS#8 (PBES2) — youmark/pkcs8 uses AES-256-CBC + PBKDF2-SHA256 by
-	// default, which Go's crypto/x509 cannot produce but NewJWT (also youmark) reads.
+	// default, which Go's crypto/x509 cannot produce but New (also youmark) reads.
 	privDER, err := pkcs8.MarshalPrivateKey(priv, []byte(passphrase), nil)
 	if err != nil {
 		return fmt.Errorf("marshal encrypted private key: %w", err)

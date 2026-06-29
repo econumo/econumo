@@ -28,9 +28,8 @@
 //go:generate go run github.com/swaggo/swag/cmd/swag@latest init -g doc.go -d .,../handler,../../app -o ./docs --parseInternal --parseDependency
 package apidoc
 
-// JsonResponseOk is the success envelope (ResponseFactory::createOkResponse).
-// data is endpoint-specific; handler annotations refine it via the
-// {data=...} composition.
+// JsonResponseOk is the success envelope. data is endpoint-specific; handler
+// annotations refine it via the {data=...} composition.
 type JsonResponseOk struct {
 	Success bool        `json:"success" example:"true"`
 	Message string      `json:"message" example:""`

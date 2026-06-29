@@ -1,8 +1,6 @@
 // Write side of the currency module. The HTTP API exposes no currency
 // mutations; these use cases exist only for the CLI admin commands
-// (app:update-currency-rates, app:add-currency), porting the PHP
-// CurrencyUpdateService and CurrencyRatesUpdateService. The read side (read.go)
-// is unchanged.
+// (currency:update-rates, currency:add). The read side (read.go) is unchanged.
 package currency
 
 import (
@@ -21,7 +19,7 @@ import (
 // WriteService wraps multi-row work in a single transaction via its TxRunner.
 type WriteModel interface {
 	// CurrencyCodes returns a map of stored code -> currency id for every
-	// currency (mirrors CurrencyRepository::getAll, projected to code+id).
+	// currency.
 	CurrencyCodes(ctx context.Context) (map[string]string, error)
 	// CurrencyExists reports whether a currency with the (already-normalized)
 	// code exists.
@@ -43,7 +41,7 @@ type CurrencyRow struct {
 }
 
 // RateRow is one currencies_rates row to upsert. Date is the published date
-// (midnight); the repo stores it as the 'Y-m-d' DATE the PHP backend writes.
+// (midnight); the repo stores it as a 'Y-m-d' DATE.
 type RateRow struct {
 	ID             string
 	CurrencyID     string
@@ -104,8 +102,7 @@ func (s *WriteService) AvailableCodes(ctx context.Context) ([]string, error) {
 
 // UpdateRates upserts every loaded rate whose currency AND base code both resolve
 // to a known currency, in one transaction. Unknown codes are skipped (not an
-// error). Returns the number of rates actually written. Ports
-// CurrencyRatesUpdateService::updateCurrencyRates.
+// error). Returns the number of rates actually written.
 func (s *WriteService) UpdateRates(ctx context.Context, rates []RateInput) (int, error) {
 	codes, err := s.write.CurrencyCodes(ctx)
 	if err != nil {
@@ -142,9 +139,8 @@ func (s *WriteService) UpdateRates(ctx context.Context, rates []RateInput) (int,
 }
 
 // AddCurrency creates a currency if its code is not already present. The symbol
-// and (when not overridden) the fraction digits come from the ICU tables, like
-// PHP's CurrencyUpdateService. Returns whether a row was created (false = the
-// code already existed). Ports CurrencyUpdateService::updateCurrencies.
+// and (when not overridden) the fraction digits come from the ICU tables.
+// Returns whether a row was created (false = the code already existed).
 func (s *WriteService) AddCurrency(ctx context.Context, code string, name *string, fractionDigits *int) (bool, error) {
 	c, err := validateCode(code)
 	if err != nil {

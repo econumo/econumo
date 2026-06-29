@@ -1,7 +1,7 @@
 // Package jwt issues and verifies the RS256 JSON Web Tokens Econumo uses for API
 // authentication, and generates/loads the RS256 keypair they are signed with. It
 // depends only on the standard library plus golang-jwt and youmark/pkcs8, so it
-// is self-contained and free of any econumo/internal dependency.
+// stays free of any econumo/internal dependency.
 package jwt
 
 import (
@@ -20,17 +20,15 @@ import (
 // tokenTTL is 2592000 seconds = 30 days. exp = iat + tokenTTL.
 const tokenTTL = 2592000 * time.Second
 
-// signingMethod is fixed to RS256. We never accept any other algorithm —
+// signingMethod is fixed to RS256. No other algorithm is ever accepted —
 // neither when issuing nor when verifying.
 var signingMethod = jwtv5.SigningMethodRS256
 
 // Claims is the exact claim set Econumo emits on login: iat, exp=iat+TTL,
 // roles, username (the plaintext email) and id (the user UUID string). There is
-// intentionally NO baseCurrency claim.
-//
-// Claim ordering in the JSON does not affect signature verification
-// (verification re-signs the raw, already-encoded payload bytes), so wire
-// compatibility does not depend on field order here. See CLAUDE.md.
+// intentionally NO baseCurrency claim. Claim ordering in the JSON does not affect
+// signature verification (it re-signs the raw, already-encoded payload bytes), so
+// wire compatibility does not depend on field order.
 type Claims struct {
 	Iat      int64    `json:"iat"`
 	Exp      int64    `json:"exp"`
@@ -39,33 +37,29 @@ type Claims struct {
 	ID       string   `json:"id"`
 }
 
-// GetExpirationTime implements jwtv5.Claims so the library validates exp.
+// The Get* methods satisfy jwtv5.Claims. exp/iat are derived from the fields;
+// nbf/iss/sub/aud return the zero value because Econumo sets no such claims.
+
 func (c Claims) GetExpirationTime() (*jwtv5.NumericDate, error) {
 	return jwtv5.NewNumericDate(time.Unix(c.Exp, 0)), nil
 }
 
-// GetIssuedAt implements jwtv5.Claims.
 func (c Claims) GetIssuedAt() (*jwtv5.NumericDate, error) {
 	return jwtv5.NewNumericDate(time.Unix(c.Iat, 0)), nil
 }
 
-// GetNotBefore implements jwtv5.Claims. No nbf claim is set, so we report none
-// (nil is valid and means "no constraint").
 func (c Claims) GetNotBefore() (*jwtv5.NumericDate, error) { return nil, nil }
 
-// GetIssuer implements jwtv5.Claims. No iss claim is set.
 func (c Claims) GetIssuer() (string, error) { return "", nil }
 
-// GetSubject implements jwtv5.Claims. No sub claim is set.
 func (c Claims) GetSubject() (string, error) { return "", nil }
 
-// GetAudience implements jwtv5.Claims. No aud claim is set.
 func (c Claims) GetAudience() (jwtv5.ClaimStrings, error) { return nil, nil }
 
 // JWT issues and verifies RS256 tokens that are wire-compatible with existing
-// API clients (see CLAUDE.md). The public key is always loaded
-// (verification is always possible); the private key is loaded only when its
-// path is readable, so a verify-only deployment need not ship the signing key.
+// API clients. The public key is always loaded (verification is always
+// possible); the private key is loaded only when its path is readable, so a
+// verify-only deployment need not ship the signing key.
 type JWT struct {
 	public  *rsa.PublicKey
 	private *rsa.PrivateKey // nil when only verification is configured
@@ -102,10 +96,9 @@ func New(privateKeyPath, publicKeyPath, passphrase string) (*JWT, error) {
 	return j, nil
 }
 
-// Issue builds the claim set, signs it RS256 and returns the compact JWT.
-// now is taken as a parameter (rather than calling time.Now) so callers and
-// tests control issuance time. exp is now+TTL as a whole-second integer Unix
-// timestamp.
+// Issue signs the claim set RS256 and returns the compact JWT. now is a
+// parameter (rather than time.Now) so callers and tests control issuance time;
+// exp is now+TTL as a whole-second Unix timestamp.
 func (j *JWT) Issue(userID, email string, now time.Time) (string, error) {
 	if j.private == nil {
 		return "", errors.New("jwt: no private key loaded, cannot issue tokens")

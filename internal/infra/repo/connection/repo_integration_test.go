@@ -1,10 +1,5 @@
 package connectionrepo_test
 
-// Integration tests for the connection AccountAccess Repo and InviteRepo against
-// a real migrated in-memory SQLite. Covers grant CRUD, NotFound, the
-// received/issued/by-account own-vs-shared lists, connection-link management,
-// and the invite repo's datetime-bound expiry lookup (regression-lock).
-
 import (
 	"context"
 	"errors"

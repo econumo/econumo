@@ -25,9 +25,6 @@ func (h *harness) seedGrant(t *testing.T, accountID, userID string, role int) {
 	fixture.New(t, h.tdb).AccountAccess(accountID, userID, role)
 }
 
-// TestGetTagList_IncludesSharedOwners: own + tags of users who shared an account
-// with this user (PHP TagRepository::findAvailableForUserId). Regression for the
-// api-compare own-only gap.
 func TestGetTagList_IncludesSharedOwners(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
@@ -53,8 +50,6 @@ func TestGetTagList_IncludesSharedOwners(t *testing.T) {
 	}
 }
 
-// TestGetTagList_ExcludesUnsharedOwners: without a grant, another user's tags
-// are hidden.
 func TestGetTagList_ExcludesUnsharedOwners(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)

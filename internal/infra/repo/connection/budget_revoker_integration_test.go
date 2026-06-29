@@ -1,9 +1,5 @@
 package connectionrepo_test
 
-// Integration test for the BudgetAccessRevoker: it removes budget-sharing
-// between two users in both directions, driven by a real budget repo against a
-// migrated in-memory SQLite.
-
 import (
 	"context"
 	"testing"

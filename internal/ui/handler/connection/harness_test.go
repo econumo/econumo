@@ -1,11 +1,5 @@
 package connection_test
 
-// HTTP test harness for the connection module: fresh in-memory sqlite, real
-// migrations, two seeded users (owner + guest) with a symmetric connection, the
-// owner holding one account. The REAL router with the connection RegisterAPI
-// behind real JWT. The connection service depends on the account folder/options
-// repos (side effects) and the user repo (embed), all wired here.
-
 import (
 	"bytes"
 	"database/sql"
@@ -198,8 +192,7 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 
 // errorsMap decodes the validation-form errors object (field -> messages).
 // Access-denied / exception responses emit an empty array ([]) instead, which
-// leaves the returned map empty. Added because the access-denied envelope's
-// errors is [] (PHP shape), which won't unmarshal into a map.
+// won't unmarshal into a map and leaves the returned map empty.
 func (e envelope) errorsMap() map[string][]string {
 	m := map[string][]string{}
 	if len(e.Errors) > 0 {

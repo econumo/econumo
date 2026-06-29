@@ -1,8 +1,7 @@
 // Package budgetrepo implements domain/budget.Repository over the sqlc-generated
-// queries, both engines. Most generated models are field-identical across
-// engines (whole-struct shim); the exception is BudgetsElementsLimit, whose
-// column order diverges (the sqlite table was rebuilt by a later migration), so
-// its rows/params are mapped field-by-field.
+// queries. The exception to the usual whole-struct shim is BudgetsElementsLimit,
+// whose column order diverges across engines (the sqlite table was rebuilt by a
+// later migration), so its rows/params are mapped field-by-field.
 package budgetrepo
 
 import (
@@ -18,7 +17,6 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// Canonical (sqlite) row + param types for the field-identical models.
 type (
 	budgetRow   = sqlitegen.Budget
 	accessRow   = sqlitegen.BudgetsAccess
@@ -34,7 +32,6 @@ type (
 	upLimitP    = sqlitegen.UpsertBudgetLimitParams
 )
 
-// Repo implements domain/budget.Repository.
 type Repo struct {
 	tx *backend.TxManager
 	q  querier
@@ -56,10 +53,7 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-// NextIdentity allocates a fresh id.
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
-
-// --- budgets ---
 
 func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*dombudget.Budget, error) {
 	row, err := r.q.GetBudget(ctx, r.db(ctx), id.String())
@@ -96,8 +90,6 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudget(ctx, r.db(ctx), id.String())
 }
 
-// --- excluded accounts ---
-
 func (r *Repo) ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error) {
 	rows, err := r.q.ListBudgetExcludedAccountIDs(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
@@ -113,8 +105,6 @@ func (r *Repo) ExcludeAccount(ctx context.Context, budgetID, accountID vo.Id) er
 func (r *Repo) IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) error {
 	return r.q.RemoveBudgetExcludedAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
-
-// --- access ---
 
 func (r *Repo) ListAccess(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetAccess, error) {
 	rows, err := r.q.ListBudgetAccess(ctx, r.db(ctx), budgetID.String())
@@ -151,8 +141,6 @@ func (r *Repo) DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error {
 	return r.q.DeleteBudgetAccess(ctx, r.db(ctx), budgetID.String(), userID.String())
 }
 
-// --- folders ---
-
 func (r *Repo) ListFolders(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetFolder, error) {
 	rows, err := r.q.ListBudgetFolders(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
@@ -187,8 +175,6 @@ func (r *Repo) SaveFolder(ctx context.Context, f *dombudget.BudgetFolder) error 
 func (r *Repo) DeleteFolder(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudgetFolder(ctx, r.db(ctx), id.String())
 }
-
-// --- envelopes ---
 
 func (r *Repo) ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetEnvelope, error) {
 	rows, err := r.q.ListBudgetEnvelopes(ctx, r.db(ctx), budgetID.String())
@@ -241,8 +227,6 @@ func (r *Repo) RemoveEnvelopeCategory(ctx context.Context, envelopeID, categoryI
 	return r.q.RemoveEnvelopeCategory(ctx, r.db(ctx), envelopeID.String(), categoryID.String())
 }
 
-// --- elements ---
-
 func (r *Repo) ListElements(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetElement, error) {
 	rows, err := r.q.ListBudgetElements(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
@@ -287,8 +271,6 @@ func (r *Repo) DeleteElement(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudgetElement(ctx, r.db(ctx), id.String())
 }
 
-// --- limits ---
-
 func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*dombudget.BudgetElementLimit, error) {
 	rows, err := r.q.ListBudgetLimitsForPeriod(ctx, r.db(ctx), budgetID.String(), period)
 	if err != nil {
@@ -327,8 +309,6 @@ func (r *Repo) DeleteLimit(ctx context.Context, id vo.Id) error {
 func (r *Repo) DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error {
 	return r.q.DeleteBudgetLimitsByBudget(ctx, r.db(ctx), budgetID.String())
 }
-
-// --- hydration ---
 
 func hydrateBudget(row budgetRow) (*dombudget.Budget, error) {
 	id, err := vo.ParseId(row.ID)
@@ -419,8 +399,6 @@ func hydrateLimit(row limitRow) (*dombudget.BudgetElementLimit, error) {
 	}
 	return dombudget.LimitFromState(id, elementID, vo.NewDecimal(row.Amount), row.Period, row.CreatedAt, row.UpdatedAt), nil
 }
-
-// --- small helpers ---
 
 func mapNotFound(err error, msg string) error {
 	if errors.Is(err, sql.ErrNoRows) {

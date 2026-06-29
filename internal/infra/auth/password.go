@@ -26,7 +26,6 @@ type PasswordHasher struct {
 	iterations int
 }
 
-// NewPasswordHasher returns a hasher configured with 500 iterations.
 func NewPasswordHasher() *PasswordHasher {
 	return &PasswordHasher{iterations: 500}
 }
@@ -44,7 +43,6 @@ func mergePasswordAndSalt(password, salt string) string {
 	return password + "{" + salt + "}"
 }
 
-// Hash computes the stored-password representation for the given plaintext+salt.
 func (h *PasswordHasher) Hash(plainPassword, salt string) string {
 	salted := []byte(mergePasswordAndSalt(plainPassword, salt))
 

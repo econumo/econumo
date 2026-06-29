@@ -14,8 +14,6 @@ func NewID() string { return vo.NewId().Value() }
 // common currency tests attach accounts/budgets to.
 const USD = "dffc2a06-6f29-4704-8575-31709adee926"
 
-// ---- users ----
-
 // User describes a user row. Zero fields take defaults: a fresh id, a derived
 // email/name, active=true. When the Builder has WithCrypto, identifier + email
 // are stored encrypted and the password is hashed (so login works); otherwise
@@ -33,7 +31,6 @@ type User struct {
 // defaultSalt is a fixed 40-char sha1-shaped salt for seeded users.
 const defaultSalt = "0000000000000000000000000000000000000001"
 
-// User seeds a user and returns its id.
 func (b *Builder) User(u User) string {
 	b.t.Helper()
 	id := b.orNewID(u.ID)
@@ -135,8 +132,6 @@ func (b *Builder) Connect(userA, userB string) {
 	b.insert(`INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, userB, userA)
 }
 
-// ---- currencies ----
-
 // Currency describes a currencies row. Code/Symbol default to a USD-like entry;
 // most tests reuse the baseline-seeded USD (the USD const) instead.
 type Currency struct {
@@ -147,7 +142,6 @@ type Currency struct {
 	FractionDigits *int   // default 2; pointer so an explicit 0 (e.g. JPY/unknown) is honored
 }
 
-// Currency seeds a currency and returns its id.
 func (b *Builder) Currency(c Currency) string {
 	b.t.Helper()
 	id := b.orNewID(c.ID)
@@ -181,7 +175,6 @@ type Rate struct {
 	PublishedAt    string // "Y-m-d"; default the builder's current date
 }
 
-// Rate seeds a currency rate and returns its id.
 func (b *Builder) Rate(r Rate) string {
 	b.t.Helper()
 	id := b.orNewID(r.ID)
@@ -200,8 +193,6 @@ func (b *Builder) Rate(r Rate) string {
 	return id
 }
 
-// ---- folders + accounts ----
-
 // Folder describes a folders row.
 type Folder struct {
 	ID       string
@@ -211,7 +202,6 @@ type Folder struct {
 	Hidden   bool // default visible
 }
 
-// Folder seeds a folder and returns its id.
 func (b *Builder) Folder(f Folder) string {
 	b.t.Helper()
 	id := b.orNewID(f.ID)
@@ -239,7 +229,6 @@ type Account struct {
 	Deleted    bool
 }
 
-// Account seeds an account and returns its id.
 func (b *Builder) Account(a Account) string {
 	b.t.Helper()
 	id := b.orNewID(a.ID)
@@ -289,8 +278,6 @@ func (b *Builder) AccountAccess(accountID, userID string, role int) {
 		accountID, userID, role, now, now)
 }
 
-// ---- categories / tags / payees ----
-
 // Category describes a categories row.
 type Category struct {
 	ID       string
@@ -302,7 +289,6 @@ type Category struct {
 	Archived bool
 }
 
-// Category seeds a category and returns its id.
 func (b *Builder) Category(c Category) string {
 	b.t.Helper()
 	id := b.orNewID(c.ID)
@@ -331,7 +317,6 @@ type Tag struct {
 	Archived bool
 }
 
-// Tag seeds a tag and returns its id.
 func (b *Builder) Tag(tg Tag) string {
 	b.t.Helper()
 	id := b.orNewID(tg.ID)
@@ -357,7 +342,6 @@ type Payee struct {
 	Archived bool
 }
 
-// Payee seeds a payee and returns its id.
 func (b *Builder) Payee(p Payee) string {
 	b.t.Helper()
 	id := b.orNewID(p.ID)
@@ -374,8 +358,6 @@ func (b *Builder) Payee(p Payee) string {
 	return id
 }
 
-// ---- transactions ----
-
 // Transaction describes a transactions row. CategoryID/PayeeID/TagID are
 // optional (empty -> NULL). SpentAt defaults to the builder's current time.
 type Transaction struct {
@@ -391,7 +373,6 @@ type Transaction struct {
 	SpentAt     interface{} // time.Time or "Y-m-d H:i:s"; default builder time
 }
 
-// Transaction seeds a transaction and returns its id.
 func (b *Builder) Transaction(tx Transaction) string {
 	b.t.Helper()
 	id := b.orNewID(tx.ID)
@@ -412,8 +393,6 @@ func (b *Builder) Transaction(tx Transaction) string {
 	return id
 }
 
-// ---- budgets ----
-
 // Budget describes a budgets row. StartedAt defaults to the builder's time.
 type Budget struct {
 	ID         string
@@ -423,7 +402,6 @@ type Budget struct {
 	StartedAt  interface{}
 }
 
-// Budget seeds a budget and returns its id.
 func (b *Builder) Budget(bg Budget) string {
 	b.t.Helper()
 	id := b.orNewID(bg.ID)
@@ -454,7 +432,6 @@ type BudgetElement struct {
 	Position   int
 }
 
-// BudgetElement seeds a budget element and returns its id.
 func (b *Builder) BudgetElement(e BudgetElement) string {
 	b.t.Helper()
 	id := b.orNewID(e.ID)
@@ -473,7 +450,6 @@ type BudgetLimit struct {
 	Amount    string
 }
 
-// BudgetLimit seeds a budget element limit and returns its id.
 func (b *Builder) BudgetLimit(l BudgetLimit) string {
 	b.t.Helper()
 	id := b.orNewID(l.ID)

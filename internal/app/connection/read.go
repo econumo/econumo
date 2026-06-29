@@ -8,12 +8,11 @@ import (
 )
 
 // GetConnectionList returns the requesting user's connections, each with the
-// accounts shared between that connected user and the requester. Mirrors PHP
-// GetConnectionListV1ResultAssembler: for every connected user, it gathers the
-// received-access grants (accounts shared TO me) and issued-access grants
-// (grants on accounts I own), keeping those whose account is owned by either the
-// connected user or me, deduplicated by account id (last write wins), in
-// account-id discovery order.
+// accounts shared between that connected user and the requester. For every
+// connected user, it gathers the received-access grants (accounts shared TO me)
+// and issued-access grants (grants on accounts I own), keeping those whose
+// account is owned by either the connected user or me, deduplicated by account id
+// (last write wins), in account-id discovery order.
 func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConnectionListResult, error) {
 	received, err := s.access.ListReceived(ctx, userID)
 	if err != nil {
@@ -60,8 +59,8 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConn
 		}
 
 		// Dedup by account id, preserving discovery order (received first, then
-		// issued) -- the PHP map keeps last-write but array_values keeps insertion
-		// order of the FIRST occurrence of each key, so we track order separately.
+		// issued): last write wins on the value, but the order follows the FIRST
+		// occurrence of each key, so we track order separately.
 		order := []string{}
 		byID := map[string]AccountAccessResult{}
 		add := func(a *domconnection.AccountAccess) {

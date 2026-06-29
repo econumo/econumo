@@ -8,11 +8,8 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// _ keeps the apidoc and appcurrency import aliases visible to swag's per-file
-// annotation parser (the @Success {object} apidoc.* and {data=appcurrency.*}
-// references below). swag matches the leading identifier of a type reference
-// against the file's import aliases, so both packages must be imported here even
-// though these read handlers decode no request body. No runtime effect.
+// _ keeps the apidoc and appcurrency import aliases visible to swag's annotation
+// parser (a type reference's leading identifier must resolve to an import alias).
 var (
 	_ = apidoc.JsonResponseError{}
 	_ = appcurrency.GetCurrencyListResult{}

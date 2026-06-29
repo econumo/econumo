@@ -6,16 +6,13 @@ package clock
 
 import "time"
 
-// Real is the production clock: Now returns the current wall-clock time.
+// Real is the production clock.
 type Real struct{}
 
-// New returns a real clock.
 func New() Real { return Real{} }
 
 // Now returns the current time in UTC. Persisted timestamps (createdAt/updatedAt,
 // spentAt, operation-request times) are formatted as a bare "Y-m-d H:i:s" string
-// with no zone, so the wall-clock MUST be UTC to match the PHP backend, whose
-// DatetimeService does `new DateTimeImmutable()` under the container's UTC default
-// timezone. Returning local time here would write/echo timestamps shifted by the
-// host's offset (e.g. -07:00), diverging from PHP on every created/updated row.
+// with no zone, so the wall-clock MUST be UTC: returning local time would write
+// and echo every stored row shifted by the host's offset (e.g. -07:00).
 func (Real) Now() time.Time { return time.Now().UTC() }

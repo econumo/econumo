@@ -1,12 +1,5 @@
 package budget_test
 
-// HTTP test harness for the budget module: fresh in-memory sqlite, real
-// migrations, a seeded user (with a 'budget' users_options row so SetActiveBudget
-// persists), one account + a non-income category + a tag (so create-budget seeds
-// elements), the REAL router with the budget RegisterAPI behind real JWT. The
-// budget service depends on the currency convertor + rate provider + account +
-// metadata lookups, all wired here against the same DB.
-
 import (
 	"bytes"
 	"context"
@@ -89,7 +82,7 @@ func newHarness(t *testing.T) *harness {
 	f := fixture.New(t, &dbtest.DB{Raw: db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
 	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 	// A 'budget' users_options row so SetActiveBudget persists (real registered
-	// users have it; seed-cmd users don't -- see the known-minor note).
+	// users have it; seed-cmd users don't).
 	f.Option(seedUserID, "budget", nil)
 	// account + a non-income category + a tag so create-budget seeds elements.
 	f.Folder(fixture.Folder{ID: folderID, UserID: seedUserID, Name: "Main"})
@@ -195,8 +188,7 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 
 // errorsMap decodes the validation-form errors object (field -> messages).
 // Access-denied / exception responses emit an empty array ([]) instead, which
-// leaves the returned map empty. Added because the access-denied envelope's
-// errors is [] (PHP shape), which won't unmarshal into a map.
+// won't unmarshal into a map and leaves the returned map empty.
 func (e envelope) errorsMap() map[string][]string {
 	m := map[string][]string{}
 	if len(e.Errors) > 0 {

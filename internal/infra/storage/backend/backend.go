@@ -16,9 +16,9 @@
 // (see tx.go) and the per-engine sqlc Querier.
 //
 // There is intentionally no Dialect/Rebind layer: per-engine placeholder and
-// type differences are resolved by sqlc at codegen time, which emits one
-// *Queries implementation per engine — both satisfying a shared Querier
-// interface. The Backend simply supplies the right *sql.DB and migration set.
+// type differences are resolved by sqlc at codegen time (one *Queries per engine,
+// both satisfying a shared Querier interface), so the Backend only supplies the
+// right *sql.DB and migration set.
 package backend
 
 import (
@@ -54,8 +54,7 @@ type Migration struct {
 // *Queries per engine, both satisfying the shared Querier interface), so it is
 // deliberately not part of this interface.
 type Backend interface {
-	// Name returns the engine name this backend handles
-	// (e.g. "sqlite" or "postgresql").
+	// Name returns the engine name (e.g. "sqlite" or "postgresql").
 	Name() string
 	// Open establishes a *sql.DB for the given DSN. Implementations configure
 	// the underlying pure-Go driver (modernc.org/sqlite or lib/pq), apply any

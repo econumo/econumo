@@ -1,17 +1,15 @@
-// Package currency's Convertor ports the PHP CurrencyConvertor domain service:
-// it converts amounts between currencies through the base currency, using
-// period-averaged rates. It is consumed by the budget builder (BulkConvert) and
-// by ad-hoc single conversions (Convert).
+// Package currency's Convertor converts amounts between currencies through the
+// base currency, using period-averaged rates. It is consumed by the budget
+// builder (BulkConvert) and by ad-hoc single conversions (Convert).
 //
-// Conversion algorithm (mirrors PHP convertInternalById): to convert `amount`
-// from currency F to currency T with rates expressed as units-of-X per one base
-// unit,
+// Conversion algorithm: to convert `amount` from currency F to currency T with
+// rates expressed as units-of-X per one base unit,
 //   - if F != base: amount = amount / rate[F]   (F -> base)
 //   - if T != base: amount = amount * rate[T]    (base -> T)
 //   - round to T's fraction digits (half away from zero)
 //
-// All arithmetic is bcmath scale 8 (vo.DecimalNumber); Mul/Div truncate, Round
-// is half-away-from-zero.
+// All arithmetic is scale-8 (vo.DecimalNumber); Mul/Div truncate, Round is
+// half-away-from-zero.
 package currency
 
 import (
@@ -42,13 +40,12 @@ type ConvertItem struct {
 }
 
 // RateProvider supplies period-averaged rates and the base-currency id. The
-// infra adapter implements it over currencies_rates (getLatestDate snapping +
-// getAverage), matching PHP CurrencyRateService::getAverageFullCurrencyRatesDtos.
+// infra adapter implements it over the stored rate rows.
 type RateProvider interface {
 	// AverageRates returns the period-averaged FullRate per currency for the
-	// base currency, with the period snapped to the rate month exactly as PHP
-	// does (getLatestDate -> first-of-month .. next month; falls back to the raw
-	// [start,end) when no rates exist).
+	// base currency, with the period snapped to the rate month (latest rate date
+	// -> first-of-month .. next month; falls back to the raw [start,end) when no
+	// rates exist).
 	AverageRates(ctx context.Context, start, end time.Time) ([]FullRate, error)
 	// BaseCurrencyID returns the base currency's id.
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
@@ -62,21 +59,18 @@ type Convertor struct {
 	rates RateProvider
 }
 
-// NewConvertor wires the convertor.
 func NewConvertor(rates RateProvider) *Convertor { return &Convertor{rates: rates} }
 
-// monthKey is the "Ym" period index PHP uses to group conversions.
+// monthKey is the "Ym" period index used to group conversions.
 func monthKey(t time.Time) string { return t.Format("200601") }
 
 // BulkConvert converts a batch of items, summing per result key. The result map
 // mirrors the input keys. Items whose From == To pass through unconverted. The
 // rate period used for each item is the month of its PeriodStart if rates for
-// that month were loaded, else the top-level [periodStart, periodEnd) period
-// (PHP's currentPeriodStartIndex fallback). Mirrors CurrencyConvertor::bulkConvert.
+// that month were loaded, else the top-level [periodStart, periodEnd) period.
 //
 // items maps an arbitrary key -> the list of ConvertItem that sum into that
-// key's result (PHP accepts either a single dto or an array per key; we take the
-// already-flattened list form).
+// key's result.
 func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]ConvertItem) (map[string]vo.DecimalNumber, error) {
 	// Determine which rate periods are needed: always the top-level period, plus
 	// each distinct month of a cross-currency sub-item.
@@ -129,10 +123,9 @@ func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time
 	return result, nil
 }
 
-// Convert converts a single amount from -> to using the all-time current rates
-// for the given period (here, the period-averaged rates). Mirrors
-// CurrencyConvertor::convert but expressed in ids (the budget path always uses
-// ids); callers wanting a one-off conversion pass a single period.
+// Convert converts a single amount from -> to using the period-averaged rates
+// for the given period. Callers wanting a one-off conversion pass a single
+// period.
 func (c *Convertor) Convert(ctx context.Context, periodStart, periodEnd time.Time, from, to vo.Id, sum vo.DecimalNumber) (vo.DecimalNumber, error) {
 	if from.Equal(to) {
 		return sum, nil
@@ -149,7 +142,7 @@ func (c *Convertor) Convert(ctx context.Context, periodStart, periodEnd time.Tim
 }
 
 // convert is the core two-hop conversion through the base currency, rounded to
-// the result currency's fraction digits. Mirrors convertInternalById.
+// the result currency's fraction digits.
 func (c *Convertor) convert(ctx context.Context, rates []FullRate, baseID, from, to vo.Id, amount vo.DecimalNumber) (vo.DecimalNumber, error) {
 	if from.Equal(to) {
 		return amount, nil
@@ -183,8 +176,7 @@ func (c *Convertor) convert(ctx context.Context, rates []FullRate, baseID, from,
 }
 
 // summarize collapses items sharing (from, to, periodStart-date, periodEnd-date)
-// into one, summing their amounts (PHP summarizeDtosByCurrency). Order is
-// preserved by first appearance.
+// into one, summing their amounts. Order is preserved by first appearance.
 func summarize(items []ConvertItem) []ConvertItem {
 	type key struct{ from, to, ps, pe string }
 	idx := map[key]int{}

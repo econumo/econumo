@@ -1,12 +1,7 @@
-// Service wiring for the account+folder module: the use-case orchestrator, its
-// dependency seams, the constructor, the value-object constructors, and the
-// shared helpers — most importantly buildAccountResult, the embed builder that
-// assembles the full AccountResult (owner + currency + folder + position +
-// balance + sharedAccess). The transaction module reuses buildAccountResult
-// later via this service.
-//
-// Individual use cases live in sibling files (create.go, update.go, delete.go,
-// order.go, folder.go); the pure reads live in read.go.
+// Service wiring for the account+folder module. The key shared helper is
+// buildAccountResult, the embed builder that assembles the full AccountResult
+// (owner + currency + folder + position + balance + sharedAccess); the
+// transaction module reuses it via this service.
 package account
 
 import (
@@ -21,10 +16,9 @@ import (
 )
 
 // correctionComment is the description stamped on the balance-correction
-// transaction that update-account writes. PHP uses
-// trans('account.correction.message'); that key IS defined in
-// translations/messages.en.yaml as "Balance adjustment" (default_locale=en), so
-// the stored/returned description is the translated string, not the key.
+// transaction that update-account writes. It is the resolved English string
+// "Balance adjustment" (not a translation key), frozen as the stored/returned
+// value.
 const correctionComment = "Balance adjustment"
 
 // Clock supplies the current time (seam for deterministic tests).
@@ -88,8 +82,8 @@ type SharedAccessLookup interface {
 
 // AccessRevoker drops the caller's own grant on a shared account (the
 // delete-account non-owner branch). HasAccess reports whether the user owns or
-// has any grant on the account (PHP canDeleteAccount = hasAccess). Satisfied by
-// an adapter over the connection service. May be nil (no connection module) ->
+// has any grant on the account (the gate for deleting it). Satisfied by an
+// adapter over the connection service. May be nil (no connection module) ->
 // non-owner delete falls back to AccessDenied.
 type AccessRevoker interface {
 	HasAccess(ctx context.Context, userID, accountID vo.Id) (bool, error)
@@ -127,10 +121,6 @@ func NewService(
 	return &Service{repo: repo, folders: folders, currency: currency, users: users, shared: shared, revoker: revoker, tx: tx, ops: ops, clock: clock}
 }
 
-// ---------------------------------------------------------------------------
-// balance time
-// ---------------------------------------------------------------------------
-
 // balanceBefore is the exclusive upper bound for the balance SUM: the start of
 // tomorrow, so the balance includes everything spent through end of today and
 // excludes future-dated transactions. "Today" is the CALLER's day (from the
@@ -148,10 +138,10 @@ func (s *Service) balanceBefore(ctx context.Context) time.Time {
 // cutoff as a UTC-typed time, so the DB driver serializes it as that bare
 // wall-clock — making "balance as of end of today" use the USER's day boundary.
 //
-// Computing the boundary in UTC instead (the old behaviour, and PHP's) lets a
-// user behind UTC see their next-day, future transactions counted: once UTC has
-// rolled past midnight, the server's "tomorrow" is two of the user's days away.
-// This is an intentional, documented divergence from PHP.
+// Computing the boundary in UTC instead lets a user behind UTC see their
+// next-day, future transactions counted: once UTC has rolled past midnight, the
+// server's "tomorrow" is two of the user's days away. Using the user's day is an
+// intentional, documented choice.
 func tomorrowIn(now time.Time, loc *time.Location) time.Time {
 	if loc == nil {
 		loc = time.UTC
@@ -159,10 +149,6 @@ func tomorrowIn(now time.Time, loc *time.Location) time.Time {
 	y, m, d := now.In(loc).Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 }
-
-// ---------------------------------------------------------------------------
-// the embed builder (reused by the transaction module later)
-// ---------------------------------------------------------------------------
 
 // buildAccountResult assembles the full AccountResult for one account as seen by
 // userID: owner, currency (with Intl-resolved name), folderId (the first folder
@@ -343,10 +329,6 @@ func (s *Service) sortedFolders(ctx context.Context, userID vo.Id) ([]*domaccoun
 	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position() < folders[j].Position() })
 	return folders, nil
 }
-
-// ---------------------------------------------------------------------------
-// tier-2 value-object constructors
-// ---------------------------------------------------------------------------
 
 // newAccountName enforces the account name invariant: rune length 3..64
 // ("Account name must be 3-64 characters", field "name").

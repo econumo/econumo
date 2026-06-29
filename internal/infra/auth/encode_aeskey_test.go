@@ -6,11 +6,10 @@ import (
 	"testing"
 )
 
-// TestCoerceAESKey verifies the AES-128 key derivation matches PHP/OpenSSL:
-// over-length salts use only their first 16 bytes, shorter salts zero-pad to 16,
-// and an empty salt yields no key (passthrough path). Regression for the
-// api-compare finding where a 33-byte ECONUMO_DATA_SALT (one with a multibyte char,
-// salt, with a multibyte char) produced "crypto/aes: invalid key size 33".
+// TestCoerceAESKey pins the AES-128 key derivation: over-length salts use only
+// their first 16 bytes, shorter salts zero-pad to 16, and an empty salt yields no
+// key (passthrough path). Regression for a 33-byte ECONUMO_DATA_SALT (one with a
+// multibyte char) that otherwise produced "crypto/aes: invalid key size 33".
 func TestCoerceAESKey(t *testing.T) {
 	long := []byte("SYNTHETIC_TEST_SALT_pad_xyz789£!") // 33 bytes (£ is 2)
 	if len(long) != 33 {
@@ -21,7 +20,7 @@ func TestCoerceAESKey(t *testing.T) {
 		t.Fatalf("coerceAESKey(33-byte) len = %d, want 16", len(key))
 	}
 	if !bytes.Equal(key, long[:16]) {
-		t.Errorf("AES key must be the first 16 salt bytes (OpenSSL behavior)")
+		t.Errorf("AES key must be the first 16 salt bytes")
 	}
 
 	short := coerceAESKey([]byte("abc"))

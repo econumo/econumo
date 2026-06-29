@@ -1,8 +1,3 @@
-// Service wiring for the transaction module: the orchestrator, dependency seams,
-// constructor, value-object helpers, and the result builders (the transaction
-// result with its author embed, and the account-list embed reused from the
-// account module). Use cases live in create.go/update.go/delete.go; reads in
-// read.go.
 package transaction
 
 import (
@@ -102,16 +97,11 @@ func NewService(
 	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, tx: tx, ops: ops, clock: clock}
 }
 
-// ---------------------------------------------------------------------------
-// access
-// ---------------------------------------------------------------------------
-
 // checkWriteAccess verifies the user may add/update/delete a transaction on the
-// account: they own it, or they hold an admin/user grant on it. Mirrors the PHP
-// AccountAccessService.canAddTransaction / canUpdate / canDelete (== isUser): a
-// guest grant — or no grant at all — is denied. A denied or missing account
-// yields a ValidationError carrying notAvailableMsg, matching the PHP path
-// (create/update use "account.account.not_available"; delete uses
+// account: they own it, or they hold an admin/user grant on it. A guest grant —
+// or no grant at all — is denied. A denied or missing account yields a
+// ValidationError carrying notAvailableMsg (create/update use
+// "account.account.not_available"; delete uses
 // "transaction.transaction.not_available").
 func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id, notAvailableMsg string) error {
 	owner, err := s.accounts.AccountOwner(ctx, accountID)
@@ -132,10 +122,8 @@ func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id,
 }
 
 // checkViewAccess verifies the user may VIEW the account's transactions: owner
-// OR any shared access. Mirrors PHP AccountAccessService.checkViewTransactionsAccess
-// (canViewTransactions == hasAccess), which throws AccessDeniedException (HTTP
-// 403) when access is denied. The visible-account set already computes own +
-// shared, so membership in it is exactly hasAccess.
+// OR any shared access, else AccessDenied (HTTP 403). The visible-account set
+// already computes own + shared, so membership in it is exactly the access test.
 func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) error {
 	ids, err := s.visible.VisibleAccountIDs(ctx, userID)
 	if err != nil {
@@ -149,15 +137,10 @@ func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) 
 	return errs.NewAccessDenied("Access is not allowed")
 }
 
-// ---------------------------------------------------------------------------
-// result builders
-// ---------------------------------------------------------------------------
-
 // toResult builds the transaction result, resolving the author embed. The
-// amountRecipient falls back to amount when nil (matching the PHP assembler).
-// Single-transaction callers (create/update/delete) use this; the list endpoint
-// uses buildResult with a per-request author cache to avoid an N+1 (see
-// GetTransactionList).
+// amountRecipient falls back to amount when nil. Single-transaction callers
+// (create/update/delete) use this; the list endpoint uses buildResult with a
+// per-request author cache to avoid an N+1 (see GetTransactionList).
 func (s *Service) toResult(ctx context.Context, t *domtransaction.Transaction) (TransactionResult, error) {
 	author, err := s.users.GetOwner(ctx, t.UserId().String())
 	if err != nil {
@@ -218,10 +201,6 @@ func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]appacco
 	return s.accounts.AccountListForUser(ctx, userID)
 }
 
-// ---------------------------------------------------------------------------
-// domain-state assembly (shared by create + update)
-// ---------------------------------------------------------------------------
-
 // buildState converts the request's primitive fields into a domain NewState,
 // applying the type-dependent field rules: a transfer keeps recipient
 // account+amount and drops category/payee/tag; a non-transfer requires a
@@ -249,7 +228,7 @@ func buildState(
 			st.AmountRecipient = &ar
 		}
 	} else {
-		// Non-transfer requires a category (PHP dereferences categoryId).
+		// Non-transfer requires a category.
 		if categoryID == nil || *categoryID == "" {
 			return st, errs.NewValidation("Validation failed",
 				errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})

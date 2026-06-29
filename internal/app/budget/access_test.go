@@ -126,7 +126,7 @@ func TestAccessMatrix(t *testing.T) {
 			name: "unaccepted user (invited, pending)",
 			a:    agg(t, grant(t, otherID, dombudget.RoleUser, false)),
 			user: other,
-			// no accepted access -> read/del/upd false; canShare TRUE (PHP quirk);
+			// no accepted access -> read/del/upd false; canShare TRUE (legacy quirk);
 			// can accept (pending row exists) + can decline (row exists).
 			want: want{false, false, false, true, true, true},
 		},
@@ -134,7 +134,7 @@ func TestAccessMatrix(t *testing.T) {
 			name: "stranger (no row)",
 			a:    agg(t),
 			user: stranger,
-			// canShare TRUE via the AccessDenied catch quirk.
+			// canShare TRUE via the access-denied catch quirk.
 			want: want{false, false, false, true, false, false},
 		},
 	}
@@ -175,7 +175,7 @@ func TestCanShare_Quirk(t *testing.T) {
 	// pending (unaccepted) grant -> budgetRole errors -> canShare returns true.
 	pending := agg(t, grant(t, otherID, dombudget.RoleGuest, false))
 	if !s.canShare(pending, mustID(t, otherID)) {
-		t.Error("pending grant should canShare via the AccessDenied catch quirk")
+		t.Error("pending grant should canShare via the access-denied catch quirk")
 	}
 }
 

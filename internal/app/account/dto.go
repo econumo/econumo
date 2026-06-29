@@ -2,10 +2,7 @@
 // request/result DTOs (with tier-1 Validate()), the write-side Service (owns the
 // tx boundary, builds response DTOs directly), and the read side.
 //
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md. The account result embeds the owner (User), the full
-// currency, the folder id, the per-user position, the computed balance, and
-// sharedAccess (stubbed empty until the connection module lands).
+// JSON field names are frozen to the existing API wire contract; see CLAUDE.md.
 package account
 
 import (
@@ -15,12 +12,8 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// ---------------------------------------------------------------------------
-// Shared result shapes
-// ---------------------------------------------------------------------------
-
 // OwnerResult is the embedded account owner: {id, avatar, name} (the minimal
-// UserResult shape used by UserToDtoResultAssembler — NOT the login user shape).
+// owner shape — NOT the login user shape).
 type OwnerResult struct {
 	Id     string `json:"id"`
 	Avatar string `json:"avatar"`
@@ -55,16 +48,11 @@ type AccountResult struct {
 }
 
 // SharedAccess is one accounts_access grant on the account: the granted user
-// (id, avatar, name) + the role alias (admin/user/guest). Mirrors PHP
-// SharedAccessItemResultDto via AccountIdToSharedAccessResultAssembler.
+// (id, avatar, name) + the role alias (admin/user/guest).
 type SharedAccess struct {
 	User OwnerResult `json:"user"`
 	Role string      `json:"role"`
 }
-
-// ---------------------------------------------------------------------------
-// create-account
-// ---------------------------------------------------------------------------
 
 // CreateAccountRequest is the create-account body. balance defaults to 0; icon
 // has a value-object (non-empty) check tier-2.
@@ -95,17 +83,12 @@ func (r CreateAccountRequest) Validate() error {
 	return nil
 }
 
-// CreateAccountResult is the create-account response: {item} ONLY. PHP's
-// CreateAccountV1ResultDto has a single public $item property, so the envelope is
-// {"data":{"item":{...account...}}}; there is no accounts list (verified vs PHP
-// CreateAccountV1ResultAssembler).
+// CreateAccountResult is the create-account response: {item} ONLY — the envelope
+// is {"data":{"item":{...account...}}}; there is no accounts list (frozen wire
+// shape).
 type CreateAccountResult struct {
 	Item AccountResult `json:"item"`
 }
-
-// ---------------------------------------------------------------------------
-// update-account
-// ---------------------------------------------------------------------------
 
 // UpdateAccountRequest is the update-account body. currencyId is nullable;
 // updatedAt is the timestamp the correction transaction is dated with.
@@ -143,12 +126,11 @@ type UpdateAccountResult struct {
 }
 
 // CorrectionResult is the transaction shape returned by update-account's balance
-// correction. It is the FULL PHP TransactionResultDto (the update assembler runs
-// the correction transaction through TransactionToDtoResultAssembler), so it
-// carries author + all the nullable transaction fields, not just a subset. For a
-// balance correction: accountRecipientId/categoryId/payeeId/tagId are always
-// null and amountRecipient falls back to amount. Field order is irrelevant on the
-// wire (canonical compare), but the SET of keys must match PHP exactly.
+// correction. It is the FULL transaction wire shape — author + every nullable
+// transaction field, not just a subset. For a balance correction:
+// accountRecipientId/categoryId/payeeId/tagId are always null and amountRecipient
+// falls back to amount. Field order is irrelevant on the wire (canonical
+// compare), but the SET of keys is frozen and must match exactly.
 type CorrectionResult struct {
 	Id                 string      `json:"id"`
 	Author             OwnerResult `json:"author"`
@@ -163,10 +145,6 @@ type CorrectionResult struct {
 	TagId              *string     `json:"tagId"`
 	Date               string      `json:"date"`
 }
-
-// ---------------------------------------------------------------------------
-// delete-account
-// ---------------------------------------------------------------------------
 
 // DeleteAccountRequest is the delete-account body (id NotBlank).
 type DeleteAccountRequest struct {
@@ -183,10 +161,6 @@ func (r DeleteAccountRequest) Validate() error {
 
 // DeleteAccountResult is the delete-account response: an empty object ({}).
 type DeleteAccountResult struct{}
-
-// ---------------------------------------------------------------------------
-// get-account-list / order-account-list
-// ---------------------------------------------------------------------------
 
 // GetAccountListResult is the get-account-list response: {items: [...]}.
 type GetAccountListResult struct {
@@ -220,10 +194,6 @@ func (r OrderAccountListRequest) Validate() error {
 type OrderAccountListResult struct {
 	Items []AccountResult `json:"items"`
 }
-
-// ---------------------------------------------------------------------------
-// folder result + endpoints
-// ---------------------------------------------------------------------------
 
 // FolderResult is one folder in the API: {id, name, position, isVisible(int 0/1)}.
 type FolderResult struct {

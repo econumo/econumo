@@ -1,9 +1,5 @@
 package account_test
 
-// HTTP test harness for the account+folder module: fresh in-memory sqlite per
-// test, real migrations, a seeded user + currency, the REAL router with the
-// account RegisterAPI behind real JWT, exercised through httptest.
-
 import (
 	"bytes"
 	"database/sql"
@@ -61,8 +57,8 @@ func newHarness(t *testing.T) *harness {
 	return newHarnessWithClock(t, clock.New())
 }
 
-// newHarnessWithClock is newHarness with an injectable account-service clock, for
-// tests that need a deterministic "now" (the balance day boundary depends on it).
+// newHarnessWithClock injects the account-service clock so tests can fix "now"
+// (the balance day boundary depends on it).
 func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
 	t.Helper()
 
@@ -182,7 +178,6 @@ type envelope struct {
 	raw     []byte
 }
 
-// accountItem mirrors AccountResult's wire shape for assertions.
 type accountItem struct {
 	ID    string `json:"id"`
 	Owner struct {
@@ -229,8 +224,8 @@ func mustDecode(t *testing.T, raw json.RawMessage, v any) {
 	}
 }
 
-// seedAccount inserts an account row directly (bypassing the API), for ownership
-// tests. Always CREDIT_CARD, USD, not deleted.
+// seedAccount inserts an account row directly (bypassing the API) for ownership
+// tests: always CREDIT_CARD, USD, not deleted.
 func (h *harness) seedAccount(t *testing.T, id, ownerID, name string) {
 	t.Helper()
 	h.f.Account(fixture.Account{ID: id, UserID: ownerID, CurrencyID: usdID, Name: name, Type: 2, Icon: "wallet"})
@@ -238,8 +233,7 @@ func (h *harness) seedAccount(t *testing.T, id, ownerID, name string) {
 
 // errorsMap decodes the validation-form errors object (field -> messages).
 // Access-denied / exception responses emit an empty array ([]) instead, which
-// leaves the returned map empty. Added because the access-denied envelope's
-// errors is [] (PHP shape), which won't unmarshal into a map.
+// won't unmarshal into a map and leaves the returned map empty.
 func (e envelope) errorsMap() map[string][]string {
 	m := map[string][]string{}
 	if len(e.Errors) > 0 {

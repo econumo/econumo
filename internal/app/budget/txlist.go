@@ -11,8 +11,7 @@ import (
 
 // GetTransactionList returns the budget's transactions for a category, tag, or
 // envelope in a period. Exactly one of categoryId / tagId / envelopeId selects
-// the mode (mirrors Application/Budget/TransactionListService). Requires read
-// access.
+// the mode. Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetTransactionListRequest) (*GetBudgetTransactionListResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
@@ -141,7 +140,7 @@ func optID(p *string) string {
 	return *p
 }
 
-// normalizeSpentAt renders the stored DATETIME as "Y-m-d H:i:s".
+// normalizeSpentAt renders the stored DATETIME as "2006-01-02 15:04:05".
 func normalizeSpentAt(raw string) string {
 	for _, layout := range []string{datetime.Layout, time.RFC3339, "2006-01-02T15:04:05Z"} {
 		if t, err := time.Parse(layout, raw); err == nil {

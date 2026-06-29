@@ -13,10 +13,6 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 )
 
-// ---------------------------------------------------------------------------
-// Shared result shape
-// ---------------------------------------------------------------------------
-
 // CategoryResult is one category in the API. type is the alias string
 // ("expense"/"income"); isArchived is an int 0/1 (NOT bool); createdAt/updatedAt
 // are "2006-01-02 15:04:05" (space separator, no timezone). These wire shapes
@@ -32,10 +28,6 @@ type CategoryResult struct {
 	CreatedAt   string `json:"createdAt"`
 	UpdatedAt   string `json:"updatedAt"`
 }
-
-// ---------------------------------------------------------------------------
-// create-category
-// ---------------------------------------------------------------------------
 
 // CreateCategoryRequest is the create-category request body. accountId and icon
 // are nullable (pointers) so an absent field is distinct from "".
@@ -73,10 +65,6 @@ type CreateCategoryResult struct {
 	Item CategoryResult `json:"item"`
 }
 
-// ---------------------------------------------------------------------------
-// update-category
-// ---------------------------------------------------------------------------
-
 // UpdateCategoryRequest is the update-category request body (id, name, icon all
 // NotBlank tier-1; name 3..64 and non-empty icon re-checked tier-2).
 type UpdateCategoryRequest struct {
@@ -104,14 +92,9 @@ func (r UpdateCategoryRequest) Validate() error {
 	return nil
 }
 
-// UpdateCategoryResult is the update-category response. PHP's
-// UpdateCategoryV1ResultAssembler returns an EMPTY DTO, so the body is
-// {"data":{}} — no item is echoed back.
+// UpdateCategoryResult is the update-category response: an empty body
+// ({"data":{}}) — no item is echoed back (frozen wire shape).
 type UpdateCategoryResult struct{}
-
-// ---------------------------------------------------------------------------
-// archive-category / unarchive-category
-// ---------------------------------------------------------------------------
 
 // ArchiveCategoryRequest is the archive-category request body (id NotBlank).
 type ArchiveCategoryRequest struct {
@@ -126,8 +109,8 @@ func (r ArchiveCategoryRequest) Validate() error {
 	return nil
 }
 
-// ArchiveCategoryResult is the archive-category response. PHP returns an empty
-// DTO -> {"data":{}}.
+// ArchiveCategoryResult is the archive-category response: an empty body
+// ({"data":{}}).
 type ArchiveCategoryResult struct{}
 
 // UnarchiveCategoryRequest is the unarchive-category request body (id NotBlank).
@@ -143,13 +126,9 @@ func (r UnarchiveCategoryRequest) Validate() error {
 	return nil
 }
 
-// UnarchiveCategoryResult is the unarchive-category response. PHP returns an
-// empty DTO -> {"data":{}}.
+// UnarchiveCategoryResult is the unarchive-category response: an empty body
+// ({"data":{}}).
 type UnarchiveCategoryResult struct{}
-
-// ---------------------------------------------------------------------------
-// delete-category
-// ---------------------------------------------------------------------------
 
 // Delete modes.
 const (
@@ -192,10 +171,6 @@ func (r DeleteCategoryRequest) Validate() error {
 // DeleteCategoryResult is the delete-category response: an empty object ({}).
 type DeleteCategoryResult struct{}
 
-// ---------------------------------------------------------------------------
-// order-category-list
-// ---------------------------------------------------------------------------
-
 // PositionChange is one {id, position} entry in an order request.
 type PositionChange struct {
 	Id       string `json:"id"`
@@ -220,10 +195,6 @@ func (r OrderCategoryListRequest) Validate() error {
 type OrderCategoryListResult struct {
 	Items []CategoryResult `json:"items"`
 }
-
-// ---------------------------------------------------------------------------
-// get-category-list
-// ---------------------------------------------------------------------------
 
 // GetCategoryListResult is the get-category-list response: {items: [...]}.
 type GetCategoryListResult struct {

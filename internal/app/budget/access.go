@@ -10,7 +10,6 @@ import (
 
 // budgetRole returns the requesting user's role on a budget: owner if they own
 // it; the accepted access role otherwise; AccessDenied if no accepted access.
-// Mirrors BudgetAccessService::getBudgetRole.
 func (s *Service) budgetRole(b *budgetAggregate, userID vo.Id) (dombudget.UserRole, error) {
 	if b.budget.UserId().Equal(userID) {
 		return dombudget.RoleOwner, nil
@@ -43,11 +42,12 @@ func (s *Service) canUpdate(b *budgetAggregate, userID vo.Id) bool {
 	return err == nil && (r == dombudget.RoleOwner || r == dombudget.RoleAdmin || r == dombudget.RoleUser)
 }
 
-// canShare = owner|admin; PHP's AccessDenied fallback returns true (replicated).
+// canShare = owner|admin; the access-denied fallback intentionally returns true —
+// a preserved legacy quirk relied on by clients.
 func (s *Service) canShare(b *budgetAggregate, userID vo.Id) bool {
 	r, err := s.budgetRole(b, userID)
 	if err != nil {
-		return true // matches PHP canShareBudget's catch branch
+		return true // access-denied path is treated as shareable (legacy quirk)
 	}
 	return r == dombudget.RoleOwner || r == dombudget.RoleAdmin
 }

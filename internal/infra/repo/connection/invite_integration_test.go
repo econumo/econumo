@@ -1,9 +1,8 @@
 package connectionrepo_test
 
-// Integration tests for the connection InviteRepo. Regression-locks the
-// datetime-bound expiry lookup: the repo stores expired_at as a 'Y-m-d H:i:s'
-// string and reads via datetime(); a lookup-by-code with `now` before expiry
-// finds it, after expiry does not.
+// Regression-locks the datetime-bound expiry lookup: expired_at is stored as a
+// bare "Y-m-d H:i:s" string and read via datetime(), so a lookup-by-code with
+// `now` before expiry finds it and after expiry does not.
 
 import (
 	"context"

@@ -1,6 +1,5 @@
-// RateProvider adapter for the currency Convertor. It ports PHP
-// CurrencyRateService::getAverageFullCurrencyRatesDtos + getAverageCurrencyRates:
-// snap the requested [start,end) to the rate month (getLatestDate -> first of
+// RateProvider adapter for the currency Convertor: snap the requested
+// [start,end) to the rate month (the latest published rate's month -> first of
 // that month .. next month; fall back to the raw range when no rates exist),
 // then AVG(rate) per currency over that snapped period for the base currency.
 package currencyrepo
@@ -21,10 +20,9 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// avgRow is one average-rate row with the rate already rendered to its
-// PHP-compatible decimal STRING. SQLite's AVG is float, formatted with %.8f to
-// match PHP's new DecimalNumber((float)$avg) == sprintf('%.8F', $avg) (round at
-// the 8th decimal); PostgreSQL's AVG(NUMERIC) is exact and passes through.
+// avgRow is one average-rate row with the rate already rendered to a decimal
+// STRING. SQLite's AVG is float, formatted with %.8f (round at the 8th decimal);
+// PostgreSQL's AVG(NUMERIC) is exact and passes through.
 type avgRow struct {
 	CurrencyID string
 	Rate       string
@@ -82,7 +80,7 @@ func (p *RateProvider) FractionDigits(ctx context.Context, currencyID vo.Id) (in
 }
 
 // AverageRates snaps the period to the rate month and averages each currency's
-// rate over it for the base currency. Mirrors getAverageCurrencyRates.
+// rate over it for the base currency.
 func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) ([]domcurrency.FullRate, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
 	if err != nil {
@@ -110,9 +108,9 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 }
 
 // SnappedRatePeriod returns the [start, end) AverageRates actually uses for the
-// requested period: the month of the latest published rate at or before `end`
-// (PHP getAverageCurrencyRates' getLatestDate snap), or the requested period
-// when no rate exists. The budget currencyRates block reports THIS period.
+// requested period: the month of the latest published rate at or before `end`,
+// or the requested period when no rate exists. The budget currencyRates block
+// reports THIS period.
 func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
 	if err != nil {
@@ -122,7 +120,7 @@ func (p *RateProvider) SnappedRatePeriod(ctx context.Context, start, end time.Ti
 }
 
 // snapPeriod resolves [start,end) to the latest-rate month, or returns the
-// request unchanged when no rate is found (PHP NotFoundException fallback).
+// request unchanged when no rate is found.
 func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end time.Time) (time.Time, time.Time, error) {
 	last, derr := p.q.GetLatestDate(ctx, p.db(ctx), baseID.String(), end)
 	if derr == nil {
@@ -138,14 +136,12 @@ func (p *RateProvider) snapPeriod(ctx context.Context, baseID vo.Id, start, end 
 	return start, end, nil
 }
 
-// --- engine adapters ---
-
 type sqliteProviderQuerier struct{}
 
 func (sqliteProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, start, end time.Time, baseID string) ([]avgRow, error) {
 	// date(published_at) >= date(?) — pass 'Y-m-d' bounds so the date-only row
 	// "2025-04-01" is INCLUDED (a time.Time renders "...00:00:00", which lexically
-	// excludes it). AVG is a float -> %.8f (round) to match PHP's DecimalNumber.
+	// excludes it). AVG is a float -> %.8f (round to 8 decimals).
 	rows, err := sqlitegen.New(db).GetAverageCurrencyRates(ctx, sqlitegen.GetAverageCurrencyRatesParams{
 		Date: start.Format(datetime.DateLayout), Date_2: end.Format(datetime.DateLayout), BaseCurrencyID: baseID,
 	})

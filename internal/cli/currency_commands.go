@@ -10,9 +10,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/datetime"
 )
 
-// currencyCommands returns the currency-management subcommands (ports of the PHP
-// UpdateCurrencyRatesCommand, AddCurrencyCommand, and
-// RestoreCurrencyFractionDigitsCommand).
+// currencyCommands returns the currency-management subcommands.
 func currencyCommands() []command {
 	return []command{
 		{
@@ -20,9 +18,8 @@ func currencyCommands() []command {
 			summary: "Load exchange rates from Open Exchange Rates: currency:update-rates [YYYY-MM-DD]",
 			run: func(ctx context.Context, c *container, args []string) error {
 				date := c.clk.Now()
-				// The single optional positional is the date. Ignore any leading-dash
-				// tokens (e.g. a Symfony-style -vvv/-q/-n carried over by muscle memory)
-				// so they don't get misread as the date.
+				// The single optional positional is the date; firstPositional skips
+				// stray leading-dash flags so they aren't misread as the date.
 				if arg := firstPositional(args); arg != "" {
 					d, err := time.Parse(datetime.DateLayout, arg)
 					if err != nil {

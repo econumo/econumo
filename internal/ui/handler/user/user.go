@@ -9,8 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// _ keeps the apidoc import alias visible to swag's per-file annotation parser
-// (the @Success {object} apidoc.* references below). No runtime effect.
+// _ keeps the apidoc import alias visible to swag's annotation parser.
 var _ = apidoc.JsonResponseError{}
 
 // LoginUser handles POST /api/v1/user/login-user (public). The handler decodes
@@ -43,9 +42,9 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 	// Record the user on this public route's operation log line (login has no JWT
 	// middleware to do it).
 	reqctx.AddLogAttr(r.Context(), "user_id", res.User.Id)
-	// PHP's LoginUserV1Controller returns `new JsonResponse($result)` — the raw
-	// {token,user} at the top level, NOT the {success,message,data} envelope. The
-	// SPA reads response.token off the top level, so emit the body unwrapped.
+	// Login returns the raw {token,user} at the top level, NOT the
+	// {success,message,data} envelope — the SPA reads response.token off the top
+	// level, so this frozen shape must stay unwrapped.
 	httpx.Raw(w, res)
 }
 

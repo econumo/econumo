@@ -1,11 +1,5 @@
 package transactionrepo_test
 
-// Integration tests for the transaction Repo against a real migrated in-memory
-// SQLite: CRUD round-trip (incl. exact decimal amount + transfer recipient),
-// NotFound, ListByAccount (source or recipient), the dynamic ListByAccountIDs
-// with a month-boundary period filter (datetime-binding regression), and the
-// own+shared export-accounts list.
-
 import (
 	"context"
 	"errors"

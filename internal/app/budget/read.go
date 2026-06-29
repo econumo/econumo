@@ -8,8 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
-// GetBudgetList returns the user's budgets as meta entries (BudgetListService +
-// BudgetMetaBuilder).
+// GetBudgetList returns the user's budgets as meta entries.
 func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*GetBudgetListResult, error) {
 	budgets, err := s.repo.ListForUser(ctx, userID)
 	if err != nil {
@@ -53,9 +52,8 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req GetBudgetRequ
 }
 
 // parsePeriodDate parses the get-budget date and snaps it to first-of-month. An
-// empty/invalid date falls back to the current month (PHP new DateTimeImmutable
-// would throw on garbage, but the frontend always sends a valid date; we default
-// to now to be tolerant).
+// empty/invalid date falls back to the current month: the frontend always sends a
+// valid date, so defaulting to now is the tolerant choice for garbage input.
 func parsePeriodDate(s string, now time.Time) (time.Time, error) {
 	if s == "" {
 		return firstOfMonth(now), nil

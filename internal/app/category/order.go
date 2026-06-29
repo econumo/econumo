@@ -10,11 +10,11 @@ import (
 // OrderCategoryList applies each {id, position} change to the matching category,
 // then returns the full available list.
 //
-// IMPORTANT asymmetry vs tag/payee: PHP's CategoryService::orderCategories
-// iterates findByOwnerId (OWNER-ONLY), so a SHARED category's position is NOT
-// updated — only the user's own categories are. (Tag/payee order, by contrast,
-// iterate findAvailableForUserId and DO update shared.) The RESPONSE, however,
-// is the full available list (own + shared) via the read view.
+// IMPORTANT asymmetry vs tag/payee: reordering iterates the OWNER-ONLY set, so a
+// SHARED category's position is NOT updated — only the user's own categories are.
+// (Tag/payee order, by contrast, reorder the full available set and DO update
+// shared.) The RESPONSE, however, is the full available list (own + shared) via
+// the read view.
 func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req OrderCategoryListRequest) (*OrderCategoryListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
 	for _, ch := range req.Changes {
@@ -27,7 +27,7 @@ func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req Order
 
 	var items []CategoryResult
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		// Owner-only set: shared categories are not reordered (matches PHP).
+		// Owner-only set: shared categories are not reordered.
 		cats, err := s.repo.ListByOwner(ctx, userID)
 		if err != nil {
 			return err

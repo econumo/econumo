@@ -1,10 +1,9 @@
-// Package connection is the connection module's application layer. In the
-// self-hosted product (EconumoBundle) four endpoints are stubs returning 501
-// ("Not supported in Econumo One") -- generate-invite, delete-invite,
-// accept-invite, delete-connection. The three live endpoints are
-// set-account-access, revoke-account-access (mutations, owner-admin only) and
-// get-connection-list (read). This file holds their request/result DTOs with
-// tier-1 Validate(). JSON field names are frozen to the wire contract.
+// Package connection is the connection module's application layer. The live
+// endpoints are set-account-access, revoke-account-access (mutations, owner-admin
+// only) and get-connection-list (read); generate-invite, delete-invite,
+// accept-invite and delete-connection are implemented here too (enabled in the
+// cloud edition). This file holds their request/result DTOs with tier-1
+// Validate(). JSON field names are frozen to the wire contract.
 package connection
 
 import (
@@ -35,18 +34,10 @@ type ConnectionResult struct {
 	SharedAccounts []AccountAccessResult `json:"sharedAccounts"`
 }
 
-// ---------------------------------------------------------------------------
-// get-connection-list
-// ---------------------------------------------------------------------------
-
 // GetConnectionListResult is the response: {items: [...]}.
 type GetConnectionListResult struct {
 	Items []ConnectionResult `json:"items"`
 }
-
-// ---------------------------------------------------------------------------
-// set-account-access
-// ---------------------------------------------------------------------------
 
 // SetAccountAccessRequest grants/updates a connected user's role on an owned
 // account.
@@ -76,10 +67,6 @@ func (r SetAccountAccessRequest) Validate() error {
 // SetAccountAccessResult is the (empty) response.
 type SetAccountAccessResult struct{}
 
-// ---------------------------------------------------------------------------
-// revoke-account-access
-// ---------------------------------------------------------------------------
-
 // RevokeAccountAccessRequest removes a connected user's grant on an owned
 // account.
 type RevokeAccountAccessRequest struct {
@@ -106,12 +93,8 @@ func (r RevokeAccountAccessRequest) Validate() error {
 // RevokeAccountAccessResult is the (empty) response.
 type RevokeAccountAccessResult struct{}
 
-// ---------------------------------------------------------------------------
-// generate-invite  (cloud feature — EconumoCloudBundle overrides the 501 stub)
-// ---------------------------------------------------------------------------
-
-// GenerateInviteRequest has no body fields (PHP GenerateInviteV1RequestDto is
-// empty); the invite is keyed by the authenticated user.
+// GenerateInviteRequest has no body fields; the invite is keyed by the
+// authenticated user.
 type GenerateInviteRequest struct{}
 
 // Validate is a no-op (no fields).
@@ -128,11 +111,7 @@ type GenerateInviteResult struct {
 	Item ConnectionInviteResult `json:"item"`
 }
 
-// ---------------------------------------------------------------------------
-// delete-invite
-// ---------------------------------------------------------------------------
-
-// DeleteInviteRequest has no body fields (PHP DeleteInviteV1RequestDto is empty).
+// DeleteInviteRequest has no body fields.
 type DeleteInviteRequest struct{}
 
 // Validate is a no-op.
@@ -140,10 +119,6 @@ func (r DeleteInviteRequest) Validate() error { return nil }
 
 // DeleteInviteResult is the (empty) response.
 type DeleteInviteResult struct{}
-
-// ---------------------------------------------------------------------------
-// accept-invite
-// ---------------------------------------------------------------------------
 
 // AcceptInviteRequest carries the invite code to redeem (NotBlank).
 type AcceptInviteRequest struct {
@@ -162,15 +137,10 @@ func (r AcceptInviteRequest) Validate() error {
 }
 
 // AcceptInviteResult is the response: {items: [...connections...]} — the same
-// connection-list shape get-connection-list returns (PHP's
-// AcceptInviteV1ResultAssembler builds ConnectionResultDto[] identically).
+// connection-list shape get-connection-list returns.
 type AcceptInviteResult struct {
 	Items []ConnectionResult `json:"items"`
 }
-
-// ---------------------------------------------------------------------------
-// delete-connection
-// ---------------------------------------------------------------------------
 
 // DeleteConnectionRequest carries the connected user's id to disconnect from.
 type DeleteConnectionRequest struct {

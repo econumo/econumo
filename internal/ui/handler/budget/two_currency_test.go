@@ -17,7 +17,7 @@ const (
 
 // seedTwoCurrency adds a EUR currency + a Jan-2026 EUR rate, a EUR account owned
 // by the seed user, and a 100.00 EUR expense in Jan 2026 categorized to the
-// seeded Food category. Mirrors the convertor_provider seeding pattern.
+// seeded Food category.
 func (h *harness) seedTwoCurrency(t *testing.T) {
 	t.Helper()
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})

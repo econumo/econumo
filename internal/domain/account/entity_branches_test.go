@@ -52,8 +52,6 @@ func TestAccount_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-// ---- Folder ----
-
 func newFolder(t *testing.T) *Folder {
 	return NewFolder(
 		mustID(t, "44444444-4444-4444-4444-444444444444"),

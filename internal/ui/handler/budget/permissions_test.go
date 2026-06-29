@@ -44,8 +44,6 @@ func (h *harness) shareAndAccept(t *testing.T, ownerTok, otherTok, role string) 
 	}
 }
 
-// --- read isolation ---
-
 func TestGetBudget_Stranger_403(t *testing.T) {
 	h := newHarness(t)
 	seedBudget(t, h, h.token(t))
@@ -86,8 +84,6 @@ func TestGetBudgetList_ExcludesStrangerBudget(t *testing.T) {
 	}
 }
 
-// --- positive: an accepted guest can READ ---
-
 func TestGetBudget_AcceptedGuest_CanRead(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -99,8 +95,6 @@ func TestGetBudget_AcceptedGuest_CanRead(t *testing.T) {
 		t.Fatalf("accepted guest get-budget = %d, want 200; body: %s", status, env.raw)
 	}
 }
-
-// --- guest is read-only: cannot write ---
 
 func TestSetLimit_Guest_403(t *testing.T) {
 	h := newHarness(t)
@@ -127,8 +121,6 @@ func TestCreateEnvelope_Guest_403(t *testing.T) {
 	assertBudgetDenied(t, status, env)
 }
 
-// --- positive: an accepted user CAN edit element data (set-limit) ---
-
 func TestSetLimit_AcceptedUser_OK(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -142,8 +134,6 @@ func TestSetLimit_AcceptedUser_OK(t *testing.T) {
 		t.Fatalf("accepted user set-limit = %d, want 200; body: %s", status, env.raw)
 	}
 }
-
-// --- but an accepted user CANNOT delete the budget (owner/admin only) ---
 
 func TestDeleteBudget_AcceptedUser_403(t *testing.T) {
 	h := newHarness(t)

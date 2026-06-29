@@ -12,18 +12,17 @@ import (
 
 // CreateAccount creates an account for the current user and returns {item}.
 //
-// The request `id` is the OPERATION/idempotency id (PHP OperationId constraint),
-// NOT the entity id: PHP's account factory mints a FRESH id (getNextIdentity) for
-// the account, and Go does the same (vo.NewId() = UUIDv7). req.Id is used only to
-// Claim/MarkHandled the operation guard.
+// The request `id` is the OPERATION/idempotency id, NOT the entity id: a FRESH
+// UUIDv7 is minted for the account, and req.Id is used only to Claim/MarkHandled
+// the operation guard.
 //
 // Steps inside one tx: claim the operation id (idempotency); compute the
 // position (max accounts_options.position for the user, else count of available
-// accounts); create the account (always CREDIT_CARD) + its accounts_options row;
-// add it to the requested folder (which must be owned by the user); if the
-// requested balance is non-zero, write a balance-correction transaction dated at
-// the account's creation time; mark the operation handled. Returns {item} only
-// (PHP CreateAccountV1ResultDto has a single $item — no accounts list).
+// accounts); create the account + its accounts_options row; add it to the
+// requested folder (which must be owned by the user); if the requested balance is
+// non-zero, write a balance-correction transaction dated at the account's
+// creation time; mark the operation handled. Returns {item} only (no accounts
+// list).
 func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAccountRequest) (*CreateAccountResult, error) {
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -59,7 +58,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 		}
 
 		// position: highest existing accounts_options.position for the user, or
-		// (when none) the count of available accounts. Matches PHP create().
+		// (when none) the count of available accounts.
 		maxPos, perr := s.repo.MaxPosition(ctx, userID)
 		if perr != nil {
 			return perr
@@ -121,7 +120,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	}
 
 	// Build the result outside the write tx (reads on the pool see the committed
-	// rows). PHP returns {item} ONLY (no accounts list).
+	// rows). Returns {item} ONLY (no accounts list).
 	folders, err := s.sortedFolders(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -142,8 +141,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 }
 
 // correctionType returns the transaction type for a balance correction: a
-// positive balance is income (1), a negative balance is expense (0). Mirrors the
-// PHP transaction factory's createTransaction (sign -> type).
+// positive balance is income (1), a negative balance is expense (0).
 func correctionType(balance vo.DecimalNumber) int16 {
 	if balance.IsNegative() {
 		return 0 // expense

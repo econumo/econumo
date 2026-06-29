@@ -1,8 +1,5 @@
-// Connection invite + delete-connection use cases. In the self-hosted product
-// (EconumoBundle) these four endpoints are 501 stubs; EconumoCloudBundle enables
-// them by routing to the (open-source) ConnectionInviteService / ConnectionService
-// logic. This file is the Go port of that logic so the Go backend matches the
-// cloud-enabled wire contract.
+// Connection invite + delete-connection use cases — the endpoints enabled in the
+// cloud edition (generate/accept/delete-invite and delete-connection).
 package connection
 
 import (
@@ -17,10 +14,9 @@ import (
 
 // BudgetAccessRevoker is the slice of budget-sharing behavior delete-connection
 // needs: drop any budget access SHARED BETWEEN the two users (both directions).
-// Backed by the budget module via an adapter in main; mirrors PHP
-// ConnectionService's BudgetSharedAccessServiceInterface dependency. A nil
-// revoker is tolerated (delete-connection then only unwinds account access +
-// the connection link) so test harnesses without the budget module still work.
+// Backed by the budget module via an adapter in main. A nil revoker is tolerated
+// (delete-connection then only unwinds account access + the connection link) so
+// test harnesses without the budget module still work.
 type BudgetAccessRevoker interface {
 	// RevokeBetween removes any budget-access grants where one user owns a budget
 	// the other can access, in BOTH directions, for the given user pair.
@@ -28,8 +24,7 @@ type BudgetAccessRevoker interface {
 }
 
 // GenerateInvite creates (or refreshes) the user's outstanding invite code and
-// returns {code, expiredAt}. Mirrors PHP ConnectionInviteService::generate +
-// GenerateInviteV1ResultAssembler.
+// returns {code, expiredAt}.
 func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateInviteRequest) (*GenerateInviteResult, error) {
 	var inv *domconnection.ConnectionInvite
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
@@ -55,8 +50,7 @@ func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateIn
 	}}, nil
 }
 
-// DeleteInvite clears the user's outstanding invite (no-op if none). Mirrors PHP
-// ConnectionInviteService::delete.
+// DeleteInvite clears the user's outstanding invite (no-op if none).
 func (s *Service) DeleteInvite(ctx context.Context, userID vo.Id, _ DeleteInviteRequest) (*DeleteInviteResult, error) {
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		inv, err := s.invites.GetByUser(txCtx, userID)
@@ -76,8 +70,7 @@ func (s *Service) DeleteInvite(ctx context.Context, userID vo.Id, _ DeleteInvite
 
 // AcceptInvite redeems a code: it connects the redeeming user with the invite's
 // owner (symmetric users_connections link), clears the code, and returns the
-// redeeming user's full connection list. Mirrors PHP
-// ConnectionInviteService::accept + AcceptInviteV1ResultAssembler.
+// redeeming user's full connection list.
 func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req AcceptInviteRequest) (*AcceptInviteResult, error) {
 	code, err := domconnection.NewConnectionCode(req.Code)
 	if err != nil {
@@ -89,7 +82,6 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req AcceptInvi
 			return gerr
 		}
 		if inv.UserId().Equal(userID) {
-			// PHP: throw new DomainException('Inviting yourself?')
 			return errs.NewValidation("Inviting yourself?")
 		}
 		if cerr := s.access.ConnectUsers(txCtx, inv.UserId(), userID); cerr != nil {
@@ -111,21 +103,20 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req AcceptInvi
 // DeleteConnection disconnects the requesting user from a connected user: it
 // revokes every account-access grant shared between them (both directions),
 // drops any budget access between them (both directions), and removes the
-// symmetric users_connections link. Mirrors PHP ConnectionService::delete.
+// symmetric users_connections link.
 func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req DeleteConnectionRequest) (*DeleteConnectionResult, error) {
 	connectedID, err := parseID("id", req.Id)
 	if err != nil {
 		return nil, err
 	}
 	if connectedID.Equal(userID) {
-		// PHP: throw new DomainException('Deleting yourself?')
 		return nil, errs.NewValidation("Deleting yourself?")
 	}
 
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		// Revoke account access where the connected user owns an account shared TO
 		// me (received), and where I own an account shared TO the connected user
-		// (issued). Mirrors the two PHP loops over received/issued access.
+		// (issued).
 		received, rerr := s.access.ListReceived(txCtx, userID)
 		if rerr != nil {
 			return rerr
@@ -171,8 +162,8 @@ func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req Delete
 
 // revokeGrantTx unwinds one grant (folders + options + the grant row) on the
 // CURRENT transaction context. It is revokeGrant's body without opening its own
-// tx (delete-connection already holds one; nesting would savepoint, but reusing
-// the same tx is simpler and matches the single PHP transaction).
+// tx (delete-connection already holds one; nesting would savepoint, so reusing
+// the same tx keeps it all in a single transaction).
 func (s *Service) revokeGrantTx(txCtx context.Context, accountID, affectedUserID vo.Id) error {
 	if _, gerr := s.access.Get(txCtx, accountID, affectedUserID); gerr != nil {
 		var nf *errs.NotFoundError

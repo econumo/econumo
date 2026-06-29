@@ -1,14 +1,12 @@
 // Package accountrepo implements domain/account.Repository (accounts +
 // accounts_options + the balance read + the balance-correction insert) over the
-// sqlc-generated queries, across both engines.
+// sqlc-generated queries.
 //
-// Most queries use field-identical models across engines and go through a
-// canonical (sqlite-typed) querier with a passthrough sqlite adapter and a
-// whole-struct-conversion pgsql adapter — the usual minimized-duality approach.
-// The EXCEPTION is the balance SUM queries: SQLite's sqlc rejects sqlc.arg() in
-// subqueries, so the sqlite balance params are EXPANDED (repeated positional
-// args) while pgsql dedups them. Those two queries therefore get a hand-written
-// per-engine adapter (balanceQuerier) that builds each engine's param struct.
+// The EXCEPTION to the usual whole-struct shim is the balance SUM queries:
+// SQLite's sqlc rejects sqlc.arg() in subqueries, so the sqlite balance params
+// are EXPANDED (repeated positional args) while pgsql dedups them. Those two
+// queries therefore get a hand-written per-engine adapter (balanceQuerier) that
+// builds each engine's param struct.
 package accountrepo
 
 import (
@@ -24,7 +22,6 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// Canonical model/param types (sqlite-generated; pgsql shim copies into them).
 type (
 	accountRow        = sqlitegen.Account
 	optionRow         = sqlitegen.AccountsOption
@@ -34,11 +31,10 @@ type (
 	insertCorrectionP = sqlitegen.InsertCorrectionTransactionParams
 )
 
-// balanceResult is one account's balance already rendered to its PHP-compatible
-// decimal STRING. Each engine adapter formats its native balance into this:
-// SQLite's SUM is float (rendered to 14 significant digits, matching PHP's
-// precision=14 float->string), PostgreSQL's SUM is exact NUMERIC (passed through
-// as text). The repo then normalizes the string via vo.DecimalNumber.
+// balanceResult is one account's balance already rendered to a decimal STRING.
+// Each engine adapter formats its native balance into this: SQLite's SUM is a
+// float (rendered to 8 decimals), PostgreSQL's SUM is exact NUMERIC (passed
+// through as text). The repo then normalizes the string via vo.NewDecimal.
 type balanceResult struct {
 	AccountID string
 	Balance   string

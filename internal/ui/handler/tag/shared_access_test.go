@@ -1,13 +1,12 @@
 package tag_test
 
 // Coverage for creating a tag in the context of an account SHARED with the
-// caller (the create-tag request carries an accountId — the transaction modal
+// caller. The create-tag request carries an accountId — the transaction modal
 // sends it when a tag is added inline while entering a transaction on the
-// selected account). Mirrors the PHP TagService.createTag +
-// AccountAccessService.checkAddTag rules: only the account owner or an admin
-// grantee may add a tag for the account, and the tag is created owned by the
-// ACCOUNT OWNER (so it is visible to the owner and co-sharers). Regression for
-// the Go migration ignoring accountId (created for the caller, no access check).
+// selected account. Rules: only the account owner or an admin grantee may add a
+// tag for the account, and the tag is created owned by the ACCOUNT OWNER (so it
+// is visible to the owner and co-sharers). Regression guard against ignoring
+// accountId (creating for the caller with no access check).
 
 import (
 	"net/http"
@@ -73,8 +72,6 @@ func TestCreateTag_SharedAccount_NoGrant_Denied(t *testing.T) {
 	assertAccessDenied(t, status, env)
 }
 
-// TestCreateTag_OwnAccount_OwnedByCaller guards the owner path: an accountId the
-// caller owns creates the tag owned by the caller (as before).
 func TestCreateTag_OwnAccount_OwnedByCaller(t *testing.T) {
 	h := newHarness(t)
 	f := fixture.New(t, h.tdb).WithCrypto(testDataSalt)

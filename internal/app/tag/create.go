@@ -1,4 +1,3 @@
-// Create use case: create a tag, idempotent on the request id.
 package tag
 
 import (
@@ -9,22 +8,13 @@ import (
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 )
 
-// CreateTag creates a tag for the current user and returns it.
-//
-// Idempotency: the request id doubles as the operation id. Inside the tx we
-// Claim the id in operation_requests_ids; a second request with the same id
-// finds the row already present and is rejected with a ValidationError
-// ("Operation is locked").
-//
-// Uniqueness: a tag name must be unique among the owner's tags; a duplicate is
-// rejected with "Tag already exists." (mirrors PHP TagAlreadyExistsException).
-//
-// New-tag position = count(user's existing tags); the new tag is active with
-// created/updated = now.
+// CreateTag is idempotent on the request id: inside the tx we Claim the id in
+// operation_requests_ids; a second request with the same id finds the row
+// already present and is rejected ("Operation is locked"). The new tag's
+// position is count(user's existing tags).
 func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequest) (*CreateTagResult, error) {
-	// The request id is the OPERATION id (idempotency key), not the entity id.
-	// PHP mints a fresh UUIDv7 via tagFactory->create (getNextIdentity); the dto
-	// id is consumed only by the operation-id middleware. Mirror that.
+	// The request id is the OPERATION id (idempotency key), not the entity id;
+	// the entity gets a fresh UUIDv7.
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -35,11 +25,9 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 		return nil, err
 	}
 
-	// accountId, when present, selects which user owns the new tag: an account
-	// may belong to a connected user, and a tag added in the context of a shared
-	// account is owned by the ACCOUNT OWNER (PHP createTagForAccount), gated by an
-	// owner/admin access check (checkAddTag == isAdmin). Absent accountId -> owned
-	// by the caller.
+	// accountId, when present, selects which user owns the new tag: a tag added
+	// in the context of a shared account is owned by the ACCOUNT OWNER, gated by
+	// an owner/admin access check. Absent accountId -> owned by the caller.
 	ownerID := userID
 	if req.AccountId != nil && *req.AccountId != "" {
 		accountID, perr := vo.ParseId(*req.AccountId)

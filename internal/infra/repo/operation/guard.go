@@ -2,12 +2,6 @@
 // operation_requests_ids table. Every module whose create endpoint takes a
 // client-supplied operation id (category, tag, ...) uses one Guard so the dedup
 // logic and queries live in exactly one place.
-//
-// Engine duality is handled the same way as the repos: the whole guard is
-// written once against a single `querier` interface expressed in the canonical
-// (sqlite-generated) types; the sqlite adapter is a passthrough and the pgsql
-// adapter is a thin whole-struct conversion shim (the generated op row/param
-// structs are field-identical across engines).
 package operation
 
 import (
@@ -22,33 +16,26 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 )
 
-// Canonical op types (the sqlite-generated ones; the pgsql shim copies into
-// them).
 type (
 	opRow          = sqlitegen.OperationRequestsID
 	insertOpParams = sqlitegen.InsertOperationIdParams
 	markOpParams   = sqlitegen.MarkOperationHandledParams
 )
 
-// querier is the engine-agnostic op-query surface, in the canonical types.
 type querier interface {
 	GetOperationId(ctx context.Context, db backend.DBTX, id string) (opRow, error)
 	InsertOperationId(ctx context.Context, db backend.DBTX, p insertOpParams) error
 	MarkOperationHandled(ctx context.Context, db backend.DBTX, p markOpParams) error
 }
 
-// Guard is the shared idempotency guard. It holds the TxManager (source of the
-// context-bound DBTX) and the engine querier; every query runs through
-// TxManager.Querier(ctx) so it joins the caller's active transaction. It
-// satisfies the per-module app-layer OperationGuard interface (the Claim /
-// MarkHandled method set).
+// Guard satisfies the per-module app-layer OperationGuard interface (the Claim /
+// MarkHandled method set). Every query runs through TxManager.Querier(ctx) so it
+// joins the caller's active transaction.
 type Guard struct {
 	tx *backend.TxManager
 	q  querier
 }
 
-// NewGuard selects the engine querier by driver name, panicking on an unknown
-// driver. driver matches config.DatabaseDriver: "sqlite" | "postgresql".
 func NewGuard(driver string, tx *backend.TxManager) *Guard {
 	switch driver {
 	case "sqlite":
@@ -95,8 +82,6 @@ func (g *Guard) MarkHandled(ctx context.Context, id vo.Id, now time.Time) error 
 		ID:        id.String(),
 	})
 }
-
-// --- engine adapters -------------------------------------------------------
 
 type sqliteQuerier struct{}
 

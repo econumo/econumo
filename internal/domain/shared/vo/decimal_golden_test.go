@@ -6,9 +6,8 @@ import (
 	"testing"
 )
 
-// decimalVectors mirrors testdata/decimal_vectors.json, generated from the REAL
-// PHP DecimalNumber (bcmath scale 8) via gen_decimal_vectors.php. These are the
-// byte-compatibility oracle for Add/Sub/Mul/Div/Round.
+// decimalVectors mirrors testdata/decimal_vectors.json: the frozen
+// byte-compatibility oracle for Add/Sub/Mul/Div/Round at fixed scale 8.
 type decimalVectors struct {
 	Arith []struct {
 		A, B, Add, Sub, Mul string

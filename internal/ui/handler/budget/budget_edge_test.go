@@ -1,12 +1,5 @@
 package budget_test
 
-// Edge-case coverage for the budget module exercised end-to-end through the real
-// HTTP stack: CRUD (update/delete/reset), envelopes (create/update/delete),
-// folders (create/update/delete/order), account include/exclude reflected in
-// get-budget, change-element-currency, set-limit clear+overwrite, plus the
-// validation-400 and ownership/access-403 branches. State is verified via a
-// follow-up GET (get-budget / get-budget-list) or a direct DB read.
-
 import (
 	"net/http"
 	"testing"
@@ -41,8 +34,6 @@ func (h *harness) getBudget(t *testing.T, tok, id string) budgetResult {
 	}
 	return mustUnmarshal[budgetResult](t, env.Data)
 }
-
-// --- update-budget ---
 
 func TestUpdateBudget_RenameAndCurrency(t *testing.T) {
 	h := newHarness(t)
@@ -126,8 +117,6 @@ func TestUpdateBudget_NonOwner_403(t *testing.T) {
 	}
 }
 
-// --- delete-budget ---
-
 func TestDeleteBudget_RemovesFromList(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -177,8 +166,6 @@ func TestDeleteBudget_Blank_400(t *testing.T) {
 	}
 }
 
-// --- reset-budget ---
-
 func TestResetBudget_ClearsLimits(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -214,8 +201,6 @@ func TestResetBudget_BadStartedAt_400(t *testing.T) {
 		t.Fatalf("reset-budget bad date=%d want 400", status)
 	}
 }
-
-// --- envelopes: update + delete ---
 
 func seedEnvelope(t *testing.T, h *harness, tok string) {
 	t.Helper()
@@ -321,8 +306,6 @@ func TestCreateEnvelope_NonMember_403(t *testing.T) {
 		t.Fatalf("create-envelope non-member=%d want 403", status)
 	}
 }
-
-// --- folders ---
 
 const (
 	bFolderID1 = "ffff2222-0000-7000-8000-000000000001"
@@ -454,8 +437,6 @@ func TestCreateFolder_Blank_400(t *testing.T) {
 	}
 }
 
-// --- include/exclude reflected in get-budget filters ---
-
 func TestExcludeAccount_ReflectedInGetBudget(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -501,8 +482,6 @@ func TestExcludeAccount_NotOwnerOfAccount_403(t *testing.T) {
 	}
 }
 
-// --- change-element-currency ---
-
 func TestChangeElementCurrency_UpdatesElement(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -536,8 +515,6 @@ func TestChangeElementCurrency_Blank_400(t *testing.T) {
 		t.Fatalf("change-element-currency blank elementId=%d want 400", status)
 	}
 }
-
-// --- set-limit: overwrite + clear ---
 
 func TestSetLimit_OverwriteThenClear(t *testing.T) {
 	h := newHarness(t)
@@ -630,8 +607,6 @@ func TestSetLimit_BadPeriod_400(t *testing.T) {
 		t.Fatalf("set-limit bad period=%d want 400", status)
 	}
 }
-
-// --- access: grant reflected in the invitee's list, then revoke ---
 
 func TestGrantAccess_ThenListReflects_ThenRevoke(t *testing.T) {
 	h := newHarness(t)

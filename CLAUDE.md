@@ -312,3 +312,19 @@ data unreadable. Most are also asserted by the test suite.
 
 - `gofmt` (formatting), `go vet` (static analysis), the coverage gate (`make test`).
 - Frontend: ESLint (`make web-lint`).
+
+## Comments — write sparingly
+
+Comment only **exceptional scenarios** and **non-obvious business logic / frozen-contract
+rationale** — the *why*, not the *what*. Do NOT add:
+
+- godoc or inline comments that merely restate a symbol's name or signature
+  (`// Id returns the id`, `// CreateCategory creates a category`), accessor docs;
+- section-divider / scaffolding comments, or anything that paraphrases the next line;
+- references to the former PHP/Symfony implementation. The backend was ported from a
+  now-removed Symfony 5.4 (PHP) app; state the behavior or constraint directly in Go
+  terms rather than naming the old code (e.g. "timestamps are bare `Y-m-d H:i:s` with no
+  zone, so the clock must be UTC" — not "to match the PHP DatetimeService").
+
+**Exempt:** Swagger `// @…` annotation blocks on handlers (they generate the OpenAPI
+spec) and `// Code generated … DO NOT EDIT.` markers — leave both intact.

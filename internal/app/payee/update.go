@@ -1,4 +1,3 @@
-// Update use case: change a payee's name.
 package payee
 
 import (
@@ -30,6 +29,5 @@ func (s *Service) UpdatePayee(ctx context.Context, userID vo.Id, req UpdatePayee
 	}); err != nil {
 		return nil, err
 	}
-	// PHP returns an empty DTO -> {"data":{}}.
 	return &UpdatePayeeResult{}, nil
 }

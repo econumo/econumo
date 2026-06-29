@@ -1,4 +1,3 @@
-// Delete use case: remove a payee (unconditional — no replace mode).
 package payee
 
 import (
@@ -9,13 +8,9 @@ import (
 )
 
 // DeletePayee deletes the payee. The user must own it; an ownership failure
-// surfaces as an AccessDenied (HTTP 403), mirroring the PHP
-// PayeeService::deletePayee flow (the application service checks ownership
-// before delegating). Transactions referencing the payee have payee_id set to
-// NULL via the ON DELETE SET NULL FK.
-//
-// Like tag-delete, there is no mode/replaceId — payee delete is unconditional.
-// Returns an empty result ({}).
+// surfaces as AccessDenied (HTTP 403). Transactions referencing the payee have
+// payee_id set to NULL via the ON DELETE SET NULL FK. Delete is unconditional —
+// there is no mode/replaceId.
 func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req DeletePayeeRequest) (*DeletePayeeResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

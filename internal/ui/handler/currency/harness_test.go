@@ -1,11 +1,5 @@
 package currency_test
 
-// HTTP test harness for the currency module: open a fresh in-memory sqlite DB
-// per test, run the real migrations, seed a user + a handful of currencies and
-// rates, build the REAL router (global middleware + the currency RegisterAPI
-// with real JWT middleware), and exercise it through an httptest.Server with the
-// production envelope on the wire.
-
 import (
 	"bytes"
 	"context"
@@ -188,8 +182,7 @@ func mustUnmarshal[T any](t *testing.T, raw json.RawMessage) T {
 
 // errorsMap decodes the validation-form errors object (field -> messages).
 // Access-denied / exception responses emit an empty array ([]) instead, which
-// leaves the returned map empty. Added because the access-denied envelope's
-// errors is [] (PHP shape), which won't unmarshal into a map.
+// won't unmarshal into a map and leaves the returned map empty.
 func (e envelope) errorsMap() map[string][]string {
 	m := map[string][]string{}
 	if len(e.Errors) > 0 {

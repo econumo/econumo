@@ -1,9 +1,7 @@
 // Budget read repo: the heavy budget reports (per-currency account balances /
 // flow report / holdings, per-element spending, summed limits). All take
 // variadic id sets, so they are hand-built per engine (dynamic IN) rather than
-// sqlc — exactly like the transaction module's ListByAccountIDs. The SQL mirrors
-// AccountRepository's native budget queries + TransactionRepository::countSpending
-// + BudgetElementLimitRepository::getSummarizedLimitsForPeriod.
+// sqlc — like the transaction module's ListByAccountIDs.
 package budgetrepo
 
 import (
@@ -116,10 +114,10 @@ FROM accounts a LEFT JOIN (
 	}
 }
 
-// sqliteDatetime renders a date bound as the 'Y-m-d H:i:s' string SQLite stores
+// sqliteDatetime renders a date as the 'Y-m-d H:i:s' string SQLite stores
 // datetimes in, so range comparisons against the TEXT spent_at/period columns
 // include the boundary rows (a bound time.Time is serialized differently by the
-// driver and silently drops them). PHP binds this same Y-m-d H:i:s form.
+// driver and silently drops them).
 func sqliteDatetime(t time.Time) string { return t.Format(datetime.Layout) }
 
 // phFrom is ph for pgsql numbered params starting at `start` (sqlite ignores start).
@@ -140,11 +138,10 @@ func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs [
 	for rows.Next() {
 		var row appbudget.AccountBalanceRow
 		// SQLite's SUM over NUMERIC is float; scanning it as a string yields the
-		// driver's full-precision rendering (e.g. "358.34999999999127"). PHP's
-		// DecimalNumber constructor instead does sprintf('%.8F', $float) — round
-		// to 8 decimals (bcmath SCALE) — giving "358.35". Match that by scanning
-		// the float and formatting with 'f',8. PostgreSQL's SUM is exact NUMERIC,
-		// so scan it as a string and pass through unchanged.
+		// driver's full-precision rendering (e.g. "358.34999999999127"). Round to
+		// 8 decimals (the stored-balance scale) by scanning the float and
+		// formatting with 'f',8, giving "358.35". PostgreSQL's SUM is exact
+		// NUMERIC, so scan it as a string and pass through unchanged.
 		if r.driver == "postgresql" {
 			var bal *string
 			if err := rows.Scan(&row.AccountID, &row.CurrencyID, &bal); err != nil {
@@ -350,7 +347,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		// Bind the spent_at bounds as 'Y-m-d H:i:s' strings: a time.Time bound is
 		// serialized by the driver in a form that does not compare correctly
 		// against the stored datetime TEXT at month boundaries (it drops the
-		// first-of-month row). PHP binds Y-m-d H:i:s.
+		// first-of-month row).
 		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.category_id IN (" + catIn + ") AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
@@ -365,9 +362,9 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	for rows.Next() {
 		var categoryID, currencyID, tagID *string
 		// SQLite's SUM(amount) is a float; scan it as float and format with %.8f
-		// to match PHP's DecimalNumber float path (round to 8 decimals) instead of
-		// the driver's full-precision text (e.g. "32.26999999"). PostgreSQL's SUM
-		// is exact NUMERIC, scanned as text and passed through.
+		// (round to 8 decimals) instead of the driver's full-precision text (e.g.
+		// "32.26999999"). PostgreSQL's SUM is exact NUMERIC, scanned as text and
+		// passed through.
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
@@ -419,8 +416,8 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 		var row appbudget.SummarizedLimitRow
 		// SQLite's SUM(amount) over NUMERIC is a float; scanning it as a string
 		// yields full float precision (e.g. "155.56000000001"), which leaks a 1e-8
-		// into budgetedBefore. Scan as float and format with %.8f (PHP's
-		// DecimalNumber float path). PostgreSQL's SUM is exact NUMERIC text.
+		// into budgetedBefore. Scan as float and format with %.8f (round to 8
+		// decimals). PostgreSQL's SUM is exact NUMERIC text.
 		if r.driver == "postgresql" {
 			var amount *string
 			if err := rows.Scan(&row.ExternalID, &row.Type, &amount); err != nil {

@@ -22,9 +22,8 @@ type Budget struct {
 	updatedAt  time.Time
 }
 
-// NewBudget creates a budget. startDate is snapped to the first of its month
-// (mirrors the PHP constructor). The caller persists excluded accounts/access
-// separately.
+// NewBudget creates a budget. startDate is snapped to the first of its month.
+// The caller persists excluded accounts/access separately.
 func NewBudget(id, userID vo.Id, name string, currencyID vo.Id, startDate, now time.Time) *Budget {
 	return &Budget{
 		id:         id,
@@ -248,7 +247,6 @@ func (e *BudgetElement) IsPositionUnset() bool { return e.position == PositionUn
 func (e *BudgetElement) CreatedAt() time.Time  { return e.createdAt }
 func (e *BudgetElement) UpdatedAt() time.Time  { return e.updatedAt }
 
-// UpdatePosition changes the position, bumping updated_at only on change.
 func (e *BudgetElement) UpdatePosition(position int16, now time.Time) {
 	if e.position != position {
 		e.position = position
@@ -256,8 +254,7 @@ func (e *BudgetElement) UpdatePosition(position int16, now time.Time) {
 	}
 }
 
-// UpdateCurrency changes the display currency (nil clears it), bumping
-// updated_at only on change.
+// UpdateCurrency changes the display currency (nil clears it).
 func (e *BudgetElement) UpdateCurrency(currencyID *vo.Id, now time.Time) {
 	if !idPtrEqual(e.currencyID, currencyID) {
 		e.currencyID = currencyID
@@ -289,7 +286,6 @@ func NewBudgetElementLimit(id, elementID vo.Id, amount vo.DecimalNumber, period,
 	return &BudgetElementLimit{id: id, elementID: elementID, amount: amount, period: firstOfMonth(period), createdAt: now, updatedAt: now}
 }
 
-// LimitFromState rehydrates a BudgetElementLimit.
 func LimitFromState(id, elementID vo.Id, amount vo.DecimalNumber, period, createdAt, updatedAt time.Time) *BudgetElementLimit {
 	return &BudgetElementLimit{id: id, elementID: elementID, amount: amount, period: period, createdAt: createdAt, updatedAt: updatedAt}
 }
@@ -301,7 +297,6 @@ func (l *BudgetElementLimit) Period() time.Time        { return l.period }
 func (l *BudgetElementLimit) CreatedAt() time.Time     { return l.createdAt }
 func (l *BudgetElementLimit) UpdatedAt() time.Time     { return l.updatedAt }
 
-// UpdateAmount changes the limit amount, bumping updated_at only on change.
 func (l *BudgetElementLimit) UpdateAmount(amount vo.DecimalNumber, now time.Time) {
 	if !l.amount.Equals(amount) {
 		l.amount = amount

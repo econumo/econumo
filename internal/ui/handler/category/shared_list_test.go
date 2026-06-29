@@ -28,9 +28,8 @@ func (h *harness) seedGrant(t *testing.T, accountID, userID string, role int) {
 }
 
 // TestGetCategoryList_IncludesSharedOwners verifies the list returns the user's
-// OWN categories plus categories of users who shared an account WITH this user,
-// matching PHP CategoryRepository::findAvailableForUserId. Regression for the
-// api-compare finding where Go returned own-only (WHERE user_id = ?).
+// OWN categories plus categories of users who shared an account WITH this user
+// (the own+shared rule), not own-only.
 func TestGetCategoryList_IncludesSharedOwners(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
@@ -43,7 +42,7 @@ func TestGetCategoryList_IncludesSharedOwners(t *testing.T) {
 	h.seedAccount(t, "33333333-3333-3333-3333-333333333333", otherUserID, "Other's account")
 	h.seedGrant(t, "33333333-3333-3333-3333-333333333333", seedUserID, 1)
 	// otherUser also owns catID3, but it is reachable only via the same shared
-	// owner, so it appears too (PHP includes ALL of a sharing owner's categories).
+	// owner, so it appears too (a sharing owner's categories are ALL included).
 	// To assert the negative (a NON-sharing owner is excluded) we revoke: catID3
 	// stays owned by otherUser, so it is included. Instead, verify that WITHOUT a
 	// grant the shared owner's categories are hidden — see the sibling subtest.

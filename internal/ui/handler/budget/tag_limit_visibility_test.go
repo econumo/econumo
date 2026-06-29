@@ -81,10 +81,10 @@ func TestTagWithLimitButNoTransactions_StaysVisible(t *testing.T) {
 	if budgeted != "500" {
 		t.Errorf("tag budgeted=%q want 500", budgeted)
 	}
-	// available = budgetedBefore - spentBefore - spent (carryover semantics,
-	// matching PHP). The budget starts this month so there is no carry-in, and
-	// nothing was spent, so available is "0" — the current month's allocation is
-	// reported in `budgeted`, not `available`.
+	// available = budgetedBefore - spentBefore - spent (carryover semantics). The
+	// budget starts this month so there is no carry-in, and nothing was spent, so
+	// available is "0" — the current month's allocation is reported in `budgeted`,
+	// not `available`.
 	if available != "0" {
 		t.Errorf("tag available=%q want 0 (no carryover, nothing spent)", available)
 	}

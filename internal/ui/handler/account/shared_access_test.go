@@ -90,8 +90,8 @@ func TestDeleteAccount_NotOwnedButGranted_RevokesOwnAccess(t *testing.T) {
 	}
 }
 
-// An available-accounts list now includes accounts shared with the user (own +
-// shared via accounts_access), matching getAvailableForUserId.
+// The account list includes accounts shared with the user (own + shared via
+// accounts_access).
 func TestGetAccountList_IncludesSharedAccounts(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

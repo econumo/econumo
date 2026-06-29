@@ -1,5 +1,5 @@
 // FolderRepo implements domain/account.FolderRepository (folders +
-// accounts_folders membership) over the sqlc-generated queries, both engines.
+// accounts_folders membership) over the sqlc-generated queries.
 package accountrepo
 
 import (
@@ -155,8 +155,6 @@ func hydrateFolder(row folderRow) (*domaccount.Folder, error) {
 	}
 	return domaccount.FolderFromState(id, userID, row.Name, row.Position, row.IsVisible, row.CreatedAt, row.UpdatedAt), nil
 }
-
-// --- engine adapters ---
 
 type sqliteFolderQuerier struct{}
 

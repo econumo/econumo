@@ -23,9 +23,9 @@ type amountSpent struct {
 	periodStart, periodEnd time.Time
 }
 
-// buildElementsLimits ports BudgetElementsLimitsBuilder: budgeted = the element's
-// limit for the current month; budgetedBefore = sum of its limits for prior
-// months (budget.startedAt .. periodStart). Keyed "<externalId>-<typeAlias>".
+// buildElementsLimits computes per-element limits: budgeted = the element's limit
+// for the current month; budgetedBefore = sum of its limits for prior months
+// (budget.startedAt .. periodStart). Keyed "<externalId>-<typeAlias>".
 func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f filters) (map[string]budgetedAmount, error) {
 	data := map[string]budgetedAmount{}
 
@@ -90,8 +90,8 @@ type elementSpending struct {
 	spendingInCategories map[string]*categorySpending // keyed category id
 }
 
-// buildElementsSpending ports BudgetElementsSpendingBuilder: current-period
-// spending + a month-by-month "before" walk from budget.startedAt to periodStart.
+// buildElementsSpending computes current-period spending + a month-by-month
+// "before" walk from budget.startedAt to periodStart.
 func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate, f filters) (map[string]*elementSpending, error) {
 	data := map[string]*elementSpending{}
 

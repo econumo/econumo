@@ -1,16 +1,5 @@
 package category_test
 
-// HTTP test harness for the category module: open a fresh in-memory sqlite DB
-// per test, run the real
-// migrations, seed a user + USD currency, build the REAL router (global
-// middleware + the category RegisterAPI with real JWT middleware), and exercise
-// it through an httptest.Server with the production envelope on the wire.
-//
-// Fresh-DB-per-test isolation (same rationale as the user harness): the request
-// flows through net/http, which builds its own per-request context, so the
-// savepoint-rollback-per-test optimization is not wired here. Fresh :memory: is
-// correct and cheap.
-
 import (
 	"bytes"
 	"context"
@@ -159,8 +148,6 @@ func (h *harness) seedCategory(t *testing.T, id, ownerID, name string, position 
 		Archived: archived,
 	})
 }
-
-// ---- request helpers ----
 
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {
 	t.Helper()

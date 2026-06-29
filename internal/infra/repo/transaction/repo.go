@@ -276,8 +276,6 @@ func parseOpt(s *string) (*vo.Id, error) {
 	return &id, nil
 }
 
-// --- engine adapters ---
-
 type sqliteQuerier struct{}
 
 func (sqliteQuerier) GetTransactionByID(ctx context.Context, db backend.DBTX, id string) (txRow, error) {

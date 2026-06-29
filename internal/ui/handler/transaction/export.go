@@ -12,8 +12,8 @@ import (
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 
-// accountIdPattern mirrors the PHP ExportTransactionListV1Form Regex
-// (/^[0-9a-fA-F,\-\s]*$/): hex chars, commas, dashes, whitespace, or empty.
+// accountIdPattern restricts the accountId query param to hex chars, commas,
+// dashes, whitespace, or empty — a frozen client-facing validation contract.
 var accountIdPattern = regexp.MustCompile(`^[0-9a-fA-F,\-\s]*$`)
 
 // ExportTransactionList handles GET /api/v1/transaction/export-transaction-list
@@ -72,8 +72,8 @@ func (h *Handlers) ExportTransactionList(w http.ResponseWriter, r *http.Request)
 }
 
 // parseExportAccountIDs splits the comma-separated accountId param into a unique
-// ordered id list (PHP parseAccountIds): trim each, drop empties, dedupe; a
-// blank/empty param yields nil (= export all accessible accounts).
+// ordered id list: trim each, drop empties, dedupe; a blank/empty param yields
+// nil (= export all accessible accounts).
 func parseExportAccountIDs(raw string) ([]vo.Id, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

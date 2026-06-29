@@ -1,4 +1,3 @@
-// Update use case: change a tag's name.
 package tag
 
 import (
@@ -9,9 +8,8 @@ import (
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 )
 
-// UpdateTag loads the tag, checks ownership (403 otherwise), enforces name
-// uniqueness among the owner's tags (excluding itself), updates the name, and
-// returns the refreshed item.
+// UpdateTag enforces name uniqueness among the owner's tags (excluding itself),
+// updates the name, and returns the refreshed item; ownership failure is a 403.
 func (s *Service) UpdateTag(ctx context.Context, userID vo.Id, req UpdateTagRequest) (*UpdateTagResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

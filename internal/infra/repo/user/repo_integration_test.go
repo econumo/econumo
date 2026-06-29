@@ -1,9 +1,5 @@
 package userrepo_test
 
-// Integration tests for the user write Repo and ReadRepo against a real migrated
-// in-memory SQLite: user + options round-trip, NotFound by id/identifier,
-// existence probe, id listing, and the CQRS read views.
-
 import (
 	"context"
 	"errors"
