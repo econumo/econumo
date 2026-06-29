@@ -93,8 +93,10 @@ func parseCSVRecords(data []byte) (header []string, records []map[string]string,
 	return header, records, nil
 }
 
-// utf8BOM is the UTF-8 byte-order mark (EF BB BF).
-const utf8BOM = "﻿"
+// utf8BOM is the UTF-8 byte-order mark (EF BB BF). Built from explicit bytes so
+// the source file carries no literal BOM rune (which the Go scanner rejects
+// outside the first character).
+var utf8BOM = string([]byte{0xEF, 0xBB, 0xBF})
 
 // stripUTF8BOM removes a leading UTF-8 BOM from a header key.
 func stripUTF8BOM(s string) string {
