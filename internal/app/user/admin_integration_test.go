@@ -157,13 +157,9 @@ func TestAdminActivateDeactivate(t *testing.T) {
 	f.At(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	f.User(fixture.User{Email: "recent@econumo.test"})
 
-	cutoff := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	n, err := svc.AdminDeactivateOlderThan(ctx, cutoff)
-	if err != nil {
-		t.Fatalf("AdminDeactivateOlderThan: %v", err)
-	}
-	if n != 1 {
-		t.Errorf("deactivated %d, want 1 (only the pre-cutoff user)", n)
+	// Deactivate one user by email; the other stays active.
+	if err := svc.AdminDeactivate(ctx, "old@econumo.test"); err != nil {
+		t.Fatalf("AdminDeactivate: %v", err)
 	}
 	if isActive(t, repo, enc, "old@econumo.test") {
 		t.Error("old user should be deactivated")
@@ -172,9 +168,12 @@ func TestAdminActivateDeactivate(t *testing.T) {
 		t.Error("recent user should remain active")
 	}
 
-	// Re-running is a no-op (already inactive) -> 0 changed.
-	if n, _ := svc.AdminDeactivateOlderThan(ctx, cutoff); n != 0 {
-		t.Errorf("second deactivate changed %d, want 0", n)
+	// Re-deactivating an already-inactive user is a no-op (still inactive, no error).
+	if err := svc.AdminDeactivate(ctx, "old@econumo.test"); err != nil {
+		t.Fatalf("second AdminDeactivate: %v", err)
+	}
+	if isActive(t, repo, enc, "old@econumo.test") {
+		t.Error("old user should still be deactivated")
 	}
 
 	// Activate restores it.
@@ -187,6 +186,9 @@ func TestAdminActivateDeactivate(t *testing.T) {
 
 	if err := svc.AdminActivate(ctx, "ghost@econumo.test"); !isNotFound(err) {
 		t.Fatalf("activate unknown: want not-found, got %v", err)
+	}
+	if err := svc.AdminDeactivate(ctx, "ghost@econumo.test"); !isNotFound(err) {
+		t.Fatalf("deactivate unknown: want not-found, got %v", err)
 	}
 }
 

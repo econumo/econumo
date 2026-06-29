@@ -3,12 +3,8 @@ package cli
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"strings"
-	"time"
-
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
 )
 
 // userCommands returns the user-management subcommands (ports of the PHP
@@ -79,27 +75,16 @@ func userCommands() []command {
 		},
 		{
 			name:    "user:deactivate",
-			summary: "Deactivate users created before a date: user:deactivate --before=YYYY-MM-DD",
+			summary: "Deactivate a user: user:deactivate <email>",
 			run: func(ctx context.Context, c *container, args []string) error {
-				fs := flag.NewFlagSet("user:deactivate", flag.ContinueOnError)
-				var dateStr string
-				fs.StringVar(&dateStr, "before", "", "cutoff date (YYYY-MM-DD); users created before it are deactivated")
-				fs.StringVar(&dateStr, "d", "", "alias for --before")
-				if err := fs.Parse(args); err != nil {
+				if len(args) != 1 {
+					return usageErr("user:deactivate <email>")
+				}
+				email := strings.TrimSpace(args[0])
+				if err := c.user.AdminDeactivate(ctx, email); err != nil {
 					return err
 				}
-				if strings.TrimSpace(dateStr) == "" {
-					return usageErr("user:deactivate --before=YYYY-MM-DD")
-				}
-				cutoff, err := time.Parse(datetime.DateLayout, strings.TrimSpace(dateStr))
-				if err != nil {
-					return fmt.Errorf("invalid --before %q (want YYYY-MM-DD): %w", dateStr, err)
-				}
-				n, err := c.user.AdminDeactivateOlderThan(ctx, cutoff)
-				if err != nil {
-					return err
-				}
-				fmt.Printf("Deactivated %d user(s) created before %s\n", n, cutoff.Format(datetime.DateLayout))
+				fmt.Printf("User %s deactivated\n", email)
 				return nil
 			},
 		},

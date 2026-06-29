@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
@@ -87,35 +86,17 @@ func (s *Service) AdminActivate(ctx context.Context, email string) error {
 	})
 }
 
-// AdminDeactivateOlderThan deactivates every active user created strictly before
-// cutoff, returning the number changed. Ports DeactivateUsersCommand
-// (iterate all users, deactivate those older than --date).
-func (s *Service) AdminDeactivateOlderThan(ctx context.Context, cutoff time.Time) (int, error) {
-	ids, err := s.repo.ListIDs(ctx)
+// AdminDeactivate marks the user inactive, looked up by email. Ports
+// DeactivateUsersCommand (User::deactivate).
+func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
+	u, err := s.userByEmail(ctx, email)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	count := 0
-	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
-		for _, id := range ids {
-			u, err := s.repo.GetByID(ctx, id)
-			if err != nil {
-				return err
-			}
-			if u.IsActive() && u.CreatedAt().Before(cutoff) {
-				u.Deactivate(s.clock.Now())
-				if err := s.repo.Save(ctx, u); err != nil {
-					return err
-				}
-				count++
-			}
-		}
-		return nil
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		u.Deactivate(s.clock.Now())
+		return s.repo.Save(ctx, u)
 	})
-	if err != nil {
-		return 0, err
-	}
-	return count, nil
 }
 
 // userByEmail resolves a user from a plaintext email via the md5 identifier
