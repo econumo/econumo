@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
@@ -59,7 +60,7 @@ func parsePeriodDate(s string, now time.Time) (time.Time, error) {
 	if s == "" {
 		return firstOfMonth(now), nil
 	}
-	for _, layout := range []string{"2006-01-02 15:04:05", "2006-01-02", time.RFC3339} {
+	for _, layout := range []string{datetime.Layout, datetime.DateLayout, time.RFC3339} {
 		if t, err := time.Parse(layout, s); err == nil {
 			return firstOfMonth(t), nil
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -17,7 +18,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 	if err != nil {
 		return nil, validateBlank(map[string]string{"budgetId": ""})
 	}
-	periodStart, err := time.Parse("2006-01-02", req.PeriodStart)
+	periodStart, err := time.Parse(datetime.DateLayout, req.PeriodStart)
 	if err != nil {
 		return nil, validateBlank(map[string]string{"periodStart": ""})
 	}
@@ -142,9 +143,9 @@ func optID(p *string) string {
 
 // normalizeSpentAt renders the stored DATETIME as "Y-m-d H:i:s".
 func normalizeSpentAt(raw string) string {
-	for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339, "2006-01-02T15:04:05Z"} {
+	for _, layout := range []string{datetime.Layout, time.RFC3339, "2006-01-02T15:04:05Z"} {
 		if t, err := time.Parse(layout, raw); err == nil {
-			return t.Format("2006-01-02 15:04:05")
+			return t.Format(datetime.Layout)
 		}
 	}
 	return raw

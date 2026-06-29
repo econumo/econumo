@@ -6,6 +6,7 @@ import (
 	"time"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -109,7 +110,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req SetLimitReques
 	if err != nil {
 		return nil, validateBlank(map[string]string{"elementId": ""})
 	}
-	period, err := time.Parse("2006-01-02", req.Period)
+	period, err := time.Parse(datetime.DateLayout, req.Period)
 	if err != nil {
 		return nil, validateBlank(map[string]string{"period": ""})
 	}

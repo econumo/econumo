@@ -5,6 +5,7 @@ import (
 	"time"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
@@ -23,7 +24,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 	now := s.clock.Now()
 	startDate := now
 	if req.StartDate != "" {
-		if t, perr := time.Parse("2006-01-02", req.StartDate); perr == nil {
+		if t, perr := time.Parse(datetime.DateLayout, req.StartDate); perr == nil {
 			startDate = t
 		}
 	}

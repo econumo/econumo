@@ -5,6 +5,7 @@ import (
 	"time"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
 
@@ -103,7 +104,7 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req ResetBudget
 	if err != nil {
 		return nil, validateBlank(map[string]string{"id": ""})
 	}
-	startedAt, err := time.Parse("2006-01-02 15:04:05", req.StartedAt)
+	startedAt, err := time.Parse(datetime.Layout, req.StartedAt)
 	if err != nil {
 		return nil, validateBlank(map[string]string{"startedAt": ""})
 	}
