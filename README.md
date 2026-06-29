@@ -97,6 +97,44 @@ stack is stopped.
 - **SQLite** — your v0.x database lived at `var/db/db.sqlite`. Place that file
   where the new container reads it (`/app/var/db/db.sqlite` inside the `db`
   volume; `DATABASE_URL=sqlite:///app/var/db/db.sqlite` is the default).
+
+    The v1.x container runs as the non-root user `nonroot` (UID/GID **65532**),
+    while a carried-over v0.x file is usually owned by root. SQLite must also
+    write a `-wal`/`-journal` file *next to* the database, so the **directory**
+    needs to be writable too — otherwise boot fails with
+    `attempt to write a readonly database (8)`. Re-own the whole `db` volume
+    (run on the host, with the container stopped):
+
+    ```console
+    $ sudo chown -R 65532:65532 \
+        "$(docker volume inspect <project>_db --format '{{ .Mountpoint }}')"
+    ```
+
+    Replace `<project>` with your compose project name (the directory you run
+    `docker compose` from, e.g. `econumo_db`). Do the same for the `jwt` volume
+    if you carried one over. `ls -lan` should then show both the directory (`.`)
+    and `db.sqlite` owned by `65532 65532`.
+
+    Alternatively, do it manually step by step — list the volumes, resolve the
+    host path, then `chown` it directly:
+
+    ```console
+    $ docker volume ls
+    DRIVER    VOLUME NAME
+    local     econumo_db
+    local     econumo_jwt
+
+    $ docker volume inspect econumo_db --format '{{ .Mountpoint }}'
+    /var/lib/docker/volumes/econumo_db/_data
+
+    $ cd /var/lib/docker/volumes/econumo_db/_data
+    $ ls -lan                      # check current ownership
+    $ sudo chown -R 65532:65532 .  # the trailing "." re-owns the directory itself
+    $ ls -lan                      # confirm "." and db.sqlite show 65532 65532
+    ```
+
+    Use `.` (not `./*`) so the directory itself is re-owned, not just its
+    contents — SQLite needs to create its journal file inside that directory.
 - **PostgreSQL** — keep your database where it is and set `DATABASE_URL` to it,
   e.g. `DATABASE_URL=postgres://econumo:econumo@your-db-host:5432/econumo`. The
   Postgres service is no longer part of the bundled compose file; manage it
