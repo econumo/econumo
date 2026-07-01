@@ -65,7 +65,6 @@ module.exports = configure(function (ctx) {
       env: {
         ECONUMO_VERSION: process.env.ECONUMO_VERSION,
         WEBSITE_URL: process.env.ECONUMO_WEBSITE_URL,
-        ALLOW_CUSTOM_API: process.env.ECONUMO_ALLOW_CUSTOM_API,
       },
 
       // transpile: false,

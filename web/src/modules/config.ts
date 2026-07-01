@@ -91,9 +91,6 @@ export function getVersion(): string {
 
 export function isCustomApiAllowed(): boolean {
   const allowCustomApi = window.econumoConfig?.ALLOW_CUSTOM_API
-  if (allowCustomApi === undefined) {
-    return process.env.ALLOW_CUSTOM_API === 'true'
-  }
   if (typeof allowCustomApi === 'boolean') {
     return allowCustomApi
   }
