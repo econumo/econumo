@@ -4,6 +4,7 @@ package account
 
 import (
 	"context"
+	"strings"
 
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
@@ -18,8 +19,9 @@ import (
 //
 // Steps inside one tx: claim the operation id (idempotency); compute the
 // position (max accounts_options.position for the user, else count of available
-// accounts); create the account + its accounts_options row; add it to the
-// requested folder (which must be owned by the user); if the requested balance is
+// accounts); create the account + its accounts_options row; place it in a folder
+// (the requested one, which must be owned by the user, or a freshly-created
+// default folder when this is the user's first account); if the requested balance is
 // non-zero, write a balance-correction transaction dated at the account's
 // creation time; mark the operation handled. Returns {item} only (no accounts
 // list).
@@ -38,10 +40,6 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 		return nil, err
 	}
 	icon, err := newIcon(req.Icon)
-	if err != nil {
-		return nil, err
-	}
-	folderID, err := vo.ParseId(req.FolderId)
 	if err != nil {
 		return nil, err
 	}
@@ -81,13 +79,10 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 			return serr
 		}
 
-		// place in the folder (must belong to the user).
-		folder, ferr := s.folders.GetByID(ctx, folderID)
+		// place in a folder (auto-creating the user's first one when needed).
+		folderID, ferr := s.resolveAccountFolder(ctx, userID, req.FolderId)
 		if ferr != nil {
 			return ferr
-		}
-		if !folder.UserId().Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
 		}
 		if aerr := s.folders.AddAccount(ctx, folderID, id); aerr != nil {
 			return aerr
@@ -138,6 +133,56 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 		return nil, err
 	}
 	return &CreateAccountResult{Item: item}, nil
+}
+
+// defaultFolderName is the folder auto-created for a user's very first account
+// (registration/onboarding never creates one). The frontend labels a user's
+// primary folder itself, so this is only a fallback name.
+const defaultFolderName = "General"
+
+// resolveAccountFolder picks the folder to place a new account in, running in the
+// caller's tx. A blank or unknown folderId is tolerated ONLY when the user has no
+// folders at all — the first-account/onboarding case — in which a default folder
+// is created. Once the user owns any folder, a blank/unknown folderId is the same
+// error it always was, preserving the frozen contract.
+func (s *Service) resolveAccountFolder(ctx context.Context, userID vo.Id, rawFolderID string) (vo.Id, error) {
+	if strings.TrimSpace(rawFolderID) == "" {
+		return s.defaultFolderOr(ctx, userID, errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "folderId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"}))
+	}
+	folderID, err := vo.ParseId(rawFolderID)
+	if err != nil {
+		return vo.Id{}, err
+	}
+	folder, ferr := s.folders.GetByID(ctx, folderID)
+	if ferr != nil {
+		if _, ok := errs.AsNotFound(ferr); ok {
+			return s.defaultFolderOr(ctx, userID, ferr)
+		}
+		return vo.Id{}, ferr
+	}
+	if !folder.UserId().Equal(userID) {
+		return vo.Id{}, errs.NewAccessDenied("Access denied")
+	}
+	return folderID, nil
+}
+
+// defaultFolderOr returns the id of a freshly-created default folder when the user
+// has none yet, otherwise returns whenHasFolders — the error that applies when the
+// user already owns folders (blank/unknown folderId is then a real error).
+func (s *Service) defaultFolderOr(ctx context.Context, userID vo.Id, whenHasFolders error) (vo.Id, error) {
+	count, cerr := s.folders.CountByUser(ctx, userID)
+	if cerr != nil {
+		return vo.Id{}, cerr
+	}
+	if count > 0 {
+		return vo.Id{}, whenHasFolders
+	}
+	f, ferr := s.createFolderTx(ctx, userID, defaultFolderName)
+	if ferr != nil {
+		return vo.Id{}, ferr
+	}
+	return f.Id(), nil
 }
 
 // correctionType returns the transaction type for a balance correction: a

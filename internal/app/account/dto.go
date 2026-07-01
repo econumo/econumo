@@ -65,13 +65,15 @@ type CreateAccountRequest struct {
 	FolderId   string        `json:"folderId"`
 }
 
-// Validate enforces tier-1 NotBlank on id, name, currencyId, icon, folderId. The
-// 3-64 name and decimal balance invariants are re-checked tier-2 in the service.
+// Validate enforces tier-1 NotBlank on id, name, currencyId, icon. folderId is
+// resolved tier-2 in the service: a blank folderId is accepted for a user's very
+// first account (a default folder is created), but rejected once folders exist.
+// The 3-64 name and decimal balance invariants are re-checked tier-2.
 func (r CreateAccountRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
 		{"id", r.Id}, {"name", r.Name}, {"currencyId", r.CurrencyId},
-		{"icon", r.Icon}, {"folderId", r.FolderId},
+		{"icon", r.Icon},
 	} {
 		if strings.TrimSpace(f.val) == "" {
 			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})

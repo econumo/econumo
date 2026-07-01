@@ -21,24 +21,9 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateFold
 
 	var created *domaccount.Folder
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		folders, lerr := s.folders.ListByUser(ctx, userID)
-		if lerr != nil {
-			return lerr
-		}
-		var maxPos int16
-		for _, f := range folders {
-			if f.Name() == name {
-				return errs.NewValidation("Folder already exists.")
-			}
-			if f.Position() > maxPos {
-				maxPos = f.Position()
-			}
-		}
-		now := s.clock.Now()
-		f := domaccount.NewFolder(s.folders.NextIdentity(), userID, name, now)
-		f.SetPosition(maxPos + 1)
-		if serr := s.folders.Save(ctx, f); serr != nil {
-			return serr
+		f, cerr := s.createFolderTx(ctx, userID, name)
+		if cerr != nil {
+			return cerr
 		}
 		created = f
 		return nil
@@ -46,6 +31,32 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateFold
 		return nil, err
 	}
 	return &CreateFolderResult{Item: toFolderResult(created)}, nil
+}
+
+// createFolderTx creates a folder for the user within the caller's tx: the name
+// must be unique among the user's folders and the position is last+1. Shared by
+// CreateFolder and the first-account default-folder path in CreateAccount.
+func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string) (*domaccount.Folder, error) {
+	folders, lerr := s.folders.ListByUser(ctx, userID)
+	if lerr != nil {
+		return nil, lerr
+	}
+	var maxPos int16
+	for _, f := range folders {
+		if f.Name() == name {
+			return nil, errs.NewValidation("Folder already exists.")
+		}
+		if f.Position() > maxPos {
+			maxPos = f.Position()
+		}
+	}
+	now := s.clock.Now()
+	f := domaccount.NewFolder(s.folders.NextIdentity(), userID, name, now)
+	f.SetPosition(maxPos + 1)
+	if serr := s.folders.Save(ctx, f); serr != nil {
+		return nil, serr
+	}
+	return f, nil
 }
 
 // UpdateFolder renames a folder the user owns. The new name must be unique among
