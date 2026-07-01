@@ -11,6 +11,7 @@ interface EconumoConfig {
   API_URL?: string
   ALLOW_REGISTRATION?: boolean | string
   PAYWALL_ENABLED?: boolean | string
+  ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
 }
 
@@ -89,7 +90,14 @@ export function getVersion(): string {
 }
 
 export function isCustomApiAllowed(): boolean {
-  return process.env.ALLOW_CUSTOM_API === 'true'
+  const allowCustomApi = window.econumoConfig?.ALLOW_CUSTOM_API
+  if (allowCustomApi === undefined) {
+    return process.env.ALLOW_CUSTOM_API === 'true'
+  }
+  if (typeof allowCustomApi === 'boolean') {
+    return allowCustomApi
+  }
+  return allowCustomApi === 'true'
 }
 
 export function isRegistrationAllowed(): boolean {
