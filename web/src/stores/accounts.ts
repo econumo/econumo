@@ -69,9 +69,13 @@ export const useAccountsStore = defineStore('accounts', () => {
   function createAccount(form: AccountCreateDto) {
     trackEvent(METRICS.ACCOUNT_CREATE);
     const budgetsStore = useBudgetsStore();
+    const transactionsStore = useTransactionsStore();
     return AccountsAPIv1.create(form, (response: AccountItemDto) => {
       addAccount(response.item);
-      if (response.item.balance > 0) {
+      // A non-zero opening balance writes a correction transaction; add it so it
+      // shows immediately instead of waiting for the next full sync.
+      if (response.transaction) {
+        transactionsStore.TRANSACTION_ADDED(response.transaction);
         budgetsStore.resetCachedBudget();
       }
       // A user's very first account makes the backend auto-create a default

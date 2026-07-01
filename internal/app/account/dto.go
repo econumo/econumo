@@ -85,11 +85,13 @@ func (r CreateAccountRequest) Validate() error {
 	return nil
 }
 
-// CreateAccountResult is the create-account response: {item} ONLY — the envelope
-// is {"data":{"item":{...account...}}}; there is no accounts list (frozen wire
-// shape).
+// CreateAccountResult is the create-account response: {item, transaction}. item
+// is the created account; transaction is the opening-balance correction (same
+// full shape as update-account's), or null when the account was created with a
+// zero balance. There is no accounts list (frozen wire shape).
 type CreateAccountResult struct {
-	Item AccountResult `json:"item"`
+	Item        AccountResult     `json:"item"`
+	Transaction *CorrectionResult `json:"transaction"`
 }
 
 // UpdateAccountRequest is the update-account body. currencyId is nullable;

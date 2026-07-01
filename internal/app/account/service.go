@@ -150,6 +150,28 @@ func tomorrowIn(now time.Time, loc *time.Location) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC).AddDate(0, 0, 1)
 }
 
+// localNow is the caller's current wall-clock (server now rendered in the request
+// timezone) as a UTC-typed time, so it stores as that bare wall-clock. A
+// balance-correction transaction is dated with it so its spent_at sits within the
+// caller's "today" and is counted by balanceBefore immediately — otherwise a
+// server-UTC "now" can fall after the caller's day boundary (a behind-UTC caller,
+// once UTC has rolled past midnight) and the opening balance reads 0.
+func (s *Service) localNow(ctx context.Context) time.Time {
+	return wallClockIn(s.clock.Now(), reqctx.Location(ctx))
+}
+
+// wallClockIn renders now's wall-clock in loc as a UTC-typed time (see tomorrowIn
+// for why spent_at/cutoff wall-clocks must be UTC-typed).
+func wallClockIn(now time.Time, loc *time.Location) time.Time {
+	if loc == nil {
+		loc = time.UTC
+	}
+	local := now.In(loc)
+	y, m, d := local.Date()
+	h, mi, sec := local.Clock()
+	return time.Date(y, m, d, h, mi, sec, 0, time.UTC)
+}
+
 // buildAccountResult assembles the full AccountResult for one account as seen by
 // userID: owner, currency (with Intl-resolved name), folderId (the first folder
 // containing the account among the user's folders), per-user position, the

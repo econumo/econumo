@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	domaccount "github.com/econumo/econumo/internal/domain/account"
+	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -45,7 +46,10 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	}
 	balance := vo.NewDecimal(req.Balance.String())
 
-	var created *domaccount.Account
+	var (
+		created    *domaccount.Account
+		correction *CorrectionResult
+	)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
@@ -55,14 +59,16 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 			return errs.NewValidation("Operation is locked")
 		}
 
-		// position: highest existing accounts_options.position for the user, or
-		// (when none) the count of available accounts.
+		// position: append after the current last, i.e. maxPos+1. When the user has
+		// no accounts_options rows yet (maxPos==0 — no own accounts, or only
+		// option-less shared ones), fall back to the count of available accounts so
+		// the new account still sorts last.
 		maxPos, perr := s.repo.MaxPosition(ctx, userID)
 		if perr != nil {
 			return perr
 		}
-		position := maxPos
-		if position == 0 {
+		position := maxPos + 1
+		if maxPos == 0 {
 			n, cerr := s.repo.CountAvailable(ctx, userID)
 			if cerr != nil {
 				return cerr
@@ -90,18 +96,41 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 
 		// seed the balance via a correction transaction (only when non-zero).
 		if !balance.IsZero() {
+			corrID := s.repo.NextIdentity()
+			corrType := correctionType(balance)
+			spentAt := s.localNow(ctx)
 			corr := domaccount.Correction{
-				ID:          s.repo.NextIdentity(),
+				ID:          corrID,
 				UserID:      userID,
 				AccountID:   id,
 				Description: "",
-				Type:        correctionType(balance),
+				Type:        corrType,
 				Amount:      balance.Abs().String(),
-				SpentAt:     acct.CreatedAt(),
+				SpentAt:     spentAt,
 				CreatedAt:   now,
 			}
 			if cerr := s.repo.SaveCorrection(ctx, corr); cerr != nil {
 				return cerr
+			}
+			typeAlias := "expense"
+			if corrType == 1 {
+				typeAlias = "income"
+			}
+			// amountRecipient falls back to amount; accountRecipientId/categoryId/
+			// payeeId/tagId are null for a balance correction. author is filled in
+			// after the tx (needs a UserLookup read).
+			correction = &CorrectionResult{
+				Id:                 corrID.String(),
+				Type:               typeAlias,
+				AccountId:          id.String(),
+				AccountRecipientId: nil,
+				Amount:             corr.Amount,
+				AmountRecipient:    corr.Amount,
+				CategoryId:         nil,
+				Description:        "",
+				PayeeId:            nil,
+				TagId:              nil,
+				Date:               spentAt.Format(datetime.Layout),
 			}
 		}
 
@@ -132,7 +161,15 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	if err != nil {
 		return nil, err
 	}
-	return &CreateAccountResult{Item: item}, nil
+	// Fill the correction's author (the account owner = the requesting user).
+	if correction != nil {
+		owner, oerr := s.users.GetOwner(ctx, userID.String())
+		if oerr != nil {
+			return nil, oerr
+		}
+		correction.Author = OwnerResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
+	}
+	return &CreateAccountResult{Item: item, Transaction: correction}, nil
 }
 
 // defaultFolderName is the folder auto-created for a user's very first account

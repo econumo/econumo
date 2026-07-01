@@ -90,11 +90,54 @@ func TestCreateAccount_WithBalance_WritesCorrection(t *testing.T) {
 	tok := h.token(t)
 
 	// Create with a non-zero balance -> a correction transaction makes the
-	// computed balance match.
+	// computed balance match, and that transaction is returned so the client can
+	// show it immediately (same full shape as update-account's).
 	_, env := h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, createAccountReq(acctID1, "Savings", "150.50"))
-	res := mustUnmarshal[accountItemWrapper](t, env.Data)
+	var res struct {
+		Item        accountItem `json:"item"`
+		Transaction *struct {
+			ID                 string  `json:"id"`
+			Type               string  `json:"type"`
+			AccountID          string  `json:"accountId"`
+			AccountRecipientID *string `json:"accountRecipientId"`
+			Amount             string  `json:"amount"`
+			AmountRecipient    string  `json:"amountRecipient"`
+			CategoryID         *string `json:"categoryId"`
+			Description        string  `json:"description"`
+			PayeeID            *string `json:"payeeId"`
+			TagID              *string `json:"tagId"`
+			Date               string  `json:"date"`
+			Author             struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"author"`
+		} `json:"transaction"`
+	}
+	mustDecode(t, env.Data, &res)
 	if res.Item.Balance != "150.5" {
 		t.Fatalf("balance = %q, want 150.5 (normalized)", res.Item.Balance)
+	}
+	if res.Transaction == nil {
+		t.Fatalf("expected an opening-balance correction transaction; body: %s", env.raw)
+	}
+	tr := res.Transaction
+	if tr.Type != "income" || tr.Amount != "150.5" || tr.AmountRecipient != "150.5" {
+		t.Fatalf("correction type/amount/amountRecipient = %s/%s/%s, want income/150.5/150.5", tr.Type, tr.Amount, tr.AmountRecipient)
+	}
+	if tr.Author.ID != seedUserID || tr.Author.Name != seedName {
+		t.Fatalf("correction author = %+v, want seed user", tr.Author)
+	}
+	if tr.AccountID != res.Item.ID {
+		t.Fatalf("correction accountId = %q, want the created account %q", tr.AccountID, res.Item.ID)
+	}
+	if tr.Description != "" {
+		t.Fatalf("description = %q, want empty for an opening-balance correction", tr.Description)
+	}
+	if tr.AccountRecipientID != nil || tr.CategoryID != nil || tr.PayeeID != nil || tr.TagID != nil {
+		t.Fatalf("correction recipient/category/payee/tag must all be null; got %+v", tr)
+	}
+	if tr.Date == "" {
+		t.Fatalf("correction date must be set")
 	}
 
 	// And it shows in the list.

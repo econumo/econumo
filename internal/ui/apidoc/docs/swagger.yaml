@@ -524,6 +524,8 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/account.AccountResult'
+      transaction:
+        $ref: '#/definitions/account.CorrectionResult'
     type: object
   github_com_econumo_econumo_internal_app_account.CreateFolderRequest:
     properties:

@@ -5942,6 +5942,9 @@ const docTemplate = `{
             "properties": {
                 "item": {
                     "$ref": "#/definitions/account.AccountResult"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/account.CorrectionResult"
                 }
             }
         },
