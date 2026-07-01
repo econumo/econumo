@@ -1,4 +1,4 @@
-import { isPaywallEnabled as isPaywallEnabledConfig } from './config';
+import { isPaywallEnabled as isPaywallEnabledConfig, getVersion } from './config';
 
 interface EconumoPackage {
   label: string;
@@ -9,7 +9,7 @@ interface EconumoPackage {
 }
 
 function getEditionLabel(): string {
-  return String(process.env.ECONUMO_VERSION);
+  return getVersion();
 }
 
 function isPaywallEnabled(): boolean {
