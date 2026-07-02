@@ -1,19 +1,19 @@
-// Package tagrepo implements domain/tag.Repository.
+// Package repo implements tag.Repository.
 //
 // Idempotency for create-tag is NOT here — it is the shared
 // internal/infra/operation.Guard, wired alongside this repo.
-package tagrepo
+package repo
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 
-	domtag "github.com/econumo/econumo/internal/domain/tag"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	domtag "github.com/econumo/econumo/internal/tag"
 )
 
 type (

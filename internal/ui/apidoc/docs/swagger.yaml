@@ -1113,74 +1113,6 @@ definitions:
     type: object
   github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult:
     type: object
-  github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_tag.ArchiveTagResult:
-    type: object
-  github_com_econumo_econumo_internal_app_tag.CreateTagRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_tag.CreateTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
-    type: object
-  github_com_econumo_econumo_internal_app_tag.DeleteTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_tag.DeleteTagResult:
-    type: object
-  github_com_econumo_econumo_internal_app_tag.GetTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/tag.TagResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_tag.OrderTagListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/tag.PositionChange'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_tag.OrderTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/tag.TagResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult:
-    type: object
-  github_com_econumo_econumo_internal_app_tag.UpdateTagRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_tag.UpdateTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
-    type: object
   github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest:
     properties:
       accountId:
@@ -1307,6 +1239,55 @@ definitions:
       position:
         type: integer
     type: object
+  tag.ArchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  tag.ArchiveTagResult:
+    type: object
+  tag.CreateTagRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  tag.CreateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/tag.TagResult'
+    type: object
+  tag.DeleteTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  tag.DeleteTagResult:
+    type: object
+  tag.GetTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/tag.TagResult'
+        type: array
+    type: object
+  tag.OrderTagListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/tag.PositionChange'
+        type: array
+    type: object
+  tag.OrderTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/tag.TagResult'
+        type: array
+    type: object
   tag.PositionChange:
     properties:
       id:
@@ -1330,6 +1311,25 @@ definitions:
         type: integer
       updatedAt:
         type: string
+    type: object
+  tag.UnarchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  tag.UnarchiveTagResult:
+    type: object
+  tag.UpdateTagRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  tag.UpdateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/tag.TagResult'
     type: object
   transaction.AuthorResult:
     properties:
@@ -3542,7 +3542,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest'
+          $ref: '#/definitions/tag.ArchiveTagRequest'
       produces:
       - application/json
       responses:
@@ -3553,7 +3553,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagResult'
+                  $ref: '#/definitions/tag.ArchiveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3584,7 +3584,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagRequest'
+          $ref: '#/definitions/tag.CreateTagRequest'
       produces:
       - application/json
       responses:
@@ -3595,7 +3595,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagResult'
+                  $ref: '#/definitions/tag.CreateTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3626,7 +3626,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagRequest'
+          $ref: '#/definitions/tag.DeleteTagRequest'
       produces:
       - application/json
       responses:
@@ -3637,7 +3637,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagResult'
+                  $ref: '#/definitions/tag.DeleteTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3670,7 +3670,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.GetTagListResult'
+                  $ref: '#/definitions/tag.GetTagListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3697,7 +3697,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListRequest'
+          $ref: '#/definitions/tag.OrderTagListRequest'
       produces:
       - application/json
       responses:
@@ -3708,7 +3708,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListResult'
+                  $ref: '#/definitions/tag.OrderTagListResult'
               type: object
         "400":
           description: Bad Request
@@ -3738,7 +3738,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest'
+          $ref: '#/definitions/tag.UnarchiveTagRequest'
       produces:
       - application/json
       responses:
@@ -3749,7 +3749,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult'
+                  $ref: '#/definitions/tag.UnarchiveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3780,7 +3780,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagRequest'
+          $ref: '#/definitions/tag.UpdateTagRequest'
       produces:
       - application/json
       responses:
@@ -3791,7 +3791,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagResult'
+                  $ref: '#/definitions/tag.UpdateTagResult'
               type: object
         "400":
           description: Bad Request

@@ -3482,7 +3482,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest"
+                            "$ref": "#/definitions/tag.ArchiveTagRequest"
                         }
                     }
                 ],
@@ -3498,7 +3498,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagResult"
+                                            "$ref": "#/definitions/tag.ArchiveTagResult"
                                         }
                                     }
                                 }
@@ -3551,7 +3551,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagRequest"
+                            "$ref": "#/definitions/tag.CreateTagRequest"
                         }
                     }
                 ],
@@ -3567,7 +3567,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagResult"
+                                            "$ref": "#/definitions/tag.CreateTagResult"
                                         }
                                     }
                                 }
@@ -3620,7 +3620,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagRequest"
+                            "$ref": "#/definitions/tag.DeleteTagRequest"
                         }
                     }
                 ],
@@ -3636,7 +3636,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagResult"
+                                            "$ref": "#/definitions/tag.DeleteTagResult"
                                         }
                                     }
                                 }
@@ -3691,7 +3691,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.GetTagListResult"
+                                            "$ref": "#/definitions/tag.GetTagListResult"
                                         }
                                     }
                                 }
@@ -3738,7 +3738,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListRequest"
+                            "$ref": "#/definitions/tag.OrderTagListRequest"
                         }
                     }
                 ],
@@ -3754,7 +3754,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListResult"
+                                            "$ref": "#/definitions/tag.OrderTagListResult"
                                         }
                                     }
                                 }
@@ -3807,7 +3807,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest"
+                            "$ref": "#/definitions/tag.UnarchiveTagRequest"
                         }
                     }
                 ],
@@ -3823,7 +3823,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult"
+                                            "$ref": "#/definitions/tag.UnarchiveTagResult"
                                         }
                                     }
                                 }
@@ -3876,7 +3876,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagRequest"
+                            "$ref": "#/definitions/tag.UpdateTagRequest"
                         }
                     }
                 ],
@@ -3892,7 +3892,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagResult"
+                                            "$ref": "#/definitions/tag.UpdateTagResult"
                                         }
                                     }
                                 }
@@ -6865,113 +6865,6 @@ const docTemplate = `{
         "github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult": {
             "type": "object"
         },
-        "github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.ArchiveTagResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_tag.CreateTagRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.CreateTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.DeleteTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.DeleteTagResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_tag.GetTagListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.TagResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.OrderTagListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.PositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.OrderTagListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.TagResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_tag.UpdateTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.UpdateTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
-        },
         "github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest": {
             "type": "object",
             "properties": {
@@ -7166,6 +7059,83 @@ const docTemplate = `{
                 }
             }
         },
+        "tag.ArchiveTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.ArchiveTagResult": {
+            "type": "object"
+        },
+        "tag.CreateTagRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.CreateTagResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/tag.TagResult"
+                }
+            }
+        },
+        "tag.DeleteTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.DeleteTagResult": {
+            "type": "object"
+        },
+        "tag.GetTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tag.TagResult"
+                    }
+                }
+            }
+        },
+        "tag.OrderTagListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tag.PositionChange"
+                    }
+                }
+            }
+        },
+        "tag.OrderTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tag.TagResult"
+                    }
+                }
+            }
+        },
         "tag.PositionChange": {
             "type": "object",
             "properties": {
@@ -7200,6 +7170,36 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "tag.UnarchiveTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.UnarchiveTagResult": {
+            "type": "object"
+        },
+        "tag.UpdateTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.UpdateTagResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/tag.TagResult"
                 }
             }
         },

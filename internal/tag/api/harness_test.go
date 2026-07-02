@@ -1,4 +1,4 @@
-package tag_test
+package api_test
 
 import (
 	"bytes"
@@ -13,19 +13,19 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	apptag "github.com/econumo/econumo/internal/app/tag"
 	"github.com/econumo/econumo/internal/config"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
 	"github.com/econumo/econumo/internal/shared/jwt"
+	apptag "github.com/econumo/econumo/internal/tag"
+	handlertag "github.com/econumo/econumo/internal/tag/api"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	handlertag "github.com/econumo/econumo/internal/ui/handler/tag"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 
