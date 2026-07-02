@@ -153,6 +153,10 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 		b.WriteString(placeholders(r.driver, 2+2*len(ids), 1))
 		args = append(args, periodStart, periodEnd)
 	}
+	// Newest first (the transaction-list convention, see ListTransactionsByAccount)
+	// with id as the stable tie-break: without an ORDER BY the row order diverges
+	// between SQLite and PostgreSQL, and the CSV export serves this order directly.
+	b.WriteString(" ORDER BY spent_at DESC, id")
 
 	rows, err := r.db(ctx).QueryContext(ctx, b.String(), args...)
 	if err != nil {
