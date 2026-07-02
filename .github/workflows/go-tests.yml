@@ -51,7 +51,7 @@ jobs:
             - name: Coverage summary
               if: always()
               env:
-                  GO_COVER_MIN: "64"
+                  GO_COVER_MIN: "72"
               run: |
                   if [ ! -f coverage.out ]; then
                     echo "No coverage profile was produced." >> "$GITHUB_STEP_SUMMARY"
