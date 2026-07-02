@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )

@@ -15,18 +15,18 @@ import (
 
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	"github.com/econumo/econumo/internal/config"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlertag "github.com/econumo/econumo/internal/ui/handler/tag"
 	"github.com/econumo/econumo/internal/ui/router"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
 const (

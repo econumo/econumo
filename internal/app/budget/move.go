@@ -6,7 +6,7 @@ import (
 	"time"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // MoveElementList repositions budget elements and moves them between folders

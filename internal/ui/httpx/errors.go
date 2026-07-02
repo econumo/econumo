@@ -3,7 +3,7 @@ package httpx
 import (
 	"net/http"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // WriteError maps a domain/service error onto the correct envelope + HTTP

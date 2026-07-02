@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
-	"github.com/econumo/econumo/internal/app/reqctx"
+	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )

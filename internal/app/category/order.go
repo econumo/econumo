@@ -4,7 +4,7 @@ package category
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // OrderCategoryList applies each {id, position} change to the matching category,

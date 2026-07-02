@@ -30,7 +30,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/pkg/jwt"
+	"github.com/econumo/econumo/internal/shared/jwt"
 
 	"github.com/joho/godotenv"
 

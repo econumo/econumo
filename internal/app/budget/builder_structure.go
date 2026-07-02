@@ -7,7 +7,7 @@ import (
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // budgetedAmount is one element's current+prior budgeted totals.

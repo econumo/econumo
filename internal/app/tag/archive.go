@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // ArchiveTag marks the tag archived; ownership failure is a 403. This toggles

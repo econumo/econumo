@@ -6,7 +6,7 @@ import (
 	"time"
 
 	domcategory "github.com/econumo/econumo/internal/domain/category"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // ArchiveCategory loads the category, checks ownership (403 otherwise), marks it

@@ -70,26 +70,40 @@ dependency rule points inward: **ui → app → domain**; `infra` implements dom
 interfaces. The app layer never imports `ui` or `infra`.
 
 ```
-. (repo root = the Go module; web/, pkg/ and deployment/ live alongside)
+. (repo root = the Go module; web/ and deployment/ live alongside)
 ├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / resource:action commands
-├── pkg/
-│   └── jwt/ ...................... RS256 JWT issue/verify + keypair generation (EnsureKeypair); self-contained, no internal deps
 ├── internal/
-│   ├── domain/ .................... entities, value objects, repository INTERFACES, domain services (pure)
-│   ├── app/ ...................... use-case services + request/result DTOs (depends on domain only)
-│   │   └── reqctx/ .............. request-scoped values carried via context (e.g. caller timezone)
-│   ├── infra/ ................... implementations: sqlc repos, auth, mailer, storage
-│   │   ├── repo/<feature>/ ...... repository implementations (engine-adapter pattern, see below)
-│   │   ├── storage/sqlc/ ........ sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
-│   │   ├── storage/migrations/ .. SQL migrations per engine ({sqlite,pgsql}); run on boot
-│   │   ├── auth/ ............... password hashing + AES email encryption + user-identifier hashing
-│   │   └── mailer/ ............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
-│   ├── ui/ ..................... HTTP edge: handlers, middleware, router, response envelope (httpx), SPA + apidoc
-│   ├── server/ ................. composition root: server.BuildAPI wires every module (used by the binary AND tests)
-│   ├── cli/ ................... the resource:action management commands (stdlib dispatch; no cobra)
-│   ├── config/ ............... environment configuration loading
-│   └── test/ ................. shared test support: dbtest, fixture, testkeys, enginecompare
+│   ├── shared/ .................... dependency-free kernel: vo (value objects), errs (domain error taxonomy),
+│   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen)
+│   ├── reqctx/ .................... request-scoped values carried via context (e.g. caller timezone)
+│   ├── domain/ .................... legacy: entities, value objects, repository INTERFACES, domain services (pure)
+│   ├── app/ ....................... legacy: use-case services + request/result DTOs (depends on domain only)
+│   ├── infra/ .................... implementations: sqlc repos, auth, mailer, storage
+│   │   ├── repo/<feature>/ ....... repository implementations (engine-adapter pattern, see below)
+│   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
+│   │   │                          client-supplied operation ids on create endpoints
+│   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
+│   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
+│   │   ├── auth/ ................ password hashing + AES email encryption + user-identifier hashing
+│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
+│   ├── ui/ ...................... HTTP edge: handlers, middleware, router, response envelope (httpx), SPA + apidoc
+│   ├── server/ .................. composition root: server.BuildAPI wires every module (used by the binary AND tests)
+│   ├── cli/ ..................... the resource:action management commands (stdlib dispatch; no cobra)
+│   ├── config/ .................. environment configuration loading
+│   └── test/ .................... shared test support: dbtest, fixture, testkeys, enginecompare, archtest
 ```
+
+### Dependency rule
+
+Features never import features (they stay decoupled via consumer-side ports
+wired in `internal/server`); shared leaves (`shared`, `reqctx`, `ui`, `infra`)
+never import a feature; the kernel (`internal/shared`, `internal/reqctx`)
+imports nothing internal outside itself. This is enforced by
+`internal/test/archtest`, which auto-detects feature packages (any
+`internal/<top>` not in its infrastructure set) so newly moved features come
+under enforcement without edits to the test. The legacy `internal/domain` and
+`internal/app` layers are exempt from the feature-isolation rules until Phase 2
+dissolves them into feature packages.
 
 ### The engine-adapter (sqlc) pattern
 
@@ -266,7 +280,7 @@ In the distroless image these run via the binary directly, e.g.
 
 ## Authentication
 
-- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `pkg/jwt` (a
+- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/shared/jwt` (a
   self-contained package: token issue/verify, keypair generation, and the shared
   `EnsureKeypair` boot/CLI entry point; no `internal/*` dependency).
 - Login lives under `internal/ui/handler/user` (`/api/v1/user/login-user`).
@@ -292,7 +306,7 @@ data unreadable. Most are also asserted by the test suite.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
 
-### JWT (`pkg/jwt/jwt.go`)
+### JWT (`internal/shared/jwt/jwt.go`)
 - RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
 - Claims: `iat`; `exp = iat + 2592000` (30-day TTL); `roles = ["ROLE_USER"]`; `username` = plaintext email; `id` = user UUID. No `nbf`/`iss`/`sub`/`aud`.
 

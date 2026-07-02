@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 

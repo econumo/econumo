@@ -3,8 +3,8 @@ package transaction
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // DeleteTransaction deletes the transaction and returns it (the deleted item)

@@ -3,7 +3,7 @@ package connection
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // RevokeAccountAccess removes a connected user's grant on an account the

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Type is the category type value object. The DB stores it as a SMALLINT

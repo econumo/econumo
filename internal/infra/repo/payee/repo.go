@@ -1,7 +1,7 @@
 // Package payeerepo implements domain/payee.Repository.
 //
 // Idempotency for create-payee is NOT here — it is the shared
-// internal/infra/repo/operation.Guard, wired alongside this repo.
+// internal/infra/operation.Guard, wired alongside this repo.
 package payeerepo
 
 import (
@@ -10,10 +10,10 @@ import (
 	"errors"
 
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 type (

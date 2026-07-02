@@ -5,7 +5,7 @@ import (
 	"time"
 
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UpdatePayee loads the payee, checks ownership (403 otherwise), enforces name

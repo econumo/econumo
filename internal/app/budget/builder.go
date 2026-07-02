@@ -12,8 +12,8 @@ import (
 	"time"
 
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CategoryMeta is a category's display metadata for the structure.

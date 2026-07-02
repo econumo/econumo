@@ -88,7 +88,7 @@ GO_COVER_MIN ?= 72
 # gate nondeterministic: the same commit scored ~66% cold and ~63% warm. Forcing
 # a fresh run keeps the merged profile complete and the gate reproducible.
 test-cover:
-	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/...,./pkg/... -coverprofile=coverage.out
+	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/... -coverprofile=coverage.out
 	go tool cover -func=coverage.out | tail -1
 	@pct=$$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1); \
 		echo "total coverage: $$pct% (min $(GO_COVER_MIN)%)"; \

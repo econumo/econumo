@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	appbudget "github.com/econumo/econumo/internal/app/budget"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )

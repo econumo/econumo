@@ -5,8 +5,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CompleteOnboarding marks onboarding complete and returns the current user.

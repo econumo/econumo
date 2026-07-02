@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // passwordCodeBytes is the random byte count for a reset code; hex-encoded it

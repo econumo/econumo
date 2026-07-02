@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/econumo/econumo/internal/app/reqctx"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/reqctx"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // GetBudgetList returns the user's budgets as meta entries.

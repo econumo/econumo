@@ -16,18 +16,18 @@ import (
 	appconnection "github.com/econumo/econumo/internal/app/connection"
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/clock"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handleraccount "github.com/econumo/econumo/internal/ui/handler/account"
 	"github.com/econumo/econumo/internal/ui/router"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
 const (

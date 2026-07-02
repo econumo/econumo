@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/econumo/econumo/internal/app/reqctx"
+	"github.com/econumo/econumo/internal/reqctx"
 )
 
 // healthPath is logged at DEBUG (transport) only — no INFO operation line — so

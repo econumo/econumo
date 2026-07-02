@@ -7,8 +7,8 @@ import (
 	"sort"
 
 	domaccount "github.com/econumo/econumo/internal/domain/account"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateFolder creates a folder for the user. The name must be unique among the

@@ -15,18 +15,18 @@ import (
 
 	apppayee "github.com/econumo/econumo/internal/app/payee"
 	"github.com/econumo/econumo/internal/config"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlerpayee "github.com/econumo/econumo/internal/ui/handler/payee"
 	"github.com/econumo/econumo/internal/ui/router"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
 const (

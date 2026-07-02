@@ -6,9 +6,9 @@ import (
 
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Clock supplies the current time. A seam so tests can pin timestamps for

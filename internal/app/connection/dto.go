@@ -9,7 +9,7 @@ package connection
 import (
 	"strings"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // UserResult is the embedded connected-user shape: {id, avatar, name}.

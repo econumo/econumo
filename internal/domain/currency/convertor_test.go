@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // fakeRates is an in-memory RateProvider for the convertor math tests. Rates are

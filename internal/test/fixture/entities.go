@@ -3,7 +3,7 @@ package fixture
 import (
 	"strconv"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // NewID returns a fresh UUID string (UUIDv7, matching production id generation).

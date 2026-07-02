@@ -18,7 +18,7 @@ import (
 	"time"
 
 	appcurrency "github.com/econumo/econumo/internal/app/currency"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/datetime"
 )
 
 // apiBaseURL is the Open Exchange Rates API root. The latest/historical endpoints

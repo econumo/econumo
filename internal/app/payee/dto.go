@@ -3,7 +3,7 @@ package payee
 import (
 	"strings"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // PayeeResult is one payee in the API. isArchived is an int 0/1 (NOT bool);

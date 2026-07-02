@@ -24,9 +24,9 @@ import (
 
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // ignoredDataSalt is set on cfg.DataSalt but the seeded fixture is plaintext

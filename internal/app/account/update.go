@@ -7,9 +7,9 @@ import (
 	"time"
 
 	domaccount "github.com/econumo/econumo/internal/domain/account"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UpdateAccount updates the account (ownership required) and reconciles its
