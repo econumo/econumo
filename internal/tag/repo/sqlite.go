@@ -1,4 +1,4 @@
-package tagrepo
+package repo
 
 import (
 	"context"

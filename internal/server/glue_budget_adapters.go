@@ -1,7 +1,9 @@
-// BudgetAccountLookup adapts the account repository to app/budget.AccountLookup.
-// It lives here, not in internal/infra/repo/budget, because it needs the
-// account feature's Account type and an infra package must not import a
-// feature (see archtest).
+// BudgetAccountLookup adapts the account repository to app/budget.AccountLookup,
+// BudgetCategoryMetadataLookup adapts the category repository, and
+// BudgetTagMetadataLookup adapts the tag repository. They live here, not in
+// internal/infra/repo/budget, because they need the account/category/tag
+// features' types and an infra package must not import a feature (see
+// archtest).
 package server
 
 import (
@@ -11,6 +13,7 @@ import (
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/shared/vo"
+	tag "github.com/econumo/econumo/internal/tag"
 )
 
 type budgetAccountRepo interface {
@@ -107,6 +110,46 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 			out = append(out, appbudget.CategoryMeta{
 				ID: c.Id().String(), OwnerID: c.UserId().String(), Name: c.Name(), Icon: c.Icon(),
 				IsIncome: c.Type() == category.TypeIncome, IsArchived: c.IsArchived(),
+			})
+		}
+	}
+	return out, nil
+}
+
+type budgetTagRepo interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*tag.Tag, error)
+}
+
+// BudgetTagMetadataLookup adapts the tag repository to the tag slice of
+// app/budget.MetadataLookup (wired into budgetrepo.MetadataLookup's tags
+// field). It lives here, not in internal/infra/repo/budget, because it needs
+// the tag feature's Tag type and an infra package must not import a feature
+// (see archtest).
+type BudgetTagMetadataLookup struct {
+	tags budgetTagRepo
+}
+
+// NewBudgetTagMetadataLookup wraps a tag repository.
+func NewBudgetTagMetadataLookup(tags budgetTagRepo) *BudgetTagMetadataLookup {
+	return &BudgetTagMetadataLookup{tags: tags}
+}
+
+// TagsByOwners returns all tags owned by the given users.
+func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.TagMeta, error) {
+	var out []appbudget.TagMeta
+	seen := map[string]bool{}
+	for _, uid := range userIDs {
+		tags, err := l.tags.ListByOwner(ctx, uid)
+		if err != nil {
+			return nil, err
+		}
+		for _, t := range tags {
+			if seen[t.Id().String()] {
+				continue
+			}
+			seen[t.Id().String()] = true
+			out = append(out, appbudget.TagMeta{
+				ID: t.Id().String(), OwnerID: t.UserId().String(), Name: t.Name(), IsArchived: t.IsArchived(),
 			})
 		}
 	}

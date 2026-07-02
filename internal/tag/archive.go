@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	domtag "github.com/econumo/econumo/internal/domain/tag"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -15,7 +14,7 @@ func (s *Service) ArchiveTag(ctx context.Context, userID vo.Id, req ArchiveTagRe
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.mutate(ctx, id, userID, func(t *domtag.Tag, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(t *Tag, now time.Time) {
 		t.Archive(now)
 	}); err != nil {
 		return nil, err
@@ -29,7 +28,7 @@ func (s *Service) UnarchiveTag(ctx context.Context, userID vo.Id, req UnarchiveT
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.mutate(ctx, id, userID, func(t *domtag.Tag, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(t *Tag, now time.Time) {
 		t.Unarchive(now)
 	}); err != nil {
 		return nil, err

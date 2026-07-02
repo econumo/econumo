@@ -1,13 +1,13 @@
-package tagrepo
+package repo
 
 import (
 	"context"
 
-	apptag "github.com/econumo/econumo/internal/app/tag"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	apptag "github.com/econumo/econumo/internal/tag"
 )
 
 type readQuerier interface {

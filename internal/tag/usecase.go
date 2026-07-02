@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	domtag "github.com/econumo/econumo/internal/domain/tag"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -36,16 +34,19 @@ type OperationGuard interface {
 	MarkHandled(ctx context.Context, id vo.Id, now time.Time) error
 }
 
-// AccountAccess resolves shared-account ownership/role for the
-// create-for-account path. A missing grant is reported as ok=false (nil error).
+// AccountAccess resolves shared-account ownership/admin-grant for the
+// create-for-account path: which user owns an account, and whether a
+// connected user holds an admin grant on it. Backed by the connection
+// module's AccountAccess repo (the connection/domconnection.Role comparison
+// lives on that side, so this port stays free of connection's types).
 type AccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	GrantRole(ctx context.Context, accountID, userID vo.Id) (role domconnection.Role, ok bool, err error)
+	HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
 // Service is the tag write-side use-case orchestrator; it owns the tx boundary.
 type Service struct {
-	repo   domtag.Repository
+	repo   Repository
 	tx     TxRunner
 	ops    OperationGuard
 	clock  Clock
@@ -56,7 +57,7 @@ type Service struct {
 // NewService wires the tag service. read is the own+shared tag view (the same
 // ReadModel get-tag-list uses); order-tag-list returns that full available list.
 // access resolves shared-account ownership for create-tag-for-account.
-func NewService(repo domtag.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
+func NewService(repo Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
 	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
 }
 
@@ -71,11 +72,11 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 	if owner.Equal(userID) {
 		return owner, nil
 	}
-	role, ok, err := s.access.GrantRole(ctx, accountID, userID)
+	isAdmin, err := s.access.HasAdminGrant(ctx, accountID, userID)
 	if err != nil {
 		return vo.Id{}, err
 	}
-	if ok && role == domconnection.RoleAdmin {
+	if isAdmin {
 		return owner, nil
 	}
 	return vo.Id{}, errs.NewAccessDenied("Access is not allowed")
@@ -84,8 +85,8 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 // mutate loads the tag, checks ownership, applies fn inside a transaction, and
 // saves. It returns the mutated (in-memory) aggregate so the caller can build
 // its result without a second read. Ownership failure -> AccessDenied (403).
-func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *domtag.Tag, now time.Time)) (*domtag.Tag, error) {
-	var loaded *domtag.Tag
+func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *Tag, now time.Time)) (*Tag, error) {
+	var loaded *Tag
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		t, err := s.repo.GetByID(ctx, id)
 		if err != nil {
@@ -116,8 +117,8 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *domta
 // connection rather than reaching for the pool — critical under a single-
 // connection pool, where a pool read while the tx holds the only connection
 // would deadlock.
-func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, t *domtag.Tag, now time.Time) error) (*domtag.Tag, error) {
-	var loaded *domtag.Tag
+func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, t *Tag, now time.Time) error) (*Tag, error) {
+	var loaded *Tag
 	err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		t, err := s.repo.GetByID(txCtx, id)
 		if err != nil {
@@ -143,7 +144,7 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 
 // toResult formats the timestamps in the "2006-01-02 15:04:05" wire form and
 // maps the archived bool to the wire shape (isArchived int 0/1). See CLAUDE.md.
-func toResult(t *domtag.Tag) TagResult {
+func toResult(t *Tag) TagResult {
 	archived := 0
 	if t.IsArchived() {
 		archived = 1

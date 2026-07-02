@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	domtag "github.com/econumo/econumo/internal/domain/tag"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -29,8 +28,8 @@ func (s *Service) UpdateTag(ctx context.Context, userID vo.Id, req UpdateTagRequ
 // mutateWithUnique is the update variant of mutate: it additionally enforces
 // name uniqueness (excluding the tag being updated) inside the same tx before
 // applying the name change.
-func (s *Service) mutateWithUnique(ctx context.Context, id, userID vo.Id, name string) (*domtag.Tag, error) {
-	return s.mutateChecked(ctx, id, userID, func(txCtx context.Context, t *domtag.Tag, now time.Time) error {
+func (s *Service) mutateWithUnique(ctx context.Context, id, userID vo.Id, name string) (*Tag, error) {
+	return s.mutateChecked(ctx, id, userID, func(txCtx context.Context, t *Tag, now time.Time) error {
 		if uerr := s.ensureNameUnique(txCtx, userID, name, id); uerr != nil {
 			return uerr
 		}

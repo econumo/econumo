@@ -3,7 +3,6 @@ package tag
 import (
 	"context"
 
-	domtag "github.com/econumo/econumo/internal/domain/tag"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -41,7 +40,7 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 		ownerID = resolved
 	}
 
-	var created *domtag.Tag
+	var created *Tag
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
@@ -60,7 +59,7 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 			return cerr
 		}
 		now := s.clock.Now()
-		t := domtag.NewTag(id, ownerID, name, now)
+		t := NewTag(id, ownerID, name, now)
 		t.SetPosition(int16(count))
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr

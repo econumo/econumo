@@ -1,10 +1,12 @@
 // TransactionImportAccounts adapts the account service/repos to the
 // transaction import adapter's account port (internal/infra/repo/transaction's
-// importAccountPort), and TransactionImportCategories adapts the category
-// service/repo to its category port (importCategoryPort). Both live here, not
-// in internal/infra/repo/transaction, because they need the account/category
-// features' types and an infra package must not import a feature (see
-// archtest).
+// importAccountPort), TransactionImportCategories adapts the category
+// service/repo to its category port (importCategoryPort), and
+// TransactionImportTags adapts the tag service/repo to its tag port
+// (importTagPort). All three live here, not in
+// internal/infra/repo/transaction, because they need the
+// account/category/tag features' types and an infra package must not import
+// a feature (see archtest).
 package server
 
 import (
@@ -14,6 +16,7 @@ import (
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/shared/vo"
+	tag "github.com/econumo/econumo/internal/tag"
 )
 
 // transactionImportAccountService is the account-service surface the importer
@@ -165,6 +168,51 @@ func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerI
 	icon := "category"
 	res, err := c.svc.CreateCategory(ctx, ownerID, category.CreateCategoryRequest{
 		Id: vo.NewId().String(), Name: name, Type: typ, Icon: &icon,
+	})
+	if err != nil {
+		return apptransaction.ImportNamed{}, err
+	}
+	return apptransaction.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+}
+
+// transactionImportTagService is the tag-service create surface the importer
+// uses.
+type transactionImportTagService interface {
+	CreateTag(ctx context.Context, userID vo.Id, req tag.CreateTagRequest) (*tag.CreateTagResult, error)
+}
+
+// transactionImportTagLister is the read surface over the tag repo.
+type transactionImportTagLister interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*tag.Tag, error)
+}
+
+// TransactionImportTags adapts the tag service/repo to the transaction
+// import adapter's tag port.
+type TransactionImportTags struct {
+	svc  transactionImportTagService
+	list transactionImportTagLister
+}
+
+// NewTransactionImportTags wires the adapter.
+func NewTransactionImportTags(svc transactionImportTagService, list transactionImportTagLister) *TransactionImportTags {
+	return &TransactionImportTags{svc: svc, list: list}
+}
+
+func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+	list, err := t.list.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]apptransaction.ImportNamed, len(list))
+	for i, tg := range list {
+		out[i] = apptransaction.ImportNamed{ID: tg.Id().String(), Name: tg.Name(), OwnerID: tg.UserId().String()}
+	}
+	return out, nil
+}
+
+func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
+	res, err := t.svc.CreateTag(ctx, ownerID, tag.CreateTagRequest{
+		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {
 		return apptransaction.ImportNamed{}, err

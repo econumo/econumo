@@ -1,12 +1,12 @@
-// Package tag wires the tag module's HTTP edge.
-package tag
+// Package api wires the tag module's HTTP edge.
+package api
 
 import (
 	"net/http"
 
-	apptag "github.com/econumo/econumo/internal/app/tag"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	apptag "github.com/econumo/econumo/internal/tag"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 	"github.com/econumo/econumo/internal/ui/middleware"

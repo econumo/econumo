@@ -1,4 +1,4 @@
-package tag_test
+package api_test
 
 // Coverage for creating a tag in the context of an account SHARED with the
 // caller. The create-tag request carries an accountId — the transaction modal

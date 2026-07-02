@@ -1,4 +1,4 @@
-package tagrepo_test
+package repo_test
 
 import (
 	"context"
@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	domtag "github.com/econumo/econumo/internal/domain/tag"
-	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	domtag "github.com/econumo/econumo/internal/tag"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )

@@ -1,9 +1,9 @@
-package tag
+package api
 
 import (
 	"net/http"
 
-	apptag "github.com/econumo/econumo/internal/app/tag"
+	apptag "github.com/econumo/econumo/internal/tag"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
