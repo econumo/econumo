@@ -85,9 +85,12 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.Tag(fixture.Tag{ID: TagWork, UserID: OwnerID, Name: "Work"})
 	f.Payee(fixture.Payee{ID: PayeeShop, UserID: OwnerID, Name: "Shop"})
 
-	// Transactions on the owner's account (one expense, one income).
-	f.Transaction(fixture.Transaction{ID: Txn1, UserID: OwnerID, AccountID: OwnerAccount, CategoryID: CatFood, PayeeID: PayeeShop, Type: 1, Amount: "12.50000000", Description: "lunch"})
-	f.Transaction(fixture.Transaction{ID: Txn2, UserID: OwnerID, AccountID: OwnerAccount, CategoryID: CatSalary, Type: 0, Amount: "1000.00000000", Description: "pay"})
+	// Transactions on the owner's account (one expense, one income). The domain
+	// enum is expense=0 / income=1 (internal/domain/transaction/entity.go), so the
+	// types match each row's category semantics: Txn1 is a Food EXPENSE, Txn2 a
+	// Salary INCOME.
+	f.Transaction(fixture.Transaction{ID: Txn1, UserID: OwnerID, AccountID: OwnerAccount, CategoryID: CatFood, PayeeID: PayeeShop, Type: 0, Amount: "12.50000000", Description: "lunch"})
+	f.Transaction(fixture.Transaction{ID: Txn2, UserID: OwnerID, AccountID: OwnerAccount, CategoryID: CatSalary, Type: 1, Amount: "1000.00000000", Description: "pay"})
 
 	// A budget owned by the owner.
 	f.Budget(fixture.Budget{ID: Budget, UserID: OwnerID, CurrencyID: USD, Name: "Budget"})
