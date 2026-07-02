@@ -11,10 +11,10 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // newSaltFreeUserSvc builds a user Service with an EMPTY data salt — the state

@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/econumo/econumo/pkg/jwt"
+	"github.com/econumo/econumo/internal/shared/jwt"
 )
 
 // okHandler is a trivial downstream handler that records that it ran and writes 200.

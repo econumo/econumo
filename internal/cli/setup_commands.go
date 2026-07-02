@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/pkg/jwt"
+	"github.com/econumo/econumo/internal/shared/jwt"
 )
 
 // setupCommands returns deployment-setup subcommands. Unlike the management

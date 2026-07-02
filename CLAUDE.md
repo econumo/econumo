@@ -70,10 +70,8 @@ dependency rule points inward: **ui → app → domain**; `infra` implements dom
 interfaces. The app layer never imports `ui` or `infra`.
 
 ```
-. (repo root = the Go module; web/, pkg/ and deployment/ live alongside)
+. (repo root = the Go module; web/ and deployment/ live alongside)
 ├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / resource:action commands
-├── pkg/
-│   └── jwt/ ...................... RS256 JWT issue/verify + keypair generation (EnsureKeypair); self-contained, no internal deps
 ├── internal/
 │   ├── domain/ .................... entities, value objects, repository INTERFACES, domain services (pure)
 │   ├── app/ ...................... use-case services + request/result DTOs (depends on domain only)
@@ -266,7 +264,7 @@ In the distroless image these run via the binary directly, e.g.
 
 ## Authentication
 
-- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `pkg/jwt` (a
+- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/shared/jwt` (a
   self-contained package: token issue/verify, keypair generation, and the shared
   `EnsureKeypair` boot/CLI entry point; no `internal/*` dependency).
 - Login lives under `internal/ui/handler/user` (`/api/v1/user/login-user`).
@@ -292,7 +290,7 @@ data unreadable. Most are also asserted by the test suite.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
 
-### JWT (`pkg/jwt/jwt.go`)
+### JWT (`internal/shared/jwt/jwt.go`)
 - RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
 - Claims: `iat`; `exp = iat + 2592000` (30-day TTL); `roles = ["ROLE_USER"]`; `username` = plaintext email; `id` = user UUID. No `nbf`/`iss`/`sub`/`aud`.
 
