@@ -367,7 +367,7 @@ type Transaction struct {
 	CategoryID  string // optional
 	PayeeID     string // optional
 	TagID       string // optional
-	Type        int    // 0 income, 1 expense
+	Type        int    // 0 expense, 1 income (domain transaction.TypeExpense/TypeIncome)
 	Amount      string // decimal string; default "0"
 	Description string
 	SpentAt     interface{} // time.Time or "Y-m-d H:i:s"; default builder time
