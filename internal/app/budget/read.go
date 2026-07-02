@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/app/reqctx"
 	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
 )
@@ -36,7 +37,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req GetBudgetRequ
 	if err != nil {
 		return nil, validateBlank(map[string]string{"id": ""})
 	}
-	periodStart, err := parsePeriodDate(req.Date, s.clock.Now())
+	periodStart, err := parsePeriodDate(req.Date, localMonth(s.clock.Now(), reqctx.Location(ctx)))
 	if err != nil {
 		return nil, err
 	}
@@ -52,16 +53,17 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req GetBudgetRequ
 }
 
 // parsePeriodDate parses the get-budget date and snaps it to first-of-month. An
-// empty/invalid date falls back to the current month: the frontend always sends a
-// valid date, so defaulting to now is the tolerant choice for garbage input.
-func parsePeriodDate(s string, now time.Time) (time.Time, error) {
+// empty/invalid date falls back to `fallback` (the caller-local current month):
+// the frontend always sends a valid date, so defaulting is the tolerant choice
+// for garbage input.
+func parsePeriodDate(s string, fallback time.Time) (time.Time, error) {
 	if s == "" {
-		return firstOfMonth(now), nil
+		return fallback, nil
 	}
 	for _, layout := range []string{datetime.Layout, datetime.DateLayout, time.RFC3339} {
 		if t, err := time.Parse(layout, s); err == nil {
 			return firstOfMonth(t), nil
 		}
 	}
-	return firstOfMonth(now), nil
+	return fallback, nil
 }

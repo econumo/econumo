@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/app/reqctx"
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
 	"github.com/econumo/econumo/internal/domain/shared/datetime"
 	"github.com/econumo/econumo/internal/domain/shared/vo"
@@ -21,7 +22,8 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 	}
 
 	now := s.clock.Now()
-	startDate := now
+	currentMonth := localMonth(now, reqctx.Location(ctx))
+	startDate := currentMonth
 	if req.StartDate != "" {
 		if t, perr := time.Parse(datetime.DateLayout, req.StartDate); perr == nil {
 			startDate = t
@@ -78,7 +80,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 	if err != nil {
 		return nil, err
 	}
-	result, err := s.BuildBudget(ctx, userID, b, firstOfMonth(now), now)
+	result, err := s.BuildBudget(ctx, userID, b, currentMonth, now)
 	if err != nil {
 		return nil, err
 	}

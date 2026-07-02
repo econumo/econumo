@@ -59,6 +59,13 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
+	return newHarnessWithClock(t, clock.New())
+}
+
+// newHarnessWithClock injects the budget-service clock so tests can fix "now"
+// (e.g. around a month boundary for timezone-sensitive behaviour).
+func newHarnessWithClock(t *testing.T, clk appbudget.Clock) *harness {
+	t.Helper()
 	ctx := context.Background()
 	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
 	if err != nil {
@@ -92,7 +99,6 @@ func newHarness(t *testing.T) *harness {
 	f.Category(fixture.Category{ID: catID, UserID: seedUserID, Name: "Food", Type: 0, Icon: "local_offer"})
 	f.Tag(fixture.Tag{ID: tagID, UserID: seedUserID, Name: "Trip"})
 
-	clk := clock.New()
 	userRepo := userrepo.NewRepo("sqlite", txm)
 	accountRepo := accountrepo.NewRepo("sqlite", txm)
 	categoryRepo := categoryrepo.NewRepo("sqlite", txm)
@@ -139,6 +145,11 @@ func (h *harness) token(t *testing.T) string {
 }
 
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {
+	return h.doH(t, method, path, token, body, nil)
+}
+
+// doH is do with optional extra request headers (e.g. X-Timezone).
+func (h *harness) doH(t *testing.T, method, path, token string, body any, headers map[string]string) (int, envelope) {
 	t.Helper()
 	var rdr io.Reader
 	if body != nil {
@@ -151,6 +162,9 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
 	resp, err := h.srv.Client().Do(req)
 	if err != nil {
