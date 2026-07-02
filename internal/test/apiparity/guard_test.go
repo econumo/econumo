@@ -34,12 +34,6 @@ var missingFromCatalogue = map[string]bool{
 	"POST /api/v1/budget/revoke-access":                true,
 	"POST /api/v1/budget/update-envelope":              true,
 	"POST /api/v1/budget/update-folder":                true,
-	"POST /api/v1/connection/accept-invite":            true,
-	"POST /api/v1/connection/delete-connection":        true,
-	"POST /api/v1/connection/delete-invite":            true,
-	"POST /api/v1/connection/generate-invite":          true,
-	"POST /api/v1/connection/revoke-account-access":    true,
-	"POST /api/v1/connection/set-account-access":       true,
 	"POST /api/v1/transaction/import-transaction-list": true,
 	"POST /api/v1/transaction/update-transaction":      true,
 }
