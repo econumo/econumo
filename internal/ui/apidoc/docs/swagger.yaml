@@ -480,6 +480,20 @@ definitions:
       symbol:
         type: string
     type: object
+  currency.GetCurrencyListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/currency.CurrencyResult'
+        type: array
+    type: object
+  currency.GetCurrencyRateListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/currency.CurrencyRateResult'
+        type: array
+    type: object
   github_com_econumo_econumo_internal_app_account.AccountResult:
     properties:
       balance:
@@ -1058,20 +1072,6 @@ definitions:
         type: string
     type: object
   github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult:
-    type: object
-  github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/currency.CurrencyResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/currency.CurrencyRateResult'
-        type: array
     type: object
   github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest:
     properties:
@@ -3233,7 +3233,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult'
+                  $ref: '#/definitions/currency.GetCurrencyListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3262,7 +3262,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult'
+                  $ref: '#/definitions/currency.GetCurrencyRateListResult'
               type: object
         "401":
           description: Unauthorized

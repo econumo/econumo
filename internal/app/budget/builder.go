@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
+	domcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )

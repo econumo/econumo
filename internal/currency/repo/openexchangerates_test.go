@@ -1,4 +1,4 @@
-package openexchangerates
+package repo
 
 import (
 	"context"

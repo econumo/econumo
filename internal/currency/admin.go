@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -153,14 +152,14 @@ func (s *WriteService) AddCurrency(ctx context.Context, code string, name *strin
 	if exists {
 		return false, nil
 	}
-	digits := domcurrency.FractionDigits(c)
+	digits := FractionDigits(c)
 	if fractionDigits != nil {
 		digits = *fractionDigits
 	}
 	row := CurrencyRow{
 		ID:             s.nextID().String(),
 		Code:           c,
-		Symbol:         domcurrency.Symbol(c),
+		Symbol:         Symbol(c),
 		Name:           name,
 		FractionDigits: digits,
 		CreatedAt:      s.clock.Now(),

@@ -15,12 +15,12 @@ import (
 	appaccount "github.com/econumo/econumo/internal/app/account"
 	appconnection "github.com/econumo/econumo/internal/app/connection"
 	"github.com/econumo/econumo/internal/config"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -80,7 +80,7 @@ func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
 	repo := accountrepo.NewRepo("sqlite", txm)
 	folderRepo := accountrepo.NewFolderRepo("sqlite", txm)
 	curLookup := currencyrepo.New("sqlite", txm)
-	accCur := accountrepo.NewCurrencyLookup(curLookup)
+	accCur := server.NewAccountCurrencyLookup(curLookup)
 	accUser := server.NewAccountUserLookup(userrepo.NewRepo("sqlite", txm))
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 

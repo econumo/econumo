@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"

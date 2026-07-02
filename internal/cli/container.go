@@ -7,13 +7,12 @@ import (
 	"log/slog"
 	"strings"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
 	"github.com/econumo/econumo/internal/config"
+	appcurrency "github.com/econumo/econumo/internal/currency"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
-	"github.com/econumo/econumo/internal/infra/openexchangerates"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	appuser "github.com/econumo/econumo/internal/user"
@@ -30,7 +29,7 @@ type container struct {
 	clk      clock.Real
 	user     *appuser.Service
 	currency *appcurrency.WriteService
-	loader   *openexchangerates.Loader
+	loader   *currencyrepo.Loader
 }
 
 // newContainer loads config, opens the database, and wires the user + currency
@@ -76,7 +75,7 @@ func newContainer(ctx context.Context) (*container, error) {
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
 	currencySvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
-	loader := openexchangerates.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
+	loader := currencyrepo.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
 
 	return &container{
 		db:       db,

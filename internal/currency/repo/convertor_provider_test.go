@@ -1,11 +1,11 @@
-package currencyrepo_test
+package repo_test
 
 import (
 	"context"
 	"testing"
 	"time"
 
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"

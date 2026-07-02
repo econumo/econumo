@@ -1,9 +1,8 @@
-// Package openexchangerates is the infra adapter that loads exchange rates from
-// the Open Exchange Rates API for the app:update-currency-rates CLI command: it
-// picks the latest or historical endpoint by date, requests the configured base +
-// symbols, and maps the response into app/currency.RateInput values keyed by ISO
-// code.
-package openexchangerates
+// Loader is the adapter that loads exchange rates from the Open Exchange
+// Rates API for the currency:update-rates CLI command: it picks the latest or
+// historical endpoint by date, requests the configured base + symbols, and
+// maps the response into currency.RateInput values keyed by ISO code.
+package repo
 
 import (
 	"context"
@@ -17,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/shared/datetime"
 )
 

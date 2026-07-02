@@ -1,4 +1,4 @@
-package currency_test
+package api_test
 
 import (
 	"bytes"
@@ -13,14 +13,14 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
 	"github.com/econumo/econumo/internal/config"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
+	handlercurrency "github.com/econumo/econumo/internal/currency/api"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	handlercurrency "github.com/econumo/econumo/internal/ui/handler/currency"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 

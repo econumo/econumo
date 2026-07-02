@@ -2,7 +2,7 @@
 // [start,end) to the rate month (the latest published rate's month -> first of
 // that month .. next month; fall back to the raw range when no rates exist),
 // then AVG(rate) per currency over that snapped period for the base currency.
-package currencyrepo
+package repo
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
+	domcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"

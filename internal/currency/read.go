@@ -6,7 +6,6 @@ package currency
 import (
 	"context"
 
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -79,7 +78,7 @@ func currencyName(r CurrencyViewRow) string {
 	if r.Name != nil && *r.Name != "" {
 		return *r.Name
 	}
-	return domcurrency.DisplayName(r.Code)
+	return DisplayName(r.Code)
 }
 
 // GetCurrencyRateList returns the latest published rates, in the wire shape.

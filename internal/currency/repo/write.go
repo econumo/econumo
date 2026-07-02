@@ -2,7 +2,7 @@
 // the CLI admin commands (the HTTP API has no currency mutations). Every method
 // runs on the context-bound DBTX, so the WriteService transaction
 // (TxManager.WithTx) wraps them transparently.
-package currencyrepo
+package repo
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"errors"
 	"time"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"

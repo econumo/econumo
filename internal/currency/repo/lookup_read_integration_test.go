@@ -1,4 +1,4 @@
-package currencyrepo_test
+package repo_test
 
 // USD is seeded by the baseline migration. Note: the setup helper in
 // convertor_provider_test.go DELETEs and re-seeds currencies with a different id,
@@ -10,7 +10,7 @@ import (
 	"errors"
 	"testing"
 
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"

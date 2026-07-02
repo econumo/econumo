@@ -1,6 +1,6 @@
-// Package currency's Convertor converts amounts between currencies through the
-// base currency, using period-averaged rates. It is consumed by the budget
-// builder (BulkConvert) and by ad-hoc single conversions (Convert).
+// Convertor converts amounts between currencies through the base currency,
+// using period-averaged rates. It is consumed by the budget builder
+// (BulkConvert) and by ad-hoc single conversions (Convert).
 //
 // Conversion algorithm: to convert `amount` from currency F to currency T with
 // rates expressed as units-of-X per one base unit,

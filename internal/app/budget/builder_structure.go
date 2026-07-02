@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	domcurrency "github.com/econumo/econumo/internal/currency"
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
