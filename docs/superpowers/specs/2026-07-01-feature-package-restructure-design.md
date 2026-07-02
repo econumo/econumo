@@ -66,7 +66,11 @@ internal/
 ├── reqctx/            request-scoped context values (from app/reqctx)
 ├── ui/                HTTP edge machinery only: httpx, middleware, router, spa, apidoc
 ├── infra/             technical adapters only: auth, mailer, clock, storage,
-│                      operation (idempotency guard), openexchangerates
+│                      operation (idempotency guard)
+│                      (openexchangerates: originally slated here, but it consumes
+│                      currency-feature types, which the dependency rule forbids for
+│                      a leaf — it lives in internal/currency/repo instead; decided
+│                      during Phase 2 Task 3)
 ├── server/            composition root + cross-feature glue adapters
 ├── cli/               unchanged
 ├── config/            unchanged
