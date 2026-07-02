@@ -7,7 +7,7 @@ import "testing"
 // 20 is the scenario count at extraction time — raise it as scenarios are
 // added, never lower it.
 func TestCatalogueSize(t *testing.T) {
-	const min = 26
+	const min = 28
 	if n := len(Catalogue()); n < min {
 		t.Fatalf("catalogue has %d scenarios, want >= %d — a scenario file was dropped", n, min)
 	}
