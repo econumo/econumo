@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/econumo/econumo/internal/app/reqctx"
+	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
