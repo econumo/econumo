@@ -4384,7 +4384,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.CompleteOnboardingResult"
+                                            "$ref": "#/definitions/user.CompleteOnboardingResult"
                                         }
                                     }
                                 }
@@ -4433,7 +4433,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.GetOptionListResult"
+                                            "$ref": "#/definitions/user.GetOptionListResult"
                                         }
                                     }
                                 }
@@ -4482,7 +4482,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.GetUserDataResult"
+                                            "$ref": "#/definitions/user.GetUserDataResult"
                                         }
                                     }
                                 }
@@ -4524,7 +4524,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LoginRequest"
+                            "$ref": "#/definitions/user.LoginRequest"
                         }
                     }
                 ],
@@ -4532,7 +4532,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login).",
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LoginResult"
+                            "$ref": "#/definitions/user.LoginResult"
                         }
                     },
                     "400": {
@@ -4583,7 +4583,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LogoutResult"
+                                            "$ref": "#/definitions/user.LogoutResult"
                                         }
                                     }
                                 }
@@ -4625,7 +4625,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.RegisterRequest"
+                            "$ref": "#/definitions/user.RegisterRequest"
                         }
                     }
                 ],
@@ -4641,7 +4641,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.CurrentUserResult"
+                                            "$ref": "#/definitions/user.CurrentUserResult"
                                         }
                                     }
                                 }
@@ -4689,7 +4689,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.RemindPasswordRequest"
+                            "$ref": "#/definitions/user.RemindPasswordRequest"
                         }
                     }
                 ],
@@ -4705,7 +4705,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.RemindPasswordResult"
+                                            "$ref": "#/definitions/user.RemindPasswordResult"
                                         }
                                     }
                                 }
@@ -4753,7 +4753,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.ResetPasswordRequest"
+                            "$ref": "#/definitions/user.ResetPasswordRequest"
                         }
                     }
                 ],
@@ -4769,7 +4769,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.ResetPasswordResult"
+                                            "$ref": "#/definitions/user.ResetPasswordResult"
                                         }
                                     }
                                 }
@@ -4822,7 +4822,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest"
+                            "$ref": "#/definitions/user.UpdateBudgetRequest"
                         }
                     }
                 ],
@@ -4838,7 +4838,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetResult"
+                                            "$ref": "#/definitions/user.UpdateBudgetResult"
                                         }
                                     }
                                 }
@@ -4891,7 +4891,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest"
+                            "$ref": "#/definitions/user.UpdateCurrencyRequest"
                         }
                     }
                 ],
@@ -4907,7 +4907,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateCurrencyResult"
+                                            "$ref": "#/definitions/user.UpdateCurrencyResult"
                                         }
                                     }
                                 }
@@ -4960,7 +4960,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateNameRequest"
+                            "$ref": "#/definitions/user.UpdateNameRequest"
                         }
                     }
                 ],
@@ -4976,7 +4976,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateNameResult"
+                                            "$ref": "#/definitions/user.UpdateNameResult"
                                         }
                                     }
                                 }
@@ -5029,7 +5029,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdatePasswordRequest"
+                            "$ref": "#/definitions/user.UpdatePasswordRequest"
                         }
                     }
                 ],
@@ -5045,7 +5045,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdatePasswordResult"
+                                            "$ref": "#/definitions/user.UpdatePasswordResult"
                                         }
                                     }
                                 }
@@ -5098,7 +5098,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateReportPeriodRequest"
+                            "$ref": "#/definitions/user.UpdateReportPeriodRequest"
                         }
                     }
                 ],
@@ -5114,7 +5114,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateReportPeriodResult"
+                                            "$ref": "#/definitions/user.UpdateReportPeriodResult"
                                         }
                                     }
                                 }
@@ -7167,212 +7167,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_user.CompleteOnboardingResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.CurrentUserResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/user.OptionResult"
-                    }
-                },
-                "reportPeriod": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.GetOptionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/user.OptionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.GetUserDataResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.LoginRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.LoginResult": {
-            "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.LogoutResult": {
-            "type": "object",
-            "properties": {
-                "result": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.RegisterRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.RemindPasswordRequest": {
-            "type": "object",
-            "properties": {
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.RemindPasswordResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_user.ResetPasswordRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.ResetPasswordResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateBudgetResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest": {
-            "type": "object",
-            "properties": {
-                "currency": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateCurrencyResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateNameRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateNameResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdatePasswordRequest": {
-            "type": "object",
-            "properties": {
-                "newPassword": {
-                    "type": "string"
-                },
-                "oldPassword": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdatePasswordResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateReportPeriodRequest": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateReportPeriodResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
         "payee.PayeeResult": {
             "type": "object",
             "properties": {
@@ -7502,6 +7296,14 @@ const docTemplate = `{
                 }
             }
         },
+        "user.CompleteOnboardingResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
         "user.CurrentUserResult": {
             "type": "object",
             "properties": {
@@ -7531,6 +7333,55 @@ const docTemplate = `{
                 }
             }
         },
+        "user.GetOptionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user.OptionResult"
+                    }
+                }
+            }
+        },
+        "user.GetUserDataResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.LoginResult": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.LogoutResult": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "string"
+                }
+            }
+        },
         "user.OptionResult": {
             "type": "object",
             "properties": {
@@ -7539,6 +7390,126 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "string"
+                }
+            }
+        },
+        "user.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.RemindPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.RemindPasswordResult": {
+            "type": "object"
+        },
+        "user.ResetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.ResetPasswordResult": {
+            "type": "object"
+        },
+        "user.UpdateBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateBudgetResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.UpdateCurrencyRequest": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateCurrencyResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.UpdateNameRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateNameResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.UpdatePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "newPassword": {
+                    "type": "string"
+                },
+                "oldPassword": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdatePasswordResult": {
+            "type": "object"
+        },
+        "user.UpdateReportPeriodRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateReportPeriodResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
                 }
             }
         }

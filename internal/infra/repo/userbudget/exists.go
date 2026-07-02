@@ -14,7 +14,6 @@ import (
 	"database/sql"
 	"errors"
 
-	appuser "github.com/econumo/econumo/internal/app/user"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -24,12 +23,14 @@ import (
 // sql.ErrNoRows when the budget does not exist.
 type getByID func(ctx context.Context, db backend.DBTX, id string) error
 
+// Lookup implements the user feature's BudgetExistence port (structurally —
+// this package cannot import the user feature without an infra→feature
+// dependency, so satisfaction is checked at the wiring call site in
+// server.BuildAPI, not with a local assertion here).
 type Lookup struct {
 	tx *backend.TxManager
 	q  getByID
 }
-
-var _ appuser.BudgetExistence = (*Lookup)(nil)
 
 func New(driver string, tx *backend.TxManager) *Lookup {
 	switch driver {

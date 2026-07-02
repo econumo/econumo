@@ -23,16 +23,17 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
-	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
 	"github.com/econumo/econumo/internal/ui/router"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 const (
@@ -112,7 +113,7 @@ func newHarnessWithClock(t *testing.T, clk appbudget.Clock) *harness {
 	convertor := domcurrency.NewConvertor(rateProvider)
 	svc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
-		budgetrepo.NewUserLookup(userRepo, clk),
+		server.NewBudgetUserLookup(userRepo, clk),
 		budgetrepo.NewAccountLookup(accountRepo),
 		currencyLookup,
 		budgetrepo.NewMetadataLookup(categoryRepo, tagRepo, payeeRepo),

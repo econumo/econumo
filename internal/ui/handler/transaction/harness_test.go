@@ -31,16 +31,17 @@ import (
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
-	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
 	"github.com/econumo/econumo/internal/ui/router"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 const (
@@ -96,7 +97,7 @@ func newHarness(t *testing.T) *harness {
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
 		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
-		accountrepo.NewCurrencyLookup(curLookup), accountrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)),
+		accountrepo.NewCurrencyLookup(curLookup), server.NewAccountUserLookup(userrepo.NewRepo("sqlite", txm)),
 		nil, nil, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	txRepo := transactionrepo.NewRepo("sqlite", txm)
@@ -116,7 +117,7 @@ func newHarness(t *testing.T) *harness {
 		txRepo, transactionrepo.NewAccountResolver(accSvc),
 		transactionrepo.NewAccountGrants(connectionrepo.NewRepo("sqlite", txm)),
 		transactionrepo.NewVisibleAccounts(accSvc),
-		transactionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
+		server.NewTransactionUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlertransaction.NewHandlers(svc, cfg.IsDev())

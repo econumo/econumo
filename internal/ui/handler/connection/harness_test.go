@@ -18,13 +18,14 @@ import (
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
 	"github.com/econumo/econumo/internal/ui/router"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 const (
@@ -96,7 +97,7 @@ func newHarness(t *testing.T) *harness {
 		connectionrepo.NewInviteRepo("sqlite", txm),
 		connectionrepo.NewFolderPort(folderRepo),
 		connectionrepo.NewOptionPort(accountRepo),
-		connectionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)),
+		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
 		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)),
 		txm, clock.New(),
 	)

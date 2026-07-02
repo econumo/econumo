@@ -1,16 +1,15 @@
-// Adapters that satisfy the account service's CurrencyLookup and UserLookup
-// ports by delegating to the existing currency + user repositories. They live
-// here (infra) so the app layer depends only on its own small interfaces, not on
-// the currency/user repo packages.
+// Adapters that satisfy the account service's CurrencyLookup port by
+// delegating to the existing currency repository. Lives here (infra) so the
+// app layer depends only on its own small interface, not on the currency repo
+// package. The UserLookup counterpart lives in internal/server (it needs the
+// user feature's Header type, which an infra package cannot import).
 package accountrepo
 
 import (
 	"context"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
-	domuser "github.com/econumo/econumo/internal/domain/user"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CurrencyLookup adapts currencyrepo.Lookup to app/account.CurrencyLookup.
@@ -38,34 +37,4 @@ func (l *CurrencyLookup) GetByID(ctx context.Context, id string) (appaccount.Cur
 		Symbol:         v.Symbol,
 		FractionDigits: v.FractionDigits,
 	}, nil
-}
-
-// userByID is the minimal user-repo surface this adapter needs.
-type userByID interface {
-	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
-}
-
-// UserLookup adapts the user repository to app/account.UserLookup (owner embed).
-type UserLookup struct {
-	users userByID
-}
-
-var _ appaccount.UserLookup = (*UserLookup)(nil)
-
-// NewUserLookup wraps a user repository (anything exposing GetByID).
-func NewUserLookup(users userByID) *UserLookup {
-	return &UserLookup{users: users}
-}
-
-// GetOwner resolves the owner (id, name, avatar) for the account-result embed.
-func (l *UserLookup) GetOwner(ctx context.Context, userID string) (appaccount.OwnerView, error) {
-	id, err := vo.ParseId(userID)
-	if err != nil {
-		return appaccount.OwnerView{}, err
-	}
-	h, err := l.users.GetHeaderByID(ctx, id)
-	if err != nil {
-		return appaccount.OwnerView{}, err
-	}
-	return appaccount.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }

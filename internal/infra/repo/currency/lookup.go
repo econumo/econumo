@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 
-	appuser "github.com/econumo/econumo/internal/app/user"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -31,13 +30,14 @@ type lookupQuerier interface {
 	GetCurrencyByIDView(ctx context.Context, db backend.DBTX, id string) (currencyViewRow, error)
 }
 
-// Lookup implements app/user.CurrencyLookup over the currencies table.
+// Lookup implements the user feature's CurrencyLookup port over the
+// currencies table (structurally — this package cannot import the user
+// feature without an infra→feature dependency, so satisfaction is checked at
+// the wiring call site in server.BuildAPI, not with a local assertion here).
 type Lookup struct {
 	tx *backend.TxManager
 	q  lookupQuerier
 }
-
-var _ appuser.CurrencyLookup = (*Lookup)(nil)
 
 // New selects the engine adapter by driver name. driver matches
 // config.DatabaseDriver: "sqlite" | "postgresql".
