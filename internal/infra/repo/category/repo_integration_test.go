@@ -170,6 +170,18 @@ func TestCategoryRepo_ReassignTransactions(t *testing.T) {
 	}
 }
 
+func TestCategoryRepo_NextIdentity(t *testing.T) {
+	repo, _, _, _ := newRepo(t)
+	a := repo.NextIdentity()
+	b := repo.NextIdentity()
+	if a.String() == "" || b.String() == "" {
+		t.Fatal("NextIdentity returned an empty id")
+	}
+	if a == b {
+		t.Error("successive NextIdentity calls should not collide")
+	}
+}
+
 func TestCategoryRepo_OperationGuard_Idempotency(t *testing.T) {
 	repo, _, db, f := newRepo(t)
 	ctx := context.Background()
