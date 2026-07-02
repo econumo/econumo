@@ -46,6 +46,13 @@ func NewSQLite(t testing.TB) *DB {
 	raw.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = raw.Close() })
 
+	// Tests must run with the same pragmas as production: sqlite.Backend.Open
+	// enables FK enforcement right after opening, and the schema relies on FK
+	// cascade/SET NULL semantics.
+	if _, err := raw.ExecContext(context.Background(), "PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("dbtest: sqlite pragma foreign_keys: %v", err)
+	}
+
 	if err := migrate.Run(context.Background(), raw, toMigrations(migrations.SQLite())); err != nil {
 		t.Fatalf("dbtest: migrate sqlite: %v", err)
 	}
