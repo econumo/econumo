@@ -48,15 +48,6 @@ var missingFromCatalogue = map[string]bool{
 	"POST /api/v1/tag/order-tag-list":                  true,
 	"POST /api/v1/transaction/import-transaction-list": true,
 	"POST /api/v1/transaction/update-transaction":      true,
-	"POST /api/v1/user/complete-onboarding":            true,
-	"POST /api/v1/user/login-user":                     true,
-	"POST /api/v1/user/logout-user":                    true,
-	"POST /api/v1/user/register-user":                  true,
-	"POST /api/v1/user/remind-password":                true,
-	"POST /api/v1/user/reset-password":                 true,
-	"POST /api/v1/user/update-budget":                  true,
-	"POST /api/v1/user/update-currency":                true,
-	"POST /api/v1/user/update-password":                true,
 }
 
 var routePatternRe = regexp.MustCompile(`"((?:GET|POST) /api/v1/[a-z-]+/[a-z-]+)"`)
