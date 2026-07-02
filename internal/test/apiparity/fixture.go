@@ -104,7 +104,7 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.BudgetFolder(fixture.BudgetFolder{ID: BudgetFolder1, BudgetID: Budget, Name: "Bills"})
 	f.BudgetEnvelope(fixture.BudgetEnvelope{ID: Envelope1, BudgetID: Budget, Name: "Envelope", Icon: "cart"})
 	f.EnvelopeCategory(Envelope1, CatSalary)
-	f.BudgetElement(fixture.BudgetElement{ID: ElementFood, BudgetID: Budget, ExternalID: CatFood, Type: 0, Position: 0})
+	f.BudgetElement(fixture.BudgetElement{ID: ElementFood, BudgetID: Budget, ExternalID: CatFood, Type: 1, Position: 0}) // category element (envelope=0, category=1, tag=2)
 
 	// Pending (not accepted) budget invite: guest invited to Budget — the
 	// accept-access and decline-access scenarios each consume it on a fresh DB.
