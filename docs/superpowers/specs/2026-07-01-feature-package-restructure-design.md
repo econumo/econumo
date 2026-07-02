@@ -152,9 +152,56 @@ cross-feature imports are banned uniformly rather than judged case-by-case:
 
 ## Phases
 
-Phases 1–2 are behavior-identical by construction (file moves, package renames,
-import rewrites, and mechanical symbol renames only). Any real code change
-belongs to Phases 3–6.
+Phase 0 strengthens the test safety net before anything moves. Phases 1–2 are
+behavior-identical by construction (file moves, package renames, import
+rewrites, and mechanical symbol renames only). Any real code change belongs to
+Phases 3–6.
+
+### Phase 0 — Test investment (before any move)
+
+The restructure's entire safety argument rests on the tests, and measurement
+shows the net has holes exactly where the later phases will stress it
+(cross-package total 68.0% against a 64% gate, measured 2026-07-01):
+
+- `internal/server` — **0%** in the smoke tier. The composition root is only
+  exercised by the build-tagged enginecompare suite, so `make test` never runs
+  the production wiring that every phase rewires.
+- **Route coverage gap**: 84 registered routes, only 49 appear in
+  enginecompare scenarios — ~35 routes never get the two-engine
+  byte-identical check.
+- `internal/cli` 33% — the ops surface (user commands, `data:remove-salt`,
+  `jwt:generate`) is barely tested.
+- Repo packages 61–76%; `infra/storage/sqlite` 0% (investigate: dead code or
+  boot-only paths).
+
+Work items, in order:
+
+1. **Composition-root smoke harness.** An untagged, sqlite-only endpoint test
+   suite that boots the real `server.BuildAPI` and drives requests through the
+   full stack (router → middleware → handler → use-case → repo → sqlite).
+   This puts `internal/server` under every-commit coverage and pins
+   route-level behavior before any move. Reuse the fixture builder and, where
+   practical, share scenario definitions with enginecompare.
+2. **Close the enginecompare route gap.** Extend scenarios until every
+   registered route is exercised at least once on both engines. Add a
+   completeness guard: a test that walks the registered mux patterns and fails
+   when a route has no scenario — so future routes cannot silently skip the
+   suite.
+3. **Weak-package targets**: `internal/cli` → ≥70% (its commands are the
+   admin/ops contract), repo packages → ≥75%, `ui/handler/{account,category}`
+   → ≥85%. Resolve the `infra/storage/sqlite` 0% question (test it or delete
+   dead code).
+4. **Ratchet the gate.** Raise `GO_COVER_MIN` from 64 to the achieved level
+   minus a small buffer (expect ≥72) at the end of Phase 0. Re-ratchet upward
+   at every later phase boundary; the gate never moves down.
+
+Test-first rules bound to later phases:
+
+- **Phase 5 precondition**: every route converted to the generic handler must
+  already have an endpoint-level test (guaranteed by items 1–2).
+- **Phase 6 precondition**: before rewriting an aggregate's fields/constructors,
+  its invariants must be covered by entity/use-case tests (most domain
+  packages are already at 85–100%; fill gaps per aggregate as encountered).
 
 ### Phase 1 — Prep (mechanical)
 
@@ -241,9 +288,11 @@ Per feature commit:
 ## Verification
 
 - Every commit: `make test` (build + vet + gofmt + OpenAPI-fresh + sqlite
-  tests + coverage gate).
+  tests + coverage gate) — which after Phase 0 includes the composition-root
+  smoke harness and a raised gate.
 - Every phase boundary: `make regression` (adds the sqlite-vs-PostgreSQL
-  engine-comparison suite).
+  engine-comparison suite, at full route coverage after Phase 0), plus a
+  `GO_COVER_MIN` ratchet review.
 - Phase 5 additionally: committed OpenAPI document diff must be empty.
 
 ## Risks
