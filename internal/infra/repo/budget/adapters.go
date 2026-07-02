@@ -1,7 +1,9 @@
-// Adapters wiring the budget service's cross-module ports (UserLookup,
-// AccountLookup, CurrencyLookup, MetadataLookup, Convertor, AverageRateLookup)
-// to the existing user / account / category / tag / currency repositories. They
-// live here (infra) so app/budget depends only on its own small interfaces.
+// Adapters wiring the budget service's cross-module ports (AccountLookup,
+// MetadataLookup) to the existing account / category / tag / payee
+// repositories. They live here (infra) so app/budget depends only on its own
+// small interfaces. The UserLookup counterpart lives in internal/server (it
+// needs the user feature's User/Header types, which an infra package must
+// not import).
 //
 // The multi-owner reads (categories/tags/accounts for the budget participants)
 // loop the existing single-owner repo queries: a budget's participant set is
@@ -11,74 +13,14 @@ package budgetrepo
 
 import (
 	"context"
-	"time"
 
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
-	domuser "github.com/econumo/econumo/internal/domain/user"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-type userRepo interface {
-	GetByID(ctx context.Context, id vo.Id) (*domuser.User, error)
-	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
-	Save(ctx context.Context, u *domuser.User) error
-}
-
-// UserLookup adapts the user repository to app/budget.UserLookup.
-type UserLookup struct {
-	users userRepo
-	clock interface{ Now() time.Time }
-}
-
-var _ appbudget.UserLookup = (*UserLookup)(nil)
-
-// NewUserLookup wraps a user repository + clock.
-func NewUserLookup(users userRepo, clock interface{ Now() time.Time }) *UserLookup {
-	return &UserLookup{users: users, clock: clock}
-}
-
-// GetOwner resolves the embed (id, name, avatar).
-func (l *UserLookup) GetOwner(ctx context.Context, userID string) (appbudget.OwnerView, error) {
-	id, err := vo.ParseId(userID)
-	if err != nil {
-		return appbudget.OwnerView{}, err
-	}
-	h, err := l.users.GetHeaderByID(ctx, id)
-	if err != nil {
-		return appbudget.OwnerView{}, err
-	}
-	return appbudget.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
-}
-
-// CurrencyCode returns the user's default currency code (the currency option).
-func (l *UserLookup) CurrencyCode(ctx context.Context, userID string) (string, error) {
-	id, err := vo.ParseId(userID)
-	if err != nil {
-		return "", err
-	}
-	u, err := l.users.GetByID(ctx, id)
-	if err != nil {
-		return "", err
-	}
-	if o := u.Option(domuser.OptionCurrency); o != nil && o.Value() != nil {
-		return *o.Value(), nil
-	}
-	return domuser.DefaultCurrency, nil
-}
-
-// SetActiveBudget writes the user's active-budget option.
-func (l *UserLookup) SetActiveBudget(ctx context.Context, userID, budgetID vo.Id) error {
-	u, err := l.users.GetByID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	u.UpdateBudget(budgetID.String(), l.clock.Now())
-	return l.users.Save(ctx, u)
-}
 
 type accountRepo interface {
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*domaccount.Account, error)

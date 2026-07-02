@@ -20,7 +20,6 @@ import (
 	apppayee "github.com/econumo/econumo/internal/app/payee"
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	appuser "github.com/econumo/econumo/internal/app/user"
 	"github.com/econumo/econumo/internal/config"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
 	"github.com/econumo/econumo/internal/infra/auth"
@@ -31,11 +30,9 @@ import (
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	passwordrequestrepo "github.com/econumo/econumo/internal/infra/repo/passwordrequest"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
-	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/shared/jwt"
@@ -48,8 +45,10 @@ import (
 	handlerpayee "github.com/econumo/econumo/internal/ui/handler/payee"
 	handlertag "github.com/econumo/econumo/internal/ui/handler/tag"
 	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
-	handleruser "github.com/econumo/econumo/internal/ui/handler/user"
 	"github.com/econumo/econumo/internal/ui/router"
+	appuser "github.com/econumo/econumo/internal/user"
+	handleruser "github.com/econumo/econumo/internal/user/api"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -71,7 +70,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
 	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
 
-	passwordReqRepo := passwordrequestrepo.New(cfg.DatabaseDriver, txm)
+	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
@@ -113,12 +112,12 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
 	accountCurrencyLookup := accountrepo.NewCurrencyLookup(currencyLookup)
-	accountUserLookup := accountrepo.NewUserLookup(userRepo)
+	accountUserLookup := NewAccountUserLookup(userRepo)
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
 	connectionFolderPort := connectionrepo.NewFolderPort(folderRepo)
 	connectionOptionPort := connectionrepo.NewOptionPort(accountRepo)
-	connectionUserLookup := connectionrepo.NewUserLookup(userRepo)
+	connectionUserLookup := NewConnectionUserLookup(userRepo)
 	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionBudgetRevoker := connectionrepo.NewBudgetAccessRevoker(connectionBudgetRepo)
 	connectionSvc := appconnection.NewService(
@@ -136,7 +135,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	txAccountResolver := transactionrepo.NewAccountResolver(accountSvc)
 	txAccountGrants := transactionrepo.NewAccountGrants(connectionRepo)
 	txVisible := transactionrepo.NewVisibleAccounts(accountSvc)
-	txUserLookup := transactionrepo.NewUserLookup(userRepo)
+	txUserLookup := NewTransactionUserLookup(userRepo)
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, categoryRepo, tagRepo, payeeRepo)
 	txImportLookup := transactionrepo.NewImportLookup(
 		accountSvc, accountAccessResolver, accountRepo, folderRepo, categorySvc, payeeSvc, tagSvc,
@@ -155,7 +154,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	convertor := domcurrency.NewConvertor(rateProvider)
 	budgetSvc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
-		budgetrepo.NewUserLookup(userRepo, clk),
+		NewBudgetUserLookup(userRepo, clk),
 		budgetrepo.NewAccountLookup(accountRepo),
 		currencyLookup,
 		budgetrepo.NewMetadataLookup(categoryRepo, tagRepo, payeeRepo),

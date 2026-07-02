@@ -1,7 +1,8 @@
-// Adapters that satisfy the connection service's FolderPort, OptionPort, and
-// UserLookup ports by delegating to the account module's folder/account repos
-// and the user repo. They live here (infra) so app/connection depends only on
-// its own small interfaces.
+// Adapters that satisfy the connection service's FolderPort and OptionPort by
+// delegating to the account module's folder/account repos. They live here
+// (infra) so app/connection depends only on its own small interfaces. The
+// UserLookup counterpart lives in internal/server (it needs the user
+// feature's Header type, which an infra package must not import).
 package connectionrepo
 
 import (
@@ -13,7 +14,6 @@ import (
 	appconnection "github.com/econumo/econumo/internal/app/connection"
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	domuser "github.com/econumo/econumo/internal/domain/user"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -148,31 +148,6 @@ func (p *OptionPort) MaxPosition(ctx context.Context, userID vo.Id) (int16, erro
 // SavePosition upserts the user's accounts_options row.
 func (p *OptionPort) SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error {
 	return p.accounts.SavePosition(ctx, accountID, userID, position, now)
-}
-
-type userByID interface {
-	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
-}
-
-// UserLookup adapts the user repository to app/connection.UserLookup.
-type UserLookup struct{ users userByID }
-
-var _ appconnection.UserLookup = (*UserLookup)(nil)
-
-// NewUserLookup wraps a user repository.
-func NewUserLookup(users userByID) *UserLookup { return &UserLookup{users: users} }
-
-// GetOwner resolves the connected-user embed (id, name, avatar).
-func (l *UserLookup) GetOwner(ctx context.Context, userID string) (appconnection.OwnerView, error) {
-	id, err := vo.ParseId(userID)
-	if err != nil {
-		return appconnection.OwnerView{}, err
-	}
-	h, err := l.users.GetHeaderByID(ctx, id)
-	if err != nil {
-		return appconnection.OwnerView{}, err
-	}
-	return appconnection.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
 
 // accountAccessLister is the slice of the connection repo the account module's

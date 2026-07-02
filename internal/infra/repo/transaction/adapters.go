@@ -1,7 +1,9 @@
 // Adapters bridging the transaction service's ports to existing collaborators:
-// the account service (AccountResolver + VisibleAccounts) and a user lookup for
-// the author embed. Kept in infra so app/transaction depends only on its own
-// small interfaces.
+// the account service (AccountResolver + VisibleAccounts) and the metadata
+// repos (export). Kept in infra so app/transaction depends only on its own
+// small interfaces. The UserLookup counterpart (author embed) lives in
+// internal/server (it needs the user feature's Header type, which an infra
+// package must not import).
 package transactionrepo
 
 import (
@@ -14,7 +16,6 @@ import (
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
-	domuser "github.com/econumo/econumo/internal/domain/user"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -84,31 +85,6 @@ func NewVisibleAccounts(svc accountServicePort) *VisibleAccounts { return &Visib
 
 func (v *VisibleAccounts) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
 	return v.svc.VisibleAccountIDs(ctx, userID)
-}
-
-// userByID is the minimal user-repo surface for the author embed.
-type userByID interface {
-	GetHeaderByID(ctx context.Context, id vo.Id) (domuser.Header, error)
-}
-
-// UserLookup adapts the user repository to app/transaction.UserLookup.
-type UserLookup struct{ users userByID }
-
-var _ apptransaction.UserLookup = (*UserLookup)(nil)
-
-// NewUserLookup wraps a user repository.
-func NewUserLookup(users userByID) *UserLookup { return &UserLookup{users: users} }
-
-func (l *UserLookup) GetOwner(ctx context.Context, userID string) (apptransaction.AuthorView, error) {
-	id, err := vo.ParseId(userID)
-	if err != nil {
-		return apptransaction.AuthorView{}, err
-	}
-	h, err := l.users.GetHeaderByID(ctx, id)
-	if err != nil {
-		return apptransaction.AuthorView{}, err
-	}
-	return apptransaction.AuthorView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
 
 // exportAccountLister is the subset of the transaction repo the export adapter

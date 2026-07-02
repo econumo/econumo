@@ -21,13 +21,14 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handleraccount "github.com/econumo/econumo/internal/ui/handler/account"
 	"github.com/econumo/econumo/internal/ui/router"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 const (
@@ -80,7 +81,7 @@ func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
 	folderRepo := accountrepo.NewFolderRepo("sqlite", txm)
 	curLookup := currencyrepo.New("sqlite", txm)
 	accCur := accountrepo.NewCurrencyLookup(curLookup)
-	accUser := accountrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm))
+	accUser := server.NewAccountUserLookup(userrepo.NewRepo("sqlite", txm))
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
@@ -90,7 +91,7 @@ func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
 	connSvc := appconnection.NewService(
 		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
 		connectionrepo.NewFolderPort(folderRepo), connectionrepo.NewOptionPort(repo),
-		connectionrepo.NewUserLookup(userrepo.NewRepo("sqlite", txm)),
+		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
 		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
 	)
 	sharedLookup := connectionrepo.NewSharedAccessLookup(connRepo)
