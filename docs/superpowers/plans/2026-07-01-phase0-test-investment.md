@@ -472,7 +472,7 @@ f.BudgetElement(fixture.BudgetElement{ID: ElementFood, BudgetID: Budget, Externa
 
 // Pending (not accepted) budget invite: guest invited to Budget — the
 // accept-access and decline-access scenarios each consume it on a fresh DB.
-f.BudgetAccess(Budget, GuestID, 2 /* role: user */, false)
+f.BudgetAccess(Budget, GuestID, 1 /* role: user (admin=0, user=1, guest=2) */, false)
 ```
 
 Run: `go build ./internal/...`
