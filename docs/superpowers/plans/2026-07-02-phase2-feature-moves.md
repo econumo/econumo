@@ -55,6 +55,8 @@ A feature-DEDICATED infra package (serving only X) folds into `internal/X/repo` 
 
 For each hit, on its merits: (a) if it's a small self-contained adapter for X's types → extract to `internal/server/glue_<srcfeature>_<name>.go` now (feature-prefix symbols; move its tests along); (b) if the import is ONLY a compile-time `var _ Iface = (*T)(nil)` assertion whose conformance is already enforced by an assignment at the server.go wiring site → delete the assertion with a comment (verify the wiring assignment exists first). Task 2 already extracted the four `UserLookup` adapters and cleaned currency/userbudget assertions — later tasks will find progressively less inbound glue.
 
+**P1c — Own-port cross-feature type leaks (learned in Task 5).** The mover's OWN app code may declare a port typed in ANOTHER feature's domain type (invisible under the legacy exemption, a violation once X graduates). Reshape the port to primitive/own types and move the comparison/mapping into the adapter on the producing side — proving exact semantic equivalence (role sets, not-found handling, error propagation) in the report. Reference: Task 5 reshaped category's `AccountAccess.GrantRole` (returned `connection.Role`) to `HasAdminGrant(bool, error)`, with `connectionrepo.AccountAccessResolver` gaining the method; `tag` has the IDENTICAL leak — reuse `HasAdminGrant`, don't invent a second method.
+
 **P2 — Move the four slices** (git mv preserves history):
 
 ```bash
