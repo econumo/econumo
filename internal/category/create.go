@@ -4,7 +4,6 @@ package category
 import (
 	"context"
 
-	domcategory "github.com/econumo/econumo/internal/domain/category"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -35,7 +34,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 	if err != nil {
 		return nil, err
 	}
-	iconVal := domcategory.DefaultIcon
+	iconVal := DefaultIcon
 	if req.Icon != nil && *req.Icon != "" {
 		iconVal = *req.Icon
 	}
@@ -61,7 +60,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 		ownerID = resolved
 	}
 
-	var created *domcategory.Category
+	var created *Category
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
@@ -76,7 +75,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 			return cerr
 		}
 		now := s.clock.Now()
-		c := domcategory.NewCategory(id, ownerID, name, typ, icon, now)
+		c := NewCategory(id, ownerID, name, typ, icon, now)
 		c.SetPosition(int16(count))
 		if serr := s.repo.Save(ctx, c); serr != nil {
 			return serr

@@ -1,9 +1,11 @@
 // Adapters bridging the transaction service's ports to existing collaborators:
 // the account service (VisibleAccounts) and the metadata repos (export). Kept
 // in infra so app/transaction depends only on its own small interfaces. The
-// UserLookup and AccountResolver counterparts live in internal/server: they
-// need the user and account features' types, which an infra package must not
-// import.
+// UserLookup, AccountResolver, and category-name-lookup counterparts live in
+// internal/server: they need the account/category features' types, which an
+// infra package must not import — CategoryName delegates to categoryNameLookup,
+// a port expressed purely in primitives, so this file itself never imports
+// category.
 package transactionrepo
 
 import (
@@ -11,7 +13,6 @@ import (
 	"errors"
 
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	domcategory "github.com/econumo/econumo/internal/domain/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
@@ -75,10 +76,12 @@ type exportAccountLister interface {
 	ListExportAccountsForUser(ctx context.Context, userID vo.Id) ([]ExportAccountRow, error)
 }
 
-// categoryByID/tagByID/payeeByID are the minimal metadata-repo surfaces for name
-// resolution.
-type categoryByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*domcategory.Category, error)
+// categoryNameLookup resolves a category's name ("" if not found); backed by
+// server.TransactionCategoryNameLookup so this leaf never imports category.
+// tagByID/payeeByID remain the direct metadata-repo surfaces for name
+// resolution (tag/payee have not moved to feature packages yet).
+type categoryNameLookup interface {
+	CategoryName(ctx context.Context, id vo.Id) (string, error)
 }
 type tagByID interface {
 	GetByID(ctx context.Context, id vo.Id) (*domtag.Tag, error)
@@ -92,16 +95,17 @@ type payeeByID interface {
 // resolved (e.g. a related entity owned by another user on a shared account).
 type ExportLookup struct {
 	accounts   exportAccountLister
-	categories categoryByID
+	categories categoryNameLookup
 	tags       tagByID
 	payees     payeeByID
 }
 
 var _ apptransaction.ExportLookup = (*ExportLookup)(nil)
 
-// NewExportLookup wires the export lookup over the transaction repo and the
-// category/tag/payee repos.
-func NewExportLookup(accounts exportAccountLister, categories categoryByID, tags tagByID, payees payeeByID) *ExportLookup {
+// NewExportLookup wires the export lookup over the transaction repo, the
+// category name lookup (server.TransactionCategoryNameLookup), and the
+// tag/payee repos.
+func NewExportLookup(accounts exportAccountLister, categories categoryNameLookup, tags tagByID, payees payeeByID) *ExportLookup {
 	return &ExportLookup{accounts: accounts, categories: categories, tags: tags, payees: payees}
 }
 
@@ -121,11 +125,7 @@ func (l *ExportLookup) ExportAccounts(ctx context.Context, userID vo.Id) ([]appt
 
 // CategoryName resolves a category's name ("" if not found).
 func (l *ExportLookup) CategoryName(ctx context.Context, id vo.Id) (string, error) {
-	c, err := l.categories.GetByID(ctx, id)
-	if err != nil {
-		return "", nil
-	}
-	return c.Name(), nil
+	return l.categories.CategoryName(ctx, id)
 }
 
 // TagName resolves a tag's name ("" if not found).

@@ -1,20 +1,20 @@
 // Importer adapter: satisfies app/transaction.Importer by reusing the existing
-// category/payee/tag application services for creation and the account port
-// (internal/server.TransactionImportAccounts) for account reads/creates.
+// payee/tag application services for creation and the account/category ports
+// (internal/server.TransactionImportAccounts, internal/server.
+// TransactionImportCategories) for account/category reads/creates.
 // findOrCreate caching lives in the app service; this adapter performs atomic
-// lookups/creates within the import-wide transaction. The account-touching
-// surface lives in internal/server, not here, because this package is a leaf
-// that must not import the account feature (see archtest).
+// lookups/creates within the import-wide transaction. The account- and
+// category-touching surfaces live in internal/server, not here, because this
+// package is a leaf that must not import the account/category features (see
+// archtest).
 package transactionrepo
 
 import (
 	"context"
 
-	appcategory "github.com/econumo/econumo/internal/app/category"
 	apppayee "github.com/econumo/econumo/internal/app/payee"
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	domcategory "github.com/econumo/econumo/internal/domain/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
@@ -39,11 +39,16 @@ type importAccountAccess interface {
 	GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error)
 }
 
-// importCategoryService / importPayeeService / importTagService are the create
-// surfaces over those services. The repos give the owner's existing entities.
-type importCategoryService interface {
-	CreateCategory(ctx context.Context, userID vo.Id, req appcategory.CreateCategoryRequest) (*appcategory.CreateCategoryResult, error)
+// importCategoryPort is the category-touching surface the importer uses,
+// expressed purely in apptransaction types so this file never imports the
+// category feature directly.
+type importCategoryPort interface {
+	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error)
+	CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (apptransaction.ImportNamed, error)
 }
+
+// importPayeeService / importTagService are the create surfaces over those
+// services. The repos give the owner's existing entities.
 type importPayeeService interface {
 	CreatePayee(ctx context.Context, userID vo.Id, req apppayee.CreatePayeeRequest) (*apppayee.CreatePayeeResult, error)
 }
@@ -51,11 +56,8 @@ type importTagService interface {
 	CreateTag(ctx context.Context, userID vo.Id, req apptag.CreateTagRequest) (*apptag.CreateTagResult, error)
 }
 
-// categoryEntityLister/tagEntityLister/payeeEntityLister are the per-aggregate
-// list surfaces; their elements expose Id()/Name()/UserId().
-type categoryEntityLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*domcategory.Category, error)
-}
+// tagEntityLister/payeeEntityLister are the per-aggregate list surfaces; their
+// elements expose Id()/Name()/UserId().
 type tagEntityLister interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*domtag.Tag, error)
 }
@@ -65,35 +67,34 @@ type payeeEntityLister interface {
 
 // ImportLookup adapts the collaborators to app/transaction.Importer.
 type ImportLookup struct {
-	accounts    importAccountPort
-	access      importAccountAccess
-	categorySvc importCategoryService
-	payeeSvc    importPayeeService
-	tagSvc      importTagService
-	categories  categoryEntityLister
-	tags        tagEntityLister
-	payees      payeeEntityLister
-	transRepo   *Repo
+	accounts  importAccountPort
+	access    importAccountAccess
+	category  importCategoryPort
+	payeeSvc  importPayeeService
+	tagSvc    importTagService
+	tags      tagEntityLister
+	payees    payeeEntityLister
+	transRepo *Repo
 }
 
 var _ apptransaction.Importer = (*ImportLookup)(nil)
 
-// NewImportLookup wires the import adapter.
+// NewImportLookup wires the import adapter. category is typically
+// server.TransactionImportCategories.
 func NewImportLookup(
 	accounts importAccountPort,
 	access importAccountAccess,
-	categorySvc importCategoryService,
+	category importCategoryPort,
 	payeeSvc importPayeeService,
 	tagSvc importTagService,
-	categories categoryEntityLister,
 	tags tagEntityLister,
 	payees payeeEntityLister,
 	transRepo *Repo,
 ) *ImportLookup {
 	return &ImportLookup{
 		accounts: accounts, access: access,
-		categorySvc: categorySvc, payeeSvc: payeeSvc, tagSvc: tagSvc,
-		categories: categories, tags: tags, payees: payees,
+		category: category, payeeSvc: payeeSvc, tagSvc: tagSvc,
+		tags: tags, payees: payees,
 		transRepo: transRepo,
 	}
 }
@@ -130,15 +131,7 @@ func (l *ImportLookup) CreateAccount(ctx context.Context, userID vo.Id, name str
 }
 
 func (l *ImportLookup) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
-	list, err := l.categories.ListByOwner(ctx, ownerID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]apptransaction.ImportNamed, len(list))
-	for i, c := range list {
-		out[i] = apptransaction.ImportNamed{ID: c.Id().String(), Name: c.Name(), OwnerID: c.UserId().String()}
-	}
-	return out, nil
+	return l.category.CategoriesByOwner(ctx, ownerID)
 }
 
 func (l *ImportLookup) PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
@@ -166,18 +159,7 @@ func (l *ImportLookup) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]apptra
 }
 
 func (l *ImportLookup) CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (apptransaction.ImportNamed, error) {
-	typ := "expense"
-	if income {
-		typ = "income"
-	}
-	icon := "category"
-	res, err := l.categorySvc.CreateCategory(ctx, ownerID, appcategory.CreateCategoryRequest{
-		Id: vo.NewId().String(), Name: name, Type: typ, Icon: &icon,
-	})
-	if err != nil {
-		return apptransaction.ImportNamed{}, err
-	}
-	return apptransaction.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+	return l.category.CreateCategory(ctx, ownerID, name, income)
 }
 
 func (l *ImportLookup) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {

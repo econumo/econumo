@@ -1,9 +1,9 @@
-package category
+package api
 
 import (
 	"net/http"
 
-	appcategory "github.com/econumo/econumo/internal/app/category"
+	appcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"

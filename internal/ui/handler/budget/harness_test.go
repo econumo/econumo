@@ -15,12 +15,12 @@ import (
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
 	domcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -116,7 +116,7 @@ func newHarnessWithClock(t *testing.T, clk appbudget.Clock) *harness {
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountRepo),
 		currencyLookup,
-		budgetrepo.NewMetadataLookup(categoryRepo, tagRepo, payeeRepo),
+		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), tagRepo, payeeRepo),
 		txm, clk,
 	)
 

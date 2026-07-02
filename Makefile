@@ -112,7 +112,7 @@ go-lint: swagger-check
 # runs; the build pipeline uses this pinned version). `go run <pkg>@<ver>` needs
 # the module cache (network on first use).
 SWAG_VERSION := $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag 2>/dev/null || echo v1.16.6)
-SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../handler,../../app,../../user,../../currency,../../account --parseInternal --parseDependency
+SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../handler,../../app,../../user,../../currency,../../account,../../category --parseInternal --parseDependency
 
 # Regenerate the committed OpenAPI docs from the handler/DTO annotations. This is
 # a prerequisite of go-build / go-run / publish / up so a built artifact never

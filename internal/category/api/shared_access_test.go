@@ -1,4 +1,4 @@
-package category_test
+package api_test
 
 // Coverage for creating a category in the context of an account SHARED with the
 // caller (the create-category request carries an accountId — the transaction

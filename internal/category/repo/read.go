@@ -1,9 +1,9 @@
-package categoryrepo
+package repo
 
 import (
 	"context"
 
-	appcategory "github.com/econumo/econumo/internal/app/category"
+	appcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"

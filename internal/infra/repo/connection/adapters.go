@@ -56,6 +56,23 @@ func (r *AccountAccessResolver) GrantRole(ctx context.Context, accountID, userID
 	return grant.Role(), true, nil
 }
 
+// HasAdminGrant reports whether the user holds an admin grant on the account —
+// the category feature's own AccountAccess port shape (it must not import
+// domain/connection directly, so the Role comparison happens here instead of
+// at the call site). A missing grant or a non-admin grant is false, nil error;
+// other errors propagate.
+func (r *AccountAccessResolver) HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error) {
+	grant, err := r.access.Get(ctx, accountID, userID)
+	if err != nil {
+		var nf *errs.NotFoundError
+		if errors.As(err, &nf) {
+			return false, nil
+		}
+		return false, err
+	}
+	return grant.Role() == domconnection.RoleAdmin, nil
+}
+
 // optionRepo is the slice of the account Repository the connection side effects
 // need (accounts_options position).
 type optionRepo interface {
