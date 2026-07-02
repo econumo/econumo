@@ -57,6 +57,8 @@ For each hit, on its merits: (a) if it's a small self-contained adapter for X's 
 
 **P1c — Own-port cross-feature type leaks (learned in Task 5).** The mover's OWN app code may declare a port typed in ANOTHER feature's domain type (invisible under the legacy exemption, a violation once X graduates). Reshape the port to primitive/own types and move the comparison/mapping into the adapter on the producing side — proving exact semantic equivalence (role sets, not-found handling, error propagation) in the report. Reference: Task 5 reshaped category's `AccountAccess.GrantRole` (returned `connection.Role`) to `HasAdminGrant(bool, error)`, with `connectionrepo.AccountAccessResolver` gaining the method; `tag` has the IDENTICAL leak — reuse `HasAdminGrant`, don't invent a second method.
 
+**P1d — Embedded wire-type leaks (learned in Task 8).** The mover's DTOs may embed ANOTHER feature's result/wire struct by value (e.g. transaction's DTOs embedded `account.AccountResult`). Fix: declare a feature-local STRUCTURAL COPY — every field's name, JSON tag, type shape (pointer-ness, no/with omitempty), and ORDER byte-identical to the original — and convert in the server-side glue adapter using `make([]T, len(...))` for slices (preserves `[]`-vs-`null`). The review will diff the copies field-by-field; the goldens must stay byte-identical. Reference: Task 8's `transaction.AccountResult` family + `toTransactionAccountResults`.
+
 **P2 — Move the four slices** (git mv preserves history):
 
 ```bash
