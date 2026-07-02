@@ -1,7 +1,7 @@
 // Package tagrepo implements domain/tag.Repository.
 //
 // Idempotency for create-tag is NOT here — it is the shared
-// internal/infra/repo/operation.Guard, wired alongside this repo.
+// internal/infra/operation.Guard, wired alongside this repo.
 package tagrepo
 
 import (

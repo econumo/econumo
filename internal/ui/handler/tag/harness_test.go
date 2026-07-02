@@ -15,8 +15,8 @@ import (
 
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	"github.com/econumo/econumo/internal/config"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"

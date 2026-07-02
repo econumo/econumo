@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/infra/repo/operation"
+	"github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 )
