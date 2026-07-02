@@ -13,6 +13,8 @@ func init() {
 			{Label: "replace-folder", Method: "POST", Path: "/api/v1/account/replace-folder", Auth: "owner",
 				Body: map[string]any{"id": OwnerFolder2, "replaceId": OwnerFolder}},
 			{Label: "get-account-list-after", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "owner"},
+			// Pins the deletion: OwnerFolder2 ("Spare") must be gone from the list.
+			{Label: "get-folder-list-after", Method: "GET", Path: "/api/v1/account/get-folder-list", Auth: "owner"},
 		}
 	}})
 }
