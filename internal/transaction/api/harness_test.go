@@ -1,4 +1,4 @@
-package transaction_test
+package api_test
 
 // The transaction service depends on the account service (for the embed + access
 // checks), so both are wired here.
@@ -18,7 +18,6 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	appcategory "github.com/econumo/econumo/internal/category"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
@@ -26,7 +25,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
@@ -39,7 +37,9 @@ import (
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
+	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
+	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	"github.com/econumo/econumo/internal/ui/router"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
@@ -120,7 +120,7 @@ func newHarness(t *testing.T) *harness {
 	)
 	svc := apptransaction.NewService(
 		txRepo, server.NewTransactionAccountResolver(accSvc),
-		transactionrepo.NewAccountGrants(connectionrepo.NewRepo("sqlite", txm)),
+		transactionrepo.NewAccountGrants(connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))),
 		transactionrepo.NewVisibleAccounts(accSvc),
 		server.NewTransactionUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)

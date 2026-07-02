@@ -1,4 +1,4 @@
-package transaction_test
+package api_test
 
 // Coverage for adding/updating/deleting transactions on accounts SHARED with the
 // caller by another user, across every access level. Write access (add/update/

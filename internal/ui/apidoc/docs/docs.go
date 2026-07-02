@@ -3945,7 +3945,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest"
+                            "$ref": "#/definitions/transaction.CreateTransactionRequest"
                         }
                     }
                 ],
@@ -3961,7 +3961,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.CreateTransactionResult"
+                                            "$ref": "#/definitions/transaction.CreateTransactionResult"
                                         }
                                     }
                                 }
@@ -4014,7 +4014,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.DeleteTransactionRequest"
+                            "$ref": "#/definitions/transaction.DeleteTransactionRequest"
                         }
                     }
                 ],
@@ -4030,7 +4030,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.DeleteTransactionResult"
+                                            "$ref": "#/definitions/transaction.DeleteTransactionResult"
                                         }
                                     }
                                 }
@@ -4156,7 +4156,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.GetTransactionListResult"
+                                            "$ref": "#/definitions/transaction.GetTransactionListResult"
                                         }
                                     }
                                 }
@@ -4260,7 +4260,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.ImportResult"
+                                            "$ref": "#/definitions/transaction.ImportResult"
                                         }
                                     }
                                 }
@@ -4313,7 +4313,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.UpdateTransactionRequest"
+                            "$ref": "#/definitions/transaction.UpdateTransactionRequest"
                         }
                     }
                 ],
@@ -4329,7 +4329,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.UpdateTransactionResult"
+                                            "$ref": "#/definitions/transaction.UpdateTransactionResult"
                                         }
                                     }
                                 }
@@ -6763,163 +6763,6 @@ const docTemplate = `{
         "github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult": {
             "type": "object"
         },
-        "github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.CreateTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.DeleteTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.DeleteTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.GetTransactionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/transaction.TransactionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.ImportResult": {
-            "type": "object",
-            "properties": {
-                "errors": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "imported": {
-                    "type": "integer"
-                },
-                "skipped": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.UpdateTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.UpdateTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
         "payee.ArchivePayeeRequest": {
             "type": "object",
             "properties": {
@@ -7203,6 +7046,89 @@ const docTemplate = `{
                 }
             }
         },
+        "transaction.AccountCurrencyResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "fractionDigits": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.AccountOwnerResult": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.AccountResult": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currency": {
+                    "$ref": "#/definitions/transaction.AccountCurrencyResult"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner": {
+                    "$ref": "#/definitions/transaction.AccountOwnerResult"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "sharedAccess": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountSharedAccess"
+                    }
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
+        "transaction.AccountSharedAccess": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/transaction.AccountOwnerResult"
+                }
+            }
+        },
         "transaction.AuthorResult": {
             "type": "object",
             "properties": {
@@ -7214,6 +7140,111 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "transaction.CreateTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.CreateTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/transaction.TransactionResult"
+                }
+            }
+        },
+        "transaction.DeleteTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.DeleteTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/transaction.TransactionResult"
+                }
+            }
+        },
+        "transaction.GetTransactionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.TransactionResult"
+                    }
+                }
+            }
+        },
+        "transaction.ImportResult": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "imported": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
                 }
             }
         },
@@ -7255,6 +7286,58 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "transaction.UpdateTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.UpdateTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/transaction.TransactionResult"
                 }
             }
         },

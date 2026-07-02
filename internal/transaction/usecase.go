@@ -4,9 +4,6 @@ import (
 	"context"
 	"time"
 
-	appaccount "github.com/econumo/econumo/internal/account"
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -50,7 +47,7 @@ type AccountResolver interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 	// AccountListForUser returns the user's available accounts in the wire shape
 	// (reverse order), for the create/update/delete result embed.
-	AccountListForUser(ctx context.Context, userID vo.Id) ([]appaccount.AccountResult, error)
+	AccountListForUser(ctx context.Context, userID vo.Id) ([]AccountResult, error)
 }
 
 // VisibleAccounts supplies the set of account ids whose transactions a user may
@@ -60,16 +57,16 @@ type VisibleAccounts interface {
 	VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
-// AccountGrants reads a connected (non-owner) user's shared-access grant on an
-// account, for the write-access check. Backed by the connection module's
-// AccountAccess repository. ok=false (nil error) means the user holds no grant.
+// AccountGrants reports whether a connected (non-owner) user holds an
+// admin-or-user shared-access grant on an account, for the write-access
+// check. Backed by the connection module's AccountAccess repository.
 type AccountGrants interface {
-	GrantRole(ctx context.Context, accountID, userID vo.Id) (role domconnection.Role, ok bool, err error)
+	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
 // Service is the transaction write-side orchestrator.
 type Service struct {
-	repo     domtransaction.Repository
+	repo     Repository
 	accounts AccountResolver
 	grants   AccountGrants
 	visible  VisibleAccounts
@@ -83,7 +80,7 @@ type Service struct {
 
 // NewService wires the transaction service.
 func NewService(
-	repo domtransaction.Repository,
+	repo Repository,
 	accounts AccountResolver,
 	grants AccountGrants,
 	visible VisibleAccounts,
@@ -111,11 +108,11 @@ func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id,
 	if owner.Equal(userID) {
 		return nil
 	}
-	role, ok, err := s.grants.GrantRole(ctx, accountID, userID)
+	ok, err := s.grants.HasWriteGrant(ctx, accountID, userID)
 	if err != nil {
 		return err
 	}
-	if ok && (role == domconnection.RoleAdmin || role == domconnection.RoleUser) {
+	if ok {
 		return nil
 	}
 	return errs.NewValidation(notAvailableMsg)
@@ -141,7 +138,7 @@ func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) 
 // amountRecipient falls back to amount when nil. Single-transaction callers
 // (create/update/delete) use this; the list endpoint uses buildResult with a
 // per-request author cache to avoid an N+1 (see GetTransactionList).
-func (s *Service) toResult(ctx context.Context, t *domtransaction.Transaction) (TransactionResult, error) {
+func (s *Service) toResult(ctx context.Context, t *Transaction) (TransactionResult, error) {
 	author, err := s.users.GetOwner(ctx, t.UserId().String())
 	if err != nil {
 		return TransactionResult{}, err
@@ -151,7 +148,7 @@ func (s *Service) toResult(ctx context.Context, t *domtransaction.Transaction) (
 
 // buildResult assembles the wire DTO from an already-resolved author (no DB
 // access), so callers control author resolution / caching.
-func (s *Service) buildResult(t *domtransaction.Transaction, author AuthorResult) TransactionResult {
+func (s *Service) buildResult(t *Transaction, author AuthorResult) TransactionResult {
 	amountRecipient := t.Amount()
 	if ar := t.AmountRecipient(); ar != nil {
 		amountRecipient = *ar
@@ -197,7 +194,7 @@ func strPtrDecimal(v string) *string {
 
 // accountListEmbed builds the account-list embed for the create/update/delete
 // results (the full reversed list with balances).
-func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]appaccount.AccountResult, error) {
+func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]AccountResult, error) {
 	return s.accounts.AccountListForUser(ctx, userID)
 }
 
@@ -206,11 +203,11 @@ func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]appacco
 // account+amount and drops category/payee/tag; a non-transfer requires a
 // category and keeps payee/tag, dropping recipient. amount is normalized.
 func buildState(
-	id, userID vo.Id, typ domtransaction.Type, accountID vo.Id, amount string,
+	id, userID vo.Id, typ Type, accountID vo.Id, amount string,
 	amountRecipient, accountRecipientID, categoryID, payeeID, tagID *string,
 	description string, spentAt, now time.Time,
-) (domtransaction.NewState, error) {
-	st := domtransaction.NewState{
+) (NewState, error) {
+	st := NewState{
 		ID: id, UserID: userID, Type: typ, AccountID: accountID,
 		Amount: vo.NewDecimal(amount).String(), Description: description,
 		SpentAt: spentAt, CreatedAt: now, UpdatedAt: now,
@@ -257,14 +254,14 @@ func buildState(
 }
 
 // parseType maps the wire alias to the domain Type.
-func parseType(alias string) (domtransaction.Type, error) {
+func parseType(alias string) (Type, error) {
 	switch alias {
 	case "expense":
-		return domtransaction.TypeExpense, nil
+		return TypeExpense, nil
 	case "income":
-		return domtransaction.TypeIncome, nil
+		return TypeIncome, nil
 	case "transfer":
-		return domtransaction.TypeTransfer, nil
+		return TypeTransfer, nil
 	default:
 		return 0, errs.NewValidation("Validation failed",
 			errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})

@@ -1,12 +1,12 @@
-// Package transaction wires the transaction module's HTTP edge.
-package transaction
+// Package api wires the transaction module's HTTP edge.
+package api
 
 import (
 	"net/http"
 
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 	"github.com/econumo/econumo/internal/ui/middleware"

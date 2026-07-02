@@ -3,7 +3,6 @@ package transaction
 import (
 	"context"
 
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -36,7 +35,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 		description = *req.Description
 	}
 
-	var created *domtransaction.Transaction
+	var created *Transaction
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if aerr := s.checkWriteAccess(ctx, userID, accountID, "account.account.not_available"); aerr != nil {
 			return aerr
@@ -55,7 +54,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 		if berr != nil {
 			return berr
 		}
-		t := domtransaction.New(st)
+		t := New(st)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
 		}

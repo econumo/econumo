@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -91,7 +90,7 @@ type Importer interface {
 	CreateTag(ctx context.Context, ownerID vo.Id, name string) (ImportNamed, error)
 
 	// SaveTransaction persists a built transaction (no idempotency id).
-	SaveTransaction(ctx context.Context, t *domtransaction.Transaction) error
+	SaveTransaction(ctx context.Context, t *Transaction) error
 }
 
 // ImportTransactionList runs the CSV import for the user. It returns the result
@@ -381,12 +380,12 @@ func (s *Service) importRow(
 	}
 
 	accID, _ := vo.ParseId(account.ID)
-	typ := domtransaction.TypeExpense
+	typ := TypeExpense
 	if income {
-		typ = domtransaction.TypeIncome
+		typ = TypeIncome
 	}
 	now := s.clock.Now()
-	t := domtransaction.New(domtransaction.NewState{
+	t := New(NewState{
 		ID: s.repo.NextIdentity(), UserID: userID, Type: typ, AccountID: accID,
 		Amount: amount.Abs().String(), CategoryID: categoryID, PayeeID: payeeID, TagID: tagID,
 		Description: description, SpentAt: date, CreatedAt: now, UpdatedAt: now,

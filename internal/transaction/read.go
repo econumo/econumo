@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -13,7 +12,7 @@ import (
 // given, access-checked), or a [periodStart, periodEnd) window across the user's
 // visible accounts, or all visible-account transactions.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetTransactionListRequest) (*GetTransactionListResult, error) {
-	var txs []*domtransaction.Transaction
+	var txs []*Transaction
 
 	switch {
 	case req.AccountId != "":

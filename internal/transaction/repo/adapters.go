@@ -7,16 +7,13 @@
 // import — CategoryName/TagName/PayeeName delegate to
 // categoryNameLookup/tagNameLookup/payeeNameLookup, ports expressed purely in
 // primitives, so this file itself never imports category, tag, or payee.
-package transactionrepo
+package repo
 
 import (
 	"context"
-	"errors"
 
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 // visibleAccountsPort is the subset of the account service VisibleAccounts uses.
@@ -24,37 +21,27 @@ type visibleAccountsPort interface {
 	VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
-// accountGrantReader is the subset of the connection AccountAccess repo used to
-// read a single (account, user) grant for the transaction write-access check.
-type accountGrantReader interface {
-	Get(ctx context.Context, accountID, userID vo.Id) (*domconnection.AccountAccess, error)
+// accountWriteGranter reports whether a user holds an admin-or-user grant on
+// an account; backed by connectionrepo.AccountAccessResolver.HasWriteGrant.
+type accountWriteGranter interface {
+	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
-// AccountGrants adapts the connection AccountAccess repo to
+// AccountGrants adapts the connection AccountAccess resolver to
 // app/transaction.AccountGrants.
-type AccountGrants struct{ access accountGrantReader }
+type AccountGrants struct{ access accountWriteGranter }
 
 var _ apptransaction.AccountGrants = (*AccountGrants)(nil)
 
-// NewAccountGrants wraps the connection AccountAccess repo.
-func NewAccountGrants(access accountGrantReader) *AccountGrants {
+// NewAccountGrants wraps the connection AccountAccessResolver.
+func NewAccountGrants(access accountWriteGranter) *AccountGrants {
 	return &AccountGrants{access: access}
 }
 
-// GrantRole returns the user's granted role on the account. A missing grant
-// (the repo's *errs.NotFoundError) is reported as ok=false, nil error — the
-// "no access" case the write-access check treats as denied; other errors
-// propagate.
-func (g *AccountGrants) GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error) {
-	grant, err := g.access.Get(ctx, accountID, userID)
-	if err != nil {
-		var nf *errs.NotFoundError
-		if errors.As(err, &nf) {
-			return 0, false, nil
-		}
-		return 0, false, err
-	}
-	return grant.Role(), true, nil
+// HasWriteGrant reports whether the user holds an admin-or-user grant on the
+// account (the write-access check; a missing or guest grant is false).
+func (g *AccountGrants) HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error) {
+	return g.access.HasWriteGrant(ctx, accountID, userID)
 }
 
 // VisibleAccounts adapts the account service to app/transaction.VisibleAccounts.
