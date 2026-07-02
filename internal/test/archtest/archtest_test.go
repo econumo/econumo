@@ -59,6 +59,9 @@ func listImports(t *testing.T) map[string][]string {
 	cmd.Dir = root
 	out, err := cmd.Output()
 	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			t.Fatalf("go list: %v\n%s", err, ee.Stderr)
+		}
 		t.Fatalf("go list: %v", err)
 	}
 	imports := map[string][]string{}
@@ -93,10 +96,10 @@ func TestDependencyRule(t *testing.T) {
 				t.Errorf("feature %s imports feature %s — features stay decoupled via consumer-side ports wired in internal/server", pkg, dep)
 			case feature && (dtop == "domain" || dtop == "app"):
 				t.Errorf("feature %s imports legacy layer %s — moved features must not depend on the packages being dissolved", pkg, dep)
-			case !feature && isLeaf(top) && depFeature:
-				t.Errorf("leaf %s imports feature %s — shared leaves must not depend on features", pkg, dep)
 			case isKernel(top) && !isKernel(dtop):
 				t.Errorf("kernel %s imports %s — internal/shared and internal/reqctx import nothing internal outside the kernel", pkg, dep)
+			case !feature && isLeaf(top) && depFeature:
+				t.Errorf("leaf %s imports feature %s — shared leaves must not depend on features", pkg, dep)
 			}
 		}
 	}
