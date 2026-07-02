@@ -218,7 +218,7 @@ type Querier interface {
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
 	// create endpoint takes a client-supplied operation id (category, tag, ...). The
-	// shared OperationGuard (internal/infra/repo/operation) is built on these.
+	// shared OperationGuard (internal/infra/operation) is built on these.
 	// Claim a request id. The PK conflict is detected by the caller via a pre-check
 	// (GetOperationId) so a duplicate create is rejected.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
