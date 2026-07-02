@@ -557,7 +557,12 @@ git commit -m "test(fixture): budget folder/envelope/access builders + extended 
 
 ---
 
-### Task 5: User-module scenarios (6 routes)
+### Task 5: User-module scenarios (9 routes)
+
+> **Amended after Task 3:** the guard exposed 3 more user routes with no
+> catalogue scenario (they were exercised only by build-tagged one-off tests,
+> which don't feed the smoke/golden tier): `login-user`, `remind-password`,
+> `reset-password`. This task covers them too.
 
 **Files:**
 - Create: `internal/test/apiparity/catalogue_user.go`
@@ -587,13 +592,37 @@ func init() {
             {Label: "update-password", Method: "POST", Path: "/api/v1/user/update-password", Auth: "owner",
                 Body: map[string]any{"oldPassword": SeedPassword, "newPassword": "new-secret-pw"}},
             {Label: "logout-user", Method: "POST", Path: "/api/v1/user/logout-user", Auth: "owner"}, // pins the frozen {"result":"test"} quirk
-            {Label: "get-user-data-after", Method: "POST", Path: "/api/v1/user/get-user-data", Auth: "owner", Body: map[string]any{}},
+            {Label: "get-user-data-after", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
+        }
+    }})
+
+    register(Scenario{Name: "user_auth_flows", Calls: func() []Call {
+        return []Call{
+            // Public login: returns {token, user}; the token is redacted in goldens.
+            // Uses the password BEFORE user_writes' update-password — scenarios run on fresh DBs.
+            {Label: "login-user", Method: "POST", Path: "/api/v1/user/login-user", Auth: "",
+                Body: map[string]any{"username": OwnerEmail, "password": SeedPassword}},
+            {Label: "err:login-bad-credentials", Method: "POST", Path: "/api/v1/user/login-user", Auth: "",
+                Body: map[string]any{"username": OwnerEmail, "password": "wrong"}}, // pins "Invalid credentials." 401
+            // Remind sends the reset email via the console transport (stdout) — the
+            // HTTP response is pinned; the code itself is not reachable over HTTP.
+            {Label: "remind-password", Method: "POST", Path: "/api/v1/user/remind-password", Auth: "",
+                Body: map[string]any{"email": OwnerEmail}},
+            // The happy reset path needs the emailed code and stays covered by the
+            // build-tagged reset_password flow test; here we pin the error envelope.
+            {Label: "err:reset-password-bad-code", Method: "POST", Path: "/api/v1/user/reset-password", Auth: "",
+                Body: map[string]any{"code": "00000000-0000-0000-0000-000000000000", "password": "irrelevant-pw"}},
         }
     }})
 }
 ```
 
-- [ ] **Step 2: Remove from the allowlist** in `guard_test.go`: the 6 `/api/v1/user/…` entries (`register-user`, `complete-onboarding`, `update-currency`, `update-budget`, `update-password`, `logout-user`).
+Check `internal/ui/handler/user/routes.go` + the remind/reset DTOs for exact
+field names before golden generation (`code`/`password` assumed; fix if the
+DTO differs — the 2xx/err conventions stay as written). `get-user-data` is a
+GET route (the Task-2 fixes corrected the method on all reads).
+
+- [ ] **Step 2: Remove from the allowlist** in `guard_test.go`: the 9 `/api/v1/user/…` entries (`register-user`, `complete-onboarding`, `update-currency`, `update-budget`, `update-password`, `logout-user`, `login-user`, `remind-password`, `reset-password`).
 
 - [ ] **Step 3: Generate goldens, verify statuses, run guard.**
 
@@ -699,7 +728,11 @@ git commit -m "test(apiparity): category/tag/payee order-list scenarios (3 route
 
 ---
 
-### Task 8: Connection-module scenarios (2 routes)
+### Task 8: Connection-module scenarios (6 routes)
+
+> **Amended after Task 3:** the guard exposed 4 more connection routes with no
+> catalogue scenario: `generate-invite`, `accept-invite`, `delete-invite`,
+> `delete-connection`. This task covers them too.
 
 **Files:**
 - Create: `internal/test/apiparity/catalogue_connection.go`
@@ -722,14 +755,43 @@ func init() {
                 Body: map[string]any{"accountId": OwnerAccount, "userId": GuestID}},
         }
     }})
+
+    register(Scenario{Name: "connection_invite_flows", Calls: func() []Call {
+        return []Call{
+            // Owner mints an invite (response carries the generated code; a fresh
+            // code per run is fine — check whether it's UUID-shaped and thus
+            // golden-redacted; if it's a non-UUID token, extend NormalizeGolden
+            // with a targeted redaction for the invite-code JSON field, never
+            // hand-edit the golden).
+            {Label: "generate-invite", Method: "POST", Path: "/api/v1/connection/generate-invite", Auth: "owner"},
+            // The code is only in the response body, so the happy accept path
+            // can't be replayed statically; pin the error envelope instead. The
+            // full accept flow stays covered by the tagged connection_invite test.
+            {Label: "err:accept-invite-bad-code", Method: "POST", Path: "/api/v1/connection/accept-invite", Auth: "guest",
+                Body: map[string]any{"code": "000000"}},
+            {Label: "delete-invite", Method: "POST", Path: "/api/v1/connection/delete-invite", Auth: "owner"},
+            // Owner and guest are Connect()ed in the seed; deleting the connection
+            // is a real state change pinned by the closing read.
+            {Label: "delete-connection", Method: "POST", Path: "/api/v1/connection/delete-connection", Auth: "owner",
+                Body: map[string]any{"userId": GuestID}},
+            {Label: "get-connection-list-after-delete", Method: "GET", Path: "/api/v1/connection/get-connection-list", Auth: "owner"},
+        }
+    }})
 }
 ```
 
+Check `internal/ui/handler/connection/routes.go` + DTOs for the exact request
+shapes of the four invite/delete routes (bodies above are best-guess; adjust
+to the real `Validate()` fields — the scenario structure and `err:` choices
+stand). If `generate-invite`'s code leaks unredacted into the golden, extend
+`NormalizeGolden` with a field-targeted redaction (e.g. `"code":"…"` value)
+and note it in the report.
+
 If `get-connection-list` is not the exact read route name, check `internal/ui/handler/connection/routes.go` and use a registered GET from there (any already-covered read is fine — its purpose is to pin post-write state).
 
-- [ ] **Step 2: Remove the 2 allowlist entries.**
+- [ ] **Step 2: Remove the 6 allowlist entries** (`set-account-access`, `revoke-account-access`, `generate-invite`, `accept-invite`, `delete-invite`, `delete-connection`).
 
-- [ ] **Step 3: Goldens + suites** (scenario `connection_access_writes`). Expected: PASS.
+- [ ] **Step 3: Goldens + suites** (scenarios `connection_access_writes`, `connection_invite_flows`). Expected: PASS.
 
 - [ ] **Step 4: Commit**
 
@@ -861,7 +923,7 @@ func init() {
 
 Two verify-before-golden points: (a) `move-element-list`/`change-element-currency` identify elements by EXTERNAL id — the plan assumes the category id works; if a call 400s, check `internal/app/budget/move.go` for the expected identifier and adjust. (b) `get-budget`'s exact query params: copy from the already-covered read scenario in `catalogue.go`.
 
-- [ ] **Step 2: Remove the 9 allowlist entries** (`create-folder`, `update-folder`, `delete-folder`, `order-folder-list`, `create-envelope`, `update-envelope`, `delete-envelope`, `move-element-list`, `change-element-currency`).
+- [ ] **Step 2: Remove the 10 allowlist entries** (`create-folder`, `update-folder`, `delete-folder`, `order-folder-list`, `create-envelope`, `update-envelope`, `delete-envelope`, `move-element-list`, `change-element-currency`, and `GET /api/v1/budget/get-budget` — the closing `get-budget-after` call covers it; the guard's reverse check will insist).
 
 - [ ] **Step 3: Goldens + suites.** All non-`err:` calls 2xx; the closing `get-budget-after` pins the resulting structure. Expected: PASS.
 
