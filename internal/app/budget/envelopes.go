@@ -4,7 +4,7 @@ import (
 	"context"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateEnvelope creates an envelope + its budget element, assigns categories,

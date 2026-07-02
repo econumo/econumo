@@ -13,9 +13,9 @@ import (
 	appconnection "github.com/econumo/econumo/internal/app/connection"
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // accountAccessFull is the subset of the connection AccountAccess repo used to

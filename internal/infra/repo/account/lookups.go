@@ -8,9 +8,9 @@ import (
 	"context"
 
 	appaccount "github.com/econumo/econumo/internal/app/account"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CurrencyLookup adapts currencyrepo.Lookup to app/account.CurrencyLookup.

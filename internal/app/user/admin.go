@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // AdminCreateUser creates a user regardless of ECONUMO_ALLOW_REGISTRATION and

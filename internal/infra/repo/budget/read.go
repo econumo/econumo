@@ -11,9 +11,9 @@ import (
 	"time"
 
 	appbudget "github.com/econumo/econumo/internal/app/budget"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // ReadRepo implements app/budget.ReadModel.

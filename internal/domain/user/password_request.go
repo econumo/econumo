@@ -3,7 +3,7 @@ package user
 import (
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // passwordRequestTTL is how long a reset code stays valid.

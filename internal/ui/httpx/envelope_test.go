@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 func TestOK_SuccessEnvelope(t *testing.T) {

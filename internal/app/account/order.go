@@ -5,7 +5,7 @@ import (
 	"context"
 
 	domaccount "github.com/econumo/econumo/internal/domain/account"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // OrderAccountList applies each {id, folderId, position} change: it moves the

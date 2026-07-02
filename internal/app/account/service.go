@@ -11,8 +11,8 @@ import (
 
 	"github.com/econumo/econumo/internal/app/reqctx"
 	domaccount "github.com/econumo/econumo/internal/domain/account"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // correctionComment is the description stamped on the balance-correction

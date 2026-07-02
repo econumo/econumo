@@ -4,8 +4,8 @@
 // Go golden test (decimal_test.go). Run inside a PHP container with bcmath:
 //
 //   docker run --rm -v "$PWD":/app -w /app php:8.3-cli \
-//     php go/internal/domain/shared/vo/testdata/gen_decimal_vectors.php \
-//     > go/internal/domain/shared/vo/testdata/decimal_vectors.json
+//     php go/internal/shared/vo/testdata/gen_decimal_vectors.php \
+//     > go/internal/shared/vo/testdata/decimal_vectors.json
 //
 // (php:8.3-cli ships bcmath built in.)
 

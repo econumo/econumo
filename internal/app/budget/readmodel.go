@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // AccountBalanceRow is one account's balance as of a date (per-currency via the

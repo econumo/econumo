@@ -6,7 +6,7 @@ package account
 import (
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Folder is the account-folder aggregate root.

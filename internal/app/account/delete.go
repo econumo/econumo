@@ -4,8 +4,8 @@ package account
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // DeleteAccount handles delete-account. Access requires the owner OR any

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UpdateTag enforces name uniqueness among the owner's tags (excluding itself),

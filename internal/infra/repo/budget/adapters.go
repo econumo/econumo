@@ -17,9 +17,9 @@ import (
 	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 	domuser "github.com/econumo/econumo/internal/domain/user"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 type userRepo interface {

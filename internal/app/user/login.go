@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // Login authenticates by identifier (md5 of the lowercased username), verifies

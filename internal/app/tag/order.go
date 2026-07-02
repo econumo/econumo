@@ -3,7 +3,7 @@ package tag
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // OrderTagList applies each {id, position} change to the matching tag in the

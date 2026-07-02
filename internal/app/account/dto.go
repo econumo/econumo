@@ -8,8 +8,8 @@ package account
 import (
 	"strings"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // OwnerResult is the embedded account owner: {id, avatar, name} (the minimal

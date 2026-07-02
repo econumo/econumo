@@ -3,7 +3,7 @@ package payee
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Repository is the payee aggregate's persistence port; the application service

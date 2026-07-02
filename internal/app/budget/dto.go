@@ -5,8 +5,8 @@ package budget
 import (
 	"strings"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UserResult is the embedded user shape in a budget access entry: {id, avatar, name}.
