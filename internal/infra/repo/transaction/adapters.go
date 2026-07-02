@@ -1,16 +1,15 @@
 // Adapters bridging the transaction service's ports to existing collaborators:
-// the account service (AccountResolver + VisibleAccounts) and the metadata
-// repos (export). Kept in infra so app/transaction depends only on its own
-// small interfaces. The UserLookup counterpart (author embed) lives in
-// internal/server (it needs the user feature's Header type, which an infra
-// package must not import).
+// the account service (VisibleAccounts) and the metadata repos (export). Kept
+// in infra so app/transaction depends only on its own small interfaces. The
+// UserLookup and AccountResolver counterparts live in internal/server: they
+// need the user and account features' types, which an infra package must not
+// import.
 package transactionrepo
 
 import (
 	"context"
 	"errors"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
@@ -20,26 +19,9 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// accountServicePort is the subset of the account service the adapters use.
-type accountServicePort interface {
-	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	AccountListForUser(ctx context.Context, userID vo.Id) ([]appaccount.AccountResult, error)
+// visibleAccountsPort is the subset of the account service VisibleAccounts uses.
+type visibleAccountsPort interface {
 	VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
-}
-
-// AccountResolver adapts the account service to app/transaction.AccountResolver.
-type AccountResolver struct{ svc accountServicePort }
-
-var _ apptransaction.AccountResolver = (*AccountResolver)(nil)
-
-// NewAccountResolver wraps the account service.
-func NewAccountResolver(svc accountServicePort) *AccountResolver { return &AccountResolver{svc: svc} }
-
-func (a *AccountResolver) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
-	return a.svc.AccountOwner(ctx, accountID)
-}
-func (a *AccountResolver) AccountListForUser(ctx context.Context, userID vo.Id) ([]appaccount.AccountResult, error) {
-	return a.svc.AccountListForUser(ctx, userID)
 }
 
 // accountGrantReader is the subset of the connection AccountAccess repo used to
@@ -76,12 +58,12 @@ func (g *AccountGrants) GrantRole(ctx context.Context, accountID, userID vo.Id) 
 }
 
 // VisibleAccounts adapts the account service to app/transaction.VisibleAccounts.
-type VisibleAccounts struct{ svc accountServicePort }
+type VisibleAccounts struct{ svc visibleAccountsPort }
 
 var _ apptransaction.VisibleAccounts = (*VisibleAccounts)(nil)
 
 // NewVisibleAccounts wraps the account service.
-func NewVisibleAccounts(svc accountServicePort) *VisibleAccounts { return &VisibleAccounts{svc: svc} }
+func NewVisibleAccounts(svc visibleAccountsPort) *VisibleAccounts { return &VisibleAccounts{svc: svc} }
 
 func (v *VisibleAccounts) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
 	return v.svc.VisibleAccountIDs(ctx, userID)

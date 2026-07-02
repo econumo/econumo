@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appcategory "github.com/econumo/econumo/internal/app/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/shared/vo"

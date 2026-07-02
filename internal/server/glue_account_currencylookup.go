@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
+	appaccount "github.com/econumo/econumo/internal/account"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 )
 
-// AccountCurrencyLookup adapts currencyrepo.Lookup to app/account.CurrencyLookup.
-// Lives here (not in infra/repo/account) because once the currency feature owns
-// its repo package, an infra leaf can no longer import it directly.
+// AccountCurrencyLookup adapts currencyrepo.Lookup to account.CurrencyLookup.
+// Lives here, not in internal/account, because account and currency are
+// separate features that must not import each other (see archtest); only the
+// composition root may bridge them.
 type AccountCurrencyLookup struct {
 	inner *currencyrepo.Lookup
 }

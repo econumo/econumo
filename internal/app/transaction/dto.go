@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
+	appaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"

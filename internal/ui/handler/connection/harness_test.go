@@ -12,10 +12,10 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appconnection "github.com/econumo/econumo/internal/app/connection"
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/clock"
-	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/server"
@@ -95,7 +95,7 @@ func newHarness(t *testing.T) *harness {
 	svc := appconnection.NewService(
 		connectionrepo.NewRepo("sqlite", txm),
 		connectionrepo.NewInviteRepo("sqlite", txm),
-		connectionrepo.NewFolderPort(folderRepo),
+		server.NewConnectionFolderPort(folderRepo),
 		connectionrepo.NewOptionPort(accountRepo),
 		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
 		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)),

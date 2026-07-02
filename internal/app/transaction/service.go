@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
+	appaccount "github.com/econumo/econumo/internal/account"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/datetime"

@@ -1,19 +1,19 @@
 // Importer adapter: satisfies app/transaction.Importer by reusing the existing
-// account/category/payee/tag application services for creation and the
-// account/folder repos + currency lookup for reads. findOrCreate caching lives
-// in the app service; this adapter performs atomic lookups/creates within the
-// import-wide transaction.
+// category/payee/tag application services for creation and the account port
+// (internal/server.TransactionImportAccounts) for account reads/creates.
+// findOrCreate caching lives in the app service; this adapter performs atomic
+// lookups/creates within the import-wide transaction. The account-touching
+// surface lives in internal/server, not here, because this package is a leaf
+// that must not import the account feature (see archtest).
 package transactionrepo
 
 import (
 	"context"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
 	appcategory "github.com/econumo/econumo/internal/app/category"
 	apppayee "github.com/econumo/econumo/internal/app/payee"
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
@@ -22,11 +22,13 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// importAccountService is the account-service surface the importer uses.
-type importAccountService interface {
-	CreateAccount(ctx context.Context, userID vo.Id, req appaccount.CreateAccountRequest) (*appaccount.CreateAccountResult, error)
-	CreateFolder(ctx context.Context, userID vo.Id, req appaccount.CreateFolderRequest) (*appaccount.CreateFolderResult, error)
-	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+// importAccountPort is the account-touching surface the importer uses,
+// expressed purely in apptransaction types so this file never imports the
+// account feature directly.
+type importAccountPort interface {
+	AvailableAccounts(ctx context.Context, userID vo.Id) ([]apptransaction.ImportAccount, error)
+	AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*apptransaction.ImportAccount, error)
+	CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error)
 }
 
 // importAccountAccess resolves account ownership + a connected user's grant role,
@@ -35,16 +37,6 @@ type importAccountService interface {
 type importAccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 	GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error)
-}
-
-// importAccountRepo / importFolderRepo are the read surfaces over the account +
-// folder repos.
-type importAccountRepo interface {
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*domaccount.Account, error)
-	GetByID(ctx context.Context, id vo.Id) (*domaccount.Account, error)
-}
-type importFolderRepo interface {
-	ListByUser(ctx context.Context, userID vo.Id) ([]*domaccount.Folder, error)
 }
 
 // importCategoryService / importPayeeService / importTagService are the create
@@ -57,11 +49,6 @@ type importPayeeService interface {
 }
 type importTagService interface {
 	CreateTag(ctx context.Context, userID vo.Id, req apptag.CreateTagRequest) (*apptag.CreateTagResult, error)
-}
-
-// currencyByCode resolves the base-currency id from its code (for new accounts).
-type currencyByCode interface {
-	GetIDByCode(ctx context.Context, code string) (string, error)
 }
 
 // categoryEntityLister/tagEntityLister/payeeEntityLister are the per-aggregate
@@ -78,70 +65,45 @@ type payeeEntityLister interface {
 
 // ImportLookup adapts the collaborators to app/transaction.Importer.
 type ImportLookup struct {
-	accountSvc  importAccountService
+	accounts    importAccountPort
 	access      importAccountAccess
-	accountRepo importAccountRepo
-	folderRepo  importFolderRepo
 	categorySvc importCategoryService
 	payeeSvc    importPayeeService
 	tagSvc      importTagService
 	categories  categoryEntityLister
 	tags        tagEntityLister
 	payees      payeeEntityLister
-	currency    currencyByCode
 	transRepo   *Repo
-	baseCode    string
 }
 
 var _ apptransaction.Importer = (*ImportLookup)(nil)
 
-// NewImportLookup wires the import adapter. baseCode is the configured base
-// currency code used when creating accounts for unknown account names.
+// NewImportLookup wires the import adapter.
 func NewImportLookup(
-	accountSvc importAccountService,
+	accounts importAccountPort,
 	access importAccountAccess,
-	accountRepo importAccountRepo,
-	folderRepo importFolderRepo,
 	categorySvc importCategoryService,
 	payeeSvc importPayeeService,
 	tagSvc importTagService,
 	categories categoryEntityLister,
 	tags tagEntityLister,
 	payees payeeEntityLister,
-	currency currencyByCode,
 	transRepo *Repo,
-	baseCode string,
 ) *ImportLookup {
 	return &ImportLookup{
-		accountSvc: accountSvc, access: access, accountRepo: accountRepo, folderRepo: folderRepo,
+		accounts: accounts, access: access,
 		categorySvc: categorySvc, payeeSvc: payeeSvc, tagSvc: tagSvc,
 		categories: categories, tags: tags, payees: payees,
-		currency: currency, transRepo: transRepo, baseCode: baseCode,
+		transRepo: transRepo,
 	}
 }
 
 func (l *ImportLookup) AvailableAccounts(ctx context.Context, userID vo.Id) ([]apptransaction.ImportAccount, error) {
-	accts, err := l.accountRepo.ListAvailable(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]apptransaction.ImportAccount, len(accts))
-	for i, a := range accts {
-		out[i] = apptransaction.ImportAccount{ID: a.Id().String(), Name: a.Name(), OwnerID: a.UserId().String()}
-	}
-	return out, nil
+	return l.accounts.AvailableAccounts(ctx, userID)
 }
 
 func (l *ImportLookup) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*apptransaction.ImportAccount, error) {
-	a, err := l.accountRepo.GetByID(ctx, id)
-	if err != nil {
-		return nil, nil // not found -> nil
-	}
-	// Only available (own) accounts qualify.
-	if !a.UserId().Equal(userID) {
-		return nil, nil
-	}
-	return &apptransaction.ImportAccount{ID: a.Id().String(), Name: a.Name(), OwnerID: a.UserId().String()}, nil
+	return l.accounts.AccountByID(ctx, userID, id)
 }
 
 // CanAddTransaction reports whether the user may add a transaction to the
@@ -164,40 +126,7 @@ func (l *ImportLookup) CanAddTransaction(ctx context.Context, userID vo.Id, acco
 }
 
 func (l *ImportLookup) CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error) {
-	// folder: first existing, else create "Imported Accounts".
-	folders, err := l.folderRepo.ListByUser(ctx, userID)
-	if err != nil {
-		return apptransaction.ImportAccount{}, err
-	}
-	var folderID string
-	if len(folders) > 0 {
-		folderID = folders[0].Id().String()
-	} else {
-		fres, ferr := l.accountSvc.CreateFolder(ctx, userID, appaccount.CreateFolderRequest{
-			Name: "Imported Accounts",
-		})
-		if ferr != nil {
-			return apptransaction.ImportAccount{}, ferr
-		}
-		folderID = fres.Item.Id
-	}
-
-	currencyID, err := l.currency.GetIDByCode(ctx, l.baseCode)
-	if err != nil {
-		return apptransaction.ImportAccount{}, err
-	}
-	res, err := l.accountSvc.CreateAccount(ctx, userID, appaccount.CreateAccountRequest{
-		Id:         vo.NewId().String(),
-		Name:       name,
-		CurrencyId: currencyID,
-		FolderId:   folderID,
-		Balance:    "0",
-		Icon:       "wallet",
-	})
-	if err != nil {
-		return apptransaction.ImportAccount{}, err
-	}
-	return apptransaction.ImportAccount{ID: res.Item.Id, Name: res.Item.Name, OwnerID: userID.String()}, nil
+	return l.accounts.CreateAccount(ctx, userID, name)
 }
 
 func (l *ImportLookup) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {

@@ -1,13 +1,14 @@
 // AccountUserLookup satisfies the account service's UserLookup port (owner
 // embed) by delegating to the user repository. It lives here, not in
-// internal/infra/repo/account, because it needs the user feature's Header
-// type and an infra package must not import a feature (see archtest).
+// internal/account, because account and user are separate features that must
+// not import each other (see archtest); only the composition root may bridge
+// them.
 package server
 
 import (
 	"context"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
+	appaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/user"
 )
@@ -17,7 +18,7 @@ type accountUserByID interface {
 	GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error)
 }
 
-// AccountUserLookup adapts the user repository to app/account.UserLookup.
+// AccountUserLookup adapts the user repository to account.UserLookup.
 type AccountUserLookup struct {
 	users accountUserByID
 }
