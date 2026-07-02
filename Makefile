@@ -76,7 +76,7 @@ test: go-lint test-cover
 
 # Coverage threshold for test-cover (true cross-package %). Override on the
 # command line: make test-cover GO_COVER_MIN=70
-GO_COVER_MIN ?= 64
+GO_COVER_MIN ?= 72
 
 # Fast suite WITH a coverage gate: measures true cross-package coverage of all
 # internal + pkg packages and fails if it drops below GO_COVER_MIN.

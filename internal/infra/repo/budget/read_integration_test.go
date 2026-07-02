@@ -98,6 +98,62 @@ func TestBudgetReadRepo_CountSpending_MonthBoundary(t *testing.T) {
 	}
 }
 
+func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	cat := "c0000000-0000-0000-0000-0000000000c1"
+	tag := "7a000000-0000-0000-0000-0000000000a1"
+	seedCategory(t, db, cat, userA)
+	f := fixture.New(t, db)
+	f.Tag(fixture.Tag{ID: tag, UserID: userA, Name: "Tag"})
+	f.Transaction(fixture.Transaction{ID: "72000000-0000-0000-0000-000000000001", UserID: userA, AccountID: acctA, CategoryID: cat, TagID: tag, Type: 0, Amount: "12.50", SpentAt: "2024-04-05 00:00:00"})
+	// A same-period expense tagged differently must not leak into the result.
+	otherTag := "7a000000-0000-0000-0000-0000000000a2"
+	f.Tag(fixture.Tag{ID: otherTag, UserID: userA, Name: "Other"})
+	f.Transaction(fixture.Transaction{ID: "72000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, CategoryID: cat, TagID: otherTag, Type: 0, Amount: "99.00", SpentAt: "2024-04-06 00:00:00"})
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+
+	rows, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByTag: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("want 1 tagged transaction, got %d: %+v", len(rows), rows)
+	}
+	if rows[0].Amount != "12.5" {
+		t.Errorf("amount mismatch: %q", rows[0].Amount)
+	}
+	if rows[0].TagID == nil || *rows[0].TagID != tag {
+		t.Errorf("tagId mismatch: %+v", rows[0].TagID)
+	}
+
+	// The categoryID filter narrows further; a non-matching category yields none.
+	catID := vo.MustParseId(cat)
+	withCat, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &catID, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByTag with category: %v", err)
+	}
+	if len(withCat) != 1 {
+		t.Fatalf("want 1 row with matching category filter, got %d", len(withCat))
+	}
+	otherCatID := vo.NewId()
+	none, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &otherCatID, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByTag mismatching category: %v", err)
+	}
+	if len(none) != 0 {
+		t.Errorf("want 0 rows for a non-matching category, got %d", len(none))
+	}
+
+	// Empty account id set short-circuits to nil, nil.
+	empty, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, nil, start, end)
+	if err != nil || empty != nil {
+		t.Errorf("empty account ids should be nil,nil; got %v, %v", empty, err)
+	}
+}
+
 func TestBudgetReadRepo_SummarizedLimits_MonthBoundary(t *testing.T) {
 	read, db := newReadRepo(t)
 	ctx := context.Background()

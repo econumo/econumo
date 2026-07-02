@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/econumo/econumo/internal/test/apiparity"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -32,18 +33,18 @@ const (
 
 func TestConnectionInviteFlow_PerEngine(t *testing.T) {
 	run := func(t *testing.T, db *dbtest.DB) {
-		h := newAPIHarness(t, db)
+		h := apiparity.NewHarness(t, db)
 
 		// Seed a third, unconnected user to redeem the invite (owner+guest are
 		// already connected by the shared fixture).
 		fixture.New(t, db).WithCrypto("").User(fixture.User{ID: apiCarolID, Email: apiCarolEmail, Name: "Carol"})
 		fixture.New(t, db).DefaultOptions(apiCarolID)
 
-		ownerTok := h.token(t, apiOwnerID, apiOwnerEmail)
-		carolTok := h.token(t, apiCarolID, apiCarolEmail)
+		ownerTok := h.Token(t, apiparity.OwnerID, apiparity.OwnerEmail)
+		carolTok := h.Token(t, apiCarolID, apiCarolEmail)
 
 		// 1. Owner generates an invite; capture the issued code.
-		st, body := h.call(t, http.MethodPost, "/api/v1/connection/generate-invite", ownerTok, map[string]any{})
+		st, body := h.Call(t, http.MethodPost, "/api/v1/connection/generate-invite", ownerTok, map[string]any{})
 		if st != http.StatusOK {
 			t.Fatalf("generate-invite = %d; body: %s", st, body)
 		}
@@ -51,55 +52,55 @@ func TestConnectionInviteFlow_PerEngine(t *testing.T) {
 		if len(code) != 5 {
 			t.Fatalf("invite code = %q, want 5 chars", code)
 		}
-		if c := countActiveInvite(t, db, apiOwnerID); c != 1 {
+		if c := countActiveInvite(t, db, apiparity.OwnerID); c != 1 {
 			t.Errorf("active invite after generate = %d, want 1", c)
 		}
 
 		// 1b. delete-invite clears the code (the row's code becomes NULL) and the
 		//     cleared code can no longer be redeemed.
-		st, body = h.call(t, http.MethodPost, "/api/v1/connection/delete-invite", ownerTok, map[string]any{})
+		st, body = h.Call(t, http.MethodPost, "/api/v1/connection/delete-invite", ownerTok, map[string]any{})
 		if st != http.StatusOK {
 			t.Fatalf("delete-invite = %d; body: %s", st, body)
 		}
-		if c := countActiveInvite(t, db, apiOwnerID); c != 0 {
+		if c := countActiveInvite(t, db, apiparity.OwnerID); c != 0 {
 			t.Errorf("active invite after delete-invite = %d, want 0", c)
 		}
-		if st, _ := h.call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code}); st == http.StatusOK {
+		if st, _ := h.Call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code}); st == http.StatusOK {
 			t.Fatal("a deleted invite code should not be redeemable")
 		}
 
 		// 1c. Re-generate a fresh code for the accept flow below.
-		st, body = h.call(t, http.MethodPost, "/api/v1/connection/generate-invite", ownerTok, map[string]any{})
+		st, body = h.Call(t, http.MethodPost, "/api/v1/connection/generate-invite", ownerTok, map[string]any{})
 		if st != http.StatusOK {
 			t.Fatalf("generate-invite (2) = %d; body: %s", st, body)
 		}
 		code = extractInviteCode(t, body)
 
 		// 2. Carol redeems it -> 200, and the response lists her new connection.
-		st, body = h.call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code})
+		st, body = h.Call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code})
 		if st != http.StatusOK {
 			t.Fatalf("accept-invite = %d; body: %s", st, body)
 		}
 
 		// 3. The bidirectional link exists in users_connections (both rows).
-		if c := countConnection(t, db, apiOwnerID, apiCarolID); c != 1 {
+		if c := countConnection(t, db, apiparity.OwnerID, apiCarolID); c != 1 {
 			t.Errorf("owner->carol link = %d, want 1", c)
 		}
-		if c := countConnection(t, db, apiCarolID, apiOwnerID); c != 1 {
+		if c := countConnection(t, db, apiCarolID, apiparity.OwnerID); c != 1 {
 			t.Errorf("carol->owner link = %d, want 1", c)
 		}
 
 		// 4. Owner deletes the connection -> both rows are removed.
-		st, body = h.call(t, http.MethodPost, "/api/v1/connection/delete-connection", ownerTok, map[string]any{"id": apiCarolID})
+		st, body = h.Call(t, http.MethodPost, "/api/v1/connection/delete-connection", ownerTok, map[string]any{"id": apiCarolID})
 		if st != http.StatusOK {
 			t.Fatalf("delete-connection = %d; body: %s", st, body)
 		}
-		if c := countConnection(t, db, apiOwnerID, apiCarolID) + countConnection(t, db, apiCarolID, apiOwnerID); c != 0 {
+		if c := countConnection(t, db, apiparity.OwnerID, apiCarolID) + countConnection(t, db, apiCarolID, apiparity.OwnerID); c != 0 {
 			t.Errorf("connection links after delete = %d, want 0", c)
 		}
 
 		// 5. Redeeming the (now-cleared) code again fails — single use.
-		st, _ = h.call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code})
+		st, _ = h.Call(t, http.MethodPost, "/api/v1/connection/accept-invite", carolTok, map[string]any{"code": code})
 		if st == http.StatusOK {
 			t.Fatal("re-accepting a consumed invite code should not succeed")
 		}

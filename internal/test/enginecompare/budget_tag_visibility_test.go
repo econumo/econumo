@@ -16,29 +16,30 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/econumo/econumo/internal/test/apiparity"
 	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 func TestBudgetTagWithLimitNoTransactions_PerEngine(t *testing.T) {
 	run := func(t *testing.T, db *dbtest.DB) {
-		h := newAPIHarness(t, db)
-		tok := h.token(t, apiOwnerID, apiOwnerEmail)
+		h := apiparity.NewHarness(t, db)
+		tok := h.Token(t, apiparity.OwnerID, apiparity.OwnerEmail)
 		const budgetID = "b0000000-0000-0000-0000-0000000000aa"
 
 		// Fresh budget with a known start so the period math is deterministic.
-		if st, body := h.call(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-			map[string]any{"id": budgetID, "name": "Tag Vis", "currencyId": apiUSD, "startDate": "2024-04-01"}); st != http.StatusOK {
+		if st, body := h.Call(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+			map[string]any{"id": budgetID, "name": "Tag Vis", "currencyId": apiparity.USD, "startDate": "2024-04-01"}); st != http.StatusOK {
 			t.Fatalf("create-budget = %d; body: %s", st, body)
 		}
 
-		// Limit on the seeded tag (apiTagWork has NO transactions in the fixture).
-		if st, body := h.call(t, http.MethodPost, "/api/v1/budget/set-limit", tok,
-			map[string]any{"budgetId": budgetID, "elementId": apiTagWork, "period": "2024-04-01", "amount": "300"}); st != http.StatusOK {
+		// Limit on the seeded tag (apiparity.TagWork has NO transactions in the fixture).
+		if st, body := h.Call(t, http.MethodPost, "/api/v1/budget/set-limit", tok,
+			map[string]any{"budgetId": budgetID, "elementId": apiparity.TagWork, "period": "2024-04-01", "amount": "300"}); st != http.StatusOK {
 			t.Fatalf("set-limit = %d; body: %s", st, body)
 		}
 
 		// get-budget for that month must include the tag with its limit.
-		st, body := h.call(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID+"&date=2024-04-15", tok, nil)
+		st, body := h.Call(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID+"&date=2024-04-15", tok, nil)
 		if st != http.StatusOK {
 			t.Fatalf("get-budget = %d; body: %s", st, body)
 		}
@@ -60,7 +61,7 @@ func TestBudgetTagWithLimitNoTransactions_PerEngine(t *testing.T) {
 		var found bool
 		var budgeted string
 		for _, e := range env.Data.Item.Structure.Elements {
-			if e.Id == apiTagWork {
+			if e.Id == apiparity.TagWork {
 				found, budgeted = true, e.Budgeted
 			}
 		}

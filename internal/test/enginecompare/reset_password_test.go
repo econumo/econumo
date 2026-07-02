@@ -25,62 +25,63 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/econumo/econumo/internal/test/apiparity"
 	"github.com/econumo/econumo/internal/test/dbtest"
 )
 
 func TestResetPasswordFlow_PerEngine(t *testing.T) {
 	run := func(t *testing.T, db *dbtest.DB) {
-		h := newAPIHarness(t, db)
+		h := apiparity.NewHarness(t, db)
 		const newPassword = "reset-pw-9981"
 
 		// 1. remind-password issues a code for the seeded owner.
-		if st, body := h.call(t, http.MethodPost, "/api/v1/user/remind-password", "", map[string]string{
-			"username": apiOwnerEmail,
+		if st, body := h.Call(t, http.MethodPost, "/api/v1/user/remind-password", "", map[string]string{
+			"username": apiparity.OwnerEmail,
 		}); st != http.StatusOK {
 			t.Fatalf("remind status = %d; body: %s", st, body)
 		}
 
 		// 2. The code must actually be persisted — this is the assertion that
 		//    catches "no code being added to the database".
-		code := readResetCode(t, db, apiOwnerID)
+		code := readResetCode(t, db, apiparity.OwnerID)
 		if len(code) != 12 {
 			t.Fatalf("issued code = %q (len %d), want 12 chars — was it inserted?", code, len(code))
 		}
 
 		// 3. A wrong code is rejected (400).
-		if st, _ := h.call(t, http.MethodPost, "/api/v1/user/reset-password", "", map[string]string{
-			"username": apiOwnerEmail, "code": "ffffffffffff", "password": newPassword,
+		if st, _ := h.Call(t, http.MethodPost, "/api/v1/user/reset-password", "", map[string]string{
+			"username": apiparity.OwnerEmail, "code": "ffffffffffff", "password": newPassword,
 		}); st != http.StatusBadRequest {
 			t.Fatalf("reset with wrong code = %d, want 400", st)
 		}
 
 		// 4. The correct code resets the password.
-		if st, body := h.call(t, http.MethodPost, "/api/v1/user/reset-password", "", map[string]string{
-			"username": apiOwnerEmail, "code": code, "password": newPassword,
+		if st, body := h.Call(t, http.MethodPost, "/api/v1/user/reset-password", "", map[string]string{
+			"username": apiparity.OwnerEmail, "code": code, "password": newPassword,
 		}); st != http.StatusOK {
 			t.Fatalf("reset status = %d; body: %s", st, body)
 		}
 
 		// 5. The new password logs in (and the code is single-use: consumed).
-		if st, body := h.call(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
-			"username": apiOwnerEmail, "password": newPassword,
+		if st, body := h.Call(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+			"username": apiparity.OwnerEmail, "password": newPassword,
 		}); st != http.StatusOK {
 			t.Fatalf("login with new password = %d, want 200; body: %s", st, body)
 		}
-		if n := countResetCodes(t, db, apiOwnerID); n != 0 {
+		if n := countResetCodes(t, db, apiparity.OwnerID); n != 0 {
 			t.Errorf("reset code not consumed: %d row(s) remain", n)
 		}
 
 		// 6. The old password no longer works.
-		if st, _ := h.call(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
-			"username": apiOwnerEmail, "password": apiSeedPassword,
+		if st, _ := h.Call(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+			"username": apiparity.OwnerEmail, "password": apiparity.SeedPassword,
 		}); st == http.StatusOK {
 			t.Fatal("old password should no longer work after reset")
 		}
 
 		// 7. remind-password for an unknown user is a silent success (anti-
 		//    enumeration) that writes no row.
-		if st, _ := h.call(t, http.MethodPost, "/api/v1/user/remind-password", "", map[string]string{
+		if st, _ := h.Call(t, http.MethodPost, "/api/v1/user/remind-password", "", map[string]string{
 			"username": "nobody@example.test",
 		}); st != http.StatusOK {
 			t.Fatalf("remind unknown user = %d, want 200", st)

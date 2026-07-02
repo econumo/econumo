@@ -109,6 +109,18 @@ func TestTagRepo_Delete(t *testing.T) {
 	}
 }
 
+func TestTagRepo_NextIdentity(t *testing.T) {
+	repo, _, _, _ := newRepo(t)
+	a := repo.NextIdentity()
+	b := repo.NextIdentity()
+	if a.String() == "" || b.String() == "" {
+		t.Fatal("NextIdentity returned an empty id")
+	}
+	if a == b {
+		t.Error("successive NextIdentity calls should not collide")
+	}
+}
+
 func TestTagReadRepo_OwnPlusShared(t *testing.T) {
 	repo, read, _, f := newRepo(t)
 	ctx := context.Background()

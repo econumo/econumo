@@ -1,0 +1,3 @@
+== decline-access POST /api/v1/budget/decline-access [guest] -> 200
+{"success":true,"message":"","data":{}}
+
