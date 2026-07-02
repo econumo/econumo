@@ -7,13 +7,13 @@ import (
 
 	"github.com/econumo/econumo/internal/app/reqctx"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
-// TokenVerifier is the narrow contract the JWT middleware needs. pkg/jwt.JWT
-// satisfies it. Defining it here keeps the middleware from hard-depending on the
+// TokenVerifier is the narrow contract the JWT middleware needs. jwt.JWT
+// (internal/shared/jwt) satisfies it. Defining it here keeps the middleware from hard-depending on the
 // concrete type, so tests (and any future verifier) can substitute their own.
 type TokenVerifier interface {
 	Verify(token string) (jwt.Claims, error)

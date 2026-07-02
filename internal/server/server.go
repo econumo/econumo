@@ -38,6 +38,7 @@ import (
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	handleraccount "github.com/econumo/econumo/internal/ui/handler/account"
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
@@ -49,7 +50,6 @@ import (
 	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
 	handleruser "github.com/econumo/econumo/internal/ui/handler/user"
 	"github.com/econumo/econumo/internal/ui/router"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
 // BuildAPI wires every resource module over the given (already opened+migrated)

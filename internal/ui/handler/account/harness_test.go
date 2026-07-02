@@ -22,12 +22,12 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
 	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
+	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
 	handleraccount "github.com/econumo/econumo/internal/ui/handler/account"
 	"github.com/econumo/econumo/internal/ui/router"
-	"github.com/econumo/econumo/pkg/jwt"
 )
 
 const (
