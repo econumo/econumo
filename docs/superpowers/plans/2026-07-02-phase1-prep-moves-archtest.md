@@ -313,7 +313,7 @@ func TestDependencyRule(t *testing.T) {
 Run: `go test ./internal/test/archtest/ -v`
 Expected: PASS. If it FAILS, the violation is real (e.g. a kernel package importing outward) — report it verbatim, do not loosen the rule. Known-good facts: `vo` imports `errs` (kernel→kernel, allowed); `shared/jwt` imports no internal packages; `reqctx` imports nothing internal.
 
-- [ ] **Step 3: Prove it can fail.** Temporarily add `_ "github.com/econumo/econumo/internal/ui/httpx"` to the imports of `internal/shared/errs/errs.go` (a kernel package importing outside the kernel), run `go test ./internal/test/archtest/ -v`, confirm it FAILS with the "kernel … imports …" message, then revert the probe (`git checkout -- internal/shared/errs/errs.go`). Do not commit the probe. Record the failing output in your report.
+- [ ] **Step 3: Prove it can fail.** Temporarily add `_ "github.com/econumo/econumo/internal/logging"` to the imports of `internal/reqctx/reqctx.go` (a kernel package importing outside the kernel; note: errs→httpx would be a real Go import cycle since httpx imports errs, failing in go list before the rule fires), run `go test ./internal/test/archtest/ -v`, confirm it FAILS with the "kernel … imports …" message, then revert the probe (`git checkout -- internal/reqctx/reqctx.go`). Do not commit the probe. Record the failing output in your report.
 
 - [ ] **Step 4: Full suites**
 
