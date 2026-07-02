@@ -210,6 +210,13 @@ Test-first rules bound to later phases:
   `internal/app/user`, `internal/cli`, `internal/server`, `internal/ui/middleware`).
 - `internal/app/reqctx` → `internal/reqctx` (used by features and middleware).
 - `infra/repo/operation` → `internal/infra/operation`.
+- **Architecture test enforcing the dependency rule.** A small test (e.g.
+  `internal/test/archtest`) that inspects `go list`-style import data and fails
+  when: a feature package imports another feature, or a shared leaf package
+  (`shared/*`, `reqctx`, `ui/httpx`, `infra/*`) imports a feature. Runs as part
+  of `make test` from Phase 1 onward, so the rule is compiler+CI-enforced, not
+  convention. (During Phase 2 it enforces the rule for already-moved features;
+  the legacy layered packages are exempt until they disappear.)
 - Update CLAUDE.md's architecture section and jwt references in the same commit.
 
 ### Phase 2 — The move (mechanical, one commit per feature)
@@ -293,6 +300,11 @@ Per feature commit:
 - Every phase boundary: `make regression` (adds the sqlite-vs-PostgreSQL
   engine-comparison suite, at full route coverage after Phase 0), plus a
   `GO_COVER_MIN` ratchet review.
+- **Merge cadence**: `refactor/feature-packages` merges back into `golang` at
+  every phase boundary (after the regression pass), so the branch never
+  carries more than one phase of divergence and there is no monster merge at
+  the end. No parallel backend feature work lands on `golang` during Phase 2
+  (the highest-churn phase).
 - Phase 5 additionally: committed OpenAPI document diff must be empty.
 
 ## Risks
@@ -305,8 +317,12 @@ Per feature commit:
   identical (already enforced by `make test`'s docs-fresh check).
 - **Import-path churn**: every file's imports change; anything in flight on
   other branches will conflict. Mitigation: dedicated branch
-  (`refactor/feature-packages`), continuous push, no parallel feature work on
-  `golang` during Phase 2.
+  (`refactor/feature-packages`) merged back into `golang` at every phase
+  boundary (see Verification), no parallel backend feature work on `golang`
+  during Phase 2.
+- **Dependency-rule erosion**: a convention-only import rule degrades over
+  time. Mitigation: the Phase 1 architecture test makes the rule a CI failure
+  instead of a review comment.
 - **Budget feature size**: even split root/`repo/`/`api/`, budget's root is
   ~19 files. Acceptable; Phase 6 consolidation shrinks it further.
 
