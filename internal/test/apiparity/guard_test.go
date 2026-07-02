@@ -14,16 +14,7 @@ import (
 // catalogue scenario. Every entry here is a hole in the safety net. Tasks in
 // docs/superpowers/plans/2026-07-01-phase0-test-investment.md remove entries
 // as scenarios are added; the list must reach empty and then be deleted.
-var missingFromCatalogue = map[string]bool{
-	"GET /api/v1/budget/get-transaction-list": true,
-	"POST /api/v1/budget/accept-access":       true,
-	"POST /api/v1/budget/decline-access":      true,
-	"POST /api/v1/budget/exclude-account":     true,
-	"POST /api/v1/budget/grant-access":        true,
-	"POST /api/v1/budget/include-account":     true,
-	"POST /api/v1/budget/reset-budget":        true,
-	"POST /api/v1/budget/revoke-access":       true,
-}
+var missingFromCatalogue = map[string]bool{}
 
 var routePatternRe = regexp.MustCompile(`"((?:GET|POST) /api/v1/[a-z-]+/[a-z-]+)"`)
 
