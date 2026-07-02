@@ -18,7 +18,6 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	apppayee "github.com/econumo/econumo/internal/app/payee"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	appcategory "github.com/econumo/econumo/internal/category"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
@@ -27,11 +26,12 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	apppayee "github.com/econumo/econumo/internal/payee"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	apptag "github.com/econumo/econumo/internal/tag"
@@ -104,7 +104,7 @@ func newHarness(t *testing.T) *harness {
 	catRepo := categoryrepo.NewRepo("sqlite", txm)
 	tgRepo := tagrepo.NewRepo("sqlite", txm)
 	pyRepo := payeerepo.NewRepo("sqlite", txm)
-	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), pyRepo)
+	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo))
 	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), payeerepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
@@ -113,9 +113,10 @@ func newHarness(t *testing.T) *harness {
 	)
 	txImportCategories := server.NewTransactionImportCategories(catSvc, catRepo)
 	txImportTags := server.NewTransactionImportTags(tgSvc, tgRepo)
+	txImportPayees := server.NewTransactionImportPayees(pySvc, pyRepo)
 	txImport := transactionrepo.NewImportLookup(
 		txImportAccounts, connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
-		txImportCategories, pySvc, txImportTags, pyRepo, txRepo,
+		txImportCategories, txImportPayees, txImportTags, txRepo,
 	)
 	svc := apptransaction.NewService(
 		txRepo, server.NewTransactionAccountResolver(accSvc),

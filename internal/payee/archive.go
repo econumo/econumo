@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -14,7 +13,7 @@ func (s *Service) ArchivePayee(ctx context.Context, userID vo.Id, req ArchivePay
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.mutate(ctx, id, userID, func(p *dompayee.Payee, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(p *Payee, now time.Time) {
 		p.Archive(now)
 	}); err != nil {
 		return nil, err
@@ -28,7 +27,7 @@ func (s *Service) UnarchivePayee(ctx context.Context, userID vo.Id, req Unarchiv
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.mutate(ctx, id, userID, func(p *dompayee.Payee, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(p *Payee, now time.Time) {
 		p.Unarchive(now)
 	}); err != nil {
 		return nil, err

@@ -1,9 +1,10 @@
 // BudgetAccountLookup adapts the account repository to app/budget.AccountLookup,
-// BudgetCategoryMetadataLookup adapts the category repository, and
-// BudgetTagMetadataLookup adapts the tag repository. They live here, not in
-// internal/infra/repo/budget, because they need the account/category/tag
-// features' types and an infra package must not import a feature (see
-// archtest).
+// BudgetCategoryMetadataLookup adapts the category repository,
+// BudgetTagMetadataLookup adapts the tag repository, and
+// BudgetPayeeMetadataLookup adapts the payee repository. They live here, not
+// in internal/infra/repo/budget, because they need the
+// account/category/tag/payee features' types and an infra package must not
+// import a feature (see archtest).
 package server
 
 import (
@@ -12,6 +13,7 @@ import (
 	account "github.com/econumo/econumo/internal/account"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	category "github.com/econumo/econumo/internal/category"
+	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
 )
@@ -151,6 +153,44 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 			out = append(out, appbudget.TagMeta{
 				ID: t.Id().String(), OwnerID: t.UserId().String(), Name: t.Name(), IsArchived: t.IsArchived(),
 			})
+		}
+	}
+	return out, nil
+}
+
+type budgetPayeeRepo interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+}
+
+// BudgetPayeeMetadataLookup adapts the payee repository to the payee slice of
+// app/budget.MetadataLookup (wired into budgetrepo.MetadataLookup's payees
+// field). It lives here, not in internal/infra/repo/budget, because it needs
+// the payee feature's Payee type and an infra package must not import a
+// feature (see archtest).
+type BudgetPayeeMetadataLookup struct {
+	payees budgetPayeeRepo
+}
+
+// NewBudgetPayeeMetadataLookup wraps a payee repository.
+func NewBudgetPayeeMetadataLookup(payees budgetPayeeRepo) *BudgetPayeeMetadataLookup {
+	return &BudgetPayeeMetadataLookup{payees: payees}
+}
+
+// PayeesByOwners returns all payees owned by the given users.
+func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.PayeeMeta, error) {
+	var out []appbudget.PayeeMeta
+	seen := map[string]bool{}
+	for _, uid := range userIDs {
+		payees, err := l.payees.ListByOwner(ctx, uid)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range payees {
+			if seen[p.Id().String()] {
+				continue
+			}
+			seen[p.Id().String()] = true
+			out = append(out, appbudget.PayeeMeta{ID: p.Id().String(), Name: p.Name()})
 		}
 	}
 	return out, nil

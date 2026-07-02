@@ -17,7 +17,6 @@ import (
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	appconnection "github.com/econumo/econumo/internal/app/connection"
-	apppayee "github.com/econumo/econumo/internal/app/payee"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
@@ -31,10 +30,12 @@ import (
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	apppayee "github.com/econumo/econumo/internal/payee"
+	handlerpayee "github.com/econumo/econumo/internal/payee/api"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
@@ -42,7 +43,6 @@ import (
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
 	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
-	handlerpayee "github.com/econumo/econumo/internal/ui/handler/payee"
 	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
 	"github.com/econumo/econumo/internal/ui/router"
 	appuser "github.com/econumo/econumo/internal/user"
@@ -135,13 +135,14 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	txAccountGrants := transactionrepo.NewAccountGrants(connectionRepo)
 	txVisible := transactionrepo.NewVisibleAccounts(accountSvc)
 	txUserLookup := NewTransactionUserLookup(userRepo)
-	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), payeeRepo)
+	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))
 	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
 	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)
 	txImportTags := NewTransactionImportTags(tagSvc, tagRepo)
+	txImportPayees := NewTransactionImportPayees(payeeSvc, payeeRepo)
 	txImportLookup := transactionrepo.NewImportLookup(
-		txImportAccounts, accountAccessResolver, txImportCategories, payeeSvc, txImportTags,
-		payeeRepo, transactionRepo,
+		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags,
+		transactionRepo,
 	)
 	transactionSvc := apptransaction.NewService(
 		transactionRepo, txAccountResolver, txAccountGrants, txVisible, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
@@ -159,7 +160,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 		NewBudgetUserLookup(userRepo, clk),
 		NewBudgetAccountLookup(accountRepo),
 		currencyLookup,
-		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), payeeRepo),
+		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
 		txm, clk,
 	)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())

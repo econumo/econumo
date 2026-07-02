@@ -1,11 +1,12 @@
 // TransactionAccountResolver adapts the account service to
 // app/transaction.AccountResolver, TransactionCategoryNameLookup adapts the
 // category repository to the transaction export adapter's categoryNameLookup
-// port, and TransactionTagNameLookup adapts the tag repository to its
-// tagNameLookup port. All three live here, not in
+// port, TransactionTagNameLookup adapts the tag repository to its
+// tagNameLookup port, and TransactionPayeeNameLookup adapts the payee
+// repository to its payeeNameLookup port. All four live here, not in
 // internal/infra/repo/transaction, because they need the
-// account/category/tag features' types and an infra package must not import
-// a feature (see archtest).
+// account/category/tag/payee features' types and an infra package must not
+// import a feature (see archtest).
 package server
 
 import (
@@ -14,6 +15,7 @@ import (
 	account "github.com/econumo/econumo/internal/account"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	category "github.com/econumo/econumo/internal/category"
+	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
 )
@@ -96,4 +98,30 @@ func (l *TransactionTagNameLookup) TagName(ctx context.Context, id vo.Id) (strin
 		return "", nil
 	}
 	return t.Name(), nil
+}
+
+// transactionPayeeByID is the minimal payee-repo surface the export adapter's
+// name lookup uses.
+type transactionPayeeByID interface {
+	GetByID(ctx context.Context, id vo.Id) (*payee.Payee, error)
+}
+
+// TransactionPayeeNameLookup adapts the payee repository to the transaction
+// export adapter's payeeNameLookup port.
+type TransactionPayeeNameLookup struct {
+	payees transactionPayeeByID
+}
+
+// NewTransactionPayeeNameLookup wraps a payee repository.
+func NewTransactionPayeeNameLookup(payees transactionPayeeByID) *TransactionPayeeNameLookup {
+	return &TransactionPayeeNameLookup{payees: payees}
+}
+
+// PayeeName resolves a payee's name ("" if not found).
+func (l *TransactionPayeeNameLookup) PayeeName(ctx context.Context, id vo.Id) (string, error) {
+	p, err := l.payees.GetByID(ctx, id)
+	if err != nil {
+		return "", nil
+	}
+	return p.Name(), nil
 }

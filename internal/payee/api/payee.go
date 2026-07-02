@@ -1,9 +1,9 @@
-package payee
+package api
 
 import (
 	"net/http"
 
-	apppayee "github.com/econumo/econumo/internal/app/payee"
+	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )

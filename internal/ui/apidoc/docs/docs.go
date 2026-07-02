@@ -3019,7 +3019,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest"
+                            "$ref": "#/definitions/payee.ArchivePayeeRequest"
                         }
                     }
                 ],
@@ -3035,7 +3035,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult"
+                                            "$ref": "#/definitions/payee.ArchivePayeeResult"
                                         }
                                     }
                                 }
@@ -3088,7 +3088,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest"
+                            "$ref": "#/definitions/payee.CreatePayeeRequest"
                         }
                     }
                 ],
@@ -3104,7 +3104,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.CreatePayeeResult"
+                                            "$ref": "#/definitions/payee.CreatePayeeResult"
                                         }
                                     }
                                 }
@@ -3157,7 +3157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.DeletePayeeRequest"
+                            "$ref": "#/definitions/payee.DeletePayeeRequest"
                         }
                     }
                 ],
@@ -3173,7 +3173,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.DeletePayeeResult"
+                                            "$ref": "#/definitions/payee.DeletePayeeResult"
                                         }
                                     }
                                 }
@@ -3228,7 +3228,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.GetPayeeListResult"
+                                            "$ref": "#/definitions/payee.GetPayeeListResult"
                                         }
                                     }
                                 }
@@ -3275,7 +3275,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.OrderPayeeListRequest"
+                            "$ref": "#/definitions/payee.OrderPayeeListRequest"
                         }
                     }
                 ],
@@ -3291,7 +3291,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.OrderPayeeListResult"
+                                            "$ref": "#/definitions/payee.OrderPayeeListResult"
                                         }
                                     }
                                 }
@@ -3344,7 +3344,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UnarchivePayeeRequest"
+                            "$ref": "#/definitions/payee.UnarchivePayeeRequest"
                         }
                     }
                 ],
@@ -3360,7 +3360,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult"
+                                            "$ref": "#/definitions/payee.UnarchivePayeeResult"
                                         }
                                     }
                                 }
@@ -3413,7 +3413,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest"
+                            "$ref": "#/definitions/payee.UpdatePayeeRequest"
                         }
                     }
                 ],
@@ -3429,7 +3429,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult"
+                                            "$ref": "#/definitions/payee.UpdatePayeeResult"
                                         }
                                     }
                                 }
@@ -6763,108 +6763,6 @@ const docTemplate = `{
         "github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult": {
             "type": "object"
         },
-        "github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.CreatePayeeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/payee.PayeeResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.DeletePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.DeletePayeeResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_payee.GetPayeeListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/payee.PayeeResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.OrderPayeeListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/payee.PositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.OrderPayeeListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/payee.PayeeResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.UnarchivePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult": {
-            "type": "object"
-        },
         "github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest": {
             "type": "object",
             "properties": {
@@ -7022,6 +6920,83 @@ const docTemplate = `{
                 }
             }
         },
+        "payee.ArchivePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "payee.ArchivePayeeResult": {
+            "type": "object"
+        },
+        "payee.CreatePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "payee.CreatePayeeResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/payee.PayeeResult"
+                }
+            }
+        },
+        "payee.DeletePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "payee.DeletePayeeResult": {
+            "type": "object"
+        },
+        "payee.GetPayeeListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/payee.PayeeResult"
+                    }
+                }
+            }
+        },
+        "payee.OrderPayeeListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/payee.PositionChange"
+                    }
+                }
+            }
+        },
+        "payee.OrderPayeeListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/payee.PayeeResult"
+                    }
+                }
+            }
+        },
         "payee.PayeeResult": {
             "type": "object",
             "properties": {
@@ -7058,6 +7033,31 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "payee.UnarchivePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "payee.UnarchivePayeeResult": {
+            "type": "object"
+        },
+        "payee.UpdatePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "payee.UpdatePayeeResult": {
+            "type": "object"
         },
         "tag.ArchiveTagRequest": {
             "type": "object",
