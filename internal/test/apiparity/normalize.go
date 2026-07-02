@@ -11,11 +11,15 @@ import "regexp"
 // NOT v7, so they survive normalization and remain strictly compared.
 var uuidV7Re = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 
-// NormalizeParity redacts server-generated UUIDv7 ids so the comparison focuses
-// on everything else (names, positions, amounts, timestamps, ordering, envelope
-// shape). All other bytes are compared strictly.
+// NormalizeParity redacts server-generated UUIDv7 ids and the generate-invite
+// connection code so the comparison focuses on everything else (names,
+// positions, amounts, timestamps, ordering, envelope shape). The invite code
+// is fresh crypto-random per run — like the generated UUIDv7 ids, it
+// legitimately differs per engine run and is not a parity property. All other
+// bytes are compared strictly.
 func NormalizeParity(b []byte) string {
-	return uuidV7Re.ReplaceAllString(string(b), "<generated-uuid>")
+	s := uuidV7Re.ReplaceAllString(string(b), "<generated-uuid>")
+	return inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
 }
 
 var (
@@ -25,8 +29,8 @@ var (
 
 	// inviteCodeRe redacts generate-invite's freshly-minted connection code — a
 	// 5-hex-char string with per-character randomized case
-	// (domain/connection.GenerateConnectionCode), not a UUID, so it survives
-	// NormalizeParity untouched. Anchored to the "code" JSON field so it can't
+	// (domain/connection.GenerateConnectionCode), not a UUID, so uuidV7Re alone
+	// would leave it in place. Anchored to the "code" JSON field so it can't
 	// eat any other field (e.g. a 3-letter currency "code").
 	inviteCodeRe = regexp.MustCompile(`"code":"[0-9A-Fa-f]{5}"`)
 )

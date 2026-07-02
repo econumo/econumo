@@ -235,6 +235,9 @@ type Querier interface {
 	// Available accounts: own OR shared via accounts_access, not deleted. Mirrors
 	// AccountRepository::getAvailableForUserId (LEFT JOIN accounts_access, own OR
 	// granted). DISTINCT collapses duplicate rows when multiple grants exist.
+	// ORDER BY pins creation order (id tie-break) so both engines return the same
+	// row order: get-account-list serves this order (reversed) directly, and an
+	// unordered DISTINCT differs between SQLite and PostgreSQL query plans.
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)

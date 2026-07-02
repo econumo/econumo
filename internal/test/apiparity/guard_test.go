@@ -10,12 +10,6 @@ import (
 	"testing"
 )
 
-// missingFromCatalogue lists registered routes that do NOT yet have a
-// catalogue scenario. Every entry here is a hole in the safety net. Tasks in
-// docs/superpowers/plans/2026-07-01-phase0-test-investment.md remove entries
-// as scenarios are added; the list must reach empty and then be deleted.
-var missingFromCatalogue = map[string]bool{}
-
 var routePatternRe = regexp.MustCompile(`"((?:GET|POST) /api/v1/[a-z-]+/[a-z-]+)"`)
 
 // registeredRoutes scans the route-registration source files for mux patterns.
@@ -50,9 +44,9 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	return routes
 }
 
-// TestGuard_EveryRouteHasScenario fails when a registered route has neither a
-// catalogue call nor an allowlist entry — so a new endpoint cannot ship
-// without landing in the smoke+parity safety net.
+// TestGuard_EveryRouteHasScenario fails when a registered route has no
+// catalogue call — so a new endpoint cannot ship without landing in the
+// smoke+parity safety net.
 func TestGuard_EveryRouteHasScenario(t *testing.T) {
 	covered := map[string]bool{}
 	for _, sc := range Catalogue() {
@@ -66,16 +60,11 @@ func TestGuard_EveryRouteHasScenario(t *testing.T) {
 	}
 	var missing []string
 	for r := range registeredRoutes(t) {
-		if !covered[r] && !missingFromCatalogue[r] {
+		if !covered[r] {
 			missing = append(missing, r)
 		}
 	}
 	if len(missing) > 0 {
-		t.Errorf("routes with no catalogue scenario (add one, or allowlist with a plan reference):\n  %s", strings.Join(missing, "\n  "))
-	}
-	for r := range missingFromCatalogue {
-		if covered[r] {
-			t.Errorf("route %s now has a scenario — remove it from missingFromCatalogue", r)
-		}
+		t.Errorf("routes with no catalogue scenario (add one):\n  %s", strings.Join(missing, "\n  "))
 	}
 }

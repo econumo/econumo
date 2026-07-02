@@ -123,6 +123,7 @@ SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_del
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 WHERE a.is_deleted = 0 AND (a.user_id = ? OR aa.user_id = ?)
+ORDER BY a.created_at, a.id
 `
 
 type ListAvailableAccountsParams struct {
@@ -133,6 +134,9 @@ type ListAvailableAccountsParams struct {
 // Available accounts: own OR shared via accounts_access, not deleted. Mirrors
 // AccountRepository::getAvailableForUserId (LEFT JOIN accounts_access, own OR
 // granted). DISTINCT collapses duplicate rows when multiple grants exist.
+// ORDER BY pins creation order (id tie-break) so both engines return the same
+// row order: get-account-list serves this order (reversed) directly, and an
+// unordered DISTINCT differs between SQLite and PostgreSQL query plans.
 func (q *Queries) ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error) {
 	rows, err := q.db.QueryContext(ctx, listAvailableAccounts, arg.UserID, arg.UserID_2)
 	if err != nil {
