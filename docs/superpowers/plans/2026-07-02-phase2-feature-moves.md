@@ -14,7 +14,7 @@
 
 - **Behavior-identical**: moves, package renames, import rewrites, alias de-qualification, and collision renames of NON-CONTRACT symbols only. Never rename an entity, a JSON-tagged field, a validation string, or anything on the wire.
 - **Goldens byte-identical every task** (`git status --short internal/test/apiparity/testdata/` empty; never UPDATE_GOLDEN). Route guard floor (84) and catalogue floor (33) must stay green — routes.go files keep their literal `"METHOD /path"` strings; the guard's globs already include `internal/*/api/routes.go`.
-- `make test` green after every commit (gate 72), including swagger-check (the committed OpenAPI doc must stay identical), archtest, and the smoke suite. Tagged suite green on sqlite: `CGO_ENABLED=0 go test -count=1 -tags enginecompare ./internal/test/enginecompare/ 2>&1 | tail -3`.
+- `make test` green after every commit (gate 72), including swagger-check, archtest, and the smoke suite. The committed OpenAPI doc must stay SEMANTICALLY identical — swag derives definition names from package paths, so each move renames definition keys (`github_com_…_app_X.T` → `X.T`); regenerate in the same commit and verify content-preservation (paths, fields, responses unchanged under a canonical, name-normalized diff — Task 2's review method). Tagged suite green on sqlite: `CGO_ENABLED=0 go test -count=1 -tags enginecompare ./internal/test/enginecompare/ 2>&1 | tail -3`.
 - Move order (leaf-most first, one task per feature): `user → currency → account → category → tag → payee → transaction → connection → budget`.
 - `passwordrequest` moves with `user`; `userbudget` moves with `budget` (its `exists.go` imports the user feature → it is glue, see procedure).
 - Existing tests move with their code; never deleted or weakened.
@@ -44,6 +44,14 @@ grep -hoE '^(func|type|const|var) [a-z][A-Za-z0-9]*' internal/domain/X/*.go inte
 (non-empty output = collision; note that methods `func (r *T) name` don't match this pattern and can't collide across types — only true top-level dupes matter). Record every rename in the report.
 
 **P1 — Identify glue.** For each non-test file in `internal/infra/repo/X`: if it imports `internal/app/Y`, `internal/domain/Y`, or `internal/Y` for any OTHER feature Y, it is cross-feature glue → destination `internal/server/glue_X_<origname>.go` (package `server`), NOT `internal/X/repo`. Same-feature imports (e.g. `passwordrequest/repo.go` → `domain/user` while moving INTO the user feature) are not glue. Glue symbol collisions against existing `package server` symbols (several features contribute `UserLookup`-style adapters): prefix with the source feature (`accountUserLookup`, `NewAccountUserLookup`), updating the only call sites (server.go wiring).
+
+**P1b — Inbound glue (learned in Task 2).** The move graduates X out of the archtest legacy exemption, so any NOT-yet-moved feature's infra file importing X becomes a "leaf imports feature" violation THIS task. Scan for them:
+
+```bash
+grep -rln 'econumo/internal/\(app\|domain\)/X"' internal/infra/repo/ --include='*.go' | grep -v "repo/X/"
+```
+
+For each hit, on its merits: (a) if it's a small self-contained adapter for X's types → extract to `internal/server/glue_<srcfeature>_<name>.go` now (feature-prefix symbols; move its tests along); (b) if the import is ONLY a compile-time `var _ Iface = (*T)(nil)` assertion whose conformance is already enforced by an assignment at the server.go wiring site → delete the assertion with a comment (verify the wiring assignment exists first). Task 2 already extracted the four `UserLookup` adapters and cleaned currency/userbudget assertions — later tasks will find progressively less inbound glue.
 
 **P2 — Move the four slices** (git mv preserves history):
 
