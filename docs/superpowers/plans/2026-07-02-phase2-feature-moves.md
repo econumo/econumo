@@ -87,6 +87,8 @@ sed -i 's/\bdomX\.//g' internal/X/<file>.go
 
 Watch for qualifier collisions the P0 inventory predicted; apply the recorded renames.
 
+**P4b — Swag scan dir.** The moved feature's annotations/DTOs left the `../handler,../../app` scan set. In `Makefile`'s `SWAG_INIT` line, append `,../../X` to the `-d` list (paths are relative to `internal/ui/apidoc`; `../../X` = `internal/X`, scanned recursively so root+repo+api are covered). Do NOT remove `../handler,../../app` until Task 10 (they still hold the not-yet-moved features). Then regenerate and confirm the committed spec is IDENTICAL: `make swagger && git status --short internal/ui/apidoc/docs` → clean. A diff means swag lost or re-resolved something — STOP and report. (Background: scanning all of `internal/` at once fails — swag v1.16 mis-resolves types when multiple dirs share a package name, discovered in Task 1.)
+
 **P5 — Format and verify.**
 
 ```bash
@@ -105,11 +107,18 @@ If archtest fails, the failure is REAL (the feature or a leaf imports something 
 
 ---
 
-### Task 1: Prep — archtest polish + swag scan roots
+### Task 1: Prep — archtest polish
+
+> **Executed outcome (recorded):** the originally planned global swag-scan
+> widening (`-d .,../../../internal`) FAILS — swag v1.16 errors with
+> `cannot find type definition: AccountResult` when multiple scanned dirs
+> share a package name (four `account` dirs pre-move). The scan therefore
+> stays `-d .,../handler,../../app` and grows per feature move (procedure
+> step P4b); Task 10 drops the emptied legacy roots. This task ships the
+> archtest polish only.
 
 **Files:**
 - Modify: `internal/test/archtest/archtest_test.go` (two deferred Minors from the Phase-1 final review)
-- Modify: `Makefile` (the `SWAG_INIT` line)
 
 - [ ] **Step 1: Archtest polish.** (a) Move the kernel case ABOVE the leaf case in `TestDependencyRule`'s switch so a kernel→feature import reports the kernel-specific message (kernel ⊆ leaf, so today the generic leaf message wins). (b) In `listImports`, print stderr on failure: replace `t.Fatalf("go list: %v", err)` with
 
@@ -122,15 +131,13 @@ t.Fatalf("go list: %v", err)
 
 Re-run the reqctx→logging probe from the Phase-1 procedure to confirm the kernel message still fires; revert the probe.
 
-- [ ] **Step 2: Swagger scan roots.** `Makefile` line 115 currently scans `-d .,../handler,../../app` (from `internal/ui/apidoc`) — both dirs empty out during this phase. Change to `-d .,../../../internal` (apidoc dir + all of internal). Verify the generated spec is IDENTICAL: `make swagger && git status --short internal/ui/apidoc/docs` must be clean (same annotations scanned, wider net). If the docs differ, STOP and report the diff.
+- [ ] **Step 2: Verify + commit**
 
-- [ ] **Step 3: Verify + commit**
-
-Run: `make test` → PASS (incl. swagger-check with the new scan roots).
+Run: `make test` → PASS.
 
 ```bash
-git add internal/test/archtest Makefile
-git commit -m "chore: archtest diagnostics polish; widen swag scan to all of internal/"
+git add internal/test/archtest
+git commit -m "chore(archtest): kernel case precedence + go list stderr diagnostics"
 ```
 
 ---
@@ -224,6 +231,7 @@ Procedure with X = `budget`, plus:
 - KNOWN GLUE: `internal/infra/repo/budget/adapters.go` (imports account/category/payee/tag/user) → `internal/server/glue_budget_adapters.go`. `internal/infra/repo/userbudget/exists.go` implements the USER feature's budget-existence port (imports user) → glue: `internal/server/glue_userbudget_exists.go`; its integration test moves alongside. `read.go` (the hand-built dynamic SQL) is NOT glue (own feature only) → `internal/budget/repo/read.go`.
 - This is the largest feature (root ~19 files + repo + api). The P0 inventory matters most here (domain/budget's `valueobject.go` symbols vs app/budget's DTO names).
 - After this task, `internal/domain`, `internal/app`, `internal/infra/repo`, and `internal/ui/handler` must ALL be empty and deleted (`git mv` leaves no residue; `find internal/domain internal/app internal/infra/repo internal/ui/handler -type f 2>/dev/null` → nothing, dirs gone).
+- P4b extra: with `../handler` and `../../app` now empty/deleted, REMOVE them from `SWAG_INIT`'s `-d` list in this same commit (a nonexistent dir errors swag); the list becomes `.` plus the nine `../../<feature>` entries. `make swagger` diff must stay clean.
 
 - [ ] Steps: Procedure P0–P6 + the emptiness check above. Commit: `refactor(budget): move budget into internal/budget feature package`.
 
