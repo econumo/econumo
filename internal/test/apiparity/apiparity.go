@@ -22,6 +22,16 @@ type Call struct {
 	// Body.
 	RawBody     []byte
 	ContentType string
+
+	// CaptureIDInto, when set, is filled by Replay with the server-generated
+	// entity id ("data.item.id" in this call's response) once the call
+	// completes. Every CREATE endpoint treats the client-supplied "id" as an
+	// idempotency operation key only and mints a fresh UUIDv7 for the entity
+	// (see normalize.go's uuidV7Re doc comment) — so a later call in the same
+	// scenario that must act on the just-created entity references the target
+	// of this pointer (e.g. as a *string Body value, which json.Marshal
+	// dereferences) rather than the client-supplied operation id.
+	CaptureIDInto *string
 }
 
 // Scenario returns the ordered list of calls to replay. Calls is a func (not a

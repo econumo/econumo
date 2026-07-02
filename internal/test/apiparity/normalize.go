@@ -17,3 +17,21 @@ var uuidV7Re = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}
 func NormalizeParity(b []byte) string {
 	return uuidV7Re.ReplaceAllString(string(b), "<generated-uuid>")
 }
+
+var (
+	datetimeRe = regexp.MustCompile(`\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}`)
+	dateRe     = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
+	jwtRe      = regexp.MustCompile(`eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+`)
+)
+
+// NormalizeGolden makes a response body stable across runs AND engines: the
+// parity redaction (UUIDv7) plus clock-derived datetimes/dates and JWTs.
+// Everything else — field names, amounts, names, ordering, envelope shape,
+// validation messages — is compared byte-for-byte against the golden.
+func NormalizeGolden(b []byte) string {
+	s := NormalizeParity(b)
+	s = jwtRe.ReplaceAllString(s, "<jwt>")
+	s = datetimeRe.ReplaceAllString(s, "<datetime>")
+	s = dateRe.ReplaceAllString(s, "<date>")
+	return s
+}

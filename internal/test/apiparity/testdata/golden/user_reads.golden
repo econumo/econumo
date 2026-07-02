@@ -1,0 +1,6 @@
+== get-user-data GET /api/v1/user/get-user-data [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+
+== get-option-list GET /api/v1/user/get-option-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null}]}}
+

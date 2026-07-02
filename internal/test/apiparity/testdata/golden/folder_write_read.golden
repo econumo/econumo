@@ -1,0 +1,21 @@
+== create-folder POST /api/v1/account/create-folder [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","name":"Trips","position":1,"isVisible":1}}}
+
+== read-after-create GET /api/v1/account/get-folder-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"f0000000-0000-0000-0000-000000000001","name":"Main","position":0,"isVisible":1},{"id":"<generated-uuid>","name":"Trips","position":1,"isVisible":1}]}}
+
+== update-folder POST /api/v1/account/update-folder [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","name":"Trips2","position":1,"isVisible":1}}}
+
+== hide-folder POST /api/v1/account/hide-folder [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-hide GET /api/v1/account/get-folder-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"f0000000-0000-0000-0000-000000000001","name":"Main","position":0,"isVisible":1},{"id":"<generated-uuid>","name":"Trips2","position":1,"isVisible":0}]}}
+
+== show-folder POST /api/v1/account/show-folder [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-show GET /api/v1/account/get-folder-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"f0000000-0000-0000-0000-000000000001","name":"Main","position":0,"isVisible":1},{"id":"<generated-uuid>","name":"Trips2","position":1,"isVisible":1}]}}
+
