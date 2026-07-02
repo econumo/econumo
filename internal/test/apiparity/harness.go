@@ -167,6 +167,28 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 			t.Fatalf("[%s] unknown auth %q", c.Label, c.Auth)
 		}
 		statuses[i], bodies[i] = h.do(t, c.Method, c.Path, tok, c.Body, c.RawBody, c.ContentType)
+		if c.CaptureIDInto != nil {
+			*c.CaptureIDInto = extractItemID(bodies[i])
+		}
 	}
 	return statuses, bodies
+}
+
+// extractItemID pulls "data.item.id" out of a create-endpoint response —
+// every CREATE result wraps the new entity as {item: {id, ...}}. Returns ""
+// (a deliberately invalid id for any later call that dereferences it) if the
+// call failed or the shape doesn't match, so a wiring mistake surfaces as a
+// downstream "not found" rather than silently reusing a stale id.
+func extractItemID(body []byte) string {
+	var env struct {
+		Data struct {
+			Item struct {
+				Id string `json:"id"`
+			} `json:"item"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &env); err != nil {
+		return ""
+	}
+	return env.Data.Item.Id
 }
