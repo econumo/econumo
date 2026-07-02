@@ -1,0 +1,88 @@
+package apiparity
+
+// Identity + entity ids used across the catalogue. UUIDs are literal so both
+// engines store the same keys; the comparison is over the API RESPONSES.
+
+import (
+	"testing"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+)
+
+const (
+	OwnerID    = "11111111-1111-1111-1111-111111111111"
+	OwnerEmail = "owner@example.test"
+	GuestID    = "22222222-2222-2222-2222-222222222222"
+	GuestEmail = "guest@example.test"
+
+	USD = "dffc2a06-6f29-4704-8575-31709adee926" // seeded by the baseline migration
+
+	OwnerFolder   = "f0000000-0000-0000-0000-000000000001"
+	GuestFolder   = "f0000000-0000-0000-0000-000000000002"
+	OwnerAccount  = "a0000000-0000-0000-0000-000000000001"
+	SharedAccount = "a0000000-0000-0000-0000-000000000002" // owned by guest, shared to owner
+
+	CatFood   = "c0000000-0000-0000-0000-000000000001"
+	CatSalary = "c0000000-0000-0000-0000-000000000002"
+	TagWork   = "10000000-0000-0000-0000-000000000001"
+	PayeeShop = "20000000-0000-0000-0000-000000000001"
+
+	Txn1 = "d0000000-0000-0000-0000-000000000001"
+	Txn2 = "d0000000-0000-0000-0000-000000000002"
+
+	Budget = "b0000000-0000-0000-0000-000000000001"
+
+	SeedPassword = "secret-pw"
+)
+
+// Seed seeds an identical, cross-module fixture into the given engine via the
+// typed fixture builder. It seeds: two connected users (with hashed password +
+// encrypted email so login works), their default options, folders, an owned
+// account and a guest-owned account shared to the owner, categories, a tag, a
+// payee, two transactions, and a budget — so every read endpoint returns
+// non-empty data on both engines. Fixed ids are used (the scenarios reference
+// them in request bodies); the comparison is over the API RESPONSES.
+func Seed(t testing.TB, db *dbtest.DB) {
+	t.Helper()
+	// Plaintext seed (empty salt) to match the salt-free API; cfg.DataSalt is set
+	// but ignored, so seeding salted data would make login + lookups mismatch.
+	f := fixture.New(t, db).WithCrypto("")
+
+	f.User(fixture.User{ID: OwnerID, Email: OwnerEmail, Name: "User " + OwnerID[:4], Password: SeedPassword})
+	f.DefaultOptions(OwnerID)
+	f.User(fixture.User{ID: GuestID, Email: GuestEmail, Name: "User " + GuestID[:4], Password: SeedPassword})
+	f.DefaultOptions(GuestID)
+	f.Connect(OwnerID, GuestID)
+
+	// Folders.
+	f.Folder(fixture.Folder{ID: OwnerFolder, UserID: OwnerID, Name: "Main"})
+	f.Folder(fixture.Folder{ID: GuestFolder, UserID: GuestID, Name: "Main"})
+
+	// Owner's own account.
+	f.Account(fixture.Account{ID: OwnerAccount, UserID: OwnerID, CurrencyID: USD, Name: "Cash"})
+	f.AccountInFolder(OwnerFolder, OwnerAccount)
+	f.AccountOption(OwnerAccount, OwnerID, 0)
+
+	// Guest-owned account, SHARED to the owner (accounts_access grant) so the
+	// owner's get-account-list / sharedAccess[] / connection list are non-empty.
+	f.Account(fixture.Account{ID: SharedAccount, UserID: GuestID, CurrencyID: USD, Name: "Shared"})
+	f.AccountInFolder(GuestFolder, SharedAccount)
+	f.AccountOption(SharedAccount, GuestID, 0)
+	f.AccountAccess(SharedAccount, OwnerID, 1)
+
+	// Categories (owner): one expense, one income.
+	f.Category(fixture.Category{ID: CatFood, UserID: OwnerID, Name: "Food", Position: 0, Type: 0})
+	f.Category(fixture.Category{ID: CatSalary, UserID: OwnerID, Name: "Salary", Position: 1, Type: 1})
+
+	// Tag + payee (owner).
+	f.Tag(fixture.Tag{ID: TagWork, UserID: OwnerID, Name: "Work"})
+	f.Payee(fixture.Payee{ID: PayeeShop, UserID: OwnerID, Name: "Shop"})
+
+	// Transactions on the owner's account (one expense, one income).
+	f.Transaction(fixture.Transaction{ID: Txn1, UserID: OwnerID, AccountID: OwnerAccount, CategoryID: CatFood, PayeeID: PayeeShop, Type: 1, Amount: "12.50000000", Description: "lunch"})
+	f.Transaction(fixture.Transaction{ID: Txn2, UserID: OwnerID, AccountID: OwnerAccount, CategoryID: CatSalary, Type: 0, Amount: "1000.00000000", Description: "pay"})
+
+	// A budget owned by the owner.
+	f.Budget(fixture.Budget{ID: Budget, UserID: OwnerID, CurrencyID: USD, Name: "Budget"})
+}
