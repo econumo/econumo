@@ -126,14 +126,26 @@ that overrides it per build).
 ## Testing
 
 Tests live alongside the Go code:
-- `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`).
-- `internal/test/enginecompare/` — the strongest contract: runs the REAL production
-  handler (`server.BuildAPI`) on BOTH SQLite and PostgreSQL and asserts byte-identical
+- `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`;
+  dbtest applies production pragmas, e.g. `foreign_keys = ON`).
+- `internal/test/apiparity/` — the shared API scenario catalogue: every registered
+  route is replayed against the REAL production handler (`server.BuildAPI`).
+  Two consumers: the untagged **smoke suite** (every `make test`) diffs each
+  scenario's responses against committed golden files in `testdata/golden/`
+  (normalized: generated UUIDs, datetimes, JWTs redacted), and the build-tagged
+  parity suite below. Guard tests enforce that every route has a scenario, the
+  scenario count and scanned-route count never shrink, and no golden is orphaned.
+  Regenerate goldens with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`,
+  then INSPECT the diff — a golden change means observable behavior changed;
+  never hand-edit a golden. If route-registration files move, update
+  `handlerGlobs` in `guard_test.go`.
+- `internal/test/enginecompare/` — the strongest contract: replays the same
+  catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
   responses (build tag `enginecompare`).
 - `internal/test/{fixture,testkeys}` — shared fixture builder + embedded JWT keypair.
 
 Coverage gate: `make test` enforces a cross-package minimum (`GO_COVER_MIN`,
-default 64). CI surfaces the coverage % in the Actions job summary plus an HTML
+default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
@@ -218,7 +230,7 @@ user:create <name> <email> <password>
 user:change-email <old> <new>
 user:change-password <email> <password>
 user:activate <email>
-user:deactivate --before=YYYY-MM-DD
+user:deactivate <email>
 currency:update-rates [date]
 currency:add <code> [name] [fraction-digits]
 jwt:generate
