@@ -12,7 +12,9 @@ import (
 	"net/http"
 	"time"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
+	appaccount "github.com/econumo/econumo/internal/account"
+	handleraccount "github.com/econumo/econumo/internal/account/api"
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	appcategory "github.com/econumo/econumo/internal/app/category"
 	appconnection "github.com/econumo/econumo/internal/app/connection"
@@ -26,7 +28,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
-	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
@@ -37,7 +38,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	handleraccount "github.com/econumo/econumo/internal/ui/handler/account"
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
 	handlercategory "github.com/econumo/econumo/internal/ui/handler/category"
 	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
@@ -114,7 +114,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	accountUserLookup := NewAccountUserLookup(userRepo)
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
-	connectionFolderPort := connectionrepo.NewFolderPort(folderRepo)
+	connectionFolderPort := NewConnectionFolderPort(folderRepo)
 	connectionOptionPort := connectionrepo.NewOptionPort(accountRepo)
 	connectionUserLookup := NewConnectionUserLookup(userRepo)
 	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
@@ -123,22 +123,23 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 		connectionRepo, connectionInviteRepo, connectionFolderPort, connectionOptionPort,
 		connectionUserLookup, connectionBudgetRevoker, txm, clk,
 	)
-	accountSharedLookup := connectionrepo.NewSharedAccessLookup(connectionRepo)
-	accountRevoker := connectionrepo.NewAccessRevoker(connectionRepo, connectionSvc)
+	accountSharedLookup := NewConnectionSharedAccessLookup(connectionRepo)
+	accountRevoker := NewConnectionAccessRevoker(connectionRepo, connectionSvc)
 	accountSvc := appaccount.NewService(
 		accountRepo, folderRepo, accountCurrencyLookup, accountUserLookup, accountSharedLookup, accountRevoker, txm, opGuard, clk,
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
-	txAccountResolver := transactionrepo.NewAccountResolver(accountSvc)
+	txAccountResolver := NewTransactionAccountResolver(accountSvc)
 	txAccountGrants := transactionrepo.NewAccountGrants(connectionRepo)
 	txVisible := transactionrepo.NewVisibleAccounts(accountSvc)
 	txUserLookup := NewTransactionUserLookup(userRepo)
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, categoryRepo, tagRepo, payeeRepo)
+	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
 	txImportLookup := transactionrepo.NewImportLookup(
-		accountSvc, accountAccessResolver, accountRepo, folderRepo, categorySvc, payeeSvc, tagSvc,
-		categoryRepo, tagRepo, payeeRepo, currencyLookup, transactionRepo, cfg.CurrencyBase,
+		txImportAccounts, accountAccessResolver, categorySvc, payeeSvc, tagSvc,
+		categoryRepo, tagRepo, payeeRepo, transactionRepo,
 	)
 	transactionSvc := apptransaction.NewService(
 		transactionRepo, txAccountResolver, txAccountGrants, txVisible, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
@@ -154,7 +155,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	budgetSvc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		NewBudgetUserLookup(userRepo, clk),
-		budgetrepo.NewAccountLookup(accountRepo),
+		NewBudgetAccountLookup(accountRepo),
 		currencyLookup,
 		budgetrepo.NewMetadataLookup(categoryRepo, tagRepo, payeeRepo),
 		txm, clk,

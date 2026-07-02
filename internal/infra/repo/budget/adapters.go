@@ -1,83 +1,24 @@
-// Adapters wiring the budget service's cross-module ports (AccountLookup,
-// MetadataLookup) to the existing account / category / tag / payee
-// repositories. They live here (infra) so app/budget depends only on its own
-// small interfaces. The UserLookup counterpart lives in internal/server (it
-// needs the user feature's User/Header types, which an infra package must
-// not import).
+// Adapters wiring the budget service's MetadataLookup cross-module port to the
+// existing category / tag / payee repositories. Lives here (infra) so
+// app/budget depends only on its own small interfaces. The UserLookup and
+// AccountLookup counterparts live in internal/server: they need the user and
+// account features' types, which an infra package must not import.
 //
-// The multi-owner reads (categories/tags/accounts for the budget participants)
-// loop the existing single-owner repo queries: a budget's participant set is
-// tiny (owner + a few accepted users), so N small queries are fine and avoid a
-// new dynamic-IN query surface.
+// The multi-owner reads (categories/tags for the budget participants) loop the
+// existing single-owner repo queries: a budget's participant set is tiny
+// (owner + a few accepted users), so N small queries are fine and avoid a new
+// dynamic-IN query surface.
 package budgetrepo
 
 import (
 	"context"
 
 	appbudget "github.com/econumo/econumo/internal/app/budget"
-	domaccount "github.com/econumo/econumo/internal/domain/account"
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-type accountRepo interface {
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*domaccount.Account, error)
-	GetByID(ctx context.Context, id vo.Id) (*domaccount.Account, error)
-}
-
-// AccountLookup adapts the account repository to app/budget.AccountLookup.
-type AccountLookup struct {
-	accounts accountRepo
-}
-
-var _ appbudget.AccountLookup = (*AccountLookup)(nil)
-
-// NewAccountLookup wraps an account repository.
-func NewAccountLookup(accounts accountRepo) *AccountLookup { return &AccountLookup{accounts: accounts} }
-
-// AccountsForOwners returns the accounts OWNED by the given users. Budget
-// membership is owner-only (a.user IN :users), NOT the own+shared "available"
-// set. ListAvailable returns own + shared accounts, so we filter to accounts
-// actually owned by one of the participants — otherwise shared accounts inflate
-// the budget's start balance.
-func (l *AccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.AccountView, error) {
-	owners := make(map[string]bool, len(userIDs))
-	for _, uid := range userIDs {
-		owners[uid.String()] = true
-	}
-	var out []appbudget.AccountView
-	seen := map[string]bool{}
-	for _, uid := range userIDs {
-		accts, err := l.accounts.ListAvailable(ctx, uid)
-		if err != nil {
-			return nil, err
-		}
-		for _, a := range accts {
-			if !owners[a.UserId().String()] {
-				continue // shared with a participant but not owned by one
-			}
-			if seen[a.Id().String()] {
-				continue
-			}
-			seen[a.Id().String()] = true
-			out = append(out, appbudget.AccountView{
-				ID: a.Id().String(), CurrencyID: a.CurrencyId().String(), OwnerID: a.UserId().String(),
-			})
-		}
-	}
-	return out, nil
-}
-
-// AccountOwner returns an account's owner id.
-func (l *AccountLookup) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
-	a, err := l.accounts.GetByID(ctx, accountID)
-	if err != nil {
-		return vo.Id{}, err
-	}
-	return a.UserId(), nil
-}
 
 type categoryRepo interface {
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*domcategory.Category, error)

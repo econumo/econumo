@@ -61,6 +61,38 @@ definitions:
       type:
         type: string
     type: object
+  account.CreateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  account.CreateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/account.AccountResult'
+      transaction:
+        $ref: '#/definitions/account.CorrectionResult'
+    type: object
+  account.CreateFolderRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  account.CreateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/account.FolderResult'
+    type: object
   account.CurrencyResult:
     properties:
       code:
@@ -73,6 +105,13 @@ definitions:
         type: string
       symbol:
         type: string
+    type: object
+  account.DeleteAccountRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  account.DeleteAccountResult:
     type: object
   account.FolderPositionChange:
     properties:
@@ -92,6 +131,55 @@ definitions:
       position:
         type: integer
     type: object
+  account.GetAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.AccountResult'
+        type: array
+    type: object
+  account.GetFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.FolderResult'
+        type: array
+    type: object
+  account.HideFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  account.HideFolderResult:
+    type: object
+  account.OrderAccountListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/account.AccountPositionChange'
+        type: array
+    type: object
+  account.OrderAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.AccountResult'
+        type: array
+    type: object
+  account.OrderFolderListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/account.FolderPositionChange'
+        type: array
+    type: object
+  account.OrderFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/account.FolderResult'
+        type: array
+    type: object
   account.OwnerResult:
     properties:
       avatar:
@@ -101,12 +189,62 @@ definitions:
       name:
         type: string
     type: object
+  account.ReplaceFolderRequest:
+    properties:
+      id:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  account.ReplaceFolderResult:
+    type: object
   account.SharedAccess:
     properties:
       role:
         type: string
       user:
         $ref: '#/definitions/account.OwnerResult'
+    type: object
+  account.ShowFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  account.ShowFolderResult:
+    type: object
+  account.UpdateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  account.UpdateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/account.AccountResult'
+      transaction:
+        $ref: '#/definitions/account.CorrectionResult'
+    type: object
+  account.UpdateFolderRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  account.UpdateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/account.FolderResult'
     type: object
   apidoc.JsonResponseError:
     properties:
@@ -493,169 +631,6 @@ definitions:
         items:
           $ref: '#/definitions/currency.CurrencyRateResult'
         type: array
-    type: object
-  github_com_econumo_econumo_internal_app_account.AccountResult:
-    properties:
-      balance:
-        type: string
-      currency:
-        $ref: '#/definitions/account.CurrencyResult'
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      owner:
-        $ref: '#/definitions/account.OwnerResult'
-      position:
-        type: integer
-      sharedAccess:
-        items:
-          $ref: '#/definitions/account.SharedAccess'
-        type: array
-      type:
-        type: integer
-    type: object
-  github_com_econumo_econumo_internal_app_account.CreateAccountRequest:
-    properties:
-      balance:
-        type: string
-      currencyId:
-        type: string
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.CreateAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.AccountResult'
-      transaction:
-        $ref: '#/definitions/account.CorrectionResult'
-    type: object
-  github_com_econumo_econumo_internal_app_account.CreateFolderRequest:
-    properties:
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.CreateFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.FolderResult'
-    type: object
-  github_com_econumo_econumo_internal_app_account.DeleteAccountRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.DeleteAccountResult:
-    type: object
-  github_com_econumo_econumo_internal_app_account.GetAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.AccountResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_account.GetFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.FolderResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_account.HideFolderRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.HideFolderResult:
-    type: object
-  github_com_econumo_econumo_internal_app_account.OrderAccountListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/account.AccountPositionChange'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_account.OrderAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.AccountResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_account.OrderFolderListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/account.FolderPositionChange'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_account.OrderFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.FolderResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest:
-    properties:
-      id:
-        type: string
-      replaceId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.ReplaceFolderResult:
-    type: object
-  github_com_econumo_econumo_internal_app_account.ShowFolderRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.ShowFolderResult:
-    type: object
-  github_com_econumo_econumo_internal_app_account.UpdateAccountRequest:
-    properties:
-      balance:
-        type: string
-      currencyId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.UpdateAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.AccountResult'
-      transaction:
-        $ref: '#/definitions/account.CorrectionResult'
-    type: object
-  github_com_econumo_econumo_internal_app_account.UpdateFolderRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_account.UpdateFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.FolderResult'
     type: object
   github_com_econumo_econumo_internal_app_budget.AcceptAccessRequest:
     properties:
@@ -1235,7 +1210,7 @@ definitions:
     properties:
       accounts:
         items:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult'
+          $ref: '#/definitions/account.AccountResult'
         type: array
       item:
         $ref: '#/definitions/transaction.TransactionResult'
@@ -1249,7 +1224,7 @@ definitions:
     properties:
       accounts:
         items:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult'
+          $ref: '#/definitions/account.AccountResult'
         type: array
       item:
         $ref: '#/definitions/transaction.TransactionResult'
@@ -1303,7 +1278,7 @@ definitions:
     properties:
       accounts:
         items:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult'
+          $ref: '#/definitions/account.AccountResult'
         type: array
       item:
         $ref: '#/definitions/transaction.TransactionResult'
@@ -1548,7 +1523,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountRequest'
+          $ref: '#/definitions/account.CreateAccountRequest'
       produces:
       - application/json
       responses:
@@ -1559,7 +1534,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountResult'
+                  $ref: '#/definitions/account.CreateAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -1590,7 +1565,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderRequest'
+          $ref: '#/definitions/account.CreateFolderRequest'
       produces:
       - application/json
       responses:
@@ -1601,7 +1576,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderResult'
+                  $ref: '#/definitions/account.CreateFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1631,7 +1606,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountRequest'
+          $ref: '#/definitions/account.DeleteAccountRequest'
       produces:
       - application/json
       responses:
@@ -1642,7 +1617,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountResult'
+                  $ref: '#/definitions/account.DeleteAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -1675,7 +1650,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.GetAccountListResult'
+                  $ref: '#/definitions/account.GetAccountListResult'
               type: object
         "401":
           description: Unauthorized
@@ -1703,7 +1678,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.GetFolderListResult'
+                  $ref: '#/definitions/account.GetFolderListResult'
               type: object
         "401":
           description: Unauthorized
@@ -1729,7 +1704,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderRequest'
+          $ref: '#/definitions/account.HideFolderRequest'
       produces:
       - application/json
       responses:
@@ -1740,7 +1715,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderResult'
+                  $ref: '#/definitions/account.HideFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1771,7 +1746,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListRequest'
+          $ref: '#/definitions/account.OrderAccountListRequest'
       produces:
       - application/json
       responses:
@@ -1782,7 +1757,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListResult'
+                  $ref: '#/definitions/account.OrderAccountListResult'
               type: object
         "400":
           description: Bad Request
@@ -1813,7 +1788,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListRequest'
+          $ref: '#/definitions/account.OrderFolderListRequest'
       produces:
       - application/json
       responses:
@@ -1824,7 +1799,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListResult'
+                  $ref: '#/definitions/account.OrderFolderListResult'
               type: object
         "400":
           description: Bad Request
@@ -1855,7 +1830,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest'
+          $ref: '#/definitions/account.ReplaceFolderRequest'
       produces:
       - application/json
       responses:
@@ -1866,7 +1841,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderResult'
+                  $ref: '#/definitions/account.ReplaceFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1896,7 +1871,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderRequest'
+          $ref: '#/definitions/account.ShowFolderRequest'
       produces:
       - application/json
       responses:
@@ -1907,7 +1882,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderResult'
+                  $ref: '#/definitions/account.ShowFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1938,7 +1913,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountRequest'
+          $ref: '#/definitions/account.UpdateAccountRequest'
       produces:
       - application/json
       responses:
@@ -1949,7 +1924,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountResult'
+                  $ref: '#/definitions/account.UpdateAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -1979,7 +1954,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderRequest'
+          $ref: '#/definitions/account.UpdateFolderRequest'
       produces:
       - application/json
       responses:
@@ -1990,7 +1965,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderResult'
+                  $ref: '#/definitions/account.UpdateFolderResult'
               type: object
         "400":
           description: Bad Request

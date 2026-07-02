@@ -13,12 +13,12 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	"github.com/econumo/econumo/internal/config"
 	domcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
-	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
@@ -114,7 +114,7 @@ func newHarnessWithClock(t *testing.T, clk appbudget.Clock) *harness {
 	svc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
-		budgetrepo.NewAccountLookup(accountRepo),
+		server.NewBudgetAccountLookup(accountRepo),
 		currencyLookup,
 		budgetrepo.NewMetadataLookup(categoryRepo, tagRepo, payeeRepo),
 		txm, clk,

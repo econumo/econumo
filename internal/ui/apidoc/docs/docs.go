@@ -40,7 +40,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountRequest"
+                            "$ref": "#/definitions/account.CreateAccountRequest"
                         }
                     }
                 ],
@@ -56,7 +56,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountResult"
+                                            "$ref": "#/definitions/account.CreateAccountResult"
                                         }
                                     }
                                 }
@@ -109,7 +109,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderRequest"
+                            "$ref": "#/definitions/account.CreateFolderRequest"
                         }
                     }
                 ],
@@ -125,7 +125,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderResult"
+                                            "$ref": "#/definitions/account.CreateFolderResult"
                                         }
                                     }
                                 }
@@ -178,7 +178,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountRequest"
+                            "$ref": "#/definitions/account.DeleteAccountRequest"
                         }
                     }
                 ],
@@ -194,7 +194,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountResult"
+                                            "$ref": "#/definitions/account.DeleteAccountResult"
                                         }
                                     }
                                 }
@@ -249,7 +249,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.GetAccountListResult"
+                                            "$ref": "#/definitions/account.GetAccountListResult"
                                         }
                                     }
                                 }
@@ -298,7 +298,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.GetFolderListResult"
+                                            "$ref": "#/definitions/account.GetFolderListResult"
                                         }
                                     }
                                 }
@@ -345,7 +345,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderRequest"
+                            "$ref": "#/definitions/account.HideFolderRequest"
                         }
                     }
                 ],
@@ -361,7 +361,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderResult"
+                                            "$ref": "#/definitions/account.HideFolderResult"
                                         }
                                     }
                                 }
@@ -414,7 +414,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListRequest"
+                            "$ref": "#/definitions/account.OrderAccountListRequest"
                         }
                     }
                 ],
@@ -430,7 +430,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListResult"
+                                            "$ref": "#/definitions/account.OrderAccountListResult"
                                         }
                                     }
                                 }
@@ -483,7 +483,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListRequest"
+                            "$ref": "#/definitions/account.OrderFolderListRequest"
                         }
                     }
                 ],
@@ -499,7 +499,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListResult"
+                                            "$ref": "#/definitions/account.OrderFolderListResult"
                                         }
                                     }
                                 }
@@ -552,7 +552,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest"
+                            "$ref": "#/definitions/account.ReplaceFolderRequest"
                         }
                     }
                 ],
@@ -568,7 +568,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderResult"
+                                            "$ref": "#/definitions/account.ReplaceFolderResult"
                                         }
                                     }
                                 }
@@ -621,7 +621,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderRequest"
+                            "$ref": "#/definitions/account.ShowFolderRequest"
                         }
                     }
                 ],
@@ -637,7 +637,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderResult"
+                                            "$ref": "#/definitions/account.ShowFolderResult"
                                         }
                                     }
                                 }
@@ -690,7 +690,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountRequest"
+                            "$ref": "#/definitions/account.UpdateAccountRequest"
                         }
                     }
                 ],
@@ -706,7 +706,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountResult"
+                                            "$ref": "#/definitions/account.UpdateAccountResult"
                                         }
                                     }
                                 }
@@ -759,7 +759,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderRequest"
+                            "$ref": "#/definitions/account.UpdateFolderRequest"
                         }
                     }
                 ],
@@ -775,7 +775,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderResult"
+                                            "$ref": "#/definitions/account.UpdateFolderResult"
                                         }
                                     }
                                 }
@@ -5237,6 +5237,56 @@ const docTemplate = `{
                 }
             }
         },
+        "account.CreateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.CreateAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.AccountResult"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/account.CorrectionResult"
+                }
+            }
+        },
+        "account.CreateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.CreateFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.FolderResult"
+                }
+            }
+        },
         "account.CurrencyResult": {
             "type": "object",
             "properties": {
@@ -5256,6 +5306,17 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "account.DeleteAccountRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.DeleteAccountResult": {
+            "type": "object"
         },
         "account.FolderPositionChange": {
             "type": "object",
@@ -5285,6 +5346,83 @@ const docTemplate = `{
                 }
             }
         },
+        "account.GetAccountListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.AccountResult"
+                    }
+                }
+            }
+        },
+        "account.GetFolderListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.FolderResult"
+                    }
+                }
+            }
+        },
+        "account.HideFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.HideFolderResult": {
+            "type": "object"
+        },
+        "account.OrderAccountListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.AccountPositionChange"
+                    }
+                }
+            }
+        },
+        "account.OrderAccountListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.AccountResult"
+                    }
+                }
+            }
+        },
+        "account.OrderFolderListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.FolderPositionChange"
+                    }
+                }
+            }
+        },
+        "account.OrderFolderListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.FolderResult"
+                    }
+                }
+            }
+        },
         "account.OwnerResult": {
             "type": "object",
             "properties": {
@@ -5299,6 +5437,20 @@ const docTemplate = `{
                 }
             }
         },
+        "account.ReplaceFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "replaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.ReplaceFolderResult": {
+            "type": "object"
+        },
         "account.SharedAccess": {
             "type": "object",
             "properties": {
@@ -5307,6 +5459,70 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/account.OwnerResult"
+                }
+            }
+        },
+        "account.ShowFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.ShowFolderResult": {
+            "type": "object"
+        },
+        "account.UpdateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.UpdateAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.AccountResult"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/account.CorrectionResult"
+                }
+            }
+        },
+        "account.UpdateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.UpdateFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.FolderResult"
                 }
             }
         },
@@ -5895,260 +6111,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/currency.CurrencyRateResult"
                     }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.AccountResult": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currency": {
-                    "$ref": "#/definitions/account.CurrencyResult"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "owner": {
-                    "$ref": "#/definitions/account.OwnerResult"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "sharedAccess": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.SharedAccess"
-                    }
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateAccountRequest": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.AccountResult"
-                },
-                "transaction": {
-                    "$ref": "#/definitions/account.CorrectionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateFolderRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.FolderResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.DeleteAccountRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.DeleteAccountResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.GetAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.GetFolderListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.HideFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.HideFolderResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderAccountListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountPositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderPositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderFolderListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "replaceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.ReplaceFolderResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.ShowFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.ShowFolderResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateAccountRequest": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.AccountResult"
-                },
-                "transaction": {
-                    "$ref": "#/definitions/account.CorrectionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.FolderResult"
                 }
             }
         },
@@ -7054,7 +7016,7 @@ const docTemplate = `{
                 "accounts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult"
+                        "$ref": "#/definitions/account.AccountResult"
                     }
                 },
                 "item": {
@@ -7076,7 +7038,7 @@ const docTemplate = `{
                 "accounts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult"
+                        "$ref": "#/definitions/account.AccountResult"
                     }
                 },
                 "item": {
@@ -7159,7 +7121,7 @@ const docTemplate = `{
                 "accounts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult"
+                        "$ref": "#/definitions/account.AccountResult"
                     }
                 },
                 "item": {
