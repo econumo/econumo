@@ -1,6 +1,6 @@
-// Package categoryrepo implements domain/category.Repository and the app-layer
+// Package repo implements category.Repository and the app-layer
 // OperationGuard.
-package categoryrepo
+package repo
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	domcategory "github.com/econumo/econumo/internal/domain/category"
+	domcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -130,7 +130,7 @@ func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) err
 	})
 }
 
-// OperationGuard (app/category.OperationGuard): row-based idempotency on
+// OperationGuard (category.OperationGuard): row-based idempotency on
 // operation_requests_ids. Claim reads an existing row first (a duplicate
 // request); if absent it inserts a fresh, not-yet-handled row. The pre-check +
 // insert run inside the caller's tx (or savepoint), so concurrent duplicates

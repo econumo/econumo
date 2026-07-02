@@ -532,6 +532,13 @@ definitions:
       name:
         type: string
     type: object
+  category.ArchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  category.ArchiveCategoryResult:
+    type: object
   category.CategoryResult:
     properties:
       createdAt:
@@ -553,12 +560,80 @@ definitions:
       updatedAt:
         type: string
     type: object
+  category.CreateCategoryRequest:
+    properties:
+      accountId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  category.CreateCategoryResult:
+    properties:
+      item:
+        $ref: '#/definitions/category.CategoryResult'
+    type: object
+  category.DeleteCategoryRequest:
+    properties:
+      id:
+        type: string
+      mode:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  category.DeleteCategoryResult:
+    type: object
+  category.GetCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/category.CategoryResult'
+        type: array
+    type: object
+  category.OrderCategoryListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/category.PositionChange'
+        type: array
+    type: object
+  category.OrderCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/category.CategoryResult'
+        type: array
+    type: object
   category.PositionChange:
     properties:
       id:
         type: string
       position:
         type: integer
+    type: object
+  category.UnarchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  category.UnarchiveCategoryResult:
+    type: object
+  category.UpdateCategoryRequest:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  category.UpdateCategoryResult:
     type: object
   connection.AccountAccessResult:
     properties:
@@ -915,81 +990,6 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/budget.ParentElementResult'
-    type: object
-  github_com_econumo_econumo_internal_app_category.ArchiveCategoryRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult:
-    type: object
-  github_com_econumo_econumo_internal_app_category.CreateCategoryRequest:
-    properties:
-      accountId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      type:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_category.CreateCategoryResult:
-    properties:
-      item:
-        $ref: '#/definitions/category.CategoryResult'
-    type: object
-  github_com_econumo_econumo_internal_app_category.DeleteCategoryRequest:
-    properties:
-      id:
-        type: string
-      mode:
-        type: string
-      replaceId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_category.DeleteCategoryResult:
-    type: object
-  github_com_econumo_econumo_internal_app_category.GetCategoryListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/category.CategoryResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_category.OrderCategoryListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/category.PositionChange'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_category.OrderCategoryListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/category.CategoryResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_category.UnarchiveCategoryRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult:
-    type: object
-  github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest:
-    properties:
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_category.UpdateCategoryResult:
     type: object
   github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest:
     properties:
@@ -2661,7 +2661,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.ArchiveCategoryRequest'
+          $ref: '#/definitions/category.ArchiveCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2672,7 +2672,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult'
+                  $ref: '#/definitions/category.ArchiveCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2703,7 +2703,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.CreateCategoryRequest'
+          $ref: '#/definitions/category.CreateCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2714,7 +2714,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.CreateCategoryResult'
+                  $ref: '#/definitions/category.CreateCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2745,7 +2745,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.DeleteCategoryRequest'
+          $ref: '#/definitions/category.DeleteCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2756,7 +2756,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.DeleteCategoryResult'
+                  $ref: '#/definitions/category.DeleteCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2789,7 +2789,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.GetCategoryListResult'
+                  $ref: '#/definitions/category.GetCategoryListResult'
               type: object
         "401":
           description: Unauthorized
@@ -2816,7 +2816,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.OrderCategoryListRequest'
+          $ref: '#/definitions/category.OrderCategoryListRequest'
       produces:
       - application/json
       responses:
@@ -2827,7 +2827,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.OrderCategoryListResult'
+                  $ref: '#/definitions/category.OrderCategoryListResult'
               type: object
         "400":
           description: Bad Request
@@ -2857,7 +2857,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UnarchiveCategoryRequest'
+          $ref: '#/definitions/category.UnarchiveCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2868,7 +2868,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult'
+                  $ref: '#/definitions/category.UnarchiveCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2898,7 +2898,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest'
+          $ref: '#/definitions/category.UpdateCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2909,7 +2909,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_category.UpdateCategoryResult'
+                  $ref: '#/definitions/category.UpdateCategoryResult'
               type: object
         "400":
           description: Bad Request

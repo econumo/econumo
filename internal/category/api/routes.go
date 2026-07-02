@@ -1,4 +1,4 @@
-package category
+package api
 
 import (
 	"net/http"

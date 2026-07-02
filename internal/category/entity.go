@@ -1,5 +1,11 @@
-// Package category is the category aggregate's domain layer: the Category
-// entity, the Type value object, and the repository interface.
+// Package category is the category feature: the Category entity, the Type
+// value object, and the repository interface (domain), plus the request/result
+// DTOs (with their tier-1 Validate() methods), the write-side Service (which
+// owns the tx boundary and builds the response-shaped *Result directly), and
+// the read-side ReadService for the pure get-category-list read.
+//
+// JSON field names are frozen to the existing API wire contract; see
+// CLAUDE.md.
 package category
 
 import (

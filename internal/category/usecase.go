@@ -7,8 +7,6 @@ import (
 	"context"
 	"time"
 
-	domcategory "github.com/econumo/econumo/internal/domain/category"
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -39,19 +37,20 @@ type OperationGuard interface {
 	MarkHandled(ctx context.Context, id vo.Id, now time.Time) error
 }
 
-// AccountAccess resolves shared-account ownership/role for the
-// create-for-account path: which user owns an account, and what role a connected
-// user holds on it. Backed by the connection module's AccountAccess repo. A
-// missing grant is reported as ok=false (nil error).
+// AccountAccess resolves shared-account ownership/admin-grant for the
+// create-for-account path: which user owns an account, and whether a connected
+// user holds an admin grant on it. Backed by the connection module's
+// AccountAccess repo (the connection/domconnection.Role comparison lives on
+// that side, so this port stays free of connection's types).
 type AccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	GrantRole(ctx context.Context, accountID, userID vo.Id) (role domconnection.Role, ok bool, err error)
+	HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
 // Service is the category write-side use-case orchestrator. It owns the tx
 // boundary and builds the response-shaped *Result structs directly.
 type Service struct {
-	repo   domcategory.Repository
+	repo   Repository
 	tx     TxRunner
 	ops    OperationGuard
 	clock  Clock
@@ -63,7 +62,7 @@ type Service struct {
 // (the same ReadModel get-category-list uses); order-category-list returns that
 // full available list (own + shared, NOT owner-only). access resolves
 // shared-account ownership for create-category-for-account.
-func NewService(repo domcategory.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
+func NewService(repo Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
 	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
 }
 
@@ -78,11 +77,11 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 	if owner.Equal(userID) {
 		return owner, nil
 	}
-	role, ok, err := s.access.GrantRole(ctx, accountID, userID)
+	isAdmin, err := s.access.HasAdminGrant(ctx, accountID, userID)
 	if err != nil {
 		return vo.Id{}, err
 	}
-	if ok && role == domconnection.RoleAdmin {
+	if isAdmin {
 		return owner, nil
 	}
 	return vo.Id{}, errs.NewAccessDenied("Access is not allowed")
@@ -92,8 +91,8 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 // and saves. It returns the mutated (in-memory) aggregate so the caller can
 // build its result without a second read. Ownership failure -> AccessDenied
 // (403).
-func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *domcategory.Category, now time.Time)) (*domcategory.Category, error) {
-	var loaded *domcategory.Category
+func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *Category, now time.Time)) (*Category, error) {
+	var loaded *Category
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		c, err := s.repo.GetByID(ctx, id)
 		if err != nil {
@@ -120,7 +119,7 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *domca
 // toResult is the single entity->DTO conversion in the module. It formats the
 // timestamps in the "2006-01-02 15:04:05" wire form and maps the bool/type to
 // the wire shapes (isArchived int 0/1, type alias string). See CLAUDE.md.
-func toResult(c *domcategory.Category) CategoryResult {
+func toResult(c *Category) CategoryResult {
 	archived := 0
 	if c.IsArchived() {
 		archived = 1
@@ -177,8 +176,8 @@ func newIcon(v string) (string, error) {
 
 // newCategoryType parses a type alias via the domain parser, accepting only
 // "expense"/"income". The field key is "type".
-func newCategoryType(alias string) (domcategory.Type, error) {
-	typ, ok := domcategory.TypeFromAlias(alias)
+func newCategoryType(alias string) (Type, error) {
+	typ, ok := TypeFromAlias(alias)
 	if !ok {
 		return 0, errs.NewValidation("CategoryType not exists",
 			errs.FieldError{Key: "type", Message: "CategoryType not exists"})

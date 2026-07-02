@@ -1,10 +1,5 @@
-// Package category is the category aggregate's application layer: the
-// request/result DTOs (with their tier-1 Validate() methods), the write-side
-// Service (which owns the tx boundary and builds the response-shaped *Result
-// directly), and the read-side ReadService for the pure get-category-list read.
-//
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md.
+// Request/result DTOs for the category API, with their tier-1 Validate()
+// methods.
 package category
 
 import (

@@ -1,4 +1,4 @@
-package categoryrepo_test
+package repo_test
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	domcategory "github.com/econumo/econumo/internal/domain/category"
-	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
+	domcategory "github.com/econumo/econumo/internal/category"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"

@@ -1,8 +1,10 @@
 // TransactionImportAccounts adapts the account service/repos to the
 // transaction import adapter's account port (internal/infra/repo/transaction's
-// importAccountPort). It lives here, not in internal/infra/repo/transaction,
-// because it needs the account feature's types and an infra package must not
-// import a feature (see archtest).
+// importAccountPort), and TransactionImportCategories adapts the category
+// service/repo to its category port (importCategoryPort). Both live here, not
+// in internal/infra/repo/transaction, because they need the account/category
+// features' types and an infra package must not import a feature (see
+// archtest).
 package server
 
 import (
@@ -10,6 +12,7 @@ import (
 
 	account "github.com/econumo/econumo/internal/account"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
+	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -117,4 +120,54 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 		return apptransaction.ImportAccount{}, err
 	}
 	return apptransaction.ImportAccount{ID: res.Item.Id, Name: res.Item.Name, OwnerID: userID.String()}, nil
+}
+
+// transactionImportCategoryService is the category-service create surface the
+// importer uses.
+type transactionImportCategoryService interface {
+	CreateCategory(ctx context.Context, userID vo.Id, req category.CreateCategoryRequest) (*category.CreateCategoryResult, error)
+}
+
+// transactionImportCategoryLister is the read surface over the category repo.
+type transactionImportCategoryLister interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+}
+
+// TransactionImportCategories adapts the category service/repo to the
+// transaction import adapter's category port.
+type TransactionImportCategories struct {
+	svc  transactionImportCategoryService
+	list transactionImportCategoryLister
+}
+
+// NewTransactionImportCategories wires the adapter.
+func NewTransactionImportCategories(svc transactionImportCategoryService, list transactionImportCategoryLister) *TransactionImportCategories {
+	return &TransactionImportCategories{svc: svc, list: list}
+}
+
+func (c *TransactionImportCategories) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+	list, err := c.list.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]apptransaction.ImportNamed, len(list))
+	for i, cat := range list {
+		out[i] = apptransaction.ImportNamed{ID: cat.Id().String(), Name: cat.Name(), OwnerID: cat.UserId().String()}
+	}
+	return out, nil
+}
+
+func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (apptransaction.ImportNamed, error) {
+	typ := "expense"
+	if income {
+		typ = "income"
+	}
+	icon := "category"
+	res, err := c.svc.CreateCategory(ctx, ownerID, category.CreateCategoryRequest{
+		Id: vo.NewId().String(), Name: name, Type: typ, Icon: &icon,
+	})
+	if err != nil {
+		return apptransaction.ImportNamed{}, err
+	}
+	return apptransaction.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
 }

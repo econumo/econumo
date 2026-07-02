@@ -1,4 +1,4 @@
-package category_test
+package api_test
 
 import (
 	"bytes"
@@ -13,9 +13,10 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	appcategory "github.com/econumo/econumo/internal/app/category"
+	appcategory "github.com/econumo/econumo/internal/category"
+	handlercategory "github.com/econumo/econumo/internal/category/api"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
-	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
@@ -24,7 +25,6 @@ import (
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	handlercategory "github.com/econumo/econumo/internal/ui/handler/category"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 

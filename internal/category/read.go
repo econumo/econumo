@@ -9,7 +9,6 @@ package category
 import (
 	"context"
 
-	domcategory "github.com/econumo/econumo/internal/domain/category"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -69,7 +68,7 @@ func toViewResult(r CategoryViewRow) CategoryResult {
 	if r.IsArchived {
 		archived = 1
 	}
-	typ := domcategory.Type(r.Type).Alias()
+	typ := Type(r.Type).Alias()
 	return CategoryResult{
 		Id:          r.ID,
 		OwnerUserId: r.UserID,

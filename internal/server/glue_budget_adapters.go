@@ -9,6 +9,7 @@ import (
 
 	account "github.com/econumo/econumo/internal/account"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
+	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -69,4 +70,45 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 		return vo.Id{}, err
 	}
 	return a.UserId(), nil
+}
+
+type budgetCategoryRepo interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+}
+
+// BudgetCategoryMetadataLookup adapts the category repository to the category
+// slice of app/budget.MetadataLookup (wired into budgetrepo.MetadataLookup's
+// categories field). It lives here, not in internal/infra/repo/budget,
+// because it needs the category feature's Category type and an infra package
+// must not import a feature (see archtest).
+type BudgetCategoryMetadataLookup struct {
+	categories budgetCategoryRepo
+}
+
+// NewBudgetCategoryMetadataLookup wraps a category repository.
+func NewBudgetCategoryMetadataLookup(categories budgetCategoryRepo) *BudgetCategoryMetadataLookup {
+	return &BudgetCategoryMetadataLookup{categories: categories}
+}
+
+// CategoriesByOwners returns all categories owned by the given users.
+func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.CategoryMeta, error) {
+	var out []appbudget.CategoryMeta
+	seen := map[string]bool{}
+	for _, uid := range userIDs {
+		cats, err := l.categories.ListByOwner(ctx, uid)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range cats {
+			if seen[c.Id().String()] {
+				continue
+			}
+			seen[c.Id().String()] = true
+			out = append(out, appbudget.CategoryMeta{
+				ID: c.Id().String(), OwnerID: c.UserId().String(), Name: c.Name(), Icon: c.Icon(),
+				IsIncome: c.Type() == category.TypeIncome, IsArchived: c.IsArchived(),
+			})
+		}
+	}
+	return out, nil
 }
