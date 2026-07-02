@@ -3,8 +3,8 @@ package user
 import (
 	"net/http"
 
-	"github.com/econumo/econumo/internal/app/reqctx"
 	appuser "github.com/econumo/econumo/internal/app/user"
+	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
