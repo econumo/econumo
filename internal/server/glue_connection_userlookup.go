@@ -1,13 +1,13 @@
 // ConnectionUserLookup satisfies the connection service's UserLookup port
 // (connected-user embed) by delegating to the user repository. It lives here,
-// not in internal/infra/repo/connection, because it needs the user feature's
+// not in internal/connection/repo, because it needs the user feature's
 // Header type and an infra package must not import a feature (see archtest).
 package server
 
 import (
 	"context"
 
-	appconnection "github.com/econumo/econumo/internal/app/connection"
+	appconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/user"
 )
@@ -17,7 +17,7 @@ type connectionUserByID interface {
 	GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error)
 }
 
-// ConnectionUserLookup adapts the user repository to app/connection.UserLookup.
+// ConnectionUserLookup adapts the user repository to connection.UserLookup.
 type ConnectionUserLookup struct{ users connectionUserByID }
 
 var _ appconnection.UserLookup = (*ConnectionUserLookup)(nil)

@@ -635,6 +635,18 @@ definitions:
     type: object
   category.UpdateCategoryResult:
     type: object
+  connection.AcceptInviteRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  connection.AcceptInviteResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/connection.ConnectionResult'
+        type: array
+    type: object
   connection.AccountAccessResult:
     properties:
       id:
@@ -659,6 +671,51 @@ definitions:
         type: array
       user:
         $ref: '#/definitions/connection.UserResult'
+    type: object
+  connection.DeleteConnectionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  connection.DeleteConnectionResult:
+    type: object
+  connection.DeleteInviteRequest:
+    type: object
+  connection.DeleteInviteResult:
+    type: object
+  connection.GenerateInviteRequest:
+    type: object
+  connection.GenerateInviteResult:
+    properties:
+      item:
+        $ref: '#/definitions/connection.ConnectionInviteResult'
+    type: object
+  connection.GetConnectionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/connection.ConnectionResult'
+        type: array
+    type: object
+  connection.RevokeAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      userId:
+        type: string
+    type: object
+  connection.RevokeAccountAccessResult:
+    type: object
+  connection.SetAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  connection.SetAccountAccessResult:
     type: object
   connection.UserResult:
     properties:
@@ -990,63 +1047,6 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/budget.ParentElementResult'
-    type: object
-  github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest:
-    properties:
-      code:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_connection.AcceptInviteResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/connection.ConnectionResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult:
-    type: object
-  github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest:
-    type: object
-  github_com_econumo_econumo_internal_app_connection.DeleteInviteResult:
-    type: object
-  github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest:
-    type: object
-  github_com_econumo_econumo_internal_app_connection.GenerateInviteResult:
-    properties:
-      item:
-        $ref: '#/definitions/connection.ConnectionInviteResult'
-    type: object
-  github_com_econumo_econumo_internal_app_connection.GetConnectionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/connection.ConnectionResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest:
-    properties:
-      accountId:
-        type: string
-      userId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult:
-    type: object
-  github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest:
-    properties:
-      accountId:
-        type: string
-      role:
-        type: string
-      userId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult:
     type: object
   payee.ArchivePayeeRequest:
     properties:
@@ -2993,7 +2993,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest'
+          $ref: '#/definitions/connection.AcceptInviteRequest'
       produces:
       - application/json
       responses:
@@ -3004,7 +3004,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteResult'
+                  $ref: '#/definitions/connection.AcceptInviteResult'
               type: object
         "400":
           description: Bad Request
@@ -3034,7 +3034,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest'
+          $ref: '#/definitions/connection.DeleteConnectionRequest'
       produces:
       - application/json
       responses:
@@ -3045,7 +3045,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult'
+                  $ref: '#/definitions/connection.DeleteConnectionResult'
               type: object
         "400":
           description: Bad Request
@@ -3074,7 +3074,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest'
+          $ref: '#/definitions/connection.DeleteInviteRequest'
       produces:
       - application/json
       responses:
@@ -3085,7 +3085,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteResult'
+                  $ref: '#/definitions/connection.DeleteInviteResult'
               type: object
         "401":
           description: Unauthorized
@@ -3110,7 +3110,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest'
+          $ref: '#/definitions/connection.GenerateInviteRequest'
       produces:
       - application/json
       responses:
@@ -3121,7 +3121,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteResult'
+                  $ref: '#/definitions/connection.GenerateInviteResult'
               type: object
         "401":
           description: Unauthorized
@@ -3150,7 +3150,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.GetConnectionListResult'
+                  $ref: '#/definitions/connection.GetConnectionListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3176,7 +3176,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest'
+          $ref: '#/definitions/connection.RevokeAccountAccessRequest'
       produces:
       - application/json
       responses:
@@ -3187,7 +3187,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult'
+                  $ref: '#/definitions/connection.RevokeAccountAccessResult'
               type: object
         "400":
           description: Bad Request
@@ -3218,7 +3218,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest'
+          $ref: '#/definitions/connection.SetAccountAccessRequest'
       produces:
       - application/json
       responses:
@@ -3229,7 +3229,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult'
+                  $ref: '#/definitions/connection.SetAccountAccessResult'
               type: object
         "400":
           description: Bad Request

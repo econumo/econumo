@@ -29,7 +29,7 @@ var (
 
 	// inviteCodeRe redacts generate-invite's freshly-minted connection code — a
 	// 5-hex-char string with per-character randomized case
-	// (domain/connection.GenerateConnectionCode), not a UUID, so uuidV7Re alone
+	// (connection.GenerateConnectionCode), not a UUID, so uuidV7Re alone
 	// would leave it in place. Anchored to the "code" JSON field so it can't
 	// eat any other field (e.g. a 3-letter currency "code").
 	inviteCodeRe = regexp.MustCompile(`"code":"[0-9A-Fa-f]{5}"`)

@@ -1,4 +1,4 @@
-package connection_test
+package api_test
 
 import (
 	"bytes"
@@ -13,17 +13,17 @@ import (
 	_ "modernc.org/sqlite"
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	appconnection "github.com/econumo/econumo/internal/app/connection"
 	"github.com/econumo/econumo/internal/config"
+	appconnection "github.com/econumo/econumo/internal/connection"
+	handlerconnection "github.com/econumo/econumo/internal/connection/api"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
 	"github.com/econumo/econumo/internal/ui/router"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
@@ -98,7 +98,7 @@ func newHarness(t *testing.T) *harness {
 		server.NewConnectionFolderPort(folderRepo),
 		connectionrepo.NewOptionPort(accountRepo),
 		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
-		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)),
+		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)),
 		txm, clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

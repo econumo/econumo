@@ -16,11 +16,13 @@ import (
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
-	appconnection "github.com/econumo/econumo/internal/app/connection"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
+	appconnection "github.com/econumo/econumo/internal/connection"
+	handlerconnection "github.com/econumo/econumo/internal/connection/api"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
@@ -28,7 +30,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
@@ -43,7 +44,6 @@ import (
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
-	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
 	"github.com/econumo/econumo/internal/ui/router"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
@@ -118,7 +118,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	connectionOptionPort := connectionrepo.NewOptionPort(accountRepo)
 	connectionUserLookup := NewConnectionUserLookup(userRepo)
 	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionBudgetRevoker := connectionrepo.NewBudgetAccessRevoker(connectionBudgetRepo)
+	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
 	connectionSvc := appconnection.NewService(
 		connectionRepo, connectionInviteRepo, connectionFolderPort, connectionOptionPort,
 		connectionUserLookup, connectionBudgetRevoker, txm, clk,

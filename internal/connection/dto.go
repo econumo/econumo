@@ -1,8 +1,4 @@
-// Package connection is the connection module's application layer. The live
-// endpoints are set-account-access, revoke-account-access (mutations, owner-admin
-// only) and get-connection-list (read); generate-invite, delete-invite,
-// accept-invite and delete-connection are implemented here too (enabled in the
-// cloud edition). This file holds their request/result DTOs with tier-1
+// This file holds the connection module's request/result DTOs with tier-1
 // Validate(). JSON field names are frozen to the wire contract.
 package connection
 

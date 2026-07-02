@@ -1,4 +1,4 @@
-package connection_test
+package api_test
 
 // Cross-tenant permission tests for the connection module: managing account
 // access (grant/revoke) requires owning the account or holding an ADMIN grant on

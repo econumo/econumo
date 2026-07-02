@@ -15,13 +15,13 @@ import (
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	appconnection "github.com/econumo/econumo/internal/app/connection"
 	"github.com/econumo/econumo/internal/config"
+	appconnection "github.com/econumo/econumo/internal/connection"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -92,7 +92,7 @@ func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
 		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
 		server.NewConnectionFolderPort(folderRepo), connectionrepo.NewOptionPort(repo),
 		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
-		connectionrepo.NewBudgetAccessRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
+		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
 	)
 	sharedLookup := server.NewConnectionSharedAccessLookup(connRepo)
 	revoker := server.NewConnectionAccessRevoker(connRepo, connSvc)

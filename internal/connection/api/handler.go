@@ -1,9 +1,9 @@
-package connection
+package api
 
 import (
 	"net/http"
 
-	appconnection "github.com/econumo/econumo/internal/app/connection"
+	appconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
