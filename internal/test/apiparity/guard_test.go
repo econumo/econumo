@@ -41,6 +41,17 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	if len(routes) == 0 {
 		t.Fatal("route scan found nothing — handlerGlobs are stale")
 	}
+	// minRoutes is a floor, not a target: it catches the scan silently finding
+	// fewer routes than it used to, which happens for one of two reasons —
+	// (1) a registration file moved outside handlerGlobs, or (2) a route is no
+	// longer written as a literal "METHOD /path" string (e.g. built from a
+	// constant or concatenation) so routePatternRe stops matching it. Update
+	// handlerGlobs for cause (1); for cause (2), keep routes literal or extend
+	// the regex. Raise minRoutes as routes are added — never lower it.
+	const minRoutes = 84
+	if len(routes) < minRoutes {
+		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
+	}
 	return routes
 }
 
@@ -66,5 +77,27 @@ func TestGuard_EveryRouteHasScenario(t *testing.T) {
 	}
 	if len(missing) > 0 {
 		t.Errorf("routes with no catalogue scenario (add one):\n  %s", strings.Join(missing, "\n  "))
+	}
+}
+
+// TestGuard_NoOrphanedGoldens fails when testdata/golden holds a file whose
+// scenario was renamed or deleted — a stale golden that TestSmoke_Catalogue
+// will never read again, silently rotting instead of being cleaned up.
+func TestGuard_NoOrphanedGoldens(t *testing.T) {
+	_, thisFile, _, _ := runtime.Caller(0)
+	goldenDir := filepath.Join(filepath.Dir(thisFile), "testdata", "golden")
+	files, err := filepath.Glob(filepath.Join(goldenDir, "*.golden"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scenarios := map[string]bool{}
+	for _, sc := range Catalogue() {
+		scenarios[sc.Name] = true
+	}
+	for _, f := range files {
+		name := strings.TrimSuffix(filepath.Base(f), ".golden")
+		if !scenarios[name] {
+			t.Errorf("orphaned golden (scenario renamed or deleted): %s — delete the stale golden or restore the scenario", f)
+		}
 	}
 }

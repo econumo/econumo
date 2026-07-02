@@ -36,15 +36,14 @@ var (
 )
 
 // NormalizeGolden makes a response body stable across runs AND engines: the
-// parity redaction (UUIDv7) plus clock-derived datetimes/dates, JWTs, and the
-// generate-invite response code. Everything else — field names, amounts,
-// names, ordering, envelope shape, validation messages — is compared
-// byte-for-byte against the golden.
+// parity redaction (UUIDv7 and the generate-invite response code, both via
+// NormalizeParity) plus clock-derived datetimes/dates and JWTs. Everything
+// else — field names, amounts, names, ordering, envelope shape, validation
+// messages — is compared byte-for-byte against the golden.
 func NormalizeGolden(b []byte) string {
 	s := NormalizeParity(b)
 	s = jwtRe.ReplaceAllString(s, "<jwt>")
 	s = datetimeRe.ReplaceAllString(s, "<datetime>")
 	s = dateRe.ReplaceAllString(s, "<date>")
-	s = inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
 	return s
 }
