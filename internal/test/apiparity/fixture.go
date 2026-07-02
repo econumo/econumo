@@ -33,6 +33,12 @@ const (
 
 	Budget = "b0000000-0000-0000-0000-000000000001"
 
+	OwnerFolder2  = "f0000000-0000-0000-0000-000000000003"
+	Budget2       = "b0000000-0000-0000-0000-000000000002"
+	BudgetFolder1 = "bf000000-0000-0000-0000-000000000001"
+	Envelope1     = "be000000-0000-0000-0000-000000000001"
+	ElementFood   = "e0000000-0000-0000-0000-000000000001"
+
 	SeedPassword = "secret-pw"
 )
 
@@ -85,4 +91,24 @@ func Seed(t testing.TB, db *dbtest.DB) {
 
 	// A budget owned by the owner.
 	f.Budget(fixture.Budget{ID: Budget, UserID: OwnerID, CurrencyID: USD, Name: "Budget"})
+
+	// Second account folder (replace-folder / order-folder-list targets).
+	f.Folder(fixture.Folder{ID: OwnerFolder2, UserID: OwnerID, Name: "Spare"})
+
+	// Second budget with no invites (grant-access target).
+	f.Budget(fixture.Budget{ID: Budget2, UserID: OwnerID, CurrencyID: USD, Name: "Second"})
+
+	// Budget structure: a folder, an envelope (with a category link), and a
+	// category element row so move/change-currency/envelope scenarios have fixed
+	// ids to reference.
+	f.BudgetFolder(fixture.BudgetFolder{ID: BudgetFolder1, BudgetID: Budget, Name: "Bills"})
+	f.BudgetEnvelope(fixture.BudgetEnvelope{ID: Envelope1, BudgetID: Budget, Name: "Envelope", Icon: "cart"})
+	f.EnvelopeCategory(Envelope1, CatSalary)
+	f.BudgetElement(fixture.BudgetElement{ID: ElementFood, BudgetID: Budget, ExternalID: CatFood, Type: 0, Position: 0})
+
+	// Pending (not accepted) budget invite: guest invited to Budget — the
+	// accept-access and decline-access scenarios each consume it on a fresh DB.
+	// role=1 is budget.RoleUser (internal/domain/budget/valueobject.go: admin=0,
+	// user=1, guest=2).
+	f.BudgetAccess(Budget, GuestID, 1, false)
 }

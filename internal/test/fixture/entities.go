@@ -462,6 +462,63 @@ func (b *Builder) BudgetLimit(l BudgetLimit) string {
 	return id
 }
 
+// BudgetFolder describes a budgets_folders row.
+type BudgetFolder struct {
+	ID       string
+	BudgetID string
+	Name     string // default "Folder"
+	Position int
+}
+
+func (b *Builder) BudgetFolder(f BudgetFolder) string {
+	b.t.Helper()
+	id := b.orNewID(f.ID)
+	if f.Name == "" {
+		f.Name = "Folder"
+	}
+	now := b.now()
+	b.insert(`INSERT INTO budgets_folders (id, budget_id, name, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		id, f.BudgetID, f.Name, f.Position, now, now)
+	return id
+}
+
+// BudgetEnvelope describes a budgets_envelopes row. Name/Icon are nullable;
+// empty -> NULL.
+type BudgetEnvelope struct {
+	ID       string
+	BudgetID string
+	Name     string
+	Icon     string
+	Archived bool
+}
+
+func (b *Builder) BudgetEnvelope(e BudgetEnvelope) string {
+	b.t.Helper()
+	id := b.orNewID(e.ID)
+	now := b.now()
+	b.insert(`INSERT INTO budgets_envelopes (id, budget_id, name, icon, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		id, e.BudgetID, nullable(e.Name), nullable(e.Icon), e.Archived, now, now)
+	return id
+}
+
+// EnvelopeCategory links a category into a budget envelope
+// (budgets_envelopes_categories).
+func (b *Builder) EnvelopeCategory(envelopeID, categoryID string) {
+	b.t.Helper()
+	b.insert(`INSERT INTO budgets_envelopes_categories (budget_envelope_id, category_id) VALUES (?, ?)`,
+		envelopeID, categoryID)
+}
+
+// BudgetAccess grants userID access to budgetID. role is the stored SMALLINT
+// (see internal/domain/budget/valueobject.go: admin=0, user=1, guest=2);
+// accepted=false models a pending invite.
+func (b *Builder) BudgetAccess(budgetID, userID string, role int, accepted bool) {
+	b.t.Helper()
+	now := b.now()
+	b.insert(`INSERT INTO budgets_access (budget_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		budgetID, userID, role, accepted, now, now)
+}
+
 // nullable returns nil for an empty string (-> SQL NULL), else the string.
 func nullable(s string) any {
 	if s == "" {
