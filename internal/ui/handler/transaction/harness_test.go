@@ -22,12 +22,12 @@ import (
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	"github.com/econumo/econumo/internal/config"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
@@ -97,7 +97,7 @@ func newHarness(t *testing.T) *harness {
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
 		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
-		accountrepo.NewCurrencyLookup(curLookup), server.NewAccountUserLookup(userrepo.NewRepo("sqlite", txm)),
+		server.NewAccountCurrencyLookup(curLookup), server.NewAccountUserLookup(userrepo.NewRepo("sqlite", txm)),
 		nil, nil, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	txRepo := transactionrepo.NewRepo("sqlite", txm)

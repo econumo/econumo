@@ -45,11 +45,13 @@ grep -hoE '^(func|type|const|var) [a-z][A-Za-z0-9]*' internal/domain/X/*.go inte
 
 **P1 — Identify glue.** For each non-test file in `internal/infra/repo/X`: if it imports `internal/app/Y`, `internal/domain/Y`, or `internal/Y` for any OTHER feature Y, it is cross-feature glue → destination `internal/server/glue_X_<origname>.go` (package `server`), NOT `internal/X/repo`. Same-feature imports (e.g. `passwordrequest/repo.go` → `domain/user` while moving INTO the user feature) are not glue. Glue symbol collisions against existing `package server` symbols (several features contribute `UserLookup`-style adapters): prefix with the source feature (`accountUserLookup`, `NewAccountUserLookup`), updating the only call sites (server.go wiring).
 
-**P1b — Inbound glue (learned in Task 2).** The move graduates X out of the archtest legacy exemption, so any NOT-yet-moved feature's infra file importing X becomes a "leaf imports feature" violation THIS task. Scan for them:
+**P1b — Inbound glue (learned in Tasks 2–3).** The move graduates X out of the archtest legacy exemption, so anything in a leaf (`infra/**` — not just `infra/repo/` — or `ui/**`) importing X becomes a "leaf imports feature" violation THIS task. Discovery: after P3's import rewrites, run `go test ./internal/test/archtest/ -v` EARLY — its failures enumerate every violating package precisely (Task 3 learned the grep alone misses direct `infra/repo/X` imports and feature-dedicated infra packages living outside `infra/repo/`, e.g. openexchangerates). The grep remains useful as a preview:
 
 ```bash
-grep -rln 'econumo/internal/\(app\|domain\)/X"' internal/infra/repo/ --include='*.go' | grep -v "repo/X/"
+grep -rln 'econumo/internal/\(app/\|domain/\|infra/repo/\)\?X"' internal/infra internal/ui --include='*.go' | grep -v "repo/X/\|handler/X/"
 ```
+
+A feature-DEDICATED infra package (serving only X) folds into `internal/X/repo` (Task 3: openexchangerates — spec amended to match); a cross-feature adapter extracts to server glue; a redundant compile-time assertion gets deleted per the rule below.
 
 For each hit, on its merits: (a) if it's a small self-contained adapter for X's types → extract to `internal/server/glue_<srcfeature>_<name>.go` now (feature-prefix symbols; move its tests along); (b) if the import is ONLY a compile-time `var _ Iface = (*T)(nil)` assertion whose conformance is already enforced by an assignment at the server.go wiring site → delete the assertion with a comment (verify the wiring assignment exists first). Task 2 already extracted the four `UserLookup` adapters and cleaned currency/userbudget assertions — later tasks will find progressively less inbound glue.
 

@@ -6,12 +6,12 @@
 //
 // Reads run through TxManager.Querier(ctx); these endpoints are not wrapped in a
 // WithTx, so they run on the pooled connection.
-package currencyrepo
+package repo
 
 import (
 	"context"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"

@@ -1,9 +1,9 @@
-package currency
+package api
 
 import (
 	"net/http"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )

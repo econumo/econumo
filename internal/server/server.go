@@ -16,12 +16,13 @@ import (
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	appcategory "github.com/econumo/econumo/internal/app/category"
 	appconnection "github.com/econumo/econumo/internal/app/connection"
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
 	apppayee "github.com/econumo/econumo/internal/app/payee"
 	apptag "github.com/econumo/econumo/internal/app/tag"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	"github.com/econumo/econumo/internal/config"
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
+	handlercurrency "github.com/econumo/econumo/internal/currency/api"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -29,7 +30,6 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
 	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
@@ -41,7 +41,6 @@ import (
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
 	handlercategory "github.com/econumo/econumo/internal/ui/handler/category"
 	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
-	handlercurrency "github.com/econumo/econumo/internal/ui/handler/currency"
 	handlerpayee "github.com/econumo/econumo/internal/ui/handler/payee"
 	handlertag "github.com/econumo/econumo/internal/ui/handler/tag"
 	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
@@ -111,7 +110,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	// and delete-account revokes the caller's own access.
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
-	accountCurrencyLookup := accountrepo.NewCurrencyLookup(currencyLookup)
+	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
 	accountUserLookup := NewAccountUserLookup(userRepo)
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
@@ -151,7 +150,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
-	convertor := domcurrency.NewConvertor(rateProvider)
+	convertor := appcurrency.NewConvertor(rateProvider)
 	budgetSvc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		NewBudgetUserLookup(userRepo, clk),

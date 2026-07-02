@@ -2923,7 +2923,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult"
+                                            "$ref": "#/definitions/currency.GetCurrencyListResult"
                                         }
                                     }
                                 }
@@ -2972,7 +2972,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult"
+                                            "$ref": "#/definitions/currency.GetCurrencyRateListResult"
                                         }
                                     }
                                 }
@@ -5876,6 +5876,28 @@ const docTemplate = `{
                 }
             }
         },
+        "currency.GetCurrencyListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/currency.CurrencyResult"
+                    }
+                }
+            }
+        },
+        "currency.GetCurrencyRateListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/currency.CurrencyRateResult"
+                    }
+                }
+            }
+        },
         "github_com_econumo_econumo_internal_app_account.AccountResult": {
             "type": "object",
             "properties": {
@@ -6778,28 +6800,6 @@ const docTemplate = `{
         },
         "github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult": {
             "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/currency.CurrencyResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/currency.CurrencyRateResult"
-                    }
-                }
-            }
         },
         "github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest": {
             "type": "object",

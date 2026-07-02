@@ -1,10 +1,10 @@
-// Package currency wires the currency module's HTTP edge.
-package currency
+// Package api wires the currency module's HTTP edge.
+package api
 
 import (
 	"net/http"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
+	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"

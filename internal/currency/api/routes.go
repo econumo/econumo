@@ -1,4 +1,4 @@
-package currency
+package api
 
 import (
 	"net/http"

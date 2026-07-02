@@ -1,9 +1,9 @@
-// Package currencyrepo provides the minimal currency lookup the user module
-// needs to resolve the synthetic currency_id option. It is intentionally tiny:
-// the full currency module (rates, CRUD) is a later phase. When that module
-// lands, this lookup can be folded into it or kept as the read-only port the
-// user service depends on.
-package currencyrepo
+// Package repo is the currency module's persistence layer: the minimal
+// read-only Lookup the user module needs to resolve the synthetic
+// currency_id option, the CQRS read side (read.go), the CLI write side
+// (write.go), the Convertor rate provider (convertor_provider.go), and the
+// Open Exchange Rates client (openexchangerates.go).
+package repo
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
+	domcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
