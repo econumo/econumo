@@ -1,4 +1,4 @@
-package payee_test
+package api_test
 
 import (
 	"bytes"
@@ -13,19 +13,19 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	apppayee "github.com/econumo/econumo/internal/app/payee"
 	"github.com/econumo/econumo/internal/config"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	apppayee "github.com/econumo/econumo/internal/payee"
+	handlerpayee "github.com/econumo/econumo/internal/payee/api"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	handlerpayee "github.com/econumo/econumo/internal/ui/handler/payee"
 	"github.com/econumo/econumo/internal/ui/router"
 )
 

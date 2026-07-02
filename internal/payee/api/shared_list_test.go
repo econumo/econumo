@@ -1,4 +1,4 @@
-package payee_test
+package api_test
 
 import (
 	"net/http"

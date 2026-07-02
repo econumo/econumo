@@ -1,24 +1,18 @@
 // Adapters wiring the budget service's MetadataLookup cross-module port to the
-// existing category / tag / payee repositories. Lives here (infra) so
-// app/budget depends only on its own small interfaces. The UserLookup,
-// AccountLookup, and category/tag-metadata counterparts live in
-// internal/server: they need the account/category/tag features' types, which
-// an infra package must not import — CategoriesByOwners/TagsByOwners delegate
-// to categoryMetadataLookup/tagMetadataLookup, ports expressed purely in
-// appbudget.CategoryMeta/TagMeta, so this file itself never imports
-// category or tag.
-//
-// The multi-owner reads (payees for the budget participants) loop the
-// existing single-owner repo queries: a budget's participant set is tiny
-// (owner + a few accepted users), so N small queries are fine and avoid a new
-// dynamic-IN query surface.
+// category / tag / payee metadata lookups. Lives here (infra) so app/budget
+// depends only on its own small interfaces. The UserLookup, AccountLookup, and
+// category/tag/payee-metadata counterparts live in internal/server: they need
+// the account/category/tag/payee features' types, which an infra package must
+// not import — CategoriesByOwners/TagsByOwners/PayeesByOwners delegate to
+// categoryMetadataLookup/tagMetadataLookup/payeeMetadataLookup, ports
+// expressed purely in appbudget.CategoryMeta/TagMeta/PayeeMeta, so this file
+// itself never imports category, tag, or payee.
 package budgetrepo
 
 import (
 	"context"
 
 	appbudget "github.com/econumo/econumo/internal/app/budget"
-	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -28,45 +22,31 @@ type categoryMetadataLookup interface {
 type tagMetadataLookup interface {
 	TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.TagMeta, error)
 }
-type payeeRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*dompayee.Payee, error)
+type payeeMetadataLookup interface {
+	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.PayeeMeta, error)
 }
 
-// MetadataLookup adapts the category + tag + payee repositories to
+// MetadataLookup adapts the category + tag + payee metadata lookups to
 // app/budget.MetadataLookup.
 type MetadataLookup struct {
 	categories categoryMetadataLookup
 	tags       tagMetadataLookup
-	payees     payeeRepo
+	payees     payeeMetadataLookup
 }
 
 var _ appbudget.MetadataLookup = (*MetadataLookup)(nil)
 
-// NewMetadataLookup wraps the category + tag metadata lookups + the payee
-// repository. categories is typically server.BudgetCategoryMetadataLookup and
-// tags is typically server.BudgetTagMetadataLookup.
-func NewMetadataLookup(categories categoryMetadataLookup, tags tagMetadataLookup, payees payeeRepo) *MetadataLookup {
+// NewMetadataLookup wraps the category + tag + payee metadata lookups.
+// categories is typically server.BudgetCategoryMetadataLookup, tags is
+// typically server.BudgetTagMetadataLookup, and payees is typically
+// server.BudgetPayeeMetadataLookup.
+func NewMetadataLookup(categories categoryMetadataLookup, tags tagMetadataLookup, payees payeeMetadataLookup) *MetadataLookup {
 	return &MetadataLookup{categories: categories, tags: tags, payees: payees}
 }
 
 // PayeesByOwners returns all payees owned by the given users.
 func (l *MetadataLookup) PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.PayeeMeta, error) {
-	var out []appbudget.PayeeMeta
-	seen := map[string]bool{}
-	for _, uid := range userIDs {
-		payees, err := l.payees.ListByOwner(ctx, uid)
-		if err != nil {
-			return nil, err
-		}
-		for _, p := range payees {
-			if seen[p.Id().String()] {
-				continue
-			}
-			seen[p.Id().String()] = true
-			out = append(out, appbudget.PayeeMeta{ID: p.Id().String(), Name: p.Name()})
-		}
-	}
-	return out, nil
+	return l.payees.PayeesByOwners(ctx, userIDs)
 }
 
 // CategoriesByOwners returns all categories owned by the given users.

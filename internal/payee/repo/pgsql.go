@@ -1,4 +1,4 @@
-package payeerepo
+package repo
 
 import (
 	"context"

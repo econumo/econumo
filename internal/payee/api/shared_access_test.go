@@ -1,4 +1,4 @@
-package payee_test
+package api_test
 
 // Coverage for creating a payee in the context of an account SHARED with the
 // caller. The create-payee request carries an accountId — the transaction modal

@@ -1,4 +1,4 @@
-package payee
+package api
 
 import (
 	"net/http"

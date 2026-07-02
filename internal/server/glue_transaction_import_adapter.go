@@ -1,12 +1,13 @@
 // TransactionImportAccounts adapts the account service/repos to the
 // transaction import adapter's account port (internal/infra/repo/transaction's
 // importAccountPort), TransactionImportCategories adapts the category
-// service/repo to its category port (importCategoryPort), and
+// service/repo to its category port (importCategoryPort),
 // TransactionImportTags adapts the tag service/repo to its tag port
-// (importTagPort). All three live here, not in
+// (importTagPort), and TransactionImportPayees adapts the payee service/repo
+// to its payee port (importPayeePort). All four live here, not in
 // internal/infra/repo/transaction, because they need the
-// account/category/tag features' types and an infra package must not import
-// a feature (see archtest).
+// account/category/tag/payee features' types and an infra package must not
+// import a feature (see archtest).
 package server
 
 import (
@@ -15,6 +16,7 @@ import (
 	account "github.com/econumo/econumo/internal/account"
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	category "github.com/econumo/econumo/internal/category"
+	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
 )
@@ -212,6 +214,51 @@ func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) 
 
 func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
 	res, err := t.svc.CreateTag(ctx, ownerID, tag.CreateTagRequest{
+		Id: vo.NewId().String(), Name: name,
+	})
+	if err != nil {
+		return apptransaction.ImportNamed{}, err
+	}
+	return apptransaction.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+}
+
+// transactionImportPayeeService is the payee-service create surface the
+// importer uses.
+type transactionImportPayeeService interface {
+	CreatePayee(ctx context.Context, userID vo.Id, req payee.CreatePayeeRequest) (*payee.CreatePayeeResult, error)
+}
+
+// transactionImportPayeeLister is the read surface over the payee repo.
+type transactionImportPayeeLister interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+}
+
+// TransactionImportPayees adapts the payee service/repo to the transaction
+// import adapter's payee port.
+type TransactionImportPayees struct {
+	svc  transactionImportPayeeService
+	list transactionImportPayeeLister
+}
+
+// NewTransactionImportPayees wires the adapter.
+func NewTransactionImportPayees(svc transactionImportPayeeService, list transactionImportPayeeLister) *TransactionImportPayees {
+	return &TransactionImportPayees{svc: svc, list: list}
+}
+
+func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+	list, err := p.list.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]apptransaction.ImportNamed, len(list))
+	for i, py := range list {
+		out[i] = apptransaction.ImportNamed{ID: py.Id().String(), Name: py.Name(), OwnerID: py.UserId().String()}
+	}
+	return out, nil
+}
+
+func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
+	res, err := p.svc.CreatePayee(ctx, ownerID, payee.CreatePayeeRequest{
 		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {

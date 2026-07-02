@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -36,16 +34,16 @@ type OperationGuard interface {
 	MarkHandled(ctx context.Context, id vo.Id, now time.Time) error
 }
 
-// AccountAccess resolves shared-account ownership/role for the
-// create-for-account path. A missing grant is reported as ok=false (nil error).
+// AccountAccess resolves shared-account ownership/admin-grant for the
+// create-for-account path. A missing grant is reported as false (nil error).
 type AccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	GrantRole(ctx context.Context, accountID, userID vo.Id) (role domconnection.Role, ok bool, err error)
+	HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
 // Service is the payee write-side use-case orchestrator; it owns the tx boundary.
 type Service struct {
-	repo   dompayee.Repository
+	repo   Repository
 	tx     TxRunner
 	ops    OperationGuard
 	clock  Clock
@@ -57,7 +55,7 @@ type Service struct {
 // same ReadModel get-payee-list uses); order-payee-list returns that full
 // available list. access resolves shared-account ownership for
 // create-payee-for-account.
-func NewService(repo dompayee.Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
+func NewService(repo Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
 	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
 }
 
@@ -72,11 +70,11 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 	if owner.Equal(userID) {
 		return owner, nil
 	}
-	role, ok, err := s.access.GrantRole(ctx, accountID, userID)
+	ok, err := s.access.HasAdminGrant(ctx, accountID, userID)
 	if err != nil {
 		return vo.Id{}, err
 	}
-	if ok && role == domconnection.RoleAdmin {
+	if ok {
 		return owner, nil
 	}
 	return vo.Id{}, errs.NewAccessDenied("Access is not allowed")
@@ -85,8 +83,8 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 // mutate loads the payee, checks ownership, applies fn inside a transaction, and
 // saves. It returns the mutated (in-memory) aggregate so the caller can build
 // its result without a second read. Ownership failure -> AccessDenied (403).
-func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *dompayee.Payee, now time.Time)) (*dompayee.Payee, error) {
-	var loaded *dompayee.Payee
+func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *Payee, now time.Time)) (*Payee, error) {
+	var loaded *Payee
 	err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		p, err := s.repo.GetByID(txCtx, id)
 		if err != nil {
@@ -117,8 +115,8 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *dompa
 // connection rather than reaching for the pool — critical under a single-
 // connection pool, where a pool read while the tx holds the only connection
 // would deadlock.
-func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, p *dompayee.Payee, now time.Time) error) (*dompayee.Payee, error) {
-	var loaded *dompayee.Payee
+func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, p *Payee, now time.Time) error) (*Payee, error) {
+	var loaded *Payee
 	err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		p, err := s.repo.GetByID(txCtx, id)
 		if err != nil {
@@ -144,7 +142,7 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 
 // toResult formats the timestamps in the "2006-01-02 15:04:05" wire form and
 // maps the archived bool to the wire shape (isArchived int 0/1). See CLAUDE.md.
-func toResult(p *dompayee.Payee) PayeeResult {
+func toResult(p *Payee) PayeeResult {
 	archived := 0
 	if p.IsArchived() {
 		archived = 1

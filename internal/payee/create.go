@@ -3,7 +3,6 @@ package payee
 import (
 	"context"
 
-	dompayee "github.com/econumo/econumo/internal/domain/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -41,7 +40,7 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 		ownerID = resolved
 	}
 
-	var created *dompayee.Payee
+	var created *Payee
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		already, cerr := s.ops.Claim(txCtx, opID, s.clock.Now())
 		if cerr != nil {
@@ -60,7 +59,7 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 			return cerr
 		}
 		now := s.clock.Now()
-		p := dompayee.NewPayee(id, ownerID, name, now)
+		p := NewPayee(id, ownerID, name, now)
 		p.SetPosition(int16(count))
 		if serr := s.repo.Save(txCtx, p); serr != nil {
 			return serr

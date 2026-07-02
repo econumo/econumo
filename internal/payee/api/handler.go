@@ -1,10 +1,10 @@
-// Package payee wires the payee module's HTTP edge.
-package payee
+// Package api wires the payee module's HTTP edge.
+package api
 
 import (
 	"net/http"
 
-	apppayee "github.com/econumo/econumo/internal/app/payee"
+	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"

@@ -1,4 +1,4 @@
-package payeerepo_test
+package repo_test
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	dompayee "github.com/econumo/econumo/internal/domain/payee"
-	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
+	dompayee "github.com/econumo/econumo/internal/payee"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
