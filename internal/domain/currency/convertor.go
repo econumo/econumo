@@ -17,9 +17,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // FullRate is one currency's average rate for a period: rate units of the

@@ -8,11 +8,11 @@ import (
 	"errors"
 
 	domaccount "github.com/econumo/econumo/internal/domain/account"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Canonical folder types. The membership query selects (folder_id, account_id),

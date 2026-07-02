@@ -10,7 +10,7 @@ import (
 	"context"
 
 	domcategory "github.com/econumo/econumo/internal/domain/category"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // ReadModel is the read-side data source. The infra category ReadRepo implements

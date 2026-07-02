@@ -4,7 +4,7 @@ import (
 	"context"
 
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // GetConnectionList returns the requesting user's connections, each with the

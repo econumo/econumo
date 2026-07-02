@@ -3,9 +3,9 @@ package transaction
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateTransaction creates a transaction for the current user and returns it

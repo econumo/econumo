@@ -14,9 +14,9 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // ReadModel is the read-side data source. The infra user ReadRepo implements it.

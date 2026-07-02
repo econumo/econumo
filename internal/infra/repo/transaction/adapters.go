@@ -13,10 +13,10 @@ import (
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 	domuser "github.com/econumo/econumo/internal/domain/user"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // accountServicePort is the subset of the account service the adapters use.

@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domuser "github.com/econumo/econumo/internal/domain/user"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/pkg/jwt"
 )
 

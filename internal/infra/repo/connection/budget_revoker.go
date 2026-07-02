@@ -5,7 +5,7 @@ import (
 
 	appconnection "github.com/econumo/econumo/internal/app/connection"
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // budgetRepoPort is the slice of the budget repository the revoker needs. The

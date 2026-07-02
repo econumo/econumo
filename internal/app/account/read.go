@@ -8,7 +8,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // GetAccountList returns all the user's available accounts (each with the full

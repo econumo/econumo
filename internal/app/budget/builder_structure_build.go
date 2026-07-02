@@ -7,7 +7,7 @@ import (
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // structElement is the in-progress parent element accumulated during the walk

@@ -5,10 +5,10 @@ import (
 	"time"
 
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Clock supplies the current time. A seam so tests can pin timestamps for

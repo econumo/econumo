@@ -8,7 +8,7 @@ package payee
 import (
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Payee is the payee aggregate root. The name is validated on the way in by the

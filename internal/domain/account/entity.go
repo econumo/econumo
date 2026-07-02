@@ -11,7 +11,7 @@ package account
 import (
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Type is the account type value object. The DB stores it as a SMALLINT and the

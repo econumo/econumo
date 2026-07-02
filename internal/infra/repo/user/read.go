@@ -9,10 +9,10 @@ import (
 	"errors"
 
 	appuser "github.com/econumo/econumo/internal/app/user"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 type readQuerier interface {

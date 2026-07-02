@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // ImportMapping maps logical fields to CSV column names. Empty string = unmapped.

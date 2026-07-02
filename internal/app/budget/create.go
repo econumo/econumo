@@ -6,8 +6,8 @@ import (
 
 	"github.com/econumo/econumo/internal/app/reqctx"
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateBudget creates a budget, seeds its category + tag elements, marks it the

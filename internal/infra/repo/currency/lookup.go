@@ -13,10 +13,10 @@ import (
 
 	appuser "github.com/econumo/econumo/internal/app/user"
 	domcurrency "github.com/econumo/econumo/internal/domain/currency"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // defaultCode is the base/fallback currency (matches the user module's default).

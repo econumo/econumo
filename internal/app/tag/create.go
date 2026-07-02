@@ -3,9 +3,9 @@ package tag
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateTag is idempotent on the request id: inside the tx we Claim the id in

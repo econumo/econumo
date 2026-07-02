@@ -3,7 +3,7 @@ package budget
 import (
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // PositionUnset is BudgetElement::POSITION_UNSET.

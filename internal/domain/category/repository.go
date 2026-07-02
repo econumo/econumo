@@ -3,7 +3,7 @@ package category
 import (
 	"context"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Repository is the category aggregate's persistence port; the application

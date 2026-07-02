@@ -8,8 +8,8 @@ package connection
 import (
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Role is the access level a connected user has on a shared account.

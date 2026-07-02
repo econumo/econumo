@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 

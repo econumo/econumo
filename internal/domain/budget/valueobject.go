@@ -6,7 +6,7 @@
 // types.
 package budget
 
-import "github.com/econumo/econumo/internal/domain/shared/errs"
+import "github.com/econumo/econumo/internal/shared/errs"
 
 // ElementType is a budget element's kind: envelope=0, category=1, tag=2.
 type ElementType int16

@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )

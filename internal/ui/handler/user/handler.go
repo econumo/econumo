@@ -6,8 +6,8 @@ import (
 	"time"
 
 	appuser "github.com/econumo/econumo/internal/app/user"
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/httpx"
 	"github.com/econumo/econumo/internal/ui/middleware"
 )

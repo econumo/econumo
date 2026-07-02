@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // GetTransactionList returns transactions for: a single account (if accountId

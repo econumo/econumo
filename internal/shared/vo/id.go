@@ -4,7 +4,7 @@
 package vo
 
 import (
-	"github.com/econumo/econumo/internal/domain/shared/errs"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/google/uuid"
 )
 

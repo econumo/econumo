@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )

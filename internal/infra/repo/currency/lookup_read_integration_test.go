@@ -10,8 +10,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
 	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )

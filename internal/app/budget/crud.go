@@ -5,8 +5,8 @@ import (
 	"time"
 
 	dombudget "github.com/econumo/econumo/internal/domain/budget"
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UpdateBudget updates a budget's name/currency/excluded-accounts and returns its

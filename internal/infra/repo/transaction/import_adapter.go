@@ -17,9 +17,9 @@ import (
 	domcategory "github.com/econumo/econumo/internal/domain/category"
 	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	dompayee "github.com/econumo/econumo/internal/domain/payee"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
 	domtag "github.com/econumo/econumo/internal/domain/tag"
 	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // importAccountService is the account-service surface the importer uses.

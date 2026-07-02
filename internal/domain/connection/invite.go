@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // connectionCodeLength is the fixed length of a connection invite code.

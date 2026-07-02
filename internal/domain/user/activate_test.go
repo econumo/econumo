@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/vo"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // TestUserActivateDeactivate covers the activate/deactivate mutators: state flips

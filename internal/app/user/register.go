@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/econumo/econumo/internal/domain/shared/errs"
 	domuser "github.com/econumo/econumo/internal/domain/user"
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // Register creates a new user (no token returned; see CLAUDE.md). It is
