@@ -4,7 +4,7 @@ import "testing"
 
 // The catalogue is populated by init() registration; a refactor that drops a
 // scenario file would otherwise fail only as a silently-smaller test run.
-// 20 is the scenario count at extraction time — raise it as scenarios are
+// The floor tracks the registered scenario count — raise it as scenarios are
 // added, never lower it.
 func TestCatalogueSize(t *testing.T) {
 	const min = 32
