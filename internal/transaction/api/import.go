@@ -1,12 +1,12 @@
-package transaction
+package api
 
 import (
 	"encoding/json"
 	"io"
 	"net/http"
 
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	"github.com/econumo/econumo/internal/shared/errs"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 

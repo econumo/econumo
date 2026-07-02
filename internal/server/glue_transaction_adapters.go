@@ -1,10 +1,10 @@
 // TransactionAccountResolver adapts the account service to
-// app/transaction.AccountResolver, TransactionCategoryNameLookup adapts the
+// transaction.AccountResolver, TransactionCategoryNameLookup adapts the
 // category repository to the transaction export adapter's categoryNameLookup
 // port, TransactionTagNameLookup adapts the tag repository to its
 // tagNameLookup port, and TransactionPayeeNameLookup adapts the payee
 // repository to its payeeNameLookup port. All four live here, not in
-// internal/infra/repo/transaction, because they need the
+// internal/transaction/repo, because they need the
 // account/category/tag/payee features' types and an infra package must not
 // import a feature (see archtest).
 package server
@@ -13,11 +13,11 @@ import (
 	"context"
 
 	account "github.com/econumo/econumo/internal/account"
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	category "github.com/econumo/econumo/internal/category"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 // transactionAccountResolverPort is the subset of the account service this
@@ -28,7 +28,7 @@ type transactionAccountResolverPort interface {
 }
 
 // TransactionAccountResolver adapts the account service to
-// app/transaction.AccountResolver.
+// transaction.AccountResolver.
 type TransactionAccountResolver struct {
 	svc transactionAccountResolverPort
 }
@@ -44,8 +44,46 @@ func (a *TransactionAccountResolver) AccountOwner(ctx context.Context, accountID
 	return a.svc.AccountOwner(ctx, accountID)
 }
 
-func (a *TransactionAccountResolver) AccountListForUser(ctx context.Context, userID vo.Id) ([]account.AccountResult, error) {
-	return a.svc.AccountListForUser(ctx, userID)
+func (a *TransactionAccountResolver) AccountListForUser(ctx context.Context, userID vo.Id) ([]apptransaction.AccountResult, error) {
+	accts, err := a.svc.AccountListForUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return toTransactionAccountResults(accts), nil
+}
+
+// toTransactionAccountResults converts the account feature's wire type into
+// apptransaction's own copy of the same shape — the create/update/delete
+// responses embed the caller's full account list, but features must not
+// import each other, so apptransaction declares its own AccountResult and
+// this adapter (which may import both) does the field-for-field conversion.
+func toTransactionAccountResults(accts []account.AccountResult) []apptransaction.AccountResult {
+	out := make([]apptransaction.AccountResult, len(accts))
+	for i, a := range accts {
+		shared := make([]apptransaction.AccountSharedAccess, len(a.SharedAccess))
+		for j, sa := range a.SharedAccess {
+			shared[j] = apptransaction.AccountSharedAccess{
+				User: apptransaction.AccountOwnerResult{Id: sa.User.Id, Avatar: sa.User.Avatar, Name: sa.User.Name},
+				Role: sa.Role,
+			}
+		}
+		out[i] = apptransaction.AccountResult{
+			Id:       a.Id,
+			Owner:    apptransaction.AccountOwnerResult{Id: a.Owner.Id, Avatar: a.Owner.Avatar, Name: a.Owner.Name},
+			FolderId: a.FolderId,
+			Name:     a.Name,
+			Position: a.Position,
+			Currency: apptransaction.AccountCurrencyResult{
+				Id: a.Currency.Id, Code: a.Currency.Code, Name: a.Currency.Name,
+				Symbol: a.Currency.Symbol, FractionDigits: a.Currency.FractionDigits,
+			},
+			Balance:      a.Balance,
+			Type:         a.Type,
+			Icon:         a.Icon,
+			SharedAccess: shared,
+		}
+	}
+	return out
 }
 
 // transactionCategoryByID is the minimal category-repo surface the export

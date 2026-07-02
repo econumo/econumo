@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	appaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -15,6 +14,47 @@ type AuthorResult struct {
 	Id     string `json:"id"`
 	Avatar string `json:"avatar"`
 	Name   string `json:"name"`
+}
+
+// AccountOwnerResult mirrors account.OwnerResult's wire shape ({id, avatar,
+// name}) — duplicated here (not imported) because features must not import
+// each other; the create/update/delete responses embed the caller's full
+// account list under "accounts", produced by
+// server.TransactionAccountResolver from the real account.AccountResult.
+type AccountOwnerResult struct {
+	Id     string `json:"id"`
+	Avatar string `json:"avatar"`
+	Name   string `json:"name"`
+}
+
+// AccountCurrencyResult mirrors account.CurrencyResult's wire shape.
+type AccountCurrencyResult struct {
+	Id             string `json:"id"`
+	Code           string `json:"code"`
+	Name           string `json:"name"`
+	Symbol         string `json:"symbol"`
+	FractionDigits int    `json:"fractionDigits"`
+}
+
+// AccountSharedAccess mirrors account.SharedAccess's wire shape.
+type AccountSharedAccess struct {
+	User AccountOwnerResult `json:"user"`
+	Role string             `json:"role"`
+}
+
+// AccountResult mirrors account.AccountResult's wire shape exactly (frozen;
+// see CLAUDE.md).
+type AccountResult struct {
+	Id           string                `json:"id"`
+	Owner        AccountOwnerResult    `json:"owner"`
+	FolderId     *string               `json:"folderId"`
+	Name         string                `json:"name"`
+	Position     int                   `json:"position"`
+	Currency     AccountCurrencyResult `json:"currency"`
+	Balance      string                `json:"balance"`
+	Type         int                   `json:"type"`
+	Icon         string                `json:"icon"`
+	SharedAccess []AccountSharedAccess `json:"sharedAccess"`
 }
 
 // TransactionResult is one transaction in the API. type is the alias string;
@@ -73,8 +113,8 @@ func (r CreateTransactionRequest) Validate() error {
 
 // CreateTransactionResult is the create response: {item, accounts}.
 type CreateTransactionResult struct {
-	Item     TransactionResult          `json:"item"`
-	Accounts []appaccount.AccountResult `json:"accounts"`
+	Item     TransactionResult `json:"item"`
+	Accounts []AccountResult   `json:"accounts"`
 }
 
 // UpdateTransactionRequest is the update-transaction body (same fields as create
@@ -112,8 +152,8 @@ func (r UpdateTransactionRequest) Validate() error {
 
 // UpdateTransactionResult is the update response: {item, accounts}.
 type UpdateTransactionResult struct {
-	Item     TransactionResult          `json:"item"`
-	Accounts []appaccount.AccountResult `json:"accounts"`
+	Item     TransactionResult `json:"item"`
+	Accounts []AccountResult   `json:"accounts"`
 }
 
 // DeleteTransactionRequest is the delete-transaction body (id NotBlank).
@@ -130,8 +170,8 @@ func (r DeleteTransactionRequest) Validate() error {
 
 // DeleteTransactionResult is the delete response: {item, accounts}.
 type DeleteTransactionResult struct {
-	Item     TransactionResult          `json:"item"`
-	Accounts []appaccount.AccountResult `json:"accounts"`
+	Item     TransactionResult `json:"item"`
+	Accounts []AccountResult   `json:"accounts"`
 }
 
 // GetTransactionListRequest is the get-transaction-list query (all optional):

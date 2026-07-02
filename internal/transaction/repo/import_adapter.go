@@ -8,15 +8,14 @@
 // surfaces live in internal/server, not here, because this package is a leaf
 // that must not import the account/category/tag/payee features (see
 // archtest).
-package transactionrepo
+package repo
 
 import (
 	"context"
 
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/vo"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
+	domtransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 // importAccountPort is the account-touching surface the importer uses,
@@ -28,12 +27,12 @@ type importAccountPort interface {
 	CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error)
 }
 
-// importAccountAccess resolves account ownership + a connected user's grant role,
-// for the import write-access check (CanAddTransaction). Backed by the connection
-// AccountAccess repo; a missing grant is reported as ok=false (nil error).
+// importAccountAccess resolves account ownership + whether a connected user
+// holds an admin-or-user grant, for the import write-access check
+// (CanAddTransaction). Backed by connectionrepo.AccountAccessResolver.
 type importAccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error)
+	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
 // importCategoryPort is the category-touching surface the importer uses,
@@ -111,11 +110,7 @@ func (l *ImportLookup) CanAddTransaction(ctx context.Context, userID vo.Id, acco
 	if owner.Equal(userID) {
 		return true, nil
 	}
-	role, ok, err := l.access.GrantRole(ctx, accountID, userID)
-	if err != nil {
-		return false, err
-	}
-	return ok && (role == domconnection.RoleAdmin || role == domconnection.RoleUser), nil
+	return l.access.HasWriteGrant(ctx, accountID, userID)
 }
 
 func (l *ImportLookup) CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error) {

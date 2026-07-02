@@ -1,10 +1,16 @@
-// Package transaction is the transaction aggregate's domain layer: the
-// Transaction entity, its Type value object, and the repository interface.
+// Package transaction is the transaction feature: the Transaction entity, its
+// Type value object, and the repository interface (domain), plus the
+// request/result DTOs (with their tier-1 Validate() methods) and the
+// write-side Service (create/update/delete, export, and CSV import), which
+// owns the tx boundary and builds the response-shaped *Result directly.
 //
 // A transaction is an expense (type 0), income (1), or transfer (2). Transfers
 // carry a recipient account + recipient amount and no category/payee/tag;
 // non-transfers carry an optional category/payee/tag and no recipient. The
 // entity enforces those type-dependent field rules in its mutators.
+//
+// JSON field names are frozen to the existing API wire contract; see
+// CLAUDE.md.
 package transaction
 
 import (

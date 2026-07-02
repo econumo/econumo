@@ -3,7 +3,6 @@ package transaction
 import (
 	"context"
 
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -17,7 +16,7 @@ func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req Delet
 		return nil, err
 	}
 
-	var deleted *domtransaction.Transaction
+	var deleted *Transaction
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		t, gerr := s.repo.GetByID(ctx, id)
 		if gerr != nil {

@@ -41,19 +41,21 @@ func (r *AccountAccessResolver) AccountOwner(ctx context.Context, accountID vo.I
 	return r.access.AccountOwner(ctx, accountID)
 }
 
-// GrantRole returns the user's granted role on the account. A missing grant
-// (the repo's *errs.NotFoundError) is reported as ok=false, nil error; other
-// errors propagate.
-func (r *AccountAccessResolver) GrantRole(ctx context.Context, accountID, userID vo.Id) (domconnection.Role, bool, error) {
+// HasWriteGrant reports whether the user holds an admin OR user grant on the
+// account — the transaction feature's write-access check (a guest grant or no
+// grant is denied). A missing grant or a guest grant is false, nil error;
+// other errors propagate.
+func (r *AccountAccessResolver) HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error) {
 	grant, err := r.access.Get(ctx, accountID, userID)
 	if err != nil {
 		var nf *errs.NotFoundError
 		if errors.As(err, &nf) {
-			return 0, false, nil
+			return false, nil
 		}
-		return 0, false, err
+		return false, err
 	}
-	return grant.Role(), true, nil
+	role := grant.Role()
+	return role == domconnection.RoleAdmin || role == domconnection.RoleUser, nil
 }
 
 // HasAdminGrant reports whether the user holds an admin grant on the account —

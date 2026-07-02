@@ -17,7 +17,6 @@ import (
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/app/budget"
 	appconnection "github.com/econumo/econumo/internal/app/connection"
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
@@ -30,7 +29,6 @@ import (
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
 	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
@@ -40,10 +38,12 @@ import (
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
+	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
+	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
 	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
-	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
 	"github.com/econumo/econumo/internal/ui/router"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
@@ -132,7 +132,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	txAccountResolver := NewTransactionAccountResolver(accountSvc)
-	txAccountGrants := transactionrepo.NewAccountGrants(connectionRepo)
+	txAccountGrants := transactionrepo.NewAccountGrants(accountAccessResolver)
 	txVisible := transactionrepo.NewVisibleAccounts(accountSvc)
 	txUserLookup := NewTransactionUserLookup(userRepo)
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))

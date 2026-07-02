@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -131,7 +130,7 @@ func cachedName(ctx context.Context, cache map[string]string, id vo.Id, fetch fu
 // buildExportRows emits the 0, 1, or 2 CSV rows for one transaction: a row on
 // the source account if it is selected, plus a second row on the recipient
 // account if this is a transfer whose recipient is selected.
-func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transaction, selectedByID, allAccountsByID map[string]ExportAccount, names *exportNameCache) ([][]string, error) {
+func (s *Service) buildExportRows(ctx context.Context, t *Transaction, selectedByID, allAccountsByID map[string]ExportAccount, names *exportNameCache) ([][]string, error) {
 	var rows [][]string
 	accountID := t.AccountId().String()
 
@@ -188,7 +187,7 @@ func (s *Service) buildExportRows(ctx context.Context, t *domtransaction.Transac
 
 // buildExportRow assembles one CSV row in the fixed column order: id,
 // account_name, account_currency, category, description, tag, payee, amount, date.
-func (s *Service) buildExportRow(t *domtransaction.Transaction, account ExportAccount, amount, category, tag, payee, description string) []string {
+func (s *Service) buildExportRow(t *Transaction, account ExportAccount, amount, category, tag, payee, description string) []string {
 	return []string{
 		t.Id().String(),
 		sanitizeExportValue(account.Name),
@@ -204,7 +203,7 @@ func (s *Service) buildExportRow(t *domtransaction.Transaction, account ExportAc
 
 // resolveNames resolves the optional category/tag/payee names for a transaction
 // (empty when absent or missing).
-func (s *Service) resolveNames(ctx context.Context, t *domtransaction.Transaction, names *exportNameCache) (category, tag, payee string, err error) {
+func (s *Service) resolveNames(ctx context.Context, t *Transaction, names *exportNameCache) (category, tag, payee string, err error) {
 	if id := t.CategoryId(); id != nil {
 		if category, err = cachedName(ctx, names.categories, *id, s.export.CategoryName); err != nil {
 			return "", "", "", err

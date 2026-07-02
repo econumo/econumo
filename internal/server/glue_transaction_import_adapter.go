@@ -1,11 +1,11 @@
 // TransactionImportAccounts adapts the account service/repos to the
-// transaction import adapter's account port (internal/infra/repo/transaction's
+// transaction import adapter's account port (internal/transaction/repo's
 // importAccountPort), TransactionImportCategories adapts the category
 // service/repo to its category port (importCategoryPort),
 // TransactionImportTags adapts the tag service/repo to its tag port
 // (importTagPort), and TransactionImportPayees adapts the payee service/repo
 // to its payee port (importPayeePort). All four live here, not in
-// internal/infra/repo/transaction, because they need the
+// internal/transaction/repo, because they need the
 // account/category/tag/payee features' types and an infra package must not
 // import a feature (see archtest).
 package server
@@ -14,11 +14,11 @@ import (
 	"context"
 
 	account "github.com/econumo/econumo/internal/account"
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
 	category "github.com/econumo/econumo/internal/category"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 // transactionImportAccountService is the account-service surface the importer

@@ -1,4 +1,4 @@
-package transactionrepo_test
+package repo_test
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
-	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	domtransaction "github.com/econumo/econumo/internal/transaction"
+	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 )
 
 const (

@@ -1,9 +1,8 @@
-// Package transactionrepo implements domain/transaction.Repository over the
-// sqlc-generated queries, both engines. The static queries use the canonical
-// (sqlite-typed) shim; the dynamic ListByAccountIDs (variadic IN list, optional
-// period) is hand-built per engine because sqlc does not handle dynamic IN sets
-// portably.
-package transactionrepo
+// Package repo implements transaction.Repository over the sqlc-generated
+// queries, both engines. The static queries use the canonical (sqlite-typed)
+// shim; the dynamic ListByAccountIDs (variadic IN list, optional period) is
+// hand-built per engine because sqlc does not handle dynamic IN sets portably.
+package repo
 
 import (
 	"context"
@@ -12,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	domtransaction "github.com/econumo/econumo/internal/domain/transaction"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	domtransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 type (
@@ -45,7 +44,7 @@ func (r *Repo) ListExportAccountsForUser(ctx context.Context, userID vo.Id) ([]E
 	return r.q.ListExportAccountsForUser(ctx, r.db(ctx), userID.String())
 }
 
-// Repo implements domain/transaction.Repository.
+// Repo implements transaction.Repository.
 type Repo struct {
 	tx     *backend.TxManager
 	q      querier
