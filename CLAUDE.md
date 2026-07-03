@@ -80,9 +80,12 @@ tree holding its own domain logic, persistence, and HTTP edge:
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
 │   │   │                            currency, payee, tag, transaction, user); root package holds the
 │   │   │                            entities, repository interface, and use-case services:
-│   │   │   entity.go .............   domain entity/value-object definitions
+│   │   │   entity.go .............   domain entities: EXPORTED fields (direct reads), mutators
+│   │   │                             own all post-construction writes (change-tracking bumps
+│   │   │                             UpdatedAt only on real change); no getter methods
 │   │   │   dto.go ................   request/result DTOs for the use-case services
-│   │   │   repository.go .........   the repository INTERFACE the feature depends on
+│   │   │   repository.go .........   the repository INTERFACE(s); account and budget split
+│   │   │                             theirs into role interfaces + a composite for wiring
 │   │   │   usecase.go ............   the use-case service(s) implementing the feature's behavior
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
