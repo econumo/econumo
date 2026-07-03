@@ -14,14 +14,14 @@ var routePatternRe = regexp.MustCompile(`"((?:GET|POST) /api/v1/[a-z-]+/[a-z-]+)
 
 // registeredRoutes scans the route-registration source files for mux patterns.
 // Source-scanning (vs runtime introspection) is deliberate: http.ServeMux does
-// not expose its patterns. If registration files move (Phase 2 moves them to
-// internal/<feature>/api/), update handlerGlobs — the guard failing loudly on
-// zero matches protects against silently scanning nothing.
+// not expose its patterns. If registration files move, update handlerGlobs —
+// the guard failing loudly on zero matches protects against silently scanning
+// nothing.
 func registeredRoutes(t *testing.T) map[string]bool {
 	t.Helper()
 	_, thisFile, _, _ := runtime.Caller(0)
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
-	handlerGlobs := []string{"internal/ui/handler/*/routes.go", "internal/*/api/routes.go"}
+	handlerGlobs := []string{"internal/*/api/routes.go"}
 	routes := map[string]bool{}
 	for _, g := range handlerGlobs {
 		files, err := filepath.Glob(filepath.Join(repoRoot, g))

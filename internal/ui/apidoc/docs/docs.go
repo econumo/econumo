@@ -40,7 +40,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountRequest"
+                            "$ref": "#/definitions/account.CreateAccountRequest"
                         }
                     }
                 ],
@@ -56,7 +56,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateAccountResult"
+                                            "$ref": "#/definitions/account.CreateAccountResult"
                                         }
                                     }
                                 }
@@ -109,7 +109,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderRequest"
+                            "$ref": "#/definitions/account.CreateFolderRequest"
                         }
                     }
                 ],
@@ -125,7 +125,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.CreateFolderResult"
+                                            "$ref": "#/definitions/account.CreateFolderResult"
                                         }
                                     }
                                 }
@@ -178,7 +178,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountRequest"
+                            "$ref": "#/definitions/account.DeleteAccountRequest"
                         }
                     }
                 ],
@@ -194,7 +194,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.DeleteAccountResult"
+                                            "$ref": "#/definitions/account.DeleteAccountResult"
                                         }
                                     }
                                 }
@@ -249,7 +249,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.GetAccountListResult"
+                                            "$ref": "#/definitions/account.GetAccountListResult"
                                         }
                                     }
                                 }
@@ -298,7 +298,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.GetFolderListResult"
+                                            "$ref": "#/definitions/account.GetFolderListResult"
                                         }
                                     }
                                 }
@@ -345,7 +345,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderRequest"
+                            "$ref": "#/definitions/account.HideFolderRequest"
                         }
                     }
                 ],
@@ -361,7 +361,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.HideFolderResult"
+                                            "$ref": "#/definitions/account.HideFolderResult"
                                         }
                                     }
                                 }
@@ -414,7 +414,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListRequest"
+                            "$ref": "#/definitions/account.OrderAccountListRequest"
                         }
                     }
                 ],
@@ -430,7 +430,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderAccountListResult"
+                                            "$ref": "#/definitions/account.OrderAccountListResult"
                                         }
                                     }
                                 }
@@ -483,7 +483,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListRequest"
+                            "$ref": "#/definitions/account.OrderFolderListRequest"
                         }
                     }
                 ],
@@ -499,7 +499,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.OrderFolderListResult"
+                                            "$ref": "#/definitions/account.OrderFolderListResult"
                                         }
                                     }
                                 }
@@ -552,7 +552,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest"
+                            "$ref": "#/definitions/account.ReplaceFolderRequest"
                         }
                     }
                 ],
@@ -568,7 +568,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ReplaceFolderResult"
+                                            "$ref": "#/definitions/account.ReplaceFolderResult"
                                         }
                                     }
                                 }
@@ -621,7 +621,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderRequest"
+                            "$ref": "#/definitions/account.ShowFolderRequest"
                         }
                     }
                 ],
@@ -637,7 +637,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.ShowFolderResult"
+                                            "$ref": "#/definitions/account.ShowFolderResult"
                                         }
                                     }
                                 }
@@ -690,7 +690,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountRequest"
+                            "$ref": "#/definitions/account.UpdateAccountRequest"
                         }
                     }
                 ],
@@ -706,7 +706,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateAccountResult"
+                                            "$ref": "#/definitions/account.UpdateAccountResult"
                                         }
                                     }
                                 }
@@ -759,7 +759,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderRequest"
+                            "$ref": "#/definitions/account.UpdateFolderRequest"
                         }
                     }
                 ],
@@ -775,7 +775,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.UpdateFolderResult"
+                                            "$ref": "#/definitions/account.UpdateFolderResult"
                                         }
                                     }
                                 }
@@ -827,7 +827,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.AcceptAccessRequest"
+                            "$ref": "#/definitions/budget.AcceptAccessRequest"
                         }
                     }
                 ],
@@ -843,7 +843,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.AcceptAccessResult"
+                                            "$ref": "#/definitions/budget.AcceptAccessResult"
                                         }
                                     }
                                 }
@@ -877,7 +877,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyRequest"
+                            "$ref": "#/definitions/budget.ChangeElementCurrencyRequest"
                         }
                     }
                 ],
@@ -893,7 +893,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyResult"
+                                            "$ref": "#/definitions/budget.ChangeElementCurrencyResult"
                                         }
                                     }
                                 }
@@ -927,7 +927,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetRequest"
+                            "$ref": "#/definitions/budget.CreateBudgetRequest"
                         }
                     }
                 ],
@@ -943,7 +943,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetResult"
+                                            "$ref": "#/definitions/budget.CreateBudgetResult"
                                         }
                                     }
                                 }
@@ -995,7 +995,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.CreateEnvelopeRequest"
+                            "$ref": "#/definitions/budget.CreateEnvelopeRequest"
                         }
                     }
                 ],
@@ -1011,7 +1011,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.CreateEnvelopeResult"
+                                            "$ref": "#/definitions/budget.CreateEnvelopeResult"
                                         }
                                     }
                                 }
@@ -1045,7 +1045,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderRequest"
+                            "$ref": "#/definitions/budget.CreateBudgetFolderRequest"
                         }
                     }
                 ],
@@ -1061,7 +1061,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderResult"
+                                            "$ref": "#/definitions/budget.CreateBudgetFolderResult"
                                         }
                                     }
                                 }
@@ -1095,7 +1095,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeclineAccessRequest"
+                            "$ref": "#/definitions/budget.DeclineAccessRequest"
                         }
                     }
                 ],
@@ -1111,7 +1111,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeclineAccessResult"
+                                            "$ref": "#/definitions/budget.DeclineAccessResult"
                                         }
                                     }
                                 }
@@ -1145,7 +1145,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteBudgetRequest"
+                            "$ref": "#/definitions/budget.DeleteBudgetRequest"
                         }
                     }
                 ],
@@ -1161,7 +1161,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteBudgetResult"
+                                            "$ref": "#/definitions/budget.DeleteBudgetResult"
                                         }
                                     }
                                 }
@@ -1195,7 +1195,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeRequest"
+                            "$ref": "#/definitions/budget.DeleteEnvelopeRequest"
                         }
                     }
                 ],
@@ -1211,7 +1211,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeResult"
+                                            "$ref": "#/definitions/budget.DeleteEnvelopeResult"
                                         }
                                     }
                                 }
@@ -1245,7 +1245,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteFolderRequest"
+                            "$ref": "#/definitions/budget.DeleteFolderRequest"
                         }
                     }
                 ],
@@ -1261,7 +1261,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteFolderResult"
+                                            "$ref": "#/definitions/budget.DeleteFolderResult"
                                         }
                                     }
                                 }
@@ -1295,7 +1295,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.ExcludeAccountRequest"
+                            "$ref": "#/definitions/budget.ExcludeAccountRequest"
                         }
                     }
                 ],
@@ -1311,7 +1311,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.ExcludeAccountResult"
+                                            "$ref": "#/definitions/budget.ExcludeAccountResult"
                                         }
                                     }
                                 }
@@ -1362,7 +1362,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetResult"
+                                            "$ref": "#/definitions/budget.GetBudgetResult"
                                         }
                                     }
                                 }
@@ -1398,7 +1398,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetListResult"
+                                            "$ref": "#/definitions/budget.GetBudgetListResult"
                                         }
                                     }
                                 }
@@ -1468,7 +1468,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetTransactionListResult"
+                                            "$ref": "#/definitions/budget.GetBudgetTransactionListResult"
                                         }
                                     }
                                 }
@@ -1502,7 +1502,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.GrantAccessRequest"
+                            "$ref": "#/definitions/budget.GrantAccessRequest"
                         }
                     }
                 ],
@@ -1518,7 +1518,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.GrantAccessResult"
+                                            "$ref": "#/definitions/budget.GrantAccessResult"
                                         }
                                     }
                                 }
@@ -1552,7 +1552,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.IncludeAccountRequest"
+                            "$ref": "#/definitions/budget.IncludeAccountRequest"
                         }
                     }
                 ],
@@ -1568,7 +1568,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.IncludeAccountResult"
+                                            "$ref": "#/definitions/budget.IncludeAccountResult"
                                         }
                                     }
                                 }
@@ -1602,7 +1602,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.MoveElementListRequest"
+                            "$ref": "#/definitions/budget.MoveElementListRequest"
                         }
                     }
                 ],
@@ -1618,7 +1618,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.MoveElementListResult"
+                                            "$ref": "#/definitions/budget.MoveElementListResult"
                                         }
                                     }
                                 }
@@ -1652,7 +1652,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListRequest"
+                            "$ref": "#/definitions/budget.OrderBudgetFolderListRequest"
                         }
                     }
                 ],
@@ -1668,7 +1668,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListResult"
+                                            "$ref": "#/definitions/budget.OrderBudgetFolderListResult"
                                         }
                                     }
                                 }
@@ -1702,7 +1702,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.ResetBudgetRequest"
+                            "$ref": "#/definitions/budget.ResetBudgetRequest"
                         }
                     }
                 ],
@@ -1718,7 +1718,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.ResetBudgetResult"
+                                            "$ref": "#/definitions/budget.ResetBudgetResult"
                                         }
                                     }
                                 }
@@ -1752,7 +1752,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.RevokeAccessRequest"
+                            "$ref": "#/definitions/budget.RevokeAccessRequest"
                         }
                     }
                 ],
@@ -1768,7 +1768,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.RevokeAccessResult"
+                                            "$ref": "#/definitions/budget.RevokeAccessResult"
                                         }
                                     }
                                 }
@@ -1802,7 +1802,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.SetLimitRequest"
+                            "$ref": "#/definitions/budget.SetLimitRequest"
                         }
                     }
                 ],
@@ -1818,7 +1818,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.SetLimitResult"
+                                            "$ref": "#/definitions/budget.SetLimitResult"
                                         }
                                     }
                                 }
@@ -1852,7 +1852,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetRequest"
+                            "$ref": "#/definitions/budget.UpdateBudgetRequest"
                         }
                     }
                 ],
@@ -1868,7 +1868,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetResult"
+                                            "$ref": "#/definitions/budget.UpdateBudgetResult"
                                         }
                                     }
                                 }
@@ -1908,7 +1908,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeRequest"
+                            "$ref": "#/definitions/budget.UpdateEnvelopeRequest"
                         }
                     }
                 ],
@@ -1924,7 +1924,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeResult"
+                                            "$ref": "#/definitions/budget.UpdateEnvelopeResult"
                                         }
                                     }
                                 }
@@ -1958,7 +1958,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderRequest"
+                            "$ref": "#/definitions/budget.UpdateBudgetFolderRequest"
                         }
                     }
                 ],
@@ -1974,7 +1974,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderResult"
+                                            "$ref": "#/definitions/budget.UpdateBudgetFolderResult"
                                         }
                                     }
                                 }
@@ -2009,7 +2009,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.ArchiveCategoryRequest"
+                            "$ref": "#/definitions/category.ArchiveCategoryRequest"
                         }
                     }
                 ],
@@ -2025,7 +2025,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult"
+                                            "$ref": "#/definitions/category.ArchiveCategoryResult"
                                         }
                                     }
                                 }
@@ -2078,7 +2078,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.CreateCategoryRequest"
+                            "$ref": "#/definitions/category.CreateCategoryRequest"
                         }
                     }
                 ],
@@ -2094,7 +2094,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.CreateCategoryResult"
+                                            "$ref": "#/definitions/category.CreateCategoryResult"
                                         }
                                     }
                                 }
@@ -2147,7 +2147,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.DeleteCategoryRequest"
+                            "$ref": "#/definitions/category.DeleteCategoryRequest"
                         }
                     }
                 ],
@@ -2163,7 +2163,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.DeleteCategoryResult"
+                                            "$ref": "#/definitions/category.DeleteCategoryResult"
                                         }
                                     }
                                 }
@@ -2218,7 +2218,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.GetCategoryListResult"
+                                            "$ref": "#/definitions/category.GetCategoryListResult"
                                         }
                                     }
                                 }
@@ -2265,7 +2265,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.OrderCategoryListRequest"
+                            "$ref": "#/definitions/category.OrderCategoryListRequest"
                         }
                     }
                 ],
@@ -2281,7 +2281,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.OrderCategoryListResult"
+                                            "$ref": "#/definitions/category.OrderCategoryListResult"
                                         }
                                     }
                                 }
@@ -2334,7 +2334,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.UnarchiveCategoryRequest"
+                            "$ref": "#/definitions/category.UnarchiveCategoryRequest"
                         }
                     }
                 ],
@@ -2350,7 +2350,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult"
+                                            "$ref": "#/definitions/category.UnarchiveCategoryResult"
                                         }
                                     }
                                 }
@@ -2403,7 +2403,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest"
+                            "$ref": "#/definitions/category.UpdateCategoryRequest"
                         }
                     }
                 ],
@@ -2419,7 +2419,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_category.UpdateCategoryResult"
+                                            "$ref": "#/definitions/category.UpdateCategoryResult"
                                         }
                                     }
                                 }
@@ -2472,7 +2472,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest"
+                            "$ref": "#/definitions/connection.AcceptInviteRequest"
                         }
                     }
                 ],
@@ -2488,7 +2488,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteResult"
+                                            "$ref": "#/definitions/connection.AcceptInviteResult"
                                         }
                                     }
                                 }
@@ -2541,7 +2541,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest"
+                            "$ref": "#/definitions/connection.DeleteConnectionRequest"
                         }
                     }
                 ],
@@ -2557,7 +2557,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult"
+                                            "$ref": "#/definitions/connection.DeleteConnectionResult"
                                         }
                                     }
                                 }
@@ -2609,7 +2609,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest"
+                            "$ref": "#/definitions/connection.DeleteInviteRequest"
                         }
                     }
                 ],
@@ -2625,7 +2625,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteResult"
+                                            "$ref": "#/definitions/connection.DeleteInviteResult"
                                         }
                                     }
                                 }
@@ -2671,7 +2671,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest"
+                            "$ref": "#/definitions/connection.GenerateInviteRequest"
                         }
                     }
                 ],
@@ -2687,7 +2687,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteResult"
+                                            "$ref": "#/definitions/connection.GenerateInviteResult"
                                         }
                                     }
                                 }
@@ -2736,7 +2736,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GetConnectionListResult"
+                                            "$ref": "#/definitions/connection.GetConnectionListResult"
                                         }
                                     }
                                 }
@@ -2783,7 +2783,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest"
+                            "$ref": "#/definitions/connection.RevokeAccountAccessRequest"
                         }
                     }
                 ],
@@ -2799,7 +2799,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult"
+                                            "$ref": "#/definitions/connection.RevokeAccountAccessResult"
                                         }
                                     }
                                 }
@@ -2852,7 +2852,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest"
+                            "$ref": "#/definitions/connection.SetAccountAccessRequest"
                         }
                     }
                 ],
@@ -2868,7 +2868,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult"
+                                            "$ref": "#/definitions/connection.SetAccountAccessResult"
                                         }
                                     }
                                 }
@@ -2923,7 +2923,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult"
+                                            "$ref": "#/definitions/currency.GetCurrencyListResult"
                                         }
                                     }
                                 }
@@ -2972,7 +2972,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult"
+                                            "$ref": "#/definitions/currency.GetCurrencyRateListResult"
                                         }
                                     }
                                 }
@@ -3019,7 +3019,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest"
+                            "$ref": "#/definitions/payee.ArchivePayeeRequest"
                         }
                     }
                 ],
@@ -3035,7 +3035,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult"
+                                            "$ref": "#/definitions/payee.ArchivePayeeResult"
                                         }
                                     }
                                 }
@@ -3088,7 +3088,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest"
+                            "$ref": "#/definitions/payee.CreatePayeeRequest"
                         }
                     }
                 ],
@@ -3104,7 +3104,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.CreatePayeeResult"
+                                            "$ref": "#/definitions/payee.CreatePayeeResult"
                                         }
                                     }
                                 }
@@ -3157,7 +3157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.DeletePayeeRequest"
+                            "$ref": "#/definitions/payee.DeletePayeeRequest"
                         }
                     }
                 ],
@@ -3173,7 +3173,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.DeletePayeeResult"
+                                            "$ref": "#/definitions/payee.DeletePayeeResult"
                                         }
                                     }
                                 }
@@ -3228,7 +3228,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.GetPayeeListResult"
+                                            "$ref": "#/definitions/payee.GetPayeeListResult"
                                         }
                                     }
                                 }
@@ -3275,7 +3275,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.OrderPayeeListRequest"
+                            "$ref": "#/definitions/payee.OrderPayeeListRequest"
                         }
                     }
                 ],
@@ -3291,7 +3291,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.OrderPayeeListResult"
+                                            "$ref": "#/definitions/payee.OrderPayeeListResult"
                                         }
                                     }
                                 }
@@ -3344,7 +3344,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UnarchivePayeeRequest"
+                            "$ref": "#/definitions/payee.UnarchivePayeeRequest"
                         }
                     }
                 ],
@@ -3360,7 +3360,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult"
+                                            "$ref": "#/definitions/payee.UnarchivePayeeResult"
                                         }
                                     }
                                 }
@@ -3413,7 +3413,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest"
+                            "$ref": "#/definitions/payee.UpdatePayeeRequest"
                         }
                     }
                 ],
@@ -3429,7 +3429,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult"
+                                            "$ref": "#/definitions/payee.UpdatePayeeResult"
                                         }
                                     }
                                 }
@@ -3482,7 +3482,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest"
+                            "$ref": "#/definitions/tag.ArchiveTagRequest"
                         }
                     }
                 ],
@@ -3498,7 +3498,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.ArchiveTagResult"
+                                            "$ref": "#/definitions/tag.ArchiveTagResult"
                                         }
                                     }
                                 }
@@ -3551,7 +3551,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagRequest"
+                            "$ref": "#/definitions/tag.CreateTagRequest"
                         }
                     }
                 ],
@@ -3567,7 +3567,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.CreateTagResult"
+                                            "$ref": "#/definitions/tag.CreateTagResult"
                                         }
                                     }
                                 }
@@ -3620,7 +3620,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagRequest"
+                            "$ref": "#/definitions/tag.DeleteTagRequest"
                         }
                     }
                 ],
@@ -3636,7 +3636,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.DeleteTagResult"
+                                            "$ref": "#/definitions/tag.DeleteTagResult"
                                         }
                                     }
                                 }
@@ -3691,7 +3691,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.GetTagListResult"
+                                            "$ref": "#/definitions/tag.GetTagListResult"
                                         }
                                     }
                                 }
@@ -3738,7 +3738,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListRequest"
+                            "$ref": "#/definitions/tag.OrderTagListRequest"
                         }
                     }
                 ],
@@ -3754,7 +3754,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.OrderTagListResult"
+                                            "$ref": "#/definitions/tag.OrderTagListResult"
                                         }
                                     }
                                 }
@@ -3807,7 +3807,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest"
+                            "$ref": "#/definitions/tag.UnarchiveTagRequest"
                         }
                     }
                 ],
@@ -3823,7 +3823,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult"
+                                            "$ref": "#/definitions/tag.UnarchiveTagResult"
                                         }
                                     }
                                 }
@@ -3876,7 +3876,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagRequest"
+                            "$ref": "#/definitions/tag.UpdateTagRequest"
                         }
                     }
                 ],
@@ -3892,7 +3892,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_tag.UpdateTagResult"
+                                            "$ref": "#/definitions/tag.UpdateTagResult"
                                         }
                                     }
                                 }
@@ -3945,7 +3945,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest"
+                            "$ref": "#/definitions/transaction.CreateTransactionRequest"
                         }
                     }
                 ],
@@ -3961,7 +3961,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.CreateTransactionResult"
+                                            "$ref": "#/definitions/transaction.CreateTransactionResult"
                                         }
                                     }
                                 }
@@ -4014,7 +4014,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.DeleteTransactionRequest"
+                            "$ref": "#/definitions/transaction.DeleteTransactionRequest"
                         }
                     }
                 ],
@@ -4030,7 +4030,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.DeleteTransactionResult"
+                                            "$ref": "#/definitions/transaction.DeleteTransactionResult"
                                         }
                                     }
                                 }
@@ -4156,7 +4156,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.GetTransactionListResult"
+                                            "$ref": "#/definitions/transaction.GetTransactionListResult"
                                         }
                                     }
                                 }
@@ -4260,7 +4260,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.ImportResult"
+                                            "$ref": "#/definitions/transaction.ImportResult"
                                         }
                                     }
                                 }
@@ -4313,7 +4313,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.UpdateTransactionRequest"
+                            "$ref": "#/definitions/transaction.UpdateTransactionRequest"
                         }
                     }
                 ],
@@ -4329,7 +4329,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_transaction.UpdateTransactionResult"
+                                            "$ref": "#/definitions/transaction.UpdateTransactionResult"
                                         }
                                     }
                                 }
@@ -4384,7 +4384,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.CompleteOnboardingResult"
+                                            "$ref": "#/definitions/user.CompleteOnboardingResult"
                                         }
                                     }
                                 }
@@ -4433,7 +4433,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.GetOptionListResult"
+                                            "$ref": "#/definitions/user.GetOptionListResult"
                                         }
                                     }
                                 }
@@ -4482,7 +4482,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.GetUserDataResult"
+                                            "$ref": "#/definitions/user.GetUserDataResult"
                                         }
                                     }
                                 }
@@ -4524,7 +4524,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LoginRequest"
+                            "$ref": "#/definitions/user.LoginRequest"
                         }
                     }
                 ],
@@ -4532,7 +4532,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login).",
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LoginResult"
+                            "$ref": "#/definitions/user.LoginResult"
                         }
                     },
                     "400": {
@@ -4583,7 +4583,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.LogoutResult"
+                                            "$ref": "#/definitions/user.LogoutResult"
                                         }
                                     }
                                 }
@@ -4625,7 +4625,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.RegisterRequest"
+                            "$ref": "#/definitions/user.RegisterRequest"
                         }
                     }
                 ],
@@ -4641,7 +4641,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.CurrentUserResult"
+                                            "$ref": "#/definitions/user.CurrentUserResult"
                                         }
                                     }
                                 }
@@ -4689,7 +4689,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.RemindPasswordRequest"
+                            "$ref": "#/definitions/user.RemindPasswordRequest"
                         }
                     }
                 ],
@@ -4705,7 +4705,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.RemindPasswordResult"
+                                            "$ref": "#/definitions/user.RemindPasswordResult"
                                         }
                                     }
                                 }
@@ -4753,7 +4753,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.ResetPasswordRequest"
+                            "$ref": "#/definitions/user.ResetPasswordRequest"
                         }
                     }
                 ],
@@ -4769,7 +4769,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.ResetPasswordResult"
+                                            "$ref": "#/definitions/user.ResetPasswordResult"
                                         }
                                     }
                                 }
@@ -4822,7 +4822,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest"
+                            "$ref": "#/definitions/user.UpdateBudgetRequest"
                         }
                     }
                 ],
@@ -4838,7 +4838,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateBudgetResult"
+                                            "$ref": "#/definitions/user.UpdateBudgetResult"
                                         }
                                     }
                                 }
@@ -4891,7 +4891,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest"
+                            "$ref": "#/definitions/user.UpdateCurrencyRequest"
                         }
                     }
                 ],
@@ -4907,7 +4907,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateCurrencyResult"
+                                            "$ref": "#/definitions/user.UpdateCurrencyResult"
                                         }
                                     }
                                 }
@@ -4960,7 +4960,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateNameRequest"
+                            "$ref": "#/definitions/user.UpdateNameRequest"
                         }
                     }
                 ],
@@ -4976,7 +4976,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateNameResult"
+                                            "$ref": "#/definitions/user.UpdateNameResult"
                                         }
                                     }
                                 }
@@ -5029,7 +5029,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdatePasswordRequest"
+                            "$ref": "#/definitions/user.UpdatePasswordRequest"
                         }
                     }
                 ],
@@ -5045,7 +5045,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdatePasswordResult"
+                                            "$ref": "#/definitions/user.UpdatePasswordResult"
                                         }
                                     }
                                 }
@@ -5098,7 +5098,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateReportPeriodRequest"
+                            "$ref": "#/definitions/user.UpdateReportPeriodRequest"
                         }
                     }
                 ],
@@ -5114,7 +5114,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_user.UpdateReportPeriodResult"
+                                            "$ref": "#/definitions/user.UpdateReportPeriodResult"
                                         }
                                     }
                                 }
@@ -5237,6 +5237,56 @@ const docTemplate = `{
                 }
             }
         },
+        "account.CreateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.CreateAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.AccountResult"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/account.CorrectionResult"
+                }
+            }
+        },
+        "account.CreateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.CreateFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.FolderResult"
+                }
+            }
+        },
         "account.CurrencyResult": {
             "type": "object",
             "properties": {
@@ -5256,6 +5306,17 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "account.DeleteAccountRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.DeleteAccountResult": {
+            "type": "object"
         },
         "account.FolderPositionChange": {
             "type": "object",
@@ -5285,6 +5346,83 @@ const docTemplate = `{
                 }
             }
         },
+        "account.GetAccountListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.AccountResult"
+                    }
+                }
+            }
+        },
+        "account.GetFolderListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.FolderResult"
+                    }
+                }
+            }
+        },
+        "account.HideFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.HideFolderResult": {
+            "type": "object"
+        },
+        "account.OrderAccountListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.AccountPositionChange"
+                    }
+                }
+            }
+        },
+        "account.OrderAccountListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.AccountResult"
+                    }
+                }
+            }
+        },
+        "account.OrderFolderListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.FolderPositionChange"
+                    }
+                }
+            }
+        },
+        "account.OrderFolderListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/account.FolderResult"
+                    }
+                }
+            }
+        },
         "account.OwnerResult": {
             "type": "object",
             "properties": {
@@ -5299,6 +5437,20 @@ const docTemplate = `{
                 }
             }
         },
+        "account.ReplaceFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "replaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.ReplaceFolderResult": {
+            "type": "object"
+        },
         "account.SharedAccess": {
             "type": "object",
             "properties": {
@@ -5307,6 +5459,70 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/account.OwnerResult"
+                }
+            }
+        },
+        "account.ShowFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.ShowFolderResult": {
+            "type": "object"
+        },
+        "account.UpdateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.UpdateAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.AccountResult"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/account.CorrectionResult"
+                }
+            }
+        },
+        "account.UpdateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "account.UpdateFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/account.FolderResult"
                 }
             }
         },
@@ -5394,6 +5610,25 @@ const docTemplate = `{
                 "success": {
                     "type": "boolean",
                     "example": false
+                }
+            }
+        },
+        "budget.AcceptAccessRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.AcceptAccessResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/budget.MetaResult"
+                    }
                 }
             }
         },
@@ -5489,6 +5724,23 @@ const docTemplate = `{
                 }
             }
         },
+        "budget.ChangeElementCurrencyRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "elementId": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.ChangeElementCurrencyResult": {
+            "type": "object"
+        },
         "budget.ChildElementResult": {
             "type": "object",
             "properties": {
@@ -5518,6 +5770,96 @@ const docTemplate = `{
                 }
             }
         },
+        "budget.CreateBudgetFolderRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.CreateBudgetFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.FolderResult"
+                }
+            }
+        },
+        "budget.CreateBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "excludedAccounts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.CreateBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.BudgetResult"
+                }
+            }
+        },
+        "budget.CreateEnvelopeRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.CreateEnvelopeResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.ParentElementResult"
+                }
+            }
+        },
         "budget.CurrencyBalanceResult": {
             "type": "object",
             "properties": {
@@ -5541,6 +5883,75 @@ const docTemplate = `{
                 },
                 "startBalance": {
                     "type": "string"
+                }
+            }
+        },
+        "budget.DeclineAccessRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.DeclineAccessResult": {
+            "type": "object"
+        },
+        "budget.DeleteBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.DeleteBudgetResult": {
+            "type": "object"
+        },
+        "budget.DeleteEnvelopeRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.DeleteEnvelopeResult": {
+            "type": "object"
+        },
+        "budget.DeleteFolderRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.DeleteFolderResult": {
+            "type": "object"
+        },
+        "budget.ExcludeAccountRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.ExcludeAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.MetaResult"
                 }
             }
         },
@@ -5572,6 +5983,80 @@ const docTemplate = `{
                 },
                 "position": {
                     "type": "integer"
+                }
+            }
+        },
+        "budget.GetBudgetListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/budget.MetaResult"
+                    }
+                }
+            }
+        },
+        "budget.GetBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.BudgetResult"
+                }
+            }
+        },
+        "budget.GetBudgetTransactionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/budget.BudgetTransactionResult"
+                    }
+                }
+            }
+        },
+        "budget.GrantAccessRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.GrantAccessResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/budget.MetaResult"
+                    }
+                }
+            }
+        },
+        "budget.IncludeAccountRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.IncludeAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.MetaResult"
                 }
             }
         },
@@ -5614,6 +6099,40 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "budget.MoveElementListRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/budget.MoveElementListItem"
+                    }
+                }
+            }
+        },
+        "budget.MoveElementListResult": {
+            "type": "object"
+        },
+        "budget.OrderBudgetFolderListRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/budget.OrderFolderListItem"
+                    }
+                }
+            }
+        },
+        "budget.OrderBudgetFolderListResult": {
+            "type": "object"
         },
         "budget.OrderFolderListItem": {
             "type": "object",
@@ -5676,6 +6195,59 @@ const docTemplate = `{
                 }
             }
         },
+        "budget.ResetBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.ResetBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.MetaResult"
+                }
+            }
+        },
+        "budget.RevokeAccessRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.RevokeAccessResult": {
+            "type": "object"
+        },
+        "budget.SetLimitRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "budgetId": {
+                    "type": "string"
+                },
+                "elementId": {
+                    "type": "string"
+                },
+                "period": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.SetLimitResult": {
+            "type": "object"
+        },
         "budget.StructureResult": {
             "type": "object",
             "properties": {
@@ -5729,6 +6301,93 @@ const docTemplate = `{
                 }
             }
         },
+        "budget.UpdateBudgetFolderRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.UpdateBudgetFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.FolderResult"
+                }
+            }
+        },
+        "budget.UpdateBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "excludedAccounts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.UpdateBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.MetaResult"
+                }
+            }
+        },
+        "budget.UpdateEnvelopeRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "budget.UpdateEnvelopeResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/budget.ParentElementResult"
+                }
+            }
+        },
         "budget.UserResult": {
             "type": "object",
             "properties": {
@@ -5742,6 +6401,17 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "category.ArchiveCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "category.ArchiveCategoryResult": {
+            "type": "object"
         },
         "category.CategoryResult": {
             "type": "object",
@@ -5775,6 +6445,84 @@ const docTemplate = `{
                 }
             }
         },
+        "category.CreateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "category.CreateCategoryResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/category.CategoryResult"
+                }
+            }
+        },
+        "category.DeleteCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "replaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "category.DeleteCategoryResult": {
+            "type": "object"
+        },
+        "category.GetCategoryListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/category.CategoryResult"
+                    }
+                }
+            }
+        },
+        "category.OrderCategoryListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/category.PositionChange"
+                    }
+                }
+            }
+        },
+        "category.OrderCategoryListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/category.CategoryResult"
+                    }
+                }
+            }
+        },
         "category.PositionChange": {
             "type": "object",
             "properties": {
@@ -5783,6 +6531,53 @@ const docTemplate = `{
                 },
                 "position": {
                     "type": "integer"
+                }
+            }
+        },
+        "category.UnarchiveCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "category.UnarchiveCategoryResult": {
+            "type": "object"
+        },
+        "category.UpdateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "category.UpdateCategoryResult": {
+            "type": "object"
+        },
+        "connection.AcceptInviteRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.AcceptInviteResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/connection.ConnectionResult"
+                    }
                 }
             }
         },
@@ -5824,6 +6619,76 @@ const docTemplate = `{
                     "$ref": "#/definitions/connection.UserResult"
                 }
             }
+        },
+        "connection.DeleteConnectionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.DeleteConnectionResult": {
+            "type": "object"
+        },
+        "connection.DeleteInviteRequest": {
+            "type": "object"
+        },
+        "connection.DeleteInviteResult": {
+            "type": "object"
+        },
+        "connection.GenerateInviteRequest": {
+            "type": "object"
+        },
+        "connection.GenerateInviteResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/connection.ConnectionInviteResult"
+                }
+            }
+        },
+        "connection.GetConnectionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/connection.ConnectionResult"
+                    }
+                }
+            }
+        },
+        "connection.RevokeAccountAccessRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.RevokeAccountAccessResult": {
+            "type": "object"
+        },
+        "connection.SetAccountAccessRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.SetAccountAccessResult": {
+            "type": "object"
         },
         "connection.UserResult": {
             "type": "object",
@@ -5876,910 +6741,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_account.AccountResult": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currency": {
-                    "$ref": "#/definitions/account.CurrencyResult"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "owner": {
-                    "$ref": "#/definitions/account.OwnerResult"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "sharedAccess": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.SharedAccess"
-                    }
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateAccountRequest": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.AccountResult"
-                },
-                "transaction": {
-                    "$ref": "#/definitions/account.CorrectionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateFolderRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.CreateFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.FolderResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.DeleteAccountRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.DeleteAccountResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.GetAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.GetFolderListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.HideFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.HideFolderResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderAccountListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountPositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderPositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.OrderFolderListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.ReplaceFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "replaceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.ReplaceFolderResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.ShowFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.ShowFolderResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateAccountRequest": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.AccountResult"
-                },
-                "transaction": {
-                    "$ref": "#/definitions/account.CorrectionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_account.UpdateFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.FolderResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.AcceptAccessRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.AcceptAccessResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.MetaResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "elementId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.FolderResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.CreateBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "currencyId": {
-                    "type": "string"
-                },
-                "excludedAccounts": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "startDate": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.CreateBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.BudgetResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.CreateEnvelopeRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "categories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.CreateEnvelopeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.ParentElementResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeclineAccessRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeclineAccessResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeleteBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeleteBudgetResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeleteFolderRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.DeleteFolderResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.ExcludeAccountRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.ExcludeAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.GetBudgetListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.MetaResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.GetBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.BudgetResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.GetBudgetTransactionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.BudgetTransactionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.GrantAccessRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.GrantAccessResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.MetaResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.IncludeAccountRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.IncludeAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.MoveElementListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.MoveElementListItem"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.MoveElementListResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.OrderFolderListItem"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.ResetBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "startedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.ResetBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.RevokeAccessRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.RevokeAccessResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.SetLimitRequest": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "string"
-                },
-                "budgetId": {
-                    "type": "string"
-                },
-                "elementId": {
-                    "type": "string"
-                },
-                "period": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.SetLimitResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.FolderResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.UpdateBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "currencyId": {
-                    "type": "string"
-                },
-                "excludedAccounts": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.UpdateBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "categories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.ParentElementResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.ArchiveCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.ArchiveCategoryResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_category.CreateCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.CreateCategoryResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/category.CategoryResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.DeleteCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "mode": {
-                    "type": "string"
-                },
-                "replaceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.DeleteCategoryResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_category.GetCategoryListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/category.CategoryResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.OrderCategoryListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/category.PositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.OrderCategoryListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/category.CategoryResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.UnarchiveCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.UnarchiveCategoryResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_category.UpdateCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_category.UpdateCategoryResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.AcceptInviteResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/connection.ConnectionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteInviteResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.GenerateInviteResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/connection.ConnectionInviteResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.GetConnectionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/connection.ConnectionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_currency.GetCurrencyListResult": {
+        "currency.GetCurrencyListResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -6790,7 +6752,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_currency.GetCurrencyRateListResult": {
+        "currency.GetCurrencyRateListResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -6801,7 +6763,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_payee.ArchivePayeeRequest": {
+        "payee.ArchivePayeeRequest": {
             "type": "object",
             "properties": {
                 "id": {
@@ -6809,10 +6771,10 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_payee.ArchivePayeeResult": {
+        "payee.ArchivePayeeResult": {
             "type": "object"
         },
-        "github_com_econumo_econumo_internal_app_payee.CreatePayeeRequest": {
+        "payee.CreatePayeeRequest": {
             "type": "object",
             "properties": {
                 "accountId": {
@@ -6826,7 +6788,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_payee.CreatePayeeResult": {
+        "payee.CreatePayeeResult": {
             "type": "object",
             "properties": {
                 "item": {
@@ -6834,7 +6796,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_payee.DeletePayeeRequest": {
+        "payee.DeletePayeeRequest": {
             "type": "object",
             "properties": {
                 "id": {
@@ -6842,10 +6804,10 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_payee.DeletePayeeResult": {
+        "payee.DeletePayeeResult": {
             "type": "object"
         },
-        "github_com_econumo_econumo_internal_app_payee.GetPayeeListResult": {
+        "payee.GetPayeeListResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -6856,7 +6818,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_payee.OrderPayeeListRequest": {
+        "payee.OrderPayeeListRequest": {
             "type": "object",
             "properties": {
                 "changes": {
@@ -6867,7 +6829,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_econumo_econumo_internal_app_payee.OrderPayeeListResult": {
+        "payee.OrderPayeeListResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -6875,501 +6837,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/payee.PayeeResult"
                     }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.UnarchivePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.UnarchivePayeeResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_payee.UpdatePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_payee.UpdatePayeeResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_tag.ArchiveTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.ArchiveTagResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_tag.CreateTagRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.CreateTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.DeleteTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.DeleteTagResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_tag.GetTagListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.TagResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.OrderTagListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.PositionChange"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.OrderTagListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.TagResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.UnarchiveTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.UnarchiveTagResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_tag.UpdateTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_tag.UpdateTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.CreateTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.CreateTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.DeleteTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.DeleteTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.GetTransactionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/transaction.TransactionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.ImportResult": {
-            "type": "object",
-            "properties": {
-                "errors": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "imported": {
-                    "type": "integer"
-                },
-                "skipped": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.UpdateTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_transaction.UpdateTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_econumo_econumo_internal_app_account.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.CompleteOnboardingResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.CurrentUserResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/user.OptionResult"
-                    }
-                },
-                "reportPeriod": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.GetOptionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/user.OptionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.GetUserDataResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.LoginRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.LoginResult": {
-            "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.LogoutResult": {
-            "type": "object",
-            "properties": {
-                "result": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.RegisterRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.RemindPasswordRequest": {
-            "type": "object",
-            "properties": {
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.RemindPasswordResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_user.ResetPasswordRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.ResetPasswordResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateBudgetResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateCurrencyRequest": {
-            "type": "object",
-            "properties": {
-                "currency": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateCurrencyResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateNameRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateNameResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdatePasswordRequest": {
-            "type": "object",
-            "properties": {
-                "newPassword": {
-                    "type": "string"
-                },
-                "oldPassword": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdatePasswordResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateReportPeriodRequest": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_user.UpdateReportPeriodResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
                 }
             }
         },
@@ -7410,6 +6877,108 @@ const docTemplate = `{
                 }
             }
         },
+        "payee.UnarchivePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "payee.UnarchivePayeeResult": {
+            "type": "object"
+        },
+        "payee.UpdatePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "payee.UpdatePayeeResult": {
+            "type": "object"
+        },
+        "tag.ArchiveTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.ArchiveTagResult": {
+            "type": "object"
+        },
+        "tag.CreateTagRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.CreateTagResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/tag.TagResult"
+                }
+            }
+        },
+        "tag.DeleteTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.DeleteTagResult": {
+            "type": "object"
+        },
+        "tag.GetTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tag.TagResult"
+                    }
+                }
+            }
+        },
+        "tag.OrderTagListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tag.PositionChange"
+                    }
+                }
+            }
+        },
+        "tag.OrderTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/tag.TagResult"
+                    }
+                }
+            }
+        },
         "tag.PositionChange": {
             "type": "object",
             "properties": {
@@ -7447,6 +7016,119 @@ const docTemplate = `{
                 }
             }
         },
+        "tag.UnarchiveTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.UnarchiveTagResult": {
+            "type": "object"
+        },
+        "tag.UpdateTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "tag.UpdateTagResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/tag.TagResult"
+                }
+            }
+        },
+        "transaction.AccountCurrencyResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "fractionDigits": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.AccountOwnerResult": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.AccountResult": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currency": {
+                    "$ref": "#/definitions/transaction.AccountCurrencyResult"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner": {
+                    "$ref": "#/definitions/transaction.AccountOwnerResult"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "sharedAccess": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountSharedAccess"
+                    }
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
+        "transaction.AccountSharedAccess": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/transaction.AccountOwnerResult"
+                }
+            }
+        },
         "transaction.AuthorResult": {
             "type": "object",
             "properties": {
@@ -7458,6 +7140,111 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "transaction.CreateTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.CreateTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/transaction.TransactionResult"
+                }
+            }
+        },
+        "transaction.DeleteTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.DeleteTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/transaction.TransactionResult"
+                }
+            }
+        },
+        "transaction.GetTransactionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.TransactionResult"
+                    }
+                }
+            }
+        },
+        "transaction.ImportResult": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "imported": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
                 }
             }
         },
@@ -7502,6 +7289,66 @@ const docTemplate = `{
                 }
             }
         },
+        "transaction.UpdateTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "transaction.UpdateTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/transaction.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/transaction.TransactionResult"
+                }
+            }
+        },
+        "user.CompleteOnboardingResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
         "user.CurrentUserResult": {
             "type": "object",
             "properties": {
@@ -7531,6 +7378,55 @@ const docTemplate = `{
                 }
             }
         },
+        "user.GetOptionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user.OptionResult"
+                    }
+                }
+            }
+        },
+        "user.GetUserDataResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.LoginResult": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.LogoutResult": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "string"
+                }
+            }
+        },
         "user.OptionResult": {
             "type": "object",
             "properties": {
@@ -7539,6 +7435,126 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "string"
+                }
+            }
+        },
+        "user.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.RemindPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.RemindPasswordResult": {
+            "type": "object"
+        },
+        "user.ResetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.ResetPasswordResult": {
+            "type": "object"
+        },
+        "user.UpdateBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateBudgetResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.UpdateCurrencyRequest": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateCurrencyResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.UpdateNameRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateNameResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
+                }
+            }
+        },
+        "user.UpdatePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "newPassword": {
+                    "type": "string"
+                },
+                "oldPassword": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdatePasswordResult": {
+            "type": "object"
+        },
+        "user.UpdateReportPeriodRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UpdateReportPeriodResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/user.CurrentUserResult"
                 }
             }
         }

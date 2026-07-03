@@ -86,7 +86,7 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.Payee(fixture.Payee{ID: PayeeShop, UserID: OwnerID, Name: "Shop"})
 
 	// Transactions on the owner's account (one expense, one income). The domain
-	// enum is expense=0 / income=1 (internal/domain/transaction/entity.go), so the
+	// enum is expense=0 / income=1 (internal/transaction/entity.go), so the
 	// types match each row's category semantics: Txn1 is a Food EXPENSE, Txn2 a
 	// Salary INCOME.
 	f.Transaction(fixture.Transaction{ID: Txn1, UserID: OwnerID, AccountID: OwnerAccount, CategoryID: CatFood, PayeeID: PayeeShop, Type: 0, Amount: "12.50000000", Description: "lunch"})
@@ -111,7 +111,7 @@ func Seed(t testing.TB, db *dbtest.DB) {
 
 	// Pending (not accepted) budget invite: guest invited to Budget — the
 	// accept-access and decline-access scenarios each consume it on a fresh DB.
-	// role=1 is budget.RoleUser (internal/domain/budget/valueobject.go: admin=0,
+	// role=1 is budget.RoleUser (internal/budget/valueobject.go: admin=0,
 	// user=1, guest=2).
 	f.BudgetAccess(Budget, GuestID, 1, false)
 }
