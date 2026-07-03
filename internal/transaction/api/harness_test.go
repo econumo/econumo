@@ -120,8 +120,8 @@ func newHarness(t *testing.T) *harness {
 	)
 	svc := apptransaction.NewService(
 		txRepo, server.NewTransactionAccountResolver(accSvc),
-		transactionrepo.NewAccountGrants(connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))),
-		transactionrepo.NewVisibleAccounts(accSvc),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
+		accSvc,
 		server.NewTransactionUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
