@@ -1,14 +1,14 @@
-// Adapters that satisfy the connection service's OptionPort by delegating to
-// the account repository. Lives here (infra) so connection depends only
-// on its own small interfaces. The UserLookup, FolderPort, SharedAccessLookup
-// and AccessRevoker counterparts live in internal/server: they need the user
-// and account features' types, which a feature package must not import.
+// AccountAccessResolver satisfies the category/tag AccountAccess port by
+// delegating to the connection AccountAccess repo. Lives here (infra) so
+// connection depends only on its own small interfaces. The UserLookup,
+// FolderPort, SharedAccessLookup and AccessRevoker counterparts live in
+// internal/server: they need the user and account features' types, which a
+// feature package must not import.
 package repo
 
 import (
 	"context"
 	"errors"
-	"time"
 
 	domconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -72,29 +72,4 @@ func (r *AccountAccessResolver) HasAdminGrant(ctx context.Context, accountID, us
 		return false, err
 	}
 	return grant.Role() == domconnection.RoleAdmin, nil
-}
-
-// optionRepo is the slice of the account Repository the connection side effects
-// need (accounts_options position).
-type optionRepo interface {
-	MaxPosition(ctx context.Context, userID vo.Id) (int16, error)
-	SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error
-}
-
-// OptionPort adapts the account Repository to connection.OptionPort.
-type OptionPort struct{ accounts optionRepo }
-
-var _ domconnection.OptionPort = (*OptionPort)(nil)
-
-// NewOptionPort wraps an account Repository (anything exposing the position ops).
-func NewOptionPort(accounts optionRepo) *OptionPort { return &OptionPort{accounts: accounts} }
-
-// MaxPosition returns the user's highest accounts_options.position.
-func (p *OptionPort) MaxPosition(ctx context.Context, userID vo.Id) (int16, error) {
-	return p.accounts.MaxPosition(ctx, userID)
-}
-
-// SavePosition upserts the user's accounts_options row.
-func (p *OptionPort) SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error {
-	return p.accounts.SavePosition(ctx, accountID, userID, position, now)
 }
