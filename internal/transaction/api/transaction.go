@@ -5,11 +5,14 @@ import (
 
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
+// _ keeps the apidoc/apptransaction import aliases visible to swag's
+// annotation parser (this file's handler bodies no longer reference
+// apptransaction types directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
+var _ = apptransaction.CreateTransactionResult{}
 
 // CreateTransaction handles POST /api/v1/transaction/create-transaction (auth).
 //
@@ -26,21 +29,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/transaction/create-transaction [post]
 func (h *Handlers) CreateTransaction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptransaction.CreateTransactionRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.CreateTransaction(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.CreateTransaction)
 }
 
 // UpdateTransaction handles POST /api/v1/transaction/update-transaction (auth).
@@ -58,21 +47,7 @@ func (h *Handlers) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/transaction/update-transaction [post]
 func (h *Handlers) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptransaction.UpdateTransactionRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UpdateTransaction(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateTransaction)
 }
 
 // DeleteTransaction handles POST /api/v1/transaction/delete-transaction (auth).
@@ -90,19 +65,5 @@ func (h *Handlers) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/transaction/delete-transaction [post]
 func (h *Handlers) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptransaction.DeleteTransactionRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.DeleteTransaction(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteTransaction)
 }
