@@ -1,7 +1,7 @@
 // BudgetUserLookup satisfies the budget service's UserLookup port (owner
 // embed, default currency code, active-budget write) by delegating to the
 // user repository. It lives here, not in internal/budget/repo, because
-// it needs the user feature's User/Header types and an infra package must
+// it needs the model package's User/Header types and an infra package must
 // not import a feature (see archtest).
 package server
 
@@ -9,16 +9,16 @@ import (
 	"context"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/user"
 )
 
 // budgetUserRepo is the minimal user-repo surface this adapter needs.
 type budgetUserRepo interface {
-	GetByID(ctx context.Context, id vo.Id) (*user.User, error)
-	GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error)
-	Save(ctx context.Context, u *user.User) error
+	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
+	Save(ctx context.Context, u *model.User) error
 }
 
 // BudgetUserLookup adapts the user repository to budget.UserLookup.
@@ -57,10 +57,10 @@ func (l *BudgetUserLookup) CurrencyCode(ctx context.Context, userID string) (str
 	if err != nil {
 		return "", err
 	}
-	if o := u.Option(user.OptionCurrency); o != nil && o.Value != nil {
+	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil {
 		return *o.Value, nil
 	}
-	return user.DefaultCurrency, nil
+	return model.DefaultCurrency, nil
 }
 
 // SetActiveBudget writes the user's active-budget option.

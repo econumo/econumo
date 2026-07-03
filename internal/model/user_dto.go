@@ -1,7 +1,7 @@
 // Request/result DTOs (with their tier-1 Validate() methods) for the user
 // use-cases. JSON field names are frozen to the existing API wire contract;
 // see CLAUDE.md.
-package user
+package model
 
 import (
 	"strings"
@@ -221,15 +221,17 @@ type CompleteOnboardingResult struct {
 // update-budget
 // ---------------------------------------------------------------------------
 
-// UpdateBudgetRequest is the update-budget request body. The wire field name is
-// "value" (a budget id) — frozen, do not rename.
-type UpdateBudgetRequest struct {
+// UpdateActiveBudgetRequest is the user update-budget request body (the
+// endpoint sets the user's active budget). The wire field name is "value" (a
+// budget id) — frozen, do not rename. Named distinctly from the budget
+// feature's own UpdateBudgetRequest (a different endpoint, same-shape name).
+type UpdateActiveBudgetRequest struct {
 	Value string `json:"value"`
 }
 
 // Validate enforces value NotBlank + Uuid. The budget-existence check
 // (-> "Plan not found") is tier 2, in the service.
-func (r UpdateBudgetRequest) Validate() error {
+func (r UpdateActiveBudgetRequest) Validate() error {
 	if strings.TrimSpace(r.Value) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
 	}
@@ -239,8 +241,8 @@ func (r UpdateBudgetRequest) Validate() error {
 	return nil
 }
 
-// UpdateBudgetResult is the update-budget response.
-type UpdateBudgetResult struct {
+// UpdateActiveBudgetResult is the user update-budget response.
+type UpdateActiveBudgetResult struct {
 	User CurrentUserResult `json:"user"`
 }
 

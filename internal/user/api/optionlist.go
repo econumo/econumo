@@ -3,15 +3,15 @@ package api
 import (
 	"net/http"
 
-	appuser "github.com/econumo/econumo/internal/user"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc and appuser import aliases visible to swag's annotation parser.
+// _ keeps the apidoc and model import aliases visible to swag's annotation parser.
 var (
 	_ = apidoc.JsonResponseError{}
-	_ = appuser.GetOptionListResult{}
+	_ = model.GetOptionListResult{}
 )
 
 // GetOptionList handles GET /api/v1/user/get-option-list (auth). No body/query;
@@ -22,7 +22,7 @@ var (
 // @Description Returns the authenticated user's raw persisted options ({items: [...]}).
 // @Tags        User
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appuser.GetOptionListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetOptionListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer

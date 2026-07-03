@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 )
 
@@ -13,7 +14,7 @@ import (
 // the password against the stored hash+salt, issues a JWT, and returns the
 // token + current user. A bad username or password yields an UnauthorizedError
 // (HTTP 401, "Invalid credentials.").
-func (s *Service) Login(ctx context.Context, req LoginRequest, now time.Time) (*LoginResult, error) {
+func (s *Service) Login(ctx context.Context, req model.LoginRequest, now time.Time) (*model.LoginResult, error) {
 	identifier := s.encode.Hash(strings.ToLower(req.Username))
 	u, err := s.repo.GetByIdentifier(ctx, identifier)
 	if err != nil {
@@ -38,5 +39,5 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, now time.Time) (*
 	if cerr != nil {
 		return nil, cerr
 	}
-	return &LoginResult{Token: token, User: cur}, nil
+	return &model.LoginResult{Token: token, User: cur}, nil
 }

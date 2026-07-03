@@ -3,15 +3,15 @@ package api
 import (
 	"net/http"
 
-	appuser "github.com/econumo/econumo/internal/user"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc and appuser import aliases visible to swag's annotation parser.
+// _ keeps the apidoc and model import aliases visible to swag's annotation parser.
 var (
 	_ = apidoc.JsonResponseError{}
-	_ = appuser.GetUserDataResult{}
+	_ = model.GetUserDataResult{}
 )
 
 // GetUserData handles GET /api/v1/user/get-user-data (auth). The request has no
@@ -22,7 +22,7 @@ var (
 // @Description Returns the authenticated user's profile ({user: CurrentUserResult}).
 // @Tags        User
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appuser.GetUserDataResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetUserDataResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer

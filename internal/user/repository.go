@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -15,18 +16,18 @@ type Repository interface {
 	NextIdentity() vo.Id
 
 	// GetByID loads a user (with options) by id. Missing -> *errs.NotFoundError.
-	GetByID(ctx context.Context, id vo.Id) (*User, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
 
 	// GetByIdentifier loads a user (with options) by the md5 identifier used for
 	// authentication. Missing -> *errs.NotFoundError.
-	GetByIdentifier(ctx context.Context, identifier string) (*User, error)
+	GetByIdentifier(ctx context.Context, identifier string) (*model.User, error)
 
 	// ExistsByIdentifier reports whether a user with the identifier exists. Used
 	// by registration to detect a duplicate without loading the row.
 	ExistsByIdentifier(ctx context.Context, identifier string) (bool, error)
 
 	// Save upserts the user row and its options.
-	Save(ctx context.Context, u *User) error
+	Save(ctx context.Context, u *model.User) error
 
 	// ListIDs returns all user ids (for the optional connect-users flow on
 	// registration).
@@ -34,7 +35,7 @@ type Repository interface {
 
 	// GetOptions loads just the option rows for a user (used by get-option-list,
 	// which does not need the full aggregate).
-	GetOptions(ctx context.Context, userID vo.Id) ([]UserOption, error)
+	GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error)
 }
 
 // PasswordRequests persists password-reset codes (users_password_requests) for
@@ -43,9 +44,9 @@ type PasswordRequests interface {
 	// DeleteByUser removes all of a user's pending reset codes.
 	DeleteByUser(ctx context.Context, userID vo.Id) error
 	// Save inserts a new reset request.
-	Save(ctx context.Context, pr *PasswordRequest) error
+	Save(ctx context.Context, pr *model.PasswordRequest) error
 	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
-	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*PasswordRequest, error)
+	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*model.PasswordRequest, error)
 	// Delete removes a request by id.
 	Delete(ctx context.Context, id vo.Id) error
 }

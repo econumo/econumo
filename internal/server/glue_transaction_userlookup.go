@@ -1,20 +1,20 @@
 // TransactionUserLookup satisfies the transaction service's UserLookup port
 // (author embed) by delegating to the user repository. It lives here, not in
-// internal/transaction/repo, because it needs the user feature's Header
+// internal/transaction/repo, because it needs the model package's Header
 // type and an infra package must not import a feature (see archtest).
 package server
 
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
-	"github.com/econumo/econumo/internal/user"
 )
 
 // transactionUserByID is the minimal user-repo surface for the author embed.
 type transactionUserByID interface {
-	GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
 }
 
 // TransactionUserLookup adapts the user repository to transaction.UserLookup.

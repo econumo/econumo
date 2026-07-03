@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // Register creates a new user (no token returned; see CLAUDE.md). It is
 // gated on ECONUMO_ALLOW_REGISTRATION; the actual creation is shared with the
 // ungated CLI admin path via createUser.
-func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterResult, error) {
+func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*model.RegisterResult, error) {
 	if !s.allowRegistration {
 		return nil, errs.NewValidation("Registration disabled")
 	}
@@ -26,7 +27,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 	if cerr != nil {
 		return nil, cerr
 	}
-	return &RegisterResult{User: cur}, nil
+	return &model.RegisterResult{User: cur}, nil
 }
 
 // createUser is the shared, UNGATED account-creation core used by Register
@@ -36,7 +37,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 // duplicate email -> a validation error ("User already exists"). New users are
 // never auto-connected to existing users; connections are created only by
 // accepting an invite.
-func (s *Service) createUser(ctx context.Context, name, email, password string) (*User, error) {
+func (s *Service) createUser(ctx context.Context, name, email, password string) (*model.User, error) {
 	loweredEmail := strings.ToLower(strings.TrimSpace(email))
 	identifier := s.encode.Hash(loweredEmail)
 
@@ -60,7 +61,7 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 	passwordHash := s.hasher.Hash(password, salt)
 	avatarURL := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredEmail))
 
-	u := NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatarURL, passwordHash, salt, now)
+	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatarURL, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {

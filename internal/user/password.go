@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -34,8 +35,8 @@ func isNotFound(err error) bool {
 
 // UpdatePassword verifies the old password then stores the new hash. A wrong
 // old password yields a ValidationError -> 400 ("Password is not correct").
-func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req UpdatePasswordRequest) (*UpdatePasswordResult, error) {
-	_, err := s.mutate(ctx, userID, func(u *User, now time.Time) error {
+func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
+	_, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
 		if !s.hasher.Verify(u.Password, req.OldPassword, u.Salt) {
 			return errs.NewValidation("Password is not correct")
 		}
@@ -45,18 +46,18 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req UpdatePa
 	if err != nil {
 		return nil, err
 	}
-	return &UpdatePasswordResult{}, nil
+	return &model.UpdatePasswordResult{}, nil
 }
 
 // RemindPassword issues a password-reset code: it replaces the user's existing
 // codes with a fresh one (10-min expiry) and emails it. A missing user is hidden
 // (returns success) to avoid account enumeration.
-func (s *Service) RemindPassword(ctx context.Context, req RemindPasswordRequest) (*RemindPasswordResult, error) {
+func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRequest) (*model.RemindPasswordResult, error) {
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
 	if err != nil {
 		if isNotFound(err) {
-			return &RemindPasswordResult{}, nil // anti-enumeration
+			return &model.RemindPasswordResult{}, nil // anti-enumeration
 		}
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func (s *Service) RemindPassword(ctx context.Context, req RemindPasswordRequest)
 	if err != nil {
 		return nil, err
 	}
-	pr := NewPasswordRequest(vo.NewId(), u.ID, code, s.clock.Now())
+	pr := model.NewPasswordRequest(vo.NewId(), u.ID, code, s.clock.Now())
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
@@ -81,13 +82,13 @@ func (s *Service) RemindPassword(ctx context.Context, req RemindPasswordRequest)
 			return nil, err
 		}
 	}
-	return &RemindPasswordResult{}, nil
+	return &model.RemindPasswordResult{}, nil
 }
 
 // ResetPassword validates the (email, code) reset request, and on success sets
 // the new password and consumes the code. An unknown user/code yields a generic
 // validation error; an expired code yields the frozen "The code is expired".
-func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (*ResetPasswordResult, error) {
+func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequest) (*model.ResetPasswordResult, error) {
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
 	if err != nil {
@@ -117,5 +118,5 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (
 	}); err != nil {
 		return nil, err
 	}
-	return &ResetPasswordResult{}, nil
+	return &model.ResetPasswordResult{}, nil
 }

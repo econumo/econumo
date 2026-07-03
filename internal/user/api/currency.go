@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 
-	appuser "github.com/econumo/econumo/internal/user"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc/appuser import aliases visible to swag's annotation
-// parser (this file's handler body no longer references appuser types
+// _ keeps the apidoc/model import aliases visible to swag's annotation
+// parser (this file's handler body no longer references model types
 // directly, since it delegates to a method value).
 var _ = apidoc.JsonResponseError{}
-var _ = appuser.UpdateCurrencyResult{}
+var _ = model.UpdateCurrencyResult{}
 
 // UpdateCurrency handles POST /api/v1/user/update-currency (auth). Tier-1
 // validates NotBlank; the service's value-object constructor enforces the
@@ -23,8 +23,8 @@ var _ = appuser.UpdateCurrencyResult{}
 // @Tags        User
 // @Accept      json
 // @Produce     json
-// @Param       request body     appuser.UpdateCurrencyRequest true "Update currency request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appuser.UpdateCurrencyResult}
+// @Param       request body     model.UpdateCurrencyRequest true "Update currency request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
