@@ -3,7 +3,7 @@ package api
 
 import (
 	appcurrency "github.com/econumo/econumo/internal/currency"
-	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/web/apidoc"
 )
 
 // _ keeps the apidoc import alias visible to swag's annotation parser.

@@ -9,7 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/web/httpx"
 )
 
 // TokenVerifier is the narrow contract the JWT middleware needs. jwt.JWT

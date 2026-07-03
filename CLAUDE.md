@@ -99,7 +99,8 @@ tree holding its own domain logic, persistence, and HTTP edge:
 │   │   ├── auth/ ................ password hashing + AES email encryption + user-identifier hashing
 │   │   ├── clock/ ................ time source abstraction
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
-│   ├── ui/ ...................... HTTP-edge infrastructure shared by every feature: middleware, router,
+│   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
+│   │                              distinct from the repo-root web/, the Vue SPA): middleware, router,
 │   │                              response envelope (httpx), SPA server, apidoc — no feature logic
 │   ├── server/ .................. composition root: server.BuildAPI wires every feature (used by the
 │   │                              binary AND tests); glue_*.go files hold the cross-feature adapters
@@ -124,7 +125,7 @@ a `glue_<feature>_<purpose>.go` file (e.g. `glue_account_currencylookup.go`,
 composition time. This keeps every feature package independently buildable
 and testable without pulling in its siblings.
 
-Shared leaves (`shared`, `ui`, `infra`) never import a feature; the
+Shared leaves (`shared`, `web`, `infra`) never import a feature; the
 kernel (`internal/shared`) imports nothing internal outside
 itself. This is enforced by `internal/test/archtest`, which auto-detects
 feature packages (any `internal/<top>` not in its infrastructure set) so newly
@@ -152,7 +153,7 @@ handling) and branches explicitly by design.
 
 HTTP handlers are thin named methods under `internal/<feature>/api/` (the
 name carries the swag `@` annotation block); the body is one call into the
-generic combinators in `internal/ui/endpoint`: `endpoint.Handle` (auth + JSON
+generic combinators in `internal/web/endpoint`: `endpoint.Handle` (auth + JSON
 body), `endpoint.HandleNoBody` (auth, no body), `endpoint.HandlePublic`
 (no auth) — each doing require-user/decode/`Validate()`/call/envelope in the
 frozen order. Per-endpoint extras (e.g. `reqctx.AddLogAttr`) live in a small
@@ -254,7 +255,7 @@ fields (custom dimensions) — UUIDs only, never PII (no emails, bodies, or quer
   `duration_ms`.
 
 `request_id` is a UUIDv7 minted in the `RequestID` middleware and echoed on `X-Request-Id`.
-The `AccessLog` middleware (`internal/ui/middleware/accesslog.go`) installs a request-scoped
+The `AccessLog` middleware (`internal/web/middleware/accesslog.go`) installs a request-scoped
 accumulator (`reqctx.WithLogAttrs`) and emits both lines; any layer enriches the operation
 line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.g.
 `category_id`). `/health` logs the transport line only; `OPTIONS` preflight is skipped.
@@ -326,7 +327,7 @@ and the production database holds data written in these formats. Don't "clean
 them up" — changing one breaks live clients, locks users out, or makes stored
 data unreadable. Most are also asserted by the test suite.
 
-### Response envelope (`internal/ui/httpx/envelope.go`)
+### Response envelope (`internal/web/httpx/envelope.go`)
 - Success (200): `{"success": true, "message": "", "data": <payload>}`
 - Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
 - Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `ECONUMO_DEBUG=true`.

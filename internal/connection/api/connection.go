@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	appconnection "github.com/econumo/econumo/internal/connection"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 var _ = apidoc.JsonResponseError{}

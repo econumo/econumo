@@ -10,7 +10,7 @@ import (
 
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
-	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/web/httpx"
 )
 
 // capRec is one captured log record (level, message, flattened attrs).

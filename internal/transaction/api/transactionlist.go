@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	apptransaction "github.com/econumo/econumo/internal/transaction"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/httpx"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 var _ = apidoc.JsonResponseUnauthorized{}

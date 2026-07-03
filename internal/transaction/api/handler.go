@@ -3,7 +3,7 @@ package api
 
 import (
 	apptransaction "github.com/econumo/econumo/internal/transaction"
-	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/web/apidoc"
 )
 
 var _ = apidoc.JsonResponseOk{}

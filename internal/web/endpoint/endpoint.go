@@ -10,8 +10,8 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/web/httpx"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 // Handle serves an authenticated JSON endpoint: require user, decode+validate

@@ -14,8 +14,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	"github.com/econumo/econumo/internal/ui/endpoint"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/web/endpoint"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 // testReq is a minimal request DTO implementing httpx.Validator (tier-1

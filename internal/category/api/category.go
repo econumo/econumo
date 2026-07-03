@@ -7,8 +7,8 @@ import (
 	appcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 // Forces the apidoc import so swag annotations can resolve its envelope schemas.

@@ -24,8 +24,8 @@ import (
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
-	"github.com/econumo/econumo/internal/ui/router"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
+	"github.com/econumo/econumo/internal/web/router"
 )
 
 const (

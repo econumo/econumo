@@ -1,6 +1,6 @@
 // Package reqctx carries request-scoped values through context.Context so any
 // layer can read them without importing the HTTP/middleware layer that sets
-// them. It is a stdlib-only leaf package (imported by both internal/ui/middleware
+// them. It is a stdlib-only leaf package (imported by both internal/web/middleware
 // and the application services), which keeps the dependency direction clean: the
 // app never imports ui.
 //

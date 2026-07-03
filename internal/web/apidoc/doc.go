@@ -4,7 +4,7 @@
 // generated docs.go is committed; regenerate it with `make swagger` (the
 // canonical, version-pinned path — also run automatically before
 // build/run/publish/up and verified by `make go-lint`/`make test`). For an
-// ad-hoc run use `go generate ./internal/ui/apidoc`.
+// ad-hoc run use `go generate ./internal/web/apidoc`.
 //
 // Serving: ui/router wires Swagger UI at /api/doc and the raw spec at
 // /api/doc.json (both public; paths are wire-compatible with existing clients,

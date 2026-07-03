@@ -67,6 +67,8 @@ internal/
 │                      (relocated to internal/shared/reqctx post-Phase 6 —
 │                      the archtest kernel rule already bound it to shared)
 ├── ui/                HTTP edge machinery only: httpx, middleware, router, spa, apidoc
+│                      (renamed to internal/web post-Phase 6 — the Symfony-era
+│                      "ui" name was the last migration vestige)
 ├── infra/             technical adapters only: auth, mailer, clock, storage,
 │                      operation (idempotency guard)
 │                      (openexchangerates: originally slated here, but it consumes

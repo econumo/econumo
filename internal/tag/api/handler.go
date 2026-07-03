@@ -3,7 +3,7 @@ package api
 
 import (
 	apptag "github.com/econumo/econumo/internal/tag"
-	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/web/apidoc"
 )
 
 // _ keeps the apidoc import alias visible to swag's annotation parser.

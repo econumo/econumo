@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	appcategory "github.com/econumo/econumo/internal/category"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 // Forces the apidoc/appcategory imports so swag annotations can resolve their

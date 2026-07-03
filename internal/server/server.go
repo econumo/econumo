@@ -42,11 +42,11 @@ import (
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/router"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/router"
 )
 
 // BuildAPI wires every resource module over the given (already opened+migrated)

@@ -19,7 +19,7 @@ const module = "github.com/econumo/econumo"
 
 // infrastructure lists the internal/<top> dirs that are NOT feature packages.
 var infrastructure = map[string]bool{
-	"shared": true, "ui": true, "infra": true,
+	"shared": true, "web": true, "infra": true,
 	"server": true, "cli": true, "config": true, "logging": true,
 	"test": true,
 }
@@ -32,7 +32,7 @@ func isKernel(top string) bool { return top == "shared" }
 // config and logging import nothing internal today; listing them keeps that true.
 func isLeaf(top string) bool {
 	switch top {
-	case "shared", "ui", "infra", "config", "logging":
+	case "shared", "web", "infra", "config", "logging":
 		return true
 	}
 	return false

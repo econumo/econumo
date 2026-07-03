@@ -2,7 +2,7 @@ package api
 
 import (
 	appcategory "github.com/econumo/econumo/internal/category"
-	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/web/apidoc"
 )
 
 // Forces the apidoc import so swag annotations can resolve its envelope schemas.

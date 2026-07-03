@@ -63,7 +63,7 @@ func typeName(err error) string {
 }
 
 // errorRecorder is satisfied by the access-log response writer
-// (internal/ui/middleware). recordError surfaces the error that produced a
+// (internal/web/middleware). recordError surfaces the error that produced a
 // response to the access log without coupling httpx to the middleware package or
 // changing any handler signature; it is a no-op when the writer is not wrapped.
 type errorRecorder interface{ SetError(error) }

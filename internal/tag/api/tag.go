@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	apptag "github.com/econumo/econumo/internal/tag"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 // _ keeps the apidoc/apptag import aliases visible to swag's annotation

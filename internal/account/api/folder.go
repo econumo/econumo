@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	appaccount "github.com/econumo/econumo/internal/account"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 var _ = apidoc.JsonResponseUnauthorized{}

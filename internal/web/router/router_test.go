@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/internal/web/router"
 )
 
 // newServer builds a router with a temp SPA dir (containing index.html) and an

@@ -21,8 +21,8 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/ui/middleware"
-	"github.com/econumo/econumo/internal/ui/spa"
+	"github.com/econumo/econumo/internal/web/middleware"
+	"github.com/econumo/econumo/internal/web/spa"
 )
 
 // RegisterAPI is the seam through which resource modules attach their routes.
