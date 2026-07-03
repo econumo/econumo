@@ -123,6 +123,9 @@ internal/category/                  package category — the feature's core
 Naming conventions:
 
 - `entity.go` (singular; moves as-is — the domain files already use this name).
+  **Amendment (post-Phase 6):** renamed to `<feature>.go` (e.g.
+  `category/category.go`), restoring the brainstorm's original shape now that
+  the rename is a pure `git mv`.
   Features with extra domain files keep them (e.g. budget's `valueobject.go`).
 - `usecase.go` is the entrypoint file holding the use-case struct, constructor,
   and shared helpers. Struct names (`Service`, `ReadService`, …) are NOT renamed
