@@ -347,3 +347,30 @@ Per feature commit:
 - The web SPA (`web/`), deployment, CI workflows (beyond path updates if any
   reference moved packages).
 - Renaming HTTP routes or reshaping DTO JSON.
+
+## Post-restructure evolution: the shared model package (Phase 7, decided 2026-07-03)
+
+After Phases 0-6 shipped, the structural-copy tax of full type isolation
+(twin structs like `transaction.AccountResult`, `budget.ConvertItem`; the
+conversion glue that exists only to shuttle between twins) motivated one
+relaxation, chosen over per-feature view leaves because swag breaks on
+multiple same-named packages (recorded Phase 2 Task 1) and type names were
+already ~95% feature-qualified:
+
+- **`internal/model`** — ONE flat leaf package holding every feature's
+  entities (with their mutators/invariants), value objects, and DTOs/view
+  rows (~274 types, per-feature files inside: `account.go`,
+  `account_dto.go`, ...). Twins MERGE into single definitions; ~9 genuinely
+  different same-named types get feature-prefixed renames (`Type` ->
+  `AccountType`/`CategoryType`/`TransactionType`, ...) — all wire-invisible.
+- **Features keep behavior only**: use-cases, ports, repository interfaces,
+  repo/, api/. Domain services with behavior (currency convertor) stay in
+  their feature.
+- **Dependency rule update**: `model` joins the kernel (imports only
+  `shared/*`; everyone may import it). Features still never import
+  features.
+- **Consequences**: swagger definition keys become `model.X` (semantic
+  identity verified per the Phase 2 method); glue that becomes a pure
+  pass-through once twins merge is deleted per the Phase 4 rule; the
+  root<-repo entity-import cycle that blocked repo-interface pruning
+  dissolves (pruning remains OPTIONAL future work, not part of Phase 7).
