@@ -29,8 +29,13 @@ func isKernel(top string) bool { return top == "shared" || top == "reqctx" }
 
 // leaves may be imported by features but must never import one.
 // server is deliberately absent: it is the composition root and imports everything.
+// config and logging import nothing internal today; listing them keeps that true.
 func isLeaf(top string) bool {
-	return top == "shared" || top == "reqctx" || top == "ui" || top == "infra"
+	switch top {
+	case "shared", "reqctx", "ui", "infra", "config", "logging":
+		return true
+	}
+	return false
 }
 
 // topOf extracts the first path segment under internal/ ("" if not internal).
