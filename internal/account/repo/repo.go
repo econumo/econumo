@@ -230,8 +230,9 @@ func hydrateAccount(row accountRow) (*domaccount.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domaccount.FromState(
-		id, userID, currencyID, row.Name, domaccount.Type(row.Type), row.Icon,
-		row.IsDeleted, row.CreatedAt, row.UpdatedAt,
-	), nil
+	return &domaccount.Account{
+		ID: id, UserID: userID, CurrencyID: currencyID, Name: row.Name,
+		Type: domaccount.Type(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
 }

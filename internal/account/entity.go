@@ -62,13 +62,6 @@ func NewAccount(id, userID, currencyID vo.Id, name, icon string, now time.Time) 
 	}
 }
 
-func FromState(id, userID, currencyID vo.Id, name string, typ Type, icon string, isDeleted bool, createdAt, updatedAt time.Time) *Account {
-	return &Account{
-		ID: id, UserID: userID, CurrencyID: currencyID, Name: name,
-		Type: typ, Icon: icon, IsDeleted: isDeleted, CreatedAt: createdAt, UpdatedAt: updatedAt,
-	}
-}
-
 func (a *Account) UpdateName(name string, now time.Time) {
 	if a.Name != name {
 		a.Name = name

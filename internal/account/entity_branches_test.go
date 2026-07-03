@@ -25,7 +25,7 @@ func TestAccount_FromState_RoundTrip(t *testing.T) {
 	id := mustID(t, "11111111-1111-1111-1111-111111111111")
 	uid := mustID(t, "22222222-2222-2222-2222-222222222222")
 	cid := mustID(t, "33333333-3333-3333-3333-333333333333")
-	a := FromState(id, uid, cid, "Savings", TypeCash, "piggy", true, ta0, ta1)
+	a := &Account{ID: id, UserID: uid, CurrencyID: cid, Name: "Savings", Type: TypeCash, Icon: "piggy", IsDeleted: true, CreatedAt: ta0, UpdatedAt: ta1}
 	if a.Type != TypeCash {
 		t.Errorf("type=%d want cash", a.Type)
 	}
@@ -86,7 +86,7 @@ func TestFolder_Getters(t *testing.T) {
 func TestFolder_FromState_RoundTrip(t *testing.T) {
 	id := mustID(t, "44444444-4444-4444-4444-444444444444")
 	uid := mustID(t, "22222222-2222-2222-2222-222222222222")
-	f := FolderFromState(id, uid, "Hidden", 9, false, ta0, ta1)
+	f := &Folder{ID: id, UserID: uid, Name: "Hidden", Position: 9, IsVisible: false, CreatedAt: ta0, UpdatedAt: ta1}
 	if f.Position != 9 {
 		t.Errorf("position=%d want 9", f.Position)
 	}

@@ -47,10 +47,11 @@ func TestAccountRepo_SaveGetRoundTrip(t *testing.T) {
 	seedUser(t, f, userA, "A")
 
 	id := vo.MustParseId(acctCash)
-	acc := domaccount.FromState(
-		id, vo.MustParseId(userA), vo.MustParseId(usdID),
-		"Wallet", domaccount.TypeCash, "icon-wallet", false, fixedTime, fixedTime,
-	)
+	acc := &domaccount.Account{
+		ID: id, UserID: vo.MustParseId(userA), CurrencyID: vo.MustParseId(usdID),
+		Name: "Wallet", Type: domaccount.TypeCash, Icon: "icon-wallet",
+		CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
 	if err := repo.Save(ctx, acc); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

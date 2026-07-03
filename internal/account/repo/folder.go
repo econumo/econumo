@@ -153,7 +153,10 @@ func hydrateFolder(row folderRow) (*domaccount.Folder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domaccount.FolderFromState(id, userID, row.Name, row.Position, row.IsVisible, row.CreatedAt, row.UpdatedAt), nil
+	return &domaccount.Folder{
+		ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+		IsVisible: row.IsVisible, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
 }
 
 type sqliteFolderQuerier struct{}

@@ -29,13 +29,6 @@ func NewFolder(id, userID vo.Id, name string, now time.Time) *Folder {
 	}
 }
 
-func FolderFromState(id, userID vo.Id, name string, position int16, isVisible bool, createdAt, updatedAt time.Time) *Folder {
-	return &Folder{
-		ID: id, UserID: userID, Name: name, Position: position, IsVisible: isVisible,
-		CreatedAt: createdAt, UpdatedAt: updatedAt,
-	}
-}
-
 // SetPosition sets the position at creation. It does not bump UpdatedAt — it is
 // part of construction.
 func (f *Folder) SetPosition(position int16) { f.Position = position }
