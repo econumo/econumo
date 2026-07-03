@@ -1,10 +1,10 @@
-// Package user is the user feature: the User entity, its UserOption members,
-// the repository interface and option-name constants, the use-case services
-// (login, register, profile, password, onboarding, admin), and their
-// request/result DTOs. Crypto (password hashing, email encryption, identifier
+// The User entity: the User aggregate root, its UserOption members, the
+// Header read projection, and the option-name constants. The repository
+// interface, use-case services, and their request/result DTOs stay in
+// internal/user; crypto (password hashing, email encryption, identifier
 // hashing) lives in the infra auth layer and is invoked by the use-cases, not
 // here.
-package user
+package model
 
 import (
 	"time"

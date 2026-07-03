@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
-	"github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
@@ -28,8 +28,8 @@ func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *dbtest.DB) {
 }
 
 func newTestUser(id vo.Id, identifier, email, name, avatarURL, password, salt string, isActive bool,
-	createdAt, updatedAt time.Time, opts []user.UserOption) *user.User {
-	return &user.User{ID: id, Identifier: identifier, Email: email, Name: name, AvatarURL: avatarURL,
+	createdAt, updatedAt time.Time, opts []model.UserOption) *model.User {
+	return &model.User{ID: id, Identifier: identifier, Email: email, Name: name, AvatarURL: avatarURL,
 		Password: password, Salt: salt, IsActive: isActive, CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
 }
 
@@ -38,10 +38,10 @@ func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
 	ctx := context.Background()
 
 	val := "USD"
-	opt := user.ReconstituteUserOption(vo.MustParseId(optID), "currency", &val, fixedTime, fixedTime)
+	opt := model.ReconstituteUserOption(vo.MustParseId(optID), "currency", &val, fixedTime, fixedTime)
 	u := newTestUser(
 		vo.MustParseId(userA), "ident-a", "enc-email", "Alice", "https://av/a",
-		"hash", "salt-a", true, fixedTime, fixedTime, []user.UserOption{opt},
+		"hash", "salt-a", true, fixedTime, fixedTime, []model.UserOption{opt},
 	)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -165,8 +165,8 @@ func TestUserRepo_GetOptions(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
 	val := "dark"
-	opt := user.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
-	u := newTestUser(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, []user.UserOption{opt})
+	opt := model.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
+	u := newTestUser(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, []model.UserOption{opt})
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -183,8 +183,8 @@ func TestUserReadRepo_Views(t *testing.T) {
 	repo, read, db := newRepos(t)
 	ctx := context.Background()
 	val := "light"
-	opt := user.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
-	u := newTestUser(vo.MustParseId(userA), "ident-a", "enc", "Alice", "https://av", "h", "s", true, fixedTime, fixedTime, []user.UserOption{opt})
+	opt := model.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
+	u := newTestUser(vo.MustParseId(userA), "ident-a", "enc", "Alice", "https://av", "h", "s", true, fixedTime, fixedTime, []model.UserOption{opt})
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

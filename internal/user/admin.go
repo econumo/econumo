@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -95,7 +96,7 @@ func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 // userByEmail resolves a user from a plaintext email via the md5 identifier
 // (the same lookup key registration computes). A miss returns the repo's
 // NotFound error.
-func (s *Service) userByEmail(ctx context.Context, email string) (*User, error) {
+func (s *Service) userByEmail(ctx context.Context, email string) (*model.User, error) {
 	lowered := strings.ToLower(strings.TrimSpace(email))
 	return s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
 }

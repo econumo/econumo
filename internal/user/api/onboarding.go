@@ -3,15 +3,15 @@ package api
 import (
 	"net/http"
 
-	appuser "github.com/econumo/econumo/internal/user"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc and appuser import aliases visible to swag's annotation parser.
+// _ keeps the apidoc and model import aliases visible to swag's annotation parser.
 var (
 	_ = apidoc.JsonResponseError{}
-	_ = appuser.CompleteOnboardingResult{}
+	_ = model.CompleteOnboardingResult{}
 )
 
 // CompleteOnboarding handles POST /api/v1/user/complete-onboarding (auth). No
@@ -21,7 +21,7 @@ var (
 // @Description Marks the authenticated user's onboarding complete and returns the refreshed user.
 // @Tags        User
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appuser.CompleteOnboardingResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.CompleteOnboardingResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer

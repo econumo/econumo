@@ -4384,7 +4384,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.CompleteOnboardingResult"
+                                            "$ref": "#/definitions/model.CompleteOnboardingResult"
                                         }
                                     }
                                 }
@@ -4433,7 +4433,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.GetOptionListResult"
+                                            "$ref": "#/definitions/model.GetOptionListResult"
                                         }
                                     }
                                 }
@@ -4482,7 +4482,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.GetUserDataResult"
+                                            "$ref": "#/definitions/model.GetUserDataResult"
                                         }
                                     }
                                 }
@@ -4524,7 +4524,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.LoginRequest"
+                            "$ref": "#/definitions/model.LoginRequest"
                         }
                     }
                 ],
@@ -4532,7 +4532,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login).",
                         "schema": {
-                            "$ref": "#/definitions/user.LoginResult"
+                            "$ref": "#/definitions/model.LoginResult"
                         }
                     },
                     "400": {
@@ -4583,7 +4583,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.LogoutResult"
+                                            "$ref": "#/definitions/model.LogoutResult"
                                         }
                                     }
                                 }
@@ -4625,7 +4625,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.RegisterRequest"
+                            "$ref": "#/definitions/model.RegisterRequest"
                         }
                     }
                 ],
@@ -4641,7 +4641,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.CurrentUserResult"
+                                            "$ref": "#/definitions/model.CurrentUserResult"
                                         }
                                     }
                                 }
@@ -4689,7 +4689,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.RemindPasswordRequest"
+                            "$ref": "#/definitions/model.RemindPasswordRequest"
                         }
                     }
                 ],
@@ -4705,7 +4705,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.RemindPasswordResult"
+                                            "$ref": "#/definitions/model.RemindPasswordResult"
                                         }
                                     }
                                 }
@@ -4753,7 +4753,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.ResetPasswordRequest"
+                            "$ref": "#/definitions/model.ResetPasswordRequest"
                         }
                     }
                 ],
@@ -4769,7 +4769,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.ResetPasswordResult"
+                                            "$ref": "#/definitions/model.ResetPasswordResult"
                                         }
                                     }
                                 }
@@ -4822,7 +4822,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.UpdateBudgetRequest"
+                            "$ref": "#/definitions/model.UpdateActiveBudgetRequest"
                         }
                     }
                 ],
@@ -4838,7 +4838,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.UpdateBudgetResult"
+                                            "$ref": "#/definitions/model.UpdateActiveBudgetResult"
                                         }
                                     }
                                 }
@@ -4891,7 +4891,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.UpdateCurrencyRequest"
+                            "$ref": "#/definitions/model.UpdateCurrencyRequest"
                         }
                     }
                 ],
@@ -4907,7 +4907,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.UpdateCurrencyResult"
+                                            "$ref": "#/definitions/model.UpdateCurrencyResult"
                                         }
                                     }
                                 }
@@ -4960,7 +4960,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.UpdateNameRequest"
+                            "$ref": "#/definitions/model.UpdateNameRequest"
                         }
                     }
                 ],
@@ -4976,7 +4976,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.UpdateNameResult"
+                                            "$ref": "#/definitions/model.UpdateNameResult"
                                         }
                                     }
                                 }
@@ -5029,7 +5029,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.UpdatePasswordRequest"
+                            "$ref": "#/definitions/model.UpdatePasswordRequest"
                         }
                     }
                 ],
@@ -5045,7 +5045,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.UpdatePasswordResult"
+                                            "$ref": "#/definitions/model.UpdatePasswordResult"
                                         }
                                     }
                                 }
@@ -5098,7 +5098,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/user.UpdateReportPeriodRequest"
+                            "$ref": "#/definitions/model.UpdateReportPeriodRequest"
                         }
                     }
                 ],
@@ -5114,7 +5114,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/user.UpdateReportPeriodResult"
+                                            "$ref": "#/definitions/model.UpdateReportPeriodResult"
                                         }
                                     }
                                 }
@@ -6763,6 +6763,223 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CompleteOnboardingResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.CurrentUserResult": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OptionResult"
+                    }
+                },
+                "reportPeriod": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.GetOptionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OptionResult"
+                    }
+                }
+            }
+        },
+        "model.GetUserDataResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.LoginResult": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.LogoutResult": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OptionResult": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RegisterRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RemindPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RemindPasswordResult": {
+            "type": "object"
+        },
+        "model.ResetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ResetPasswordResult": {
+            "type": "object"
+        },
+        "model.UpdateActiveBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateActiveBudgetResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateCurrencyRequest": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateCurrencyResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateNameRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateNameResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdatePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "newPassword": {
+                    "type": "string"
+                },
+                "oldPassword": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdatePasswordResult": {
+            "type": "object"
+        },
+        "model.UpdateReportPeriodRequest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateReportPeriodResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
         "payee.ArchivePayeeRequest": {
             "type": "object",
             "properties": {
@@ -7338,223 +7555,6 @@ const docTemplate = `{
                 },
                 "item": {
                     "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "user.CompleteOnboardingResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "user.CurrentUserResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/user.OptionResult"
-                    }
-                },
-                "reportPeriod": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.GetOptionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/user.OptionResult"
-                    }
-                }
-            }
-        },
-        "user.GetUserDataResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "user.LoginRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.LoginResult": {
-            "type": "object",
-            "properties": {
-                "token": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "user.LogoutResult": {
-            "type": "object",
-            "properties": {
-                "result": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.OptionResult": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.RegisterRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.RemindPasswordRequest": {
-            "type": "object",
-            "properties": {
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.RemindPasswordResult": {
-            "type": "object"
-        },
-        "user.ResetPasswordRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.ResetPasswordResult": {
-            "type": "object"
-        },
-        "user.UpdateBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.UpdateBudgetResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "user.UpdateCurrencyRequest": {
-            "type": "object",
-            "properties": {
-                "currency": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.UpdateCurrencyResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "user.UpdateNameRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.UpdateNameResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
-                }
-            }
-        },
-        "user.UpdatePasswordRequest": {
-            "type": "object",
-            "properties": {
-                "newPassword": {
-                    "type": "string"
-                },
-                "oldPassword": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.UpdatePasswordResult": {
-            "type": "object"
-        },
-        "user.UpdateReportPeriodRequest": {
-            "type": "object",
-            "properties": {
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "user.UpdateReportPeriodResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/user.CurrentUserResult"
                 }
             }
         }

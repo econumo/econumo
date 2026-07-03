@@ -9,13 +9,13 @@ import (
 	"context"
 
 	appaccount "github.com/econumo/econumo/internal/account"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/user"
 )
 
 // accountUserByID is the minimal user-repo surface this adapter needs.
 type accountUserByID interface {
-	GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
 }
 
 // AccountUserLookup adapts the user repository to account.UserLookup.

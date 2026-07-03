@@ -1048,6 +1048,144 @@ definitions:
           $ref: '#/definitions/currency.CurrencyRateResult'
         type: array
     type: object
+  model.CompleteOnboardingResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.CurrentUserResult:
+    properties:
+      avatar:
+        type: string
+      currency:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/model.OptionResult'
+        type: array
+      reportPeriod:
+        type: string
+    type: object
+  model.GetOptionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.OptionResult'
+        type: array
+    type: object
+  model.GetUserDataResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.LoginResult:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.LogoutResult:
+    properties:
+      result:
+        type: string
+    type: object
+  model.OptionResult:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+  model.RemindPasswordRequest:
+    properties:
+      username:
+        type: string
+    type: object
+  model.RemindPasswordResult:
+    type: object
+  model.ResetPasswordRequest:
+    properties:
+      code:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.ResetPasswordResult:
+    type: object
+  model.UpdateActiveBudgetRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  model.UpdateActiveBudgetResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateCurrencyRequest:
+    properties:
+      currency:
+        type: string
+    type: object
+  model.UpdateCurrencyResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateNameRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  model.UpdateNameResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdatePasswordRequest:
+    properties:
+      newPassword:
+        type: string
+      oldPassword:
+        type: string
+    type: object
+  model.UpdatePasswordResult:
+    type: object
+  model.UpdateReportPeriodRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  model.UpdateReportPeriodResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   payee.ArchivePayeeRequest:
     properties:
       id:
@@ -1420,144 +1558,6 @@ definitions:
         type: array
       item:
         $ref: '#/definitions/transaction.TransactionResult'
-    type: object
-  user.CompleteOnboardingResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.CurrentUserResult:
-    properties:
-      avatar:
-        type: string
-      currency:
-        type: string
-      email:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      options:
-        items:
-          $ref: '#/definitions/user.OptionResult'
-        type: array
-      reportPeriod:
-        type: string
-    type: object
-  user.GetOptionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/user.OptionResult'
-        type: array
-    type: object
-  user.GetUserDataResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.LoginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  user.LoginResult:
-    properties:
-      token:
-        type: string
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.LogoutResult:
-    properties:
-      result:
-        type: string
-    type: object
-  user.OptionResult:
-    properties:
-      name:
-        type: string
-      value:
-        type: string
-    type: object
-  user.RegisterRequest:
-    properties:
-      email:
-        type: string
-      name:
-        type: string
-      password:
-        type: string
-    type: object
-  user.RemindPasswordRequest:
-    properties:
-      username:
-        type: string
-    type: object
-  user.RemindPasswordResult:
-    type: object
-  user.ResetPasswordRequest:
-    properties:
-      code:
-        type: string
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  user.ResetPasswordResult:
-    type: object
-  user.UpdateBudgetRequest:
-    properties:
-      value:
-        type: string
-    type: object
-  user.UpdateBudgetResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.UpdateCurrencyRequest:
-    properties:
-      currency:
-        type: string
-    type: object
-  user.UpdateCurrencyResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.UpdateNameRequest:
-    properties:
-      name:
-        type: string
-    type: object
-  user.UpdateNameResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.UpdatePasswordRequest:
-    properties:
-      newPassword:
-        type: string
-      oldPassword:
-        type: string
-    type: object
-  user.UpdatePasswordResult:
-    type: object
-  user.UpdateReportPeriodRequest:
-    properties:
-      value:
-        type: string
-    type: object
-  user.UpdateReportPeriodResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
     type: object
 info:
   contact: {}
@@ -4149,7 +4149,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.CompleteOnboardingResult'
+                  $ref: '#/definitions/model.CompleteOnboardingResult'
               type: object
         "401":
           description: Unauthorized
@@ -4178,7 +4178,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.GetOptionListResult'
+                  $ref: '#/definitions/model.GetOptionListResult'
               type: object
         "401":
           description: Unauthorized
@@ -4206,7 +4206,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.GetUserDataResult'
+                  $ref: '#/definitions/model.GetUserDataResult'
               type: object
         "401":
           description: Unauthorized
@@ -4233,7 +4233,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.LoginRequest'
+          $ref: '#/definitions/model.LoginRequest'
       produces:
       - application/json
       responses:
@@ -4241,7 +4241,7 @@ paths:
           description: Raw {token,user} body — NOT wrapped in the standard envelope
             (matches PHP login).
           schema:
-            $ref: '#/definitions/user.LoginResult'
+            $ref: '#/definitions/model.LoginResult'
         "400":
           description: Bad Request
           schema:
@@ -4271,7 +4271,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.LogoutResult'
+                  $ref: '#/definitions/model.LogoutResult'
               type: object
         "401":
           description: Unauthorized
@@ -4298,7 +4298,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.RegisterRequest'
+          $ref: '#/definitions/model.RegisterRequest'
       produces:
       - application/json
       responses:
@@ -4309,7 +4309,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.CurrentUserResult'
+                  $ref: '#/definitions/model.CurrentUserResult'
               type: object
         "400":
           description: Bad Request
@@ -4337,7 +4337,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.RemindPasswordRequest'
+          $ref: '#/definitions/model.RemindPasswordRequest'
       produces:
       - application/json
       responses:
@@ -4348,7 +4348,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.RemindPasswordResult'
+                  $ref: '#/definitions/model.RemindPasswordResult'
               type: object
         "400":
           description: Bad Request
@@ -4377,7 +4377,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.ResetPasswordRequest'
+          $ref: '#/definitions/model.ResetPasswordRequest'
       produces:
       - application/json
       responses:
@@ -4388,7 +4388,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.ResetPasswordResult'
+                  $ref: '#/definitions/model.ResetPasswordResult'
               type: object
         "400":
           description: Bad Request
@@ -4417,7 +4417,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateBudgetRequest'
+          $ref: '#/definitions/model.UpdateActiveBudgetRequest'
       produces:
       - application/json
       responses:
@@ -4428,7 +4428,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateBudgetResult'
+                  $ref: '#/definitions/model.UpdateActiveBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -4459,7 +4459,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateCurrencyRequest'
+          $ref: '#/definitions/model.UpdateCurrencyRequest'
       produces:
       - application/json
       responses:
@@ -4470,7 +4470,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateCurrencyResult'
+                  $ref: '#/definitions/model.UpdateCurrencyResult'
               type: object
         "400":
           description: Bad Request
@@ -4501,7 +4501,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateNameRequest'
+          $ref: '#/definitions/model.UpdateNameRequest'
       produces:
       - application/json
       responses:
@@ -4512,7 +4512,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateNameResult'
+                  $ref: '#/definitions/model.UpdateNameResult'
               type: object
         "400":
           description: Bad Request
@@ -4543,7 +4543,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdatePasswordRequest'
+          $ref: '#/definitions/model.UpdatePasswordRequest'
       produces:
       - application/json
       responses:
@@ -4554,7 +4554,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdatePasswordResult'
+                  $ref: '#/definitions/model.UpdatePasswordResult'
               type: object
         "400":
           description: Bad Request
@@ -4585,7 +4585,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateReportPeriodRequest'
+          $ref: '#/definitions/model.UpdateReportPeriodRequest'
       produces:
       - application/json
       responses:
@@ -4596,7 +4596,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateReportPeriodResult'
+                  $ref: '#/definitions/model.UpdateReportPeriodResult'
               type: object
         "400":
           description: Bad Request

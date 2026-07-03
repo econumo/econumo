@@ -4,9 +4,9 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
-	appuser "github.com/econumo/econumo/internal/user"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 	"github.com/econumo/econumo/internal/web/httpx"
@@ -25,14 +25,14 @@ var _ = apidoc.JsonResponseError{}
 // @Tags        User
 // @Accept      json
 // @Produce     json
-// @Param       request body     appuser.LoginRequest true "Login request"
-// @Success     200     {object} appuser.LoginResult "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login)."
+// @Param       request body     model.LoginRequest true "Login request"
+// @Success     200     {object} model.LoginResult "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login)."
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/login-user [post]
 func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
-	var req appuser.LoginRequest
+	var req model.LoginRequest
 	if err := httpx.DecodeValidate(r, &req); err != nil {
 		httpx.WriteError(w, err, h.dev)
 		return
@@ -61,8 +61,8 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 // @Tags        User
 // @Accept      json
 // @Produce     json
-// @Param       request body     appuser.RegisterRequest true "Register request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appuser.CurrentUserResult}
+// @Param       request body     model.RegisterRequest true "Register request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CurrentUserResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -79,13 +79,13 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 // @Description Stateless logout; returns an empty success envelope (JWT is not invalidated server-side).
 // @Tags        User
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appuser.LogoutResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.LogoutResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/user/logout-user [post]
 func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, func(ctx context.Context, _ vo.Id) (*appuser.LogoutResult, error) {
+	endpoint.HandleNoBody(w, r, h.dev, func(ctx context.Context, _ vo.Id) (*model.LogoutResult, error) {
 		return h.svc.Logout(ctx)
 	})
 }
@@ -99,8 +99,8 @@ func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
 // @Tags        User
 // @Accept      json
 // @Produce     json
-// @Param       request body     appuser.RemindPasswordRequest true "Remind password request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appuser.RemindPasswordResult}
+// @Param       request body     model.RemindPasswordRequest true "Remind password request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.RemindPasswordResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -117,8 +117,8 @@ func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
 // @Tags        User
 // @Accept      json
 // @Produce     json
-// @Param       request body     appuser.ResetPasswordRequest true "Reset password request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appuser.ResetPasswordResult}
+// @Param       request body     model.ResetPasswordRequest true "Reset password request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ResetPasswordResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException

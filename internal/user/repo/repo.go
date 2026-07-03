@@ -10,6 +10,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/user"
@@ -62,7 +63,7 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
-func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*user.User, error) {
+func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
 	row, err := r.q.GetUserByID(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -77,18 +78,18 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*user.User, error) {
 // without the options rows. Owner/author embeds use this instead of GetByID so a
 // list of N rows costs one user-row query per distinct user, not two (GetByID
 // also issues a GetUserOptions query that those embeds never read).
-func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error) {
+func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error) {
 	row, err := r.q.GetUserByID(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return user.Header{}, errs.NewNotFound("User not found")
+			return model.Header{}, errs.NewNotFound("User not found")
 		}
-		return user.Header{}, err
+		return model.Header{}, err
 	}
-	return user.Header{ID: row.ID, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
+	return model.Header{ID: row.ID, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
 }
 
-func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*user.User, error) {
+func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*model.User, error) {
 	row, err := r.q.GetUserByIdentifier(ctx, r.db(ctx), identifier)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -119,7 +120,7 @@ func (r *Repo) ListIDs(ctx context.Context) ([]vo.Id, error) {
 	return ids, nil
 }
 
-func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]user.UserOption, error) {
+func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error) {
 	rows, err := r.q.GetUserOptions(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
@@ -129,7 +130,7 @@ func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]user.UserOption,
 
 // Save upserts the user row and all of its option rows. The caller runs this
 // inside TxManager.WithTx so the row + options commit atomically.
-func (r *Repo) Save(ctx context.Context, u *user.User) error {
+func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	db := r.db(ctx)
 	if err := r.q.UpsertUser(ctx, db, userParams{
 		ID:         u.ID.String(),
@@ -160,7 +161,7 @@ func (r *Repo) Save(ctx context.Context, u *user.User) error {
 	return nil
 }
 
-func (r *Repo) hydrate(ctx context.Context, row userRow) (*user.User, error) {
+func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 	optRows, err := r.q.GetUserOptions(ctx, r.db(ctx), row.ID)
 	if err != nil {
 		return nil, err
@@ -173,19 +174,19 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*user.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &user.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
+	return &model.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
 		AvatarURL: row.AvatarUrl, Password: row.Password, Salt: row.Salt, IsActive: row.IsActive,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 
-func toDomainOptions(rows []optionRow) ([]user.UserOption, error) {
-	opts := make([]user.UserOption, 0, len(rows))
+func toDomainOptions(rows []optionRow) ([]model.UserOption, error) {
+	opts := make([]model.UserOption, 0, len(rows))
 	for _, o := range rows {
 		oid, err := vo.ParseId(o.ID)
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, user.ReconstituteUserOption(oid, o.Name, o.Value, o.CreatedAt, o.UpdatedAt))
+		opts = append(opts, model.ReconstituteUserOption(oid, o.Name, o.Value, o.CreatedAt, o.UpdatedAt))
 	}
 	return opts, nil
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/user"
@@ -54,7 +55,7 @@ func (r *PasswordRequestRepo) DeleteByUser(ctx context.Context, userID vo.Id) er
 	return r.q.DeleteUserPasswordRequestsByUser(ctx, r.db(ctx), userID.String())
 }
 
-func (r *PasswordRequestRepo) Save(ctx context.Context, pr *user.PasswordRequest) error {
+func (r *PasswordRequestRepo) Save(ctx context.Context, pr *model.PasswordRequest) error {
 	return r.q.InsertUserPasswordRequest(ctx, r.db(ctx), insertParams{
 		ID:        pr.ID.String(),
 		UserID:    pr.UserID.String(),
@@ -65,7 +66,7 @@ func (r *PasswordRequestRepo) Save(ctx context.Context, pr *user.PasswordRequest
 	})
 }
 
-func (r *PasswordRequestRepo) GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*user.PasswordRequest, error) {
+func (r *PasswordRequestRepo) GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*model.PasswordRequest, error) {
 	row, err := r.q.GetUserPasswordRequestByUserAndCode(ctx, r.db(ctx), getByUserAndCodeParams{UserID: userID.String(), Code: code})
 	if err != nil {
 		return nil, mapErr(err)
@@ -77,7 +78,7 @@ func (r *PasswordRequestRepo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteUserPasswordRequest(ctx, r.db(ctx), id.String())
 }
 
-func reconstitute(id, userID, code string, created, updated, expired time.Time) (*user.PasswordRequest, error) {
+func reconstitute(id, userID, code string, created, updated, expired time.Time) (*model.PasswordRequest, error) {
 	rid, err := vo.ParseId(id)
 	if err != nil {
 		return nil, err
@@ -86,7 +87,7 @@ func reconstitute(id, userID, code string, created, updated, expired time.Time) 
 	if err != nil {
 		return nil, err
 	}
-	return &user.PasswordRequest{ID: rid, UserID: uid, Code: code, CreatedAt: created, UpdatedAt: updated, ExpiredAt: expired}, nil
+	return &model.PasswordRequest{ID: rid, UserID: uid, Code: code, CreatedAt: created, UpdatedAt: updated, ExpiredAt: expired}, nil
 }
 
 func mapErr(err error) error {

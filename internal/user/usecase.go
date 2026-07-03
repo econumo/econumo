@@ -15,6 +15,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/mailer"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
@@ -66,17 +67,17 @@ func NewService(
 }
 
 // Logout is stateless (JWT); nothing to invalidate server-side.
-func (s *Service) Logout(ctx context.Context) (*LogoutResult, error) {
+func (s *Service) Logout(ctx context.Context) (*model.LogoutResult, error) {
 	_ = ctx
 	// The "test" literal is a frozen wire constant clients depend on (see LogoutResult).
-	return &LogoutResult{Result: "test"}, nil
+	return &model.LogoutResult{Result: "test"}, nil
 }
 
 // mutate loads the user, applies fn inside a transaction, and saves. It returns
 // the mutated (in-memory) aggregate so the caller can build its result without
 // a second read — the saved state and the in-memory state are identical.
-func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *User, now time.Time) error) (*User, error) {
-	var loaded *User
+func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *model.User, now time.Time) error) (*model.User, error) {
+	var loaded *model.User
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u, err := s.repo.GetByID(ctx, userID)
 		if err != nil {
@@ -97,10 +98,10 @@ func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *User, now
 	return loaded, nil
 }
 
-func (s *Service) toCurrentUser(ctx context.Context, u *User) (CurrentUserResult, error) {
+func (s *Service) toCurrentUser(ctx context.Context, u *model.User) (model.CurrentUserResult, error) {
 	email, err := s.encode.Decode(u.Email)
 	if err != nil {
-		return CurrentUserResult{}, err
+		return model.CurrentUserResult{}, err
 	}
 	return s.toCurrentUserWithEmail(ctx, u, email)
 }
@@ -109,10 +110,10 @@ func (s *Service) toCurrentUser(ctx context.Context, u *User) (CurrentUserResult
 // is the one entity->DTO conversion in the module; the only non-trivial part is
 // resolving the synthetic currency_id, which is a real lookup and therefore
 // lives here in the service rather than in a mapping helper.
-func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *User, email string) (CurrentUserResult, error) {
-	options := make([]OptionResult, 0, len(u.Options)+1)
+func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, email string) (model.CurrentUserResult, error) {
+	options := make([]model.OptionResult, 0, len(u.Options)+1)
 	for _, o := range u.Options {
-		options = append(options, OptionResult{Name: o.Name, Value: o.Value})
+		options = append(options, model.OptionResult{Name: o.Name, Value: o.Value})
 	}
 
 	// Resolve currency_id from the currency code, falling back to USD when the
@@ -123,13 +124,13 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *User, email str
 		code = s.currency.DefaultCode()
 		currencyID, err = s.currency.GetIDByCode(ctx, code)
 		if err != nil {
-			return CurrentUserResult{}, err
+			return model.CurrentUserResult{}, err
 		}
 	}
 	cid := currencyID
-	options = append(options, OptionResult{Name: OptionCurrencyID, Value: &cid})
+	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})
 
-	return CurrentUserResult{
+	return model.CurrentUserResult{
 		Id:           u.ID.String(),
 		Name:         u.Name,
 		Email:        email,
@@ -153,7 +154,7 @@ func newCurrencyCode(v string) (string, error) {
 
 // newReportPeriod enforces the report-period invariant: only "monthly" is valid.
 func newReportPeriod(v string) (string, error) {
-	if v != DefaultReportPeriod {
+	if v != model.DefaultReportPeriod {
 		return "", errs.NewValidation("ReportPeriod is incorrect",
 			errs.FieldError{Key: "value", Message: "ReportPeriod is incorrect"})
 	}
