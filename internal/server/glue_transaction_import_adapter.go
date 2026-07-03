@@ -73,7 +73,7 @@ func (a *TransactionImportAccounts) AvailableAccounts(ctx context.Context, userI
 	}
 	out := make([]apptransaction.ImportAccount, len(accts))
 	for i, acct := range accts {
-		out[i] = apptransaction.ImportAccount{ID: acct.Id().String(), Name: acct.Name(), OwnerID: acct.UserId().String()}
+		out[i] = apptransaction.ImportAccount{ID: acct.ID.String(), Name: acct.Name, OwnerID: acct.UserID.String()}
 	}
 	return out, nil
 }
@@ -84,10 +84,10 @@ func (a *TransactionImportAccounts) AccountByID(ctx context.Context, userID vo.I
 		return nil, nil // not found -> nil
 	}
 	// Only available (own) accounts qualify.
-	if !acct.UserId().Equal(userID) {
+	if !acct.UserID.Equal(userID) {
 		return nil, nil
 	}
-	return &apptransaction.ImportAccount{ID: acct.Id().String(), Name: acct.Name(), OwnerID: acct.UserId().String()}, nil
+	return &apptransaction.ImportAccount{ID: acct.ID.String(), Name: acct.Name, OwnerID: acct.UserID.String()}, nil
 }
 
 func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error) {
@@ -98,7 +98,7 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 	}
 	var folderID string
 	if len(folders) > 0 {
-		folderID = folders[0].Id().String()
+		folderID = folders[0].ID.String()
 	} else {
 		fres, ferr := a.svc.CreateFolder(ctx, userID, account.CreateFolderRequest{
 			Name: "Imported Accounts",
@@ -157,7 +157,7 @@ func (c *TransactionImportCategories) CategoriesByOwner(ctx context.Context, own
 	}
 	out := make([]apptransaction.ImportNamed, len(list))
 	for i, cat := range list {
-		out[i] = apptransaction.ImportNamed{ID: cat.Id().String(), Name: cat.Name(), OwnerID: cat.UserId().String()}
+		out[i] = apptransaction.ImportNamed{ID: cat.ID.String(), Name: cat.Name, OwnerID: cat.UserID.String()}
 	}
 	return out, nil
 }
@@ -207,7 +207,7 @@ func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) 
 	}
 	out := make([]apptransaction.ImportNamed, len(list))
 	for i, tg := range list {
-		out[i] = apptransaction.ImportNamed{ID: tg.Id().String(), Name: tg.Name(), OwnerID: tg.UserId().String()}
+		out[i] = apptransaction.ImportNamed{ID: tg.ID.String(), Name: tg.Name, OwnerID: tg.UserID.String()}
 	}
 	return out, nil
 }
@@ -252,7 +252,7 @@ func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.
 	}
 	out := make([]apptransaction.ImportNamed, len(list))
 	for i, py := range list {
-		out[i] = apptransaction.ImportNamed{ID: py.Id().String(), Name: py.Name(), OwnerID: py.UserId().String()}
+		out[i] = apptransaction.ImportNamed{ID: py.ID.String(), Name: py.Name, OwnerID: py.UserID.String()}
 	}
 	return out, nil
 }

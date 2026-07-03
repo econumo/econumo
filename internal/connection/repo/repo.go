@@ -73,11 +73,11 @@ func (r *Repo) Get(ctx context.Context, accountID, userID vo.Id) (*domconnection
 // Save upserts a grant.
 func (r *Repo) Save(ctx context.Context, a *domconnection.AccountAccess) error {
 	return r.q.UpsertAccountAccess(ctx, r.db(ctx), upsertParams{
-		AccountID: a.AccountId().String(),
-		UserID:    a.UserId().String(),
-		Role:      a.Role().Int16(),
-		CreatedAt: a.CreatedAt(),
-		UpdatedAt: a.UpdatedAt(),
+		AccountID: a.AccountID.String(),
+		UserID:    a.UserID.String(),
+		Role:      a.Role.Int16(),
+		CreatedAt: a.CreatedAt,
+		UpdatedAt: a.UpdatedAt,
 	})
 }
 
@@ -172,7 +172,8 @@ func hydrate(row accessRow) (*domconnection.AccountAccess, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domconnection.FromState(accountID, userID, domconnection.Role(row.Role), row.CreatedAt, row.UpdatedAt), nil
+	return &domconnection.AccountAccess{AccountID: accountID, UserID: userID, Role: domconnection.Role(row.Role),
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateAll(rows []accessRow) ([]*domconnection.AccountAccess, error) {

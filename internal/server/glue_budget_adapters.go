@@ -53,15 +53,15 @@ func (l *BudgetAccountLookup) AccountsForOwners(ctx context.Context, userIDs []v
 			return nil, err
 		}
 		for _, a := range accts {
-			if !owners[a.UserId().String()] {
+			if !owners[a.UserID.String()] {
 				continue // shared with a participant but not owned by one
 			}
-			if seen[a.Id().String()] {
+			if seen[a.ID.String()] {
 				continue
 			}
-			seen[a.Id().String()] = true
+			seen[a.ID.String()] = true
 			out = append(out, appbudget.AccountView{
-				ID: a.Id().String(), CurrencyID: a.CurrencyId().String(), OwnerID: a.UserId().String(),
+				ID: a.ID.String(), CurrencyID: a.CurrencyID.String(), OwnerID: a.UserID.String(),
 			})
 		}
 	}
@@ -74,7 +74,7 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 	if err != nil {
 		return vo.Id{}, err
 	}
-	return a.UserId(), nil
+	return a.UserID, nil
 }
 
 type budgetCategoryRepo interface {
@@ -105,13 +105,13 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 			return nil, err
 		}
 		for _, c := range cats {
-			if seen[c.Id().String()] {
+			if seen[c.ID.String()] {
 				continue
 			}
-			seen[c.Id().String()] = true
+			seen[c.ID.String()] = true
 			out = append(out, appbudget.CategoryMeta{
-				ID: c.Id().String(), OwnerID: c.UserId().String(), Name: c.Name(), Icon: c.Icon(),
-				IsIncome: c.Type() == category.TypeIncome, IsArchived: c.IsArchived(),
+				ID: c.ID.String(), OwnerID: c.UserID.String(), Name: c.Name, Icon: c.Icon,
+				IsIncome: c.Type == category.TypeIncome, IsArchived: c.IsArchived,
 			})
 		}
 	}
@@ -146,12 +146,12 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 			return nil, err
 		}
 		for _, t := range tags {
-			if seen[t.Id().String()] {
+			if seen[t.ID.String()] {
 				continue
 			}
-			seen[t.Id().String()] = true
+			seen[t.ID.String()] = true
 			out = append(out, appbudget.TagMeta{
-				ID: t.Id().String(), OwnerID: t.UserId().String(), Name: t.Name(), IsArchived: t.IsArchived(),
+				ID: t.ID.String(), OwnerID: t.UserID.String(), Name: t.Name, IsArchived: t.IsArchived,
 			})
 		}
 	}
@@ -186,11 +186,11 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 			return nil, err
 		}
 		for _, p := range payees {
-			if seen[p.Id().String()] {
+			if seen[p.ID.String()] {
 				continue
 			}
-			seen[p.Id().String()] = true
-			out = append(out, appbudget.PayeeMeta{ID: p.Id().String(), Name: p.Name()})
+			seen[p.ID.String()] = true
+			out = append(out, appbudget.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 		}
 	}
 	return out, nil

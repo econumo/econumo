@@ -33,18 +33,18 @@ func (s *Service) AccountListForUser(ctx context.Context, userID vo.Id) ([]Accou
 // AccountOwner returns the owner user id of an account (for cross-module access
 // checks, e.g. transaction). Missing -> *errs.NotFoundError (from the repo).
 func (s *Service) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
-	acct, err := s.repo.GetByID(ctx, accountID)
+	acct, err := s.accounts.GetByID(ctx, accountID)
 	if err != nil {
 		return vo.Id{}, err
 	}
-	return acct.UserId(), nil
+	return acct.UserID, nil
 }
 
 // VisibleAccountIDs returns the ids of the user's available (non-deleted)
 // accounts that are NOT in a hidden folder — the set whose transactions the user
 // may list.
 func (s *Service) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
-	accts, err := s.repo.ListAvailable(ctx, userID)
+	accts, err := s.accounts.ListAvailable(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,26 +52,26 @@ func (s *Service) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id,
 	if err != nil {
 		return nil, err
 	}
-	memberships, err := s.folders.MembershipsByUser(ctx, userID)
+	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	// account id -> is it in any hidden folder?
 	hidden := make(map[string]bool)
 	for _, f := range folders {
-		if f.IsVisible() {
+		if f.IsVisible {
 			continue
 		}
-		for _, aid := range memberships[f.Id().String()] {
+		for _, aid := range memberships[f.ID.String()] {
 			hidden[aid] = true
 		}
 	}
 	out := make([]vo.Id, 0, len(accts))
 	for _, a := range accts {
-		if hidden[a.Id().String()] {
+		if hidden[a.ID.String()] {
 			continue
 		}
-		out = append(out, a.Id())
+		out = append(out, a.ID)
 	}
 	return out, nil
 }
@@ -82,7 +82,7 @@ func (s *Service) GetFolderList(ctx context.Context, userID vo.Id) (*GetFolderLi
 	if err != nil {
 		return nil, err
 	}
-	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position() < folders[j].Position() })
+	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
 	items := make([]FolderResult, 0, len(folders))
 	for _, f := range folders {
 		items = append(items, toFolderResult(f))

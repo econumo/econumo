@@ -34,13 +34,13 @@ func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req Order
 		}
 		now := s.clock.Now()
 		for _, c := range cats {
-			pos, ok := positions[c.Id().String()]
+			pos, ok := positions[c.ID.String()]
 			if !ok {
 				continue
 			}
-			before := c.Position()
+			before := c.Position
 			c.UpdatePosition(pos, now)
-			if c.Position() != before {
+			if c.Position != before {
 				if serr := s.repo.Save(ctx, c); serr != nil {
 					return serr
 				}

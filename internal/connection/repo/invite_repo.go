@@ -82,11 +82,11 @@ func (r *InviteRepo) GetByCode(ctx context.Context, code domconnection.Connectio
 // Save upserts the user's invite row.
 func (r *InviteRepo) Save(ctx context.Context, inv *domconnection.ConnectionInvite) error {
 	var code *string
-	if c := inv.Code(); !c.IsZero() {
-		v := c.Value()
+	if !inv.Code.IsZero() {
+		v := inv.Code.Value()
 		code = &v
 	}
-	return r.q.Upsert(ctx, r.db(ctx), inv.UserId().String(), code, inv.ExpiredAt())
+	return r.q.Upsert(ctx, r.db(ctx), inv.UserID.String(), code, inv.ExpiredAt)
 }
 
 func hydrateInvite(row inviteRow) (*domconnection.ConnectionInvite, error) {
@@ -98,7 +98,9 @@ func hydrateInvite(row inviteRow) (*domconnection.ConnectionInvite, error) {
 	if row.Code != nil {
 		code = *row.Code
 	}
-	return domconnection.InviteFromState(userID, code, row.ExpiredAt), nil
+	return &domconnection.ConnectionInvite{
+		UserID: userID, Code: domconnection.ReconstituteConnectionCode(code), ExpiredAt: row.ExpiredAt,
+	}, nil
 }
 
 type sqliteInviteQuerier struct{}

@@ -109,7 +109,7 @@ func (l *TransactionCategoryNameLookup) CategoryName(ctx context.Context, id vo.
 	if err != nil {
 		return "", nil
 	}
-	return c.Name(), nil
+	return c.Name, nil
 }
 
 // transactionTagByID is the minimal tag-repo surface the export adapter's
@@ -135,7 +135,7 @@ func (l *TransactionTagNameLookup) TagName(ctx context.Context, id vo.Id) (strin
 	if err != nil {
 		return "", nil
 	}
-	return t.Name(), nil
+	return t.Name, nil
 }
 
 // transactionPayeeByID is the minimal payee-repo surface the export adapter's
@@ -161,5 +161,5 @@ func (l *TransactionPayeeNameLookup) PayeeName(ctx context.Context, id vo.Id) (s
 	if err != nil {
 		return "", nil
 	}
-	return p.Name(), nil
+	return p.Name, nil
 }

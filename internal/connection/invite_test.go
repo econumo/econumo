@@ -79,13 +79,13 @@ func TestConnectionCode_ZeroValue(t *testing.T) {
 func TestNewConnectionInvite_EmptyAndExpired(t *testing.T) {
 	uid := mustID(t, "11111111-1111-1111-1111-111111111111")
 	inv := NewConnectionInvite(uid)
-	if !inv.UserId().Equal(uid) {
+	if !inv.UserID.Equal(uid) {
 		t.Error("userId did not round-trip")
 	}
-	if !inv.Code().IsZero() {
+	if !inv.Code.IsZero() {
 		t.Error("fresh invite must have no code")
 	}
-	if inv.ExpiredAt() != nil {
+	if inv.ExpiredAt != nil {
 		t.Error("fresh invite must have no expiry")
 	}
 	// No expiry is treated as expired.
@@ -94,24 +94,24 @@ func TestNewConnectionInvite_EmptyAndExpired(t *testing.T) {
 	}
 }
 
-func TestInviteFromState_RoundTrip(t *testing.T) {
+func TestConnectionInvite_StructLiteral_RoundTrip(t *testing.T) {
 	uid := mustID(t, "11111111-1111-1111-1111-111111111111")
 	exp := time.Date(2024, 3, 1, 0, 5, 0, 0, time.UTC)
 
-	withCode := InviteFromState(uid, "abc12", &exp)
-	if withCode.Code().Value() != "abc12" {
-		t.Errorf("code=%q want abc12", withCode.Code().Value())
+	withCode := &ConnectionInvite{UserID: uid, Code: ReconstituteConnectionCode("abc12"), ExpiredAt: &exp}
+	if withCode.Code.Value() != "abc12" {
+		t.Errorf("code=%q want abc12", withCode.Code.Value())
 	}
-	if withCode.ExpiredAt() == nil || !withCode.ExpiredAt().Equal(exp) {
-		t.Errorf("expiredAt=%v want %v", withCode.ExpiredAt(), exp)
+	if withCode.ExpiredAt == nil || !withCode.ExpiredAt.Equal(exp) {
+		t.Errorf("expiredAt=%v want %v", withCode.ExpiredAt, exp)
 	}
 
 	// Empty code -> zero code value.
-	cleared := InviteFromState(uid, "", nil)
-	if !cleared.Code().IsZero() {
+	cleared := &ConnectionInvite{UserID: uid, Code: ReconstituteConnectionCode(""), ExpiredAt: nil}
+	if !cleared.Code.IsZero() {
 		t.Error("empty-code state should yield a zero code")
 	}
-	if cleared.ExpiredAt() != nil {
+	if cleared.ExpiredAt != nil {
 		t.Error("nil expiry should round-trip as nil")
 	}
 }
@@ -122,19 +122,19 @@ func TestConnectionInvite_GenerateNewCode(t *testing.T) {
 	now := time.Date(2024, 3, 1, 12, 0, 0, 0, time.UTC)
 	inv.GenerateNewCode(now)
 
-	if inv.Code().IsZero() {
+	if inv.Code.IsZero() {
 		t.Fatal("GenerateNewCode must set a code")
 	}
-	if n := len([]rune(inv.Code().Value())); n != 5 {
+	if n := len([]rune(inv.Code.Value())); n != 5 {
 		t.Errorf("generated code length=%d want 5", n)
 	}
-	if inv.ExpiredAt() == nil {
+	if inv.ExpiredAt == nil {
 		t.Fatal("GenerateNewCode must set an expiry")
 	}
 	// Expiry is now + 5 minutes.
 	wantExp := now.Add(5 * time.Minute)
-	if !inv.ExpiredAt().Equal(wantExp) {
-		t.Errorf("expiredAt=%v want %v", inv.ExpiredAt(), wantExp)
+	if !inv.ExpiredAt.Equal(wantExp) {
+		t.Errorf("expiredAt=%v want %v", inv.ExpiredAt, wantExp)
 	}
 }
 
@@ -143,10 +143,10 @@ func TestConnectionInvite_ClearCode(t *testing.T) {
 	inv := NewConnectionInvite(uid)
 	inv.GenerateNewCode(time.Date(2024, 3, 1, 12, 0, 0, 0, time.UTC))
 	inv.ClearCode()
-	if !inv.Code().IsZero() {
+	if !inv.Code.IsZero() {
 		t.Error("ClearCode must zero the code")
 	}
-	if inv.ExpiredAt() != nil {
+	if inv.ExpiredAt != nil {
 		t.Error("ClearCode must clear the expiry")
 	}
 }

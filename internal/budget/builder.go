@@ -84,7 +84,7 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 	if err != nil {
 		return BudgetResult{}, err
 	}
-	balances, rates, err := s.buildFinancialSummary(ctx, b.budget.CurrencyId(), f, now)
+	balances, rates, err := s.buildFinancialSummary(ctx, b.budget.CurrencyID, f, now)
 	if err != nil {
 		return BudgetResult{}, err
 	}
@@ -118,17 +118,17 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (MetaResult, error) {
 	access := make([]AccessResult, 0, len(b.access)+1)
 	for _, a := range b.access {
-		owner, err := s.users.GetOwner(ctx, a.UserId().String())
+		owner, err := s.users.GetOwner(ctx, a.UserID.String())
 		if err != nil {
 			return MetaResult{}, err
 		}
 		access = append(access, AccessResult{
 			User:       UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
-			Role:       a.Role().Alias(),
-			IsAccepted: boolToInt(a.IsAccepted()),
+			Role:       a.Role.Alias(),
+			IsAccepted: boolToInt(a.IsAccepted),
 		})
 	}
-	owner, err := s.users.GetOwner(ctx, b.budget.UserId().String())
+	owner, err := s.users.GetOwner(ctx, b.budget.UserID.String())
 	if err != nil {
 		return MetaResult{}, err
 	}
@@ -138,21 +138,21 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (MetaResult
 		IsAccepted: 1,
 	})
 	return MetaResult{
-		Id:          b.budget.Id().String(),
-		OwnerUserId: b.budget.UserId().String(),
-		Name:        b.budget.Name(),
-		StartedAt:   b.budget.StartedAt().Format(datetime.Layout),
-		CurrencyId:  b.budget.CurrencyId().String(),
+		Id:          b.budget.ID.String(),
+		OwnerUserId: b.budget.UserID.String(),
+		Name:        b.budget.Name,
+		StartedAt:   b.budget.StartedAt.Format(datetime.Layout),
+		CurrencyId:  b.budget.CurrencyID.String(),
 		Access:      access,
 	}, nil
 }
 
 func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd time.Time) (filters, error) {
 	// userIds = owner + accepted non-reader access users (reader == guest).
-	userIDs := []vo.Id{b.budget.UserId()}
+	userIDs := []vo.Id{b.budget.UserID}
 	for _, a := range b.access {
-		if a.IsAccepted() && a.Role() != roleGuest() {
-			userIDs = append(userIDs, a.UserId())
+		if a.IsAccepted && a.Role != roleGuest() {
+			userIDs = append(userIDs, a.UserID)
 		}
 	}
 

@@ -22,7 +22,7 @@ func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req Delet
 		if gerr != nil {
 			return gerr
 		}
-		if aerr := s.checkWriteAccess(ctx, userID, t.AccountId(), "transaction.transaction.not_available"); aerr != nil {
+		if aerr := s.checkWriteAccess(ctx, userID, t.AccountID, "transaction.transaction.not_available"); aerr != nil {
 			return aerr
 		}
 		if derr := s.repo.Delete(ctx, id); derr != nil {

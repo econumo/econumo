@@ -7,11 +7,13 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Repository is the account aggregate's persistence port (accounts +
-// accounts_options + the balance read). The app service depends only on this
-// interface. A missing account returns an *errs.NotFoundError.
-type Repository interface {
-	// NextIdentity allocates a fresh account id.
+// AccountStore is the account entity's own persistence surface: identity,
+// lookup/listing, the write, and the balance-correction insert. Consumed by
+// CreateAccount, DeleteAccount, UpdateAccount, GetAccountList/AccountOwner/
+// VisibleAccountIDs (read.go), OrderAccountList, and buildAccountList
+// (usecase.go). A missing account returns an *errs.NotFoundError.
+type AccountStore interface {
+	// NextIdentity allocates a fresh id (accounts and corrections share the pool).
 	NextIdentity() vo.Id
 
 	GetByID(ctx context.Context, id vo.Id) (*Account, error)
@@ -25,6 +27,15 @@ type Repository interface {
 
 	Save(ctx context.Context, a *Account) error
 
+	// SaveCorrection inserts a balance-correction transaction (type income/expense
+	// by sign; amount is the absolute value).
+	SaveCorrection(ctx context.Context, c Correction) error
+}
+
+// PositionStore is the per-user account ordering surface (the accounts_options
+// table). Consumed by CreateAccount and OrderAccountList (writes) and
+// buildAccountResult (usecase.go, the read for the embed).
+type PositionStore interface {
 	// GetPosition returns the account's per-user position. missing -> ok=false.
 	GetPosition(ctx context.Context, accountID, userID vo.Id) (position int16, ok bool, err error)
 
@@ -33,7 +44,12 @@ type Repository interface {
 
 	// SavePosition upserts a per-user position row.
 	SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error
+}
 
+// BalanceReader computes account balances from the transactions table.
+// Consumed by CreateAccount/UpdateAccount (the single-account balance) and
+// buildAccountList (usecase.go, the bulk balances for a list).
+type BalanceReader interface {
 	// Balance returns one account's balance as of `before` (exclusive on
 	// spent_at), normalized to the wire decimal form.
 	Balance(ctx context.Context, accountID vo.Id, before time.Time) (string, error)
@@ -41,10 +57,16 @@ type Repository interface {
 	// Balances returns balances for all the user's non-deleted accounts as of
 	// `before`, keyed by account id (normalized decimal strings).
 	Balances(ctx context.Context, userID vo.Id, before time.Time) (map[string]string, error)
+}
 
-	// SaveCorrection inserts a balance-correction transaction (type income/expense
-	// by sign; amount is the absolute value).
-	SaveCorrection(ctx context.Context, c Correction) error
+// Repository is the account aggregate's full persistence port — the composite
+// of AccountStore, PositionStore and BalanceReader. It exists for wiring (one
+// constructor param in server.go); consumers depend on the narrowest role they
+// actually use.
+type Repository interface {
+	AccountStore
+	PositionStore
+	BalanceReader
 }
 
 // Correction is a balance-correction transaction to insert (account create with
@@ -60,9 +82,14 @@ type Correction struct {
 	CreatedAt   time.Time
 }
 
-// FolderRepository is the folder aggregate's persistence port (folders + their
-// account membership).
-type FolderRepository interface {
+// FolderStore is the folder entity's own persistence surface: identity,
+// lookup/listing, write and delete. Consumed by CreateAccount's
+// resolveAccountFolder/defaultFolderOr, CreateFolder/createFolderTx,
+// UpdateFolder, toggleVisibility (Hide/ShowFolder), ReplaceFolder,
+// resetFolderPositions, OrderFolderList (folder_usecase.go), GetFolderList/
+// VisibleAccountIDs (read.go), OrderAccountList (order.go), and sortedFolders/
+// buildAccountList (usecase.go).
+type FolderStore interface {
 	// NextIdentity allocates a fresh folder id.
 	NextIdentity() vo.Id
 
@@ -79,7 +106,14 @@ type FolderRepository interface {
 
 	// Delete removes a folder row (its membership rows cascade).
 	Delete(ctx context.Context, id vo.Id) error
+}
 
+// FolderMembership is the folder/account join-table surface. Consumed by
+// CreateAccount (place the new account), OrderAccountList (move an account
+// between folders), ReplaceFolder (move accounts off a deleted folder),
+// VisibleAccountIDs (read.go), and buildAccountList (usecase.go, the
+// folderId embed).
+type FolderMembership interface {
 	// MembershipsByUser returns folderID -> []accountID for the user's folders.
 	MembershipsByUser(ctx context.Context, userID vo.Id) (map[string][]string, error)
 
@@ -91,4 +125,13 @@ type FolderRepository interface {
 
 	// RemoveAccount removes an account from a folder.
 	RemoveAccount(ctx context.Context, folderID, accountID vo.Id) error
+}
+
+// FolderRepository is the folder aggregate's full persistence port — the
+// composite of FolderStore and FolderMembership. It exists for wiring (one
+// constructor param in server.go); consumers depend on the narrowest role they
+// actually use.
+type FolderRepository interface {
+	FolderStore
+	FolderMembership
 }

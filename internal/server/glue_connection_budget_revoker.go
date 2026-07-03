@@ -57,13 +57,13 @@ func (r *ConnectionBudgetRevoker) revokeDirection(ctx context.Context, owner, ot
 		return err
 	}
 	for _, bud := range budgets {
-		access, aerr := r.budgets.ListAccess(ctx, bud.Id())
+		access, aerr := r.budgets.ListAccess(ctx, bud.ID)
 		if aerr != nil {
 			return aerr
 		}
 		for _, acc := range access {
-			if acc.UserId().Equal(other) {
-				if derr := r.budgets.DeleteAccess(ctx, bud.Id(), other); derr != nil {
+			if acc.UserID.Equal(other) {
+				if derr := r.budgets.DeleteAccess(ctx, bud.ID, other); derr != nil {
 					return derr
 				}
 				break

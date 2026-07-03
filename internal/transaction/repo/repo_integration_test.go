@@ -74,16 +74,16 @@ func TestTransactionRepo_SaveGetRoundTrip_Expense(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Amount() != "123.45" {
-		t.Errorf("amount mismatch: %q", got.Amount())
+	if got.Amount != "123.45" {
+		t.Errorf("amount mismatch: %q", got.Amount)
 	}
-	if got.Type() != domtransaction.TypeExpense || got.AccountId().String() != acct1 {
-		t.Errorf("fields mismatch: type=%d account=%s", got.Type(), got.AccountId())
+	if got.Type != domtransaction.TypeExpense || got.AccountID.String() != acct1 {
+		t.Errorf("fields mismatch: type=%d account=%s", got.Type, got.AccountID)
 	}
-	if !got.SpentAt().Equal(spent) {
-		t.Errorf("spentAt mismatch: %v", got.SpentAt())
+	if !got.SpentAt.Equal(spent) {
+		t.Errorf("spentAt mismatch: %v", got.SpentAt)
 	}
-	if got.AccountRecipientId() != nil {
+	if got.AccountRecipID != nil {
 		t.Error("expense should have no recipient")
 	}
 }
@@ -107,14 +107,14 @@ func TestTransactionRepo_SaveGetRoundTrip_Transfer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Amount() != "100.25" {
-		t.Errorf("amount mismatch: %q", got.Amount())
+	if got.Amount != "100.25" {
+		t.Errorf("amount mismatch: %q", got.Amount)
 	}
-	if got.AccountRecipientId() == nil || got.AccountRecipientId().String() != acct2 {
-		t.Errorf("recipient mismatch: %v", got.AccountRecipientId())
+	if got.AccountRecipID == nil || got.AccountRecipID.String() != acct2 {
+		t.Errorf("recipient mismatch: %v", got.AccountRecipID)
 	}
-	if got.AmountRecipient() == nil || *got.AmountRecipient() != "90.5" {
-		t.Errorf("amount_recipient mismatch: %v", deref(got.AmountRecipient()))
+	if got.AmountRecipient == nil || *got.AmountRecipient != "90.5" {
+		t.Errorf("amount_recipient mismatch: %v", deref(got.AmountRecipient))
 	}
 }
 

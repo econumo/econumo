@@ -124,15 +124,15 @@ func (r *Repo) CountAvailable(ctx context.Context, userID vo.Id) (int, error) {
 // Save upserts an account row.
 func (r *Repo) Save(ctx context.Context, a *domaccount.Account) error {
 	return r.q.UpsertAccount(ctx, r.db(ctx), upsertAccountP{
-		ID:         a.Id().String(),
-		CurrencyID: a.CurrencyId().String(),
-		UserID:     a.UserId().String(),
-		Name:       a.Name(),
-		Type:       a.Type().Int16(),
-		Icon:       a.Icon(),
-		IsDeleted:  a.IsDeleted(),
-		CreatedAt:  a.CreatedAt(),
-		UpdatedAt:  a.UpdatedAt(),
+		ID:         a.ID.String(),
+		CurrencyID: a.CurrencyID.String(),
+		UserID:     a.UserID.String(),
+		Name:       a.Name,
+		Type:       a.Type.Int16(),
+		Icon:       a.Icon,
+		IsDeleted:  a.IsDeleted,
+		CreatedAt:  a.CreatedAt,
+		UpdatedAt:  a.UpdatedAt,
 	})
 }
 
@@ -230,8 +230,9 @@ func hydrateAccount(row accountRow) (*domaccount.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domaccount.FromState(
-		id, userID, currencyID, row.Name, domaccount.Type(row.Type), row.Icon,
-		row.IsDeleted, row.CreatedAt, row.UpdatedAt,
-	), nil
+	return &domaccount.Account{
+		ID: id, UserID: userID, CurrencyID: currencyID, Name: row.Name,
+		Type: domaccount.Type(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
 }

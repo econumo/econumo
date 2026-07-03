@@ -28,21 +28,21 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 	data := map[string]budgetedAmount{}
 
 	// Current-month limits.
-	current, err := s.repo.ListLimitsForPeriod(ctx, b.budget.Id(), f.periodStart)
+	current, err := s.limits.ListLimitsForPeriod(ctx, b.budget.ID, f.periodStart)
 	if err != nil {
 		return nil, err
 	}
 	// Map element id -> (externalId, typeAlias) for the limit rows.
 	elemByID := map[string]*BudgetElement{}
 	for _, e := range b.elements {
-		elemByID[e.Id().String()] = e
+		elemByID[e.ID.String()] = e
 	}
 	for _, l := range current {
-		e := elemByID[l.ElementId().String()]
+		e := elemByID[l.ElementID.String()]
 		if e == nil {
 			continue
 		}
-		key := elementKey(e.ExternalId().String(), e.Type())
+		key := elementKey(e.ExternalID.String(), e.Type)
 		amt := data[key]
 		if amt.budgeted.String() == "" {
 			amt.budgeted = vo.NewDecimal("0")
@@ -50,12 +50,12 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 		if amt.budgetedBefore.String() == "" {
 			amt.budgetedBefore = vo.NewDecimal("0")
 		}
-		amt.budgeted = l.Amount()
+		amt.budgeted = l.Amount
 		data[key] = amt
 	}
 
 	// Prior-months summed limits (budgetedBefore).
-	summed, err := s.read.SummarizedLimits(ctx, b.budget.Id(), b.budget.StartedAt(), f.periodStart)
+	summed, err := s.read.SummarizedLimits(ctx, b.budget.ID, b.budget.StartedAt, f.periodStart)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 		return nil, err
 	}
 	// month-by-month before: [startedAt, periodStart) in 1-month steps.
-	for cur := b.budget.StartedAt(); cur.Before(f.periodStart); cur = cur.AddDate(0, 1, 0) {
+	for cur := b.budget.StartedAt; cur.Before(f.periodStart); cur = cur.AddDate(0, 1, 0) {
 		next := cur.AddDate(0, 1, 0)
 		if err := count(cur, next, false); err != nil {
 			return nil, err

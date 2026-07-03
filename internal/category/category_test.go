@@ -42,10 +42,10 @@ func newCat(t *testing.T, typ Type) *Category {
 
 func TestNewCategory_Defaults(t *testing.T) {
 	c := newCat(t, TypeExpense)
-	if c.IsArchived() {
+	if c.IsArchived {
 		t.Fatal("new category must not be archived")
 	}
-	if c.Type() != TypeExpense || c.Name() != "Food" || c.Icon() != "cart" {
+	if c.Type != TypeExpense || c.Name != "Food" || c.Icon != "cart" {
 		t.Fatalf("category fields wrong: %+v", c)
 	}
 }
@@ -53,15 +53,15 @@ func TestNewCategory_Defaults(t *testing.T) {
 func TestCategory_Archive_Unarchive_OnlyBumpOnChange(t *testing.T) {
 	c := newCat(t, TypeExpense)
 	c.Unarchive(tk1) // already not archived -> no-op
-	if !c.UpdatedAt().Equal(tk0) {
+	if !c.UpdatedAt.Equal(tk0) {
 		t.Fatal("no-op unarchive bumped updatedAt")
 	}
 	c.Archive(tk1)
-	if !c.IsArchived() || !c.UpdatedAt().Equal(tk1) {
-		t.Fatalf("archive: archived=%v updatedAt=%v", c.IsArchived(), c.UpdatedAt())
+	if !c.IsArchived || !c.UpdatedAt.Equal(tk1) {
+		t.Fatalf("archive: archived=%v updatedAt=%v", c.IsArchived, c.UpdatedAt)
 	}
 	c.Archive(time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)) // no-op
-	if !c.UpdatedAt().Equal(tk1) {
+	if !c.UpdatedAt.Equal(tk1) {
 		t.Fatal("re-archive bumped updatedAt")
 	}
 }
@@ -69,11 +69,11 @@ func TestCategory_Archive_Unarchive_OnlyBumpOnChange(t *testing.T) {
 func TestCategory_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 	c := newCat(t, TypeExpense)
 	c.UpdateName("Food", tk1)
-	if !c.UpdatedAt().Equal(tk0) {
+	if !c.UpdatedAt.Equal(tk0) {
 		t.Fatal("same-name update bumped updatedAt")
 	}
 	c.UpdateName("Dining", tk1)
-	if c.Name() != "Dining" || !c.UpdatedAt().Equal(tk1) {
-		t.Fatalf("rename: %q / %v", c.Name(), c.UpdatedAt())
+	if c.Name != "Dining" || !c.UpdatedAt.Equal(tk1) {
+		t.Fatalf("rename: %q / %v", c.Name, c.UpdatedAt)
 	}
 }

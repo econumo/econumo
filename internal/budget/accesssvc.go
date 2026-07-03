@@ -32,17 +32,17 @@ func (s *Service) GrantAccess(ctx context.Context, userID vo.Id, req GrantAccess
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		existing, gerr := s.repo.GetAccess(txCtx, budgetID, invitedID)
+		existing, gerr := s.access.GetAccess(txCtx, budgetID, invitedID)
 		if gerr != nil {
 			var nf *errs.NotFoundError
 			if !errors.As(gerr, &nf) {
 				return gerr
 			}
-			grant := NewBudgetAccess(s.repo.NextIdentity(), budgetID, invitedID, role, now)
-			return s.repo.SaveAccess(txCtx, grant)
+			grant := NewBudgetAccess(s.access.NextIdentity(), budgetID, invitedID, role, now)
+			return s.access.SaveAccess(txCtx, grant)
 		}
 		existing.UpdateRole(role, now)
-		return s.repo.SaveAccess(txCtx, existing)
+		return s.access.SaveAccess(txCtx, existing)
 	})
 	if err != nil {
 		return nil, err
@@ -70,12 +70,12 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req AcceptAcce
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		grant, gerr := s.repo.GetAccess(txCtx, budgetID, userID)
+		grant, gerr := s.access.GetAccess(txCtx, budgetID, userID)
 		if gerr != nil {
 			return gerr
 		}
 		grant.Accept(now)
-		if serr := s.repo.SaveAccess(txCtx, grant); serr != nil {
+		if serr := s.access.SaveAccess(txCtx, grant); serr != nil {
 			return serr
 		}
 		// Seed the newly-accepted user's category + tag elements.
@@ -113,7 +113,7 @@ func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req RevokeAcce
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.repo.DeleteAccess(txCtx, budgetID, invitedID)
+		return s.access.DeleteAccess(txCtx, budgetID, invitedID)
 	}); err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func (s *Service) DeclineAccess(ctx context.Context, userID vo.Id, req DeclineAc
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.repo.DeleteAccess(txCtx, budgetID, userID)
+		return s.access.DeleteAccess(txCtx, budgetID, userID)
 	}); err != nil {
 		return nil, err
 	}

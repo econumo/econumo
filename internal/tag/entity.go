@@ -14,85 +14,52 @@ import (
 
 // Tag is the tag aggregate root. The name is validated on the way in by the
 // application layer; the entity holds already-valid state and its mutators each
-// bump updatedAt only on a real change.
+// bump UpdatedAt only on a real change. Fields are exported for direct read
+// access; all writes after construction go through the mutators.
 type Tag struct {
-	id         vo.Id
-	userID     vo.Id
-	name       string
-	position   int16
-	isArchived bool
-	createdAt  time.Time
-	updatedAt  time.Time
+	ID         vo.Id
+	UserID     vo.Id
+	Name       string
+	Position   int16
+	IsArchived bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
-// NewTag constructs a freshly-created tag. position defaults to 0 and is set by
+// NewTag constructs a freshly-created tag. Position defaults to 0 and is set by
 // the service via SetPosition before the first save.
 func NewTag(id, userID vo.Id, name string, now time.Time) *Tag {
-	return &Tag{
-		id:         id,
-		userID:     userID,
-		name:       name,
-		position:   0,
-		isArchived: false,
-		createdAt:  now,
-		updatedAt:  now,
-	}
+	return &Tag{ID: id, UserID: userID, Name: name, CreatedAt: now, UpdatedAt: now}
 }
 
-func FromState(id, userID vo.Id, name string, position int16, isArchived bool, createdAt, updatedAt time.Time) *Tag {
-	return &Tag{
-		id:         id,
-		userID:     userID,
-		name:       name,
-		position:   position,
-		isArchived: isArchived,
-		createdAt:  createdAt,
-		updatedAt:  updatedAt,
-	}
-}
-
-func (t *Tag) Id() vo.Id { return t.id }
-
-func (t *Tag) UserId() vo.Id { return t.userID }
-
-func (t *Tag) Name() string { return t.name }
-
-func (t *Tag) Position() int16 { return t.position }
-
-func (t *Tag) IsArchived() bool { return t.isArchived }
-
-func (t *Tag) CreatedAt() time.Time { return t.createdAt }
-
-func (t *Tag) UpdatedAt() time.Time { return t.updatedAt }
-
-// SetPosition sets the initial position at creation. It does not bump updatedAt
+// SetPosition sets the initial position at creation. It does not bump UpdatedAt
 // — it is part of construction.
-func (t *Tag) SetPosition(position int16) { t.position = position }
+func (t *Tag) SetPosition(position int16) { t.Position = position }
 
 func (t *Tag) UpdateName(name string, now time.Time) {
-	if t.name != name {
-		t.name = name
-		t.updatedAt = now
+	if t.Name != name {
+		t.Name = name
+		t.UpdatedAt = now
 	}
 }
 
 func (t *Tag) UpdatePosition(position int16, now time.Time) {
-	if t.position != position {
-		t.position = position
-		t.updatedAt = now
+	if t.Position != position {
+		t.Position = position
+		t.UpdatedAt = now
 	}
 }
 
 func (t *Tag) Archive(now time.Time) {
-	if !t.isArchived {
-		t.isArchived = true
-		t.updatedAt = now
+	if !t.IsArchived {
+		t.IsArchived = true
+		t.UpdatedAt = now
 	}
 }
 
 func (t *Tag) Unarchive(now time.Time) {
-	if t.isArchived {
-		t.isArchived = false
-		t.updatedAt = now
+	if t.IsArchived {
+		t.IsArchived = false
+		t.UpdatedAt = now
 	}
 }

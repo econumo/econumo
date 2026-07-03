@@ -9,86 +9,54 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Folder is the account-folder aggregate root.
+// Folder is the account-folder aggregate root. Fields are exported for direct
+// read access; all writes after construction go through the mutators.
 type Folder struct {
-	id        vo.Id
-	userID    vo.Id
-	name      string
-	position  int16
-	isVisible bool
-	createdAt time.Time
-	updatedAt time.Time
+	ID        vo.Id
+	UserID    vo.Id
+	Name      string
+	Position  int16
+	IsVisible bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-// NewFolder constructs a freshly-created folder. position is assigned by the
+// NewFolder constructs a freshly-created folder. Position is assigned by the
 // service (last position + 1).
 func NewFolder(id, userID vo.Id, name string, now time.Time) *Folder {
 	return &Folder{
-		id:        id,
-		userID:    userID,
-		name:      name,
-		position:  0,
-		isVisible: true,
-		createdAt: now,
-		updatedAt: now,
+		ID: id, UserID: userID, Name: name, IsVisible: true, CreatedAt: now, UpdatedAt: now,
 	}
 }
 
-func FolderFromState(id, userID vo.Id, name string, position int16, isVisible bool, createdAt, updatedAt time.Time) *Folder {
-	return &Folder{
-		id:        id,
-		userID:    userID,
-		name:      name,
-		position:  position,
-		isVisible: isVisible,
-		createdAt: createdAt,
-		updatedAt: updatedAt,
-	}
-}
-
-func (f *Folder) Id() vo.Id { return f.id }
-
-func (f *Folder) UserId() vo.Id { return f.userID }
-
-func (f *Folder) Name() string { return f.name }
-
-func (f *Folder) Position() int16 { return f.position }
-
-// IsVisible reports whether the folder (and its accounts) is visible.
-func (f *Folder) IsVisible() bool { return f.isVisible }
-
-func (f *Folder) CreatedAt() time.Time { return f.createdAt }
-
-func (f *Folder) UpdatedAt() time.Time { return f.updatedAt }
-
-// SetPosition sets the position at creation. It does not bump updatedAt — it is
+// SetPosition sets the position at creation. It does not bump UpdatedAt — it is
 // part of construction.
-func (f *Folder) SetPosition(position int16) { f.position = position }
+func (f *Folder) SetPosition(position int16) { f.Position = position }
 
 func (f *Folder) UpdateName(name string, now time.Time) {
-	if f.name != name {
-		f.name = name
-		f.updatedAt = now
+	if f.Name != name {
+		f.Name = name
+		f.UpdatedAt = now
 	}
 }
 
 func (f *Folder) UpdatePosition(position int16, now time.Time) {
-	if f.position != position {
-		f.position = position
-		f.updatedAt = now
+	if f.Position != position {
+		f.Position = position
+		f.UpdatedAt = now
 	}
 }
 
 func (f *Folder) MakeVisible(now time.Time) {
-	if !f.isVisible {
-		f.isVisible = true
-		f.updatedAt = now
+	if !f.IsVisible {
+		f.IsVisible = true
+		f.UpdatedAt = now
 	}
 }
 
 func (f *Folder) MakeInvisible(now time.Time) {
-	if f.isVisible {
-		f.isVisible = false
-		f.updatedAt = now
+	if f.IsVisible {
+		f.IsVisible = false
+		f.UpdatedAt = now
 	}
 }

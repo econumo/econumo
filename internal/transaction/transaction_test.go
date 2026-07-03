@@ -66,8 +66,8 @@ func TestNew_CreatedEqualsUpdated(t *testing.T) {
 	s := baseState(t)
 	s.UpdatedAt = tc1 // New ignores UpdatedAt, uses CreatedAt for both.
 	tx := New(s)
-	if !tx.CreatedAt().Equal(tc0) || !tx.UpdatedAt().Equal(tc0) {
-		t.Fatalf("New: created=%v updated=%v want both %v", tx.CreatedAt(), tx.UpdatedAt(), tc0)
+	if !tx.CreatedAt.Equal(tc0) || !tx.UpdatedAt.Equal(tc0) {
+		t.Fatalf("New: created=%v updated=%v want both %v", tx.CreatedAt, tx.UpdatedAt, tc0)
 	}
 }
 
@@ -81,17 +81,17 @@ func TestUpdate_NonTransfer_KeepsMetadata_ClearsRecipient(t *testing.T) {
 	s.AmountRecipient = strptr("10")
 	tx.Update(s, tc1)
 
-	if tx.Type() != TypeIncome {
-		t.Fatalf("type=%d want income", tx.Type())
+	if tx.Type != TypeIncome {
+		t.Fatalf("type=%d want income", tx.Type)
 	}
-	if tx.AccountRecipientId() != nil || tx.AmountRecipient() != nil {
+	if tx.AccountRecipID != nil || tx.AmountRecipient != nil {
 		t.Fatal("non-transfer must clear recipient account + amount")
 	}
-	if tx.CategoryId() == nil || tx.PayeeId() == nil || tx.TagId() == nil {
+	if tx.CategoryID == nil || tx.PayeeID == nil || tx.TagID == nil {
 		t.Fatal("non-transfer must keep category/payee/tag")
 	}
-	if !tx.UpdatedAt().Equal(tc1) {
-		t.Fatalf("updatedAt=%v want %v", tx.UpdatedAt(), tc1)
+	if !tx.UpdatedAt.Equal(tc1) {
+		t.Fatalf("updatedAt=%v want %v", tx.UpdatedAt, tc1)
 	}
 }
 
@@ -104,16 +104,16 @@ func TestUpdate_Transfer_KeepsRecipient_ClearsMetadata(t *testing.T) {
 	// category/payee/tag still set in state -- transfer must DROP them.
 	tx.Update(s, tc1)
 
-	if !tx.Type().IsTransfer() {
-		t.Fatalf("type=%d want transfer", tx.Type())
+	if !tx.Type.IsTransfer() {
+		t.Fatalf("type=%d want transfer", tx.Type)
 	}
-	if tx.AccountRecipientId() == nil || tx.AmountRecipient() == nil {
+	if tx.AccountRecipID == nil || tx.AmountRecipient == nil {
 		t.Fatal("transfer must keep recipient account + amount")
 	}
-	if *tx.AmountRecipient() != "40" {
-		t.Fatalf("amountRecipient=%q want 40", *tx.AmountRecipient())
+	if *tx.AmountRecipient != "40" {
+		t.Fatalf("amountRecipient=%q want 40", *tx.AmountRecipient)
 	}
-	if tx.CategoryId() != nil || tx.PayeeId() != nil || tx.TagId() != nil {
+	if tx.CategoryID != nil || tx.PayeeID != nil || tx.TagID != nil {
 		t.Fatal("transfer must clear category/payee/tag")
 	}
 }

@@ -85,20 +85,20 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domtransaction.Transacti
 // Save upserts a transaction.
 func (r *Repo) Save(ctx context.Context, t *domtransaction.Transaction) error {
 	return r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
-		ID:                 t.Id().String(),
-		UserID:             t.UserId().String(),
-		AccountID:          t.AccountId().String(),
-		AccountRecipientID: idPtr(t.AccountRecipientId()),
-		CategoryID:         idPtr(t.CategoryId()),
-		PayeeID:            idPtr(t.PayeeId()),
-		TagID:              idPtr(t.TagId()),
-		Description:        t.Description(),
-		CreatedAt:          t.CreatedAt(),
-		UpdatedAt:          t.UpdatedAt(),
-		SpentAt:            t.SpentAt(),
-		Type:               t.Type().Int16(),
-		Amount:             t.Amount(),
-		AmountRecipient:    t.AmountRecipient(),
+		ID:                 t.ID.String(),
+		UserID:             t.UserID.String(),
+		AccountID:          t.AccountID.String(),
+		AccountRecipientID: idPtr(t.AccountRecipID),
+		CategoryID:         idPtr(t.CategoryID),
+		PayeeID:            idPtr(t.PayeeID),
+		TagID:              idPtr(t.TagID),
+		Description:        t.Description,
+		CreatedAt:          t.CreatedAt,
+		UpdatedAt:          t.UpdatedAt,
+		SpentAt:            t.SpentAt,
+		Type:               t.Type.Int16(),
+		Amount:             t.Amount,
+		AmountRecipient:    t.AmountRecipient,
 	})
 }
 

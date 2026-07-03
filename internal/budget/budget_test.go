@@ -162,8 +162,8 @@ func TestNewBudget_SnapsStartToFirstOfMonth(t *testing.T) {
 		id(t, "22222222-2222-2222-2222-222222222222"),
 		"My Budget", id(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
 	want := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	if !b.StartedAt().Equal(want) {
-		t.Fatalf("startedAt=%v want %v (first of month)", b.StartedAt(), want)
+	if !b.StartedAt.Equal(want) {
+		t.Fatalf("startedAt=%v want %v (first of month)", b.StartedAt, want)
 	}
 }
 
@@ -173,13 +173,13 @@ func TestBudget_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 		id(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
 	// no-op update keeps updatedAt.
 	b.UpdateName("Original", t1)
-	if !b.UpdatedAt().Equal(t0) {
-		t.Fatalf("no-op rename bumped updatedAt to %v", b.UpdatedAt())
+	if !b.UpdatedAt.Equal(t0) {
+		t.Fatalf("no-op rename bumped updatedAt to %v", b.UpdatedAt)
 	}
 	// real change bumps it.
 	b.UpdateName("Renamed", t1)
-	if !b.UpdatedAt().Equal(t1) || b.Name() != "Renamed" {
-		t.Fatalf("rename: name=%q updatedAt=%v", b.Name(), b.UpdatedAt())
+	if !b.UpdatedAt.Equal(t1) || b.Name != "Renamed" {
+		t.Fatalf("rename: name=%q updatedAt=%v", b.Name, b.UpdatedAt)
 	}
 }
 
@@ -189,12 +189,12 @@ func TestBudget_UpdateCurrency_OnlyBumpsOnChange(t *testing.T) {
 	b := NewBudget(id(t, "11111111-1111-1111-1111-111111111111"),
 		id(t, "22222222-2222-2222-2222-222222222222"), "B", cur, t0, t0)
 	b.UpdateCurrency(cur, t1)
-	if !b.UpdatedAt().Equal(t0) {
+	if !b.UpdatedAt.Equal(t0) {
 		t.Fatal("same-currency update bumped updatedAt")
 	}
 	b.UpdateCurrency(other, t1)
-	if !b.CurrencyId().Equal(other) || !b.UpdatedAt().Equal(t1) {
-		t.Fatalf("currency change not applied: %v / %v", b.CurrencyId(), b.UpdatedAt())
+	if !b.CurrencyID.Equal(other) || !b.UpdatedAt.Equal(t1) {
+		t.Fatalf("currency change not applied: %v / %v", b.CurrencyID, b.UpdatedAt)
 	}
 }
 
@@ -205,11 +205,11 @@ func TestBudget_StartFrom_SnapsAndAlwaysBumps(t *testing.T) {
 	reset := time.Date(2024, 6, 20, 8, 0, 0, 0, time.UTC)
 	b.StartFrom(reset, t1)
 	want := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	if !b.StartedAt().Equal(want) {
-		t.Fatalf("startedAt=%v want %v", b.StartedAt(), want)
+	if !b.StartedAt.Equal(want) {
+		t.Fatalf("startedAt=%v want %v", b.StartedAt, want)
 	}
-	if !b.UpdatedAt().Equal(t1) {
-		t.Fatalf("StartFrom should bump updatedAt, got %v", b.UpdatedAt())
+	if !b.UpdatedAt.Equal(t1) {
+		t.Fatalf("StartFrom should bump updatedAt, got %v", b.UpdatedAt)
 	}
 }
 
@@ -217,11 +217,11 @@ func TestNewBudgetAccess_StartsPending(t *testing.T) {
 	a := NewBudgetAccess(id(t, "11111111-1111-1111-1111-111111111111"),
 		id(t, "22222222-2222-2222-2222-222222222222"),
 		id(t, "33333333-3333-3333-3333-333333333333"), RoleUser, t0)
-	if a.IsAccepted() {
+	if a.IsAccepted {
 		t.Fatal("new access must be pending (not accepted)")
 	}
-	if a.Role() != RoleUser {
-		t.Fatalf("role=%d want user", a.Role())
+	if a.Role != RoleUser {
+		t.Fatalf("role=%d want user", a.Role)
 	}
 }
 
@@ -230,13 +230,13 @@ func TestBudgetAccess_Accept_Idempotent(t *testing.T) {
 		id(t, "22222222-2222-2222-2222-222222222222"),
 		id(t, "33333333-3333-3333-3333-333333333333"), RoleUser, t0)
 	a.Accept(t1)
-	if !a.IsAccepted() || !a.UpdatedAt().Equal(t1) {
-		t.Fatalf("accept: accepted=%v updatedAt=%v", a.IsAccepted(), a.UpdatedAt())
+	if !a.IsAccepted || !a.UpdatedAt.Equal(t1) {
+		t.Fatalf("accept: accepted=%v updatedAt=%v", a.IsAccepted, a.UpdatedAt)
 	}
 	// second accept is a no-op (no bump).
 	a.Accept(time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC))
-	if !a.UpdatedAt().Equal(t1) {
-		t.Fatalf("re-accept bumped updatedAt to %v", a.UpdatedAt())
+	if !a.UpdatedAt.Equal(t1) {
+		t.Fatalf("re-accept bumped updatedAt to %v", a.UpdatedAt)
 	}
 }
 
@@ -245,12 +245,12 @@ func TestBudgetAccess_UpdateRole_OnlyBumpsOnChange(t *testing.T) {
 		id(t, "22222222-2222-2222-2222-222222222222"),
 		id(t, "33333333-3333-3333-3333-333333333333"), RoleUser, t0)
 	a.UpdateRole(RoleUser, t1)
-	if !a.UpdatedAt().Equal(t0) {
+	if !a.UpdatedAt.Equal(t0) {
 		t.Fatal("same-role update bumped updatedAt")
 	}
 	a.UpdateRole(RoleAdmin, t1)
-	if a.Role() != RoleAdmin || !a.UpdatedAt().Equal(t1) {
-		t.Fatalf("role change: role=%d updatedAt=%v", a.Role(), a.UpdatedAt())
+	if a.Role != RoleAdmin || !a.UpdatedAt.Equal(t1) {
+		t.Fatalf("role change: role=%d updatedAt=%v", a.Role, a.UpdatedAt)
 	}
 }
 
@@ -262,8 +262,8 @@ func TestBudgetElement_PositionUnset(t *testing.T) {
 		t.Fatal("position 0 should be unset")
 	}
 	e.UpdatePosition(5, t1)
-	if e.IsPositionUnset() || e.Position() != 5 || !e.UpdatedAt().Equal(t1) {
-		t.Fatalf("after UpdatePosition: pos=%d unset=%v", e.Position(), e.IsPositionUnset())
+	if e.IsPositionUnset() || e.Position != 5 || !e.UpdatedAt.Equal(t1) {
+		t.Fatalf("after UpdatePosition: pos=%d unset=%v", e.Position, e.IsPositionUnset())
 	}
 }
 
@@ -274,18 +274,18 @@ func TestBudgetElement_UpdateCurrency_NilTransitions(t *testing.T) {
 		id(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
 	// nil -> nil: no bump.
 	e.UpdateCurrency(nil, t1)
-	if !e.UpdatedAt().Equal(t0) {
+	if !e.UpdatedAt.Equal(t0) {
 		t.Fatal("nil->nil currency bumped updatedAt")
 	}
 	// nil -> set: bump.
 	e.UpdateCurrency(&cur, t1)
-	if e.CurrencyId() == nil || !e.CurrencyId().Equal(cur) || !e.UpdatedAt().Equal(t1) {
-		t.Fatalf("nil->set currency failed: %v", e.CurrencyId())
+	if e.CurrencyID == nil || !e.CurrencyID.Equal(cur) || !e.UpdatedAt.Equal(t1) {
+		t.Fatalf("nil->set currency failed: %v", e.CurrencyID)
 	}
 	// set -> same: no bump (reset updatedAt to detect).
-	e2 := ElementFromState(e.Id(), e.BudgetId(), e.ExternalId(), e.Type(), &cur, nil, 1, t0, t0)
+	e2 := &BudgetElement{ID: e.ID, BudgetID: e.BudgetID, ExternalID: e.ExternalID, Type: e.Type, CurrencyID: &cur, Position: 1, CreatedAt: t0, UpdatedAt: t0}
 	e2.UpdateCurrency(&cur, t1)
-	if !e2.UpdatedAt().Equal(t0) {
+	if !e2.UpdatedAt.Equal(t0) {
 		t.Fatal("set->same currency bumped updatedAt")
 	}
 }
@@ -296,13 +296,13 @@ func TestBudgetElement_UpdateFolder_NilTransitions(t *testing.T) {
 		id(t, "22222222-2222-2222-2222-222222222222"),
 		id(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
 	e.UpdateFolder(&folder, t1)
-	if e.FolderId() == nil || !e.FolderId().Equal(folder) || !e.UpdatedAt().Equal(t1) {
-		t.Fatalf("move to folder failed: %v", e.FolderId())
+	if e.FolderID == nil || !e.FolderID.Equal(folder) || !e.UpdatedAt.Equal(t1) {
+		t.Fatalf("move to folder failed: %v", e.FolderID)
 	}
 	// clear it.
 	e.UpdateFolder(nil, time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC))
-	if e.FolderId() != nil {
-		t.Fatalf("folder should be cleared, got %v", e.FolderId())
+	if e.FolderID != nil {
+		t.Fatalf("folder should be cleared, got %v", e.FolderID)
 	}
 }
 
@@ -310,11 +310,11 @@ func TestNewBudgetElementLimit_SnapsPeriod(t *testing.T) {
 	l := NewBudgetElementLimit(id(t, "11111111-1111-1111-1111-111111111111"),
 		id(t, "22222222-2222-2222-2222-222222222222"), vo.NewDecimal("200"), t0, t0)
 	want := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	if !l.Period().Equal(want) {
-		t.Fatalf("period=%v want %v (first of month)", l.Period(), want)
+	if !l.Period.Equal(want) {
+		t.Fatalf("period=%v want %v (first of month)", l.Period, want)
 	}
-	if l.Amount().String() != "200" {
-		t.Fatalf("amount=%q want 200", l.Amount().String())
+	if l.Amount.String() != "200" {
+		t.Fatalf("amount=%q want 200", l.Amount.String())
 	}
 }
 
@@ -323,28 +323,28 @@ func TestBudgetElementLimit_UpdateAmount_OnlyBumpsOnChange(t *testing.T) {
 		id(t, "22222222-2222-2222-2222-222222222222"), vo.NewDecimal("200"), t0, t0)
 	// "200" == "200.00000000" -> no change.
 	l.UpdateAmount(vo.NewDecimal("200.00000000"), t1)
-	if !l.UpdatedAt().Equal(t0) {
+	if !l.UpdatedAt.Equal(t0) {
 		t.Fatal("equal-amount update bumped updatedAt")
 	}
 	l.UpdateAmount(vo.NewDecimal("250.50"), t1)
-	if l.Amount().String() != "250.5" || !l.UpdatedAt().Equal(t1) {
-		t.Fatalf("amount change: %q / %v", l.Amount().String(), l.UpdatedAt())
+	if l.Amount.String() != "250.5" || !l.UpdatedAt.Equal(t1) {
+		t.Fatalf("amount change: %q / %v", l.Amount.String(), l.UpdatedAt)
 	}
 }
 
 func TestBudgetEnvelope_SetArchived_OnlyBumpsOnChange(t *testing.T) {
 	e := NewBudgetEnvelope(id(t, "11111111-1111-1111-1111-111111111111"),
 		id(t, "22222222-2222-2222-2222-222222222222"), "Travel", "plane", t0)
-	if e.IsArchived() {
+	if e.IsArchived {
 		t.Fatal("new envelope must not be archived")
 	}
 	e.SetArchived(false, t1)
-	if !e.UpdatedAt().Equal(t0) {
+	if !e.UpdatedAt.Equal(t0) {
 		t.Fatal("no-op archive bumped updatedAt")
 	}
 	e.SetArchived(true, t1)
-	if !e.IsArchived() || !e.UpdatedAt().Equal(t1) {
-		t.Fatalf("archive: archived=%v updatedAt=%v", e.IsArchived(), e.UpdatedAt())
+	if !e.IsArchived || !e.UpdatedAt.Equal(t1) {
+		t.Fatalf("archive: archived=%v updatedAt=%v", e.IsArchived, e.UpdatedAt)
 	}
 }
 

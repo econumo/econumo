@@ -58,102 +58,64 @@ func TypeFromAlias(alias string) (Type, bool) {
 
 // Category is the category aggregate root. Fields are validated on the way in by
 // the application layer; the entity holds already-valid state and its mutators
-// each bump updatedAt only on a real change.
+// each bump UpdatedAt only on a real change. Fields are exported for direct read
+// access; all writes after construction go through the mutators. The Type field
+// shares its name with the Type value object (legal in Go: a struct field and a
+// package-level type occupy separate namespaces) — its wire alias logic lives on
+// the Type value object above (Alias/Int16/TypeFromAlias), not on Category.
 type Category struct {
-	id         vo.Id
-	userID     vo.Id
-	name       string
-	position   int16
-	typ        Type
-	icon       string
-	isArchived bool
-	createdAt  time.Time
-	updatedAt  time.Time
+	ID         vo.Id
+	UserID     vo.Id
+	Name       string
+	Position   int16
+	Type       Type
+	Icon       string
+	IsArchived bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
-// NewCategory constructs a freshly-created category. position defaults to 0 and
+// NewCategory constructs a freshly-created category. Position defaults to 0 and
 // is set by the service via SetPosition before the first save.
 func NewCategory(id, userID vo.Id, name string, typ Type, icon string, now time.Time) *Category {
-	return &Category{
-		id:         id,
-		userID:     userID,
-		name:       name,
-		position:   0,
-		typ:        typ,
-		icon:       icon,
-		isArchived: false,
-		createdAt:  now,
-		updatedAt:  now,
-	}
+	return &Category{ID: id, UserID: userID, Name: name, Type: typ, Icon: icon, CreatedAt: now, UpdatedAt: now}
 }
 
-func FromState(id, userID vo.Id, name string, position int16, typ Type, icon string, isArchived bool, createdAt, updatedAt time.Time) *Category {
-	return &Category{
-		id:         id,
-		userID:     userID,
-		name:       name,
-		position:   position,
-		typ:        typ,
-		icon:       icon,
-		isArchived: isArchived,
-		createdAt:  createdAt,
-		updatedAt:  updatedAt,
-	}
-}
-
-func (c *Category) Id() vo.Id { return c.id }
-
-func (c *Category) UserId() vo.Id { return c.userID }
-
-func (c *Category) Name() string { return c.name }
-
-func (c *Category) Position() int16 { return c.position }
-
-func (c *Category) Type() Type { return c.typ }
-
-func (c *Category) Icon() string { return c.icon }
-
-func (c *Category) IsArchived() bool { return c.isArchived }
-
-func (c *Category) CreatedAt() time.Time { return c.createdAt }
-
-func (c *Category) UpdatedAt() time.Time { return c.updatedAt }
-
-// SetPosition sets the initial position at creation. It does not bump updatedAt
+// SetPosition sets the initial position at creation. It does not bump UpdatedAt
 // — it is part of construction.
-func (c *Category) SetPosition(position int16) { c.position = position }
+func (c *Category) SetPosition(position int16) { c.Position = position }
 
 func (c *Category) UpdateName(name string, now time.Time) {
-	if c.name != name {
-		c.name = name
-		c.updatedAt = now
+	if c.Name != name {
+		c.Name = name
+		c.UpdatedAt = now
 	}
 }
 
 func (c *Category) UpdateIcon(icon string, now time.Time) {
-	if c.icon != icon {
-		c.icon = icon
-		c.updatedAt = now
+	if c.Icon != icon {
+		c.Icon = icon
+		c.UpdatedAt = now
 	}
 }
 
 func (c *Category) UpdatePosition(position int16, now time.Time) {
-	if c.position != position {
-		c.position = position
-		c.updatedAt = now
+	if c.Position != position {
+		c.Position = position
+		c.UpdatedAt = now
 	}
 }
 
 func (c *Category) Archive(now time.Time) {
-	if !c.isArchived {
-		c.isArchived = true
-		c.updatedAt = now
+	if !c.IsArchived {
+		c.IsArchived = true
+		c.UpdatedAt = now
 	}
 }
 
 func (c *Category) Unarchive(now time.Time) {
-	if c.isArchived {
-		c.isArchived = false
-		c.updatedAt = now
+	if c.IsArchived {
+		c.IsArchived = false
+		c.UpdatedAt = now
 	}
 }

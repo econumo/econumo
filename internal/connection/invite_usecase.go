@@ -33,8 +33,8 @@ func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateIn
 		return nil, err
 	}
 	return &GenerateInviteResult{Item: ConnectionInviteResult{
-		Code:      inv.Code().Value(),
-		ExpiredAt: inv.ExpiredAt().Format(datetime.Layout),
+		Code:      inv.Code.Value(),
+		ExpiredAt: inv.ExpiredAt.Format(datetime.Layout),
 	}}, nil
 }
 
@@ -69,10 +69,10 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req AcceptInvi
 		if gerr != nil {
 			return gerr
 		}
-		if inv.UserId().Equal(userID) {
+		if inv.UserID.Equal(userID) {
 			return errs.NewValidation("Inviting yourself?")
 		}
-		if cerr := s.access.ConnectUsers(txCtx, inv.UserId(), userID); cerr != nil {
+		if cerr := s.access.ConnectUsers(txCtx, inv.UserID, userID); cerr != nil {
 			return cerr
 		}
 		inv.ClearCode()
@@ -110,12 +110,12 @@ func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req Delete
 			return rerr
 		}
 		for _, a := range received {
-			owner, oerr := s.access.AccountOwner(txCtx, a.AccountId())
+			owner, oerr := s.access.AccountOwner(txCtx, a.AccountID)
 			if oerr != nil {
 				return oerr
 			}
 			if owner.Equal(connectedID) {
-				if rg := s.revokeGrantTx(txCtx, a.AccountId(), a.UserId()); rg != nil {
+				if rg := s.revokeGrantTx(txCtx, a.AccountID, a.UserID); rg != nil {
 					return rg
 				}
 			}
@@ -125,8 +125,8 @@ func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req Delete
 			return ierr
 		}
 		for _, a := range issued {
-			if a.UserId().Equal(connectedID) {
-				if rg := s.revokeGrantTx(txCtx, a.AccountId(), a.UserId()); rg != nil {
+			if a.UserID.Equal(connectedID) {
+				if rg := s.revokeGrantTx(txCtx, a.AccountID, a.UserID); rg != nil {
 					return rg
 				}
 			}

@@ -83,7 +83,7 @@ func (s *Service) requireOwnerAdmin(ctx context.Context, userID, accountID vo.Id
 		}
 		return err
 	}
-	if grant.Role() == RoleAdmin {
+	if grant.Role == RoleAdmin {
 		return nil
 	}
 	return errs.NewAccessDenied("Access denied")

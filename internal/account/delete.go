@@ -20,15 +20,15 @@ func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req DeleteAcc
 		return nil, err
 	}
 
-	acct, gerr := s.repo.GetByID(ctx, id)
+	acct, gerr := s.accounts.GetByID(ctx, id)
 	if gerr != nil {
 		return nil, gerr
 	}
 
-	if acct.UserId().Equal(userID) {
+	if acct.UserID.Equal(userID) {
 		if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 			acct.Delete(s.clock.Now())
-			return s.repo.Save(ctx, acct)
+			return s.accounts.Save(ctx, acct)
 		}); err != nil {
 			return nil, err
 		}
