@@ -104,6 +104,8 @@ func New(s NewState) *Transaction {
 	}
 }
 
+// FromState reconstructs a persisted transaction: unlike New, it honors
+// s.UpdatedAt instead of stamping UpdatedAt from CreatedAt.
 func FromState(s NewState) *Transaction {
 	return &Transaction{
 		ID: s.ID, UserID: s.UserID, Type: s.Type, AccountID: s.AccountID,
