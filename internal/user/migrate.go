@@ -52,7 +52,7 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 			if gerr != nil {
 				return gerr
 			}
-			plain, derr := salted.Decode(u.Email())
+			plain, derr := salted.Decode(u.Email)
 			if derr != nil {
 				// Undecryptable under the current salt: already plaintext (e.g.
 				// a re-run, or a row written before the salt was set). Leave it.
@@ -60,14 +60,14 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 				continue
 			}
 			newIdent := saltFree.Hash(strings.ToLower(plain))
-			if plain == u.Email() && newIdent == u.Identifier() {
+			if plain == u.Email && newIdent == u.Identifier {
 				// Nothing to change (defensive: Decode normally errors first).
 				skipped++
 				continue
 			}
 			// Avatar is the gravatar of the email's md5 — independent of the data
 			// salt — so the stored value is already correct; pass it through.
-			u.UpdateEmail(newIdent, plain, u.AvatarURL(), s.clock.Now())
+			u.UpdateEmail(newIdent, plain, u.AvatarURL, s.clock.Now())
 			if serr := s.repo.Save(ctx, u); serr != nil {
 				return serr
 			}

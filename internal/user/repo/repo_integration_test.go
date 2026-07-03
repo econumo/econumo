@@ -27,13 +27,19 @@ func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *dbtest.DB) {
 	return userrepo.NewRepo("sqlite", db.TX), userrepo.NewReadRepo("sqlite", db.TX), db
 }
 
+func newTestUser(id vo.Id, identifier, email, name, avatarURL, password, salt string, isActive bool,
+	createdAt, updatedAt time.Time, opts []user.UserOption) *user.User {
+	return &user.User{ID: id, Identifier: identifier, Email: email, Name: name, AvatarURL: avatarURL,
+		Password: password, Salt: salt, IsActive: isActive, CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
+}
+
 func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
 
 	val := "USD"
 	opt := user.ReconstituteUserOption(vo.MustParseId(optID), "currency", &val, fixedTime, fixedTime)
-	u := user.FromState(
+	u := newTestUser(
 		vo.MustParseId(userA), "ident-a", "enc-email", "Alice", "https://av/a",
 		"hash", "salt-a", true, fixedTime, fixedTime, []user.UserOption{opt},
 	)
@@ -45,17 +51,17 @@ func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Identifier() != "ident-a" || got.Email() != "enc-email" || got.Name() != "Alice" {
-		t.Errorf("fields mismatch: %q %q %q", got.Identifier(), got.Email(), got.Name())
+	if got.Identifier != "ident-a" || got.Email != "enc-email" || got.Name != "Alice" {
+		t.Errorf("fields mismatch: %q %q %q", got.Identifier, got.Email, got.Name)
 	}
-	if got.AvatarURL() != "https://av/a" || got.Password() != "hash" || got.Salt() != "salt-a" || !got.IsActive() {
+	if got.AvatarURL != "https://av/a" || got.Password != "hash" || got.Salt != "salt-a" || !got.IsActive {
 		t.Errorf("auth/avatar mismatch: %+v", got)
 	}
-	if !got.CreatedAt().Equal(fixedTime) {
-		t.Errorf("createdAt mismatch: %v", got.CreatedAt())
+	if !got.CreatedAt.Equal(fixedTime) {
+		t.Errorf("createdAt mismatch: %v", got.CreatedAt)
 	}
-	opts := got.Options()
-	if len(opts) != 1 || opts[0].Name() != "currency" || opts[0].Value() == nil || *opts[0].Value() != "USD" {
+	opts := got.Options
+	if len(opts) != 1 || opts[0].Name != "currency" || opts[0].Value == nil || *opts[0].Value != "USD" {
 		t.Errorf("options mismatch: %+v", opts)
 	}
 }
@@ -76,7 +82,7 @@ func TestUserRepo_GetHeaderByID(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
 
-	u := user.FromState(
+	u := newTestUser(
 		vo.MustParseId(userA), "ident-a", "enc-email", "Alice", "https://av/a",
 		"hash", "salt-a", true, fixedTime, fixedTime, nil,
 	)
@@ -102,7 +108,7 @@ func TestUserRepo_GetHeaderByID(t *testing.T) {
 func TestUserRepo_GetByIdentifier(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := user.FromState(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -110,8 +116,8 @@ func TestUserRepo_GetByIdentifier(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByIdentifier: %v", err)
 	}
-	if got.Id().String() != userA {
-		t.Errorf("want %s, got %s", userA, got.Id())
+	if got.ID.String() != userA {
+		t.Errorf("want %s, got %s", userA, got.ID)
 	}
 	_, err = repo.GetByIdentifier(ctx, "missing")
 	var nf *errs.NotFoundError
@@ -123,7 +129,7 @@ func TestUserRepo_GetByIdentifier(t *testing.T) {
 func TestUserRepo_ExistsByIdentifier(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := user.FromState(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -141,7 +147,7 @@ func TestUserRepo_ListIDs(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
 	for _, id := range []string{userA, userB} {
-		u := user.FromState(vo.MustParseId(id), "id-"+id, "e", "U", "", "h", "s", true, fixedTime, fixedTime, nil)
+		u := newTestUser(vo.MustParseId(id), "id-"+id, "e", "U", "", "h", "s", true, fixedTime, fixedTime, nil)
 		if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 			t.Fatalf("Save %s: %v", id, err)
 		}
@@ -160,7 +166,7 @@ func TestUserRepo_GetOptions(t *testing.T) {
 	ctx := context.Background()
 	val := "dark"
 	opt := user.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
-	u := user.FromState(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, []user.UserOption{opt})
+	u := newTestUser(vo.MustParseId(userA), "ident-a", "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, []user.UserOption{opt})
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -168,7 +174,7 @@ func TestUserRepo_GetOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetOptions: %v", err)
 	}
-	if len(opts) != 1 || opts[0].Name() != "theme" {
+	if len(opts) != 1 || opts[0].Name != "theme" {
 		t.Errorf("options mismatch: %+v", opts)
 	}
 }
@@ -178,7 +184,7 @@ func TestUserReadRepo_Views(t *testing.T) {
 	ctx := context.Background()
 	val := "light"
 	opt := user.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
-	u := user.FromState(vo.MustParseId(userA), "ident-a", "enc", "Alice", "https://av", "h", "s", true, fixedTime, fixedTime, []user.UserOption{opt})
+	u := newTestUser(vo.MustParseId(userA), "ident-a", "enc", "Alice", "https://av", "h", "s", true, fixedTime, fixedTime, []user.UserOption{opt})
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}

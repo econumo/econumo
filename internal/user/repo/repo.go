@@ -132,27 +132,27 @@ func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]user.UserOption,
 func (r *Repo) Save(ctx context.Context, u *user.User) error {
 	db := r.db(ctx)
 	if err := r.q.UpsertUser(ctx, db, userParams{
-		ID:         u.Id().String(),
-		Identifier: u.Identifier(),
-		Email:      u.Email(),
-		Name:       u.Name(),
-		AvatarUrl:  u.AvatarURL(),
-		Password:   u.Password(),
-		Salt:       u.Salt(),
-		CreatedAt:  u.CreatedAt(),
-		UpdatedAt:  u.UpdatedAt(),
-		IsActive:   u.IsActive(),
+		ID:         u.ID.String(),
+		Identifier: u.Identifier,
+		Email:      u.Email,
+		Name:       u.Name,
+		AvatarUrl:  u.AvatarURL,
+		Password:   u.Password,
+		Salt:       u.Salt,
+		CreatedAt:  u.CreatedAt,
+		UpdatedAt:  u.UpdatedAt,
+		IsActive:   u.IsActive,
 	}); err != nil {
 		return err
 	}
-	for _, o := range u.Options() {
+	for _, o := range u.Options {
 		if err := r.q.UpsertUserOption(ctx, db, optionParams{
-			ID:        o.Id().String(),
-			UserID:    u.Id().String(),
-			Name:      o.Name(),
-			Value:     o.Value(),
-			CreatedAt: o.CreatedAt(),
-			UpdatedAt: o.UpdatedAt(),
+			ID:        o.ID.String(),
+			UserID:    u.ID.String(),
+			Name:      o.Name,
+			Value:     o.Value,
+			CreatedAt: o.CreatedAt,
+			UpdatedAt: o.UpdatedAt,
 		}); err != nil {
 			return err
 		}
@@ -173,10 +173,9 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*user.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return user.FromState(
-		id, row.Identifier, row.Email, row.Name, row.AvatarUrl,
-		row.Password, row.Salt, row.IsActive, row.CreatedAt, row.UpdatedAt, opts,
-	), nil
+	return &user.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
+		AvatarURL: row.AvatarUrl, Password: row.Password, Salt: row.Salt, IsActive: row.IsActive,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 
 func toDomainOptions(rows []optionRow) ([]user.UserOption, error) {

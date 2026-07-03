@@ -22,15 +22,15 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, now time.Time) (*
 		}
 		return nil, err
 	}
-	if !u.IsActive() || !s.hasher.Verify(u.Password(), req.Password, u.Salt()) {
+	if !u.IsActive || !s.hasher.Verify(u.Password, req.Password, u.Salt) {
 		return nil, errs.NewUnauthorized("Invalid credentials.")
 	}
 
-	email, derr := s.encode.Decode(u.Email())
+	email, derr := s.encode.Decode(u.Email)
 	if derr != nil {
 		return nil, derr
 	}
-	token, terr := s.jwt.Issue(u.Id().String(), email, now)
+	token, terr := s.jwt.Issue(u.ID.String(), email, now)
 	if terr != nil {
 		return nil, terr
 	}

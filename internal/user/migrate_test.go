@@ -57,7 +57,7 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 		if err != nil {
 			t.Fatalf("pre-migration lookup %s: %v", e, err)
 		}
-		if u.Email() == e {
+		if u.Email == e {
 			t.Fatalf("email %q stored in plaintext before migration", e)
 		}
 	}
@@ -76,10 +76,10 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 		if err != nil {
 			t.Fatalf("post-migration lookup %s: %v", e, err)
 		}
-		if u.Email() != e {
-			t.Errorf("email = %q, want plaintext %q (case preserved)", u.Email(), e)
+		if u.Email != e {
+			t.Errorf("email = %q, want plaintext %q (case preserved)", u.Email, e)
 		}
-		if u.Identifier() != saltFree.Hash(strings.ToLower(e)) {
+		if u.Identifier != saltFree.Hash(strings.ToLower(e)) {
 			t.Errorf("identifier for %s not the unsalted md5", e)
 		}
 		// The old (salted) identifier must no longer resolve.

@@ -57,8 +57,8 @@ func (l *BudgetUserLookup) CurrencyCode(ctx context.Context, userID string) (str
 	if err != nil {
 		return "", err
 	}
-	if o := u.Option(user.OptionCurrency); o != nil && o.Value() != nil {
-		return *o.Value(), nil
+	if o := u.Option(user.OptionCurrency); o != nil && o.Value != nil {
+		return *o.Value, nil
 	}
 	return user.DefaultCurrency, nil
 }

@@ -21,19 +21,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// PasswordRequests persists password-reset codes (users_password_requests) for
-// the remind/reset flow. The infra passwordrequestrepo implements it.
-type PasswordRequests interface {
-	// DeleteByUser removes all of a user's pending reset codes.
-	DeleteByUser(ctx context.Context, userID vo.Id) error
-	// Save inserts a new reset request.
-	Save(ctx context.Context, pr *PasswordRequest) error
-	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
-	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*PasswordRequest, error)
-	// Delete removes a request by id.
-	Delete(ctx context.Context, id vo.Id) error
-}
-
 // Service is the user use-case orchestrator. It owns the tx boundary and builds
 // the response-shaped *Result structs directly.
 type Service struct {
@@ -111,7 +98,7 @@ func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *User, now
 }
 
 func (s *Service) toCurrentUser(ctx context.Context, u *User) (CurrentUserResult, error) {
-	email, err := s.encode.Decode(u.Email())
+	email, err := s.encode.Decode(u.Email)
 	if err != nil {
 		return CurrentUserResult{}, err
 	}
@@ -123,9 +110,9 @@ func (s *Service) toCurrentUser(ctx context.Context, u *User) (CurrentUserResult
 // resolving the synthetic currency_id, which is a real lookup and therefore
 // lives here in the service rather than in a mapping helper.
 func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *User, email string) (CurrentUserResult, error) {
-	options := make([]OptionResult, 0, len(u.Options())+1)
-	for _, o := range u.Options() {
-		options = append(options, OptionResult{Name: o.Name(), Value: o.Value()})
+	options := make([]OptionResult, 0, len(u.Options)+1)
+	for _, o := range u.Options {
+		options = append(options, OptionResult{Name: o.Name, Value: o.Value})
 	}
 
 	// Resolve currency_id from the currency code, falling back to USD when the
@@ -143,10 +130,10 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *User, email str
 	options = append(options, OptionResult{Name: OptionCurrencyID, Value: &cid})
 
 	return CurrentUserResult{
-		Id:           u.Id().String(),
-		Name:         u.Name(),
+		Id:           u.ID.String(),
+		Name:         u.Name,
 		Email:        email,
-		Avatar:       u.AvatarURL(),
+		Avatar:       u.AvatarURL,
 		Options:      options,
 		Currency:     code,
 		ReportPeriod: u.ReportPeriod(),

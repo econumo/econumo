@@ -56,12 +56,12 @@ func (r *PasswordRequestRepo) DeleteByUser(ctx context.Context, userID vo.Id) er
 
 func (r *PasswordRequestRepo) Save(ctx context.Context, pr *user.PasswordRequest) error {
 	return r.q.InsertUserPasswordRequest(ctx, r.db(ctx), insertParams{
-		ID:        pr.Id().String(),
-		UserID:    pr.UserId().String(),
-		Code:      pr.Code(),
-		CreatedAt: pr.CreatedAt(),
-		UpdatedAt: pr.UpdatedAt(),
-		ExpiredAt: pr.ExpiredAt(),
+		ID:        pr.ID.String(),
+		UserID:    pr.UserID.String(),
+		Code:      pr.Code,
+		CreatedAt: pr.CreatedAt,
+		UpdatedAt: pr.UpdatedAt,
+		ExpiredAt: pr.ExpiredAt,
 	})
 }
 
@@ -86,7 +86,7 @@ func reconstitute(id, userID, code string, created, updated, expired time.Time) 
 	if err != nil {
 		return nil, err
 	}
-	return user.ReconstitutePasswordRequest(rid, uid, code, created, updated, expired), nil
+	return &user.PasswordRequest{ID: rid, UserID: uid, Code: code, CreatedAt: created, UpdatedAt: updated, ExpiredAt: expired}, nil
 }
 
 func mapErr(err error) error {
