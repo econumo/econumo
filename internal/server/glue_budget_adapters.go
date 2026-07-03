@@ -146,12 +146,12 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 			return nil, err
 		}
 		for _, t := range tags {
-			if seen[t.Id().String()] {
+			if seen[t.ID.String()] {
 				continue
 			}
-			seen[t.Id().String()] = true
+			seen[t.ID.String()] = true
 			out = append(out, appbudget.TagMeta{
-				ID: t.Id().String(), OwnerID: t.UserId().String(), Name: t.Name(), IsArchived: t.IsArchived(),
+				ID: t.ID.String(), OwnerID: t.UserID.String(), Name: t.Name, IsArchived: t.IsArchived,
 			})
 		}
 	}

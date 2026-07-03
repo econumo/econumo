@@ -46,9 +46,9 @@ func (s *Service) OrderTagList(ctx context.Context, userID vo.Id, req OrderTagLi
 			if gerr != nil {
 				return gerr
 			}
-			before := t.Position()
+			before := t.Position
 			t.UpdatePosition(positions[idStr], now)
-			if t.Position() != before {
+			if t.Position != before {
 				if serr := s.repo.Save(ctx, t); serr != nil {
 					return serr
 				}

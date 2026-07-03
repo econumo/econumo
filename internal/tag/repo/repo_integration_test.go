@@ -37,7 +37,8 @@ func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *dbtest.DB, *fixtu
 }
 
 func tag(id, userID, name string, pos int16) *domtag.Tag {
-	return domtag.FromState(vo.MustParseId(id), vo.MustParseId(userID), name, pos, false, fixedTime, fixedTime)
+	return &domtag.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
 func TestTagRepo_SaveGetRoundTrip(t *testing.T) {
@@ -51,11 +52,11 @@ func TestTagRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name() != "Holiday" || got.Position() != 4 || got.IsArchived() {
-		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name(), got.Position(), got.IsArchived())
+	if got.Name != "Holiday" || got.Position != 4 || got.IsArchived {
+		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name, got.Position, got.IsArchived)
 	}
-	if !got.UpdatedAt().Equal(fixedTime) {
-		t.Errorf("updatedAt mismatch: %v", got.UpdatedAt())
+	if !got.UpdatedAt.Equal(fixedTime) {
+		t.Errorf("updatedAt mismatch: %v", got.UpdatedAt)
 	}
 }
 
@@ -85,8 +86,8 @@ func TestTagRepo_ListAndCountByOwner(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("want 2, got %d", len(list))
 	}
-	if list[0].Id().String() != tagA2 || list[1].Id().String() != tagA1 {
-		t.Errorf("order by position wrong: %s, %s", list[0].Id(), list[1].Id())
+	if list[0].ID.String() != tagA2 || list[1].ID.String() != tagA1 {
+		t.Errorf("order by position wrong: %s, %s", list[0].ID, list[1].ID)
 	}
 	n, err := repo.CountByOwner(ctx, vo.MustParseId(userA))
 	if err != nil || n != 2 {
