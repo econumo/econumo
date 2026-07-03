@@ -15,23 +15,15 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// accountAccessFull is the subset of the connection AccountAccess repo used to
-// resolve an account's owner and a connected user's grant role for the
-// create-for-account path (category/tag create with an accountId).
-type accountAccessFull interface {
-	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	Get(ctx context.Context, accountID, userID vo.Id) (*domconnection.AccountAccess, error)
-}
-
 // AccountAccessResolver answers "who owns this account" and "what role does this
 // user hold on it" — the two questions the category and tag create-for-account
 // paths need: the add check requires an admin grant, and ownership of the new
 // entity goes to the account owner. It structurally satisfies the AccountAccess
 // port that the category and tag app services declare.
-type AccountAccessResolver struct{ access accountAccessFull }
+type AccountAccessResolver struct{ access *Repo }
 
 // NewAccountAccessResolver wraps the connection AccountAccess repo.
-func NewAccountAccessResolver(access accountAccessFull) *AccountAccessResolver {
+func NewAccountAccessResolver(access *Repo) *AccountAccessResolver {
 	return &AccountAccessResolver{access: access}
 }
 
