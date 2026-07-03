@@ -186,11 +186,11 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 			return nil, err
 		}
 		for _, p := range payees {
-			if seen[p.Id().String()] {
+			if seen[p.ID.String()] {
 				continue
 			}
-			seen[p.Id().String()] = true
-			out = append(out, appbudget.PayeeMeta{ID: p.Id().String(), Name: p.Name()})
+			seen[p.ID.String()] = true
+			out = append(out, appbudget.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 		}
 	}
 	return out, nil

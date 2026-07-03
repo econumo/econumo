@@ -252,7 +252,7 @@ func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.
 	}
 	out := make([]apptransaction.ImportNamed, len(list))
 	for i, py := range list {
-		out[i] = apptransaction.ImportNamed{ID: py.Id().String(), Name: py.Name(), OwnerID: py.UserId().String()}
+		out[i] = apptransaction.ImportNamed{ID: py.ID.String(), Name: py.Name, OwnerID: py.UserID.String()}
 	}
 	return out, nil
 }

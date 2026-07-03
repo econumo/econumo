@@ -44,9 +44,9 @@ func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req OrderPay
 			if gerr != nil {
 				return gerr
 			}
-			before := p.Position()
+			before := p.Position
 			p.UpdatePosition(positions[idStr], now)
-			if p.Position() != before {
+			if p.Position != before {
 				if serr := s.repo.Save(txCtx, p); serr != nil {
 					return serr
 				}

@@ -22,7 +22,7 @@ func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req DeletePayee
 		if gerr != nil {
 			return gerr
 		}
-		if !p.UserId().Equal(userID) {
+		if !p.UserID.Equal(userID) {
 			return errs.NewAccessDenied("")
 		}
 		return s.repo.Delete(txCtx, id)

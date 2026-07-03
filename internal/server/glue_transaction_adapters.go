@@ -161,5 +161,5 @@ func (l *TransactionPayeeNameLookup) PayeeName(ctx context.Context, id vo.Id) (s
 	if err != nil {
 		return "", nil
 	}
-	return p.Name(), nil
+	return p.Name, nil
 }
