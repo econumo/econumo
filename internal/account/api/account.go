@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseError{}
@@ -26,7 +27,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/account/create-account [post]
 func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -59,7 +60,7 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/update-account [post]
 func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -91,7 +92,7 @@ func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/delete-account [post]
 func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -120,7 +121,7 @@ func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/get-account-list [get]
 func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -147,7 +148,7 @@ func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/order-account-list [post]
 func (h *Handlers) OrderAccountList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 // Forces the apidoc import so swag annotations can resolve its envelope schemas.
@@ -27,7 +28,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/category/create-category [post]
 func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -60,7 +61,7 @@ func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/update-category [post]
 func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -93,7 +94,7 @@ func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/archive-category [post]
 func (h *Handlers) ArchiveCategory(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -125,7 +126,7 @@ func (h *Handlers) ArchiveCategory(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/unarchive-category [post]
 func (h *Handlers) UnarchiveCategory(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -157,7 +158,7 @@ func (h *Handlers) UnarchiveCategory(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/delete-category [post]
 func (h *Handlers) DeleteCategory(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

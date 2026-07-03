@@ -6,6 +6,7 @@ import (
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseUnauthorized{}
@@ -26,7 +27,7 @@ var _ = apidoc.JsonResponseUnauthorized{}
 // @Security    Bearer
 // @Router      /api/v1/transaction/get-transaction-list [get]
 func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

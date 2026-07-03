@@ -87,3 +87,17 @@ func UserIDFromCtx(ctx context.Context) (vo.Id, bool) {
 	id, ok := ctx.Value(ctxKeyUserID).(vo.Id)
 	return id, ok
 }
+
+// RequireUser pulls the user id placed by the JWT middleware; absence is
+// treated as unauthorized (defense in depth — every route is already behind
+// that middleware). The dev flag only gates the 500 exception path inside
+// httpx.WriteError, which this 401 branch never reaches, so it is passed as
+// false unconditionally without changing the emitted envelope.
+func RequireUser(w http.ResponseWriter, r *http.Request) (vo.Id, bool) {
+	id, ok := UserIDFromCtx(r.Context())
+	if !ok {
+		httpx.WriteError(w, errs.NewUnauthorized("JWT Token not found"), false)
+		return vo.Id{}, false
+	}
+	return id, true
+}

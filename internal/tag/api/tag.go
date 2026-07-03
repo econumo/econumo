@@ -6,6 +6,7 @@ import (
 	apptag "github.com/econumo/econumo/internal/tag"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 // _ keeps the apidoc import alias visible to swag's annotation parser.
@@ -26,7 +27,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/tag/create-tag [post]
 func (h *Handlers) CreateTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -58,7 +59,7 @@ func (h *Handlers) CreateTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/update-tag [post]
 func (h *Handlers) UpdateTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -90,7 +91,7 @@ func (h *Handlers) UpdateTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/archive-tag [post]
 func (h *Handlers) ArchiveTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -122,7 +123,7 @@ func (h *Handlers) ArchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/unarchive-tag [post]
 func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -154,7 +155,7 @@ func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/delete-tag [post]
 func (h *Handlers) DeleteTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

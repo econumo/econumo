@@ -6,6 +6,7 @@ import (
 	appcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 // Forces the apidoc import so swag annotations can resolve its envelope schemas.
@@ -26,7 +27,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/category/order-category-list [post]
 func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -57,7 +58,7 @@ func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/get-category-list [get]
 func (h *Handlers) GetCategoryList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
