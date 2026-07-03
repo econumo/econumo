@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -58,27 +59,16 @@ type RateInput struct {
 	Date time.Time
 }
 
-// WriteTxRunner is the transaction boundary the write service owns
-// (backend.TxManager satisfies it).
-type WriteTxRunner interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-// WriteClock supplies the current time (clock.Real in production).
-type WriteClock interface {
-	Now() time.Time
-}
-
 // WriteService is the currency write-use-case orchestrator.
 type WriteService struct {
 	write  WriteModel
-	tx     WriteTxRunner
-	clock  WriteClock
+	tx     port.TxRunner
+	clock  port.Clock
 	nextID func() vo.Id
 }
 
 // NewWriteService wires the currency write service.
-func NewWriteService(write WriteModel, tx WriteTxRunner, clock WriteClock) *WriteService {
+func NewWriteService(write WriteModel, tx port.TxRunner, clock port.Clock) *WriteService {
 	return &WriteService{write: write, tx: tx, clock: clock, nextID: vo.NewId}
 }
 

@@ -79,7 +79,7 @@ test: go-lint test-cover
 GO_COVER_MIN ?= 72
 
 # Fast suite WITH a coverage gate: measures true cross-package coverage of all
-# internal + pkg packages and fails if it drops below GO_COVER_MIN.
+# internal packages and fails if it drops below GO_COVER_MIN.
 #
 # -count=1 forces every package's tests to actually run. Without it, `go test`
 # replays cached results — and a cached package's coverage is printed but NOT

@@ -6,6 +6,7 @@ import (
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 // _ keeps the apidoc and appcurrency import aliases visible to swag's annotation
@@ -28,7 +29,7 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-list [get]
 func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -53,7 +54,7 @@ func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-rate-list [get]
 func (h *Handlers) GetCurrencyRateList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

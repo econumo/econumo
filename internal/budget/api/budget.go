@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseError{}
@@ -15,7 +16,7 @@ var _ = apidoc.JsonResponseError{}
 // request, call fn, emit the OK envelope (or the mapped error). Pass decode=false
 // for GET endpoints with no body.
 func handle[Req any, Res any](h *Handlers, w http.ResponseWriter, r *http.Request, decode bool, fn func(ctx ctxUser, req Req) (*Res, error)) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -118,7 +119,7 @@ func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget [get]
 func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -145,7 +146,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/get-transaction-list [get]
 func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -181,7 +182,7 @@ func optQuery(v string) *string {
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget-list [get]
 func (h *Handlers) GetBudgetList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

@@ -10,7 +10,6 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
-	"time"
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
@@ -36,6 +35,7 @@ import (
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/port"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
@@ -54,7 +54,7 @@ import (
 // clk so tests can inject deterministic ones and point at either engine; the
 // engine is read from cfg.DatabaseDriver, which selects the per-engine sqlc query
 // adapters in every repository constructor.
-func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Handler {
+func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) http.Handler {
 	txm := backend.NewTxManager(db)
 
 	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
@@ -182,12 +182,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 		DB:          pinger{db},
 		RegisterAPI: registerAPI,
 	})
-}
-
-// Clock is the time seam BuildAPI threads into every module: the real clock in
-// production, a fixed clock in tests for deterministic timestamps and JWT iat.
-type Clock interface {
-	Now() time.Time
 }
 
 type pinger struct{ db *sql.DB }

@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // okHandler is a trivial downstream handler that records that it ran and writes 200.
@@ -349,6 +350,58 @@ func TestJWT_EmptyBearerToken_401(t *testing.T) {
 func TestUserIDFromCtx_Absent(t *testing.T) {
 	if _, ok := UserIDFromCtx(context.Background()); ok {
 		t.Fatal("UserIDFromCtx(empty) reported present")
+	}
+}
+
+func TestRequireUser_NoUserInContext_401(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+
+	id, ok := RequireUser(rec, req)
+
+	if ok {
+		t.Fatal("ok=true want false (no user in context)")
+	}
+	if id != (vo.Id{}) {
+		t.Fatalf("id=%v want zero value", id)
+	}
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want 401", rec.Code)
+	}
+	var env map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+		t.Fatalf("decode body: %v\n%s", err, rec.Body.String())
+	}
+	if env["success"] != false {
+		t.Fatalf("success=%v want false", env["success"])
+	}
+	if env["message"] != "JWT Token not found" {
+		t.Fatalf("message=%q want %q", env["message"], "JWT Token not found")
+	}
+}
+
+func TestRequireUser_UserInContext_ReturnsID(t *testing.T) {
+	want, err := vo.ParseId(jwtTestUserID)
+	if err != nil {
+		t.Fatalf("parse test id: %v", err)
+	}
+	ctx := context.WithValue(context.Background(), ctxKeyUserID, want)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/x", nil).WithContext(ctx)
+
+	id, ok := RequireUser(rec, req)
+
+	if !ok {
+		t.Fatal("ok=false want true (user present in context)")
+	}
+	if id != want {
+		t.Fatalf("id=%v want %v", id, want)
+	}
+	// httptest.ResponseRecorder defaults Code to 200 until WriteHeader is
+	// called; an empty body is the reliable signal that RequireUser wrote
+	// nothing.
+	if rec.Body.Len() != 0 {
+		t.Fatalf("body=%q want empty (nothing written)", rec.Body.String())
 	}
 }
 

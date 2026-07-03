@@ -6,6 +6,7 @@ import (
 	appconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseError{}
@@ -22,7 +23,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/connection/get-connection-list [get]
 func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -49,7 +50,7 @@ func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/set-account-access [post]
 func (h *Handlers) SetAccountAccess(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -81,7 +82,7 @@ func (h *Handlers) SetAccountAccess(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/revoke-account-access [post]
 func (h *Handlers) RevokeAccountAccess(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -113,7 +114,7 @@ func (h *Handlers) RevokeAccountAccess(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/generate-invite [post]
 func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -145,7 +146,7 @@ func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-invite [post]
 func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -178,7 +179,7 @@ func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/accept-invite [post]
 func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -212,7 +213,7 @@ func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-connection [post]
 func (h *Handlers) DeleteConnection(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

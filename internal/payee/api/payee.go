@@ -6,6 +6,7 @@ import (
 	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 // _ keeps the apidoc import alias visible to swag's annotation parser.
@@ -26,7 +27,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/payee/create-payee [post]
 func (h *Handlers) CreatePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -58,7 +59,7 @@ func (h *Handlers) CreatePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/update-payee [post]
 func (h *Handlers) UpdatePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -90,7 +91,7 @@ func (h *Handlers) UpdatePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/archive-payee [post]
 func (h *Handlers) ArchivePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -122,7 +123,7 @@ func (h *Handlers) ArchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/unarchive-payee [post]
 func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -154,7 +155,7 @@ func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/delete-payee [post]
 func (h *Handlers) DeletePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

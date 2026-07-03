@@ -8,6 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 // maxImportUpload bounds the multipart parse at 10M — a frozen upload-size limit.
@@ -38,7 +39,7 @@ const maxImportUpload = 10 << 20
 // @Security    Bearer
 // @Router      /api/v1/transaction/import-transaction-list [post]
 func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
