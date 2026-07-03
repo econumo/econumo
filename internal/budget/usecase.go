@@ -27,9 +27,16 @@ type AccountView struct {
 	OwnerID    string
 }
 
-// Service is the budget module orchestrator.
+// Service is the budget module orchestrator. The one Repository constructor
+// param splits into its role interfaces here so every use-case file
+// references the narrowest surface it actually needs.
 type Service struct {
-	repo      Repository
+	budgets   BudgetStore
+	access    AccessStore
+	folders   FolderStore
+	envelopes EnvelopeStore
+	elements  ElementStore
+	limits    LimitStore
 	read      ReadModel
 	convertor Convertor
 	rates     AverageRateLookup
@@ -60,7 +67,8 @@ func NewService(
 	clock port.Clock,
 ) *Service {
 	return &Service{
-		repo: repo, read: read, convertor: convertor, rates: rates,
+		budgets: repo, access: repo, folders: repo, envelopes: repo, elements: repo, limits: repo,
+		read: read, convertor: convertor, rates: rates,
 		users: users, accounts: accounts, currency: currency, metadata: metadata,
 		tx: tx, clock: clock, accountOwners: map[string]string{},
 	}
@@ -79,27 +87,27 @@ type budgetAggregate struct {
 }
 
 func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAggregate, error) {
-	b, err := s.repo.GetByID(ctx, budgetID)
+	b, err := s.budgets.GetByID(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
-	access, err := s.repo.ListAccess(ctx, budgetID)
+	access, err := s.access.ListAccess(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
-	excluded, err := s.repo.ExcludedAccountIDs(ctx, budgetID)
+	excluded, err := s.budgets.ExcludedAccountIDs(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
-	folders, err := s.repo.ListFolders(ctx, budgetID)
+	folders, err := s.folders.ListFolders(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
-	envelopes, err := s.repo.ListEnvelopes(ctx, budgetID)
+	envelopes, err := s.envelopes.ListEnvelopes(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
-	elements, err := s.repo.ListElements(ctx, budgetID)
+	elements, err := s.elements.ListElements(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}

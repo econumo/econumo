@@ -10,15 +10,15 @@ import (
 // budgetRole returns the requesting user's role on a budget: owner if they own
 // it; the accepted access role otherwise; AccessDenied if no accepted access.
 func (s *Service) budgetRole(b *budgetAggregate, userID vo.Id) (UserRole, error) {
-	if b.budget.UserId().Equal(userID) {
+	if b.budget.UserID.Equal(userID) {
 		return RoleOwner, nil
 	}
 	for _, a := range b.access {
-		if a.UserId().Equal(userID) {
-			if !a.IsAccepted() {
+		if a.UserID.Equal(userID) {
+			if !a.IsAccepted {
 				return 0, errs.NewAccessDenied("Access denied")
 			}
-			return a.Role(), nil
+			return a.Role, nil
 		}
 	}
 	return 0, errs.NewAccessDenied("Access denied")
@@ -54,7 +54,7 @@ func (s *Service) canShare(b *budgetAggregate, userID vo.Id) bool {
 // canAccept = has an UNaccepted access row for the user.
 func (s *Service) canAccept(b *budgetAggregate, userID vo.Id) bool {
 	for _, a := range b.access {
-		if a.UserId().Equal(userID) && !a.IsAccepted() {
+		if a.UserID.Equal(userID) && !a.IsAccepted {
 			return true
 		}
 	}
@@ -64,7 +64,7 @@ func (s *Service) canAccept(b *budgetAggregate, userID vo.Id) bool {
 // canDecline = has any access row for the user.
 func (s *Service) canDecline(b *budgetAggregate, userID vo.Id) bool {
 	for _, a := range b.access {
-		if a.UserId().Equal(userID) {
+		if a.UserID.Equal(userID) {
 			return true
 		}
 	}

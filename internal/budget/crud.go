@@ -30,7 +30,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudg
 	if !s.canRead(b, userID) {
 		return nil, accessDenied()
 	}
-	if b.budget.Name() != req.Name && !s.canUpdate(b, userID) {
+	if b.budget.Name != req.Name && !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
 
@@ -38,7 +38,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudg
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		b.budget.UpdateName(req.Name, now)
 		b.budget.UpdateCurrency(curID, now)
-		if serr := s.repo.Save(txCtx, b.budget); serr != nil {
+		if serr := s.budgets.Save(txCtx, b.budget); serr != nil {
 			return serr
 		}
 		// Replace the excluded-account set.
@@ -49,13 +49,13 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudg
 				return validateBlank(map[string]string{"excludedAccounts": ""})
 			}
 			want[aid.String()] = true
-			if serr := s.repo.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
+			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
 				return serr
 			}
 		}
 		for _, existing := range b.excludedAccountIDs {
 			if !want[existing.String()] {
-				if serr := s.repo.IncludeAccount(txCtx, budgetID, existing); serr != nil {
+				if serr := s.budgets.IncludeAccount(txCtx, budgetID, existing); serr != nil {
 					return serr
 				}
 			}
@@ -90,7 +90,7 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req DeleteBudg
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.repo.Delete(txCtx, budgetID)
+		return s.budgets.Delete(txCtx, budgetID)
 	}); err != nil {
 		return nil, err
 	}
@@ -116,11 +116,11 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req ResetBudget
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		if serr := s.repo.DeleteLimitsByBudget(txCtx, budgetID); serr != nil {
+		if serr := s.limits.DeleteLimitsByBudget(txCtx, budgetID); serr != nil {
 			return serr
 		}
 		b.budget.StartFrom(startedAt, now)
-		return s.repo.Save(txCtx, b.budget)
+		return s.budgets.Save(txCtx, b.budget)
 	})
 	if err != nil {
 		return nil, err

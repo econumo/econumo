@@ -44,7 +44,10 @@ func newRepo(t *testing.T) (*budgetrepo.Repo, *dbtest.DB) {
 // saveBudget persists a base budget so child rows have a valid FK.
 func saveBudget(t *testing.T, repo *budgetrepo.Repo, ctx context.Context) {
 	t.Helper()
-	b := dombudget.FromState(vo.MustParseId(budgetID), vo.MustParseId(userA), "Household", vo.MustParseId(usdID), startedAt, fixedTime, fixedTime)
+	b := &dombudget.Budget{
+		ID: vo.MustParseId(budgetID), UserID: vo.MustParseId(userA), Name: "Household",
+		CurrencyID: vo.MustParseId(usdID), StartedAt: startedAt, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
 	if err := repo.Save(ctx, b); err != nil {
 		t.Fatalf("Save budget: %v", err)
 	}
@@ -59,11 +62,11 @@ func TestBudgetRepo_BudgetCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name() != "Household" || got.CurrencyId().String() != usdID {
-		t.Errorf("fields mismatch: name=%q ccy=%s", got.Name(), got.CurrencyId())
+	if got.Name != "Household" || got.CurrencyID.String() != usdID {
+		t.Errorf("fields mismatch: name=%q ccy=%s", got.Name, got.CurrencyID)
 	}
-	if !got.StartedAt().Equal(startedAt) {
-		t.Errorf("startedAt mismatch: %v", got.StartedAt())
+	if !got.StartedAt.Equal(startedAt) {
+		t.Errorf("startedAt mismatch: %v", got.StartedAt)
 	}
 
 	list, err := repo.ListForUser(ctx, vo.MustParseId(userA))
@@ -90,7 +93,10 @@ func TestBudgetRepo_AccessCRUD(t *testing.T) {
 	seedUser(t, db, userB)
 	saveBudget(t, repo, ctx)
 
-	a := dombudget.AccessFromState(vo.MustParseId(budgetID), vo.MustParseId(budgetID), vo.MustParseId(userB), dombudget.RoleUser, true, fixedTime, fixedTime)
+	a := &dombudget.BudgetAccess{
+		ID: vo.MustParseId(budgetID), BudgetID: vo.MustParseId(budgetID), UserID: vo.MustParseId(userB),
+		Role: dombudget.RoleUser, IsAccepted: true, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
 	if err := repo.SaveAccess(ctx, a); err != nil {
 		t.Fatalf("SaveAccess: %v", err)
 	}
@@ -98,8 +104,8 @@ func TestBudgetRepo_AccessCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAccess: %v", err)
 	}
-	if got.Role() != dombudget.RoleUser || !got.IsAccepted() {
-		t.Errorf("access mismatch: role=%d accepted=%v", got.Role(), got.IsAccepted())
+	if got.Role != dombudget.RoleUser || !got.IsAccepted {
+		t.Errorf("access mismatch: role=%d accepted=%v", got.Role, got.IsAccepted)
 	}
 	list, err := repo.ListAccess(ctx, vo.MustParseId(budgetID))
 	if err != nil || len(list) != 1 {
@@ -143,12 +149,12 @@ func TestBudgetRepo_FolderCRUD(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	fid := vo.NewId()
-	f := dombudget.FolderFromState(fid, vo.MustParseId(budgetID), "Bills", 3, fixedTime, fixedTime)
+	f := &dombudget.BudgetFolder{ID: fid, BudgetID: vo.MustParseId(budgetID), Name: "Bills", Position: 3, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 	if err := repo.SaveFolder(ctx, f); err != nil {
 		t.Fatalf("SaveFolder: %v", err)
 	}
 	got, err := repo.GetFolder(ctx, fid)
-	if err != nil || got.Name() != "Bills" || got.Position() != 3 {
+	if err != nil || got.Name != "Bills" || got.Position != 3 {
 		t.Fatalf("GetFolder mismatch: %+v err=%v", got, err)
 	}
 	if l, _ := repo.ListFolders(ctx, vo.MustParseId(budgetID)); len(l) != 1 {
@@ -169,12 +175,12 @@ func TestBudgetRepo_EnvelopeCRUDAndCategories(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	eid := vo.NewId()
-	e := dombudget.EnvelopeFromState(eid, vo.MustParseId(budgetID), "Groceries", "cart", false, fixedTime, fixedTime)
+	e := &dombudget.BudgetEnvelope{ID: eid, BudgetID: vo.MustParseId(budgetID), Name: "Groceries", Icon: "cart", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 	if err := repo.SaveEnvelope(ctx, e); err != nil {
 		t.Fatalf("SaveEnvelope: %v", err)
 	}
 	got, err := repo.GetEnvelope(ctx, eid)
-	if err != nil || got.Name() != "Groceries" || got.Icon() != "cart" {
+	if err != nil || got.Name != "Groceries" || got.Icon != "cart" {
 		t.Fatalf("GetEnvelope mismatch: %+v err=%v", got, err)
 	}
 
@@ -213,7 +219,10 @@ func TestBudgetRepo_ElementCRUD(t *testing.T) {
 	eid := vo.NewId()
 	externalID := vo.NewId()
 	ccy := vo.MustParseId(usdID)
-	el := dombudget.ElementFromState(eid, vo.MustParseId(budgetID), externalID, dombudget.ElementCategory, &ccy, nil, 5, fixedTime, fixedTime)
+	el := &dombudget.BudgetElement{
+		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: externalID, Type: dombudget.ElementCategory,
+		CurrencyID: &ccy, Position: 5, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
 	if err := repo.SaveElement(ctx, el); err != nil {
 		t.Fatalf("SaveElement: %v", err)
 	}
@@ -221,14 +230,14 @@ func TestBudgetRepo_ElementCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetElement: %v", err)
 	}
-	if got.Type() != dombudget.ElementCategory || got.Position() != 5 {
-		t.Errorf("element mismatch: type=%d pos=%d", got.Type(), got.Position())
+	if got.Type != dombudget.ElementCategory || got.Position != 5 {
+		t.Errorf("element mismatch: type=%d pos=%d", got.Type, got.Position)
 	}
-	if got.CurrencyId() == nil || got.CurrencyId().String() != usdID {
-		t.Errorf("currency mismatch: %v", got.CurrencyId())
+	if got.CurrencyID == nil || got.CurrencyID.String() != usdID {
+		t.Errorf("currency mismatch: %v", got.CurrencyID)
 	}
 	byExt, err := repo.GetElementByExternal(ctx, vo.MustParseId(budgetID), externalID)
-	if err != nil || byExt.Id().String() != eid.String() {
+	if err != nil || byExt.ID.String() != eid.String() {
 		t.Fatalf("GetElementByExternal mismatch: %+v err=%v", byExt, err)
 	}
 	if l, _ := repo.ListElements(ctx, vo.MustParseId(budgetID)); len(l) != 1 {
@@ -250,14 +259,17 @@ func TestBudgetRepo_SaveLimit_Decimal(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	eid := vo.NewId()
-	el := dombudget.ElementFromState(eid, vo.MustParseId(budgetID), vo.NewId(), dombudget.ElementCategory, nil, nil, 0, fixedTime, fixedTime)
+	el := &dombudget.BudgetElement{
+		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: vo.NewId(), Type: dombudget.ElementCategory,
+		Position: 0, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
 	if err := repo.SaveElement(ctx, el); err != nil {
 		t.Fatalf("SaveElement: %v", err)
 	}
 
 	lid := vo.NewId()
 	// An exact scale-8 amount must persist byte-identical in the NUMERIC column.
-	limit := dombudget.LimitFromState(lid, eid, vo.NewDecimal("250.12345678"), aprPeriod, fixedTime, fixedTime)
+	limit := &dombudget.BudgetElementLimit{ID: lid, ElementID: eid, Amount: vo.NewDecimal("250.12345678"), Period: aprPeriod, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 	if err := repo.SaveLimit(ctx, limit); err != nil {
 		t.Fatalf("SaveLimit: %v", err)
 	}
@@ -301,15 +313,15 @@ func TestBudgetRepo_GetLimit_DatetimeBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetLimit: %v", err)
 	}
-	if got.Amount().String() != "250.12345678" {
-		t.Errorf("decimal limit drift: %q", got.Amount().String())
+	if got.Amount.String() != "250.12345678" {
+		t.Errorf("decimal limit drift: %q", got.Amount.String())
 	}
 
 	apr, err := repo.ListLimitsForPeriod(ctx, vo.MustParseId(budgetID), aprPeriod)
 	if err != nil {
 		t.Fatalf("ListLimitsForPeriod apr: %v", err)
 	}
-	if len(apr) != 1 || apr[0].Amount().String() != "250.12345678" {
+	if len(apr) != 1 || apr[0].Amount.String() != "250.12345678" {
 		t.Fatalf("want only the April limit, got %+v", apr)
 	}
 

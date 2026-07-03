@@ -27,7 +27,7 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 	// elements by external id with no type discriminator.
 	byExternal := map[string]*BudgetElement{}
 	for _, e := range b.elements {
-		k := e.ExternalId().String()
+		k := e.ExternalID.String()
 		if _, seen := byExternal[k]; !seen {
 			byExternal[k] = e
 		}
@@ -50,14 +50,14 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 			}
 			el.UpdateFolder(folderID, now)
 			el.UpdatePosition(int16(item.Position), now)
-			if serr := s.repo.SaveElement(txCtx, el); serr != nil {
+			if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 				return serr
 			}
 		}
 		// Always finish with restoreElementsOrder, which renumbers every element's
 		// position contiguously within its folder (and the no-folder group) in
 		// position order, skipping position-unset rows.
-		return s.restoreElementsOrder(txCtx, b.budget.Id(), now)
+		return s.restoreElementsOrder(txCtx, b.budget.ID, now)
 	})
 	if err != nil {
 		return nil, err
@@ -72,29 +72,29 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 func (s *Service) shiftElements(ctx context.Context, b *budgetAggregate, folderID *vo.Id, startPosition int16, now time.Time) error {
 	elems := append([]*BudgetElement(nil), b.elements...)
 	sort.SliceStable(elems, func(i, j int) bool {
-		if elems[i].Position() != elems[j].Position() {
-			return elems[i].Position() < elems[j].Position()
+		if elems[i].Position != elems[j].Position {
+			return elems[i].Position < elems[j].Position
 		}
-		return elems[i].Id().String() < elems[j].Id().String()
+		return elems[i].ID.String() < elems[j].ID.String()
 	})
 	pos := startPosition
 	for _, e := range elems {
 		// same group?
 		if folderID == nil {
-			if e.FolderId() != nil {
+			if e.FolderID != nil {
 				continue
 			}
 		} else {
-			if e.FolderId() == nil || !e.FolderId().Equal(*folderID) {
+			if e.FolderID == nil || !e.FolderID.Equal(*folderID) {
 				continue
 			}
 		}
-		if e.Position() < startPosition {
+		if e.Position < startPosition {
 			continue
 		}
 		pos++
 		e.UpdatePosition(pos, now)
-		if serr := s.repo.SaveElement(ctx, e); serr != nil {
+		if serr := s.elements.SaveElement(ctx, e); serr != nil {
 			return serr
 		}
 	}
@@ -121,17 +121,17 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		return err
 	}
 	// Participant users = owner + accepted non-reader access.
-	userIDs := []vo.Id{b.budget.UserId()}
+	userIDs := []vo.Id{b.budget.UserID}
 	for _, a := range b.access {
-		if a.IsAccepted() && a.Role() != roleGuest() {
-			userIDs = append(userIDs, a.UserId())
+		if a.IsAccepted && a.Role != roleGuest() {
+			userIDs = append(userIDs, a.UserID)
 		}
 	}
 
 	// Index existing elements by "<externalId>-<typeAlias>".
 	byKey := map[string]*BudgetElement{}
 	for _, e := range b.elements {
-		byKey[elementKey(e.ExternalId().String(), e.Type())] = e
+		byKey[elementKey(e.ExternalID.String(), e.Type)] = e
 	}
 	seen := map[string]bool{}
 	created := map[string]*BudgetElement{}
@@ -149,12 +149,12 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		}
 		// Missing element: create it at posMax so it sorts to the END of its group
 		// during renumber.
-		e := NewBudgetElement(s.repo.NextIdentity(), budgetID, externalID, typ, nil, nil, posMax, now)
+		e := NewBudgetElement(s.elements.NextIdentity(), budgetID, externalID, typ, nil, nil, posMax, now)
 		byKey[key] = e
 		created[key] = e
 		return e, key
 	}
-	mark := func(e *BudgetElement) { dirty[e.Id().String()] = e }
+	mark := func(e *BudgetElement) { dirty[e.ID.String()] = e }
 	forceUnset := func(e *BudgetElement) {
 		if !e.IsPositionUnset() {
 			e.UpdatePosition(PositionUnset, now)
@@ -165,13 +165,13 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	// --- envelopes (+ collect child categories) ---
 	childCategories := map[string]bool{}
 	for _, env := range b.envelopes {
-		e, key := ensure(env.Id(), ElementEnvelope)
-		if env.IsArchived() {
+		e, key := ensure(env.ID, ElementEnvelope)
+		if env.IsArchived {
 			forceUnset(e)
 		} else {
 			live[key] = true
 		}
-		catIDs, cerr := s.repo.EnvelopeCategoryIDs(ctx, env.Id())
+		catIDs, cerr := s.envelopes.EnvelopeCategoryIDs(ctx, env.ID)
 		if cerr != nil {
 			return cerr
 		}
@@ -198,7 +198,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 			// A category that belongs to an envelope is hidden from the top level:
 			// position unset + no folder.
 			forceUnset(e)
-			if e.FolderId() != nil {
+			if e.FolderID != nil {
 				e.UpdateFolder(nil, now)
 				mark(e)
 			}
@@ -237,12 +237,12 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		keyOf[e] = k
 	}
 	sort.SliceStable(all, func(i, j int) bool {
-		if all[i].Position() != all[j].Position() {
-			return all[i].Position() < all[j].Position()
+		if all[i].Position != all[j].Position {
+			return all[i].Position < all[j].Position
 		}
 		// Deterministic tie-break for equal positions (map iteration is random):
 		// by element id. Matches a stable position-ASC ordering.
-		return all[i].Id().String() < all[j].Id().String()
+		return all[i].ID.String() < all[j].ID.String()
 	})
 
 	renumber := func(match func(*BudgetElement) bool) {
@@ -251,7 +251,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 			if !live[keyOf[e]] || !match(e) {
 				continue
 			}
-			if e.Position() != pos {
+			if e.Position != pos {
 				e.UpdatePosition(pos, now)
 				mark(e)
 			}
@@ -259,19 +259,19 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		}
 	}
 	for _, f := range b.folders {
-		fid := f.Id()
+		fid := f.ID
 		renumber(func(e *BudgetElement) bool {
-			return e.FolderId() != nil && e.FolderId().Equal(fid)
+			return e.FolderID != nil && e.FolderID.Equal(fid)
 		})
 	}
-	renumber(func(e *BudgetElement) bool { return e.FolderId() == nil })
+	renumber(func(e *BudgetElement) bool { return e.FolderID == nil })
 
 	// Persist created + dirtied elements.
 	for _, e := range created {
-		dirty[e.Id().String()] = e
+		dirty[e.ID.String()] = e
 	}
 	for _, e := range dirty {
-		if serr := s.repo.SaveElement(ctx, e); serr != nil {
+		if serr := s.elements.SaveElement(ctx, e); serr != nil {
 			return serr
 		}
 	}
@@ -279,7 +279,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	// Delete elements whose entity no longer participates (not seen).
 	for key, e := range byKey {
 		if !seen[key] {
-			if serr := s.repo.DeleteElement(ctx, e.Id()); serr != nil {
+			if serr := s.elements.DeleteElement(ctx, e.ID); serr != nil {
 				return serr
 			}
 		}

@@ -49,7 +49,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		budget := NewBudget(budgetID, userID, req.Name, curID, startDate, now)
-		if serr := s.repo.Save(txCtx, budget); serr != nil {
+		if serr := s.budgets.Save(txCtx, budget); serr != nil {
 			return serr
 		}
 		for _, raw := range req.ExcludedAccounts {
@@ -57,7 +57,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 			if perr != nil {
 				return validateBlank(map[string]string{"excludedAccounts": ""})
 			}
-			if serr := s.repo.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
+			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
 				return serr
 			}
 		}
@@ -108,8 +108,8 @@ func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.
 		if perr != nil {
 			return pos, perr
 		}
-		el := NewBudgetElement(s.repo.NextIdentity(), budgetID, extID, ElementCategory, nil, nil, int16(position), now)
-		if serr := s.repo.SaveElement(ctx, el); serr != nil {
+		el := NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, ElementCategory, nil, nil, int16(position), now)
+		if serr := s.elements.SaveElement(ctx, el); serr != nil {
 			return pos, serr
 		}
 	}
@@ -134,8 +134,8 @@ func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, s
 		if perr != nil {
 			return perr
 		}
-		el := NewBudgetElement(s.repo.NextIdentity(), budgetID, extID, ElementTag, nil, nil, int16(position), now)
-		if serr := s.repo.SaveElement(ctx, el); serr != nil {
+		el := NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, ElementTag, nil, nil, int16(position), now)
+		if serr := s.elements.SaveElement(ctx, el); serr != nil {
 			return serr
 		}
 	}

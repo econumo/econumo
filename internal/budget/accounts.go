@@ -48,9 +48,9 @@ func (s *Service) toggleAccount(ctx context.Context, userID vo.Id, rawBudget, ra
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if exclude {
-			return s.repo.ExcludeAccount(txCtx, budgetID, accountID)
+			return s.budgets.ExcludeAccount(txCtx, budgetID, accountID)
 		}
-		return s.repo.IncludeAccount(txCtx, budgetID, accountID)
+		return s.budgets.IncludeAccount(txCtx, budgetID, accountID)
 	}); err != nil {
 		return MetaResult{}, err
 	}
@@ -85,12 +85,12 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req C
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		// elementId on the wire is the element's EXTERNAL id (category/tag/envelope).
-		el, gerr := s.repo.GetElementByExternal(txCtx, budgetID, elementID)
+		el, gerr := s.elements.GetElementByExternal(txCtx, budgetID, elementID)
 		if gerr != nil {
 			return gerr
 		}
 		el.UpdateCurrency(&curID, now)
-		return s.repo.SaveElement(txCtx, el)
+		return s.elements.SaveElement(txCtx, el)
 	})
 	if err != nil {
 		return nil, err
@@ -122,20 +122,20 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req SetLimitReques
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
-	if period.Before(firstOfMonth(b.budget.StartedAt())) {
+	if period.Before(firstOfMonth(b.budget.StartedAt)) {
 		return nil, validateBlank(map[string]string{"period": ""}) // invalid-date guard
 	}
 
 	// elementId on the wire is the EXTERNAL id; resolve to the budget element.
-	element, err := s.repo.GetElementByExternal(ctx, budgetID, externalID)
+	element, err := s.elements.GetElementByExternal(ctx, budgetID, externalID)
 	if err != nil {
 		return nil, err
 	}
-	elementID := element.Id()
+	elementID := element.ID
 
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		existing, gerr := s.repo.GetLimit(txCtx, elementID, period)
+		existing, gerr := s.limits.GetLimit(txCtx, elementID, period)
 		hasExisting := gerr == nil
 		if gerr != nil {
 			var nf *errs.NotFoundError
@@ -145,17 +145,17 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req SetLimitReques
 		}
 		if req.Amount == nil {
 			if hasExisting {
-				return s.repo.DeleteLimit(txCtx, existing.Id())
+				return s.limits.DeleteLimit(txCtx, existing.ID)
 			}
 			return nil
 		}
 		amount := vo.NewDecimal(req.Amount.String())
 		if hasExisting {
 			existing.UpdateAmount(amount, now)
-			return s.repo.SaveLimit(txCtx, existing)
+			return s.limits.SaveLimit(txCtx, existing)
 		}
-		limit := NewBudgetElementLimit(s.repo.NextIdentity(), elementID, amount, period, now)
-		return s.repo.SaveLimit(txCtx, limit)
+		limit := NewBudgetElementLimit(s.limits.NextIdentity(), elementID, amount, period, now)
+		return s.limits.SaveLimit(txCtx, limit)
 	})
 	if err != nil {
 		return nil, err

@@ -11,13 +11,13 @@ import (
 
 // GetBudgetList returns the user's budgets as meta entries.
 func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*GetBudgetListResult, error) {
-	budgets, err := s.repo.ListForUser(ctx, userID)
+	budgets, err := s.budgets.ListForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	items := make([]MetaResult, 0, len(budgets))
 	for _, b := range budgets {
-		agg, lerr := s.loadAggregate(ctx, b.Id())
+		agg, lerr := s.loadAggregate(ctx, b.ID)
 		if lerr != nil {
 			return nil, lerr
 		}
