@@ -65,7 +65,7 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *Categ
 		if err != nil {
 			return err
 		}
-		if !c.UserId().Equal(userID) {
+		if !c.UserID.Equal(userID) {
 			// The 403 envelope message is intentionally EMPTY here (frozen wire
 			// behaviour for the ownership-denied path).
 			return errs.NewAccessDenied("")
@@ -88,19 +88,19 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *Categ
 // the wire shapes (isArchived int 0/1, type alias string). See CLAUDE.md.
 func toResult(c *Category) CategoryResult {
 	archived := 0
-	if c.IsArchived() {
+	if c.IsArchived {
 		archived = 1
 	}
 	return CategoryResult{
-		Id:          c.Id().String(),
-		OwnerUserId: c.UserId().String(),
-		Name:        c.Name(),
-		Position:    int(c.Position()),
-		Type:        c.Type().Alias(),
-		Icon:        c.Icon(),
+		Id:          c.ID.String(),
+		OwnerUserId: c.UserID.String(),
+		Name:        c.Name,
+		Position:    int(c.Position),
+		Type:        c.Type.Alias(),
+		Icon:        c.Icon,
 		IsArchived:  archived,
-		CreatedAt:   c.CreatedAt().Format(datetime.Layout),
-		UpdatedAt:   c.UpdatedAt().Format(datetime.Layout),
+		CreatedAt:   c.CreatedAt.Format(datetime.Layout),
+		UpdatedAt:   c.UpdatedAt.Format(datetime.Layout),
 	}
 }
 

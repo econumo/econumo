@@ -104,15 +104,15 @@ func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, c *domcategory.Category) error {
 	return r.q.UpsertCategory(ctx, r.db(ctx), upsertParams{
-		ID:         c.Id().String(),
-		UserID:     c.UserId().String(),
-		Name:       c.Name(),
-		Position:   c.Position(),
-		Type:       c.Type().Int16(),
-		Icon:       c.Icon(),
-		IsArchived: c.IsArchived(),
-		CreatedAt:  c.CreatedAt(),
-		UpdatedAt:  c.UpdatedAt(),
+		ID:         c.ID.String(),
+		UserID:     c.UserID.String(),
+		Name:       c.Name,
+		Position:   c.Position,
+		Type:       c.Type.Int16(),
+		Icon:       c.Icon,
+		IsArchived: c.IsArchived,
+		CreatedAt:  c.CreatedAt,
+		UpdatedAt:  c.UpdatedAt,
 	})
 }
 
@@ -173,8 +173,7 @@ func hydrate(row categoryRow) (*domcategory.Category, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domcategory.FromState(
-		id, userID, row.Name, row.Position, domcategory.Type(row.Type),
-		row.Icon, row.IsArchived, row.CreatedAt, row.UpdatedAt,
-	), nil
+	return &domcategory.Category{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+		Type: domcategory.Type(row.Type), Icon: row.Icon, IsArchived: row.IsArchived,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

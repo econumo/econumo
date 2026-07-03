@@ -31,7 +31,7 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req DeleteCa
 		if gerr != nil {
 			return gerr
 		}
-		if !c.UserId().Equal(userID) {
+		if !c.UserID.Equal(userID) {
 			return errs.NewValidation("Category not found")
 		}
 
@@ -47,10 +47,10 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req DeleteCa
 			if rerr != nil {
 				return rerr
 			}
-			if !replacement.UserId().Equal(userID) {
+			if !replacement.UserID.Equal(userID) {
 				return errs.NewValidation("Categories cannot be replaced")
 			}
-			if replacement.Type() != c.Type() {
+			if replacement.Type != c.Type {
 				return errs.NewValidation("Categories cannot be replaced")
 			}
 			if rerr := s.repo.ReassignTransactions(ctx, id, replaceID); rerr != nil {
