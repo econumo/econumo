@@ -66,7 +66,8 @@ Note on archtest: features importing `internal/infra/auth`, `internal/infra/mail
 
 **Prune list (what actually remains):**
 - `connection/repo.accountAccessFull` (repo/adapters.go:21) → fold `AccountAccessResolver` to hold `*Repo` directly (same package — no cycle).
-- `middleware.TokenVerifier` (ui/middleware/auth.go:18) → `*jwt.JWT` — touches `middleware.JWT(...)` and all 9 `internal/<feature>/api/routes.go` `RegisterAPI` signatures (they thread the verifier). Verify no fake implements TokenVerifier anywhere in tests first (audit says none; re-verify: `grep -rn 'TokenVerifier' internal --include='*_test.go'`). middleware (ui leaf) importing shared/jwt (kernel) — allowed. If a routes.go signature turns out not to thread it (wired otherwise), adapt minimally and report.
+- ~~middleware.TokenVerifier~~ — KEPT: `stubVerifier` in middleware_test.go is a real structural test seam (injects claims/errors in 6 JWT tests); the audit missed it (fake never names the interface). Spec rule honored.
+- (original text follows, superseded:) `middleware.TokenVerifier` (ui/middleware/auth.go:18) → `*jwt.JWT` — touches `middleware.JWT(...)` and all 9 `internal/<feature>/api/routes.go` `RegisterAPI` signatures (they thread the verifier). Verify no fake implements TokenVerifier anywhere in tests first (audit says none; re-verify: `grep -rn 'TokenVerifier' internal --include='*_test.go'`). middleware (ui leaf) importing shared/jwt (kernel) — allowed. If a routes.go signature turns out not to thread it (wired otherwise), adapt minimally and report.
 
 - [ ] **Step 1:** Prune per list, compiling per feature.
 - [ ] **Step 2:** Sweep greps analogous to Task 2 (+ `TokenVerifier` gone); empty `repository.go` files deleted.
