@@ -4,7 +4,13 @@ import (
 	"net/http"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
+
+// _ keeps the appbudget import alias visible to swag's annotation parser
+// (this file's handler bodies no longer reference appbudget types directly,
+// since they delegate to method values).
+var _ = appbudget.CreateBudgetFolderResult{}
 
 // CreateFolder handles POST /api/v1/budget/create-folder.
 //
@@ -17,9 +23,7 @@ import (
 // @Security Bearer
 // @Router /api/v1/budget/create-folder [post]
 func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.CreateBudgetFolderRequest) (*appbudget.CreateBudgetFolderResult, error) {
-		return h.svc.CreateFolder(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.CreateFolder)
 }
 
 // UpdateFolder handles POST /api/v1/budget/update-folder.
@@ -33,9 +37,7 @@ func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/update-folder [post]
 func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.UpdateBudgetFolderRequest) (*appbudget.UpdateBudgetFolderResult, error) {
-		return h.svc.UpdateFolder(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateFolder)
 }
 
 // DeleteFolder handles POST /api/v1/budget/delete-folder.
@@ -49,9 +51,7 @@ func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/delete-folder [post]
 func (h *Handlers) DeleteFolder(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.DeleteFolderRequest) (*appbudget.DeleteFolderResult, error) {
-		return h.svc.DeleteFolder(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteFolder)
 }
 
 // OrderFolderList handles POST /api/v1/budget/order-folder-list.
@@ -65,9 +65,7 @@ func (h *Handlers) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/order-folder-list [post]
 func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.OrderBudgetFolderListRequest) (*appbudget.OrderBudgetFolderListResult, error) {
-		return h.svc.OrderFolderList(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.OrderFolderList)
 }
 
 // CreateEnvelope handles POST /api/v1/budget/create-envelope.
@@ -81,9 +79,7 @@ func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/create-envelope [post]
 func (h *Handlers) CreateEnvelope(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.CreateEnvelopeRequest) (*appbudget.CreateEnvelopeResult, error) {
-		return h.svc.CreateEnvelope(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.CreateEnvelope)
 }
 
 // UpdateEnvelope handles POST /api/v1/budget/update-envelope.
@@ -97,9 +93,7 @@ func (h *Handlers) CreateEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/update-envelope [post]
 func (h *Handlers) UpdateEnvelope(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.UpdateEnvelopeRequest) (*appbudget.UpdateEnvelopeResult, error) {
-		return h.svc.UpdateEnvelope(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateEnvelope)
 }
 
 // DeleteEnvelope handles POST /api/v1/budget/delete-envelope.
@@ -113,9 +107,7 @@ func (h *Handlers) UpdateEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/delete-envelope [post]
 func (h *Handlers) DeleteEnvelope(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.DeleteEnvelopeRequest) (*appbudget.DeleteEnvelopeResult, error) {
-		return h.svc.DeleteEnvelope(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteEnvelope)
 }
 
 // GrantAccess handles POST /api/v1/budget/grant-access.
@@ -129,9 +121,7 @@ func (h *Handlers) DeleteEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/grant-access [post]
 func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.GrantAccessRequest) (*appbudget.GrantAccessResult, error) {
-		return h.svc.GrantAccess(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.GrantAccess)
 }
 
 // AcceptAccess handles POST /api/v1/budget/accept-access.
@@ -145,9 +135,7 @@ func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/accept-access [post]
 func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.AcceptAccessRequest) (*appbudget.AcceptAccessResult, error) {
-		return h.svc.AcceptAccess(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.AcceptAccess)
 }
 
 // RevokeAccess handles POST /api/v1/budget/revoke-access.
@@ -161,9 +149,7 @@ func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/revoke-access [post]
 func (h *Handlers) RevokeAccess(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.RevokeAccessRequest) (*appbudget.RevokeAccessResult, error) {
-		return h.svc.RevokeAccess(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.RevokeAccess)
 }
 
 // DeclineAccess handles POST /api/v1/budget/decline-access.
@@ -177,9 +163,7 @@ func (h *Handlers) RevokeAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/decline-access [post]
 func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.DeclineAccessRequest) (*appbudget.DeclineAccessResult, error) {
-		return h.svc.DeclineAccess(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.DeclineAccess)
 }
 
 // ExcludeAccount handles POST /api/v1/budget/exclude-account.
@@ -193,9 +177,7 @@ func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/exclude-account [post]
 func (h *Handlers) ExcludeAccount(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.ExcludeAccountRequest) (*appbudget.ExcludeAccountResult, error) {
-		return h.svc.ExcludeAccount(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.ExcludeAccount)
 }
 
 // IncludeAccount handles POST /api/v1/budget/include-account.
@@ -209,9 +191,7 @@ func (h *Handlers) ExcludeAccount(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/include-account [post]
 func (h *Handlers) IncludeAccount(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.IncludeAccountRequest) (*appbudget.IncludeAccountResult, error) {
-		return h.svc.IncludeAccount(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.IncludeAccount)
 }
 
 // ChangeElementCurrency handles POST /api/v1/budget/change-element-currency.
@@ -225,9 +205,7 @@ func (h *Handlers) IncludeAccount(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/change-element-currency [post]
 func (h *Handlers) ChangeElementCurrency(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.ChangeElementCurrencyRequest) (*appbudget.ChangeElementCurrencyResult, error) {
-		return h.svc.ChangeElementCurrency(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.ChangeElementCurrency)
 }
 
 // SetLimit handles POST /api/v1/budget/set-limit.
@@ -241,9 +219,7 @@ func (h *Handlers) ChangeElementCurrency(w http.ResponseWriter, r *http.Request)
 // @Security Bearer
 // @Router /api/v1/budget/set-limit [post]
 func (h *Handlers) SetLimit(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.SetLimitRequest) (*appbudget.SetLimitResult, error) {
-		return h.svc.SetLimit(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.SetLimit)
 }
 
 // MoveElementList handles POST /api/v1/budget/move-element-list.
@@ -257,7 +233,5 @@ func (h *Handlers) SetLimit(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/move-element-list [post]
 func (h *Handlers) MoveElementList(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.MoveElementListRequest) (*appbudget.MoveElementListResult, error) {
-		return h.svc.MoveElementList(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.MoveElementList)
 }

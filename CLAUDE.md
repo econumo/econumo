@@ -146,11 +146,17 @@ handling) and branches explicitly by design.
 
 ### API handler pattern
 
-HTTP handlers are thin adapters under `internal/<feature>/api/`: decode +
-tier-1 `Validate()`, pull the user id from the JWT context, call the feature's
-use-case service, and emit the frozen response envelope via `httpx`. Routes
-are registered in `internal/<feature>/api/routes.go` (`RegisterAPI`). Request/
-result DTOs live in `internal/<feature>/dto.go`.
+HTTP handlers are thin named methods under `internal/<feature>/api/` (the
+name carries the swag `@` annotation block); the body is one call into the
+generic combinators in `internal/ui/endpoint`: `endpoint.Handle` (auth + JSON
+body), `endpoint.HandleNoBody` (auth, no body), `endpoint.HandlePublic`
+(no auth) — each doing require-user/decode/`Validate()`/call/envelope in the
+frozen order. Per-endpoint extras (e.g. `reqctx.AddLogAttr`) live in a small
+closure. A handful of endpoints stay hand-written because their shape is
+special: CSV export, multipart import, query-param reads, and login's raw
+`{token,user}` response. Routes are registered in
+`internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
+in `internal/<feature>/dto.go`.
 
 ### Frontend architecture (Vue 3 + Quasar)
 

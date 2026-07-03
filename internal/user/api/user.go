@@ -1,12 +1,14 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/econumo/econumo/internal/reqctx"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
@@ -66,17 +68,7 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/register-user [post]
 func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var req appuser.RegisterRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.Register(r.Context(), req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandlePublic(w, r, h.dev, h.svc.Register)
 }
 
 // LogoutUser handles POST /api/v1/user/logout-user (auth). JWT is stateless, so
@@ -93,15 +85,9 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/user/logout-user [post]
 func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	if _, ok := middleware.RequireUser(w, r); !ok {
-		return
-	}
-	res, err := h.svc.Logout(r.Context())
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, func(ctx context.Context, _ vo.Id) (*appuser.LogoutResult, error) {
+		return h.svc.Logout(ctx)
+	})
 }
 
 // RemindPassword handles POST /api/v1/user/remind-password (public). It issues a
@@ -120,17 +106,7 @@ func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/remind-password [post]
 func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
-	var req appuser.RemindPasswordRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.RemindPassword(r.Context(), req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandlePublic(w, r, h.dev, h.svc.RemindPassword)
 }
 
 // ResetPassword handles POST /api/v1/user/reset-password (public). It validates
@@ -148,15 +124,5 @@ func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/reset-password [post]
 func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	var req appuser.ResetPasswordRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.ResetPassword(r.Context(), req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandlePublic(w, r, h.dev, h.svc.ResetPassword)
 }

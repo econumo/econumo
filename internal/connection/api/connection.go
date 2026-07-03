@@ -5,11 +5,11 @@ import (
 
 	appconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
 var _ = apidoc.JsonResponseError{}
+var _ = appconnection.GetConnectionListResult{}
 
 // GetConnectionList handles GET /api/v1/connection/get-connection-list (auth).
 //
@@ -23,16 +23,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/connection/get-connection-list [get]
 func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.svc.GetConnectionList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetConnectionList)
 }
 
 // SetAccountAccess handles POST /api/v1/connection/set-account-access (auth).
@@ -50,21 +41,7 @@ func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/set-account-access [post]
 func (h *Handlers) SetAccountAccess(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appconnection.SetAccountAccessRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.SetAccountAccess(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.SetAccountAccess)
 }
 
 // RevokeAccountAccess handles POST /api/v1/connection/revoke-account-access (auth).
@@ -82,21 +59,7 @@ func (h *Handlers) SetAccountAccess(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/revoke-account-access [post]
 func (h *Handlers) RevokeAccountAccess(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appconnection.RevokeAccountAccessRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.RevokeAccountAccess(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.RevokeAccountAccess)
 }
 
 // GenerateInvite handles POST /api/v1/connection/generate-invite (auth).
@@ -114,21 +77,7 @@ func (h *Handlers) RevokeAccountAccess(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/generate-invite [post]
 func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appconnection.GenerateInviteRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.GenerateInvite(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.GenerateInvite)
 }
 
 // DeleteInvite handles POST /api/v1/connection/delete-invite (auth).
@@ -146,21 +95,7 @@ func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-invite [post]
 func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appconnection.DeleteInviteRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.DeleteInvite(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteInvite)
 }
 
 // AcceptInvite handles POST /api/v1/connection/accept-invite (auth).
@@ -179,21 +114,7 @@ func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/accept-invite [post]
 func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appconnection.AcceptInviteRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.AcceptInvite(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.AcceptInvite)
 }
 
 // DeleteConnection handles POST /api/v1/connection/delete-connection (auth).
@@ -213,19 +134,5 @@ func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-connection [post]
 func (h *Handlers) DeleteConnection(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appconnection.DeleteConnectionRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.DeleteConnection(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteConnection)
 }

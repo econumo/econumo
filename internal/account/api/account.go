@@ -1,13 +1,14 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/reqctx"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
 var _ = apidoc.JsonResponseError{}
@@ -27,22 +28,10 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/account/create-account [post]
 func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.CreateAccountRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	reqctx.AddLogAttr(r.Context(), "account_id", req.Id)
-	res, err := h.svc.CreateAccount(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req appaccount.CreateAccountRequest) (*appaccount.CreateAccountResult, error) {
+		reqctx.AddLogAttr(ctx, "account_id", req.Id)
+		return h.svc.CreateAccount(ctx, userID, req)
+	})
 }
 
 // UpdateAccount handles POST /api/v1/account/update-account (auth).
@@ -60,21 +49,7 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/update-account [post]
 func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.UpdateAccountRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UpdateAccount(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateAccount)
 }
 
 // DeleteAccount handles POST /api/v1/account/delete-account (auth).
@@ -92,21 +67,7 @@ func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/delete-account [post]
 func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.DeleteAccountRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.DeleteAccount(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteAccount)
 }
 
 // GetAccountList handles GET /api/v1/account/get-account-list (auth).
@@ -121,16 +82,7 @@ func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/get-account-list [get]
 func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.svc.GetAccountList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetAccountList)
 }
 
 // OrderAccountList handles POST /api/v1/account/order-account-list (auth).
@@ -148,19 +100,5 @@ func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/order-account-list [post]
 func (h *Handlers) OrderAccountList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.OrderAccountListRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.OrderAccountList(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.OrderAccountList)
 }
