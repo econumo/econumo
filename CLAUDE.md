@@ -75,8 +75,9 @@ tree holding its own domain logic, persistence, and HTTP edge:
 ├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / resource:action commands
 ├── internal/
 │   ├── shared/ .................... dependency-free kernel: vo (value objects), errs (domain error taxonomy),
-│   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen)
-│   ├── reqctx/ .................... request-scoped values carried via context (e.g. caller timezone)
+│   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen),
+│   │                                port (Clock/TxRunner/OperationGuard seams), reqctx (request-scoped
+│   │                                context values, e.g. caller timezone + log attrs)
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
 │   │   │                            currency, payee, tag, transaction, user); root package holds the
 │   │   │                            entities, repository interface, and use-case services:
@@ -123,8 +124,8 @@ a `glue_<feature>_<purpose>.go` file (e.g. `glue_account_currencylookup.go`,
 composition time. This keeps every feature package independently buildable
 and testable without pulling in its siblings.
 
-Shared leaves (`shared`, `reqctx`, `ui`, `infra`) never import a feature; the
-kernel (`internal/shared`, `internal/reqctx`) imports nothing internal outside
+Shared leaves (`shared`, `ui`, `infra`) never import a feature; the
+kernel (`internal/shared`) imports nothing internal outside
 itself. This is enforced by `internal/test/archtest`, which auto-detects
 feature packages (any `internal/<top>` not in its infrastructure set) so newly
 moved features come under enforcement without edits to the test.

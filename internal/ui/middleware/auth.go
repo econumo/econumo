@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )

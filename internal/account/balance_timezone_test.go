@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/reqctx"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 type fixedClock struct{ t time.Time }
