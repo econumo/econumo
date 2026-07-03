@@ -11,7 +11,7 @@ import (
 
 // GetBudgetList returns the user's budgets as meta entries.
 func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*GetBudgetListResult, error) {
-	budgets, err := s.repo.ListForUser(ctx, userID)
+	budgets, err := s.budgets.ListForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

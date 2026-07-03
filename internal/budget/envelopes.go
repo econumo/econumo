@@ -53,11 +53,11 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEn
 			return serr
 		}
 		env := NewBudgetEnvelope(envelopeID, budgetID, req.Name, req.Icon, now)
-		if serr := s.repo.SaveEnvelope(txCtx, env); serr != nil {
+		if serr := s.envelopes.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		el := NewBudgetElement(s.repo.NextIdentity(), budgetID, envelopeID, ElementEnvelope, &curID, folderID, int16(newPosition), now)
-		if serr := s.repo.SaveElement(txCtx, el); serr != nil {
+		el := NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, ElementEnvelope, &curID, folderID, int16(newPosition), now)
+		if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 			return serr
 		}
 		for _, raw := range req.Categories {
@@ -65,7 +65,7 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEn
 			if perr != nil {
 				return validateBlank(map[string]string{"categories": ""})
 			}
-			if serr := s.repo.AddEnvelopeCategory(txCtx, envelopeID, catID); serr != nil {
+			if serr := s.envelopes.AddEnvelopeCategory(txCtx, envelopeID, catID); serr != nil {
 				return serr
 			}
 		}
@@ -109,27 +109,27 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 	var position int16
 	var folderID *vo.Id
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		env, gerr := s.repo.GetEnvelope(txCtx, envelopeID)
+		env, gerr := s.envelopes.GetEnvelope(txCtx, envelopeID)
 		if gerr != nil {
 			return gerr
 		}
 		env.UpdateName(req.Name, now)
 		env.UpdateIcon(req.Icon, now)
 		env.SetArchived(req.IsArchived == 1, now)
-		if serr := s.repo.SaveEnvelope(txCtx, env); serr != nil {
+		if serr := s.envelopes.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		el, eerr := s.repo.GetElementByExternal(txCtx, budgetID, envelopeID)
+		el, eerr := s.elements.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
 			el.UpdateCurrency(&curID, now)
-			if serr := s.repo.SaveElement(txCtx, el); serr != nil {
+			if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 				return serr
 			}
 			position = el.Position
 			folderID = el.FolderID
 		}
 		// Replace category assignments.
-		existing, cerr := s.repo.EnvelopeCategoryIDs(txCtx, envelopeID)
+		existing, cerr := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
 		if cerr != nil {
 			return cerr
 		}
@@ -140,13 +140,13 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 				return validateBlank(map[string]string{"categories": ""})
 			}
 			want[catID.String()] = true
-			if serr := s.repo.AddEnvelopeCategory(txCtx, envelopeID, catID); serr != nil {
+			if serr := s.envelopes.AddEnvelopeCategory(txCtx, envelopeID, catID); serr != nil {
 				return serr
 			}
 		}
 		for _, ex := range existing {
 			if !want[ex.String()] {
-				if serr := s.repo.RemoveEnvelopeCategory(txCtx, envelopeID, ex); serr != nil {
+				if serr := s.envelopes.RemoveEnvelopeCategory(txCtx, envelopeID, ex); serr != nil {
 					return serr
 				}
 			}
@@ -182,13 +182,13 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req DeleteEn
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		el, eerr := s.repo.GetElementByExternal(txCtx, budgetID, envelopeID)
+		el, eerr := s.elements.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
-			if serr := s.repo.DeleteElement(txCtx, el.ID); serr != nil {
+			if serr := s.elements.DeleteElement(txCtx, el.ID); serr != nil {
 				return serr
 			}
 		}
-		if serr := s.repo.DeleteEnvelope(txCtx, envelopeID); serr != nil {
+		if serr := s.envelopes.DeleteEnvelope(txCtx, envelopeID); serr != nil {
 			return serr
 		}
 		return s.restoreElementsOrder(txCtx, budgetID, now)

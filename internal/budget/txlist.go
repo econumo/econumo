@@ -64,7 +64,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 		if perr != nil {
 			return nil, validateBlank(map[string]string{"envelopeId": ""})
 		}
-		catIDs, cerr := s.repo.EnvelopeCategoryIDs(ctx, envID)
+		catIDs, cerr := s.envelopes.EnvelopeCategoryIDs(ctx, envID)
 		if cerr != nil {
 			return nil, cerr
 		}

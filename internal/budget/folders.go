@@ -34,7 +34,7 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateBudg
 		// 1,2,3,... in their current position-ASC order, so the new folder lands at
 		// the FRONT, not appended at the end.
 		created = NewBudgetFolder(folderID, budgetID, req.Name, 0, now)
-		if serr := s.repo.SaveFolder(txCtx, created); serr != nil {
+		if serr := s.folders.SaveFolder(txCtx, created); serr != nil {
 			return serr
 		}
 		existing := append([]*BudgetFolder(nil), b.folders...)
@@ -46,7 +46,7 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateBudg
 				continue
 			}
 			f.UpdatePosition(pos, now)
-			if serr := s.repo.SaveFolder(txCtx, f); serr != nil {
+			if serr := s.folders.SaveFolder(txCtx, f); serr != nil {
 				return serr
 			}
 		}
@@ -81,13 +81,13 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req UpdateBudg
 	now := s.clock.Now()
 	var updated *BudgetFolder
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		f, gerr := s.repo.GetFolder(txCtx, folderID)
+		f, gerr := s.folders.GetFolder(txCtx, folderID)
 		if gerr != nil {
 			return gerr
 		}
 		f.UpdateName(req.Name, now)
 		updated = f
-		return s.repo.SaveFolder(txCtx, f)
+		return s.folders.SaveFolder(txCtx, f)
 	})
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (s *Service) DeleteFolder(ctx context.Context, userID vo.Id, req DeleteFold
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		if derr := s.repo.DeleteFolder(txCtx, folderID); derr != nil {
+		if derr := s.folders.DeleteFolder(txCtx, folderID); derr != nil {
 			return derr
 		}
 		// Renumber remaining folders 0..n by their current position order.
@@ -127,7 +127,7 @@ func (s *Service) DeleteFolder(ctx context.Context, userID vo.Id, req DeleteFold
 		sort.SliceStable(remaining, func(i, j int) bool { return remaining[i].Position < remaining[j].Position })
 		for i, f := range remaining {
 			f.UpdatePosition(int16(i), now)
-			if serr := s.repo.SaveFolder(txCtx, f); serr != nil {
+			if serr := s.folders.SaveFolder(txCtx, f); serr != nil {
 				return serr
 			}
 		}
@@ -164,7 +164,7 @@ func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req OrderBu
 				continue
 			}
 			f.UpdatePosition(int16(item.Position), now)
-			if serr := s.repo.SaveFolder(txCtx, f); serr != nil {
+			if serr := s.folders.SaveFolder(txCtx, f); serr != nil {
 				return serr
 			}
 		}

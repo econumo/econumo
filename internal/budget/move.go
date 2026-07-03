@@ -50,7 +50,7 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 			}
 			el.UpdateFolder(folderID, now)
 			el.UpdatePosition(int16(item.Position), now)
-			if serr := s.repo.SaveElement(txCtx, el); serr != nil {
+			if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 				return serr
 			}
 		}
@@ -94,7 +94,7 @@ func (s *Service) shiftElements(ctx context.Context, b *budgetAggregate, folderI
 		}
 		pos++
 		e.UpdatePosition(pos, now)
-		if serr := s.repo.SaveElement(ctx, e); serr != nil {
+		if serr := s.elements.SaveElement(ctx, e); serr != nil {
 			return serr
 		}
 	}
@@ -149,7 +149,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		}
 		// Missing element: create it at posMax so it sorts to the END of its group
 		// during renumber.
-		e := NewBudgetElement(s.repo.NextIdentity(), budgetID, externalID, typ, nil, nil, posMax, now)
+		e := NewBudgetElement(s.elements.NextIdentity(), budgetID, externalID, typ, nil, nil, posMax, now)
 		byKey[key] = e
 		created[key] = e
 		return e, key
@@ -171,7 +171,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		} else {
 			live[key] = true
 		}
-		catIDs, cerr := s.repo.EnvelopeCategoryIDs(ctx, env.ID)
+		catIDs, cerr := s.envelopes.EnvelopeCategoryIDs(ctx, env.ID)
 		if cerr != nil {
 			return cerr
 		}
@@ -271,7 +271,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		dirty[e.ID.String()] = e
 	}
 	for _, e := range dirty {
-		if serr := s.repo.SaveElement(ctx, e); serr != nil {
+		if serr := s.elements.SaveElement(ctx, e); serr != nil {
 			return serr
 		}
 	}
@@ -279,7 +279,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	// Delete elements whose entity no longer participates (not seen).
 	for key, e := range byKey {
 		if !seen[key] {
-			if serr := s.repo.DeleteElement(ctx, e.ID); serr != nil {
+			if serr := s.elements.DeleteElement(ctx, e.ID); serr != nil {
 				return serr
 			}
 		}

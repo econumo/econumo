@@ -28,7 +28,7 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 	data := map[string]budgetedAmount{}
 
 	// Current-month limits.
-	current, err := s.repo.ListLimitsForPeriod(ctx, b.budget.ID, f.periodStart)
+	current, err := s.limits.ListLimitsForPeriod(ctx, b.budget.ID, f.periodStart)
 	if err != nil {
 		return nil, err
 	}

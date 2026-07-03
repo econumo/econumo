@@ -307,7 +307,7 @@ func orZero(d, zero vo.DecimalNumber) vo.DecimalNumber {
 func (s *Service) envelopeCategories(ctx context.Context, b *budgetAggregate) (map[string][]string, error) {
 	out := map[string][]string{}
 	for _, env := range b.envelopes {
-		ids, err := s.repo.EnvelopeCategoryIDs(ctx, env.ID)
+		ids, err := s.envelopes.EnvelopeCategoryIDs(ctx, env.ID)
 		if err != nil {
 			return nil, err
 		}
