@@ -4,41 +4,13 @@ import (
 	"net/http"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
-	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 	"github.com/econumo/econumo/internal/ui/httpx"
 	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseError{}
-
-// handle is the shared adapter: require user, optionally decode+validate the
-// request, call fn, emit the OK envelope (or the mapped error). Pass decode=false
-// for GET endpoints with no body.
-func handle[Req any, Res any](h *Handlers, w http.ResponseWriter, r *http.Request, decode bool, fn func(ctx ctxUser, req Req) (*Res, error)) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req Req
-	if decode {
-		if err := httpx.DecodeValidate(r, &req); err != nil {
-			httpx.WriteError(w, err, h.dev)
-			return
-		}
-	}
-	res, err := fn(ctxUser{r: r, id: userID}, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
-}
-
-type ctxUser struct {
-	r  *http.Request
-	id vo.Id
-}
 
 // CreateBudget handles POST /api/v1/budget/create-budget.
 //
@@ -54,9 +26,7 @@ type ctxUser struct {
 // @Security Bearer
 // @Router   /api/v1/budget/create-budget [post]
 func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.CreateBudgetRequest) (*appbudget.CreateBudgetResult, error) {
-		return h.svc.CreateBudget(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.CreateBudget)
 }
 
 // UpdateBudget handles POST /api/v1/budget/update-budget.
@@ -71,9 +41,7 @@ func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/update-budget [post]
 func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.UpdateBudgetRequest) (*appbudget.UpdateBudgetResult, error) {
-		return h.svc.UpdateBudget(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateBudget)
 }
 
 // DeleteBudget handles POST /api/v1/budget/delete-budget.
@@ -87,9 +55,7 @@ func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/delete-budget [post]
 func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.DeleteBudgetRequest) (*appbudget.DeleteBudgetResult, error) {
-		return h.svc.DeleteBudget(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteBudget)
 }
 
 // ResetBudget handles POST /api/v1/budget/reset-budget.
@@ -103,9 +69,7 @@ func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/reset-budget [post]
 func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
-	handle(h, w, r, true, func(c ctxUser, req appbudget.ResetBudgetRequest) (*appbudget.ResetBudgetResult, error) {
-		return h.svc.ResetBudget(c.r.Context(), c.id, req)
-	})
+	endpoint.Handle(w, r, h.dev, h.svc.ResetBudget)
 }
 
 // GetBudget handles GET /api/v1/budget/get-budget.
@@ -182,14 +146,5 @@ func optQuery(v string) *string {
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget-list [get]
 func (h *Handlers) GetBudgetList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.svc.GetBudgetList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetBudgetList)
 }
