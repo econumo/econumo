@@ -1,6 +1,8 @@
 // Ports: the consumer-side interfaces this feature declares for capabilities
 // other features provide. Implementations are wired in internal/server —
-// features never import each other (enforced by internal/test/archtest).
+// often directly, but sometimes (ExportLookup, Importer) via an adapter in
+// this feature's own repo package composing smaller cross-feature sub-ports.
+// Features never import each other (enforced by internal/test/archtest).
 package transaction
 
 import (
