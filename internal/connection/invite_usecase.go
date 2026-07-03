@@ -11,17 +11,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// BudgetAccessRevoker is the slice of budget-sharing behavior delete-connection
-// needs: drop any budget access SHARED BETWEEN the two users (both directions).
-// Backed by the budget module via an adapter in main. A nil revoker is tolerated
-// (delete-connection then only unwinds account access + the connection link) so
-// test harnesses without the budget module still work.
-type BudgetAccessRevoker interface {
-	// RevokeBetween removes any budget-access grants where one user owns a budget
-	// the other can access, in BOTH directions, for the given user pair.
-	RevokeBetween(ctx context.Context, a, b vo.Id) error
-}
-
 // GenerateInvite creates (or refreshes) the user's outstanding invite code and
 // returns {code, expiredAt}.
 func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateInviteRequest) (*GenerateInviteResult, error) {

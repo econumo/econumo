@@ -17,37 +17,6 @@ type AuthorView struct {
 	Avatar string
 }
 
-// UserLookup resolves the author (id, name, avatar).
-type UserLookup interface {
-	GetOwner(ctx context.Context, userID string) (AuthorView, error)
-}
-
-// AccountResolver answers ownership/existence questions about an account and
-// supplies the account-list embed. The account module's service satisfies the
-// list method; ownership is answered by a small repo lookup (AccountOwner).
-type AccountResolver interface {
-	// AccountOwner returns the owner user id of an account (for the access
-	// check). Missing -> *errs.NotFoundError.
-	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	// AccountListForUser returns the user's available accounts in the wire shape
-	// (reverse order), for the create/update/delete result embed.
-	AccountListForUser(ctx context.Context, userID vo.Id) ([]AccountResult, error)
-}
-
-// VisibleAccounts supplies the set of account ids whose transactions a user may
-// list (own + shared, minus deleted + hidden-folder). The account module
-// provides this.
-type VisibleAccounts interface {
-	VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
-}
-
-// AccountGrants reports whether a connected (non-owner) user holds an
-// admin-or-user shared-access grant on an account, for the write-access
-// check. Backed by the connection module's AccountAccess repository.
-type AccountGrants interface {
-	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
-}
-
 // Service is the transaction write-side orchestrator.
 type Service struct {
 	repo     Repository

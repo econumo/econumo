@@ -84,6 +84,7 @@ tree holding its own domain logic, persistence, and HTTP edge:
 │   │   │   dto.go ................   request/result DTOs for the use-case services
 │   │   │   repository.go .........   the repository INTERFACE the feature depends on
 │   │   │   usecase.go ............   the use-case service(s) implementing the feature's behavior
+│   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
 │   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
 │   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
