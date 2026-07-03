@@ -120,19 +120,19 @@ func cachedName(ctx context.Context, cache map[string]string, id vo.Id, fetch fu
 // account if this is a transfer whose recipient is selected.
 func (s *Service) buildExportRows(ctx context.Context, t *Transaction, selectedByID, allAccountsByID map[string]ExportAccount, names *exportNameCache) ([][]string, error) {
 	var rows [][]string
-	accountID := t.AccountId().String()
+	accountID := t.AccountID.String()
 
 	if src, ok := selectedByID[accountID]; ok {
-		description := t.Description()
-		if t.Type().IsTransfer() {
+		description := t.Description
+		if t.Type.IsTransfer() {
 			transferNote := "Transfer"
-			if rid := t.AccountRecipientId(); rid != nil {
+			if rid := t.AccountRecipID; rid != nil {
 				if recip, ok := allAccountsByID[rid.String()]; ok {
-					transferNote = "Transfer of " + formatAmountForDescription(t.Amount()) +
+					transferNote = "Transfer of " + formatAmountForDescription(t.Amount) +
 						" " + src.CurrencyCode + " to " + recip.Name
 				}
 			}
-			description = applyTransferNote(transferNote, t.Description())
+			description = applyTransferNote(transferNote, t.Description)
 		}
 
 		category, tag, payee, nerr := s.resolveNames(ctx, t, names)
@@ -141,28 +141,28 @@ func (s *Service) buildExportRows(ctx context.Context, t *Transaction, selectedB
 		}
 		rows = append(rows, s.buildExportRow(
 			t, src,
-			formatAmount(t.Amount(), t.Type().IsExpense() || t.Type().IsTransfer()),
+			formatAmount(t.Amount, t.Type.IsExpense() || t.Type.IsTransfer()),
 			category, tag, payee, description,
 		))
 	}
 
-	if t.Type().IsTransfer() {
-		if rid := t.AccountRecipientId(); rid != nil {
+	if t.Type.IsTransfer() {
+		if rid := t.AccountRecipID; rid != nil {
 			if recip, ok := selectedByID[rid.String()]; ok {
 				sourceName := ""
 				if src, ok := allAccountsByID[accountID]; ok {
 					sourceName = src.Name
 				}
 				transferNote := "Transfer"
-				amt := t.Amount()
-				if ar := t.AmountRecipient(); ar != nil {
+				amt := t.Amount
+				if ar := t.AmountRecipient; ar != nil {
 					amt = *ar
 				}
 				if sourceName != "" {
 					transferNote = "Transfer of " + formatAmountForDescription(amt) +
 						" " + recip.CurrencyCode + " from " + sourceName
 				}
-				description := applyTransferNote(transferNote, t.Description())
+				description := applyTransferNote(transferNote, t.Description)
 				rows = append(rows, s.buildExportRow(
 					t, recip, formatAmount(amt, false), "", "", "", description,
 				))
@@ -177,7 +177,7 @@ func (s *Service) buildExportRows(ctx context.Context, t *Transaction, selectedB
 // account_name, account_currency, category, description, tag, payee, amount, date.
 func (s *Service) buildExportRow(t *Transaction, account ExportAccount, amount, category, tag, payee, description string) []string {
 	return []string{
-		t.Id().String(),
+		t.ID.String(),
 		sanitizeExportValue(account.Name),
 		account.CurrencyCode,
 		sanitizeExportValue(category),
@@ -185,24 +185,24 @@ func (s *Service) buildExportRow(t *Transaction, account ExportAccount, amount, 
 		sanitizeExportValue(tag),
 		sanitizeExportValue(payee),
 		amount,
-		t.SpentAt().Format(datetime.Layout),
+		t.SpentAt.Format(datetime.Layout),
 	}
 }
 
 // resolveNames resolves the optional category/tag/payee names for a transaction
 // (empty when absent or missing).
 func (s *Service) resolveNames(ctx context.Context, t *Transaction, names *exportNameCache) (category, tag, payee string, err error) {
-	if id := t.CategoryId(); id != nil {
+	if id := t.CategoryID; id != nil {
 		if category, err = cachedName(ctx, names.categories, *id, s.export.CategoryName); err != nil {
 			return "", "", "", err
 		}
 	}
-	if id := t.TagId(); id != nil {
+	if id := t.TagID; id != nil {
 		if tag, err = cachedName(ctx, names.tags, *id, s.export.TagName); err != nil {
 			return "", "", "", err
 		}
 	}
-	if id := t.PayeeId(); id != nil {
+	if id := t.PayeeID; id != nil {
 		if payee, err = cachedName(ctx, names.payees, *id, s.export.PayeeName); err != nil {
 			return "", "", "", err
 		}

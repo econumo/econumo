@@ -58,6 +58,12 @@ type ExportLookup interface {
 // the account/metadata repos + create services so app/transaction stays
 // decoupled from those packages. All methods run within the service's
 // import-wide transaction.
+//
+// Accepted: its 11-method breadth fronts the import pipeline's find-or-create
+// surface (accounts, categories, payees, tags, plus the access check and the
+// final save) by design — narrower ports would just push the same surface
+// back into the service as several fields (decision recorded at Phase 6
+// planning).
 type Importer interface {
 	// AvailableAccounts returns the user's available (own, not deleted) accounts.
 	AvailableAccounts(ctx context.Context, userID vo.Id) ([]ImportAccount, error)

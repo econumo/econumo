@@ -57,7 +57,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req GetT
 	authors := make(map[string]AuthorResult)
 	items := make([]TransactionResult, 0, len(txs))
 	for _, t := range txs {
-		uid := t.UserId().String()
+		uid := t.UserID.String()
 		author, ok := authors[uid]
 		if !ok {
 			av, err := s.users.GetOwner(ctx, uid)

@@ -92,7 +92,7 @@ func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) 
 // (create/update/delete) use this; the list endpoint uses buildResult with a
 // per-request author cache to avoid an N+1 (see GetTransactionList).
 func (s *Service) toResult(ctx context.Context, t *Transaction) (TransactionResult, error) {
-	author, err := s.users.GetOwner(ctx, t.UserId().String())
+	author, err := s.users.GetOwner(ctx, t.UserID.String())
 	if err != nil {
 		return TransactionResult{}, err
 	}
@@ -102,40 +102,40 @@ func (s *Service) toResult(ctx context.Context, t *Transaction) (TransactionResu
 // buildResult assembles the wire DTO from an already-resolved author (no DB
 // access), so callers control author resolution / caching.
 func (s *Service) buildResult(t *Transaction, author AuthorResult) TransactionResult {
-	amountRecipient := t.Amount()
-	if ar := t.AmountRecipient(); ar != nil {
+	amountRecipient := t.Amount
+	if ar := t.AmountRecipient; ar != nil {
 		amountRecipient = *ar
 	}
 	var recipID, catID, payeeID, tagID *string
-	if v := t.AccountRecipientId(); v != nil {
+	if v := t.AccountRecipID; v != nil {
 		s := v.String()
 		recipID = &s
 	}
-	if v := t.CategoryId(); v != nil {
+	if v := t.CategoryID; v != nil {
 		s := v.String()
 		catID = &s
 	}
-	if v := t.PayeeId(); v != nil {
+	if v := t.PayeeID; v != nil {
 		s := v.String()
 		payeeID = &s
 	}
-	if v := t.TagId(); v != nil {
+	if v := t.TagID; v != nil {
 		s := v.String()
 		tagID = &s
 	}
 	return TransactionResult{
-		Id:                 t.Id().String(),
+		Id:                 t.ID.String(),
 		Author:             author,
-		Type:               t.Type().Alias(),
-		AccountId:          t.AccountId().String(),
+		Type:               t.Type.Alias(),
+		AccountId:          t.AccountID.String(),
 		AccountRecipientId: recipID,
-		Amount:             vo.NewDecimal(t.Amount()).String(),
+		Amount:             vo.NewDecimal(t.Amount).String(),
 		AmountRecipient:    strPtrDecimal(amountRecipient),
 		CategoryId:         catID,
-		Description:        t.Description(),
+		Description:        t.Description,
 		PayeeId:            payeeID,
 		TagId:              tagID,
-		Date:               t.SpentAt().Format(datetime.Layout),
+		Date:               t.SpentAt.Format(datetime.Layout),
 	}
 }
 
