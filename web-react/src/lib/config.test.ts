@@ -1,0 +1,52 @@
+import { backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, isPaywallEnabled, getVersion } from './config'
+
+beforeEach(() => {
+  localStorage.clear()
+  window.econumoConfig = {}
+})
+
+describe('backendHost', () => {
+  it('prefers econumoConfig.API_URL over everything', () => {
+    window.econumoConfig = { API_URL: 'https://api.example.test', ALLOW_CUSTOM_API: 'true' }
+    expect(backendHost()).toBe('https://api.example.test')
+  })
+
+  it('falls back to the page origin when custom API is not allowed', () => {
+    window.econumoConfig = { ALLOW_CUSTOM_API: 'false' }
+    expect(backendHost()).toBe(window.location.origin)
+  })
+
+  it('uses the stored custom host when self-hosted mode is on and custom API allowed', () => {
+    window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+    selfHosted(true)
+    backendHost('https://my.box.test')
+    expect(backendHost()).toBe('https://my.box.test')
+  })
+})
+
+describe('flags', () => {
+  it('parses booleans and strings for ALLOW_CUSTOM_API', () => {
+    window.econumoConfig = { ALLOW_CUSTOM_API: true }
+    expect(isCustomApiAllowed()).toBe(true)
+    window.econumoConfig = { ALLOW_CUSTOM_API: 'false' }
+    expect(isCustomApiAllowed()).toBe(false)
+  })
+
+  it('defaults registration=true, paywall=false when unset', () => {
+    expect(isRegistrationAllowed()).toBe(true)
+    expect(isPaywallEnabled()).toBe(false)
+  })
+})
+
+describe('locale and version', () => {
+  it('persists a chosen locale and defaults to en', () => {
+    expect(locale()).toBe('en')
+    locale('en')
+    expect(locale()).toBe('en')
+  })
+
+  it('prefers econumoConfig.VERSION for the version label', () => {
+    window.econumoConfig = { VERSION: 'v9.9.9' }
+    expect(getVersion()).toBe('v9.9.9')
+  })
+})

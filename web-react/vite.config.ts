@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
+  envPrefix: ['VITE_', 'ECONUMO_', 'WEBSITE_'],
   server: {
     port: 9000,
     proxy: {
