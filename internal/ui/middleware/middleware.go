@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/econumo/econumo/internal/reqctx"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/ui/httpx"
 )
 

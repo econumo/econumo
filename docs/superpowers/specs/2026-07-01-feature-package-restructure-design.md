@@ -64,6 +64,8 @@ internal/
 ├── user/              ─┘
 ├── shared/            leaf kernel packages: vo/, errs/, datetime/, jwt/
 ├── reqctx/            request-scoped context values (from app/reqctx)
+│                      (relocated to internal/shared/reqctx post-Phase 6 —
+│                      the archtest kernel rule already bound it to shared)
 ├── ui/                HTTP edge machinery only: httpx, middleware, router, spa, apidoc
 ├── infra/             technical adapters only: auth, mailer, clock, storage,
 │                      operation (idempotency guard)

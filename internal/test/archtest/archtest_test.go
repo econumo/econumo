@@ -1,7 +1,7 @@
 // Package archtest enforces the restructure's dependency rule (see
 // docs/superpowers/specs/2026-07-01-feature-package-restructure-design.md):
 // feature packages never import each other; shared leaves never import
-// features; the kernel (internal/shared, internal/reqctx) imports nothing
+// features; the kernel (internal/shared) imports nothing
 // internal outside itself. Features are auto-detected as any internal/<top>
 // directory not in the infrastructure set, so newly moved features come under
 // enforcement without edits here.
@@ -19,20 +19,20 @@ const module = "github.com/econumo/econumo"
 
 // infrastructure lists the internal/<top> dirs that are NOT feature packages.
 var infrastructure = map[string]bool{
-	"shared": true, "reqctx": true, "ui": true, "infra": true,
+	"shared": true, "ui": true, "infra": true,
 	"server": true, "cli": true, "config": true, "logging": true,
 	"test": true,
 }
 
 // kernel packages may import internal code only from inside the kernel.
-func isKernel(top string) bool { return top == "shared" || top == "reqctx" }
+func isKernel(top string) bool { return top == "shared" }
 
 // leaves may be imported by features but must never import one.
 // server is deliberately absent: it is the composition root and imports everything.
 // config and logging import nothing internal today; listing them keeps that true.
 func isLeaf(top string) bool {
 	switch top {
-	case "shared", "reqctx", "ui", "infra", "config", "logging":
+	case "shared", "ui", "infra", "config", "logging":
 		return true
 	}
 	return false
@@ -97,7 +97,7 @@ func TestDependencyRule(t *testing.T) {
 			case feature && depFeature && dtop != top:
 				t.Errorf("feature %s imports feature %s — features stay decoupled via consumer-side ports wired in internal/server", pkg, dep)
 			case isKernel(top) && !isKernel(dtop):
-				t.Errorf("kernel %s imports %s — internal/shared and internal/reqctx import nothing internal outside the kernel", pkg, dep)
+				t.Errorf("kernel %s imports %s — internal/shared imports nothing internal outside the kernel", pkg, dep)
 			case !feature && isLeaf(top) && depFeature:
 				t.Errorf("leaf %s imports feature %s — shared leaves must not depend on features", pkg, dep)
 			}
