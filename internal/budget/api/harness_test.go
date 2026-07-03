@@ -28,6 +28,7 @@ import (
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/port"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -65,7 +66,7 @@ func newHarness(t *testing.T) *harness {
 
 // newHarnessWithClock injects the budget-service clock so tests can fix "now"
 // (e.g. around a month boundary for timezone-sensitive behaviour).
-func newHarnessWithClock(t *testing.T, clk appbudget.Clock) *harness {
+func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	t.Helper()
 	ctx := context.Background()
 	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")

@@ -3,31 +3,23 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/httpx"
 	"github.com/econumo/econumo/internal/ui/middleware"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-// Clock supplies issuance time for login token minting. A seam so handler tests
-// can pin time; production passes a real clock. It is re-declared here (rather
-// than reusing app/user.Clock) to keep the handler package's dependency surface
-// explicit.
-type Clock interface {
-	Now() time.Time
-}
-
 type Handlers struct {
 	svc  *appuser.Service
 	read *appuser.ReadService
 	dev  bool
-	now  Clock
+	now  port.Clock
 }
 
-func NewHandlers(svc *appuser.Service, read *appuser.ReadService, dev bool, now Clock) *Handlers {
+func NewHandlers(svc *appuser.Service, read *appuser.ReadService, dev bool, now port.Clock) *Handlers {
 	return &Handlers{svc: svc, read: read, dev: dev, now: now}
 }
 

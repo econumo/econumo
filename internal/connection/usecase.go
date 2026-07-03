@@ -10,18 +10,9 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// Clock supplies the current time (seam for deterministic tests).
-type Clock interface {
-	Now() time.Time
-}
-
-// TxRunner is the transaction boundary the service owns.
-type TxRunner interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
 
 // OwnerView is the minimal user shape the connection list embeds.
 type OwnerView struct {
@@ -67,8 +58,8 @@ type Service struct {
 	options      OptionPort
 	users        UserLookup
 	budgetAccess BudgetAccessRevoker
-	tx           TxRunner
-	clock        Clock
+	tx           port.TxRunner
+	clock        port.Clock
 }
 
 // NewService wires the connection service. invites backs the generate/accept/
@@ -82,8 +73,8 @@ func NewService(
 	options OptionPort,
 	users UserLookup,
 	budgetAccess BudgetAccessRevoker,
-	tx TxRunner,
-	clock Clock,
+	tx port.TxRunner,
+	clock port.Clock,
 ) *Service {
 	return &Service{
 		access: access, invites: invites, folders: folders, options: options,

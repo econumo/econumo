@@ -9,16 +9,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// Clock supplies the current time.
-type Clock interface{ Now() time.Time }
-
-// TxRunner is the transaction boundary the service owns.
-type TxRunner interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
 
 // OwnerView is the minimal user shape embedded in a budget access entry.
 type OwnerView struct {
@@ -65,8 +58,8 @@ type Service struct {
 	accounts  AccountLookup
 	currency  CurrencyLookup
 	metadata  MetadataLookup
-	tx        TxRunner
-	clock     Clock
+	tx        port.TxRunner
+	clock     port.Clock
 
 	// accountOwners is a per-call cache (set fresh per Service is fine; the
 	// Service is constructed once, so guard via a small map populated lazily and
@@ -84,8 +77,8 @@ func NewService(
 	accounts AccountLookup,
 	currency CurrencyLookup,
 	metadata MetadataLookup,
-	tx TxRunner,
-	clock Clock,
+	tx port.TxRunner,
+	clock port.Clock,
 ) *Service {
 	return &Service{
 		repo: repo, read: read, convertor: convertor, rates: rates,
