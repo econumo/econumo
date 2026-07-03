@@ -37,7 +37,8 @@ func newRepo(t *testing.T) (*categoryrepo.Repo, *categoryrepo.ReadRepo, *dbtest.
 }
 
 func cat(id, userID, name string, pos int16, typ domcategory.Type) *domcategory.Category {
-	return domcategory.FromState(vo.MustParseId(id), vo.MustParseId(userID), name, pos, typ, "icon", false, fixedTime, fixedTime)
+	return &domcategory.Category{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+		Type: typ, Icon: "icon", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
 func TestCategoryRepo_SaveGetRoundTrip(t *testing.T) {
@@ -52,14 +53,14 @@ func TestCategoryRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name() != "Food" || got.Position() != 2 || got.Type() != domcategory.TypeExpense {
-		t.Errorf("mismatch: name=%q pos=%d type=%d", got.Name(), got.Position(), got.Type())
+	if got.Name != "Food" || got.Position != 2 || got.Type != domcategory.TypeExpense {
+		t.Errorf("mismatch: name=%q pos=%d type=%d", got.Name, got.Position, got.Type)
 	}
-	if got.IsArchived() {
+	if got.IsArchived {
 		t.Error("should not be archived")
 	}
-	if !got.CreatedAt().Equal(fixedTime) {
-		t.Errorf("createdAt mismatch: %v", got.CreatedAt())
+	if !got.CreatedAt.Equal(fixedTime) {
+		t.Errorf("createdAt mismatch: %v", got.CreatedAt)
 	}
 }
 
@@ -90,8 +91,8 @@ func TestCategoryRepo_ListAndCountByOwner(t *testing.T) {
 		t.Fatalf("want 2 own categories, got %d", len(list))
 	}
 	// Ordered by position: A2 (0) then A1 (1).
-	if list[0].Id().String() != catA2 || list[1].Id().String() != catA1 {
-		t.Errorf("order wrong: %s, %s", list[0].Id(), list[1].Id())
+	if list[0].ID.String() != catA2 || list[1].ID.String() != catA1 {
+		t.Errorf("order wrong: %s, %s", list[0].ID, list[1].ID)
 	}
 	n, err := repo.CountByOwner(ctx, vo.MustParseId(userA))
 	if err != nil || n != 2 {

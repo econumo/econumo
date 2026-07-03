@@ -59,7 +59,7 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *Payee
 		if err != nil {
 			return err
 		}
-		if !p.UserId().Equal(userID) {
+		if !p.UserID.Equal(userID) {
 			return errs.NewAccessDenied("")
 		}
 		fn(p, s.clock.Now())
@@ -91,7 +91,7 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 		if err != nil {
 			return err
 		}
-		if !p.UserId().Equal(userID) {
+		if !p.UserID.Equal(userID) {
 			return errs.NewAccessDenied("")
 		}
 		if ferr := fn(txCtx, p, s.clock.Now()); ferr != nil {
@@ -113,17 +113,17 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 // maps the archived bool to the wire shape (isArchived int 0/1). See CLAUDE.md.
 func toResult(p *Payee) PayeeResult {
 	archived := 0
-	if p.IsArchived() {
+	if p.IsArchived {
 		archived = 1
 	}
 	return PayeeResult{
-		Id:          p.Id().String(),
-		OwnerUserId: p.UserId().String(),
-		Name:        p.Name(),
-		Position:    int(p.Position()),
+		Id:          p.ID.String(),
+		OwnerUserId: p.UserID.String(),
+		Name:        p.Name,
+		Position:    int(p.Position),
 		IsArchived:  archived,
-		CreatedAt:   p.CreatedAt().Format(datetime.Layout),
-		UpdatedAt:   p.UpdatedAt().Format(datetime.Layout),
+		CreatedAt:   p.CreatedAt.Format(datetime.Layout),
+		UpdatedAt:   p.UpdatedAt.Format(datetime.Layout),
 	}
 }
 
@@ -151,7 +151,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		return err
 	}
 	for _, p := range payees {
-		if p.Name() == name && !p.Id().Equal(exceptID) {
+		if p.Name == name && !p.ID.Equal(exceptID) {
 			return errs.NewValidation("Payee already exists.")
 		}
 	}

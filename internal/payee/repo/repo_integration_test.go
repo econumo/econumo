@@ -37,7 +37,8 @@ func newRepo(t *testing.T) (*payeerepo.Repo, *payeerepo.ReadRepo, *dbtest.DB, *f
 }
 
 func payee(id, userID, name string, pos int16) *dompayee.Payee {
-	return dompayee.FromState(vo.MustParseId(id), vo.MustParseId(userID), name, pos, false, fixedTime, fixedTime)
+	return &dompayee.Payee{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
 func TestPayeeRepo_SaveGetRoundTrip(t *testing.T) {
@@ -51,11 +52,11 @@ func TestPayeeRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name() != "Acme" || got.Position() != 6 || got.IsArchived() {
-		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name(), got.Position(), got.IsArchived())
+	if got.Name != "Acme" || got.Position != 6 || got.IsArchived {
+		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name, got.Position, got.IsArchived)
 	}
-	if !got.CreatedAt().Equal(fixedTime) {
-		t.Errorf("createdAt mismatch: %v", got.CreatedAt())
+	if !got.CreatedAt.Equal(fixedTime) {
+		t.Errorf("createdAt mismatch: %v", got.CreatedAt)
 	}
 }
 
@@ -85,8 +86,8 @@ func TestPayeeRepo_ListAndCountByOwner(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("want 2, got %d", len(list))
 	}
-	if list[0].Id().String() != payeeA2 || list[1].Id().String() != payeeA1 {
-		t.Errorf("order by position wrong: %s, %s", list[0].Id(), list[1].Id())
+	if list[0].ID.String() != payeeA2 || list[1].ID.String() != payeeA1 {
+		t.Errorf("order by position wrong: %s, %s", list[0].ID, list[1].ID)
 	}
 	n, err := repo.CountByOwner(ctx, vo.MustParseId(userA))
 	if err != nil || n != 2 {

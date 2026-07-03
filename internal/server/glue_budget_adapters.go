@@ -105,13 +105,13 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 			return nil, err
 		}
 		for _, c := range cats {
-			if seen[c.Id().String()] {
+			if seen[c.ID.String()] {
 				continue
 			}
-			seen[c.Id().String()] = true
+			seen[c.ID.String()] = true
 			out = append(out, appbudget.CategoryMeta{
-				ID: c.Id().String(), OwnerID: c.UserId().String(), Name: c.Name(), Icon: c.Icon(),
-				IsIncome: c.Type() == category.TypeIncome, IsArchived: c.IsArchived(),
+				ID: c.ID.String(), OwnerID: c.UserID.String(), Name: c.Name, Icon: c.Icon,
+				IsIncome: c.Type == category.TypeIncome, IsArchived: c.IsArchived,
 			})
 		}
 	}
@@ -186,11 +186,11 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 			return nil, err
 		}
 		for _, p := range payees {
-			if seen[p.Id().String()] {
+			if seen[p.ID.String()] {
 				continue
 			}
-			seen[p.Id().String()] = true
-			out = append(out, appbudget.PayeeMeta{ID: p.Id().String(), Name: p.Name()})
+			seen[p.ID.String()] = true
+			out = append(out, appbudget.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 		}
 	}
 	return out, nil

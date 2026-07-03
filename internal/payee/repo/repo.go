@@ -97,13 +97,13 @@ func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, p *dompayee.Payee) error {
 	return r.q.UpsertPayee(ctx, r.db(ctx), upsertParams{
-		ID:         p.Id().String(),
-		UserID:     p.UserId().String(),
-		Name:       p.Name(),
-		Position:   p.Position(),
-		IsArchived: p.IsArchived(),
-		CreatedAt:  p.CreatedAt(),
-		UpdatedAt:  p.UpdatedAt(),
+		ID:         p.ID.String(),
+		UserID:     p.UserID.String(),
+		Name:       p.Name,
+		Position:   p.Position,
+		IsArchived: p.IsArchived,
+		CreatedAt:  p.CreatedAt,
+		UpdatedAt:  p.UpdatedAt,
 	})
 }
 
@@ -120,7 +120,6 @@ func hydrate(row payeeRow) (*dompayee.Payee, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dompayee.FromState(
-		id, userID, row.Name, row.Position, row.IsArchived, row.CreatedAt, row.UpdatedAt,
-	), nil
+	return &dompayee.Payee{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
