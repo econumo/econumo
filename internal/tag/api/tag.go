@@ -5,12 +5,14 @@ import (
 
 	apptag "github.com/econumo/econumo/internal/tag"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
-// _ keeps the apidoc import alias visible to swag's annotation parser.
+// _ keeps the apidoc/apptag import aliases visible to swag's annotation
+// parser (this file's handler bodies no longer reference apptag types
+// directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
+var _ = apptag.CreateTagResult{}
 
 // CreateTag handles POST /api/v1/tag/create-tag (auth).
 //
@@ -27,21 +29,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/tag/create-tag [post]
 func (h *Handlers) CreateTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptag.CreateTagRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.CreateTag(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.CreateTag)
 }
 
 // UpdateTag handles POST /api/v1/tag/update-tag (auth).
@@ -59,21 +47,7 @@ func (h *Handlers) CreateTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/update-tag [post]
 func (h *Handlers) UpdateTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptag.UpdateTagRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UpdateTag(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateTag)
 }
 
 // ArchiveTag handles POST /api/v1/tag/archive-tag (auth).
@@ -91,21 +65,7 @@ func (h *Handlers) UpdateTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/archive-tag [post]
 func (h *Handlers) ArchiveTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptag.ArchiveTagRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.ArchiveTag(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.ArchiveTag)
 }
 
 // UnarchiveTag handles POST /api/v1/tag/unarchive-tag (auth).
@@ -123,21 +83,7 @@ func (h *Handlers) ArchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/unarchive-tag [post]
 func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptag.UnarchiveTagRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UnarchiveTag(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UnarchiveTag)
 }
 
 // DeleteTag handles POST /api/v1/tag/delete-tag (auth).
@@ -155,19 +101,5 @@ func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/delete-tag [post]
 func (h *Handlers) DeleteTag(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptag.DeleteTagRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.DeleteTag(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.DeleteTag)
 }

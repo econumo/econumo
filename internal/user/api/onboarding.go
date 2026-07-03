@@ -4,8 +4,7 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
@@ -28,14 +27,5 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/user/complete-onboarding [post]
 func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.svc.CompleteOnboarding(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.svc.CompleteOnboarding)
 }
