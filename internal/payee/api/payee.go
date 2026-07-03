@@ -5,12 +5,12 @@ import (
 
 	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
 // _ keeps the apidoc import alias visible to swag's annotation parser.
 var _ = apidoc.JsonResponseError{}
+var _ = apppayee.CreatePayeeResult{}
 
 // CreatePayee handles POST /api/v1/payee/create-payee (auth).
 //
@@ -27,21 +27,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/payee/create-payee [post]
 func (h *Handlers) CreatePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apppayee.CreatePayeeRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.CreatePayee(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.CreatePayee)
 }
 
 // UpdatePayee handles POST /api/v1/payee/update-payee (auth).
@@ -59,21 +45,7 @@ func (h *Handlers) CreatePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/update-payee [post]
 func (h *Handlers) UpdatePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apppayee.UpdatePayeeRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UpdatePayee(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UpdatePayee)
 }
 
 // ArchivePayee handles POST /api/v1/payee/archive-payee (auth).
@@ -91,21 +63,7 @@ func (h *Handlers) UpdatePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/archive-payee [post]
 func (h *Handlers) ArchivePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apppayee.ArchivePayeeRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.ArchivePayee(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.ArchivePayee)
 }
 
 // UnarchivePayee handles POST /api/v1/payee/unarchive-payee (auth).
@@ -123,21 +81,7 @@ func (h *Handlers) ArchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/unarchive-payee [post]
 func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apppayee.UnarchivePayeeRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UnarchivePayee(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UnarchivePayee)
 }
 
 // DeletePayee handles POST /api/v1/payee/delete-payee (auth).
@@ -155,19 +99,5 @@ func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/delete-payee [post]
 func (h *Handlers) DeletePayee(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apppayee.DeletePayeeRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.DeletePayee(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.DeletePayee)
 }

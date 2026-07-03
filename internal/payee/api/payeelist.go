@@ -5,12 +5,14 @@ import (
 
 	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
-// _ keeps the apidoc import alias visible to swag's annotation parser.
+// _ keeps the apidoc/apppayee import aliases visible to swag's annotation
+// parser (this file's handler bodies no longer reference apppayee types
+// directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
+var _ = apppayee.GetPayeeListResult{}
 
 // OrderPayeeList handles POST /api/v1/payee/order-payee-list (auth).
 //
@@ -27,21 +29,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/payee/order-payee-list [post]
 func (h *Handlers) OrderPayeeList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apppayee.OrderPayeeListRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.OrderPayeeList(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.OrderPayeeList)
 }
 
 // GetPayeeList handles GET /api/v1/payee/get-payee-list (auth). The request has
@@ -58,14 +46,5 @@ func (h *Handlers) OrderPayeeList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/get-payee-list [get]
 func (h *Handlers) GetPayeeList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.read.GetPayeeList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.read.GetPayeeList)
 }

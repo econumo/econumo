@@ -5,8 +5,7 @@ import (
 
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
 // _ keeps the apidoc and appcurrency import aliases visible to swag's annotation
@@ -14,6 +13,7 @@ import (
 var (
 	_ = apidoc.JsonResponseError{}
 	_ = appcurrency.GetCurrencyListResult{}
+	_ = appcurrency.GetCurrencyRateListResult{}
 )
 
 // GetCurrencyList handles GET /api/v1/currency/get-currency-list (auth). No
@@ -29,16 +29,7 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-list [get]
 func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.read.GetCurrencyList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCurrencyList)
 }
 
 // GetCurrencyRateList handles GET /api/v1/currency/get-currency-rate-list
@@ -54,14 +45,5 @@ func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-rate-list [get]
 func (h *Handlers) GetCurrencyRateList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.read.GetCurrencyRateList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCurrencyRateList)
 }

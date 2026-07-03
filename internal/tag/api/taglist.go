@@ -5,12 +5,14 @@ import (
 
 	apptag "github.com/econumo/econumo/internal/tag"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
-// _ keeps the apidoc import alias visible to swag's annotation parser.
+// _ keeps the apidoc/apptag import aliases visible to swag's annotation
+// parser (this file's handler bodies no longer reference apptag types
+// directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
+var _ = apptag.GetTagListResult{}
 
 // OrderTagList handles POST /api/v1/tag/order-tag-list (auth).
 //
@@ -27,21 +29,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/tag/order-tag-list [post]
 func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req apptag.OrderTagListRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.OrderTagList(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.OrderTagList)
 }
 
 // GetTagList handles GET /api/v1/tag/get-tag-list (auth). The request has no
@@ -58,14 +46,5 @@ func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/get-tag-list [get]
 func (h *Handlers) GetTagList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.read.GetTagList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.read.GetTagList)
 }

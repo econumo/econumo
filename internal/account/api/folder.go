@@ -5,11 +5,11 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
 var _ = apidoc.JsonResponseUnauthorized{}
+var _ = appaccount.GetFolderListResult{}
 
 // CreateFolder handles POST /api/v1/account/create-folder (auth).
 //
@@ -26,21 +26,7 @@ var _ = apidoc.JsonResponseUnauthorized{}
 // @Security    Bearer
 // @Router      /api/v1/account/create-folder [post]
 func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.CreateFolderRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.CreateFolder(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.CreateFolder)
 }
 
 // UpdateFolder handles POST /api/v1/account/update-folder (auth).
@@ -58,21 +44,7 @@ func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/update-folder [post]
 func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.UpdateFolderRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UpdateFolder(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateFolder)
 }
 
 // HideFolder handles POST /api/v1/account/hide-folder (auth).
@@ -90,21 +62,7 @@ func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/hide-folder [post]
 func (h *Handlers) HideFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.HideFolderRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.HideFolder(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.HideFolder)
 }
 
 // ShowFolder handles POST /api/v1/account/show-folder (auth).
@@ -122,21 +80,7 @@ func (h *Handlers) HideFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/show-folder [post]
 func (h *Handlers) ShowFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.ShowFolderRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.ShowFolder(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.ShowFolder)
 }
 
 // ReplaceFolder handles POST /api/v1/account/replace-folder (auth).
@@ -154,21 +98,7 @@ func (h *Handlers) ShowFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/replace-folder [post]
 func (h *Handlers) ReplaceFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.ReplaceFolderRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.ReplaceFolder(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.ReplaceFolder)
 }
 
 // GetFolderList handles GET /api/v1/account/get-folder-list (auth).
@@ -183,16 +113,7 @@ func (h *Handlers) ReplaceFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/get-folder-list [get]
 func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.svc.GetFolderList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetFolderList)
 }
 
 // OrderFolderList handles POST /api/v1/account/order-folder-list (auth).
@@ -210,19 +131,5 @@ func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/order-folder-list [post]
 func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appaccount.OrderFolderListRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.OrderFolderList(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.OrderFolderList)
 }

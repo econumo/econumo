@@ -4,13 +4,15 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
-// _ keeps the apidoc import alias visible to swag's annotation parser.
+// _ keeps the apidoc/appuser import aliases visible to swag's annotation
+// parser (this file's handler body no longer references appuser types
+// directly, since it delegates to a method value).
 var _ = apidoc.JsonResponseError{}
+var _ = appuser.UpdateCurrencyResult{}
 
 // UpdateCurrency handles POST /api/v1/user/update-currency (auth). Tier-1
 // validates NotBlank; the service's value-object constructor enforces the
@@ -29,19 +31,5 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/user/update-currency [post]
 func (h *Handlers) UpdateCurrency(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appuser.UpdateCurrencyRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.UpdateCurrency(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.UpdateCurrency)
 }
