@@ -5,12 +5,14 @@ import (
 
 	appcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/ui/endpoint"
 )
 
-// Forces the apidoc import so swag annotations can resolve its envelope schemas.
+// Forces the apidoc/appcategory imports so swag annotations can resolve their
+// schemas (this file's handler bodies no longer reference appcategory types
+// directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
+var _ = appcategory.GetCategoryListResult{}
 
 // OrderCategoryList handles POST /api/v1/category/order-category-list (auth).
 //
@@ -27,21 +29,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/category/order-category-list [post]
 func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	var req appcategory.OrderCategoryListRequest
-	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	res, err := h.svc.OrderCategoryList(r.Context(), userID, req)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.Handle(w, r, h.dev, h.svc.OrderCategoryList)
 }
 
 // GetCategoryList handles GET /api/v1/category/get-category-list (auth). The
@@ -58,14 +46,5 @@ func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/get-category-list [get]
 func (h *Handlers) GetCategoryList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.RequireUser(w, r)
-	if !ok {
-		return
-	}
-	res, err := h.read.GetCategoryList(r.Context(), userID)
-	if err != nil {
-		httpx.WriteError(w, err, h.dev)
-		return
-	}
-	httpx.OK(w, res)
+	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCategoryList)
 }
