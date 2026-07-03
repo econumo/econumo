@@ -9,33 +9,9 @@ import (
 
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// Clock supplies the current time. A seam so tests can pin timestamps for
-// byte-stable golden output.
-type Clock interface {
-	Now() time.Time
-}
-
-// TxRunner is the transaction boundary the service owns. backend.TxManager
-// satisfies it; defining it here keeps the app layer from importing the storage
-// package directly.
-type TxRunner interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-// OperationGuard provides the row-based idempotency for create-category. Claim
-// attempts to record the request id; it reports
-// already=true when the id was previously claimed (a duplicate request) so the
-// caller can reject it. See claimOperation for the semantics.
-type OperationGuard interface {
-	// Claim inserts the id into operation_requests_ids. Returns already=true if a
-	// row for the id already existed (duplicate). Runs inside the caller's tx.
-	Claim(ctx context.Context, id vo.Id, now time.Time) (already bool, err error)
-	// MarkHandled flips is_handled to true after the operation succeeds.
-	MarkHandled(ctx context.Context, id vo.Id, now time.Time) error
-}
 
 // AccountAccess resolves shared-account ownership/admin-grant for the
 // create-for-account path: which user owns an account, and whether a connected
@@ -51,9 +27,9 @@ type AccountAccess interface {
 // boundary and builds the response-shaped *Result structs directly.
 type Service struct {
 	repo   Repository
-	tx     TxRunner
-	ops    OperationGuard
-	clock  Clock
+	tx     port.TxRunner
+	ops    port.OperationGuard
+	clock  port.Clock
 	read   ReadModel
 	access AccountAccess
 }
@@ -61,8 +37,9 @@ type Service struct {
 // NewService wires the category service. read is the own+shared category view
 // (the same ReadModel get-category-list uses); order-category-list returns that
 // full available list (own + shared, NOT owner-only). access resolves
-// shared-account ownership for create-category-for-account.
-func NewService(repo Repository, tx TxRunner, ops OperationGuard, clock Clock, read ReadModel, access AccountAccess) *Service {
+// shared-account ownership for create-category-for-account. ops backs
+// create-category's request-id idempotency (see CreateCategory).
+func NewService(repo Repository, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, read ReadModel, access AccountAccess) *Service {
 	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
 }
 

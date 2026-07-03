@@ -24,6 +24,7 @@ import (
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/testkeys"
@@ -60,7 +61,7 @@ func newHarness(t *testing.T) *harness {
 
 // newHarnessWithClock injects the account-service clock so tests can fix "now"
 // (the balance day boundary depends on it).
-func newHarnessWithClock(t *testing.T, clk appaccount.Clock) *harness {
+func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	t.Helper()
 
 	tdb := dbtest.NewSQLite(t)

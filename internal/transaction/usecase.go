@@ -6,25 +6,9 @@ import (
 
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// Clock supplies the current time.
-type Clock interface {
-	Now() time.Time
-}
-
-// TxRunner is the transaction boundary the service owns.
-type TxRunner interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-// OperationGuard is the shared idempotency guard (create-transaction has an
-// OperationId).
-type OperationGuard interface {
-	Claim(ctx context.Context, id vo.Id, now time.Time) (already bool, err error)
-	MarkHandled(ctx context.Context, id vo.Id, now time.Time) error
-}
 
 // AuthorView is the minimal author shape the result embeds.
 type AuthorView struct {
@@ -73,9 +57,9 @@ type Service struct {
 	users    UserLookup
 	export   ExportLookup
 	importer Importer
-	tx       TxRunner
-	ops      OperationGuard
-	clock    Clock
+	tx       port.TxRunner
+	ops      port.OperationGuard
+	clock    port.Clock
 }
 
 // NewService wires the transaction service.
@@ -87,9 +71,9 @@ func NewService(
 	users UserLookup,
 	export ExportLookup,
 	importer Importer,
-	tx TxRunner,
-	ops OperationGuard,
-	clock Clock,
+	tx port.TxRunner,
+	ops port.OperationGuard,
+	clock port.Clock,
 ) *Service {
 	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, tx: tx, ops: ops, clock: clock}
 }

@@ -16,14 +16,9 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// Clock supplies the current time. A seam (rather than calling time.Now
-// directly) so tests can pin timestamps for byte-stable golden output.
-type Clock interface {
-	Now() time.Time
-}
 
 // CurrencyLookup resolves a currency code to its currency-id (the synthetic
 // currency_id option in CurrentUserResult). DefaultCode returns the fallback
@@ -44,13 +39,6 @@ type CurrencyLookup interface {
 type BudgetExistence interface {
 	// Exists reports whether a budget with the given id exists.
 	Exists(ctx context.Context, budgetID string) (bool, error)
-}
-
-// TxRunner is the transaction boundary the service owns. backend.TxManager
-// satisfies it; defining it here keeps the app layer from importing the
-// storage package directly.
-type TxRunner interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 // PasswordHasher and Encoder narrow the infra/auth surface the service uses.
@@ -93,7 +81,7 @@ type ResetMailer interface {
 // the response-shaped *Result structs directly.
 type Service struct {
 	repo              Repository
-	tx                TxRunner
+	tx                port.TxRunner
 	encode            encoder
 	hasher            passwordHasher
 	jwt               jwtIssuer
@@ -101,13 +89,13 @@ type Service struct {
 	budgets           BudgetExistence
 	passwordRequests  PasswordRequests
 	mailer            ResetMailer
-	clock             Clock
+	clock             port.Clock
 	allowRegistration bool
 }
 
 func NewService(
 	repo Repository,
-	tx TxRunner,
+	tx port.TxRunner,
 	encode *auth.EncodeService,
 	hasher *auth.PasswordHasher,
 	jwtSvc *jwt.JWT,
@@ -115,7 +103,7 @@ func NewService(
 	budgets BudgetExistence,
 	passwordRequests PasswordRequests,
 	mailer ResetMailer,
-	clock Clock,
+	clock port.Clock,
 	allowRegistration bool,
 ) *Service {
 	return &Service{

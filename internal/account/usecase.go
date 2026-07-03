@@ -11,6 +11,7 @@ import (
 
 	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -19,23 +20,6 @@ import (
 // "Balance adjustment" (not a translation key), frozen as the stored/returned
 // value.
 const correctionComment = "Balance adjustment"
-
-// Clock supplies the current time (seam for deterministic tests).
-type Clock interface {
-	Now() time.Time
-}
-
-// TxRunner is the transaction boundary the service owns.
-type TxRunner interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
-}
-
-// OperationGuard is the shared idempotency guard (create-account has an
-// OperationId). The shared operation.Guard satisfies it.
-type OperationGuard interface {
-	Claim(ctx context.Context, id vo.Id, now time.Time) (already bool, err error)
-	MarkHandled(ctx context.Context, id vo.Id, now time.Time) error
-}
 
 // CurrencyView is the embeddable currency shape the account result needs. The
 // currencyrepo.Lookup.GetByID returns it (display name already resolved).
@@ -98,14 +82,14 @@ type Service struct {
 	users    UserLookup
 	shared   SharedAccessLookup
 	revoker  AccessRevoker
-	tx       TxRunner
-	ops      OperationGuard
-	clock    Clock
+	tx       port.TxRunner
+	ops      port.OperationGuard
+	clock    port.Clock
 }
 
 // NewService wires the account+folder service. shared/revoker may be nil (no
 // connection module): then sharedAccess[] is always empty and a non-owner delete
-// returns AccessDenied.
+// returns AccessDenied. ops backs create-account's request-id idempotency.
 func NewService(
 	repo Repository,
 	folders FolderRepository,
@@ -113,9 +97,9 @@ func NewService(
 	users UserLookup,
 	shared SharedAccessLookup,
 	revoker AccessRevoker,
-	tx TxRunner,
-	ops OperationGuard,
-	clock Clock,
+	tx port.TxRunner,
+	ops port.OperationGuard,
+	clock port.Clock,
 ) *Service {
 	return &Service{repo: repo, folders: folders, currency: currency, users: users, shared: shared, revoker: revoker, tx: tx, ops: ops, clock: clock}
 }
