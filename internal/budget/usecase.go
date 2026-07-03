@@ -20,32 +20,11 @@ type OwnerView struct {
 	Avatar string
 }
 
-// UserLookup resolves a budget participant's id/name/avatar + their currency code.
-type UserLookup interface {
-	GetOwner(ctx context.Context, userID string) (OwnerView, error)
-	// CurrencyCode returns the user's default currency code (for createBudget when
-	// no currencyId is supplied).
-	CurrencyCode(ctx context.Context, userID string) (string, error)
-	// SetActiveBudget records the user's active budget id.
-	SetActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
-}
-
 // AccountView is an account as the filters builder needs it: id + currency + owner.
 type AccountView struct {
 	ID         string
 	CurrencyID string
 	OwnerID    string
-}
-
-// AccountLookup resolves accounts owned by the budget participants + ownership.
-type AccountLookup interface {
-	AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]AccountView, error)
-	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-}
-
-// CurrencyLookup resolves a currency id by code (createBudget default currency).
-type CurrencyLookup interface {
-	GetIDByCode(ctx context.Context, code string) (string, error)
 }
 
 // Service is the budget module orchestrator.

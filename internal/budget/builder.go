@@ -39,16 +39,6 @@ type PayeeMeta struct {
 	Name string
 }
 
-// MetadataLookup resolves the categories + tags (+ payees) owned by a set of
-// users (the budget participants), for the structure builder and the
-// transaction list. Categories include both income and expense; the builder
-// filters.
-type MetadataLookup interface {
-	CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]CategoryMeta, error)
-	TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]TagMeta, error)
-	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]PayeeMeta, error)
-}
-
 // ConvertItem is one bulk-conversion request: convert Amount from From to To,
 // using the rate period containing PeriodStart. A structural copy of
 // currency.ConvertItem — budget's own port must not import the currency
@@ -67,24 +57,6 @@ type ConvertItem struct {
 type FullRate struct {
 	CurrencyID vo.Id
 	Rate       vo.DecimalNumber
-}
-
-// Convertor is the currency convertor port (internal/server's BudgetConvertor
-// adapts currency.Convertor to it).
-type Convertor interface {
-	BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]ConvertItem) (map[string]vo.DecimalNumber, error)
-}
-
-// AverageRateLookup resolves period-average rates for the financial summary's
-// currencyRates block (internal/server's BudgetAverageRateLookup adapts
-// currency.RateProvider to it).
-type AverageRateLookup interface {
-	AverageRates(ctx context.Context, start, end time.Time) ([]FullRate, error)
-	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
-	// latest-rate month <= end, or the requested period when no rate exists).
-	// The currencyRates block reports THIS period.
-	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
-	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 }
 
 // filters is the internal filter set the builder derives.
