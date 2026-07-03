@@ -1,7 +1,7 @@
 // Package archtest enforces the restructure's dependency rule (see
 // docs/superpowers/specs/2026-07-01-feature-package-restructure-design.md):
 // feature packages never import each other; shared leaves never import
-// features; the kernel (internal/shared) imports nothing
+// features; the kernel (internal/shared and internal/model) imports nothing
 // internal outside itself. Features are auto-detected as any internal/<top>
 // directory not in the infrastructure set, so newly moved features come under
 // enforcement without edits here.
@@ -21,18 +21,18 @@ const module = "github.com/econumo/econumo"
 var infrastructure = map[string]bool{
 	"shared": true, "web": true, "infra": true,
 	"server": true, "cli": true, "config": true, "logging": true,
-	"test": true,
+	"test": true, "model": true,
 }
 
 // kernel packages may import internal code only from inside the kernel.
-func isKernel(top string) bool { return top == "shared" }
+func isKernel(top string) bool { return top == "shared" || top == "model" }
 
 // leaves may be imported by features but must never import one.
 // server is deliberately absent: it is the composition root and imports everything.
 // config and logging import nothing internal today; listing them keeps that true.
 func isLeaf(top string) bool {
 	switch top {
-	case "shared", "web", "infra", "config", "logging":
+	case "shared", "web", "infra", "config", "logging", "model":
 		return true
 	}
 	return false
