@@ -63,11 +63,12 @@ Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 
 ## Architecture
 
-### Layered architecture (Hexagonal + DDD)
+### Feature packages (vertical slices)
 
-The backend follows a strict layered architecture with dependency inversion. The
-dependency rule points inward: **ui → app → domain**; `infra` implements domain
-interfaces. The app layer never imports `ui` or `infra`.
+The backend is organized as vertical feature packages rather than horizontal
+layers. Each of the nine features (`account`, `budget`, `category`, `connection`,
+`currency`, `payee`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+tree holding its own domain logic, persistence, and HTTP edge:
 
 ```
 . (repo root = the Go module; web/ and deployment/ live alongside)
@@ -76,34 +77,53 @@ interfaces. The app layer never imports `ui` or `infra`.
 │   ├── shared/ .................... dependency-free kernel: vo (value objects), errs (domain error taxonomy),
 │   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen)
 │   ├── reqctx/ .................... request-scoped values carried via context (e.g. caller timezone)
-│   ├── domain/ .................... legacy: entities, value objects, repository INTERFACES, domain services (pure)
-│   ├── app/ ....................... legacy: use-case services + request/result DTOs (depends on domain only)
-│   ├── infra/ .................... implementations: sqlc repos, auth, mailer, storage
-│   │   ├── repo/<feature>/ ....... repository implementations (engine-adapter pattern, see below)
-│   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
-│   │   │                          client-supplied operation ids on create endpoints
+│   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
+│   │   │                            currency, payee, tag, transaction, user); root package holds the
+│   │   │                            entities, repository interface, and use-case services:
+│   │   │   entity.go .............   domain entity/value-object definitions
+│   │   │   dto.go ................   request/result DTOs for the use-case services
+│   │   │   repository.go .........   the repository INTERFACE the feature depends on
+│   │   │   usecase.go ............   the use-case service(s) implementing the feature's behavior
+│   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
+│   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
 │   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
 │   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
+│   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
+│   │   │                          client-supplied operation ids on create endpoints
 │   │   ├── auth/ ................ password hashing + AES email encryption + user-identifier hashing
+│   │   ├── clock/ ................ time source abstraction
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
-│   ├── ui/ ...................... HTTP edge: handlers, middleware, router, response envelope (httpx), SPA + apidoc
-│   ├── server/ .................. composition root: server.BuildAPI wires every module (used by the binary AND tests)
+│   ├── ui/ ...................... HTTP-edge infrastructure shared by every feature: middleware, router,
+│   │                              response envelope (httpx), SPA server, apidoc — no feature logic
+│   ├── server/ .................. composition root: server.BuildAPI wires every feature (used by the
+│   │                              binary AND tests); glue_*.go files hold the cross-feature adapters
+│   │                              (see below)
 │   ├── cli/ ..................... the resource:action management commands (stdlib dispatch; no cobra)
 │   ├── config/ .................. environment configuration loading
 │   └── test/ .................... shared test support: dbtest, fixture, testkeys, enginecompare, archtest
 ```
 
+Not every feature has all four root files — e.g. `currency` has no per-user
+entity/repository/use-case shape (it's rates + conversion + admin lookups), so
+it keeps `dto.go` but not `entity.go`/`usecase.go`/`repository.go`.
+
 ### Dependency rule
 
-Features never import features (they stay decoupled via consumer-side ports
-wired in `internal/server`); shared leaves (`shared`, `reqctx`, `ui`, `infra`)
-never import a feature; the kernel (`internal/shared`, `internal/reqctx`)
-imports nothing internal outside itself. This is enforced by
-`internal/test/archtest`, which auto-detects feature packages (any
-`internal/<top>` not in its infrastructure set) so newly moved features come
-under enforcement without edits to the test. The legacy `internal/domain` and
-`internal/app` layers are exempt from the feature-isolation rules until Phase 2
-dissolves them into feature packages.
+Features never import features. When one feature needs another's data (e.g.
+account needs a currency lookup, or budget needs to resolve a user), the
+*consuming* feature declares a small interface in its own package, and
+`internal/server` wires a concrete adapter — usually a thin one implemented in
+a `glue_<feature>_<purpose>.go` file (e.g. `glue_account_currencylookup.go`,
+`glue_budget_userlookup.go`) — over the *providing* feature's public API at
+composition time. This keeps every feature package independently buildable
+and testable without pulling in its siblings.
+
+Shared leaves (`shared`, `reqctx`, `ui`, `infra`) never import a feature; the
+kernel (`internal/shared`, `internal/reqctx`) imports nothing internal outside
+itself. This is enforced by `internal/test/archtest`, which auto-detects
+feature packages (any `internal/<top>` not in its infrastructure set) so newly
+moved features come under enforcement without edits to the test.
 
 ### The engine-adapter (sqlc) pattern
 
@@ -117,17 +137,19 @@ NUMERIC aggregates, date formats). A repo therefore:
 - writes every method ONCE against the interface, so method bodies carry no
   per-driver branching.
 
-Reference repos: `internal/infra/repo/{tag,user,currency,passwordrequest}`. The one
-exception is `internal/infra/repo/budget/read.go`, which is hand-built dynamic SQL
-(variadic `IN` lists, real per-engine value/date handling) and branches explicitly
-by design.
+Reference repos: `internal/{tag,user,currency}/repo` (the `user` repo also
+covers password-reset requests, in `passwordrequest*.go` alongside the user
+queries). The one exception is `internal/budget/repo/read.go`, which is
+hand-built dynamic SQL (variadic `IN` lists, real per-engine value/date
+handling) and branches explicitly by design.
 
 ### API handler pattern
 
-HTTP handlers are thin adapters under `internal/ui/handler/<resource>/`: decode +
-tier-1 `Validate()`, pull the user id from the JWT context, call the app service,
-and emit the frozen response envelope via `httpx`. Routes are registered per module
-in `routes.go` (`RegisterAPI`). Request/result DTOs live in `internal/app/<feature>/dto.go`.
+HTTP handlers are thin adapters under `internal/<feature>/api/`: decode +
+tier-1 `Validate()`, pull the user id from the JWT context, call the feature's
+use-case service, and emit the frozen response envelope via `httpx`. Routes
+are registered in `internal/<feature>/api/routes.go` (`RegisterAPI`). Request/
+result DTOs live in `internal/<feature>/dto.go`.
 
 ### Frontend architecture (Vue 3 + Quasar)
 
@@ -283,7 +305,7 @@ In the distroless image these run via the binary directly, e.g.
 - **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/shared/jwt` (a
   self-contained package: token issue/verify, keypair generation, and the shared
   `EnsureKeypair` boot/CLI entry point; no `internal/*` dependency).
-- Login lives under `internal/ui/handler/user` (`/api/v1/user/login-user`).
+- Login lives under `internal/user/api` (`/api/v1/user/login-user`).
 - Token refresh is not implemented (clients re-authenticate).
 
 ## Wire & data contract (frozen)
