@@ -43,14 +43,14 @@ func (p *ConnectionFolderPort) LastFolderID(ctx context.Context, userID vo.Id) (
 	}
 	var last *account.Folder
 	for _, f := range fs {
-		if last == nil || f.Position() > last.Position() {
+		if last == nil || f.Position > last.Position {
 			last = f
 		}
 	}
 	if last == nil {
 		return vo.Id{}, false, nil
 	}
-	return last.Id(), true, nil
+	return last.ID, true, nil
 }
 
 // FoldersContaining returns the user's folder ids that contain the account.

@@ -101,13 +101,13 @@ func (r *FolderRepo) CountByUser(ctx context.Context, userID vo.Id) (int, error)
 // Save upserts a folder row.
 func (r *FolderRepo) Save(ctx context.Context, f *domaccount.Folder) error {
 	return r.q.UpsertFolder(ctx, r.db(ctx), upsertFolderP{
-		ID:        f.Id().String(),
-		UserID:    f.UserId().String(),
-		Name:      f.Name(),
-		Position:  f.Position(),
-		IsVisible: f.IsVisible(),
-		CreatedAt: f.CreatedAt(),
-		UpdatedAt: f.UpdatedAt(),
+		ID:        f.ID.String(),
+		UserID:    f.UserID.String(),
+		Name:      f.Name,
+		Position:  f.Position,
+		IsVisible: f.IsVisible,
+		CreatedAt: f.CreatedAt,
+		UpdatedAt: f.UpdatedAt,
 	})
 }
 
@@ -153,7 +153,10 @@ func hydrateFolder(row folderRow) (*domaccount.Folder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domaccount.FolderFromState(id, userID, row.Name, row.Position, row.IsVisible, row.CreatedAt, row.UpdatedAt), nil
+	return &domaccount.Folder{
+		ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+		IsVisible: row.IsVisible, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
 }
 
 type sqliteFolderQuerier struct{}

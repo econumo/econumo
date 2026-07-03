@@ -24,13 +24,21 @@ func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *dbtest.DB, *fixture.
 	return accountrepo.NewFolderRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
+// newTestFolder builds a visible fixedTime-stamped folder for userA.
+func newTestFolder(id vo.Id, name string, position int16) *domaccount.Folder {
+	return &domaccount.Folder{
+		ID: id, UserID: vo.MustParseId(userA), Name: name, Position: position,
+		IsVisible: true, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
+}
+
 func TestFolderRepo_SaveGetRoundTrip(t *testing.T) {
 	repo, _, fx := newFolderRepo(t)
 	ctx := context.Background()
 	seedUser(t, fx, userA, "A")
 
 	id := vo.MustParseId(folder1)
-	f := domaccount.FolderFromState(id, vo.MustParseId(userA), "Main", 5, true, fixedTime, fixedTime)
+	f := newTestFolder(id, "Main", 5)
 	if err := repo.Save(ctx, f); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -38,14 +46,14 @@ func TestFolderRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name() != "Main" || got.Position() != 5 || !got.IsVisible() {
-		t.Errorf("fields mismatch: name=%q pos=%d visible=%v", got.Name(), got.Position(), got.IsVisible())
+	if got.Name != "Main" || got.Position != 5 || !got.IsVisible {
+		t.Errorf("fields mismatch: name=%q pos=%d visible=%v", got.Name, got.Position, got.IsVisible)
 	}
-	if got.UserId().String() != userA {
-		t.Errorf("user mismatch: %s", got.UserId())
+	if got.UserID.String() != userA {
+		t.Errorf("user mismatch: %s", got.UserID)
 	}
-	if !got.CreatedAt().Equal(fixedTime) {
-		t.Errorf("createdAt mismatch: %v", got.CreatedAt())
+	if !got.CreatedAt.Equal(fixedTime) {
+		t.Errorf("createdAt mismatch: %v", got.CreatedAt)
 	}
 }
 
@@ -64,7 +72,7 @@ func TestFolderRepo_ListAndCountByUser(t *testing.T) {
 	ctx := context.Background()
 	seedUser(t, fx, userA, "A")
 	for _, id := range []string{folder1, folder2} {
-		f := domaccount.FolderFromState(vo.MustParseId(id), vo.MustParseId(userA), "F", 0, true, fixedTime, fixedTime)
+		f := newTestFolder(vo.MustParseId(id), "F", 0)
 		if err := repo.Save(ctx, f); err != nil {
 			t.Fatalf("Save %s: %v", id, err)
 		}
@@ -90,7 +98,7 @@ func TestFolderRepo_Delete(t *testing.T) {
 	ctx := context.Background()
 	seedUser(t, fx, userA, "A")
 	id := vo.MustParseId(folder1)
-	f := domaccount.FolderFromState(id, vo.MustParseId(userA), "Main", 0, true, fixedTime, fixedTime)
+	f := newTestFolder(id, "Main", 0)
 	if err := repo.Save(ctx, f); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -110,7 +118,7 @@ func TestFolderRepo_Membership(t *testing.T) {
 	seedUser(t, fx, userA, "A")
 	seedAccount(t, fx, acctCash, userA, "Cash")
 	seedAccount(t, fx, acctBank, userA, "Bank")
-	f := domaccount.FolderFromState(vo.MustParseId(folder1), vo.MustParseId(userA), "Main", 0, true, fixedTime, fixedTime)
+	f := newTestFolder(vo.MustParseId(folder1), "Main", 0)
 	if err := repo.Save(ctx, f); err != nil {
 		t.Fatalf("Save folder: %v", err)
 	}

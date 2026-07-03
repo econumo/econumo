@@ -53,15 +53,15 @@ func (l *BudgetAccountLookup) AccountsForOwners(ctx context.Context, userIDs []v
 			return nil, err
 		}
 		for _, a := range accts {
-			if !owners[a.UserId().String()] {
+			if !owners[a.UserID.String()] {
 				continue // shared with a participant but not owned by one
 			}
-			if seen[a.Id().String()] {
+			if seen[a.ID.String()] {
 				continue
 			}
-			seen[a.Id().String()] = true
+			seen[a.ID.String()] = true
 			out = append(out, appbudget.AccountView{
-				ID: a.Id().String(), CurrencyID: a.CurrencyId().String(), OwnerID: a.UserId().String(),
+				ID: a.ID.String(), CurrencyID: a.CurrencyID.String(), OwnerID: a.UserID.String(),
 			})
 		}
 	}
@@ -74,7 +74,7 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 	if err != nil {
 		return vo.Id{}, err
 	}
-	return a.UserId(), nil
+	return a.UserID, nil
 }
 
 type budgetCategoryRepo interface {

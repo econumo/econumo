@@ -47,17 +47,23 @@ type SharedAccessView struct {
 }
 
 // Service is the account+folder write-side use-case orchestrator. It owns the tx
-// boundary and builds the response-shaped *Result structs directly.
+// boundary and builds the response-shaped *Result structs directly. The one
+// Repository/FolderRepository constructor param each split into their role
+// interfaces here so every use-case file references the narrowest surface it
+// actually needs.
 type Service struct {
-	repo     Repository
-	folders  FolderRepository
-	currency CurrencyLookup
-	users    UserLookup
-	shared   SharedAccessLookup
-	revoker  AccessRevoker
-	tx       port.TxRunner
-	ops      port.OperationGuard
-	clock    port.Clock
+	accounts    AccountStore
+	positions   PositionStore
+	balances    BalanceReader
+	folders     FolderStore
+	memberships FolderMembership
+	currency    CurrencyLookup
+	users       UserLookup
+	shared      SharedAccessLookup
+	revoker     AccessRevoker
+	tx          port.TxRunner
+	ops         port.OperationGuard
+	clock       port.Clock
 }
 
 // NewService wires the account+folder service. shared/revoker may be nil (no
@@ -74,7 +80,11 @@ func NewService(
 	ops port.OperationGuard,
 	clock port.Clock,
 ) *Service {
-	return &Service{repo: repo, folders: folders, currency: currency, users: users, shared: shared, revoker: revoker, tx: tx, ops: ops, clock: clock}
+	return &Service{
+		accounts: repo, positions: repo, balances: repo,
+		folders: folders, memberships: folders,
+		currency: currency, users: users, shared: shared, revoker: revoker, tx: tx, ops: ops, clock: clock,
+	}
 }
 
 // balanceBefore is the exclusive upper bound for the balance SUM: the start of
@@ -134,11 +144,11 @@ func wallClockIn(now time.Time, loc *time.Location) time.Time {
 // supplied balance, and an empty sharedAccess (until the connection module
 // lands). memberships maps folderID -> account ids (pass nil to load lazily).
 func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *Account, balance string, foldersSorted []*Folder, memberships map[string][]string, cache *accountEmbedCache) (AccountResult, error) {
-	ownerRes, err := s.resolveOwner(ctx, cache, acct.UserId().String())
+	ownerRes, err := s.resolveOwner(ctx, cache, acct.UserID.String())
 	if err != nil {
 		return AccountResult{}, err
 	}
-	curRes, err := s.resolveCurrency(ctx, cache, acct.CurrencyId().String())
+	curRes, err := s.resolveCurrency(ctx, cache, acct.CurrencyID.String())
 	if err != nil {
 		return AccountResult{}, err
 	}
@@ -146,10 +156,10 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *Ac
 	// folderId = first folder (by position) that contains the account.
 	var folderID *string
 	for _, f := range foldersSorted {
-		ids := memberships[f.Id().String()]
+		ids := memberships[f.ID.String()]
 		for _, aid := range ids {
-			if aid == acct.Id().String() {
-				v := f.Id().String()
+			if aid == acct.ID.String() {
+				v := f.ID.String()
 				folderID = &v
 				break
 			}
@@ -160,26 +170,26 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *Ac
 	}
 
 	// position from accounts_options (0 if no row).
-	pos, _, err := s.repo.GetPosition(ctx, acct.Id(), userID)
+	pos, _, err := s.positions.GetPosition(ctx, acct.ID, userID)
 	if err != nil {
 		return AccountResult{}, err
 	}
 
-	shared, err := s.sharedAccessFor(ctx, acct.Id(), cache)
+	shared, err := s.sharedAccessFor(ctx, acct.ID, cache)
 	if err != nil {
 		return AccountResult{}, err
 	}
 
 	return AccountResult{
-		Id:           acct.Id().String(),
+		Id:           acct.ID.String(),
 		Owner:        ownerRes,
 		FolderId:     folderID,
-		Name:         acct.Name(),
+		Name:         acct.Name,
 		Position:     int(pos),
 		Currency:     curRes,
 		Balance:      vo.NewDecimal(balance).String(),
-		Type:         int(acct.Type().Int16()),
-		Icon:         acct.Icon(),
+		Type:         int(acct.Type.Int16()),
+		Icon:         acct.Icon,
 		SharedAccess: shared,
 	}, nil
 }
@@ -260,11 +270,11 @@ func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *a
 // accounts (bulk balances + memberships loaded once). When reversed is true the
 // list is reversed (get-account-list reverses; order-account-list does not).
 func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed bool) ([]AccountResult, error) {
-	accts, err := s.repo.ListAvailable(ctx, userID)
+	accts, err := s.accounts.ListAvailable(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	balances, err := s.repo.Balances(ctx, userID, s.balanceBefore(ctx))
+	balances, err := s.balances.Balances(ctx, userID, s.balanceBefore(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +282,7 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 	if err != nil {
 		return nil, err
 	}
-	memberships, err := s.folders.MembershipsByUser(ctx, userID)
+	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +290,7 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 	cache := newAccountEmbedCache()
 	items := make([]AccountResult, 0, len(accts))
 	for _, a := range accts {
-		bal := balances[a.Id().String()]
+		bal := balances[a.ID.String()]
 		if bal == "" {
 			bal = "0"
 		}
@@ -304,7 +314,7 @@ func (s *Service) sortedFolders(ctx context.Context, userID vo.Id) ([]*Folder, e
 	if err != nil {
 		return nil, err
 	}
-	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position() < folders[j].Position() })
+	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
 	return folders, nil
 }
 
@@ -342,13 +352,13 @@ func newIcon(v string) (string, error) {
 // toFolderResult maps a Folder to its wire shape (isVisible int 0/1).
 func toFolderResult(f *Folder) FolderResult {
 	vis := 0
-	if f.IsVisible() {
+	if f.IsVisible {
 		vis = 1
 	}
 	return FolderResult{
-		Id:        f.Id().String(),
-		Name:      f.Name(),
-		Position:  int(f.Position()),
+		Id:        f.ID.String(),
+		Name:      f.Name,
+		Position:  int(f.Position),
 		IsVisible: vis,
 	}
 }
