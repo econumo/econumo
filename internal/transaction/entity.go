@@ -51,28 +51,30 @@ func (t Type) IsExpense() bool  { return t == TypeExpense }
 func (t Type) IsIncome() bool   { return t == TypeIncome }
 func (t Type) IsTransfer() bool { return t == TypeTransfer }
 
-// Transaction is the transaction aggregate root. Optional references are pointer
-// value objects (nil = absent). amountRecipient is a normalized decimal string
-// (nil unless a transfer with a distinct recipient amount).
+// Transaction is the transaction aggregate root. Fields are exported for
+// direct read access; all writes after construction go through New/FromState
+// (reconstruction) and Update (full mutation). Optional references are
+// pointer value objects (nil = absent). AmountRecipient is a normalized
+// decimal string (nil unless a transfer with a distinct recipient amount).
 type Transaction struct {
-	id              vo.Id
-	userID          vo.Id
-	typ             Type
-	accountID       vo.Id
-	accountRecipID  *vo.Id
-	amount          string
-	amountRecipient *string
-	categoryID      *vo.Id
-	payeeID         *vo.Id
-	tagID           *vo.Id
-	description     string
-	spentAt         time.Time
-	createdAt       time.Time
-	updatedAt       time.Time
+	ID              vo.Id
+	UserID          vo.Id
+	Type            Type
+	AccountID       vo.Id
+	AccountRecipID  *vo.Id
+	Amount          string
+	AmountRecipient *string
+	CategoryID      *vo.Id
+	PayeeID         *vo.Id
+	TagID           *vo.Id
+	Description     string
+	SpentAt         time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // NewState bundles the fields for constructing/reconstructing a Transaction.
-// Optional ids are nil when absent; amountRecipient is nil unless set.
+// Optional ids are nil when absent; AmountRecipient is nil unless set.
 type NewState struct {
 	ID              vo.Id
 	UserID          vo.Id
@@ -90,65 +92,50 @@ type NewState struct {
 	UpdatedAt       time.Time
 }
 
-// New constructs a freshly-created transaction (createdAt == updatedAt). The
+// New constructs a freshly-created transaction (CreatedAt == UpdatedAt). The
 // service has already applied the type-dependent field rules when building the
 // state.
 func New(s NewState) *Transaction {
 	return &Transaction{
-		id: s.ID, userID: s.UserID, typ: s.Type, accountID: s.AccountID,
-		accountRecipID: s.AccountRecipID, amount: s.Amount, amountRecipient: s.AmountRecipient,
-		categoryID: s.CategoryID, payeeID: s.PayeeID, tagID: s.TagID,
-		description: s.Description, spentAt: s.SpentAt, createdAt: s.CreatedAt, updatedAt: s.CreatedAt,
+		ID: s.ID, UserID: s.UserID, Type: s.Type, AccountID: s.AccountID,
+		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
+		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
+		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.CreatedAt,
 	}
 }
 
 func FromState(s NewState) *Transaction {
 	return &Transaction{
-		id: s.ID, userID: s.UserID, typ: s.Type, accountID: s.AccountID,
-		accountRecipID: s.AccountRecipID, amount: s.Amount, amountRecipient: s.AmountRecipient,
-		categoryID: s.CategoryID, payeeID: s.PayeeID, tagID: s.TagID,
-		description: s.Description, spentAt: s.SpentAt, createdAt: s.CreatedAt, updatedAt: s.UpdatedAt,
+		ID: s.ID, UserID: s.UserID, Type: s.Type, AccountID: s.AccountID,
+		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
+		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
+		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 	}
 }
-
-func (t *Transaction) Id() vo.Id                  { return t.id }
-func (t *Transaction) UserId() vo.Id              { return t.userID }
-func (t *Transaction) Type() Type                 { return t.typ }
-func (t *Transaction) AccountId() vo.Id           { return t.accountID }
-func (t *Transaction) AccountRecipientId() *vo.Id { return t.accountRecipID }
-func (t *Transaction) Amount() string             { return t.amount }
-func (t *Transaction) AmountRecipient() *string   { return t.amountRecipient }
-func (t *Transaction) CategoryId() *vo.Id         { return t.categoryID }
-func (t *Transaction) PayeeId() *vo.Id            { return t.payeeID }
-func (t *Transaction) TagId() *vo.Id              { return t.tagID }
-func (t *Transaction) Description() string        { return t.description }
-func (t *Transaction) SpentAt() time.Time         { return t.spentAt }
-func (t *Transaction) CreatedAt() time.Time       { return t.createdAt }
-func (t *Transaction) UpdatedAt() time.Time       { return t.updatedAt }
 
 // Update applies a full update from the given state, enforcing the
 // type-dependent field rules: a transfer clears category/payee/tag and keeps
 // recipient account+amount; a non-transfer clears recipient and keeps
-// category/payee/tag. Always stamps updatedAt = now, since a full update
+// category/payee/tag. Always stamps UpdatedAt = now, since a full update
 // replaces the mutable state.
 func (t *Transaction) Update(s NewState, now time.Time) {
-	t.typ = s.Type
-	t.accountID = s.AccountID
-	t.amount = s.Amount
-	t.description = s.Description
-	t.spentAt = s.SpentAt
+	t.Type = s.Type
+	t.AccountID = s.AccountID
+	t.Amount = s.Amount
+	t.Description = s.Description
+	t.SpentAt = s.SpentAt
 	if s.Type.IsTransfer() {
-		t.categoryID = nil
-		t.payeeID = nil
-		t.tagID = nil
-		t.accountRecipID = s.AccountRecipID
-		t.amountRecipient = s.AmountRecipient
+		t.CategoryID = nil
+		t.PayeeID = nil
+		t.TagID = nil
+		t.AccountRecipID = s.AccountRecipID
+		t.AmountRecipient = s.AmountRecipient
 	} else {
-		t.accountRecipID = nil
-		t.amountRecipient = nil
-		t.categoryID = s.CategoryID
-		t.payeeID = s.PayeeID
-		t.tagID = s.TagID
+		t.AccountRecipID = nil
+		t.AmountRecipient = nil
+		t.CategoryID = s.CategoryID
+		t.PayeeID = s.PayeeID
+		t.TagID = s.TagID
 	}
-	t.updatedAt = now
+	t.UpdatedAt = now
 }
