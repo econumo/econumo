@@ -7,7 +7,6 @@ package connection
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
@@ -19,34 +18,6 @@ type OwnerView struct {
 	ID     string
 	Name   string
 	Avatar string
-}
-
-// UserLookup resolves the connected-user embed (id, name, avatar).
-type UserLookup interface {
-	GetOwner(ctx context.Context, userID string) (OwnerView, error)
-}
-
-// FolderPort is the slice of folder behavior the connection side effects need:
-// finding the guest's last folder (by position) and mutating membership. Backed
-// by the account module's FolderRepository via an adapter.
-type FolderPort interface {
-	// LastFolderID returns the user's last folder (highest position). ok=false if
-	// the user has no folders.
-	LastFolderID(ctx context.Context, userID vo.Id) (folderID vo.Id, ok bool, err error)
-	// FoldersContaining returns the user's folder ids that contain the account.
-	FoldersContaining(ctx context.Context, userID, accountID vo.Id) ([]vo.Id, error)
-	// AddAccount adds the account to the folder (idempotent).
-	AddAccount(ctx context.Context, folderID, accountID vo.Id) error
-	// RemoveAccount removes the account from the folder.
-	RemoveAccount(ctx context.Context, folderID, accountID vo.Id) error
-}
-
-// OptionPort is the slice of accounts_options behavior the side effects need.
-type OptionPort interface {
-	// MaxPosition returns the user's highest accounts_options.position (0 if none).
-	MaxPosition(ctx context.Context, userID vo.Id) (int16, error)
-	// SavePosition upserts the user's accounts_options row.
-	SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error
 }
 
 // Service is the connection write+read orchestrator. It owns the tx boundary and

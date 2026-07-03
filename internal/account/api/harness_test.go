@@ -91,7 +91,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	connRepo := connectionrepo.NewRepo("sqlite", txm)
 	connSvc := appconnection.NewService(
 		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
-		server.NewConnectionFolderPort(folderRepo), connectionrepo.NewOptionPort(repo),
+		server.NewConnectionFolderPort(folderRepo), repo,
 		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
 		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
 	)

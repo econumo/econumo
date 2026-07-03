@@ -47,7 +47,7 @@ type OptionViewRow struct {
 // ReadService serves the user read endpoints.
 type ReadService struct {
 	read   ReadModel
-	encode encoder
+	encode *auth.EncodeService
 }
 
 // NewReadService wires the read service.

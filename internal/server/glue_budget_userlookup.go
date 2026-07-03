@@ -7,9 +7,9 @@ package server
 
 import (
 	"context"
-	"time"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/user"
 )
@@ -24,13 +24,13 @@ type budgetUserRepo interface {
 // BudgetUserLookup adapts the user repository to budget.UserLookup.
 type BudgetUserLookup struct {
 	users budgetUserRepo
-	clock interface{ Now() time.Time }
+	clock port.Clock
 }
 
 var _ appbudget.UserLookup = (*BudgetUserLookup)(nil)
 
 // NewBudgetUserLookup wraps a user repository + clock.
-func NewBudgetUserLookup(users budgetUserRepo, clock interface{ Now() time.Time }) *BudgetUserLookup {
+func NewBudgetUserLookup(users budgetUserRepo, clock port.Clock) *BudgetUserLookup {
 	return &BudgetUserLookup{users: users, clock: clock}
 }
 

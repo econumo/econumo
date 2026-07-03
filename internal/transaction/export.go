@@ -32,18 +32,6 @@ type ExportAccount struct {
 	CurrencyCode string
 }
 
-// ExportLookup supplies the read-side data the export needs without coupling the
-// transaction service to the account/metadata repo packages: the user's
-// accessible accounts (own + shared, not deleted) and name resolution for the
-// optional category/tag/payee of each transaction. Name lookups return "" when
-// the entity is missing.
-type ExportLookup interface {
-	ExportAccounts(ctx context.Context, userID vo.Id) ([]ExportAccount, error)
-	CategoryName(ctx context.Context, id vo.Id) (string, error)
-	TagName(ctx context.Context, id vo.Id) (string, error)
-	PayeeName(ctx context.Context, id vo.Id) (string, error)
-}
-
 // ExportTransactionList builds the CSV rows for the given user, optionally
 // restricted to a set of account ids (nil = all accessible accounts). The first
 // row is the header.

@@ -114,12 +114,11 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
 	connectionFolderPort := NewConnectionFolderPort(folderRepo)
-	connectionOptionPort := connectionrepo.NewOptionPort(accountRepo)
 	connectionUserLookup := NewConnectionUserLookup(userRepo)
 	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
 	connectionSvc := appconnection.NewService(
-		connectionRepo, connectionInviteRepo, connectionFolderPort, connectionOptionPort,
+		connectionRepo, connectionInviteRepo, connectionFolderPort, accountRepo,
 		connectionUserLookup, connectionBudgetRevoker, txm, clk,
 	)
 	accountSharedLookup := NewConnectionSharedAccessLookup(connectionRepo)
@@ -131,8 +130,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	txAccountResolver := NewTransactionAccountResolver(accountSvc)
-	txAccountGrants := transactionrepo.NewAccountGrants(accountAccessResolver)
-	txVisible := transactionrepo.NewVisibleAccounts(accountSvc)
 	txUserLookup := NewTransactionUserLookup(userRepo)
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))
 	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
@@ -144,7 +141,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 		transactionRepo,
 	)
 	transactionSvc := apptransaction.NewService(
-		transactionRepo, txAccountResolver, txAccountGrants, txVisible, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
+		transactionRepo, txAccountResolver, accountAccessResolver, accountSvc, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 

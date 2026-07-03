@@ -10,13 +10,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// AccountAccess resolves shared-account ownership/admin-grant for the
-// create-for-account path. A missing grant is reported as false (nil error).
-type AccountAccess interface {
-	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
-}
-
 // Service is the payee write-side use-case orchestrator; it owns the tx boundary.
 type Service struct {
 	repo   Repository

@@ -14,49 +14,12 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// CurrencyLookup resolves a currency code to its currency-id (the synthetic
-// currency_id option in CurrentUserResult). DefaultCode returns the fallback
-// used when the user's code can't be resolved.
-type CurrencyLookup interface {
-	// GetIDByCode returns the currency uuid for the given code, or an error if
-	// not found. The service falls back to DefaultCode on error.
-	GetIDByCode(ctx context.Context, code string) (string, error)
-	// DefaultCode returns the fallback currency code (USD).
-	DefaultCode() string
-}
-
-// BudgetExistence is the minimal budget lookup the update-budget use case needs:
-// confirm a budget id exists before setting it as the user's default. The check
-// is existence-only (no ownership/access check) and a miss maps to the "Plan not
-// found" validation error. The full budget module owns the table; this is the
-// read-only port the user service depends on.
-type BudgetExistence interface {
-	// Exists reports whether a budget with the given id exists.
-	Exists(ctx context.Context, budgetID string) (bool, error)
-}
-
-// PasswordHasher and Encoder narrow the infra/auth surface the service uses.
-type passwordHasher interface {
-	Hash(plainPassword, salt string) string
-	Verify(hashedPassword, plainPassword, salt string) bool
-}
-
-type encoder interface {
-	Hash(value string) string
-	Encode(value string) (string, error)
-	Decode(value string) (string, error)
-}
-
-// jwtIssuer issues login tokens.
-type jwtIssuer interface {
-	Issue(userID, email string, now time.Time) (string, error)
-}
 
 // PasswordRequests persists password-reset codes (users_password_requests) for
 // the remind/reset flow. The infra passwordrequestrepo implements it.
@@ -71,24 +34,18 @@ type PasswordRequests interface {
 	Delete(ctx context.Context, id vo.Id) error
 }
 
-// ResetMailer sends the password-reset confirmation-code email. The infra mailer
-// implements it; a no-op/unconfigured mailer simply sends nothing.
-type ResetMailer interface {
-	SendResetPasswordCode(ctx context.Context, toEmail, name, code string) error
-}
-
 // Service is the user use-case orchestrator. It owns the tx boundary and builds
 // the response-shaped *Result structs directly.
 type Service struct {
 	repo              Repository
 	tx                port.TxRunner
-	encode            encoder
-	hasher            passwordHasher
-	jwt               jwtIssuer
+	encode            *auth.EncodeService
+	hasher            *auth.PasswordHasher
+	jwt               *jwt.JWT
 	currency          CurrencyLookup
 	budgets           BudgetExistence
 	passwordRequests  PasswordRequests
-	mailer            ResetMailer
+	mailer            *mailer.ResetSender
 	clock             port.Clock
 	allowRegistration bool
 }
@@ -102,7 +59,7 @@ func NewService(
 	currency CurrencyLookup,
 	budgets BudgetExistence,
 	passwordRequests PasswordRequests,
-	mailer ResetMailer,
+	mailer *mailer.ResetSender,
 	clock port.Clock,
 	allowRegistration bool,
 ) *Service {
