@@ -20,7 +20,7 @@ func (s *Service) AdminCreateUser(ctx context.Context, name, email, password str
 	if err != nil {
 		return vo.Id{}, err
 	}
-	return u.Id(), nil
+	return u.ID, nil
 }
 
 // AdminChangeEmail changes a user's email (identifier, ciphertext, avatar),
@@ -33,7 +33,7 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 
 	loweredNew := strings.ToLower(strings.TrimSpace(newEmail))
 	newIdentifier := s.encode.Hash(loweredNew)
-	if newIdentifier != u.Identifier() {
+	if newIdentifier != u.Identifier {
 		exists, err := s.repo.ExistsByIdentifier(ctx, newIdentifier)
 		if err != nil {
 			return err
@@ -63,7 +63,7 @@ func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword st
 		return err
 	}
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(newPassword, u.Salt()), s.clock.Now())
+		u.UpdatePassword(s.hasher.Hash(newPassword, u.Salt), s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }

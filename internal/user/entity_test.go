@@ -57,44 +57,45 @@ func seeded(t *testing.T) *User {
 
 func TestNewUser_Getters(t *testing.T) {
 	u := newUser(t)
-	if u.Identifier() != "identifier-md5" {
-		t.Errorf("Identifier()=%q", u.Identifier())
+	if u.Identifier != "identifier-md5" {
+		t.Errorf("Identifier()=%q", u.Identifier)
 	}
-	if u.Email() != "encrypted-email" {
-		t.Errorf("Email()=%q", u.Email())
+	if u.Email != "encrypted-email" {
+		t.Errorf("Email()=%q", u.Email)
 	}
-	if u.Name() != "Alice" {
-		t.Errorf("Name()=%q", u.Name())
+	if u.Name != "Alice" {
+		t.Errorf("Name()=%q", u.Name)
 	}
-	if u.AvatarURL() != "https://avatar/x" {
-		t.Errorf("AvatarURL()=%q", u.AvatarURL())
+	if u.AvatarURL != "https://avatar/x" {
+		t.Errorf("AvatarURL()=%q", u.AvatarURL)
 	}
-	if u.Password() != "password-hash" {
-		t.Errorf("Password()=%q", u.Password())
+	if u.Password != "password-hash" {
+		t.Errorf("Password()=%q", u.Password)
 	}
-	if u.Salt() != "salt-hex" {
-		t.Errorf("Salt()=%q", u.Salt())
+	if u.Salt != "salt-hex" {
+		t.Errorf("Salt()=%q", u.Salt)
 	}
-	if !u.IsActive() {
+	if !u.IsActive {
 		t.Error("new user must be active")
 	}
-	if !u.CreatedAt().Equal(tu0) || !u.UpdatedAt().Equal(tu0) {
-		t.Errorf("timestamps: %v / %v", u.CreatedAt(), u.UpdatedAt())
+	if !u.CreatedAt.Equal(tu0) || !u.UpdatedAt.Equal(tu0) {
+		t.Errorf("timestamps: %v / %v", u.CreatedAt, u.UpdatedAt)
 	}
 }
 
-func TestUser_FromState_RoundTrip(t *testing.T) {
+func TestUser_StructLiteral_RoundTrip(t *testing.T) {
 	id := mustID(t, "11111111-1111-1111-1111-111111111111")
 	opt := NewUserOption(mustID(t, "aaaaaaaa-0000-0000-0000-000000000001"), OptionBudget, strPtr("b-1"), tu0)
-	u := FromState(id, "ident", "email", "Bob", "avatar", "pw", "salt", false, tu0, tu1, []UserOption{opt})
-	if !u.Id().Equal(id) || u.Name() != "Bob" || u.IsActive() {
+	u := &User{ID: id, Identifier: "ident", Email: "email", Name: "Bob", AvatarURL: "avatar", Password: "pw",
+		Salt: "salt", IsActive: false, CreatedAt: tu0, UpdatedAt: tu1, Options: []UserOption{opt}}
+	if !u.ID.Equal(id) || u.Name != "Bob" || u.IsActive {
 		t.Fatal("scalar fields did not round-trip")
 	}
-	if !u.CreatedAt().Equal(tu0) || !u.UpdatedAt().Equal(tu1) {
-		t.Errorf("timestamps: %v / %v", u.CreatedAt(), u.UpdatedAt())
+	if !u.CreatedAt.Equal(tu0) || !u.UpdatedAt.Equal(tu1) {
+		t.Errorf("timestamps: %v / %v", u.CreatedAt, u.UpdatedAt)
 	}
-	if len(u.Options()) != 1 {
-		t.Fatalf("options len=%d want 1", len(u.Options()))
+	if len(u.Options) != 1 {
+		t.Fatalf("options len=%d want 1", len(u.Options))
 	}
 }
 
@@ -113,31 +114,31 @@ func TestUser_DefaultsWhenNoOptions(t *testing.T) {
 
 func TestUser_SeedDefaultOptions(t *testing.T) {
 	u := seeded(t)
-	opts := u.Options()
+	opts := u.Options
 	if len(opts) != 4 {
 		t.Fatalf("seeded option count=%d want 4", len(opts))
 	}
 	// Order must match persistedOptions / the registration seed order.
 	wantNames := []string{OptionCurrency, OptionReportPeriod, OptionBudget, OptionOnboarding}
 	for i, n := range wantNames {
-		if opts[i].Name() != n {
-			t.Errorf("option[%d].Name()=%q want %q", i, opts[i].Name(), n)
+		if opts[i].Name != n {
+			t.Errorf("option[%d].Name()=%q want %q", i, opts[i].Name, n)
 		}
-		if !opts[i].CreatedAt().Equal(tu0) {
-			t.Errorf("option[%d] createdAt=%v want %v", i, opts[i].CreatedAt(), tu0)
+		if !opts[i].CreatedAt.Equal(tu0) {
+			t.Errorf("option[%d] createdAt=%v want %v", i, opts[i].CreatedAt, tu0)
 		}
 	}
 	// Default values.
-	if c := u.Option(OptionCurrency); c == nil || c.Value() == nil || *c.Value() != DefaultCurrency {
+	if c := u.Option(OptionCurrency); c == nil || c.Value == nil || *c.Value != DefaultCurrency {
 		t.Errorf("currency default wrong: %+v", c)
 	}
-	if rp := u.Option(OptionReportPeriod); rp == nil || rp.Value() == nil || *rp.Value() != DefaultReportPeriod {
+	if rp := u.Option(OptionReportPeriod); rp == nil || rp.Value == nil || *rp.Value != DefaultReportPeriod {
 		t.Errorf("report_period default wrong: %+v", rp)
 	}
-	if b := u.Option(OptionBudget); b == nil || b.Value() != nil {
+	if b := u.Option(OptionBudget); b == nil || b.Value != nil {
 		t.Errorf("budget default should be nil value: %+v", b)
 	}
-	if ob := u.Option(OptionOnboarding); ob == nil || ob.Value() == nil || *ob.Value() != OnboardingStarted {
+	if ob := u.Option(OptionOnboarding); ob == nil || ob.Value == nil || *ob.Value != OnboardingStarted {
 		t.Errorf("onboarding default wrong: %+v", ob)
 	}
 	// Surfaced helpers reflect the seeded values.
@@ -158,35 +159,35 @@ func TestUser_SeedDefaultOptions_Idempotent(t *testing.T) {
 		"bbbbbbbb-0000-0000-0000-000000000003",
 		"bbbbbbbb-0000-0000-0000-000000000004",
 	), tu1)
-	if len(u.Options()) != 4 {
-		t.Fatalf("re-seed option count=%d want 4", len(u.Options()))
+	if len(u.Options) != 4 {
+		t.Fatalf("re-seed option count=%d want 4", len(u.Options))
 	}
 }
 
 func TestUser_UpdateName(t *testing.T) {
 	u := newUser(t)
 	u.UpdateName("Carol", tu1)
-	if u.Name() != "Carol" || !u.UpdatedAt().Equal(tu1) {
-		t.Fatalf("UpdateName: %q / %v", u.Name(), u.UpdatedAt())
+	if u.Name != "Carol" || !u.UpdatedAt.Equal(tu1) {
+		t.Fatalf("UpdateName: %q / %v", u.Name, u.UpdatedAt)
 	}
 }
 
 func TestUser_UpdatePassword(t *testing.T) {
 	u := newUser(t)
 	u.UpdatePassword("new-hash", tu1)
-	if u.Password() != "new-hash" || !u.UpdatedAt().Equal(tu1) {
-		t.Fatalf("UpdatePassword: %q / %v", u.Password(), u.UpdatedAt())
+	if u.Password != "new-hash" || !u.UpdatedAt.Equal(tu1) {
+		t.Fatalf("UpdatePassword: %q / %v", u.Password, u.UpdatedAt)
 	}
 }
 
 func TestUser_UpdateEmail(t *testing.T) {
 	u := newUser(t)
 	u.UpdateEmail("new-ident", "new-cipher", "new-avatar", tu1)
-	if u.Identifier() != "new-ident" || u.Email() != "new-cipher" || u.AvatarURL() != "new-avatar" {
-		t.Fatalf("UpdateEmail fields: %q / %q / %q", u.Identifier(), u.Email(), u.AvatarURL())
+	if u.Identifier != "new-ident" || u.Email != "new-cipher" || u.AvatarURL != "new-avatar" {
+		t.Fatalf("UpdateEmail fields: %q / %q / %q", u.Identifier, u.Email, u.AvatarURL)
 	}
-	if !u.UpdatedAt().Equal(tu1) {
-		t.Errorf("UpdateEmail updatedAt=%v want %v", u.UpdatedAt(), tu1)
+	if !u.UpdatedAt.Equal(tu1) {
+		t.Errorf("UpdateEmail updatedAt=%v want %v", u.UpdatedAt, tu1)
 	}
 }
 
@@ -197,12 +198,12 @@ func TestUser_UpdateCurrency(t *testing.T) {
 		t.Fatalf("CurrencyCode()=%q want EUR", u.CurrencyCode())
 	}
 	o := u.Option(OptionCurrency)
-	if !o.UpdatedAt().Equal(tu1) {
-		t.Errorf("currency option updatedAt=%v want %v", o.UpdatedAt(), tu1)
+	if !o.UpdatedAt.Equal(tu1) {
+		t.Errorf("currency option updatedAt=%v want %v", o.UpdatedAt, tu1)
 	}
 	// Setting the same value again must not bump the option's updatedAt.
 	u.UpdateCurrency("EUR", tu2)
-	if !u.Option(OptionCurrency).UpdatedAt().Equal(tu1) {
+	if !u.Option(OptionCurrency).UpdatedAt.Equal(tu1) {
 		t.Error("setting same currency bumped option updatedAt")
 	}
 }
@@ -222,11 +223,11 @@ func TestUser_UpdateBudget(t *testing.T) {
 	u := seeded(t)
 	u.UpdateBudget("budget-id-123", tu1)
 	o := u.Option(OptionBudget)
-	if o == nil || o.Value() == nil || *o.Value() != "budget-id-123" {
+	if o == nil || o.Value == nil || *o.Value != "budget-id-123" {
 		t.Fatalf("budget option: %+v", o)
 	}
-	if !o.UpdatedAt().Equal(tu1) {
-		t.Errorf("budget option updatedAt=%v want %v", o.UpdatedAt(), tu1)
+	if !o.UpdatedAt.Equal(tu1) {
+		t.Errorf("budget option updatedAt=%v want %v", o.UpdatedAt, tu1)
 	}
 }
 
@@ -234,15 +235,15 @@ func TestUser_CompleteOnboarding(t *testing.T) {
 	u := seeded(t)
 	u.CompleteOnboarding(tu1)
 	o := u.Option(OptionOnboarding)
-	if o == nil || o.Value() == nil || *o.Value() != OnboardingCompleted {
+	if o == nil || o.Value == nil || *o.Value != OnboardingCompleted {
 		t.Fatalf("onboarding option: %+v", o)
 	}
-	if !o.UpdatedAt().Equal(tu1) {
-		t.Errorf("onboarding option updatedAt=%v want %v", o.UpdatedAt(), tu1)
+	if !o.UpdatedAt.Equal(tu1) {
+		t.Errorf("onboarding option updatedAt=%v want %v", o.UpdatedAt, tu1)
 	}
 	// Re-completing is a no-op for updatedAt.
 	u.CompleteOnboarding(tu2)
-	if !u.Option(OptionOnboarding).UpdatedAt().Equal(tu1) {
+	if !u.Option(OptionOnboarding).UpdatedAt.Equal(tu1) {
 		t.Error("re-completing onboarding bumped updatedAt")
 	}
 }
@@ -257,12 +258,12 @@ func TestUser_UpdateReportPeriod_ReplicatesPHPBug(t *testing.T) {
 
 	// The currency option is the one that gets clobbered.
 	cur := u.Option(OptionCurrency)
-	if cur == nil || cur.Value() == nil || *cur.Value() != "weekly" {
+	if cur == nil || cur.Value == nil || *cur.Value != "weekly" {
 		t.Fatalf("expected currency option to be clobbered to 'weekly', got %+v", cur)
 	}
 	// The report_period option is left untouched at its default.
 	rp := u.Option(OptionReportPeriod)
-	if rp == nil || rp.Value() == nil || *rp.Value() != DefaultReportPeriod {
+	if rp == nil || rp.Value == nil || *rp.Value != DefaultReportPeriod {
 		t.Fatalf("report_period option should be untouched, got %+v", rp)
 	}
 	// And ReportPeriod() still reads the (unchanged) report_period option.
@@ -274,17 +275,17 @@ func TestUser_UpdateReportPeriod_ReplicatesPHPBug(t *testing.T) {
 func TestUserOption_Accessors_AndReconstitute(t *testing.T) {
 	id := mustID(t, "aaaaaaaa-0000-0000-0000-000000000001")
 	o := ReconstituteUserOption(id, OptionBudget, strPtr("b-9"), tu0, tu1)
-	if !o.Id().Equal(id) {
-		t.Errorf("Id()=%v want %v", o.Id(), id)
+	if !o.ID.Equal(id) {
+		t.Errorf("Id()=%v want %v", o.ID, id)
 	}
-	if o.Name() != OptionBudget {
-		t.Errorf("Name()=%q", o.Name())
+	if o.Name != OptionBudget {
+		t.Errorf("Name()=%q", o.Name)
 	}
-	if o.Value() == nil || *o.Value() != "b-9" {
-		t.Errorf("Value()=%v want b-9", o.Value())
+	if o.Value == nil || *o.Value != "b-9" {
+		t.Errorf("Value()=%v want b-9", o.Value)
 	}
-	if !o.CreatedAt().Equal(tu0) || !o.UpdatedAt().Equal(tu1) {
-		t.Errorf("timestamps: %v / %v", o.CreatedAt(), o.UpdatedAt())
+	if !o.CreatedAt.Equal(tu0) || !o.UpdatedAt.Equal(tu1) {
+		t.Errorf("timestamps: %v / %v", o.CreatedAt, o.UpdatedAt)
 	}
 }
 
@@ -293,23 +294,23 @@ func TestUserOption_setValue_NilTransitions(t *testing.T) {
 	// nil -> nil is a no-op (no bump).
 	o := NewUserOption(mustID(t, "aaaaaaaa-0000-0000-0000-000000000001"), OptionBudget, nil, now)
 	o.setValue(nil, tu1)
-	if !o.UpdatedAt().Equal(tu0) {
+	if !o.UpdatedAt.Equal(tu0) {
 		t.Error("nil->nil bumped updatedAt")
 	}
 	// nil -> value bumps.
 	o.setValue(strPtr("x"), tu1)
-	if o.Value() == nil || *o.Value() != "x" || !o.UpdatedAt().Equal(tu1) {
-		t.Fatalf("nil->value: %v / %v", o.Value(), o.UpdatedAt())
+	if o.Value == nil || *o.Value != "x" || !o.UpdatedAt.Equal(tu1) {
+		t.Fatalf("nil->value: %v / %v", o.Value, o.UpdatedAt)
 	}
 	// same value -> no bump.
 	o.setValue(strPtr("x"), tu2)
-	if !o.UpdatedAt().Equal(tu1) {
+	if !o.UpdatedAt.Equal(tu1) {
 		t.Error("same value bumped updatedAt")
 	}
 	// value -> nil bumps.
 	o.setValue(nil, tu2)
-	if o.Value() != nil || !o.UpdatedAt().Equal(tu2) {
-		t.Fatalf("value->nil: %v / %v", o.Value(), o.UpdatedAt())
+	if o.Value != nil || !o.UpdatedAt.Equal(tu2) {
+		t.Fatalf("value->nil: %v / %v", o.Value, o.UpdatedAt)
 	}
 }
 

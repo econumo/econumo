@@ -36,10 +36,10 @@ func isNotFound(err error) bool {
 // old password yields a ValidationError -> 400 ("Password is not correct").
 func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req UpdatePasswordRequest) (*UpdatePasswordResult, error) {
 	_, err := s.mutate(ctx, userID, func(u *User, now time.Time) error {
-		if !s.hasher.Verify(u.Password(), req.OldPassword, u.Salt()) {
+		if !s.hasher.Verify(u.Password, req.OldPassword, u.Salt) {
 			return errs.NewValidation("Password is not correct")
 		}
-		u.UpdatePassword(s.hasher.Hash(req.NewPassword, u.Salt()), now)
+		u.UpdatePassword(s.hasher.Hash(req.NewPassword, u.Salt), now)
 		return nil
 	})
 	if err != nil {
@@ -65,9 +65,9 @@ func (s *Service) RemindPassword(ctx context.Context, req RemindPasswordRequest)
 	if err != nil {
 		return nil, err
 	}
-	pr := NewPasswordRequest(vo.NewId(), u.Id(), code, s.clock.Now())
+	pr := NewPasswordRequest(vo.NewId(), u.ID, code, s.clock.Now())
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if derr := s.passwordRequests.DeleteByUser(ctx, u.Id()); derr != nil {
+		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
 		}
 		return s.passwordRequests.Save(ctx, pr)
@@ -77,7 +77,7 @@ func (s *Service) RemindPassword(ctx context.Context, req RemindPasswordRequest)
 
 	// Email the code to the address the caller submitted (trimmed, original case).
 	if s.mailer != nil {
-		if err := s.mailer.SendResetPasswordCode(ctx, strings.TrimSpace(req.Username), u.Name(), code); err != nil {
+		if err := s.mailer.SendResetPasswordCode(ctx, strings.TrimSpace(req.Username), u.Name, code); err != nil {
 			return nil, err
 		}
 	}
@@ -97,7 +97,7 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (
 		return nil, err
 	}
 
-	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.Id(), strings.TrimSpace(req.Code))
+	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, strings.TrimSpace(req.Code))
 	if err != nil {
 		if isNotFound(err) {
 			return nil, errs.NewValidation("Reset password error")
@@ -109,11 +109,11 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (
 	}
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(req.Password, u.Salt()), s.clock.Now())
+		u.UpdatePassword(s.hasher.Hash(req.Password, u.Salt), s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
-		return s.passwordRequests.Delete(ctx, pr.Id())
+		return s.passwordRequests.Delete(ctx, pr.ID)
 	}); err != nil {
 		return nil, err
 	}

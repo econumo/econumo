@@ -40,43 +40,33 @@ var persistedOptions = []string{
 }
 
 // UserOption is a single name/value setting belonging to a user. Value is a
-// pointer because the column is nullable (e.g. budget defaults to NULL).
+// pointer because the column is nullable (e.g. budget defaults to NULL). Fields
+// are exported for direct read access; all writes after construction go through
+// setValue.
 type UserOption struct {
-	id        vo.Id
-	name      string
-	value     *string
-	createdAt time.Time
-	updatedAt time.Time
+	ID        vo.Id
+	Name      string
+	Value     *string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 // NewUserOption builds a fresh option (used when seeding registration defaults).
 func NewUserOption(id vo.Id, name string, value *string, now time.Time) UserOption {
-	return UserOption{id: id, name: name, value: value, createdAt: now, updatedAt: now}
+	return UserOption{ID: id, Name: name, Value: value, CreatedAt: now, UpdatedAt: now}
 }
 
 func ReconstituteUserOption(id vo.Id, name string, value *string, createdAt, updatedAt time.Time) UserOption {
-	return UserOption{id: id, name: name, value: value, createdAt: createdAt, updatedAt: updatedAt}
+	return UserOption{ID: id, Name: name, Value: value, CreatedAt: createdAt, UpdatedAt: updatedAt}
 }
 
-func (o UserOption) Id() vo.Id { return o.id }
-
-// Name returns the option name (one of the Option* constants).
-func (o UserOption) Name() string { return o.name }
-
-// Value returns the option value, which may be nil (SQL NULL).
-func (o UserOption) Value() *string { return o.value }
-
-func (o UserOption) CreatedAt() time.Time { return o.createdAt }
-
-func (o UserOption) UpdatedAt() time.Time { return o.updatedAt }
-
-// setValue mutates the option in place, bumping updatedAt only on a real change.
+// setValue mutates the option in place, bumping UpdatedAt only on a real change.
 func (o *UserOption) setValue(value *string, now time.Time) {
-	if equalStrPtr(o.value, value) {
+	if equalStrPtr(o.Value, value) {
 		return
 	}
-	o.value = value
-	o.updatedAt = now
+	o.Value = value
+	o.UpdatedAt = now
 }
 
 // Header is a lightweight read projection of a user's public display fields
@@ -88,21 +78,23 @@ type Header struct {
 	AvatarURL string
 }
 
-// User is the user aggregate root. Strings that are encrypted at rest (email)
-// or hashed (password, identifier) are stored opaquely here; the service layer
-// applies/reverses the crypto. The aggregate owns its options.
+// User is the user aggregate root. Strings that are encrypted at rest (Email)
+// or hashed (Password, Identifier) are stored opaquely here; the service layer
+// applies/reverses the crypto. The aggregate owns its Options. Fields are
+// exported for direct read access; all writes after construction go through the
+// mutators.
 type User struct {
-	id         vo.Id
-	identifier string // md5(lower(email)+salt) — the auth lookup key
-	email      string // AES-encrypted ciphertext (opaque here)
-	name       string
-	avatarURL  string
-	password   string // sha512, 500 iterations, base64-encoded (see CLAUDE.md)
-	salt       string // sha1(random) hex, 40 chars
-	isActive   bool
-	createdAt  time.Time
-	updatedAt  time.Time
-	options    []UserOption
+	ID         vo.Id
+	Identifier string // md5(lower(email)+salt) — the auth lookup key
+	Email      string // AES-encrypted ciphertext (opaque here)
+	Name       string
+	AvatarURL  string
+	Password   string // sha512, 500 iterations, base64-encoded (see CLAUDE.md)
+	Salt       string // sha1(random) hex, 40 chars
+	IsActive   bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Options    []UserOption
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
@@ -110,70 +102,24 @@ type User struct {
 // salt. Options are seeded separately via SeedDefaultOptions.
 func NewUser(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash, salt string, now time.Time) *User {
 	return &User{
-		id:         id,
-		identifier: identifier,
-		email:      encryptedEmail,
-		name:       name,
-		avatarURL:  avatarURL,
-		password:   passwordHash,
-		salt:       salt,
-		isActive:   true,
-		createdAt:  now,
-		updatedAt:  now,
+		ID:         id,
+		Identifier: identifier,
+		Email:      encryptedEmail,
+		Name:       name,
+		AvatarURL:  avatarURL,
+		Password:   passwordHash,
+		Salt:       salt,
+		IsActive:   true,
+		CreatedAt:  now,
+		UpdatedAt:  now,
 	}
 }
-
-// FromState rebuilds a User from persisted row data. The repo loads options
-// separately and passes them in.
-func FromState(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash, salt string, isActive bool, createdAt, updatedAt time.Time, options []UserOption) *User {
-	return &User{
-		id:         id,
-		identifier: identifier,
-		email:      encryptedEmail,
-		name:       name,
-		avatarURL:  avatarURL,
-		password:   passwordHash,
-		salt:       salt,
-		isActive:   isActive,
-		createdAt:  createdAt,
-		updatedAt:  updatedAt,
-		options:    options,
-	}
-}
-
-func (u *User) Id() vo.Id { return u.id }
-
-// Identifier returns the md5 lookup identifier.
-func (u *User) Identifier() string { return u.identifier }
-
-// Email returns the encrypted-at-rest email ciphertext.
-func (u *User) Email() string { return u.email }
-
-func (u *User) Name() string { return u.name }
-
-func (u *User) AvatarURL() string { return u.avatarURL }
-
-// Password returns the stored password hash.
-func (u *User) Password() string { return u.password }
-
-// Salt returns the per-user salt used by the password hasher.
-func (u *User) Salt() string { return u.salt }
-
-func (u *User) IsActive() bool { return u.isActive }
-
-func (u *User) CreatedAt() time.Time { return u.createdAt }
-
-func (u *User) UpdatedAt() time.Time { return u.updatedAt }
-
-// Options returns the user's options (currency_id is NOT among these — it is
-// computed in the result by the service).
-func (u *User) Options() []UserOption { return u.options }
 
 // Option returns the option with the given name, or nil if absent.
 func (u *User) Option(name string) *UserOption {
-	for i := range u.options {
-		if u.options[i].name == name {
-			return &u.options[i]
+	for i := range u.Options {
+		if u.Options[i].Name == name {
+			return &u.Options[i]
 		}
 	}
 	return nil
@@ -182,59 +128,59 @@ func (u *User) Option(name string) *UserOption {
 // CurrencyCode returns the user's currency option value, falling back to the
 // default.
 func (u *User) CurrencyCode() string {
-	if o := u.Option(OptionCurrency); o != nil && o.value != nil && *o.value != "" {
-		return *o.value
+	if o := u.Option(OptionCurrency); o != nil && o.Value != nil && *o.Value != "" {
+		return *o.Value
 	}
 	return DefaultCurrency
 }
 
 // ReportPeriod returns the user's report_period option value or the default.
 func (u *User) ReportPeriod() string {
-	if o := u.Option(OptionReportPeriod); o != nil && o.value != nil && *o.value != "" {
-		return *o.value
+	if o := u.Option(OptionReportPeriod); o != nil && o.Value != nil && *o.Value != "" {
+		return *o.Value
 	}
 	return DefaultReportPeriod
 }
 
 func (u *User) UpdateName(name string, now time.Time) {
-	u.name = name
-	u.updatedAt = now
+	u.Name = name
+	u.UpdatedAt = now
 }
 
-// Activate marks the account active, bumping updatedAt only when the state
+// Activate marks the account active, bumping UpdatedAt only when the state
 // actually changes so a no-op activate leaves the row untouched.
 func (u *User) Activate(now time.Time) {
-	if u.isActive {
+	if u.IsActive {
 		return
 	}
-	u.isActive = true
-	u.updatedAt = now
+	u.IsActive = true
+	u.UpdatedAt = now
 }
 
-// Deactivate marks the account inactive, bumping updatedAt only on a real state
+// Deactivate marks the account inactive, bumping UpdatedAt only on a real state
 // change.
 func (u *User) Deactivate(now time.Time) {
-	if !u.isActive {
+	if !u.IsActive {
 		return
 	}
-	u.isActive = false
-	u.updatedAt = now
+	u.IsActive = false
+	u.UpdatedAt = now
 }
 
 // UpdatePassword replaces the stored password hash. The caller hashes the
 // plaintext using this user's salt first.
 func (u *User) UpdatePassword(passwordHash string, now time.Time) {
-	u.password = passwordHash
-	u.updatedAt = now
+	u.Password = passwordHash
+	u.UpdatedAt = now
 }
 
 // UpdateEmail replaces the encrypted email, identifier and avatar URL together,
 // all derived by the service.
 func (u *User) UpdateEmail(identifier, encryptedEmail, avatarURL string, now time.Time) {
-	u.identifier = identifier
-	u.email = encryptedEmail
-	u.avatarURL = avatarURL
-	u.updatedAt = now
+	u.Identifier = identifier
+	u.Email = encryptedEmail
+	u.AvatarURL = avatarURL
+	u.UpdatedAt = now
 }
 
 // UpdateCurrency sets the currency option value.
@@ -285,9 +231,9 @@ func (u *User) SeedDefaultOptions(nextID func() vo.Id, now time.Time) {
 		OptionBudget:       nil,
 		OptionOnboarding:   strPtr(OnboardingStarted),
 	}
-	u.options = u.options[:0]
+	u.Options = u.Options[:0]
 	for _, name := range persistedOptions {
-		u.options = append(u.options, NewUserOption(nextID(), name, defaults[name], now))
+		u.Options = append(u.Options, NewUserOption(nextID(), name, defaults[name], now))
 	}
 }
 

@@ -54,13 +54,13 @@ func TestAdminCreateUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByIdentifier: %v", err)
 	}
-	if !u.IsActive() {
+	if !u.IsActive {
 		t.Error("new user should be active")
 	}
-	if !hasher.Verify(u.Password(), "secretpass", u.Salt()) {
+	if !hasher.Verify(u.Password, "secretpass", u.Salt) {
 		t.Error("stored password does not verify")
 	}
-	email, err := enc.Decode(u.Email())
+	email, err := enc.Decode(u.Email)
 	if err != nil {
 		t.Fatalf("decode email: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestAdminChangeEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new identifier lookup: %v", err)
 	}
-	if got, _ := enc.Decode(u.Email()); got != "new@econumo.test" {
+	if got, _ := enc.Decode(u.Email); got != "new@econumo.test" {
 		t.Errorf("decoded email = %q, want new@econumo.test", got)
 	}
 
@@ -132,10 +132,10 @@ func TestAdminChangePassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasher.Verify(u.Password(), "brandnew", u.Salt()) {
+	if !hasher.Verify(u.Password, "brandnew", u.Salt) {
 		t.Error("new password does not verify")
 	}
-	if hasher.Verify(u.Password(), "oldpw", u.Salt()) {
+	if hasher.Verify(u.Password, "oldpw", u.Salt) {
 		t.Error("old password still verifies")
 	}
 
@@ -198,7 +198,7 @@ func isActive(t *testing.T, repo *userrepo.Repo, enc *auth.EncodeService, email 
 	if err != nil {
 		t.Fatalf("lookup %s: %v", email, err)
 	}
-	return u.IsActive()
+	return u.IsActive
 }
 
 func isValidation(err error) bool {

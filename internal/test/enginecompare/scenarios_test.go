@@ -111,10 +111,10 @@ func TestEngines_ConnectionInviteByCode(t *testing.T) {
 		if err := repo.Save(ctx, inv); err != nil {
 			t.Fatalf("Save invite: %v", err)
 		}
-		code := inv.Code()
+		code := inv.Code
 
 		got, err := repo.GetByCode(ctx, code, fixedTime.Add(1*time.Minute))
-		foundBefore := err == nil && got != nil && got.UserId().Equal(mustID(t, userA))
+		foundBefore := err == nil && got != nil && got.UserID.Equal(mustID(t, userA))
 
 		_, errAfter := repo.GetByCode(ctx, code, fixedTime.Add(10*time.Minute))
 		foundAfter := errAfter == nil

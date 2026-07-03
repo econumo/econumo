@@ -36,3 +36,16 @@ type Repository interface {
 	// which does not need the full aggregate).
 	GetOptions(ctx context.Context, userID vo.Id) ([]UserOption, error)
 }
+
+// PasswordRequests persists password-reset codes (users_password_requests) for
+// the remind/reset flow. The infra passwordrequestrepo implements it.
+type PasswordRequests interface {
+	// DeleteByUser removes all of a user's pending reset codes.
+	DeleteByUser(ctx context.Context, userID vo.Id) error
+	// Save inserts a new reset request.
+	Save(ctx context.Context, pr *PasswordRequest) error
+	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
+	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*PasswordRequest, error)
+	// Delete removes a request by id.
+	Delete(ctx context.Context, id vo.Id) error
+}

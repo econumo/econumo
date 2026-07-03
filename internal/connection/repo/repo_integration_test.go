@@ -45,11 +45,15 @@ func newRepo(t *testing.T) (*connectionrepo.Repo, *dbtest.DB, *fixture.Builder) 
 	return connectionrepo.NewRepo("sqlite", db.TX), db, f
 }
 
+func newAccess(accountID, userID vo.Id, role domconnection.Role, createdAt, updatedAt time.Time) *domconnection.AccountAccess {
+	return &domconnection.AccountAccess{AccountID: accountID, UserID: userID, Role: role, CreatedAt: createdAt, UpdatedAt: updatedAt}
+}
+
 func TestConnectionRepo_GrantCRUD(t *testing.T) {
 	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	// userA grants access on acctA to userB.
-	access := domconnection.FromState(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime)
+	access := newAccess(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime)
 	if err := repo.Save(ctx, access); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -57,11 +61,11 @@ func TestConnectionRepo_GrantCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if got.Role() != domconnection.RoleUser {
-		t.Errorf("role mismatch: %d", got.Role())
+	if got.Role != domconnection.RoleUser {
+		t.Errorf("role mismatch: %d", got.Role)
 	}
-	if !got.CreatedAt().Equal(fixedTime) {
-		t.Errorf("createdAt mismatch: %v", got.CreatedAt())
+	if !got.CreatedAt.Equal(fixedTime) {
+		t.Errorf("createdAt mismatch: %v", got.CreatedAt)
 	}
 
 	if err := repo.Delete(ctx, vo.MustParseId(acctA), vo.MustParseId(userB)); err != nil {
@@ -87,14 +91,14 @@ func TestConnectionRepo_ReceivedIssuedByAccount(t *testing.T) {
 	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	// userA grants access on acctA to userB.
-	_ = repo.Save(ctx, domconnection.FromState(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime))
+	_ = repo.Save(ctx, newAccess(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime))
 
 	// userB RECEIVED the grant.
 	recv, err := repo.ListReceived(ctx, vo.MustParseId(userB))
 	if err != nil {
 		t.Fatalf("ListReceived: %v", err)
 	}
-	if len(recv) != 1 || recv[0].AccountId().String() != acctA {
+	if len(recv) != 1 || recv[0].AccountID.String() != acctA {
 		t.Fatalf("want 1 received grant on acctA, got %+v", recv)
 	}
 
@@ -103,7 +107,7 @@ func TestConnectionRepo_ReceivedIssuedByAccount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListIssued: %v", err)
 	}
-	if len(iss) != 1 || iss[0].UserId().String() != userB {
+	if len(iss) != 1 || iss[0].UserID.String() != userB {
 		t.Fatalf("want 1 issued grant to userB, got %+v", iss)
 	}
 

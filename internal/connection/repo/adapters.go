@@ -45,7 +45,7 @@ func (r *AccountAccessResolver) HasWriteGrant(ctx context.Context, accountID, us
 		}
 		return false, err
 	}
-	role := grant.Role()
+	role := grant.Role
 	return role == domconnection.RoleAdmin || role == domconnection.RoleUser, nil
 }
 
@@ -63,5 +63,5 @@ func (r *AccountAccessResolver) HasAdminGrant(ctx context.Context, accountID, us
 		}
 		return false, err
 	}
-	return grant.Role() == domconnection.RoleAdmin, nil
+	return grant.Role == domconnection.RoleAdmin, nil
 }

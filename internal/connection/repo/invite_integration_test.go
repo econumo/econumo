@@ -25,11 +25,17 @@ func newInviteRepo(t *testing.T) (*connectionrepo.InviteRepo, *dbtest.DB) {
 	return connectionrepo.NewInviteRepo("sqlite", db.TX), db
 }
 
+func newInvite(userID vo.Id, code string, expiredAt *time.Time) *domconnection.ConnectionInvite {
+	return &domconnection.ConnectionInvite{
+		UserID: userID, Code: domconnection.ReconstituteConnectionCode(code), ExpiredAt: expiredAt,
+	}
+}
+
 func TestInviteRepo_SaveAndGetByUser(t *testing.T) {
 	repo, _ := newInviteRepo(t)
 	ctx := context.Background()
 	exp := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
-	inv := domconnection.InviteFromState(vo.MustParseId(userA), "CODE1", &exp)
+	inv := newInvite(vo.MustParseId(userA), "CODE1", &exp)
 	if err := repo.Save(ctx, inv); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -40,11 +46,11 @@ func TestInviteRepo_SaveAndGetByUser(t *testing.T) {
 	if got == nil {
 		t.Fatal("expected invite, got nil")
 	}
-	if got.Code().Value() != "CODE1" {
-		t.Errorf("code mismatch: %q", got.Code().Value())
+	if got.Code.Value() != "CODE1" {
+		t.Errorf("code mismatch: %q", got.Code.Value())
 	}
-	if got.ExpiredAt() == nil || !got.ExpiredAt().Equal(exp) {
-		t.Errorf("expiredAt mismatch: %v", got.ExpiredAt())
+	if got.ExpiredAt == nil || !got.ExpiredAt.Equal(exp) {
+		t.Errorf("expiredAt mismatch: %v", got.ExpiredAt)
 	}
 }
 
@@ -63,7 +69,7 @@ func TestInviteRepo_GetByCode_ExpiryBoundary(t *testing.T) {
 	repo, _ := newInviteRepo(t)
 	ctx := context.Background()
 	exp := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
-	inv := domconnection.InviteFromState(vo.MustParseId(userA), "LIVEX", &exp)
+	inv := newInvite(vo.MustParseId(userA), "LIVEX", &exp)
 	if err := repo.Save(ctx, inv); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -78,7 +84,7 @@ func TestInviteRepo_GetByCode_ExpiryBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByCode before expiry: %v", err)
 	}
-	if got == nil || got.UserId().String() != userA {
+	if got == nil || got.UserID.String() != userA {
 		t.Fatalf("want invite for userA before expiry, got %+v", got)
 	}
 
@@ -105,18 +111,18 @@ func TestInviteRepo_Save_Upsert(t *testing.T) {
 	repo, _ := newInviteRepo(t)
 	ctx := context.Background()
 	exp1 := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
-	if err := repo.Save(ctx, domconnection.InviteFromState(vo.MustParseId(userA), "FIRS1", &exp1)); err != nil {
+	if err := repo.Save(ctx, newInvite(vo.MustParseId(userA), "FIRS1", &exp1)); err != nil {
 		t.Fatalf("Save first: %v", err)
 	}
 	exp2 := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
-	if err := repo.Save(ctx, domconnection.InviteFromState(vo.MustParseId(userA), "SECN2", &exp2)); err != nil {
+	if err := repo.Save(ctx, newInvite(vo.MustParseId(userA), "SECN2", &exp2)); err != nil {
 		t.Fatalf("Save second: %v", err)
 	}
 	got, err := repo.GetByUser(ctx, vo.MustParseId(userA))
 	if err != nil {
 		t.Fatalf("GetByUser: %v", err)
 	}
-	if got.Code().Value() != "SECN2" || !got.ExpiredAt().Equal(exp2) {
-		t.Errorf("upsert did not overwrite: code=%q exp=%v", got.Code().Value(), got.ExpiredAt())
+	if got.Code.Value() != "SECN2" || !got.ExpiredAt.Equal(exp2) {
+		t.Errorf("upsert did not overwrite: code=%q exp=%v", got.Code.Value(), got.ExpiredAt)
 	}
 }
