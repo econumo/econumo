@@ -5,6 +5,7 @@ import (
 
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
@@ -28,7 +29,7 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/user/get-option-list [get]
 func (h *Handlers) GetOptionList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

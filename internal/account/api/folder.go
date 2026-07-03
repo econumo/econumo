@@ -6,6 +6,7 @@ import (
 	appaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseUnauthorized{}
@@ -25,7 +26,7 @@ var _ = apidoc.JsonResponseUnauthorized{}
 // @Security    Bearer
 // @Router      /api/v1/account/create-folder [post]
 func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -57,7 +58,7 @@ func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/update-folder [post]
 func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -89,7 +90,7 @@ func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/hide-folder [post]
 func (h *Handlers) HideFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -121,7 +122,7 @@ func (h *Handlers) HideFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/show-folder [post]
 func (h *Handlers) ShowFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -153,7 +154,7 @@ func (h *Handlers) ShowFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/replace-folder [post]
 func (h *Handlers) ReplaceFolder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -182,7 +183,7 @@ func (h *Handlers) ReplaceFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/get-folder-list [get]
 func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -209,7 +210,7 @@ func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/order-folder-list [post]
 func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

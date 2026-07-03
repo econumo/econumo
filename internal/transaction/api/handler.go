@@ -2,14 +2,8 @@
 package api
 
 import (
-	"net/http"
-
-	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/vo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseOk{}
@@ -21,13 +15,4 @@ type Handlers struct {
 
 func NewHandlers(svc *apptransaction.Service, dev bool) *Handlers {
 	return &Handlers{svc: svc, dev: dev}
-}
-
-func (h *Handlers) requireUser(w http.ResponseWriter, r *http.Request) (vo.Id, bool) {
-	id, ok := middleware.UserIDFromCtx(r.Context())
-	if !ok {
-		httpx.WriteError(w, errs.NewUnauthorized("JWT Token not found"), h.dev)
-		return vo.Id{}, false
-	}
-	return id, true
 }

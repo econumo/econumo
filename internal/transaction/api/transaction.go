@@ -6,6 +6,7 @@ import (
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 var _ = apidoc.JsonResponseError{}
@@ -25,7 +26,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/transaction/create-transaction [post]
 func (h *Handlers) CreateTransaction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -57,7 +58,7 @@ func (h *Handlers) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/transaction/update-transaction [post]
 func (h *Handlers) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}
@@ -89,7 +90,7 @@ func (h *Handlers) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/transaction/delete-transaction [post]
 func (h *Handlers) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

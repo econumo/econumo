@@ -10,6 +10,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 )
 
 // accountIdPattern restricts the accountId query param to hex chars, commas,
@@ -34,7 +35,7 @@ var accountIdPattern = regexp.MustCompile(`^[0-9a-fA-F,\-\s]*$`)
 // @Security    Bearer
 // @Router      /api/v1/transaction/export-transaction-list [get]
 func (h *Handlers) ExportTransactionList(w http.ResponseWriter, r *http.Request) {
-	userID, ok := h.requireUser(w, r)
+	userID, ok := middleware.RequireUser(w, r)
 	if !ok {
 		return
 	}

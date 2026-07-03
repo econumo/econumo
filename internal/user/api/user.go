@@ -6,6 +6,7 @@ import (
 	"github.com/econumo/econumo/internal/reqctx"
 	"github.com/econumo/econumo/internal/ui/apidoc"
 	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/ui/middleware"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
@@ -92,7 +93,7 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/user/logout-user [post]
 func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.requireUser(w, r); !ok {
+	if _, ok := middleware.RequireUser(w, r); !ok {
 		return
 	}
 	res, err := h.svc.Logout(r.Context())
