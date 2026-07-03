@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	appcurrency "github.com/econumo/econumo/internal/currency"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 // _ keeps the apidoc and appcurrency import aliases visible to swag's annotation

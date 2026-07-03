@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/econumo/econumo/internal/ui/middleware"
-	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/internal/web/middleware"
+	"github.com/econumo/econumo/internal/web/router"
 )
 
 func RegisterAPI(h *Handlers, verifier middleware.TokenVerifier, dev bool) router.RegisterAPI {

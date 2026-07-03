@@ -9,8 +9,8 @@ import (
 
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/web/httpx"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 // accountIdPattern restricts the accountId query param to hex chars, commas,

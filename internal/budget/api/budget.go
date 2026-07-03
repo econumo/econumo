@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
+	"github.com/econumo/econumo/internal/web/httpx"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 var _ = apidoc.JsonResponseError{}

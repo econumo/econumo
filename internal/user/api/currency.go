@@ -3,9 +3,9 @@ package api
 import (
 	"net/http"
 
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
 	appuser "github.com/econumo/econumo/internal/user"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 // _ keeps the apidoc/appuser import aliases visible to swag's annotation

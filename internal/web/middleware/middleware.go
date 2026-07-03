@@ -22,7 +22,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/econumo/econumo/internal/shared/reqctx"
-	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/web/httpx"
 )
 
 // Middleware is a single composable HTTP middleware.

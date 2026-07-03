@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/econumo/econumo/internal/ui/middleware"
-	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/internal/web/middleware"
+	"github.com/econumo/econumo/internal/web/router"
 )
 
 // RegisterAPI mounts the 6 transaction endpoints, all JWT-protected.

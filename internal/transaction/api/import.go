@@ -7,8 +7,8 @@ import (
 
 	"github.com/econumo/econumo/internal/shared/errs"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
-	"github.com/econumo/econumo/internal/ui/httpx"
-	"github.com/econumo/econumo/internal/ui/middleware"
+	"github.com/econumo/econumo/internal/web/httpx"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 // maxImportUpload bounds the multipart parse at 10M — a frozen upload-size limit.

@@ -6,10 +6,10 @@ import (
 
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/endpoint"
-	"github.com/econumo/econumo/internal/ui/httpx"
 	appuser "github.com/econumo/econumo/internal/user"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/endpoint"
+	"github.com/econumo/econumo/internal/web/httpx"
 )
 
 // _ keeps the apidoc import alias visible to swag's annotation parser.

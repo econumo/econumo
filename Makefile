@@ -11,7 +11,7 @@ help:
 	@echo "  make test         - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
 	@echo "  make go-lint      - build + vet + gofmt + OpenAPI-docs-fresh check"
-	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/ui/apidoc/docs)"
+	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/web/apidoc/docs)"
 	@echo "  make up           - Start the stack (compose, builds from source)"
 	@echo "  make down         - Stop the stack"
 	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
@@ -108,7 +108,7 @@ go-lint: swagger-check
 # ---- OpenAPI docs (swaggo/swag) -------------------------------------------
 
 # swag is pinned to the version in go.mod so generation is reproducible (the
-# go:generate directive in internal/ui/apidoc/doc.go uses @latest for ad-hoc
+# go:generate directive in internal/web/apidoc/doc.go uses @latest for ad-hoc
 # runs; the build pipeline uses this pinned version). `go run <pkg>@<ver>` needs
 # the module cache (network on first use).
 SWAG_VERSION := $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag 2>/dev/null || echo v1.16.6)
@@ -119,16 +119,16 @@ SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g d
 # embeds stale docs.
 swagger:
 	@echo "Regenerating OpenAPI docs (swag $(SWAG_VERSION))..."
-	cd internal/ui/apidoc && $(SWAG_INIT) -o ./docs
+	cd internal/web/apidoc && $(SWAG_INIT) -o ./docs
 
 # Fail if the committed docs differ from a fresh generation (stale annotations
 # not regenerated + committed). Generates into a temp dir and diffs, so it never
 # mutates the working tree. Wired into go-lint (and thus `make test` / CI).
 swagger-check:
 	@tmp=$$(mktemp -d); \
-		( cd internal/ui/apidoc && $(SWAG_INIT) -o "$$tmp" >/dev/null 2>&1 ) || \
+		( cd internal/web/apidoc && $(SWAG_INIT) -o "$$tmp" >/dev/null 2>&1 ) || \
 			{ echo "FAIL: could not run swag (need network/module cache for swag $(SWAG_VERSION))"; rm -rf "$$tmp"; exit 1; }; \
-		if ! diff -q "$$tmp/swagger.json" internal/ui/apidoc/docs/swagger.json >/dev/null 2>&1; then \
+		if ! diff -q "$$tmp/swagger.json" internal/web/apidoc/docs/swagger.json >/dev/null 2>&1; then \
 			echo "FAIL: OpenAPI docs are stale — run 'make swagger' and commit the result"; rm -rf "$$tmp"; exit 1; fi; \
 		rm -rf "$$tmp"; echo "swagger: docs up to date"
 

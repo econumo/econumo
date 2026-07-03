@@ -2,7 +2,7 @@ package api
 
 import (
 	appbudget "github.com/econumo/econumo/internal/budget"
-	"github.com/econumo/econumo/internal/ui/apidoc"
+	"github.com/econumo/econumo/internal/web/apidoc"
 )
 
 var _ = apidoc.JsonResponseOk{}

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	"github.com/econumo/econumo/internal/ui/router"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/router"
 )
 
 // TestSwaggerRoutes confirms the spec is served publicly (no JWT) and is valid

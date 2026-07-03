@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/econumo/econumo/internal/ui/httpx"
+	"github.com/econumo/econumo/internal/web/httpx"
 )
 
 // Pinger is the minimal database-health contract the health-check needs. The

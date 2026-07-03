@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
-	"github.com/econumo/econumo/internal/ui/endpoint"
+	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 // _ keeps the appbudget import alias visible to swag's annotation parser
