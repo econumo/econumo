@@ -51,13 +51,22 @@ Note on archtest: features importing `internal/infra/auth`, `internal/infra/mail
 
 ---
 
-### Task 3: Prune single-impl interfaces — budget, connection, transaction + middleware.TokenVerifier
+### Task 3: Remaining prunes — connection/repo.accountAccessFull + middleware.TokenVerifier
 
-**Prune list:**
-- `budget.ReadModel` (readmodel.go:76) → `*budgetrepo.ReadRepo`.
-- `connection.AccountAccessRepository` (repository.go:13) → `*connectionrepo.Repo`; `connection.InviteRepository` (repository.go:48) → `*connectionrepo.InviteRepo`; `connection/repo.accountAccessFull` (repo/adapters.go:21) → fold `AccountAccessResolver` to hold `*Repo` directly.
-- `transaction.Repository` (repository.go:13) → `*transactionrepo.Repo`; `transaction.ExportLookup` (export.go:40) → `*transactionrepo.ExportLookup`; `transaction.Importer` (import.go:70) → `*transactionrepo.ImportLookup`.
-- `middleware.TokenVerifier` (ui/middleware/auth.go:18) → `*jwt.JWT` — touches `middleware.JWT(...)` and all 9 `internal/<feature>/api/routes.go` `RegisterAPI` signatures (they thread the verifier). Verify no fake implements TokenVerifier anywhere in tests first (audit says none; re-verify: `grep -rn 'TokenVerifier' internal --include='*_test.go'`). middleware (ui leaf) importing shared/jwt (kernel) — allowed.
+> **Amended after Task 2:** the audit's root-declared repo-interface prune
+> candidates (`<feature>.Repository`/`ReadModel`/`PasswordRequests`/`WriteModel`,
+> `budget.ReadModel`, `connection.*Repository`, `transaction.Repository`/
+> `ExportLookup`/`Importer`) are IMPOSSIBLE to prune: each feature's `repo/`
+> subpackage imports the feature root for entity types, so the root holding a
+> `*<feature>repo.X` concretely is a Go import cycle (proven empirically in
+> Task 2). These interfaces are the spec's DESIGNED intra-feature seam — the
+> target shape's `repository.go` — and are hereby reclassified KEEP-by-design
+> (spec amended to say so). Phase 4 pruning applies only to seams not serving
+> the root←repo direction.
+
+**Prune list (what actually remains):**
+- `connection/repo.accountAccessFull` (repo/adapters.go:21) → fold `AccountAccessResolver` to hold `*Repo` directly (same package — no cycle).
+- `middleware.TokenVerifier` (ui/middleware/auth.go:18) → `*jwt.JWT` — touches `middleware.JWT(...)` and all 9 `internal/<feature>/api/routes.go` `RegisterAPI` signatures (they thread the verifier). Verify no fake implements TokenVerifier anywhere in tests first (audit says none; re-verify: `grep -rn 'TokenVerifier' internal --include='*_test.go'`). middleware (ui leaf) importing shared/jwt (kernel) — allowed. If a routes.go signature turns out not to thread it (wired otherwise), adapt minimally and report.
 
 - [ ] **Step 1:** Prune per list, compiling per feature.
 - [ ] **Step 2:** Sweep greps analogous to Task 2 (+ `TokenVerifier` gone); empty `repository.go` files deleted.

@@ -258,7 +258,11 @@ Per feature commit:
 - Delete pass-through adapters whose wrapped method already matches the port
   signature (Go structural typing needs no adapter there).
 - Prune single-implementation interfaces *within* a feature; depend on the
-  concrete type unless a real test seam needs the interface.
+  concrete type unless a real test seam needs the interface. **Amendment
+  (Phase 4, 2026-07-02):** the root-declared persistence interfaces
+  (`repository.go`, read models) are exempt — `repo/` imports the root for
+  entity types, so the root depending on `repo/`'s concretes is a Go import
+  cycle; these interfaces are the designed intra-feature seam, not ceremony.
 - Cross-feature ports are exempt — they are load-bearing under the dependency
   rule. The sqlc `querier` seam is exempt — it is the deliberate engine-adapter
   pattern.
