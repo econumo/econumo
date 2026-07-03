@@ -81,7 +81,8 @@ tree holding its own domain logic, persistence, and HTTP edge:
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
 │   │   │                            currency, payee, tag, transaction, user); root package holds the
 │   │   │                            entities, repository interface, and use-case services:
-│   │   │   entity.go .............   domain entities: EXPORTED fields (direct reads), mutators
+│   │   │   <feature>.go ..........   domain entities (file named after the package, e.g.
+│   │   │                             category/category.go): EXPORTED fields (direct reads), mutators
 │   │   │                             own all post-construction writes (change-tracking bumps
 │   │   │                             UpdatedAt only on real change); no getter methods
 │   │   │   dto.go ................   request/result DTOs for the use-case services
@@ -112,7 +113,7 @@ tree holding its own domain logic, persistence, and HTTP edge:
 
 Not every feature has all four root files — e.g. `currency` has no per-user
 entity/repository/use-case shape (it's rates + conversion + admin lookups), so
-it keeps `dto.go` but not `entity.go`/`usecase.go`/`repository.go`.
+it keeps `dto.go` but not `currency.go`/`usecase.go`/`repository.go`.
 
 ### Dependency rule
 
