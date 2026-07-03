@@ -8,7 +8,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
-	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -26,7 +26,7 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo("sqlite", db.TX)
 	lookup := currencyrepo.New("sqlite", db.TX)
-	budgets := userbudgetrepo.New("sqlite", db.TX)
+	budgets := server.NewUserBudgetExistence("sqlite", db.TX)
 	// Login issues a JWT; reuse the embedded test keypair.
 	priv, pub := testkeys.Paths(t)
 	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)

@@ -1,8 +1,8 @@
-// BudgetAccountLookup adapts the account repository to app/budget.AccountLookup,
+// BudgetAccountLookup adapts the account repository to budget.AccountLookup,
 // BudgetCategoryMetadataLookup adapts the category repository,
 // BudgetTagMetadataLookup adapts the tag repository, and
 // BudgetPayeeMetadataLookup adapts the payee repository. They live here, not
-// in internal/infra/repo/budget, because they need the
+// in internal/budget/repo, because they need the
 // account/category/tag/payee features' types and an infra package must not
 // import a feature (see archtest).
 package server
@@ -11,7 +11,7 @@ import (
 	"context"
 
 	account "github.com/econumo/econumo/internal/account"
-	appbudget "github.com/econumo/econumo/internal/app/budget"
+	appbudget "github.com/econumo/econumo/internal/budget"
 	category "github.com/econumo/econumo/internal/category"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -23,7 +23,7 @@ type budgetAccountRepo interface {
 	GetByID(ctx context.Context, id vo.Id) (*account.Account, error)
 }
 
-// BudgetAccountLookup adapts the account repository to app/budget.AccountLookup.
+// BudgetAccountLookup adapts the account repository to budget.AccountLookup.
 type BudgetAccountLookup struct {
 	accounts budgetAccountRepo
 }
@@ -82,8 +82,8 @@ type budgetCategoryRepo interface {
 }
 
 // BudgetCategoryMetadataLookup adapts the category repository to the category
-// slice of app/budget.MetadataLookup (wired into budgetrepo.MetadataLookup's
-// categories field). It lives here, not in internal/infra/repo/budget,
+// slice of budget.MetadataLookup (wired into budgetrepo.MetadataLookup's
+// categories field). It lives here, not in internal/budget/repo,
 // because it needs the category feature's Category type and an infra package
 // must not import a feature (see archtest).
 type BudgetCategoryMetadataLookup struct {
@@ -123,8 +123,8 @@ type budgetTagRepo interface {
 }
 
 // BudgetTagMetadataLookup adapts the tag repository to the tag slice of
-// app/budget.MetadataLookup (wired into budgetrepo.MetadataLookup's tags
-// field). It lives here, not in internal/infra/repo/budget, because it needs
+// budget.MetadataLookup (wired into budgetrepo.MetadataLookup's tags
+// field). It lives here, not in internal/budget/repo, because it needs
 // the tag feature's Tag type and an infra package must not import a feature
 // (see archtest).
 type BudgetTagMetadataLookup struct {
@@ -163,8 +163,8 @@ type budgetPayeeRepo interface {
 }
 
 // BudgetPayeeMetadataLookup adapts the payee repository to the payee slice of
-// app/budget.MetadataLookup (wired into budgetrepo.MetadataLookup's payees
-// field). It lives here, not in internal/infra/repo/budget, because it needs
+// budget.MetadataLookup (wired into budgetrepo.MetadataLookup's payees
+// field). It lives here, not in internal/budget/repo, because it needs
 // the payee feature's Payee type and an infra package must not import a
 // feature (see archtest).
 type BudgetPayeeMetadataLookup struct {

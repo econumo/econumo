@@ -10,7 +10,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
-	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -29,7 +29,7 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo("sqlite", db.TX)
 	lookup := currencyrepo.New("sqlite", db.TX)
-	budgets := userbudgetrepo.New("sqlite", db.TX)
+	budgets := server.NewUserBudgetExistence("sqlite", db.TX)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, nil, lookup, budgets, nil, nil, clock.New(), false)
 	return svc, enc, hasher
 }

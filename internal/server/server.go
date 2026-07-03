@@ -15,7 +15,9 @@ import (
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	appbudget "github.com/econumo/econumo/internal/app/budget"
+	appbudget "github.com/econumo/econumo/internal/budget"
+	handlerbudget "github.com/econumo/econumo/internal/budget/api"
+	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
@@ -29,8 +31,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
-	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
@@ -43,7 +43,6 @@ import (
 	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	"github.com/econumo/econumo/internal/ui/apidoc"
-	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
 	"github.com/econumo/econumo/internal/ui/router"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
@@ -67,7 +66,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
+	budgetExistence := NewUserBudgetExistence(cfg.DatabaseDriver, txm)
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
@@ -156,7 +155,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
 	convertor := appcurrency.NewConvertor(rateProvider)
 	budgetSvc := appbudget.NewService(
-		budgetRepo, budgetReadRepo, convertor, rateProvider,
+		budgetRepo, budgetReadRepo, NewBudgetConvertor(convertor), NewBudgetAverageRateLookup(rateProvider),
 		NewBudgetUserLookup(userRepo, clk),
 		NewBudgetAccountLookup(accountRepo),
 		currencyLookup,

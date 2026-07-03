@@ -307,6 +307,18 @@ definitions:
         example: false
         type: boolean
     type: object
+  budget.AcceptAccessRequest:
+    properties:
+      budgetId:
+        type: string
+    type: object
+  budget.AcceptAccessResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.MetaResult'
+        type: array
+    type: object
   budget.AccessResult:
     properties:
       isAccepted:
@@ -367,6 +379,17 @@ definitions:
       tag:
         $ref: '#/definitions/budget.TxTagResult'
     type: object
+  budget.ChangeElementCurrencyRequest:
+    properties:
+      budgetId:
+        type: string
+      currencyId:
+        type: string
+      elementId:
+        type: string
+    type: object
+  budget.ChangeElementCurrencyResult:
+    type: object
   budget.ChildElementResult:
     properties:
       budgetSpent:
@@ -386,6 +409,64 @@ definitions:
       type:
         type: integer
     type: object
+  budget.CreateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  budget.CreateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.FolderResult'
+    type: object
+  budget.CreateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      startDate:
+        type: string
+    type: object
+  budget.CreateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.BudgetResult'
+    type: object
+  budget.CreateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  budget.CreateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.ParentElementResult'
+    type: object
   budget.CurrencyBalanceResult:
     properties:
       currencyId:
@@ -402,6 +483,50 @@ definitions:
         type: string
       startBalance:
         type: string
+    type: object
+  budget.DeclineAccessRequest:
+    properties:
+      budgetId:
+        type: string
+    type: object
+  budget.DeclineAccessResult:
+    type: object
+  budget.DeleteBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  budget.DeleteBudgetResult:
+    type: object
+  budget.DeleteEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  budget.DeleteEnvelopeResult:
+    type: object
+  budget.DeleteFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  budget.DeleteFolderResult:
+    type: object
+  budget.ExcludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  budget.ExcludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
     type: object
   budget.FiltersResult:
     properties:
@@ -422,6 +547,53 @@ definitions:
         type: string
       position:
         type: integer
+    type: object
+  budget.GetBudgetListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.MetaResult'
+        type: array
+    type: object
+  budget.GetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.BudgetResult'
+    type: object
+  budget.GetBudgetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.BudgetTransactionResult'
+        type: array
+    type: object
+  budget.GrantAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  budget.GrantAccessResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/budget.MetaResult'
+        type: array
+    type: object
+  budget.IncludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  budget.IncludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
     type: object
   budget.MetaResult:
     properties:
@@ -448,6 +620,28 @@ definitions:
         type: string
       position:
         type: integer
+    type: object
+  budget.MoveElementListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/budget.MoveElementListItem'
+        type: array
+    type: object
+  budget.MoveElementListResult:
+    type: object
+  budget.OrderBudgetFolderListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/budget.OrderFolderListItem'
+        type: array
+    type: object
+  budget.OrderBudgetFolderListResult:
     type: object
   budget.OrderFolderListItem:
     properties:
@@ -489,6 +683,40 @@ definitions:
       type:
         type: integer
     type: object
+  budget.ResetBudgetRequest:
+    properties:
+      id:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  budget.ResetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
+    type: object
+  budget.RevokeAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      userId:
+        type: string
+    type: object
+  budget.RevokeAccessResult:
+    type: object
+  budget.SetLimitRequest:
+    properties:
+      amount:
+        type: string
+      budgetId:
+        type: string
+      elementId:
+        type: string
+      period:
+        type: string
+    type: object
+  budget.SetLimitResult:
+    type: object
   budget.StructureResult:
     properties:
       elements:
@@ -522,6 +750,62 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  budget.UpdateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  budget.UpdateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.FolderResult'
+    type: object
+  budget.UpdateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  budget.UpdateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.MetaResult'
+    type: object
+  budget.UpdateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+    type: object
+  budget.UpdateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/budget.ParentElementResult'
     type: object
   budget.UserResult:
     properties:
@@ -763,290 +1047,6 @@ definitions:
         items:
           $ref: '#/definitions/currency.CurrencyRateResult'
         type: array
-    type: object
-  github_com_econumo_econumo_internal_app_budget.AcceptAccessRequest:
-    properties:
-      budgetId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.AcceptAccessResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.MetaResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyRequest:
-    properties:
-      budgetId:
-        type: string
-      currencyId:
-        type: string
-      elementId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.FolderResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.CreateBudgetRequest:
-    properties:
-      currencyId:
-        type: string
-      excludedAccounts:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      name:
-        type: string
-      startDate:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.CreateBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.BudgetResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.CreateEnvelopeRequest:
-    properties:
-      budgetId:
-        type: string
-      categories:
-        items:
-          type: string
-        type: array
-      currencyId:
-        type: string
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.CreateEnvelopeResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.ParentElementResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeclineAccessRequest:
-    properties:
-      budgetId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeclineAccessResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeleteBudgetRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeleteBudgetResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeleteFolderRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.DeleteFolderResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.ExcludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.ExcludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.GetBudgetListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.MetaResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_budget.GetBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.BudgetResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.GetBudgetTransactionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.BudgetTransactionResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_budget.GrantAccessRequest:
-    properties:
-      budgetId:
-        type: string
-      role:
-        type: string
-      userId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.GrantAccessResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.MetaResult'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_budget.IncludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.IncludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.MoveElementListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/budget.MoveElementListItem'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_budget.MoveElementListResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/budget.OrderFolderListItem'
-        type: array
-    type: object
-  github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.ResetBudgetRequest:
-    properties:
-      id:
-        type: string
-      startedAt:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.ResetBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.RevokeAccessRequest:
-    properties:
-      budgetId:
-        type: string
-      userId:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.RevokeAccessResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.SetLimitRequest:
-    properties:
-      amount:
-        type: string
-      budgetId:
-        type: string
-      elementId:
-        type: string
-      period:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.SetLimitResult:
-    type: object
-  github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.FolderResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.UpdateBudgetRequest:
-    properties:
-      currencyId:
-        type: string
-      excludedAccounts:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.UpdateBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeRequest:
-    properties:
-      budgetId:
-        type: string
-      categories:
-        items:
-          type: string
-        type: array
-      currencyId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-    type: object
-  github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.ParentElementResult'
     type: object
   payee.ArchivePayeeRequest:
     properties:
@@ -2048,7 +2048,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.AcceptAccessRequest'
+          $ref: '#/definitions/budget.AcceptAccessRequest'
       produces:
       - application/json
       responses:
@@ -2059,7 +2059,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.AcceptAccessResult'
+                  $ref: '#/definitions/budget.AcceptAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2076,7 +2076,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyRequest'
+          $ref: '#/definitions/budget.ChangeElementCurrencyRequest'
       produces:
       - application/json
       responses:
@@ -2087,7 +2087,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ChangeElementCurrencyResult'
+                  $ref: '#/definitions/budget.ChangeElementCurrencyResult'
               type: object
       security:
       - Bearer: []
@@ -2104,7 +2104,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetRequest'
+          $ref: '#/definitions/budget.CreateBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2115,7 +2115,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetResult'
+                  $ref: '#/definitions/budget.CreateBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -2144,7 +2144,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateEnvelopeRequest'
+          $ref: '#/definitions/budget.CreateEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2155,7 +2155,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateEnvelopeResult'
+                  $ref: '#/definitions/budget.CreateEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2172,7 +2172,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderRequest'
+          $ref: '#/definitions/budget.CreateBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -2183,7 +2183,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.CreateBudgetFolderResult'
+                  $ref: '#/definitions/budget.CreateBudgetFolderResult'
               type: object
       security:
       - Bearer: []
@@ -2200,7 +2200,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeclineAccessRequest'
+          $ref: '#/definitions/budget.DeclineAccessRequest'
       produces:
       - application/json
       responses:
@@ -2211,7 +2211,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeclineAccessResult'
+                  $ref: '#/definitions/budget.DeclineAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2228,7 +2228,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteBudgetRequest'
+          $ref: '#/definitions/budget.DeleteBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2239,7 +2239,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteBudgetResult'
+                  $ref: '#/definitions/budget.DeleteBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2256,7 +2256,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeRequest'
+          $ref: '#/definitions/budget.DeleteEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2267,7 +2267,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteEnvelopeResult'
+                  $ref: '#/definitions/budget.DeleteEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2284,7 +2284,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteFolderRequest'
+          $ref: '#/definitions/budget.DeleteFolderRequest'
       produces:
       - application/json
       responses:
@@ -2295,7 +2295,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.DeleteFolderResult'
+                  $ref: '#/definitions/budget.DeleteFolderResult'
               type: object
       security:
       - Bearer: []
@@ -2312,7 +2312,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ExcludeAccountRequest'
+          $ref: '#/definitions/budget.ExcludeAccountRequest'
       produces:
       - application/json
       responses:
@@ -2323,7 +2323,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ExcludeAccountResult'
+                  $ref: '#/definitions/budget.ExcludeAccountResult'
               type: object
       security:
       - Bearer: []
@@ -2352,7 +2352,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetResult'
+                  $ref: '#/definitions/budget.GetBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2371,7 +2371,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetListResult'
+                  $ref: '#/definitions/budget.GetBudgetListResult'
               type: object
       security:
       - Bearer: []
@@ -2413,7 +2413,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GetBudgetTransactionListResult'
+                  $ref: '#/definitions/budget.GetBudgetTransactionListResult'
               type: object
       security:
       - Bearer: []
@@ -2430,7 +2430,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GrantAccessRequest'
+          $ref: '#/definitions/budget.GrantAccessRequest'
       produces:
       - application/json
       responses:
@@ -2441,7 +2441,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.GrantAccessResult'
+                  $ref: '#/definitions/budget.GrantAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2458,7 +2458,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.IncludeAccountRequest'
+          $ref: '#/definitions/budget.IncludeAccountRequest'
       produces:
       - application/json
       responses:
@@ -2469,7 +2469,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.IncludeAccountResult'
+                  $ref: '#/definitions/budget.IncludeAccountResult'
               type: object
       security:
       - Bearer: []
@@ -2486,7 +2486,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.MoveElementListRequest'
+          $ref: '#/definitions/budget.MoveElementListRequest'
       produces:
       - application/json
       responses:
@@ -2497,7 +2497,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.MoveElementListResult'
+                  $ref: '#/definitions/budget.MoveElementListResult'
               type: object
       security:
       - Bearer: []
@@ -2514,7 +2514,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListRequest'
+          $ref: '#/definitions/budget.OrderBudgetFolderListRequest'
       produces:
       - application/json
       responses:
@@ -2525,7 +2525,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.OrderBudgetFolderListResult'
+                  $ref: '#/definitions/budget.OrderBudgetFolderListResult'
               type: object
       security:
       - Bearer: []
@@ -2542,7 +2542,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ResetBudgetRequest'
+          $ref: '#/definitions/budget.ResetBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2553,7 +2553,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.ResetBudgetResult'
+                  $ref: '#/definitions/budget.ResetBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2570,7 +2570,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.RevokeAccessRequest'
+          $ref: '#/definitions/budget.RevokeAccessRequest'
       produces:
       - application/json
       responses:
@@ -2581,7 +2581,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.RevokeAccessResult'
+                  $ref: '#/definitions/budget.RevokeAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2598,7 +2598,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.SetLimitRequest'
+          $ref: '#/definitions/budget.SetLimitRequest'
       produces:
       - application/json
       responses:
@@ -2609,7 +2609,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.SetLimitResult'
+                  $ref: '#/definitions/budget.SetLimitResult'
               type: object
       security:
       - Bearer: []
@@ -2626,7 +2626,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetRequest'
+          $ref: '#/definitions/budget.UpdateBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2637,7 +2637,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetResult'
+                  $ref: '#/definitions/budget.UpdateBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -2658,7 +2658,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeRequest'
+          $ref: '#/definitions/budget.UpdateEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2669,7 +2669,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateEnvelopeResult'
+                  $ref: '#/definitions/budget.UpdateEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2686,7 +2686,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderRequest'
+          $ref: '#/definitions/budget.UpdateBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -2697,7 +2697,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_econumo_econumo_internal_app_budget.UpdateBudgetFolderResult'
+                  $ref: '#/definitions/budget.UpdateBudgetFolderResult'
               type: object
       security:
       - Bearer: []

@@ -510,7 +510,7 @@ func (b *Builder) EnvelopeCategory(envelopeID, categoryID string) {
 }
 
 // BudgetAccess grants userID access to budgetID. role is the stored SMALLINT
-// (see internal/domain/budget/valueobject.go: admin=0, user=1, guest=2);
+// (see internal/budget/valueobject.go: admin=0, user=1, guest=2);
 // accepted=false models a pending invite.
 func (b *Builder) BudgetAccess(budgetID, userID string, role int, accepted bool) {
 	b.t.Helper()

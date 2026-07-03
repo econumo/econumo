@@ -13,12 +13,12 @@ import (
 	_ "modernc.org/sqlite"
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	"github.com/econumo/econumo/internal/config"
 	appconnection "github.com/econumo/econumo/internal/connection"
 	handlerconnection "github.com/econumo/econumo/internal/connection/api"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
-	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
