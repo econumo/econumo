@@ -33,7 +33,7 @@ func (s *Service) AccountListForUser(ctx context.Context, userID vo.Id) ([]Accou
 // AccountOwner returns the owner user id of an account (for cross-module access
 // checks, e.g. transaction). Missing -> *errs.NotFoundError (from the repo).
 func (s *Service) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
-	acct, err := s.repo.GetByID(ctx, accountID)
+	acct, err := s.accounts.GetByID(ctx, accountID)
 	if err != nil {
 		return vo.Id{}, err
 	}
@@ -44,7 +44,7 @@ func (s *Service) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, err
 // accounts that are NOT in a hidden folder — the set whose transactions the user
 // may list.
 func (s *Service) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
-	accts, err := s.repo.ListAvailable(ctx, userID)
+	accts, err := s.accounts.ListAvailable(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (s *Service) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id,
 	if err != nil {
 		return nil, err
 	}
-	memberships, err := s.folders.MembershipsByUser(ctx, userID)
+	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

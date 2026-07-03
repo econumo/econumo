@@ -33,7 +33,7 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 	}
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		accts, err := s.repo.ListAvailable(ctx, userID)
+		accts, err := s.accounts.ListAvailable(ctx, userID)
 		if err != nil {
 			return err
 		}
@@ -45,7 +45,7 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 		if err != nil {
 			return err
 		}
-		memberships, err := s.folders.MembershipsByUser(ctx, userID)
+		memberships, err := s.memberships.MembershipsByUser(ctx, userID)
 		if err != nil {
 			return err
 		}
@@ -69,18 +69,18 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 				}
 				if f.ID.Equal(ch.folderID) {
 					if !contains {
-						if aerr := s.folders.AddAccount(ctx, f.ID, ch.accountID); aerr != nil {
+						if aerr := s.memberships.AddAccount(ctx, f.ID, ch.accountID); aerr != nil {
 							return aerr
 						}
 					}
 				} else if contains {
-					if rerr := s.folders.RemoveAccount(ctx, f.ID, ch.accountID); rerr != nil {
+					if rerr := s.memberships.RemoveAccount(ctx, f.ID, ch.accountID); rerr != nil {
 						return rerr
 					}
 				}
 			}
 			// Update the per-user position (upsert accounts_options).
-			if serr := s.repo.SavePosition(ctx, acct.ID, userID, ch.position, now); serr != nil {
+			if serr := s.positions.SavePosition(ctx, acct.ID, userID, ch.position, now); serr != nil {
 				return serr
 			}
 		}

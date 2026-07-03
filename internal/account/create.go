@@ -62,13 +62,13 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 		// no accounts_options rows yet (maxPos==0 — no own accounts, or only
 		// option-less shared ones), fall back to the count of available accounts so
 		// the new account still sorts last.
-		maxPos, perr := s.repo.MaxPosition(ctx, userID)
+		maxPos, perr := s.positions.MaxPosition(ctx, userID)
 		if perr != nil {
 			return perr
 		}
 		position := maxPos + 1
 		if maxPos == 0 {
-			n, cerr := s.repo.CountAvailable(ctx, userID)
+			n, cerr := s.accounts.CountAvailable(ctx, userID)
 			if cerr != nil {
 				return cerr
 			}
@@ -77,10 +77,10 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 
 		now := s.clock.Now()
 		acct := NewAccount(id, userID, currencyID, name, icon, now)
-		if serr := s.repo.Save(ctx, acct); serr != nil {
+		if serr := s.accounts.Save(ctx, acct); serr != nil {
 			return serr
 		}
-		if serr := s.repo.SavePosition(ctx, id, userID, position, now); serr != nil {
+		if serr := s.positions.SavePosition(ctx, id, userID, position, now); serr != nil {
 			return serr
 		}
 
@@ -89,13 +89,13 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 		if ferr != nil {
 			return ferr
 		}
-		if aerr := s.folders.AddAccount(ctx, folderID, id); aerr != nil {
+		if aerr := s.memberships.AddAccount(ctx, folderID, id); aerr != nil {
 			return aerr
 		}
 
 		// seed the balance via a correction transaction (only when non-zero).
 		if !balance.IsZero() {
-			corrID := s.repo.NextIdentity()
+			corrID := s.accounts.NextIdentity()
 			corrType := correctionType(balance)
 			spentAt := s.localNow(ctx)
 			corr := Correction{
@@ -108,7 +108,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 				SpentAt:     spentAt,
 				CreatedAt:   now,
 			}
-			if cerr := s.repo.SaveCorrection(ctx, corr); cerr != nil {
+			if cerr := s.accounts.SaveCorrection(ctx, corr); cerr != nil {
 				return cerr
 			}
 			typeAlias := "expense"
@@ -148,11 +148,11 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	if err != nil {
 		return nil, err
 	}
-	memberships, err := s.folders.MembershipsByUser(ctx, userID)
+	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	bal, err := s.repo.Balance(ctx, id, s.balanceBefore(ctx))
+	bal, err := s.balances.Balance(ctx, id, s.balanceBefore(ctx))
 	if err != nil {
 		return nil, err
 	}

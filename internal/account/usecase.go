@@ -47,17 +47,23 @@ type SharedAccessView struct {
 }
 
 // Service is the account+folder write-side use-case orchestrator. It owns the tx
-// boundary and builds the response-shaped *Result structs directly.
+// boundary and builds the response-shaped *Result structs directly. The one
+// Repository/FolderRepository constructor param each split into their role
+// interfaces here so every use-case file references the narrowest surface it
+// actually needs.
 type Service struct {
-	repo     Repository
-	folders  FolderRepository
-	currency CurrencyLookup
-	users    UserLookup
-	shared   SharedAccessLookup
-	revoker  AccessRevoker
-	tx       port.TxRunner
-	ops      port.OperationGuard
-	clock    port.Clock
+	accounts    AccountStore
+	positions   PositionStore
+	balances    BalanceReader
+	folders     FolderStore
+	memberships FolderMembership
+	currency    CurrencyLookup
+	users       UserLookup
+	shared      SharedAccessLookup
+	revoker     AccessRevoker
+	tx          port.TxRunner
+	ops         port.OperationGuard
+	clock       port.Clock
 }
 
 // NewService wires the account+folder service. shared/revoker may be nil (no
@@ -74,7 +80,11 @@ func NewService(
 	ops port.OperationGuard,
 	clock port.Clock,
 ) *Service {
-	return &Service{repo: repo, folders: folders, currency: currency, users: users, shared: shared, revoker: revoker, tx: tx, ops: ops, clock: clock}
+	return &Service{
+		accounts: repo, positions: repo, balances: repo,
+		folders: folders, memberships: folders,
+		currency: currency, users: users, shared: shared, revoker: revoker, tx: tx, ops: ops, clock: clock,
+	}
 }
 
 // balanceBefore is the exclusive upper bound for the balance SUM: the start of
@@ -160,7 +170,7 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *Ac
 	}
 
 	// position from accounts_options (0 if no row).
-	pos, _, err := s.repo.GetPosition(ctx, acct.ID, userID)
+	pos, _, err := s.positions.GetPosition(ctx, acct.ID, userID)
 	if err != nil {
 		return AccountResult{}, err
 	}
@@ -260,11 +270,11 @@ func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *a
 // accounts (bulk balances + memberships loaded once). When reversed is true the
 // list is reversed (get-account-list reverses; order-account-list does not).
 func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed bool) ([]AccountResult, error) {
-	accts, err := s.repo.ListAvailable(ctx, userID)
+	accts, err := s.accounts.ListAvailable(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	balances, err := s.repo.Balances(ctx, userID, s.balanceBefore(ctx))
+	balances, err := s.balances.Balances(ctx, userID, s.balanceBefore(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +282,7 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 	if err != nil {
 		return nil, err
 	}
-	memberships, err := s.folders.MembershipsByUser(ctx, userID)
+	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

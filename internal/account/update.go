@@ -48,7 +48,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 		correction *CorrectionResult
 	)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		acct, gerr := s.repo.GetByID(ctx, id)
+		acct, gerr := s.accounts.GetByID(ctx, id)
 		if gerr != nil {
 			return gerr
 		}
@@ -61,13 +61,13 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 		if currencyID != nil {
 			acct.UpdateCurrency(*currencyID, now)
 		}
-		if serr := s.repo.Save(ctx, acct); serr != nil {
+		if serr := s.accounts.Save(ctx, acct); serr != nil {
 			return serr
 		}
 
 		// reconcile balance: correction = actual - requested. A correction of 0
 		// writes nothing.
-		actualStr, berr := s.repo.Balance(ctx, id, s.balanceBefore(ctx))
+		actualStr, berr := s.balances.Balance(ctx, id, s.balanceBefore(ctx))
 		if berr != nil {
 			return berr
 		}
@@ -81,7 +81,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 			if diff.IsNegative() {
 				corrType = 1 // income
 			}
-			corrID := s.repo.NextIdentity()
+			corrID := s.accounts.NextIdentity()
 			corr := Correction{
 				ID:          corrID,
 				UserID:      userID,
@@ -92,7 +92,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 				SpentAt:     updatedAt,
 				CreatedAt:   now,
 			}
-			if cerr := s.repo.SaveCorrection(ctx, corr); cerr != nil {
+			if cerr := s.accounts.SaveCorrection(ctx, corr); cerr != nil {
 				return cerr
 			}
 			typeAlias := "expense"
@@ -126,11 +126,11 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 	if err != nil {
 		return nil, err
 	}
-	memberships, err := s.folders.MembershipsByUser(ctx, userID)
+	memberships, err := s.memberships.MembershipsByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	bal, err := s.repo.Balance(ctx, id, s.balanceBefore(ctx))
+	bal, err := s.balances.Balance(ctx, id, s.balanceBefore(ctx))
 	if err != nil {
 		return nil, err
 	}

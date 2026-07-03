@@ -169,7 +169,7 @@ func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req ReplaceFo
 		}
 
 		// Move the folder's accounts into the replacement (idempotent add).
-		accountIDs, aerr := s.folders.FolderAccountIDs(ctx, id)
+		accountIDs, aerr := s.memberships.FolderAccountIDs(ctx, id)
 		if aerr != nil {
 			return aerr
 		}
@@ -178,7 +178,7 @@ func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req ReplaceFo
 			if perr != nil {
 				return perr
 			}
-			if addErr := s.folders.AddAccount(ctx, replaceID, accountID); addErr != nil {
+			if addErr := s.memberships.AddAccount(ctx, replaceID, accountID); addErr != nil {
 				return addErr
 			}
 		}
