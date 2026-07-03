@@ -207,7 +207,7 @@ func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) 
 	}
 	out := make([]apptransaction.ImportNamed, len(list))
 	for i, tg := range list {
-		out[i] = apptransaction.ImportNamed{ID: tg.Id().String(), Name: tg.Name(), OwnerID: tg.UserId().String()}
+		out[i] = apptransaction.ImportNamed{ID: tg.ID.String(), Name: tg.Name, OwnerID: tg.UserID.String()}
 	}
 	return out, nil
 }

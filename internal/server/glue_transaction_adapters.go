@@ -135,7 +135,7 @@ func (l *TransactionTagNameLookup) TagName(ctx context.Context, id vo.Id) (strin
 	if err != nil {
 		return "", nil
 	}
-	return t.Name(), nil
+	return t.Name, nil
 }
 
 // transactionPayeeByID is the minimal payee-repo surface the export adapter's

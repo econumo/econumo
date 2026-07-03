@@ -22,7 +22,7 @@ func (s *Service) DeleteTag(ctx context.Context, userID vo.Id, req DeleteTagRequ
 		if gerr != nil {
 			return gerr
 		}
-		if !t.UserId().Equal(userID) {
+		if !t.UserID.Equal(userID) {
 			return errs.NewAccessDenied("Access denied")
 		}
 		return s.repo.Delete(ctx, id)

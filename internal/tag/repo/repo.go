@@ -97,13 +97,13 @@ func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, t *domtag.Tag) error {
 	return r.q.UpsertTag(ctx, r.db(ctx), upsertParams{
-		ID:         t.Id().String(),
-		UserID:     t.UserId().String(),
-		Name:       t.Name(),
-		Position:   t.Position(),
-		IsArchived: t.IsArchived(),
-		CreatedAt:  t.CreatedAt(),
-		UpdatedAt:  t.UpdatedAt(),
+		ID:         t.ID.String(),
+		UserID:     t.UserID.String(),
+		Name:       t.Name,
+		Position:   t.Position,
+		IsArchived: t.IsArchived,
+		CreatedAt:  t.CreatedAt,
+		UpdatedAt:  t.UpdatedAt,
 	})
 }
 
@@ -120,7 +120,6 @@ func hydrate(row tagRow) (*domtag.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domtag.FromState(
-		id, userID, row.Name, row.Position, row.IsArchived, row.CreatedAt, row.UpdatedAt,
-	), nil
+	return &domtag.Tag{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

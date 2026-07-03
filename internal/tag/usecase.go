@@ -59,7 +59,7 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *Tag, 
 		if err != nil {
 			return err
 		}
-		if !t.UserId().Equal(userID) {
+		if !t.UserID.Equal(userID) {
 			return errs.NewAccessDenied("")
 		}
 		fn(t, s.clock.Now())
@@ -91,7 +91,7 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 		if err != nil {
 			return err
 		}
-		if !t.UserId().Equal(userID) {
+		if !t.UserID.Equal(userID) {
 			return errs.NewAccessDenied("")
 		}
 		if ferr := fn(txCtx, t, s.clock.Now()); ferr != nil {
@@ -113,17 +113,17 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 // maps the archived bool to the wire shape (isArchived int 0/1). See CLAUDE.md.
 func toResult(t *Tag) TagResult {
 	archived := 0
-	if t.IsArchived() {
+	if t.IsArchived {
 		archived = 1
 	}
 	return TagResult{
-		Id:          t.Id().String(),
-		OwnerUserId: t.UserId().String(),
-		Name:        t.Name(),
-		Position:    int(t.Position()),
+		Id:          t.ID.String(),
+		OwnerUserId: t.UserID.String(),
+		Name:        t.Name,
+		Position:    int(t.Position),
 		IsArchived:  archived,
-		CreatedAt:   t.CreatedAt().Format(datetime.Layout),
-		UpdatedAt:   t.UpdatedAt().Format(datetime.Layout),
+		CreatedAt:   t.CreatedAt.Format(datetime.Layout),
+		UpdatedAt:   t.UpdatedAt.Format(datetime.Layout),
 	}
 }
 
@@ -151,7 +151,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		return err
 	}
 	for _, t := range tags {
-		if t.Name() == name && !t.Id().Equal(exceptID) {
+		if t.Name == name && !t.ID.Equal(exceptID) {
 			return errs.NewValidation("Tag already exists.")
 		}
 	}
