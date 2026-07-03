@@ -33,6 +33,12 @@
 
 ### Task 2: Prune single-impl interfaces — currency, category, tag, payee, user
 
+> **Executed outcome:** only the four leaf-backed user prunes landed. All the
+> root-declared repo interfaces below (currency.WriteModel/ReadModel, the
+> category/tag/payee/user Repository/ReadModel/PasswordRequests) were
+> reclassified KEEP-by-design mid-task — see Task 3's amendment (import cycle:
+> repo/ imports the root). The list is preserved for the record.
+
 For each: replace the `Service`/`ReadService`/`WriteService` struct field (and `New*` constructor param) with the concrete pointer type; delete the interface decl + any `var _` assertion; requalify references. Constructors' call sites (server.go, harness tests, cli/container.go where applicable) already pass the concretes — only signatures change.
 
 **Prune list (audit category C — verified no test fakes):**
@@ -55,8 +61,7 @@ Note on archtest: features importing `internal/infra/auth`, `internal/infra/mail
 
 > **Amended after Task 2:** the audit's root-declared repo-interface prune
 > candidates (`<feature>.Repository`/`ReadModel`/`PasswordRequests`/`WriteModel`,
-> `budget.ReadModel`, `connection.*Repository`, `transaction.Repository`/
-> `ExportLookup`/`Importer`) are IMPOSSIBLE to prune: each feature's `repo/`
+> `budget.ReadModel`, `connection.*Repository`, `transaction.Repository`) are IMPOSSIBLE to prune (transaction's `ExportLookup`/`Importer` are hybrids — root←repo-implemented but composing cross-feature sub-ports; Task 4 files them as ports): each feature's `repo/`
 > subpackage imports the feature root for entity types, so the root holding a
 > `*<feature>repo.X` concretely is a Go import cycle (proven empirically in
 > Task 2). These interfaces are the spec's DESIGNED intra-feature seam — the
@@ -111,6 +116,6 @@ Move each decl WITH its doc comment verbatim; no signature changes. Update CLAUD
 
 ## Verification checklist (end of phase)
 
-- [ ] Zero pass-through adapters (the 3 named gone); ~24 pruned interfaces gone; ports.go in 8 features; RateProvider + exemptions intact.
+- [ ] Zero pass-through adapters (the 3 named gone); 9 interfaces pruned (3 pass-through helper ifaces, 4 user leaf-backed, accountAccessFull, anonymous clock); root repo seams + TokenVerifier + RateProvider KEPT by design/test-seam; ports.go in 8 features.
 - [ ] Goldens + OpenAPI byte-identical across the phase; `make regression` green.
 - [ ] Branch merged into `golang`.
