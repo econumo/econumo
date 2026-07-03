@@ -18,13 +18,10 @@ import (
 const module = "github.com/econumo/econumo"
 
 // infrastructure lists the internal/<top> dirs that are NOT feature packages.
-// "domain" and "app" are the legacy layered packages, exempt from the
-// feature rules until Phase 2 dissolves them (they are still covered by the
-// kernel rules below when they import shared/reqctx — allowed direction).
 var infrastructure = map[string]bool{
 	"shared": true, "reqctx": true, "ui": true, "infra": true,
 	"server": true, "cli": true, "config": true, "logging": true,
-	"test": true, "domain": true, "app": true,
+	"test": true,
 }
 
 // kernel packages may import internal code only from inside the kernel.
@@ -94,8 +91,6 @@ func TestDependencyRule(t *testing.T) {
 			switch {
 			case feature && depFeature && dtop != top:
 				t.Errorf("feature %s imports feature %s — features stay decoupled via consumer-side ports wired in internal/server", pkg, dep)
-			case feature && (dtop == "domain" || dtop == "app"):
-				t.Errorf("feature %s imports legacy layer %s — moved features must not depend on the packages being dissolved", pkg, dep)
 			case isKernel(top) && !isKernel(dtop):
 				t.Errorf("kernel %s imports %s — internal/shared and internal/reqctx import nothing internal outside the kernel", pkg, dep)
 			case !feature && isLeaf(top) && depFeature:
