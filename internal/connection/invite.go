@@ -51,6 +51,13 @@ func GenerateConnectionCode() ConnectionCode {
 	return ConnectionCode{value: string(code)}
 }
 
+// ReconstituteConnectionCode wraps a persisted code value without re-validating
+// length — the row was already validated on write (or is "" for a cleared
+// invite, which NewConnectionCode would reject).
+func ReconstituteConnectionCode(value string) ConnectionCode {
+	return ConnectionCode{value: value}
+}
+
 // Value returns the raw code string.
 func (c ConnectionCode) Value() string { return c.value }
 
@@ -58,52 +65,39 @@ func (c ConnectionCode) Value() string { return c.value }
 func (c ConnectionCode) IsZero() bool { return c.value == "" }
 
 // ConnectionInvite is a user's current outstanding invite: a code + expiry, keyed
-// by the inviting user's id (one row per user). A nil/empty code means no active
-// invite.
+// by the inviting user's id (one row per user). A zero/nil code means no active
+// invite. Fields are exported for direct read access; all writes after
+// construction go through GenerateNewCode/ClearCode.
 type ConnectionInvite struct {
-	userID    vo.Id
-	code      ConnectionCode
-	expiredAt *time.Time
+	UserID    vo.Id
+	Code      ConnectionCode
+	ExpiredAt *time.Time
 }
 
 // NewConnectionInvite creates an empty invite for a user (no code yet) — the
 // state before GenerateNewCode is called.
 func NewConnectionInvite(userID vo.Id) *ConnectionInvite {
-	return &ConnectionInvite{userID: userID}
-}
-
-// InviteFromState rebuilds an invite from storage. code may be "" and
-// expiredAt may be nil (a cleared invite row).
-func InviteFromState(userID vo.Id, code string, expiredAt *time.Time) *ConnectionInvite {
-	inv := &ConnectionInvite{userID: userID, expiredAt: expiredAt}
-	if code != "" {
-		inv.code = ConnectionCode{value: code}
-	}
-	return inv
+	return &ConnectionInvite{UserID: userID}
 }
 
 // GenerateNewCode assigns a fresh code and sets the expiry to now+lifetime.
 func (i *ConnectionInvite) GenerateNewCode(now time.Time) {
-	i.code = GenerateConnectionCode()
+	i.Code = GenerateConnectionCode()
 	exp := now.Add(inviteLifetime)
-	i.expiredAt = &exp
+	i.ExpiredAt = &exp
 }
 
 // ClearCode removes the code + expiry (after the invite is consumed or deleted).
 func (i *ConnectionInvite) ClearCode() {
-	i.code = ConnectionCode{}
-	i.expiredAt = nil
+	i.Code = ConnectionCode{}
+	i.ExpiredAt = nil
 }
 
 // IsExpired reports whether the invite's expiry is before now. A cleared invite
 // (no expiry) is treated as expired.
 func (i *ConnectionInvite) IsExpired(now time.Time) bool {
-	if i.expiredAt == nil {
+	if i.ExpiredAt == nil {
 		return true
 	}
-	return i.expiredAt.Before(now)
+	return i.ExpiredAt.Before(now)
 }
-
-func (i *ConnectionInvite) UserId() vo.Id         { return i.userID }
-func (i *ConnectionInvite) Code() ConnectionCode  { return i.code }
-func (i *ConnectionInvite) ExpiredAt() *time.Time { return i.expiredAt }

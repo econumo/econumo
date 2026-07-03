@@ -41,7 +41,7 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConn
 		return o, nil
 	}
 	for _, a := range append(append([]*AccountAccess{}, received...), issued...) {
-		if _, oerr := resolveOwner(a.AccountId()); oerr != nil {
+		if _, oerr := resolveOwner(a.AccountID); oerr != nil {
 			return nil, oerr
 		}
 	}
@@ -63,15 +63,15 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConn
 		order := []string{}
 		byID := map[string]AccountAccessResult{}
 		add := func(a *AccountAccess) {
-			accOwner := owners[a.AccountId().String()]
+			accOwner := owners[a.AccountID.String()]
 			if !accOwner.Equal(cu) && !accOwner.Equal(userID) {
 				return
 			}
-			key := a.AccountId().String()
+			key := a.AccountID.String()
 			if _, seen := byID[key]; !seen {
 				order = append(order, key)
 			}
-			byID[key] = AccountAccessResult{Id: key, OwnerUserId: accOwner.String(), Role: a.Role().Alias()}
+			byID[key] = AccountAccessResult{Id: key, OwnerUserId: accOwner.String(), Role: a.Role.Alias()}
 		}
 		for _, a := range received {
 			add(a)

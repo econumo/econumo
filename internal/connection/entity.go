@@ -58,35 +58,27 @@ func (r Role) Alias() string {
 
 func (r Role) Int16() int16 { return int16(r) }
 
-// AccountAccess is a grant: connected user `userID` may act on account
-// `accountID` with `role`. The owner of the account is NOT this user.
+// AccountAccess is a grant: connected user UserID may act on account
+// AccountID with Role. The owner of the account is NOT this user. Fields are
+// exported for direct read access; the only write after construction goes
+// through UpdateRole.
 type AccountAccess struct {
-	accountID vo.Id
-	userID    vo.Id
-	role      Role
-	createdAt time.Time
-	updatedAt time.Time
+	AccountID vo.Id
+	UserID    vo.Id
+	Role      Role
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-// NewAccountAccess creates a fresh grant (created_at == updated_at == now).
+// NewAccountAccess creates a fresh grant (CreatedAt == UpdatedAt == now).
 func NewAccountAccess(accountID, userID vo.Id, role Role, now time.Time) *AccountAccess {
-	return &AccountAccess{accountID: accountID, userID: userID, role: role, createdAt: now, updatedAt: now}
+	return &AccountAccess{AccountID: accountID, UserID: userID, Role: role, CreatedAt: now, UpdatedAt: now}
 }
 
-func FromState(accountID, userID vo.Id, role Role, createdAt, updatedAt time.Time) *AccountAccess {
-	return &AccountAccess{accountID: accountID, userID: userID, role: role, createdAt: createdAt, updatedAt: updatedAt}
-}
-
-// UpdateRole changes the role, bumping updated_at only when it actually changes.
+// UpdateRole changes the role, bumping UpdatedAt only when it actually changes.
 func (a *AccountAccess) UpdateRole(role Role, now time.Time) {
-	if a.role != role {
-		a.role = role
-		a.updatedAt = now
+	if a.Role != role {
+		a.Role = role
+		a.UpdatedAt = now
 	}
 }
-
-func (a *AccountAccess) AccountId() vo.Id     { return a.accountID }
-func (a *AccountAccess) UserId() vo.Id        { return a.userID }
-func (a *AccountAccess) Role() Role           { return a.role }
-func (a *AccountAccess) CreatedAt() time.Time { return a.createdAt }
-func (a *AccountAccess) UpdatedAt() time.Time { return a.updatedAt }
