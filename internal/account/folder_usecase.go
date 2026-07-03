@@ -42,11 +42,11 @@ func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string)
 	}
 	var maxPos int16
 	for _, f := range folders {
-		if f.Name() == name {
+		if f.Name == name {
 			return nil, errs.NewValidation("Folder already exists.")
 		}
-		if f.Position() > maxPos {
-			maxPos = f.Position()
+		if f.Position > maxPos {
+			maxPos = f.Position
 		}
 	}
 	now := s.clock.Now()
@@ -76,7 +76,7 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req UpdateFold
 		if gerr != nil {
 			return gerr
 		}
-		if !f.UserId().Equal(userID) {
+		if !f.UserID.Equal(userID) {
 			return errs.NewAccessDenied("Access denied")
 		}
 		folders, lerr := s.folders.ListByUser(ctx, userID)
@@ -84,7 +84,7 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req UpdateFold
 			return lerr
 		}
 		for _, other := range folders {
-			if other.Name() == name && !other.Id().Equal(id) {
+			if other.Name == name && !other.ID.Equal(id) {
 				return errs.NewValidation("Folder already exists.")
 			}
 		}
@@ -126,7 +126,7 @@ func (s *Service) toggleVisibility(ctx context.Context, userID vo.Id, rawID stri
 		if gerr != nil {
 			return gerr
 		}
-		if !f.UserId().Equal(userID) {
+		if !f.UserID.Equal(userID) {
 			return errs.NewAccessDenied("Access denied")
 		}
 		now := s.clock.Now()
@@ -157,14 +157,14 @@ func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req ReplaceFo
 		if gerr != nil {
 			return gerr
 		}
-		if !f.UserId().Equal(userID) {
+		if !f.UserID.Equal(userID) {
 			return errs.NewAccessDenied("Access denied")
 		}
 		replace, rerr := s.folders.GetByID(ctx, replaceID)
 		if rerr != nil {
 			return rerr
 		}
-		if !replace.UserId().Equal(userID) {
+		if !replace.UserID.Equal(userID) {
 			return errs.NewAccessDenied("Access denied")
 		}
 
@@ -203,7 +203,7 @@ func (s *Service) resetFolderPositions(ctx context.Context, userID vo.Id) error 
 	if err != nil {
 		return err
 	}
-	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position() < folders[j].Position() })
+	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
 	now := s.clock.Now()
 	for i, f := range folders {
 		f.UpdatePosition(int16(i), now)
@@ -234,19 +234,19 @@ func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req OrderFo
 		}
 		now := s.clock.Now()
 		for _, f := range folders {
-			pos, ok := positions[f.Id().String()]
+			pos, ok := positions[f.ID.String()]
 			if !ok {
 				continue
 			}
-			before := f.Position()
+			before := f.Position
 			f.UpdatePosition(pos, now)
-			if f.Position() != before {
+			if f.Position != before {
 				if serr := s.folders.Save(ctx, f); serr != nil {
 					return serr
 				}
 			}
 		}
-		sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position() < folders[j].Position() })
+		sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
 		items = make([]FolderResult, 0, len(folders))
 		for _, f := range folders {
 			items = append(items, toFolderResult(f))

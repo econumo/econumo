@@ -38,17 +38,18 @@ func (t Type) Valid() bool { return t == TypeCash || t == TypeCreditCard }
 
 // Account is the account aggregate root. Fields are validated on the way in by
 // the application layer; the entity holds already-valid state. Soft delete: an
-// account is marked is_deleted rather than removed.
+// account is marked IsDeleted rather than removed. Fields are exported for
+// direct read access; all writes after construction go through the mutators.
 type Account struct {
-	id         vo.Id
-	userID     vo.Id
-	currencyID vo.Id
-	name       string
-	typ        Type
-	icon       string
-	isDeleted  bool
-	createdAt  time.Time
-	updatedAt  time.Time
+	ID         vo.Id
+	UserID     vo.Id
+	CurrencyID vo.Id
+	Name       string
+	Type       Type
+	Icon       string
+	IsDeleted  bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // NewAccount constructs a freshly-created account (always CREDIT_CARD). The
@@ -56,76 +57,43 @@ type Account struct {
 // transaction; position is stored per-user.
 func NewAccount(id, userID, currencyID vo.Id, name, icon string, now time.Time) *Account {
 	return &Account{
-		id:         id,
-		userID:     userID,
-		currencyID: currencyID,
-		name:       name,
-		typ:        TypeCreditCard,
-		icon:       icon,
-		isDeleted:  false,
-		createdAt:  now,
-		updatedAt:  now,
+		ID: id, UserID: userID, CurrencyID: currencyID, Name: name,
+		Type: TypeCreditCard, Icon: icon, CreatedAt: now, UpdatedAt: now,
 	}
 }
 
 func FromState(id, userID, currencyID vo.Id, name string, typ Type, icon string, isDeleted bool, createdAt, updatedAt time.Time) *Account {
 	return &Account{
-		id:         id,
-		userID:     userID,
-		currencyID: currencyID,
-		name:       name,
-		typ:        typ,
-		icon:       icon,
-		isDeleted:  isDeleted,
-		createdAt:  createdAt,
-		updatedAt:  updatedAt,
+		ID: id, UserID: userID, CurrencyID: currencyID, Name: name,
+		Type: typ, Icon: icon, IsDeleted: isDeleted, CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 }
 
-func (a *Account) Id() vo.Id { return a.id }
-
-func (a *Account) UserId() vo.Id { return a.userID }
-
-func (a *Account) CurrencyId() vo.Id { return a.currencyID }
-
-func (a *Account) Name() string { return a.name }
-
-func (a *Account) Type() Type { return a.typ }
-
-func (a *Account) Icon() string { return a.icon }
-
-// IsDeleted reports whether the account is soft-deleted.
-func (a *Account) IsDeleted() bool { return a.isDeleted }
-
-func (a *Account) CreatedAt() time.Time { return a.createdAt }
-
-func (a *Account) UpdatedAt() time.Time { return a.updatedAt }
-
 func (a *Account) UpdateName(name string, now time.Time) {
-	if a.name != name {
-		a.name = name
-		a.updatedAt = now
+	if a.Name != name {
+		a.Name = name
+		a.UpdatedAt = now
 	}
 }
 
 func (a *Account) UpdateIcon(icon string, now time.Time) {
-	if a.icon != icon {
-		a.icon = icon
-		a.updatedAt = now
+	if a.Icon != icon {
+		a.Icon = icon
+		a.UpdatedAt = now
 	}
 }
 
 func (a *Account) UpdateCurrency(currencyID vo.Id, now time.Time) {
-	if !a.currencyID.Equal(currencyID) {
-		a.currencyID = currencyID
-		a.updatedAt = now
+	if !a.CurrencyID.Equal(currencyID) {
+		a.CurrencyID = currencyID
+		a.UpdatedAt = now
 	}
 }
 
-// Delete soft-deletes the account, bumping updatedAt only on a real change.
+// Delete soft-deletes the account, bumping UpdatedAt only on a real change.
 func (a *Account) Delete(now time.Time) {
-	if !a.isDeleted {
-		a.isDeleted = true
-		a.updatedAt = now
+	if !a.IsDeleted {
+		a.IsDeleted = true
+		a.UpdatedAt = now
 	}
 }

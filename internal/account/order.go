@@ -39,7 +39,7 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 		}
 		owned := make(map[string]*Account, len(accts))
 		for _, a := range accts {
-			owned[a.Id().String()] = a
+			owned[a.ID.String()] = a
 		}
 		folders, err := s.folders.ListByUser(ctx, userID)
 		if err != nil {
@@ -59,7 +59,7 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 			// Move folders: for every user folder, ensure membership matches the
 			// requested folderId (add to the target, remove from the others).
 			for _, f := range folders {
-				ids := memberships[f.Id().String()]
+				ids := memberships[f.ID.String()]
 				contains := false
 				for _, aid := range ids {
 					if aid == ch.accountID.String() {
@@ -67,20 +67,20 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 						break
 					}
 				}
-				if f.Id().Equal(ch.folderID) {
+				if f.ID.Equal(ch.folderID) {
 					if !contains {
-						if aerr := s.folders.AddAccount(ctx, f.Id(), ch.accountID); aerr != nil {
+						if aerr := s.folders.AddAccount(ctx, f.ID, ch.accountID); aerr != nil {
 							return aerr
 						}
 					}
 				} else if contains {
-					if rerr := s.folders.RemoveAccount(ctx, f.Id(), ch.accountID); rerr != nil {
+					if rerr := s.folders.RemoveAccount(ctx, f.ID, ch.accountID); rerr != nil {
 						return rerr
 					}
 				}
 			}
 			// Update the per-user position (upsert accounts_options).
-			if serr := s.repo.SavePosition(ctx, acct.Id(), userID, ch.position, now); serr != nil {
+			if serr := s.repo.SavePosition(ctx, acct.ID, userID, ch.position, now); serr != nil {
 				return serr
 			}
 		}

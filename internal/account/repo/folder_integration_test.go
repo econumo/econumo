@@ -38,14 +38,14 @@ func TestFolderRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name() != "Main" || got.Position() != 5 || !got.IsVisible() {
-		t.Errorf("fields mismatch: name=%q pos=%d visible=%v", got.Name(), got.Position(), got.IsVisible())
+	if got.Name != "Main" || got.Position != 5 || !got.IsVisible {
+		t.Errorf("fields mismatch: name=%q pos=%d visible=%v", got.Name, got.Position, got.IsVisible)
 	}
-	if got.UserId().String() != userA {
-		t.Errorf("user mismatch: %s", got.UserId())
+	if got.UserID.String() != userA {
+		t.Errorf("user mismatch: %s", got.UserID)
 	}
-	if !got.CreatedAt().Equal(fixedTime) {
-		t.Errorf("createdAt mismatch: %v", got.CreatedAt())
+	if !got.CreatedAt.Equal(fixedTime) {
+		t.Errorf("createdAt mismatch: %v", got.CreatedAt)
 	}
 }
 

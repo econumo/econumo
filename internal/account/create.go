@@ -197,7 +197,7 @@ func (s *Service) resolveAccountFolder(ctx context.Context, userID vo.Id, rawFol
 		}
 		return vo.Id{}, ferr
 	}
-	if !folder.UserId().Equal(userID) {
+	if !folder.UserID.Equal(userID) {
 		return vo.Id{}, errs.NewAccessDenied("Access denied")
 	}
 	return folderID, nil
@@ -218,7 +218,7 @@ func (s *Service) defaultFolderOr(ctx context.Context, userID vo.Id, whenHasFold
 	if ferr != nil {
 		return vo.Id{}, ferr
 	}
-	return f.Id(), nil
+	return f.ID, nil
 }
 
 // correctionType returns the transaction type for a balance correction: a

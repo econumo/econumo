@@ -52,7 +52,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 		if gerr != nil {
 			return gerr
 		}
-		if !acct.UserId().Equal(userID) {
+		if !acct.UserID.Equal(userID) {
 			return errs.NewAccessDenied("Access denied")
 		}
 		now := s.clock.Now()

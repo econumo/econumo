@@ -124,15 +124,15 @@ func (r *Repo) CountAvailable(ctx context.Context, userID vo.Id) (int, error) {
 // Save upserts an account row.
 func (r *Repo) Save(ctx context.Context, a *domaccount.Account) error {
 	return r.q.UpsertAccount(ctx, r.db(ctx), upsertAccountP{
-		ID:         a.Id().String(),
-		CurrencyID: a.CurrencyId().String(),
-		UserID:     a.UserId().String(),
-		Name:       a.Name(),
-		Type:       a.Type().Int16(),
-		Icon:       a.Icon(),
-		IsDeleted:  a.IsDeleted(),
-		CreatedAt:  a.CreatedAt(),
-		UpdatedAt:  a.UpdatedAt(),
+		ID:         a.ID.String(),
+		CurrencyID: a.CurrencyID.String(),
+		UserID:     a.UserID.String(),
+		Name:       a.Name,
+		Type:       a.Type.Int16(),
+		Icon:       a.Icon,
+		IsDeleted:  a.IsDeleted,
+		CreatedAt:  a.CreatedAt,
+		UpdatedAt:  a.UpdatedAt,
 	})
 }
 

@@ -59,17 +59,17 @@ func TestAccountRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Id() != id || got.UserId().String() != userA || got.CurrencyId().String() != usdID {
+	if got.ID != id || got.UserID.String() != userA || got.CurrencyID.String() != usdID {
 		t.Errorf("ids mismatch: %+v", got)
 	}
-	if got.Name() != "Wallet" || got.Type() != domaccount.TypeCash || got.Icon() != "icon-wallet" {
-		t.Errorf("fields mismatch: name=%q type=%d icon=%q", got.Name(), got.Type(), got.Icon())
+	if got.Name != "Wallet" || got.Type != domaccount.TypeCash || got.Icon != "icon-wallet" {
+		t.Errorf("fields mismatch: name=%q type=%d icon=%q", got.Name, got.Type, got.Icon)
 	}
-	if got.IsDeleted() {
+	if got.IsDeleted {
 		t.Error("IsDeleted should be false")
 	}
-	if !got.CreatedAt().Equal(fixedTime) || !got.UpdatedAt().Equal(fixedTime) {
-		t.Errorf("timestamps mismatch: created=%v updated=%v", got.CreatedAt(), got.UpdatedAt())
+	if !got.CreatedAt.Equal(fixedTime) || !got.UpdatedAt.Equal(fixedTime) {
+		t.Errorf("timestamps mismatch: created=%v updated=%v", got.CreatedAt, got.UpdatedAt)
 	}
 }
 
