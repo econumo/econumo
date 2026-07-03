@@ -81,8 +81,8 @@ func (r *Repo) ListForUser(ctx context.Context, userID vo.Id) ([]*dombudget.Budg
 
 func (r *Repo) Save(ctx context.Context, b *dombudget.Budget) error {
 	return r.q.UpsertBudget(ctx, r.db(ctx), upBudgetP{
-		ID: b.Id().String(), CurrencyID: b.CurrencyId().String(), UserID: b.UserId().String(),
-		Name: b.Name(), StartedAt: b.StartedAt(), CreatedAt: b.CreatedAt(), UpdatedAt: b.UpdatedAt(),
+		ID: b.ID.String(), CurrencyID: b.CurrencyID.String(), UserID: b.UserID.String(),
+		Name: b.Name, StartedAt: b.StartedAt, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
 	})
 }
 
@@ -132,8 +132,8 @@ func (r *Repo) GetAccess(ctx context.Context, budgetID, userID vo.Id) (*dombudge
 
 func (r *Repo) SaveAccess(ctx context.Context, a *dombudget.BudgetAccess) error {
 	return r.q.UpsertBudgetAccess(ctx, r.db(ctx), upAccessP{
-		BudgetID: a.BudgetId().String(), UserID: a.UserId().String(), Role: a.Role().Int16(),
-		IsAccepted: a.IsAccepted(), CreatedAt: a.CreatedAt(), UpdatedAt: a.UpdatedAt(),
+		BudgetID: a.BudgetID.String(), UserID: a.UserID.String(), Role: a.Role.Int16(),
+		IsAccepted: a.IsAccepted, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
 	})
 }
 
@@ -167,8 +167,8 @@ func (r *Repo) GetFolder(ctx context.Context, id vo.Id) (*dombudget.BudgetFolder
 
 func (r *Repo) SaveFolder(ctx context.Context, f *dombudget.BudgetFolder) error {
 	return r.q.UpsertBudgetFolder(ctx, r.db(ctx), upFolderP{
-		ID: f.Id().String(), BudgetID: f.BudgetId().String(), Name: f.Name(),
-		Position: f.Position(), CreatedAt: f.CreatedAt(), UpdatedAt: f.UpdatedAt(),
+		ID: f.ID.String(), BudgetID: f.BudgetID.String(), Name: f.Name,
+		Position: f.Position, CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
 	})
 }
 
@@ -202,8 +202,8 @@ func (r *Repo) GetEnvelope(ctx context.Context, id vo.Id) (*dombudget.BudgetEnve
 
 func (r *Repo) SaveEnvelope(ctx context.Context, e *dombudget.BudgetEnvelope) error {
 	return r.q.UpsertBudgetEnvelope(ctx, r.db(ctx), upEnvelopeP{
-		ID: e.Id().String(), BudgetID: e.BudgetId().String(), Name: strPtr(e.Name()),
-		Icon: strPtr(e.Icon()), IsArchived: e.IsArchived(), CreatedAt: e.CreatedAt(), UpdatedAt: e.UpdatedAt(),
+		ID: e.ID.String(), BudgetID: e.BudgetID.String(), Name: strPtr(e.Name),
+		Icon: strPtr(e.Icon), IsArchived: e.IsArchived, CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt,
 	})
 }
 
@@ -261,9 +261,9 @@ func (r *Repo) GetElementByExternal(ctx context.Context, budgetID, externalID vo
 
 func (r *Repo) SaveElement(ctx context.Context, e *dombudget.BudgetElement) error {
 	return r.q.UpsertBudgetElement(ctx, r.db(ctx), upElementP{
-		ID: e.Id().String(), BudgetID: e.BudgetId().String(), CurrencyID: idPtr(e.CurrencyId()),
-		FolderID: idPtr(e.FolderId()), ExternalID: e.ExternalId().String(), Type: e.Type().Int16(),
-		CreatedAt: e.CreatedAt(), UpdatedAt: e.UpdatedAt(), Position: e.Position(),
+		ID: e.ID.String(), BudgetID: e.BudgetID.String(), CurrencyID: idPtr(e.CurrencyID),
+		FolderID: idPtr(e.FolderID), ExternalID: e.ExternalID.String(), Type: e.Type.Int16(),
+		CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt, Position: e.Position,
 	})
 }
 
@@ -297,8 +297,8 @@ func (r *Repo) GetLimit(ctx context.Context, elementID vo.Id, period time.Time) 
 
 func (r *Repo) SaveLimit(ctx context.Context, l *dombudget.BudgetElementLimit) error {
 	return r.q.UpsertBudgetLimit(ctx, r.db(ctx), upLimitP{
-		ID: l.Id().String(), ElementID: l.ElementId().String(), Period: l.Period(),
-		CreatedAt: l.CreatedAt(), UpdatedAt: l.UpdatedAt(), Amount: l.Amount().String(),
+		ID: l.ID.String(), ElementID: l.ElementID.String(), Period: l.Period,
+		CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt, Amount: l.Amount.String(),
 	})
 }
 
@@ -323,7 +323,7 @@ func hydrateBudget(row budgetRow) (*dombudget.Budget, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dombudget.FromState(id, userID, row.Name, currencyID, row.StartedAt, row.CreatedAt, row.UpdatedAt), nil
+	return &dombudget.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateAccess(row accessRow) (*dombudget.BudgetAccess, error) {
@@ -335,9 +335,9 @@ func hydrateAccess(row accessRow) (*dombudget.BudgetAccess, error) {
 	if err != nil {
 		return nil, err
 	}
-	// AccessFromState does not carry a separate id (PK is budget+user); pass the
-	// budget id as a stand-in (the access entity's Id() is unused on the wire).
-	return dombudget.AccessFromState(budgetID, budgetID, userID, dombudget.UserRole(row.Role), row.IsAccepted, row.CreatedAt, row.UpdatedAt), nil
+	// BudgetAccess has no separate id column (PK is budget+user); ID is a
+	// stand-in equal to BudgetID (the access entity's ID is unused on the wire).
+	return &dombudget.BudgetAccess{ID: budgetID, BudgetID: budgetID, UserID: userID, Role: dombudget.UserRole(row.Role), IsAccepted: row.IsAccepted, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateFolder(row folderRow) (*dombudget.BudgetFolder, error) {
@@ -349,7 +349,7 @@ func hydrateFolder(row folderRow) (*dombudget.BudgetFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dombudget.FolderFromState(id, budgetID, row.Name, row.Position, row.CreatedAt, row.UpdatedAt), nil
+	return &dombudget.BudgetFolder{ID: id, BudgetID: budgetID, Name: row.Name, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateEnvelope(row envelopeRow) (*dombudget.BudgetEnvelope, error) {
@@ -361,7 +361,7 @@ func hydrateEnvelope(row envelopeRow) (*dombudget.BudgetEnvelope, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dombudget.EnvelopeFromState(id, budgetID, derefStr(row.Name), derefStr(row.Icon), row.IsArchived, row.CreatedAt, row.UpdatedAt), nil
+	return &dombudget.BudgetEnvelope{ID: id, BudgetID: budgetID, Name: derefStr(row.Name), Icon: derefStr(row.Icon), IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateElement(row elementRow) (*dombudget.BudgetElement, error) {
@@ -385,7 +385,7 @@ func hydrateElement(row elementRow) (*dombudget.BudgetElement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dombudget.ElementFromState(id, budgetID, externalID, dombudget.ElementType(row.Type), currencyID, folderID, row.Position, row.CreatedAt, row.UpdatedAt), nil
+	return &dombudget.BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: dombudget.ElementType(row.Type), CurrencyID: currencyID, FolderID: folderID, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateLimit(row limitRow) (*dombudget.BudgetElementLimit, error) {
@@ -397,7 +397,7 @@ func hydrateLimit(row limitRow) (*dombudget.BudgetElementLimit, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dombudget.LimitFromState(id, elementID, vo.NewDecimal(row.Amount), row.Period, row.CreatedAt, row.UpdatedAt), nil
+	return &dombudget.BudgetElementLimit{ID: id, ElementID: elementID, Amount: vo.NewDecimal(row.Amount), Period: row.Period, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func mapNotFound(err error, msg string) error {

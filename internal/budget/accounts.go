@@ -122,7 +122,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req SetLimitReques
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
-	if period.Before(firstOfMonth(b.budget.StartedAt())) {
+	if period.Before(firstOfMonth(b.budget.StartedAt)) {
 		return nil, validateBlank(map[string]string{"period": ""}) // invalid-date guard
 	}
 
@@ -131,7 +131,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req SetLimitReques
 	if err != nil {
 		return nil, err
 	}
-	elementID := element.Id()
+	elementID := element.ID
 
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
@@ -145,7 +145,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req SetLimitReques
 		}
 		if req.Amount == nil {
 			if hasExisting {
-				return s.repo.DeleteLimit(txCtx, existing.Id())
+				return s.repo.DeleteLimit(txCtx, existing.ID)
 			}
 			return nil
 		}

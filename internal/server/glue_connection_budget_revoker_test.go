@@ -38,11 +38,17 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	revoker := server.NewConnectionBudgetRevoker(budgets)
 
 	// userA owns budgetA; userB has an access grant on it.
-	b := dombudget.FromState(vo.MustParseId(revokerBudgetA), vo.MustParseId(revokerUserA), "Shared", vo.MustParseId(revokerUSDID), revokerFixedTime, revokerFixedTime, revokerFixedTime)
+	b := &dombudget.Budget{
+		ID: vo.MustParseId(revokerBudgetA), UserID: vo.MustParseId(revokerUserA), Name: "Shared",
+		CurrencyID: vo.MustParseId(revokerUSDID), StartedAt: revokerFixedTime, CreatedAt: revokerFixedTime, UpdatedAt: revokerFixedTime,
+	}
 	if err := budgets.Save(ctx, b); err != nil {
 		t.Fatalf("Save budget: %v", err)
 	}
-	access := dombudget.AccessFromState(vo.MustParseId(revokerBudgetA), vo.MustParseId(revokerBudgetA), vo.MustParseId(revokerUserB), dombudget.RoleUser, true, revokerFixedTime, revokerFixedTime)
+	access := &dombudget.BudgetAccess{
+		ID: vo.MustParseId(revokerBudgetA), BudgetID: vo.MustParseId(revokerBudgetA), UserID: vo.MustParseId(revokerUserB),
+		Role: dombudget.RoleUser, IsAccepted: true, CreatedAt: revokerFixedTime, UpdatedAt: revokerFixedTime,
+	}
 	if err := budgets.SaveAccess(ctx, access); err != nil {
 		t.Fatalf("SaveAccess: %v", err)
 	}

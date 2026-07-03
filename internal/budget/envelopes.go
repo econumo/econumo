@@ -125,8 +125,8 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 			if serr := s.repo.SaveElement(txCtx, el); serr != nil {
 				return serr
 			}
-			position = el.Position()
-			folderID = el.FolderId()
+			position = el.Position
+			folderID = el.FolderID
 		}
 		// Replace category assignments.
 		existing, cerr := s.repo.EnvelopeCategoryIDs(txCtx, envelopeID)
@@ -184,7 +184,7 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req DeleteEn
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		el, eerr := s.repo.GetElementByExternal(txCtx, budgetID, envelopeID)
 		if eerr == nil {
-			if serr := s.repo.DeleteElement(txCtx, el.Id()); serr != nil {
+			if serr := s.repo.DeleteElement(txCtx, el.ID); serr != nil {
 				return serr
 			}
 		}
@@ -203,8 +203,8 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req DeleteEn
 func nextElementPosition(b *budgetAggregate) int {
 	max := -1
 	for _, e := range b.elements {
-		if int(e.Position()) > max {
-			max = int(e.Position())
+		if int(e.Position) > max {
+			max = int(e.Position)
 		}
 	}
 	return max + 1
@@ -237,10 +237,10 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	if len(categoryIDs) == 0 {
 		return []ChildElementResult{}, nil
 	}
-	userIDs := []vo.Id{b.budget.UserId()}
+	userIDs := []vo.Id{b.budget.UserID}
 	for _, a := range b.access {
-		if a.IsAccepted() && a.Role() != roleGuest() {
-			userIDs = append(userIDs, a.UserId())
+		if a.IsAccepted && a.Role != roleGuest() {
+			userIDs = append(userIDs, a.UserID)
 		}
 	}
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)

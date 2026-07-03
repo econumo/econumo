@@ -30,7 +30,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudg
 	if !s.canRead(b, userID) {
 		return nil, accessDenied()
 	}
-	if b.budget.Name() != req.Name && !s.canUpdate(b, userID) {
+	if b.budget.Name != req.Name && !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
 

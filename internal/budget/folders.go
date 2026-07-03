@@ -38,11 +38,11 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateBudg
 			return serr
 		}
 		existing := append([]*BudgetFolder(nil), b.folders...)
-		sort.SliceStable(existing, func(i, j int) bool { return existing[i].Position() < existing[j].Position() })
+		sort.SliceStable(existing, func(i, j int) bool { return existing[i].Position < existing[j].Position })
 		pos := int16(0)
 		for _, f := range existing {
 			pos++
-			if f.Position() == pos {
+			if f.Position == pos {
 				continue
 			}
 			f.UpdatePosition(pos, now)
@@ -55,7 +55,7 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateBudg
 	if err != nil {
 		return nil, err
 	}
-	return &CreateBudgetFolderResult{Item: FolderResult{Id: created.Id().String(), Name: created.Name(), Position: int(created.Position())}}, nil
+	return &CreateBudgetFolderResult{Item: FolderResult{Id: created.ID.String(), Name: created.Name, Position: int(created.Position)}}, nil
 }
 
 // UpdateFolder renames a budget folder (canUpdate).
@@ -92,7 +92,7 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req UpdateBudg
 	if err != nil {
 		return nil, err
 	}
-	return &UpdateBudgetFolderResult{Item: FolderResult{Id: updated.Id().String(), Name: updated.Name(), Position: int(updated.Position())}}, nil
+	return &UpdateBudgetFolderResult{Item: FolderResult{Id: updated.ID.String(), Name: updated.Name, Position: int(updated.Position)}}, nil
 }
 
 // DeleteFolder removes a budget folder (canUpdate) and renumbers the rest.
@@ -120,11 +120,11 @@ func (s *Service) DeleteFolder(ctx context.Context, userID vo.Id, req DeleteFold
 		// Renumber remaining folders 0..n by their current position order.
 		remaining := make([]*BudgetFolder, 0, len(b.folders))
 		for _, f := range b.folders {
-			if !f.Id().Equal(folderID) {
+			if !f.ID.Equal(folderID) {
 				remaining = append(remaining, f)
 			}
 		}
-		sort.SliceStable(remaining, func(i, j int) bool { return remaining[i].Position() < remaining[j].Position() })
+		sort.SliceStable(remaining, func(i, j int) bool { return remaining[i].Position < remaining[j].Position })
 		for i, f := range remaining {
 			f.UpdatePosition(int16(i), now)
 			if serr := s.repo.SaveFolder(txCtx, f); serr != nil {
@@ -154,7 +154,7 @@ func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req OrderBu
 	}
 	byID := map[string]*BudgetFolder{}
 	for _, f := range b.folders {
-		byID[f.Id().String()] = f
+		byID[f.ID.String()] = f
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {

@@ -42,13 +42,13 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	options := s.elementOptions(b)
 	folders := make([]FolderResult, 0, len(b.folders))
 	for _, fl := range b.folders {
-		folders = append(folders, FolderResult{Id: fl.Id().String(), Name: fl.Name(), Position: int(fl.Position())})
+		folders = append(folders, FolderResult{Id: fl.ID.String(), Name: fl.Name, Position: int(fl.Position)})
 	}
 	sortByPositionThenID(folders, func(f FolderResult) int { return f.Position }, func(f FolderResult) string { return f.Id })
 
 	toConvert := map[string][]ConvertItem{}
 	categoryUsed := map[string]bool{}
-	budgetCurrencyID := b.budget.CurrencyId()
+	budgetCurrencyID := b.budget.CurrencyID
 	var elements []*structElement
 
 	zero := vo.NewDecimal("0")
@@ -62,7 +62,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 
 	// --- Envelopes ---
 	for _, env := range b.envelopes {
-		index := elementKey(env.Id().String(), ElementEnvelope)
+		index := elementKey(env.ID.String(), ElementEnvelope)
 		opt := options[index]
 		currencyID := budgetCurrencyID
 		if opt.currencyID != nil {
@@ -71,11 +71,11 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		bud := limits[index]
 		budgeted, budgetedBefore := orZero(bud.budgeted, zero), orZero(bud.budgetedBefore, zero)
 		el := &structElement{
-			id: env.Id().String(), typ: ElementEnvelope, name: env.Name(), icon: env.Icon(),
-			ownerID: nil, currencyID: currencyID, isArchived: env.IsArchived(),
+			id: env.ID.String(), typ: ElementEnvelope, name: env.Name, icon: env.Icon,
+			ownerID: nil, currencyID: currencyID, isArchived: env.IsArchived,
 			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
-		for _, catID := range envelopeCats[env.Id().String()] {
+		for _, catID := range envelopeCats[env.ID.String()] {
 			if categoryUsed[catID] {
 				continue
 			}
@@ -92,7 +92,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			})
 			categoryUsed[catID] = true
 		}
-		if !env.IsArchived() || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
+		if !env.IsArchived || !budgeted.IsZero() || !budgetedBefore.IsZero() || len(el.children) > 0 {
 			elements = append(elements, el)
 		}
 	}
@@ -272,8 +272,8 @@ func categorySpendingFor(spending map[string]*elementSpending, index, categoryID
 func (s *Service) elementOptions(b *budgetAggregate) map[string]elementOption {
 	out := map[string]elementOption{}
 	for _, e := range b.elements {
-		out[elementKey(e.ExternalId().String(), e.Type())] = elementOption{
-			currencyID: e.CurrencyId(), folderID: e.FolderId(), position: e.Position(),
+		out[elementKey(e.ExternalID.String(), e.Type)] = elementOption{
+			currencyID: e.CurrencyID, folderID: e.FolderID, position: e.Position,
 		}
 	}
 	return out
@@ -307,7 +307,7 @@ func orZero(d, zero vo.DecimalNumber) vo.DecimalNumber {
 func (s *Service) envelopeCategories(ctx context.Context, b *budgetAggregate) (map[string][]string, error) {
 	out := map[string][]string{}
 	for _, env := range b.envelopes {
-		ids, err := s.repo.EnvelopeCategoryIDs(ctx, env.Id())
+		ids, err := s.repo.EnvelopeCategoryIDs(ctx, env.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +315,7 @@ func (s *Service) envelopeCategories(ctx context.Context, b *budgetAggregate) (m
 		for i, id := range ids {
 			strs[i] = id.String()
 		}
-		out[env.Id().String()] = strs
+		out[env.ID.String()] = strs
 	}
 	return out, nil
 }
