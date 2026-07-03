@@ -1,15 +1,15 @@
-// Package connectionrepo implements domain/connection.AccountAccessRepository
-// over the sqlc-generated queries, both engines. The static queries use the
+// Package repo implements connection.AccountAccessRepository over the
+// sqlc-generated queries, both engines. The static queries use the
 // canonical (sqlite-typed) shim; the pgsql adapter is a thin whole-struct
 // conversion because the generated row/param shapes are field-identical.
-package connectionrepo
+package repo
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	domconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -36,7 +36,7 @@ type querier interface {
 	InsertConnectionLink(ctx context.Context, db backend.DBTX, a, b string) error
 }
 
-// Repo implements domain/connection.AccountAccessRepository.
+// Repo implements connection.AccountAccessRepository.
 type Repo struct {
 	tx *backend.TxManager
 	q  querier

@@ -22,7 +22,7 @@ const (
 	ownerTwoSalt  = "0000000000000000000000000000000000000002"
 	sharedAcctID  = "aaaa2222-0000-0000-0000-0000000000a2"
 
-	// roles (admin=0, user=1, guest=2) — matches domain/connection.Role.
+	// roles (admin=0, user=1, guest=2) — matches connection.Role.
 	roleAdmin = 0
 	roleUser  = 1
 	roleGuest = 2

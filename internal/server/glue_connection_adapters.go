@@ -1,9 +1,9 @@
 // ConnectionFolderPort, ConnectionSharedAccessLookup and ConnectionAccessRevoker
 // bridge the connection and account features. They live here, not in
-// internal/infra/repo/connection, because they need the account feature's
-// Folder type and account's own ports, and an infra package must not import a
-// feature (see archtest). The AccountAccessResolver and OptionPort
-// counterparts stay in internal/infra/repo/connection: they don't reference
+// internal/connection/repo, because they need the account feature's
+// Folder type and account's own ports, and a feature package must not import
+// another feature (see archtest). The AccountAccessResolver and OptionPort
+// counterparts stay in internal/connection/repo: they don't reference
 // the account feature's types.
 package server
 
@@ -11,8 +11,7 @@ import (
 	"context"
 
 	account "github.com/econumo/econumo/internal/account"
-	appconnection "github.com/econumo/econumo/internal/app/connection"
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	domconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -26,10 +25,10 @@ type connectionFolderRepo interface {
 }
 
 // ConnectionFolderPort adapts the account FolderRepository to
-// app/connection.FolderPort.
+// connection.FolderPort.
 type ConnectionFolderPort struct{ folders connectionFolderRepo }
 
-var _ appconnection.FolderPort = (*ConnectionFolderPort)(nil)
+var _ domconnection.FolderPort = (*ConnectionFolderPort)(nil)
 
 // NewConnectionFolderPort wraps an account FolderRepository.
 func NewConnectionFolderPort(folders connectionFolderRepo) *ConnectionFolderPort {

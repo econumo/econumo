@@ -17,7 +17,7 @@ import (
 	handlercategory "github.com/econumo/econumo/internal/category/api"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
-	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"

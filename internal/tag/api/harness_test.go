@@ -14,8 +14,8 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/econumo/econumo/internal/config"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
-	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"

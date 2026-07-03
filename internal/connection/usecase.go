@@ -9,7 +9,6 @@ import (
 	"errors"
 	"time"
 
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -62,8 +61,8 @@ type OptionPort interface {
 // Service is the connection write+read orchestrator. It owns the tx boundary and
 // builds response-shaped *Result structs directly.
 type Service struct {
-	access       domconnection.AccountAccessRepository
-	invites      domconnection.InviteRepository
+	access       AccountAccessRepository
+	invites      InviteRepository
 	folders      FolderPort
 	options      OptionPort
 	users        UserLookup
@@ -77,8 +76,8 @@ type Service struct {
 // budgetAccess drops budget sharing on delete-connection; it may be nil
 // (delete-connection then only unwinds account access + the connection link).
 func NewService(
-	access domconnection.AccountAccessRepository,
-	invites domconnection.InviteRepository,
+	access AccountAccessRepository,
+	invites InviteRepository,
 	folders FolderPort,
 	options OptionPort,
 	users UserLookup,
@@ -122,7 +121,7 @@ func (s *Service) requireOwnerAdmin(ctx context.Context, userID, accountID vo.Id
 		}
 		return err
 	}
-	if grant.Role() == domconnection.RoleAdmin {
+	if grant.Role() == RoleAdmin {
 		return nil
 	}
 	return errs.NewAccessDenied("Access denied")

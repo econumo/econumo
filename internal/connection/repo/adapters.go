@@ -1,17 +1,16 @@
 // Adapters that satisfy the connection service's OptionPort by delegating to
-// the account repository. Lives here (infra) so app/connection depends only
+// the account repository. Lives here (infra) so connection depends only
 // on its own small interfaces. The UserLookup, FolderPort, SharedAccessLookup
 // and AccessRevoker counterparts live in internal/server: they need the user
-// and account features' types, which an infra package must not import.
-package connectionrepo
+// and account features' types, which a feature package must not import.
+package repo
 
 import (
 	"context"
 	"errors"
 	"time"
 
-	appconnection "github.com/econumo/econumo/internal/app/connection"
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	domconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -60,7 +59,7 @@ func (r *AccountAccessResolver) HasWriteGrant(ctx context.Context, accountID, us
 
 // HasAdminGrant reports whether the user holds an admin grant on the account —
 // the category feature's own AccountAccess port shape (it must not import
-// domain/connection directly, so the Role comparison happens here instead of
+// connection directly, so the Role comparison happens here instead of
 // at the call site). A missing grant or a non-admin grant is false, nil error;
 // other errors propagate.
 func (r *AccountAccessResolver) HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error) {
@@ -82,10 +81,10 @@ type optionRepo interface {
 	SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error
 }
 
-// OptionPort adapts the account Repository to app/connection.OptionPort.
+// OptionPort adapts the account Repository to connection.OptionPort.
 type OptionPort struct{ accounts optionRepo }
 
-var _ appconnection.OptionPort = (*OptionPort)(nil)
+var _ domconnection.OptionPort = (*OptionPort)(nil)
 
 // NewOptionPort wraps an account Repository (anything exposing the position ops).
 func NewOptionPort(accounts optionRepo) *OptionPort { return &OptionPort{accounts: accounts} }

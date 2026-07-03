@@ -16,7 +16,7 @@ import (
 
 const sharedAcctID = "aaaa3333-0000-0000-0000-0000000000a3"
 
-// roles (admin=0, user=1, guest=2) — matches domain/connection.Role.
+// roles (admin=0, user=1, guest=2) — matches connection.Role.
 const (
 	roleAdmin = 0
 	roleUser  = 1

@@ -3,7 +3,6 @@ package connection
 import (
 	"context"
 
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -41,7 +40,7 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConn
 		owners[key] = o
 		return o, nil
 	}
-	for _, a := range append(append([]*domconnection.AccountAccess{}, received...), issued...) {
+	for _, a := range append(append([]*AccountAccess{}, received...), issued...) {
 		if _, oerr := resolveOwner(a.AccountId()); oerr != nil {
 			return nil, oerr
 		}
@@ -63,7 +62,7 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConn
 		// occurrence of each key, so we track order separately.
 		order := []string{}
 		byID := map[string]AccountAccessResult{}
-		add := func(a *domconnection.AccountAccess) {
+		add := func(a *AccountAccess) {
 			accOwner := owners[a.AccountId().String()]
 			if !accOwner.Equal(cu) && !accOwner.Equal(userID) {
 				return

@@ -2472,7 +2472,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest"
+                            "$ref": "#/definitions/connection.AcceptInviteRequest"
                         }
                     }
                 ],
@@ -2488,7 +2488,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.AcceptInviteResult"
+                                            "$ref": "#/definitions/connection.AcceptInviteResult"
                                         }
                                     }
                                 }
@@ -2541,7 +2541,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest"
+                            "$ref": "#/definitions/connection.DeleteConnectionRequest"
                         }
                     }
                 ],
@@ -2557,7 +2557,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult"
+                                            "$ref": "#/definitions/connection.DeleteConnectionResult"
                                         }
                                     }
                                 }
@@ -2609,7 +2609,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest"
+                            "$ref": "#/definitions/connection.DeleteInviteRequest"
                         }
                     }
                 ],
@@ -2625,7 +2625,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.DeleteInviteResult"
+                                            "$ref": "#/definitions/connection.DeleteInviteResult"
                                         }
                                     }
                                 }
@@ -2671,7 +2671,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest"
+                            "$ref": "#/definitions/connection.GenerateInviteRequest"
                         }
                     }
                 ],
@@ -2687,7 +2687,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GenerateInviteResult"
+                                            "$ref": "#/definitions/connection.GenerateInviteResult"
                                         }
                                     }
                                 }
@@ -2736,7 +2736,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.GetConnectionListResult"
+                                            "$ref": "#/definitions/connection.GetConnectionListResult"
                                         }
                                     }
                                 }
@@ -2783,7 +2783,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest"
+                            "$ref": "#/definitions/connection.RevokeAccountAccessRequest"
                         }
                     }
                 ],
@@ -2799,7 +2799,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult"
+                                            "$ref": "#/definitions/connection.RevokeAccountAccessResult"
                                         }
                                     }
                                 }
@@ -2852,7 +2852,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest"
+                            "$ref": "#/definitions/connection.SetAccountAccessRequest"
                         }
                     }
                 ],
@@ -2868,7 +2868,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult"
+                                            "$ref": "#/definitions/connection.SetAccountAccessResult"
                                         }
                                     }
                                 }
@@ -6119,6 +6119,25 @@ const docTemplate = `{
         "category.UpdateCategoryResult": {
             "type": "object"
         },
+        "connection.AcceptInviteRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.AcceptInviteResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/connection.ConnectionResult"
+                    }
+                }
+            }
+        },
         "connection.AccountAccessResult": {
             "type": "object",
             "properties": {
@@ -6157,6 +6176,76 @@ const docTemplate = `{
                     "$ref": "#/definitions/connection.UserResult"
                 }
             }
+        },
+        "connection.DeleteConnectionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.DeleteConnectionResult": {
+            "type": "object"
+        },
+        "connection.DeleteInviteRequest": {
+            "type": "object"
+        },
+        "connection.DeleteInviteResult": {
+            "type": "object"
+        },
+        "connection.GenerateInviteRequest": {
+            "type": "object"
+        },
+        "connection.GenerateInviteResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/connection.ConnectionInviteResult"
+                }
+            }
+        },
+        "connection.GetConnectionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/connection.ConnectionResult"
+                    }
+                }
+            }
+        },
+        "connection.RevokeAccountAccessRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.RevokeAccountAccessResult": {
+            "type": "object"
+        },
+        "connection.SetAccountAccessRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "connection.SetAccountAccessResult": {
+            "type": "object"
         },
         "connection.UserResult": {
             "type": "object",
@@ -6673,95 +6762,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/budget.ParentElementResult"
                 }
             }
-        },
-        "github_com_econumo_econumo_internal_app_connection.AcceptInviteRequest": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.AcceptInviteResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/connection.ConnectionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteConnectionRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteConnectionResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteInviteRequest": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.DeleteInviteResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.GenerateInviteRequest": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.GenerateInviteResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/connection.ConnectionInviteResult"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.GetConnectionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/connection.ConnectionResult"
-                    }
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.RevokeAccountAccessResult": {
-            "type": "object"
-        },
-        "github_com_econumo_econumo_internal_app_connection.SetAccountAccessRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_econumo_econumo_internal_app_connection.SetAccountAccessResult": {
-            "type": "object"
         },
         "payee.ArchivePayeeRequest": {
             "type": "object",

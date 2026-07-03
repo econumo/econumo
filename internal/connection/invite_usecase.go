@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -26,14 +25,14 @@ type BudgetAccessRevoker interface {
 // GenerateInvite creates (or refreshes) the user's outstanding invite code and
 // returns {code, expiredAt}.
 func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateInviteRequest) (*GenerateInviteResult, error) {
-	var inv *domconnection.ConnectionInvite
+	var inv *ConnectionInvite
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		existing, err := s.invites.GetByUser(txCtx, userID)
 		if err != nil {
 			return err
 		}
 		if existing == nil {
-			existing = domconnection.NewConnectionInvite(userID)
+			existing = NewConnectionInvite(userID)
 		}
 		existing.GenerateNewCode(s.clock.Now())
 		if serr := s.invites.Save(txCtx, existing); serr != nil {
@@ -72,7 +71,7 @@ func (s *Service) DeleteInvite(ctx context.Context, userID vo.Id, _ DeleteInvite
 // owner (symmetric users_connections link), clears the code, and returns the
 // redeeming user's full connection list.
 func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req AcceptInviteRequest) (*AcceptInviteResult, error) {
-	code, err := domconnection.NewConnectionCode(req.Code)
+	code, err := NewConnectionCode(req.Code)
 	if err != nil {
 		return nil, err
 	}

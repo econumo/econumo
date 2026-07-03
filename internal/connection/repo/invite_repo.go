@@ -1,4 +1,4 @@
-package connectionrepo
+package repo
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
+	domconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -32,7 +32,7 @@ type inviteQuerier interface {
 	Upsert(ctx context.Context, db backend.DBTX, userID string, code *string, expiredAt *time.Time) error
 }
 
-// InviteRepo implements domain/connection.InviteRepository over
+// InviteRepo implements connection.InviteRepository over
 // users_connections_invites (one row per user, code unique).
 type InviteRepo struct {
 	tx *backend.TxManager
