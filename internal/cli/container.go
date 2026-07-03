@@ -13,8 +13,8 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
-	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/server"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
@@ -65,7 +65,7 @@ func newContainer(ctx context.Context) (*container, error) {
 	// are only exercised by the read/profile paths, not the admin mutators.
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
+	budgetExistence := server.NewUserBudgetExistence(cfg.DatabaseDriver, txm)
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(

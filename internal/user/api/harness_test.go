@@ -17,10 +17,10 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/mailer"
-	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -100,7 +100,7 @@ func newHarness(t *testing.T) *harness {
 	repo := userrepo.NewSQLiteRepo(txm)
 	readRepo := userrepo.NewReadRepo("sqlite", txm)
 	currency := currencyrepo.New("sqlite", txm)
-	budgets := userbudgetrepo.New("sqlite", txm)
+	budgets := server.NewUserBudgetExistence("sqlite", txm)
 	passwordReqs := userrepo.NewPasswordRequestRepo("sqlite", txm)
 	// Discard mailer — the reset test reads the code from the DB, so email output
 	// is irrelevant here (and we keep it off stdout, unlike the console default).

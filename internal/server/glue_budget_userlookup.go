@@ -1,6 +1,6 @@
 // BudgetUserLookup satisfies the budget service's UserLookup port (owner
 // embed, default currency code, active-budget write) by delegating to the
-// user repository. It lives here, not in internal/infra/repo/budget, because
+// user repository. It lives here, not in internal/budget/repo, because
 // it needs the user feature's User/Header types and an infra package must
 // not import a feature (see archtest).
 package server
@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	appbudget "github.com/econumo/econumo/internal/app/budget"
+	appbudget "github.com/econumo/econumo/internal/budget"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/user"
 )
@@ -21,7 +21,7 @@ type budgetUserRepo interface {
 	Save(ctx context.Context, u *user.User) error
 }
 
-// BudgetUserLookup adapts the user repository to app/budget.UserLookup.
+// BudgetUserLookup adapts the user repository to budget.UserLookup.
 type BudgetUserLookup struct {
 	users budgetUserRepo
 	clock interface{ Now() time.Time }

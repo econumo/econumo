@@ -111,7 +111,7 @@ func Seed(t testing.TB, db *dbtest.DB) {
 
 	// Pending (not accepted) budget invite: guest invited to Budget — the
 	// accept-access and decline-access scenarios each consume it on a fresh DB.
-	// role=1 is budget.RoleUser (internal/domain/budget/valueobject.go: admin=0,
+	// role=1 is budget.RoleUser (internal/budget/valueobject.go: admin=0,
 	// user=1, guest=2).
 	f.BudgetAccess(Budget, GuestID, 1, false)
 }

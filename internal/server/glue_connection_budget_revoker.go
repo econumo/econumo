@@ -8,8 +8,8 @@ package server
 import (
 	"context"
 
+	dombudget "github.com/econumo/econumo/internal/budget"
 	appconnection "github.com/econumo/econumo/internal/connection"
-	dombudget "github.com/econumo/econumo/internal/domain/budget"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
