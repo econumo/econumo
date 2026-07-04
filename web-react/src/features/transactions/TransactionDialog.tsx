@@ -1,0 +1,406 @@
+import { useState } from 'react'
+import { ArrowUpDown, ChevronLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useParams } from 'react-router'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Textarea } from '@/components/ui/textarea'
+import { CalculatorInput } from '@/components/CalculatorInput'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
+import { moneyFormat } from '@/lib/money'
+import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
+import { useUiStore } from '@/app/uiStore'
+import type { OpenTransactionParams } from '@/app/uiStore'
+import { useAccounts, useFolders } from '@/features/accounts/queries'
+import { useCategories, usePayees, useTags, useCreateCategory, useCreatePayee, useCreateTag } from '@/features/classifications/queries'
+import { useExchange } from '@/features/currencies/useExchange'
+import { useUserData } from '@/features/user/queries'
+import { useCreateTransaction, useUpdateTransaction } from './queries'
+import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedNumber } from './useTransactionForm'
+import { EntitySelect } from './EntitySelect'
+import { AddTagDialog } from './AddTagDialog'
+import type { TransactionType } from '@/api/dto/transaction'
+
+const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
+
+function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
+  const { t } = useTranslation()
+  const { id: routeAccountId } = useParams()
+  const { data: accounts = [] } = useAccounts()
+  const { data: folders = [] } = useFolders()
+  const { data: categories = [] } = useCategories()
+  const { data: payees = [] } = usePayees()
+  const { data: tags = [] } = useTags()
+  const { data: user } = useUserData()
+  const exchangeFn = useExchange()
+  const setSwitchAccountPrompt = useUiStore((s) => s.setSwitchAccountPrompt)
+
+  const createTransaction = useCreateTransaction()
+  const updateTransaction = useUpdateTransaction()
+  const createCategory = useCreateCategory()
+  const createPayee = useCreatePayee()
+  const createTag = useCreateTag()
+
+  const { form, patch, setType, account, accountRecipient, recomputeRecipientAmount, swapAccounts } = useTransactionForm(
+    params,
+    accounts,
+    routeAccountId ?? null,
+  )
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [addTagOpen, setAddTagOpen] = useState(false)
+
+  const isTransfer = form.type === 'transfer'
+  const isExpense = form.type === 'expense'
+  const ownerId = account?.owner.id
+  const canEditData = canChangeAccountData(account, user?.id)
+
+  const selectableAccounts = accountOptions(accounts, folders, form.isNew)
+  const currentCategories = categoryOptions(categories, form.type, ownerId)
+  const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
+  const selectedTag = tags.find((tag) => tag.id === form.tagId)
+  const visibleTags = tags.filter((tag) => tag.isArchived === 0 && (!ownerId || tag.ownerUserId === ownerId))
+  const tagRow = selectedTag && !visibleTags.some((tg) => tg.id === selectedTag.id) ? [...visibleTags, selectedTag] : visibleTags
+
+  const crossCurrency = isTransfer && account && accountRecipient && account.currency.id !== accountRecipient.currency.id
+
+  const setAmount = (amount: string) => {
+    if (isTransfer && form.isNew) {
+      patch({ amount, amountRecipient: recomputeRecipientAmount(amount, account, accountRecipient, exchangeFn) })
+    } else {
+      patch({ amount })
+    }
+  }
+
+  const setRecipientAccount = (id: string | null) => {
+    const recipient = accounts.find((a) => a.id === id)
+    patch({
+      accountRecipientId: id,
+      amountRecipient: form.isNew ? recomputeRecipientAmount(form.amount, account, recipient, exchangeFn) : form.amountRecipient,
+    })
+  }
+
+  const amountErrors = (raw: string, withFormula: boolean): string | null => {
+    if (!isNotEmpty(raw)) {
+      return t('elements.validation.required_field')
+    }
+    if (withFormula) {
+      if (!isValidFormula(raw)) {
+        return t('elements.validation.invalid_formula')
+      }
+      const evaluated = evaluatedNumber(raw)
+      if (Number.isNaN(evaluated)) {
+        return t('elements.validation.invalid_number')
+      }
+      return null
+    }
+    if (!isValidNumber(raw)) {
+      return t('elements.validation.invalid_number')
+    }
+    if (!isValidDecimalNumber(raw)) {
+      return t('elements.validation.invalid_decimal_number')
+    }
+    return null
+  }
+
+  const validate = (): boolean => {
+    const next: Record<string, string> = {}
+    const amountError = amountErrors(form.amount, true)
+    if (amountError) {
+      next.amount = amountError
+    }
+    if (crossCurrency) {
+      const recipientError = amountErrors(form.amountRecipient, false)
+      if (recipientError) {
+        next.amountRecipient = recipientError
+      }
+    }
+    if (!isTransfer && !form.categoryId) {
+      next.category = t('modals.transaction.form.category.validation.required_field')
+    }
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
+  const submit = async () => {
+    if (!validate() || !form.accountId) {
+      return
+    }
+    const payload = buildPayload(form)
+    try {
+      if (form.isNew) {
+        await createTransaction.mutateAsync(payload)
+        if (isTransfer && payload.accountRecipientId) {
+          setSwitchAccountPrompt(payload.accountRecipientId)
+        }
+      } else {
+        await updateTransaction.mutateAsync(payload)
+      }
+      onDone()
+    } catch {
+      // dialog stays open on failure
+    }
+  }
+
+  const dateOnly = dayKey(form.date)
+  const pending = createTransaction.isPending || updateTransaction.isPending
+
+  const accountToOption = (a: (typeof accounts)[number]) => ({
+    value: a.id,
+    label: `${a.name} (${moneyFormat(a.balance, a.currency)})`,
+    icon: a.icon,
+  })
+
+  return (
+    <form
+      className="flex flex-col gap-4"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        void submit()
+      }}
+    >
+      <div className="flex rounded-md border p-0.5" role="radiogroup" aria-label="type">
+        {TYPE_ORDER.map((type) => (
+          <button
+            key={type}
+            type="button"
+            role="radio"
+            aria-checked={form.type === type}
+            className={`flex-1 rounded px-2 py-1.5 text-sm ${form.type === type ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+            onClick={() => setType(type)}
+          >
+            {t(`modals.transaction.transaction_type.${type}`)}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="previous day"
+          onClick={() => {
+            const d = parseDateTime(form.date)
+            d.setHours(d.getHours() - 24)
+            patch({ date: formatDateTime(d) })
+          }}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" className="flex-1 justify-start font-normal" aria-label="date">
+              {dateOnly}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              weekStartsOn={1}
+              selected={parseDateTime(dateOnly)}
+              onSelect={(day) => {
+                if (day) {
+                  patch({ date: `${formatDate(day)} 00:00:00` })
+                }
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {!isTransfer ? (
+        <div className="flex flex-col gap-2">
+          <EntitySelect
+            aria-label="account"
+            value={form.accountId}
+            onChange={(id) => patch({ accountId: id })}
+            options={selectableAccounts.map(accountToOption)}
+          />
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="tx-amount">{t('modals.transaction.form.amount.label')}</Label>
+        <CalculatorInput id="tx-amount" autoFocus value={form.amount} onChange={setAmount} />
+        {errors.amount ? <p className="text-sm text-destructive">{errors.amount}</p> : null}
+      </div>
+
+      {isTransfer ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Label>{t('modals.transaction.form.from.label')}</Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <EntitySelect
+                  aria-label="from account"
+                  value={form.accountId}
+                  onChange={(id) => patch({ accountId: id })}
+                  options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
+                  disabled={!form.isNew}
+                />
+              </div>
+              <Button type="button" variant="outline" size="icon" aria-label="swap accounts" onClick={swapAccounts} disabled={!form.isNew}>
+                <ArrowUpDown className="size-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>{t('modals.transaction.form.to.label')}</Label>
+            <EntitySelect
+              aria-label="to account"
+              value={form.accountRecipientId}
+              onChange={setRecipientAccount}
+              options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
+            />
+          </div>
+          {crossCurrency ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="tx-amount-recipient">{t('modals.transaction.form.amount_recipient.label')}</Label>
+              <Input
+                id="tx-amount-recipient"
+                inputMode="decimal"
+                value={form.amountRecipient}
+                onChange={(e) => patch({ amountRecipient: e.target.value })}
+              />
+              {errors.amountRecipient ? <p className="text-sm text-destructive">{errors.amountRecipient}</p> : null}
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            <Label>{t('modals.transaction.form.category.label')}</Label>
+            <EntitySelect
+              aria-label={t('modals.transaction.form.category.label')}
+              value={form.categoryId}
+              onChange={(id) => patch({ categoryId: id })}
+              options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
+              onCreate={
+                canEditData
+                  ? (name) => {
+                      createCategory.mutate(
+                        { name, type: form.type as 'expense' | 'income', accountId: form.accountId ?? undefined, ownerUserId: ownerId },
+                        { onSuccess: (item) => patch({ categoryId: item.id }) },
+                      )
+                    }
+                  : undefined
+              }
+              createValidator={isValidCategoryName}
+            />
+            {errors.category ? <p className="text-sm text-destructive">{errors.category}</p> : null}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>{t(`modals.transaction.form.payee.${form.type}`)}</Label>
+            <EntitySelect
+              aria-label={t(`modals.transaction.form.payee.${form.type}`)}
+              value={form.payeeId}
+              onChange={(id) => patch({ payeeId: id })}
+              options={currentPayees.map((p) => ({ value: p.id, label: p.name }))}
+              clearable
+              onCreate={
+                canEditData
+                  ? (name) => {
+                      createPayee.mutate(
+                        { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
+                        { onSuccess: (item) => patch({ payeeId: item.id }) },
+                      )
+                    }
+                  : undefined
+              }
+              createValidator={isValidPayeeName}
+            />
+          </div>
+
+          {isExpense ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {tagRow.map((tag) => (
+                <Badge
+                  key={tag.id}
+                  role="checkbox"
+                  aria-checked={form.tagId === tag.id}
+                  aria-label={tag.name}
+                  variant={form.tagId === tag.id ? 'default' : 'secondary'}
+                  className="cursor-pointer"
+                  onClick={() => patch({ tagId: form.tagId === tag.id ? null : tag.id })}
+                >
+                  {tag.name}
+                </Badge>
+              ))}
+              {canEditData ? (
+                <Badge variant="outline" className="cursor-pointer" role="button" aria-label="add tag" onClick={() => setAddTagOpen(true)}>
+                  +
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      )}
+
+      <details>
+        <summary className="cursor-pointer text-sm text-muted-foreground">{t('modals.transaction.form.options.header')}</summary>
+        <div className="mt-2 flex flex-col gap-2">
+          <Label htmlFor="tx-description">{t('modals.transaction.form.description.label')}</Label>
+          <Textarea
+            id="tx-description"
+            placeholder={t('modals.transaction.form.description.placeholder')}
+            value={form.description}
+            onChange={(e) => patch({ description: e.target.value })}
+          />
+        </div>
+      </details>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('elements.button.cancel.label')}
+        </Button>
+        <Button type="submit" disabled={pending}>
+          {form.isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
+        </Button>
+      </div>
+
+      <AddTagDialog
+        open={addTagOpen}
+        onClose={() => setAddTagOpen(false)}
+        onSubmit={(name) => {
+          createTag.mutate(
+            { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
+            {
+              onSuccess: (item) => {
+                patch({ tagId: item.id })
+                setAddTagOpen(false)
+              },
+            },
+          )
+        }}
+      />
+    </form>
+  )
+}
+
+export function TransactionDialog() {
+  const { t } = useTranslation()
+  const params = useUiStore((s) => s.transactionModal)
+  const close = useUiStore((s) => s.closeTransactionModal)
+
+  if (!params) {
+    return null
+  }
+
+  return (
+    <ResponsiveDialog
+      open
+      onOpenChange={(o) => !o && close()}
+      title={params.transaction ? t('modals.transaction.update_form.header') : t('modals.transaction.create_form.header')}
+      dismissible={false}
+    >
+      <TransactionForm params={params} onDone={close} />
+    </ResponsiveDialog>
+  )
+}

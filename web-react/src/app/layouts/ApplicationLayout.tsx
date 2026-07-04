@@ -11,6 +11,8 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
+import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
+import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
@@ -114,6 +116,8 @@ export function ApplicationLayout() {
       ) : null}
 
       <AccountDialog />
+      <TransactionDialog />
+      <SwitchAccountPrompt />
       <LoadingDialog open={!isFullyLoaded} label={t('modules.app.modal.loading.data_loading')} />
     </div>
   )
