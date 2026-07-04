@@ -3,10 +3,12 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import type { DraggableAttributes } from '@dnd-kit/core'
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'
 
 export interface SortableHandleProps {
-  attributes: Record<string, unknown>
-  listeners: Record<string, unknown> | undefined
+  attributes: DraggableAttributes | Record<string, never>
+  listeners: SyntheticListenerMap | undefined
 }
 
 interface SortableRowProps<T extends { id: string }> {
