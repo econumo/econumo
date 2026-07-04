@@ -4,6 +4,7 @@ import { LoginLayout } from './layouts/LoginLayout'
 import { ApplicationLayout } from './layouts/ApplicationLayout'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/features/auth/LoginPage'
+import { RegistrationPage } from '@/features/auth/RegistrationPage'
 
 // Pages land here as Plans 2-6 build them; until then guarded paths show the empty shell.
 const EmptyPage = () => <div />
@@ -14,7 +15,7 @@ export function createRouter() {
       element: <LoginLayout />,
       children: [
         { path: '/login', element: <LoginPage /> },
-        { path: '/register', element: <EmptyPage /> },
+        { path: '/register', element: <RegistrationPage /> },
       ],
     },
     { path: '/logout', element: <EmptyPage /> },
