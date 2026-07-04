@@ -33,3 +33,12 @@ export async function deleteTransaction(id: Id): Promise<TransactionItemDto> {
   const response = await api.post<Envelope<TransactionItemDto>>(apiUrl('/api/v1/transaction/delete-transaction'), { id })
   return coerceItem(response.data.data)
 }
+
+// raw CSV, not the JSON envelope; a single comma-joined accountId param
+export async function exportTransactionList(accountIds: Id[]): Promise<Blob> {
+  const response = await api.get<Blob>(apiUrl('/api/v1/transaction/export-transaction-list'), {
+    params: { accountId: accountIds.join(',') },
+    responseType: 'blob',
+  })
+  return response.data
+}

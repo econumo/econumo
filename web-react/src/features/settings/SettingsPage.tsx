@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ChevronRight, RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,7 @@ import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
+import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 
 function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string; onClick?: () => void; trailing?: React.ReactNode }) {
   const inner = (
@@ -41,6 +43,7 @@ export function SettingsPage() {
   const { data: user } = useUserData()
   const { data: currencies } = useCurrencies()
   const updateCurrency = useUpdateCurrency()
+  const [exportOpen, setExportOpen] = useState(false)
 
   // lastSyncAt = the oldest fetch among the core lists (Vue takes the min of the *LoadedAt stamps)
   const updatedAts = [useAccounts(), useFolders(), useCategories(), usePayees(), useTags(), useTransactions(), useCurrencies()]
@@ -86,6 +89,7 @@ export function SettingsPage() {
               </span>
             }
           />
+          <MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
           <MenuRow label={t('modules.connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
           <MenuRow label={t('modules.budget.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
           <MenuRow label={t('pages.settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
@@ -118,6 +122,8 @@ export function SettingsPage() {
           </>
         ) : null}
       </div>
+
+      <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   )
 }

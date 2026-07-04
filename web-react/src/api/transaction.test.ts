@@ -90,3 +90,17 @@ it('category list and currency rates smoke (envelope + rate coercion)', async ()
   const rates = await getCurrencyRateList()
   expect(rates[0].rate).toBe(1.08)
 })
+
+it('exportTransactionList sends the comma-joined accountId param and resolves a Blob', async () => {
+  let url: URL | undefined
+  server.use(
+    http.get('*/api/v1/transaction/export-transaction-list', ({ request }) => {
+      url = new URL(request.url)
+      return new HttpResponse('transaction_id,account_name\n', { headers: { 'Content-Type': 'text/csv; charset=UTF-8' } })
+    }),
+  )
+  const blob = await transactionApi.exportTransactionList(['a1', 'a2'])
+  expect(url!.searchParams.get('accountId')).toBe('a1,a2')
+  expect(blob).toBeInstanceOf(Blob)
+  expect(await blob.text()).toBe('transaction_id,account_name\n')
+})
