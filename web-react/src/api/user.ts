@@ -50,6 +50,7 @@ export async function resetPassword(username: string, code: string, password: st
   await api.post(apiUrl('/api/v1/user/reset-password'), { username, code, password })
 }
 
-export async function completeOnboarding(): Promise<void> {
-  await api.post(apiUrl('/api/v1/user/complete-onboarding'))
+export async function completeOnboarding(): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/complete-onboarding'))
+  return response.data.data.user
 }

@@ -61,6 +61,16 @@ it('getUserData unwraps data.user', async () => {
   await expect(userApi.getUserData()).resolves.toEqual(user)
 })
 
+it('completeOnboarding returns the refreshed user', async () => {
+  server.use(
+    http.post('*/api/v1/user/complete-onboarding', () =>
+      HttpResponse.json({ success: true, message: '', data: { user: { ...user, options: [{ name: 'onboarding', value: 'completed' }] } } }),
+    ),
+  )
+  const result = await userApi.completeOnboarding()
+  expect(result.options).toEqual([{ name: 'onboarding', value: 'completed' }])
+})
+
 it('remindPassword and resetPassword hit their endpoints', async () => {
   const calls: string[] = []
   server.use(

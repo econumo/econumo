@@ -8,6 +8,7 @@ export const queryKeys = {
   currencies: ['currencies'] as const,
   currencyRates: ['currencyRates'] as const,
   user: ['user'] as const,
+  connections: ['connections'] as const,
   budget: ['budget'] as const,
   budgets: ['budgets'] as const,
 }
