@@ -1,0 +1,18 @@
+export const RouterPage = {
+  LOGIN: '/login',
+  REGISTER: '/register',
+  LOGOUT: '/logout',
+  HOME: '/',
+  ACCOUNT: (id: string) => `/account/${id}`,
+  BUDGET: '/budget',
+  ONBOARDING: '/onboarding',
+  SETTINGS: '/settings',
+  SETTINGS_PROFILE: '/settings/profile',
+  SETTINGS_CHANGE_PASSWORD: '/settings/profile/change-password',
+  SETTINGS_ACCOUNTS: '/settings/accounts',
+  SETTINGS_CATEGORIES: '/settings/categories',
+  SETTINGS_PAYEES: '/settings/payees',
+  SETTINGS_TAGS: '/settings/tags',
+  SETTINGS_CONNECTIONS: '/settings/connections',
+  SETTINGS_BUDGETS: '/settings/budgets',
+} as const
