@@ -16,7 +16,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	if err := model.ValidateName("model.Budget", req.Name); err != nil {
+	if err := model.ValidateName("Budget", req.Name); err != nil {
 		return nil, err
 	}
 	curID, err := vo.ParseId(req.CurrencyId)

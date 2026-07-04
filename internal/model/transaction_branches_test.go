@@ -27,7 +27,7 @@ func TestFromState_AllAccessors(t *testing.T) {
 	s := baseState(t)
 	s.Type = TransactionTypeTransfer
 	s.AccountRecipID = ptrID(t, "77777777-7777-7777-7777-777777777777")
-	s.AmountRecipient = strptr("99.99")
+	s.AmountRecipient = strPtr("99.99")
 	tx := FromState(s)
 
 	if !tx.ID.Equal(s.ID) || !tx.UserID.Equal(s.UserID) {
@@ -67,7 +67,7 @@ func TestUpdate_TransferToNonTransfer(t *testing.T) {
 	s.Type = TransactionTypeTransfer
 	s.CategoryID, s.PayeeID, s.TagID = nil, nil, nil
 	s.AccountRecipID = ptrID(t, "77777777-7777-7777-7777-777777777777")
-	s.AmountRecipient = strptr("5")
+	s.AmountRecipient = strPtr("5")
 	tx := New(s)
 	if tx.AccountRecipID == nil {
 		t.Fatal("precondition: transfer should have a recipient")

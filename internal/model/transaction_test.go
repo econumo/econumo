@@ -69,7 +69,7 @@ func TestUpdate_NonTransfer_KeepsMetadata_ClearsRecipient(t *testing.T) {
 	s := baseState(t)
 	s.Type = TransactionTypeIncome
 	s.AccountRecipID = ptrID(t, "77777777-7777-7777-7777-777777777777")
-	s.AmountRecipient = strptr("10")
+	s.AmountRecipient = strPtr("10")
 	tx.Update(s, tc1)
 
 	if tx.Type != TransactionTypeIncome {
@@ -91,7 +91,7 @@ func TestUpdate_Transfer_KeepsRecipient_ClearsMetadata(t *testing.T) {
 	s := baseState(t)
 	s.Type = TransactionTypeTransfer
 	s.AccountRecipID = ptrID(t, "77777777-7777-7777-7777-777777777777")
-	s.AmountRecipient = strptr("40")
+	s.AmountRecipient = strPtr("40")
 	// category/payee/tag still set in state -- transfer must DROP them.
 	tx.Update(s, tc1)
 
@@ -108,5 +108,3 @@ func TestUpdate_Transfer_KeepsRecipient_ClearsMetadata(t *testing.T) {
 		t.Fatal("transfer must clear category/payee/tag")
 	}
 }
-
-func strptr(s string) *string { return &s }

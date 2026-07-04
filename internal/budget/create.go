@@ -17,7 +17,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	if err := model.ValidateName("model.Budget", req.Name); err != nil {
+	if err := model.ValidateName("Budget", req.Name); err != nil {
 		return nil, err
 	}
 

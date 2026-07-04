@@ -203,7 +203,7 @@ func TestQuietFlag(t *testing.T) {
 }
 
 // TestUserDeactivate covers user:deactivate's success path. (Note: unlike the
-// CLI doc list in CLAUDE.md, which shows "user:deactivate --before=YYYY-MM-DD",
+// CLI doc list in CLAUDE.md, which shows "user:deactivate <email>",
 // the actual implementation in user_commands.go takes a single <email>
 // positional and has no --before flag; this test exercises the real
 // signature, not the documented one.)
