@@ -82,3 +82,11 @@ it('changing the default currency posts the code and updates the cache', async (
     expect(cached.options.find((o) => o.name === 'currency_id')!.value).toBe('cur-eur')
   })
 })
+
+it('Import CSV and Export CSV rows open their dialogs', async () => {
+  server.use(...coreHandlers())
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Import CSV'))
+  expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
+})

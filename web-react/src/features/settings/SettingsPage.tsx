@@ -17,6 +17,9 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
+import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
+import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
+import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 
 function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string; onClick?: () => void; trailing?: React.ReactNode }) {
   const inner = (
@@ -44,6 +47,8 @@ export function SettingsPage() {
   const { data: currencies } = useCurrencies()
   const updateCurrency = useUpdateCurrency()
   const [exportOpen, setExportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
 
   // lastSyncAt = the oldest fetch among the core lists (Vue takes the min of the *LoadedAt stamps)
   const updatedAts = [useAccounts(), useFolders(), useCategories(), usePayees(), useTags(), useTransactions(), useCurrencies()]
@@ -89,6 +94,7 @@ export function SettingsPage() {
               </span>
             }
           />
+          <MenuRow label={t('pages.settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
           <MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
           <MenuRow label={t('modules.connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
           <MenuRow label={t('modules.budget.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
@@ -124,6 +130,8 @@ export function SettingsPage() {
       </div>
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
+      <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
+      <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
     </div>
   )
 }

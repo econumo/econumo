@@ -1,4 +1,4 @@
-import { analyzeCsv, autoDetect, buildImportPayload, defaultSelection, FIELD_KEYS, selectionValid } from './importCsv'
+import { analyzeCsv, autoDetect, buildImportPayload, defaultSelection, FIELD_KEYS, runImport, selectionValid } from './importCsv'
 import type { ImportSelection } from './importCsv'
 
 const LABELS = {
@@ -97,4 +97,34 @@ it('buildImportPayload in dual mode nulls the single amount column', () => {
   expect(mapping.amount).toBeNull()
   expect(mapping.amountInflow).toBe('In')
   expect(mapping.amountOutflow).toBe('Out')
+})
+
+it('runImport chunks at 500 rows, remaps error rows, and tolerates chunk failures', async () => {
+  const rows = Array.from({ length: 1200 }, (_, i) => ['Cash', '2026-01-02', String(i + 1)])
+  const analysis = { header: ['Account', 'Date', 'Amount'], rows, samples: {} }
+  const files: { name: string; rows: number }[] = []
+  const post = vi.fn(async (file: File) => {
+    files.push({ name: file.name, rows: (await file.text()).trim().split('\n').length - 1 })
+    if (files.length === 2) {
+      throw new Error('boom')
+    }
+    if (files.length === 3) {
+      return { imported: 199, skipped: 1, errors: { "Invalid date format 'x'": [3] } }
+    }
+    return { imported: 500, skipped: 0, errors: {} }
+  })
+  const progress: [number, number][] = []
+  const result = await runImport(analysis, validBase(), post, (done, total) => progress.push([done, total]))
+  expect(files).toEqual([
+    { name: 'chunk_0.csv', rows: 500 },
+    { name: 'chunk_1.csv', rows: 500 },
+    { name: 'chunk_2.csv', rows: 200 },
+  ])
+  expect(result.imported).toBe(699)
+  expect(result.failed).toBe(501) // 500 rows of the failed chunk + 1 skipped
+  expect(result.errors).toEqual([
+    { message: 'Chunk 2 failed: boom', rows: [] },
+    { message: "Invalid date format 'x'", rows: [1003] }, // chunk 2 row 3 -> file row 1003
+  ])
+  expect(progress).toEqual([[1, 3], [2, 3], [3, 3]])
 })
