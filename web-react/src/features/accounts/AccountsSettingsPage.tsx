@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { EyeOff, FolderPlus, GripVertical, MoreVertical, PlusCircle } from 'lucide-react'
@@ -38,6 +38,7 @@ import {
   useOrderAccounts,
   useDeleteAccount,
 } from './queries'
+import type { FolderBucket } from './accountOrdering'
 import { bucketsFromAccounts, moveAccount, buildAccountChanges } from './accountOrdering'
 
 function AccountRow({
@@ -203,7 +204,18 @@ export function AccountsSettingsPage() {
   )
 
   const folderIds = useMemo(() => folders.map((f) => f.id), [folders])
-  const buckets = useMemo(() => bucketsFromAccounts(accounts, folderIds), [accounts, folderIds])
+  const serverBuckets = useMemo(() => bucketsFromAccounts(accounts, folderIds), [accounts, folderIds])
+
+  // Live drag preview: while dragging (and until the reorder round-trip lands)
+  // the list renders from this local arrangement so the drop never snaps back.
+  const [dragBuckets, setDragBuckets] = useState<FolderBucket[] | null>(null)
+  const buckets = dragBuckets ?? serverBuckets
+
+  const accountsById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
+  const bucketAccounts = (folderId: string): AccountDto[] =>
+    (buckets.find((b) => b.folderId === folderId)?.accountIds ?? [])
+      .map((id) => accountsById.get(id))
+      .filter((a): a is AccountDto => a !== undefined)
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -237,16 +249,32 @@ export function AccountsSettingsPage() {
     }
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragStart = (_event: DragStartEvent) => {
+    setDragBuckets(serverBuckets)
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) {
       return
     }
-    const moved = moveAccount(buckets, String(active.id), String(over.id))
-    const changes = buildAccountChanges(accounts, moved)
-    if (changes.length > 0) {
-      orderAccounts.mutate(changes)
+    setDragBuckets((prev) => moveAccount(prev ?? serverBuckets, String(active.id), String(over.id)))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    const final =
+      over && active.id !== over.id
+        ? moveAccount(dragBuckets ?? serverBuckets, String(active.id), String(over.id))
+        : dragBuckets ?? serverBuckets
+    const changes = buildAccountChanges(accounts, final)
+    if (changes.length === 0) {
+      setDragBuckets(null)
+      return
     }
+    // keep the preview until the server echoes the new order (or roll back on error)
+    setDragBuckets(final)
+    orderAccounts.mutate(changes, { onSettled: () => setDragBuckets(null) })
   }
 
   return (
@@ -266,7 +294,14 @@ export function AccountsSettingsPage() {
         </button>
       ) : null}
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setDragBuckets(null)}
+      >
         <div className="flex flex-col gap-3">
           {folders.map((folder, index) => (
             <FolderSection
@@ -274,11 +309,10 @@ export function AccountsSettingsPage() {
               folder={folder}
               index={index}
               total={folders.length}
-              accounts={accounts.filter((a) => a.folderId === folder.id)}
+              accounts={bucketAccounts(folder.id)}
               onAction={(action) => handleFolderAction(folder, index, action)}
             >
-              {accounts
-                .filter((a) => a.folderId === folder.id)
+              {bucketAccounts(folder.id)
                 .map((account) => (
                   <AccountRow
                     key={account.id}
