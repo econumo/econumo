@@ -34,6 +34,30 @@ export async function deleteTransaction(id: Id): Promise<TransactionItemDto> {
   return coerceItem(response.data.data)
 }
 
+export interface ImportResultDto {
+  imported: number
+  skipped: number
+  /** message -> 1-based file row numbers (0 = top-level error) */
+  errors: Record<string, number[]>
+}
+
+// multipart: file + mapping JSON (column names) + optional fixed-value fields
+export async function importTransactionList(
+  file: File,
+  mapping: Record<string, string | null>,
+  fields: Record<string, string>,
+): Promise<ImportResultDto> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('mapping', JSON.stringify(mapping))
+  for (const [key, value] of Object.entries(fields)) {
+    form.append(key, value)
+  }
+  // no explicit Content-Type: the browser adds multipart/form-data WITH the boundary
+  const response = await api.post<Envelope<ImportResultDto>>(apiUrl('/api/v1/transaction/import-transaction-list'), form)
+  return response.data.data
+}
+
 // raw CSV, not the JSON envelope; a single comma-joined accountId param
 export async function exportTransactionList(accountIds: Id[]): Promise<Blob> {
   const response = await api.get<Blob>(apiUrl('/api/v1/transaction/export-transaction-list'), {

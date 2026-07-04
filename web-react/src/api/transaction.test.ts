@@ -104,3 +104,31 @@ it('exportTransactionList sends the comma-joined accountId param and resolves a 
   expect(blob).toBeInstanceOf(Blob)
   expect(await blob.text()).toBe('transaction_id,account_name\n')
 })
+
+// jsdom multipart bodies don't survive the MSW interceptor (no Blob.stream),
+// so inspect the FormData at the axios boundary instead of over the wire.
+it('importTransactionList posts multipart form data and unwraps the result', async () => {
+  const { api } = await import('./client')
+  const postSpy = vi
+    .spyOn(api, 'post')
+    .mockResolvedValue({ data: { success: true, message: '', data: { imported: 2, skipped: 0, errors: {} } } })
+  try {
+    const file = new File(['Account,Date,Amount\nCash,2026-01-02,-5\n'], 'chunk_0.csv', { type: 'text/csv' })
+    const result = await transactionApi.importTransactionList(
+      file,
+      { account: 'Account', date: 'Date', amount: 'Amount', tag: null },
+      { accountId: 'a1' },
+    )
+    expect(result).toEqual({ imported: 2, skipped: 0, errors: {} })
+    const [url, body] = postSpy.mock.calls[0] as [string, FormData]
+    expect(url).toContain('/api/v1/transaction/import-transaction-list')
+    const sent = body.get('file') as File
+    expect(sent.name).toBe('chunk_0.csv')
+    expect(await sent.text()).toBe('Account,Date,Amount\nCash,2026-01-02,-5\n')
+    expect(JSON.parse(body.get('mapping') as string)).toEqual({ account: 'Account', date: 'Date', amount: 'Amount', tag: null })
+    expect(body.get('accountId')).toBe('a1')
+    expect(body.get('date')).toBeNull()
+  } finally {
+    postSpy.mockRestore()
+  }
+})
