@@ -11,7 +11,6 @@ import (
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
-	domconnection "github.com/econumo/econumo/internal/connection"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -106,7 +105,7 @@ func TestEngines_ConnectionInviteByCode(t *testing.T) {
 		fixture.New(t, db).User(fixture.User{ID: userA, Email: "a@test"})
 		repo := connectionrepo.NewInviteRepo(db.Engine, db.TX)
 
-		inv := domconnection.NewConnectionInvite(mustID(t, userA))
+		inv := model.NewConnectionInvite(mustID(t, userA))
 		inv.GenerateNewCode(fixedTime) // expiry = fixedTime + 5min
 		if err := repo.Save(ctx, inv); err != nil {
 			t.Fatalf("Save invite: %v", err)

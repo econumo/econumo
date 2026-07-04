@@ -2472,7 +2472,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/connection.AcceptInviteRequest"
+                            "$ref": "#/definitions/model.AcceptInviteRequest"
                         }
                     }
                 ],
@@ -2488,7 +2488,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/connection.AcceptInviteResult"
+                                            "$ref": "#/definitions/model.AcceptInviteResult"
                                         }
                                     }
                                 }
@@ -2541,7 +2541,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/connection.DeleteConnectionRequest"
+                            "$ref": "#/definitions/model.DeleteConnectionRequest"
                         }
                     }
                 ],
@@ -2557,7 +2557,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/connection.DeleteConnectionResult"
+                                            "$ref": "#/definitions/model.DeleteConnectionResult"
                                         }
                                     }
                                 }
@@ -2609,7 +2609,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/connection.DeleteInviteRequest"
+                            "$ref": "#/definitions/model.DeleteInviteRequest"
                         }
                     }
                 ],
@@ -2625,7 +2625,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/connection.DeleteInviteResult"
+                                            "$ref": "#/definitions/model.DeleteInviteResult"
                                         }
                                     }
                                 }
@@ -2671,7 +2671,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/connection.GenerateInviteRequest"
+                            "$ref": "#/definitions/model.GenerateInviteRequest"
                         }
                     }
                 ],
@@ -2687,7 +2687,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/connection.GenerateInviteResult"
+                                            "$ref": "#/definitions/model.GenerateInviteResult"
                                         }
                                     }
                                 }
@@ -2736,7 +2736,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/connection.GetConnectionListResult"
+                                            "$ref": "#/definitions/model.GetConnectionListResult"
                                         }
                                     }
                                 }
@@ -2783,7 +2783,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/connection.RevokeAccountAccessRequest"
+                            "$ref": "#/definitions/model.RevokeAccountAccessRequest"
                         }
                     }
                 ],
@@ -2799,7 +2799,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/connection.RevokeAccountAccessResult"
+                                            "$ref": "#/definitions/model.RevokeAccountAccessResult"
                                         }
                                     }
                                 }
@@ -2852,7 +2852,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/connection.SetAccountAccessRequest"
+                            "$ref": "#/definitions/model.SetAccountAccessRequest"
                         }
                     }
                 ],
@@ -2868,7 +2868,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/connection.SetAccountAccessResult"
+                                            "$ref": "#/definitions/model.SetAccountAccessResult"
                                         }
                                     }
                                 }
@@ -6020,7 +6020,7 @@ const docTemplate = `{
                 }
             }
         },
-        "connection.AcceptInviteRequest": {
+        "model.AcceptInviteRequest": {
             "type": "object",
             "properties": {
                 "code": {
@@ -6028,18 +6028,18 @@ const docTemplate = `{
                 }
             }
         },
-        "connection.AcceptInviteResult": {
+        "model.AcceptInviteResult": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/connection.ConnectionResult"
+                        "$ref": "#/definitions/model.ConnectionResult"
                     }
                 }
             }
         },
-        "connection.AccountAccessResult": {
+        "model.AccountAccessResult": {
             "type": "object",
             "properties": {
                 "id": {
@@ -6049,115 +6049,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "role": {
-                    "type": "string"
-                }
-            }
-        },
-        "connection.ConnectionInviteResult": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "expiredAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "connection.ConnectionResult": {
-            "type": "object",
-            "properties": {
-                "sharedAccounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/connection.AccountAccessResult"
-                    }
-                },
-                "user": {
-                    "$ref": "#/definitions/connection.UserResult"
-                }
-            }
-        },
-        "connection.DeleteConnectionRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "connection.DeleteConnectionResult": {
-            "type": "object"
-        },
-        "connection.DeleteInviteRequest": {
-            "type": "object"
-        },
-        "connection.DeleteInviteResult": {
-            "type": "object"
-        },
-        "connection.GenerateInviteRequest": {
-            "type": "object"
-        },
-        "connection.GenerateInviteResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/connection.ConnectionInviteResult"
-                }
-            }
-        },
-        "connection.GetConnectionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/connection.ConnectionResult"
-                    }
-                }
-            }
-        },
-        "connection.RevokeAccountAccessRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "connection.RevokeAccountAccessResult": {
-            "type": "object"
-        },
-        "connection.SetAccountAccessRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "connection.SetAccountAccessResult": {
-            "type": "object"
-        },
-        "connection.UserResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
                     "type": "string"
                 }
             }
@@ -6301,6 +6192,31 @@ const docTemplate = `{
             "properties": {
                 "user": {
                     "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.ConnectionInviteResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "expiredAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ConnectionResult": {
+            "type": "object",
+            "properties": {
+                "sharedAccounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountAccessResult"
+                    }
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResult"
                 }
             }
         },
@@ -6613,6 +6529,23 @@ const docTemplate = `{
         "model.DeleteCategoryResult": {
             "type": "object"
         },
+        "model.DeleteConnectionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteConnectionResult": {
+            "type": "object"
+        },
+        "model.DeleteInviteRequest": {
+            "type": "object"
+        },
+        "model.DeleteInviteResult": {
+            "type": "object"
+        },
         "model.DeletePayeeRequest": {
             "type": "object",
             "properties": {
@@ -6668,6 +6601,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GenerateInviteRequest": {
+            "type": "object"
+        },
+        "model.GenerateInviteResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.ConnectionInviteResult"
+                }
+            }
+        },
         "model.GetAccountListResult": {
             "type": "object",
             "properties": {
@@ -6686,6 +6630,17 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.CategoryResult"
+                    }
+                }
+            }
+        },
+        "model.GetConnectionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ConnectionResult"
                     }
                 }
             }
@@ -7048,6 +7003,37 @@ const docTemplate = `{
             }
         },
         "model.ResetPasswordResult": {
+            "type": "object"
+        },
+        "model.RevokeAccountAccessRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RevokeAccountAccessResult": {
+            "type": "object"
+        },
+        "model.SetAccountAccessRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SetAccountAccessResult": {
             "type": "object"
         },
         "model.SharedAccess": {

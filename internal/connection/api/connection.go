@@ -3,13 +3,13 @@ package api
 import (
 	"net/http"
 
-	appconnection "github.com/econumo/econumo/internal/connection"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 var _ = apidoc.JsonResponseError{}
-var _ = appconnection.GetConnectionListResult{}
+var _ = model.GetConnectionListResult{}
 
 // GetConnectionList handles GET /api/v1/connection/get-connection-list (auth).
 //
@@ -17,7 +17,7 @@ var _ = appconnection.GetConnectionListResult{}
 // @Description Returns the user's connected users, each with the accounts shared between them.
 // @Tags        Connection
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appconnection.GetConnectionListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetConnectionListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
@@ -33,8 +33,8 @@ func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
 // @Tags        Connection
 // @Accept      json
 // @Produce     json
-// @Param       request body     appconnection.SetAccountAccessRequest true "Set account access request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.SetAccountAccessResult}
+// @Param       request body     model.SetAccountAccessRequest true "Set account access request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SetAccountAccessResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -51,8 +51,8 @@ func (h *Handlers) SetAccountAccess(w http.ResponseWriter, r *http.Request) {
 // @Tags        Connection
 // @Accept      json
 // @Produce     json
-// @Param       request body     appconnection.RevokeAccountAccessRequest true "Revoke account access request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.RevokeAccountAccessResult}
+// @Param       request body     model.RevokeAccountAccessRequest true "Revoke account access request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.RevokeAccountAccessResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -70,8 +70,8 @@ func (h *Handlers) RevokeAccountAccess(w http.ResponseWriter, r *http.Request) {
 // @Tags        Connection
 // @Accept      json
 // @Produce     json
-// @Param       request body     appconnection.GenerateInviteRequest false "Generate invite request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.GenerateInviteResult}
+// @Param       request body     model.GenerateInviteRequest false "Generate invite request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.GenerateInviteResult}
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
@@ -88,8 +88,8 @@ func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 // @Tags        Connection
 // @Accept      json
 // @Produce     json
-// @Param       request body     appconnection.DeleteInviteRequest false "Delete invite request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.DeleteInviteResult}
+// @Param       request body     model.DeleteInviteRequest false "Delete invite request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteInviteResult}
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
@@ -106,8 +106,8 @@ func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 // @Tags        Connection
 // @Accept      json
 // @Produce     json
-// @Param       request body     appconnection.AcceptInviteRequest true "Accept invite request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.AcceptInviteResult}
+// @Param       request body     model.AcceptInviteRequest true "Accept invite request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.AcceptInviteResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -126,8 +126,8 @@ func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 // @Tags        Connection
 // @Accept      json
 // @Produce     json
-// @Param       request body     appconnection.DeleteConnectionRequest true "Delete connection request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appconnection.DeleteConnectionResult}
+// @Param       request body     model.DeleteConnectionRequest true "Delete connection request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteConnectionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
