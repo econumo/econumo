@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -60,14 +61,14 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 // CurrencyListView returns all currencies ordered by code ASC.
-func (r *ReadRepo) CurrencyListView(ctx context.Context) ([]appcurrency.CurrencyViewRow, error) {
+func (r *ReadRepo) CurrencyListView(ctx context.Context) ([]model.CurrencyViewRow, error) {
 	rows, err := r.q.GetCurrencyListView(ctx, r.db(ctx))
 	if err != nil {
 		return nil, err
 	}
-	out := make([]appcurrency.CurrencyViewRow, 0, len(rows))
+	out := make([]model.CurrencyViewRow, 0, len(rows))
 	for _, c := range rows {
-		out = append(out, appcurrency.CurrencyViewRow{
+		out = append(out, model.CurrencyViewRow{
 			ID:             c.ID,
 			Code:           c.Code,
 			Symbol:         c.Symbol,
@@ -80,14 +81,14 @@ func (r *ReadRepo) CurrencyListView(ctx context.Context) ([]appcurrency.Currency
 
 // LatestCurrencyRateListView returns every rate on the most-recent published
 // date, with the date pre-formatted "Y-m-d 00:00:00".
-func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]appcurrency.CurrencyRateViewRow, error) {
+func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]model.CurrencyRateViewRow, error) {
 	rows, err := r.q.GetLatestCurrencyRateListView(ctx, r.db(ctx))
 	if err != nil {
 		return nil, err
 	}
-	out := make([]appcurrency.CurrencyRateViewRow, 0, len(rows))
+	out := make([]model.CurrencyRateViewRow, 0, len(rows))
 	for _, rt := range rows {
-		out = append(out, appcurrency.CurrencyRateViewRow{
+		out = append(out, model.CurrencyRateViewRow{
 			CurrencyID:     rt.CurrencyID,
 			BaseCurrencyID: rt.BaseCurrencyID,
 			// Normalize the NUMERIC(19,8) string to the canonical decimal wire

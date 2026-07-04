@@ -15,30 +15,10 @@ import (
 // hydration.
 type ReadModel interface {
 	// CurrencyListView returns all currencies ordered by code ASC.
-	CurrencyListView(ctx context.Context) ([]CurrencyViewRow, error)
+	CurrencyListView(ctx context.Context) ([]model.CurrencyViewRow, error)
 	// LatestCurrencyRateListView returns every rate on the most-recent published
 	// date.
-	LatestCurrencyRateListView(ctx context.Context) ([]CurrencyRateViewRow, error)
-}
-
-// CurrencyViewRow is the read-side currency row. Name is the raw (nullable) DB
-// value, which is NULL in practice — the service resolves the wire name from the
-// Intl display-name table as a fallback.
-type CurrencyViewRow struct {
-	ID             string
-	Code           string
-	Symbol         string
-	Name           *string
-	FractionDigits int16
-}
-
-// CurrencyRateViewRow is the read-side rate row. UpdatedAt arrives pre-formatted
-// "Y-m-d 00:00:00" from the repo.
-type CurrencyRateViewRow struct {
-	CurrencyID     string
-	BaseCurrencyID string
-	Rate           string
-	UpdatedAt      string
+	LatestCurrencyRateListView(ctx context.Context) ([]model.CurrencyRateViewRow, error)
 }
 
 // ReadService serves both currency read endpoints.
@@ -75,7 +55,7 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*model.GetC
 // currencyName resolves the wire display name: a non-empty stored name wins,
 // otherwise the Intl table by code (which itself falls back to the code). In the
 // live data the stored name is always NULL, so this resolves via the Intl table.
-func currencyName(r CurrencyViewRow) string {
+func currencyName(r model.CurrencyViewRow) string {
 	if r.Name != nil && *r.Name != "" {
 		return *r.Name
 	}
