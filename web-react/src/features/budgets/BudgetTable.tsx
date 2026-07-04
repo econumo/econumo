@@ -23,6 +23,8 @@ interface BudgetTableProps extends ElementRowExtras {
   budget: BudgetDto
   buckets: BudgetBuckets
   renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
+  /** wraps folder/no-folder sections (dnd droppables in edit mode) */
+  sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
 }
 
 function StatLine({ stats, currency }: { stats: BucketStats; currency: CurrencyDto | undefined }) {
@@ -116,7 +118,7 @@ function ElementRow({
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
 
-export function BudgetTable({ budget, buckets, renderFolderActions, ...extras }: BudgetTableProps) {
+export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapper, ...extras }: BudgetTableProps) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
@@ -137,7 +139,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, ...extras }:
           return null
         }
         const isArchiveSection = section.key === '__archive__'
-        return (
+        const sectionNode = (
           <section key={section.key} className="rounded-md border p-2" data-testid={`budget-folder-${section.name}`}>
             <header className="flex items-center gap-2 px-2 pb-1">
               <span className="flex-1 truncate text-sm font-medium" title={section.name}>
@@ -163,6 +165,11 @@ export function BudgetTable({ budget, buckets, renderFolderActions, ...extras }:
               ))
             )}
           </section>
+        )
+        return !isArchiveSection && sectionWrapper ? (
+          <div key={section.key}>{sectionWrapper(section.bucket, section.key, sectionNode)}</div>
+        ) : (
+          sectionNode
         )
       })}
 
