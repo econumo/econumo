@@ -1,4 +1,5 @@
-package payee
+// Request/result DTOs for the payee API, with their tier-1 Validate() methods.
+package model
 
 import (
 	"strings"
@@ -110,12 +111,6 @@ func (r DeletePayeeRequest) Validate() error {
 }
 
 type DeletePayeeResult struct{}
-
-// PositionChange is one {id, position} entry in an order request.
-type PositionChange struct {
-	Id       string `json:"id"`
-	Position int    `json:"position"`
-}
 
 type OrderPayeeListRequest struct {
 	Changes []PositionChange `json:"changes"`

@@ -6,6 +6,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/datetime"
 )
@@ -34,14 +35,14 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-func (r *ReadRepo) PayeeListView(ctx context.Context, userID string) ([]apppayee.PayeeViewRow, error) {
+func (r *ReadRepo) PayeeListView(ctx context.Context, userID string) ([]model.PayeeViewRow, error) {
 	rows, err := r.q.GetPayeeListView(ctx, r.db(ctx), userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]apppayee.PayeeViewRow, 0, len(rows))
+	out := make([]model.PayeeViewRow, 0, len(rows))
 	for _, p := range rows {
-		out = append(out, apppayee.PayeeViewRow{
+		out = append(out, model.PayeeViewRow{
 			ID:         p.ID,
 			UserID:     p.UserID,
 			Name:       p.Name,

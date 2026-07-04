@@ -13,7 +13,6 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
-	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
@@ -139,7 +138,7 @@ func (l *TransactionTagNameLookup) TagName(ctx context.Context, id vo.Id) (strin
 // transactionPayeeByID is the minimal payee-repo surface the export adapter's
 // name lookup uses.
 type transactionPayeeByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*payee.Payee, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Payee, error)
 }
 
 // TransactionPayeeNameLookup adapts the payee repository to the transaction

@@ -1,9 +1,9 @@
-// Package payee is the payee aggregate's domain layer: the Payee entity and the
-// repository interface.
+// The Payee entity: the Payee aggregate root. The repository interface, the
+// write-side Service, and the read-side ReadService stay in internal/payee.
 //
 // A payee has the same shape as a tag: no type and no icon (the PayeeResult DTO
 // carries only id/name/position/isArchived/timestamps).
-package payee
+package model
 
 import (
 	"time"

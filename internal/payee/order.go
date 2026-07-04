@@ -3,6 +3,7 @@ package payee
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -10,7 +11,7 @@ import (
 // user's AVAILABLE set (own + shared via account access), saving those that
 // changed, then returns the full ordered list. A SHARED payee's position is
 // updated too.
-func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req OrderPayeeListRequest) (*OrderPayeeListResult, error) {
+func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req model.OrderPayeeListRequest) (*model.OrderPayeeListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
 	order := make([]string, 0, len(req.Changes))
 	for _, ch := range req.Changes {
@@ -24,7 +25,7 @@ func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req OrderPay
 		positions[id.String()] = int16(ch.Position)
 	}
 
-	var items []PayeeResult
+	var items []model.PayeeResult
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		avail, err := s.read.PayeeListView(txCtx, userID.String())
 		if err != nil {
@@ -62,5 +63,5 @@ func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req OrderPay
 		return nil, err
 	}
 
-	return &OrderPayeeListResult{Items: items}, nil
+	return &model.OrderPayeeListResult{Items: items}, nil
 }

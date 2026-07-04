@@ -12,7 +12,6 @@ import (
 
 	appbudget "github.com/econumo/econumo/internal/budget"
 	"github.com/econumo/econumo/internal/model"
-	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -157,7 +156,7 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 }
 
 type budgetPayeeRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
 }
 
 // BudgetPayeeMetadataLookup adapts the payee repository to the payee slice of

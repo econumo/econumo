@@ -3019,7 +3019,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payee.ArchivePayeeRequest"
+                            "$ref": "#/definitions/model.ArchivePayeeRequest"
                         }
                     }
                 ],
@@ -3035,7 +3035,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/payee.ArchivePayeeResult"
+                                            "$ref": "#/definitions/model.ArchivePayeeResult"
                                         }
                                     }
                                 }
@@ -3088,7 +3088,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payee.CreatePayeeRequest"
+                            "$ref": "#/definitions/model.CreatePayeeRequest"
                         }
                     }
                 ],
@@ -3104,7 +3104,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/payee.CreatePayeeResult"
+                                            "$ref": "#/definitions/model.CreatePayeeResult"
                                         }
                                     }
                                 }
@@ -3157,7 +3157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payee.DeletePayeeRequest"
+                            "$ref": "#/definitions/model.DeletePayeeRequest"
                         }
                     }
                 ],
@@ -3173,7 +3173,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/payee.DeletePayeeResult"
+                                            "$ref": "#/definitions/model.DeletePayeeResult"
                                         }
                                     }
                                 }
@@ -3228,7 +3228,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/payee.GetPayeeListResult"
+                                            "$ref": "#/definitions/model.GetPayeeListResult"
                                         }
                                     }
                                 }
@@ -3275,7 +3275,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payee.OrderPayeeListRequest"
+                            "$ref": "#/definitions/model.OrderPayeeListRequest"
                         }
                     }
                 ],
@@ -3291,7 +3291,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/payee.OrderPayeeListResult"
+                                            "$ref": "#/definitions/model.OrderPayeeListResult"
                                         }
                                     }
                                 }
@@ -3344,7 +3344,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payee.UnarchivePayeeRequest"
+                            "$ref": "#/definitions/model.UnarchivePayeeRequest"
                         }
                     }
                 ],
@@ -3360,7 +3360,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/payee.UnarchivePayeeResult"
+                                            "$ref": "#/definitions/model.UnarchivePayeeResult"
                                         }
                                     }
                                 }
@@ -3413,7 +3413,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payee.UpdatePayeeRequest"
+                            "$ref": "#/definitions/model.UpdatePayeeRequest"
                         }
                     }
                 ],
@@ -3429,7 +3429,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/payee.UpdatePayeeResult"
+                                            "$ref": "#/definitions/model.UpdatePayeeResult"
                                         }
                                     }
                                 }
@@ -6242,6 +6242,17 @@ const docTemplate = `{
         "model.ArchiveCategoryResult": {
             "type": "object"
         },
+        "model.ArchivePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ArchivePayeeResult": {
+            "type": "object"
+        },
         "model.ArchiveTagRequest": {
             "type": "object",
             "properties": {
@@ -6412,6 +6423,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreatePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreatePayeeResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.PayeeResult"
+                }
+            }
+        },
         "model.CreateTagRequest": {
             "type": "object",
             "properties": {
@@ -6528,6 +6561,17 @@ const docTemplate = `{
         "model.DeleteCategoryResult": {
             "type": "object"
         },
+        "model.DeletePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeletePayeeResult": {
+            "type": "object"
+        },
         "model.DeleteTagRequest": {
             "type": "object",
             "properties": {
@@ -6612,6 +6656,17 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.OptionResult"
+                    }
+                }
+            }
+        },
+        "model.GetPayeeListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PayeeResult"
                     }
                 }
             }
@@ -6753,6 +6808,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OrderPayeeListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PositionChange"
+                    }
+                }
+            }
+        },
+        "model.OrderPayeeListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PayeeResult"
+                    }
+                }
+            }
+        },
         "model.OrderTagListRequest": {
             "type": "object",
             "properties": {
@@ -6772,6 +6849,32 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.TagResult"
                     }
+                }
+            }
+        },
+        "model.PayeeResult": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -6899,6 +7002,17 @@ const docTemplate = `{
             }
         },
         "model.UnarchiveCategoryResult": {
+            "type": "object"
+        },
+        "model.UnarchivePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UnarchivePayeeResult": {
             "type": "object"
         },
         "model.UnarchiveTagRequest": {
@@ -7044,6 +7158,20 @@ const docTemplate = `{
         "model.UpdatePasswordResult": {
             "type": "object"
         },
+        "model.UpdatePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdatePayeeResult": {
+            "type": "object"
+        },
         "model.UpdateReportPeriodRequest": {
             "type": "object",
             "properties": {
@@ -7092,145 +7220,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "payee.ArchivePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "payee.ArchivePayeeResult": {
-            "type": "object"
-        },
-        "payee.CreatePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "payee.CreatePayeeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/payee.PayeeResult"
-                }
-            }
-        },
-        "payee.DeletePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "payee.DeletePayeeResult": {
-            "type": "object"
-        },
-        "payee.GetPayeeListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/payee.PayeeResult"
-                    }
-                }
-            }
-        },
-        "payee.OrderPayeeListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/payee.PositionChange"
-                    }
-                }
-            }
-        },
-        "payee.OrderPayeeListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/payee.PayeeResult"
-                    }
-                }
-            }
-        },
-        "payee.PayeeResult": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "ownerUserId": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "payee.PositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "payee.UnarchivePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "payee.UnarchivePayeeResult": {
-            "type": "object"
-        },
-        "payee.UpdatePayeeRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "payee.UpdatePayeeResult": {
-            "type": "object"
         },
         "transaction.AccountCurrencyResult": {
             "type": "object",

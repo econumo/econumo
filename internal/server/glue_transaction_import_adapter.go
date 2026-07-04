@@ -14,7 +14,6 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
-	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
@@ -223,12 +222,12 @@ func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, na
 // transactionImportPayeeService is the payee-service create surface the
 // importer uses.
 type transactionImportPayeeService interface {
-	CreatePayee(ctx context.Context, userID vo.Id, req payee.CreatePayeeRequest) (*payee.CreatePayeeResult, error)
+	CreatePayee(ctx context.Context, userID vo.Id, req model.CreatePayeeRequest) (*model.CreatePayeeResult, error)
 }
 
 // transactionImportPayeeLister is the read surface over the payee repo.
 type transactionImportPayeeLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
 }
 
 // TransactionImportPayees adapts the payee service/repo to the transaction
@@ -256,7 +255,7 @@ func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.
 }
 
 func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
-	res, err := p.svc.CreatePayee(ctx, ownerID, payee.CreatePayeeRequest{
+	res, err := p.svc.CreatePayee(ctx, ownerID, model.CreatePayeeRequest{
 		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {

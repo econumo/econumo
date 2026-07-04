@@ -713,6 +713,13 @@ definitions:
     type: object
   model.ArchiveCategoryResult:
     type: object
+  model.ArchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchivePayeeResult:
+    type: object
   model.ArchiveTagRequest:
     properties:
       id:
@@ -823,6 +830,20 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.CreatePayeeRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreatePayeeResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.PayeeResult'
+    type: object
   model.CreateTagRequest:
     properties:
       accountId:
@@ -898,6 +919,13 @@ definitions:
     type: object
   model.DeleteCategoryResult:
     type: object
+  model.DeletePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeletePayeeResult:
+    type: object
   model.DeleteTagRequest:
     properties:
       id:
@@ -952,6 +980,13 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.OptionResult'
+        type: array
+    type: object
+  model.GetPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
         type: array
     type: object
   model.GetTagListResult:
@@ -1041,6 +1076,20 @@ definitions:
           $ref: '#/definitions/model.AccountFolderResult'
         type: array
     type: object
+  model.OrderPayeeListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
   model.OrderTagListRequest:
     properties:
       changes:
@@ -1054,6 +1103,23 @@ definitions:
         items:
           $ref: '#/definitions/model.TagResult'
         type: array
+    type: object
+  model.PayeeResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
     type: object
   model.PositionChange:
     properties:
@@ -1135,6 +1201,13 @@ definitions:
         type: string
     type: object
   model.UnarchiveCategoryResult:
+    type: object
+  model.UnarchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchivePayeeResult:
     type: object
   model.UnarchiveTagRequest:
     properties:
@@ -1227,6 +1300,15 @@ definitions:
     type: object
   model.UpdatePasswordResult:
     type: object
+  model.UpdatePayeeRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdatePayeeResult:
+    type: object
   model.UpdateReportPeriodRequest:
     properties:
       value:
@@ -1257,95 +1339,6 @@ definitions:
         type: string
       name:
         type: string
-    type: object
-  payee.ArchivePayeeRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  payee.ArchivePayeeResult:
-    type: object
-  payee.CreatePayeeRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  payee.CreatePayeeResult:
-    properties:
-      item:
-        $ref: '#/definitions/payee.PayeeResult'
-    type: object
-  payee.DeletePayeeRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  payee.DeletePayeeResult:
-    type: object
-  payee.GetPayeeListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/payee.PayeeResult'
-        type: array
-    type: object
-  payee.OrderPayeeListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/payee.PositionChange'
-        type: array
-    type: object
-  payee.OrderPayeeListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/payee.PayeeResult'
-        type: array
-    type: object
-  payee.PayeeResult:
-    properties:
-      createdAt:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      position:
-        type: integer
-      updatedAt:
-        type: string
-    type: object
-  payee.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  payee.UnarchivePayeeRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  payee.UnarchivePayeeResult:
-    type: object
-  payee.UpdatePayeeRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  payee.UpdatePayeeResult:
     type: object
   transaction.AccountCurrencyResult:
     properties:
@@ -3297,7 +3290,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.ArchivePayeeRequest'
+          $ref: '#/definitions/model.ArchivePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3308,7 +3301,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.ArchivePayeeResult'
+                  $ref: '#/definitions/model.ArchivePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3339,7 +3332,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.CreatePayeeRequest'
+          $ref: '#/definitions/model.CreatePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3350,7 +3343,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.CreatePayeeResult'
+                  $ref: '#/definitions/model.CreatePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3381,7 +3374,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.DeletePayeeRequest'
+          $ref: '#/definitions/model.DeletePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3392,7 +3385,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.DeletePayeeResult'
+                  $ref: '#/definitions/model.DeletePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3425,7 +3418,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.GetPayeeListResult'
+                  $ref: '#/definitions/model.GetPayeeListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3452,7 +3445,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.OrderPayeeListRequest'
+          $ref: '#/definitions/model.OrderPayeeListRequest'
       produces:
       - application/json
       responses:
@@ -3463,7 +3456,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.OrderPayeeListResult'
+                  $ref: '#/definitions/model.OrderPayeeListResult'
               type: object
         "400":
           description: Bad Request
@@ -3493,7 +3486,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.UnarchivePayeeRequest'
+          $ref: '#/definitions/model.UnarchivePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3504,7 +3497,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.UnarchivePayeeResult'
+                  $ref: '#/definitions/model.UnarchivePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3535,7 +3528,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.UpdatePayeeRequest'
+          $ref: '#/definitions/model.UpdatePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3546,7 +3539,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.UpdatePayeeResult'
+                  $ref: '#/definitions/model.UpdatePayeeResult'
               type: object
         "400":
           description: Bad Request

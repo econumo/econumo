@@ -3,6 +3,7 @@ package payee
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -11,7 +12,7 @@ import (
 // surfaces as AccessDenied (HTTP 403). Transactions referencing the payee have
 // payee_id set to NULL via the ON DELETE SET NULL FK. Delete is unconditional —
 // there is no mode/replaceId.
-func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req DeletePayeeRequest) (*DeletePayeeResult, error) {
+func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req model.DeletePayeeRequest) (*model.DeletePayeeResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -30,5 +31,5 @@ func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req DeletePayee
 		return nil, err
 	}
 
-	return &DeletePayeeResult{}, nil
+	return &model.DeletePayeeResult{}, nil
 }
