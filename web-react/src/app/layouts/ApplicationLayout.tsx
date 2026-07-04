@@ -10,6 +10,7 @@ import { econumoPackage } from '@/lib/package'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
+import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
@@ -112,6 +113,7 @@ export function ApplicationLayout() {
         </main>
       ) : null}
 
+      <AccountDialog />
       <LoadingDialog open={!isFullyLoaded} label={t('modules.app.modal.loading.data_loading')} />
     </div>
   )
