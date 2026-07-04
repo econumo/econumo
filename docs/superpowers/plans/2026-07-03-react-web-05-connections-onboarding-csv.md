@@ -119,7 +119,7 @@ web-react/src/
 **Interfaces:**
 - Produces: `ConnectionDto { user: UserDto; sharedAccounts: {id, ownerUserId, role: AccountRole}[] }`; `InviteDto { code: string; expiredAt: string }`; functions `getConnectionList(): Promise<ConnectionDto[]>`, `generateInvite(): Promise<InviteDto>`, `acceptInvite(code: string): Promise<ConnectionDto[]>`, `deleteConnection(userId: Id): Promise<void>`, `setAccountAccess(form: {accountId: Id; userId: Id; role: AccountRole}): Promise<void>`, `revokeAccountAccess(form: {accountId: Id; userId: Id}): Promise<void>`; `completeOnboarding(): Promise<CurrentUserDto>`; `queryKeys.connections`.
 
-- [ ] **Step 1: Write the failing test** — `src/api/connection.test.ts`, same MSW pattern as `api/budget.test.ts`:
+- [x] **Step 1: Write the failing test** — `src/api/connection.test.ts`, same MSW pattern as `api/budget.test.ts`:
 
 ```ts
 import { http, HttpResponse } from 'msw'
@@ -204,9 +204,9 @@ it('completeOnboarding returns the refreshed user', async () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure** — `pnpm vitest run src/api/connection.test.ts src/api/user.test.ts` → FAIL (module not found / void return).
+- [x] **Step 2: Run to verify failure** — `pnpm vitest run src/api/connection.test.ts src/api/user.test.ts` → FAIL (module not found / void return).
 
-- [ ] **Step 3: Implement.** `src/api/dto/connection.ts`:
+- [x] **Step 3: Implement.** `src/api/dto/connection.ts`:
 
 ```ts
 import type { Id } from '../types'
@@ -284,9 +284,9 @@ export async function completeOnboarding(): Promise<CurrentUserDto> {
 
 In `src/app/queryKeys.ts` add `connections: ['connections'] as const,` after `user`.
 
-- [ ] **Step 4: Run to verify pass** — same command → PASS.
+- [x] **Step 4: Run to verify pass** — same command → PASS.
 
-- [ ] **Step 5: Commit** — `git add web-react/src/api web-react/src/app/queryKeys.ts && git commit -m "feat(react/connections): connection api client + complete-onboarding user echo"`
+- [x] **Step 5: Commit** — `git add web-react/src/api web-react/src/app/queryKeys.ts && git commit -m "feat(react/connections): connection api client + complete-onboarding user echo"`
 
 ---
 
@@ -302,7 +302,7 @@ In `src/app/queryKeys.ts` add `connections: ['connections'] as const,` after `us
 - Produces (`shared.ts`): `SharedItem { id: Id; name: string; icon?: string; role: string; ownedByMe: boolean; owner: UserDto }`; `sharedAccountsFor(accounts: AccountDto[], meId: Id, otherId: Id): SharedItem[]`; `sharedBudgetsFor(budgets: BudgetMetaDto[], meId: Id, otherId: Id): SharedItem[]`; `applyAccountAccess(accounts: AccountDto[], accountId: Id, user: UserDto, role: AccountRole): AccountDto[]`; `removeAccountAccess(accounts: AccountDto[], accountId: Id, userId: Id): AccountDto[]`; `hasAccountAdminAccess(account: AccountDto, meId: Id): boolean`; `hasBudgetAdminAccess(budget: BudgetMetaDto, meId: Id): boolean`.
 - Produces (`queries.ts`): `useConnections(options?: {poll?: boolean})`, `useGenerateInvite()`, `useAcceptInvite()`, `useDeleteConnection()`, `useSetAccountAccess()`, `useRevokeAccountAccess()`.
 
-- [ ] **Step 1: Write the failing tests.** `shared.test.ts` (pure, no rendering):
+- [x] **Step 1: Write the failing tests.** `shared.test.ts` (pure, no rendering):
 
 ```ts
 import { applyAccountAccess, hasAccountAdminAccess, hasBudgetAdminAccess, removeAccountAccess, sharedAccountsFor, sharedBudgetsFor } from './shared'
@@ -355,9 +355,9 @@ it('admin access = owner or admin grant', () => {
 
 `queries.test.tsx` (renderHook + QueryClientProvider, pattern from `features/budgets/queries.test.tsx`): assert (a) `useAcceptInvite` success replaces the `connections` cache with the returned items; (b) `useSetAccountAccess` success rewrites the `accounts` cache via `applyAccountAccess` (seed the accounts cache and the connections cache first, then check `sharedAccess` on the cached account); (c) `useRevokeAccountAccess` drops the entry; (d) `useDeleteConnection` removes the user from the connections cache.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement.** `shared.ts`:
+- [x] **Step 3: Implement.** `shared.ts`:
 
 ```ts
 import type { AccountDto, AccountRole } from '@/api/dto/account'
@@ -515,9 +515,9 @@ export function useRevokeAccountAccess() {
 
 In `test/fixtures.ts` add `export const fixtureConnections = [{ user: { id: 'u2', avatar: 'https://gravatar/u2', name: 'Partner' }, sharedAccounts: [] }]` and register in `coreHandlers`: `http.get('*/api/v1/connection/get-connection-list', () => HttpResponse.json({ success: true, message: '', data: { items: overrides.connections ?? [] } }))`.
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/connections): queries + pure shared-access derivation"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/connections): queries + pure shared-access derivation"`
 
 ---
 
@@ -534,16 +534,16 @@ In `test/fixtures.ts` add `export const fixtureConnections = [{ user: { id: 'u2'
 
 Page anatomy (Vue `Connections.vue`): title `modules.connections.pages.settings.header`, two buttons `…generate_invite` ("Create an invitation") and `…accept_invite` ("Accept an invitation"); empty state `blocks.list.list_empty`; one row per connection: avatar (`?s=50`), name, `MoreVertical` menu with View (`elements.button.view.label`) and Delete (`elements.button.delete.label`); delete → ConfirmDialog with question `modules.connections.modals.delete_connection.question` (`{name}`), confirm `elements.button.delete.label`. Generate → calls the mutation, then opens `GenerateInviteDialog` showing label `modules.connections.modals.generate_invite.code.label`, instruction `…generate_invite.instruction`, the code in large mono text, single OK button (`elements.button.ok.label`). No copy button, no expiry countdown (Vue shows none). Accept → `AcceptInviteDialog` with input labeled `modules.connections.modals.accept_invite.code.label`, instruction `…accept_invite.instruction`, required-field message `modules.connections.forms.invitation_code.validation.required_field`, Cancel + Accept (`elements.button.accept.label`); on success closes; on 400 stays open showing the server `message` (approved divergence #1).
 
-- [ ] **Step 1: Write the failing tests** — render via `createMemoryRouter` at `/settings/connections` with `coreHandlers({connections: fixtureConnections})` (pattern: `BudgetsPage.test.tsx`). Cases:
+- [x] **Step 1: Write the failing tests** — render via `createMemoryRouter` at `/settings/connections` with `coreHandlers({connections: fixtureConnections})` (pattern: `BudgetsPage.test.tsx`). Cases:
   1. renders the row `Partner` with its avatar; empty override → `No connections found`.
   2. "Create an invitation" click → POST `generate-invite` (assert body `{}`), dialog shows `aB3f9` and the instruction text `The code is valid for 5 minutes.` (substring).
   3. "Accept an invitation" → type `aB3f9`, submit → POST body `{code: 'aB3f9'}`; on MSW success returning two items the dialog closes and the new user's name appears.
   4. Accept failure: MSW returns `HttpResponse.json({success:false, message:'ConnectionCode is incorrect', code:400, errors:{}}, {status:400})` → dialog stays open, text `ConnectionCode is incorrect` visible.
   5. Delete: open the row menu → Delete → confirm question contains `Partner` → confirm → POST `delete-connection` `{id:'u2'}`.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement.** `GenerateInviteDialog` — `ResponsiveDialog` with `title={t('modules.connections.modals.generate_invite.code.label')}`, body: `<p className="text-sm text-muted-foreground">{t('modules.connections.modals.generate_invite.instruction')}</p>` + `<p className="py-3 text-center font-mono text-3xl tracking-widest" data-testid="invite-code">{code}</p>` + full-width OK button. `AcceptInviteDialog` — form with a single `Input` (label via `<Label>`), client `isNotEmpty` check surfacing the required_field message, server error paragraph (`role="alert"`), Cancel + Accept buttons (Accept `disabled={pending}`). `ConnectionsPage`:
+- [x] **Step 3: Implement.** `GenerateInviteDialog` — `ResponsiveDialog` with `title={t('modules.connections.modals.generate_invite.code.label')}`, body: `<p className="text-sm text-muted-foreground">{t('modules.connections.modals.generate_invite.instruction')}</p>` + `<p className="py-3 text-center font-mono text-3xl tracking-widest" data-testid="invite-code">{code}</p>` + full-width OK button. `AcceptInviteDialog` — form with a single `Input` (label via `<Label>`), client `isNotEmpty` check surfacing the required_field message, server error paragraph (`role="alert"`), Cancel + Accept buttons (Accept `disabled={pending}`). `ConnectionsPage`:
 
 ```tsx
 export function ConnectionsPage() {
@@ -563,9 +563,9 @@ export function ConnectionsPage() {
 
 Generate handler: `generateInvite.mutate(undefined, { onSuccess: setInvite })`. Accept submit: `acceptInvite.mutate(code, { onSuccess: () => { setAcceptOpen(false); setAcceptError(null) }, onError: (e) => setAcceptError(axiosMessage(e)) })` where `axiosMessage` mirrors the extraction used in `LoginPage` (axios error → `response.data.message`, fallback generic). Rows inside `SettingsShell title={t('modules.connections.pages.settings.header')} backTo={RouterPage.SETTINGS}` with the two action buttons. Route: replace the `EmptyPage` at `/settings/connections` with `<ConnectionsPage />`.
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/connections): connections page with invite generate/accept and delete"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/connections): connections page with invite generate/accept and delete"`
 
 ---
 
@@ -580,15 +580,15 @@ Generate handler: `generateInvite.mutate(undefined, { onSuccess: setInvite })`. 
 
 Vue behavior: header = user avatar + name; hint `modules.connections.modals.share_access.choose_access_level`; three option rows labeled `modules.connections.{kind}.roles.{guest|user|admin}` (accounts: "View only" / "Manage transactions" / "Full control"; budgets: "View only" / "Manage budget" / "Full control"), current role highlighted; a destructive "Revoke access" row (`modules.connections.modals.share_access.revoke_access`) **only when `role` is set and not `owner`**; Cancel. DeclineAccessDialog: owner avatar + name, item name as hint, one destructive action `modules.connections.modals.decline_access.decline_access`, Cancel.
 
-- [ ] **Step 1: Write the failing tests:** (a) accounts kind renders the three labels + hint, no revoke row when `role={null}`; (b) `role="user"` → revoke row present, clicking it fires `onRevoke`; clicking "Full control" fires `onSelect('admin')`; (c) budgets kind renders "Manage budget"; `role="owner"` → no revoke row; (d) DeclineAccessDialog shows owner name + item name, clicking "Decline access" fires `onDecline`.
+- [x] **Step 1: Write the failing tests:** (a) accounts kind renders the three labels + hint, no revoke row when `role={null}`; (b) `role="user"` → revoke row present, clicking it fires `onRevoke`; clicking "Full control" fires `onSelect('admin')`; (c) budgets kind renders "Manage budget"; `role="owner"` → no revoke row; (d) DeclineAccessDialog shows owner name + item name, clicking "Decline access" fires `onDecline`.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement** both as `ResponsiveDialog`s. Option row: full-width button, `aria-pressed={role === value}` + highlight class `bg-accent` when active; order guest → user → admin (Vue order). Revoke row: `variant="destructive"`-styled button. `DeclineAccessDialog` body: `<img src={`${owner.avatar}?s=50`}/>`, owner name, `<p className="text-sm text-muted-foreground">{itemName}</p>`, destructive Decline button + Cancel.
+- [x] **Step 3: Implement** both as `ResponsiveDialog`s. Option row: full-width button, `aria-pressed={role === value}` + highlight class `bg-accent` when active; order guest → user → admin (Vue order). Revoke row: `variant="destructive"`-styled button. `DeclineAccessDialog` body: `<img src={`${owner.avatar}?s=50`}/>`, owner name, `<p className="text-sm text-muted-foreground">{itemName}</p>`, destructive Decline button + Cancel.
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/connections): access level + decline access dialogs"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/connections): access level + decline access dialogs"`
 
 ---
 
@@ -656,20 +656,20 @@ export function useDeclineBudgetAccess() {
 
 Dialog anatomy (Vue `PreviewConnectionModal.vue`): title = connection user name + avatar. Section `modules.connections.modals.preview_connection.budgets` ("Shared budgets") then `.accounts` ("Shared accounts"); empty states `.budgets_empty` / `.accounts_empty`; when non-empty, hint `.tap_to_manage` ("Click to manage access"). Each row: icon (`menu_book` equivalent → lucide `BookOpen` for budgets, `EntityIcon` for accounts), name, badge `.your_budget`/`.your_account` ("Your budget"/"Your account") when `ownedByMe` else `.shared_with_you` ("Shared with you"), role label `modules.connections.{budgets|accounts}.roles.{role}`. Row click: `ownedByMe` → `AccessLevelDialog` (skip when role is `owner`); not mine → `DeclineAccessDialog`. Account decline calls `useDeleteAccount` (matches Vue — no decline endpoint); budget decline calls `useDeclineBudgetAccess`. Footer: destructive Delete (`elements.button.delete.label`) firing `onDelete(connection.user.id)` + OK.
 
-- [ ] **Step 1: Write the failing tests** — seed `coreHandlers` with accounts/budgets fixtures that include shared entries for `u2`; render the dialog directly (QueryClientProvider + MemoryRouter). Cases:
+- [x] **Step 1: Write the failing tests** — seed `coreHandlers` with accounts/budgets fixtures that include shared entries for `u2`; render the dialog directly (QueryClientProvider + MemoryRouter). Cases:
   1. lists a "Your account" row (Wallet, role "Manage transactions") and a "Shared with you" budget row; empty caches → both `_empty` strings.
   2. clicking the owned account row opens `AccessLevelDialog`; choosing "View only" → POST `set-account-access` `{accountId:'a1', userId:'u2', role:'guest'}`.
   3. clicking a shared-with-me budget row opens `DeclineAccessDialog`; Decline → POST `decline-access` `{budgetId:'b2'}`.
   4. clicking a shared-with-me account row → Decline posts `delete-account` for that id.
   5. Delete button fires `onDelete('u2')`.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement** the dialog + wire into `ConnectionsPage` (`View` menu item and row click set `preview`; `onDelete` closes preview and opens the existing delete confirm).
+- [x] **Step 3: Implement** the dialog + wire into `ConnectionsPage` (`View` menu item and row click set `preview`; `onDelete` closes preview and opens the existing delete confirm).
 
-- [ ] **Step 4: Run to verify pass** (page test file re-run too).
+- [x] **Step 4: Run to verify pass** (page test file re-run too).
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/connections): preview connection dialog with per-item access management"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/connections): preview connection dialog with per-item access management"`
 
 ---
 
@@ -688,15 +688,15 @@ Dialog copy: note `modules.connections.modals.share_access.tap_to_share` ("Click
 
 AccountsSettingsPage additions (desktop menu): a new item **Access control** (`pages.settings.accounts.list_actions.access`) between Edit and Delete, rendered only when `hasAccountAdminAccess(account, user.id)` (import from `features/connections/shared.ts`; `econumoPackage.includesSharedAccess` is hardcoded `true` in Vue — skip the gate). Opens `ShareAccessDialog` with `buildShareEntries(connections, account.sharedAccess, meId, account.owner.id)`; `onPick` (bail when `role === 'owner'`) opens `AccessLevelDialog kind="accounts"`; select → `useSetAccountAccess`, revoke → `useRevokeAccountAccess`. Also add the shared-avatar cluster to `AccountRow`: when `account.sharedAccess.length > 0`, render owner avatar + each grantee avatar (`?s=30`, `size-4 rounded-full`) before the balance.
 
-- [ ] **Step 1: Write the failing tests.** `ShareAccessDialog.test.tsx`: (a) `buildShareEntries` seeds connections at role null, overlays access, excludes me, marks the owner; (b) dialog renders "No access" for null role and "Manage transactions – not accepted" style suffix only for budgets kind with `isAccepted: false`; (c) clicking a row fires `onPick`. Page test additions: with a shared account fixture, the row shows the partner avatar; menu shows "Access control"; picking the partner then "Full control" posts `set-account-access` with `role:'admin'`; "Revoke access" posts `revoke-account-access`.
+- [x] **Step 1: Write the failing tests.** `ShareAccessDialog.test.tsx`: (a) `buildShareEntries` seeds connections at role null, overlays access, excludes me, marks the owner; (b) dialog renders "No access" for null role and "Manage transactions – not accepted" style suffix only for budgets kind with `isAccepted: false`; (c) clicking a row fires `onPick`. Page test additions: with a shared account fixture, the row shows the partner avatar; menu shows "Access control"; picking the partner then "Full control" posts `set-account-access` with `role:'admin'`; "Revoke access" posts `revoke-account-access`.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement** (dialog + `buildShareEntries` + page wiring).
+- [x] **Step 3: Implement** (dialog + `buildShareEntries` + page wiring).
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/accounts): access control dialog + shared avatars in accounts settings"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/accounts): access control dialog + shared avatars in accounts settings"`
 
 ---
 
@@ -715,19 +715,19 @@ Menu items per row (Vue order, existing items kept):
 4. **Decline** (`elements.button.decline.label`, destructive) when `budget.ownerUserId !== user.id` → ConfirmDialog title `modules.budget.page.settings.decline_access_modal.title`, question `…decline_access_modal.question` (`{name}`), confirm label `elements.button.decline.label` → `useDeclineBudgetAccess.mutate(budget.id)`.
 5. **Delete** (existing) — change its gate from `ownerUserId === user.id` to `hasBudgetAdminAccess(budget, user.id)` (Vue gates delete on admin access, not ownership).
 
-- [ ] **Step 1: Write the failing tests** (extend `BudgetsPage.test.tsx`; fixtures: one owned budget with a partner grant, one not-accepted incoming budget `{role:'user', isAccepted:0}` owned by `u2`):
+- [x] **Step 1: Write the failing tests** (extend `BudgetsPage.test.tsx`; fixtures: one owned budget with a partner grant, one not-accepted incoming budget `{role:'user', isAccepted:0}` owned by `u2`):
   1. not-accepted row menu shows Accept; clicking posts `accept-access {budgetId}` and the returned items land in the list (subtitle "…not accepted" disappears).
   2. incoming row menu shows Decline; confirm question contains the budget name; confirm posts `decline-access`.
   3. owned row menu shows Access control; picking the partner + "Manage budget" posts `grant-access {budgetId, userId:'u2', role:'user'}`; Revoke access posts `revoke-access`.
   4. Delete is offered on an admin-shared (accepted) budget, not only owned.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/budgets): accept/decline + access control on the budgets settings page"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/budgets): accept/decline + access control on the budgets settings page"`
 
 ---
 
@@ -740,7 +740,7 @@ Menu items per row (Vue order, existing items kept):
 **Interfaces:**
 - Produces: `parseCsvLine(line: string): string[]` (quote-aware, `""` escape); `parseCsv(text: string): { header: string[]; rows: string[][] }` (strips UTF-8 BOM, skips blank lines, ragged rows tolerated); `buildCsvText(header: string[], rows: string[][]): string` (quotes cells containing `,`/`"`/newline, `"` → `""`, `\n` line ends); `chunkRows<T>(rows: T[], size: number): T[][]`; `remapRow(chunkRow: number, chunkIndex: number, chunkSize: number): number` = `chunkRow === 0 ? 0 : chunkRow + chunkIndex * chunkSize`; `pluralPick(catalogValue: string, count: number): string` — splits on `' | '`, picks index `count === 1 ? 0 : last`, replaces `{count}`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
 
 ```ts
 import { buildCsvText, chunkRows, parseCsv, parseCsvLine, remapRow } from './csv'
@@ -779,9 +779,9 @@ it('pluralPick picks the vue-i18n pipe variant', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement** — `parseCsvLine` as a char loop with an `inQuotes` flag (port of Vue's `parseCSVLine` in `ImportCsvModal.vue`); `parseCsv` splits on `/\r?\n/`; `pluralPick`:
+- [x] **Step 3: Implement** — `parseCsvLine` as a char loop with an `inQuotes` flag (port of Vue's `parseCSVLine` in `ImportCsvModal.vue`); `parseCsv` splits on `/\r?\n/`; `pluralPick`:
 
 ```ts
 export function pluralPick(catalogValue: string, count: number): string {
@@ -791,9 +791,9 @@ export function pluralPick(catalogValue: string, count: number): string {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/lib): csv parse/serialize/chunk + vue-i18n plural pick"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/lib): csv parse/serialize/chunk + vue-i18n plural pick"`
 
 ---
 
@@ -843,15 +843,15 @@ Dialog (Vue `ExportCsvModal` + `ExportCsvForm`): header `modules.export_csv.moda
 
 Settings hub: add two `MenuRow`s after the Sync row — `pages.settings.import_csv.menu_item` (opens `ImportCsvDialog`, wired in Task 11; for THIS task render the row with a `onClick` that sets `importOpen`, and mount nothing yet — add the row itself in Task 11 to keep this task green) — **so in this task add ONLY the Export row**: `MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)}` + `<ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />`.
 
-- [ ] **Step 1: Write the failing tests:** api test asserts the GET url contains `accountId=a1%2Ca2` (or use `request.url` param check) and `responseType` behavior (MSW returns `new HttpResponse('id,...\n', { headers: { 'Content-Type': 'text/csv' } })`; assert the resolved value is a Blob whose text starts with `id`). Dialog test: default selection = owned accounts only (shared account row unchecked); "Select All" checks all and flips to "Deselect All"; Export click fires the GET with the selected ids (spy via MSW) and calls `downloadBlob` (mock `URL.createObjectURL`/`revokeObjectURL`, assert an `<a download="transactions-...csv">` click — spy on `HTMLAnchorElement.prototype.click`). Hub test: the Export CSV row opens the dialog.
+- [x] **Step 1: Write the failing tests:** api test asserts the GET url contains `accountId=a1%2Ca2` (or use `request.url` param check) and `responseType` behavior (MSW returns `new HttpResponse('id,...\n', { headers: { 'Content-Type': 'text/csv' } })`; assert the resolved value is a Blob whose text starts with `id`). Dialog test: default selection = owned accounts only (shared account row unchecked); "Select All" checks all and flips to "Deselect All"; Export click fires the GET with the selected ids (spy via MSW) and calls `downloadBlob` (mock `URL.createObjectURL`/`revokeObjectURL`, assert an `<a download="transactions-...csv">` click — spy on `HTMLAnchorElement.prototype.click`). Hub test: the Export CSV row opens the dialog.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/transactions): csv export dialog + settings hub row"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/transactions): csv export dialog + settings hub row"`
 
 ---
 
@@ -875,15 +875,15 @@ Settings hub: add two `MenuRow`s after the Sync row — `pages.settings.import_c
 
 Dialog UI (Vue `ImportCsvModal.vue`): header `modals.import_csv.header`; file input `accept=".csv"`, client-side max 10 MB (10485760) with hint `modals.import_csv.file.hint`; selected file shows name + Change button (`elements.button.change.label`) that clears state. Once parsed: description `modals.import_csv.mapping.description`; per-field rows with a mode-toggle icon button (tooltips `modals.import_csv.switch_to_manual` / `switch_to_csv`): Account* (existing-account `Select`), Date* (manual input placeholder `YYYY-MM-DD`), Amount* single/dual toggle (tooltips `modals.import_csv.amount_mode.switch_to_dual` / `switch_to_single`; dual shows Amount (Inflow)* + Amount (Outflow)* column selects), Category / Description / Payee / Tag optional with a "None" option (`modals.import_csv.none`). Column options labeled `Name ("sample")`. Existing-account options exclude accounts where my role is `guest`; label `` `${name} (${balance} ${code})` ``. `targetUserId` = selected fixed account's owner id, else me; the category/payee/tag existing-entity selects filter to `ownerUserId === targetUserId` and reset when it changes. Import button disabled until `selectionValid`.
 
-- [ ] **Step 1: Write the failing tests.** `importCsv.test.ts` (pure): analyzeCsv samples/truncation; autoDetect maps `Account,Date,Amount,Category,Note` headers (label match) and flips to dual on `In`/`Out` columns matched via inflow/outflow labels; selectionValid false without account, true with fixed accountId + manual valid date + single amount column; buildImportPayload emits all 9 mapping keys with nulls for fixed-mode fields and only truthy `fields`. API test: MSW handler reads `await request.formData()`, asserts `file` name, `mapping` JSON, `accountId` field; returns `{imported: 2, skipped: 0, errors: {}}` envelope. Dialog test: select a file (`new File([csvText], 'import.csv', {type:'text/csv'})` via `userEvent.upload`), mapping section appears with auto-detected column labels; toggling account to fixed mode shows the account select; Import disabled until valid.
+- [x] **Step 1: Write the failing tests.** `importCsv.test.ts` (pure): analyzeCsv samples/truncation; autoDetect maps `Account,Date,Amount,Category,Note` headers (label match) and flips to dual on `In`/`Out` columns matched via inflow/outflow labels; selectionValid false without account, true with fixed accountId + manual valid date + single amount column; buildImportPayload emits all 9 mapping keys with nulls for fixed-mode fields and only truthy `fields`. API test: MSW handler reads `await request.formData()`, asserts `file` name, `mapping` JSON, `accountId` field; returns `{imported: 2, skipped: 0, errors: {}}` envelope. Dialog test: select a file (`new File([csvText], 'import.csv', {type:'text/csv'})` via `userEvent.upload`), mapping section appears with auto-detected column labels; toggling account to fixed mode shows the account select; Import disabled until valid.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement** (`file.text()` needs no mock in jsdom29; parse via `lib/csv.ts`).
+- [x] **Step 3: Implement** (`file.text()` needs no mock in jsdom29; parse via `lib/csv.ts`).
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/transactions): csv import analysis module + mapping dialog"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/transactions): csv import analysis module + mapping dialog"`
 
 ---
 
@@ -903,15 +903,15 @@ Result dialog copy (Vue `ImportResultModal.vue`): outcome by `failed === 0` → 
 
 Dialog wiring: Import button → `runImport(analysis, selection, importTransactionList, setProgress)`; progress bar (shadcn `Progress`) only when >1 chunk; on completion `queryClient.invalidateQueries()`, close self, then `onComplete(result)`. Settings hub: add the `pages.settings.import_csv.menu_item` row before Export; parent holds `importOpen` + `importResult` state and renders `<ImportResultDialog>` when `onComplete` delivers a result (no 100 ms setTimeout needed — sequential React state is fine; keep order: import dialog closes, result dialog opens).
 
-- [ ] **Step 1: Write the failing tests.** `runImport` (pure, fake `post`): 1200-row analysis → 3 posts with files `chunk_0.csv…chunk_2.csv` each ≤500 rows + header; per-chunk results `{imported, skipped, errors: {'Invalid date format \'x\'': [3]}}` aggregate with the chunk-2 error surfacing as row `503`; a `post` rejection for chunk 2 yields a `Chunk 2 failed:` error entry and 500 failed rows; onProgress called (1,3)(2,3)(3,3). `ImportResultDialog`: success/partial/failure titles; "3 transactions imported"; row list formatting for 1, ≤10 and >10 rows; `and {count} more error(s)` when 6 groups. Dialog integration: happy path with a 2-row file → one POST, result dialog shows "Import Successful", transactions query invalidated (spy on `invalidateQueries`). Hub: Import CSV row opens the dialog.
+- [x] **Step 1: Write the failing tests.** `runImport` (pure, fake `post`): 1200-row analysis → 3 posts with files `chunk_0.csv…chunk_2.csv` each ≤500 rows + header; per-chunk results `{imported, skipped, errors: {'Invalid date format \'x\'': [3]}}` aggregate with the chunk-2 error surfacing as row `503`; a `post` rejection for chunk 2 yields a `Chunk 2 failed:` error entry and 500 failed rows; onProgress called (1,3)(2,3)(3,3). `ImportResultDialog`: success/partial/failure titles; "3 transactions imported"; row list formatting for 1, ≤10 and >10 rows; `and {count} more error(s)` when 6 groups. Dialog integration: happy path with a 2-row file → one POST, result dialog shows "Import Successful", transactions query invalidated (spy on `invalidateQueries`). Hub: Import CSV row opens the dialog.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run to verify pass.**
+- [x] **Step 4: Run to verify pass.**
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/transactions): chunked csv import pipeline + result dialog + hub rows"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/transactions): chunked csv import pipeline + result dialog + hub rows"`
 
 ---
 
@@ -947,19 +947,19 @@ Page content — a vertical step list (styled as a timeline: left rail with a ci
 
 HomePage: replace the placeholder branch with `<OnboardingPage />`. Route `/onboarding` → `<OnboardingPage />`. ApplicationLayout sidebar: add the Onboarding link (`blocks.main.onboarding`, `NavLink to={RouterPage.ONBOARDING}`) directly above the Budget link, rendered only when `!isOnboardingCompleted(user)`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `queries.test.tsx`: `isOnboardingCompleted` true for absent option, true for `completed`, false for any other value.
   - `OnboardingPage.test.tsx` (coreHandlers with a NOT-completed user: `options` onboarding value `''`): (a) all six step titles render + "Welcome to Econumo!"; with fixture data present, steps 1–3 and 6 show done checks; (b) "Add an account" opens the account modal (uiStore state asserted); (c) "Complete onboarding" posts to `complete-onboarding`, the user cache gets the completed option, and navigation lands on `/budget` (render a `/budget` stub route).
   - `HomePage.test.tsx` (or extend `BudgetPage.test.tsx`'s HomePage case): non-onboarded user at `/` renders "Welcome to Econumo!"; onboarded renders the budget (existing test keeps passing).
   - ApplicationLayout test: sidebar shows "Onboarding" for a non-onboarded user and hides it once completed.
 
-- [ ] **Step 2: Run to verify failure.**
+- [x] **Step 2: Run to verify failure.**
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run to verify pass** — plus re-run the whole `features/home` + layout suites.
+- [x] **Step 4: Run to verify pass** — plus re-run the whole `features/home` + layout suites.
 
-- [ ] **Step 5: Commit** — `git commit -m "feat(react/onboarding): onboarding page, home branch, sidebar link, complete flow"`
+- [x] **Step 5: Commit** — `git commit -m "feat(react/onboarding): onboarding page, home branch, sidebar link, complete flow"`
 
 ---
 
@@ -967,12 +967,12 @@ HomePage: replace the placeholder branch with `<OnboardingPage />`. Route `/onbo
 
 **Files:** none created — verification, plan checkboxes, memory, push. **Do NOT touch `web/`, `Makefile` web-* targets, or `deployment/docker/Dockerfile`.**
 
-- [ ] **Step 1:** `cd web-react && pnpm vitest run` → all green; `pnpm lint`; `pnpm exec tsc -b`.
-- [ ] **Step 2:** Start the backend from the repo root: `PORT=8181 DATABASE_URL="sqlite://<scratchpad>/parity2.sqlite" go run ./cmd/econumo serve` (kill any stale listener on :8181 first: `lsof -ti :8181 | xargs kill`). Start React dev: `cd web-react && pnpm dev` (:9000). Existing user: `parity2@example.test` / `finalpass99`.
-- [ ] **Step 3: Connections walk (needs a second user).** Register `parity5@example.test` / `parity5pass1` via the React register page (or `go run ./cmd/econumo user:create Parity5 parity5@example.test parity5pass1`). As parity2: Settings → Shared access → Create an invitation → note the 5-char code. As parity5 (second browser tab/profile or logout/login): Accept an invitation → enter code → connection appears both sides (poll within 5 s). As parity2: Accounts settings → Wallet → Access control → grant parity5 "Manage transactions" → avatars appear on the row; check the Vue app at :8181 shows the same sharedAccess. Budgets settings → Household → Access control → grant "Manage budget"; as parity5 the budget row shows "Regular access - not accepted" → Accept → row activates. Then as parity5 Decline one grant; as parity2 revoke the other; finally delete the connection and confirm cleanup.
-- [ ] **Step 4: CSV walk.** As parity2: Settings → Export CSV → both accounts selected by default → file `transactions-<today>.csv` downloads and matches the Vue export byte-for-byte (same endpoint). Import: prepare a 3-row CSV (`Account,Date,Amount,Category,Note` incl. one bad date), import with auto-detected mapping → result dialog "Import Partially Successful", 2 imported / 1 failed with `Invalid date format` row detail; transaction list refreshes.
-- [ ] **Step 5: Onboarding walk.** Register a fresh `parity6@example.test` → lands on onboarding at `/`; sidebar shows Onboarding; add an account via the step button; Complete onboarding → redirected to Budget, sidebar link gone; `/onboarding` still reachable directly.
-- [ ] **Step 6:** Check off all plan checkboxes, update the `react-web-migration` memory file (Plan 5 done; note the swap remains deferred pending user feedback), `git push`.
+- [x] **Step 1:** `cd web-react && pnpm vitest run` → all green; `pnpm lint`; `pnpm exec tsc -b`.
+- [x] **Step 2:** Start the backend from the repo root: `PORT=8181 DATABASE_URL="sqlite://<scratchpad>/parity2.sqlite" go run ./cmd/econumo serve` (kill any stale listener on :8181 first: `lsof -ti :8181 | xargs kill`). Start React dev: `cd web-react && pnpm dev` (:9000). Existing user: `parity2@example.test` / `finalpass99`.
+- [x] **Step 3: Connections walk (needs a second user).** Register `parity5@example.test` / `parity5pass1` via the React register page (or `go run ./cmd/econumo user:create Parity5 parity5@example.test parity5pass1`). As parity2: Settings → Shared access → Create an invitation → note the 5-char code. As parity5 (second browser tab/profile or logout/login): Accept an invitation → enter code → connection appears both sides (poll within 5 s). As parity2: Accounts settings → Wallet → Access control → grant parity5 "Manage transactions" → avatars appear on the row; check the Vue app at :8181 shows the same sharedAccess. Budgets settings → Household → Access control → grant "Manage budget"; as parity5 the budget row shows "Regular access - not accepted" → Accept → row activates. Then as parity5 Decline one grant; as parity2 revoke the other; finally delete the connection and confirm cleanup.
+- [x] **Step 4: CSV walk.** As parity2: Settings → Export CSV → both accounts selected by default → file `transactions-<today>.csv` downloads and matches the Vue export byte-for-byte (same endpoint). Import: prepare a 3-row CSV (`Account,Date,Amount,Category,Note` incl. one bad date), import with auto-detected mapping → result dialog "Import Partially Successful", 2 imported / 1 failed with `Invalid date format` row detail; transaction list refreshes.
+- [x] **Step 5: Onboarding walk.** Register a fresh `parity6@example.test` → lands on onboarding at `/`; sidebar shows Onboarding; add an account via the step button; Complete onboarding → redirected to Budget, sidebar link gone; `/onboarding` still reachable directly.
+- [x] **Step 6:** Check off all plan checkboxes, update the `react-web-migration` memory file (Plan 5 done; note the swap remains deferred pending user feedback), `git push`.
 
 ---
 
