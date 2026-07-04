@@ -136,7 +136,11 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
     <div className="flex flex-col gap-3" data-testid="budget-table">
       {sections.map((section) => {
         if (section.bucket.elements.length === 0 && section.folderIndex === null) {
-          return null
+          // archive hides when empty; the Default folder stays visible as a drop
+          // target whenever real folders exist (Vue renders it unconditionally)
+          if (section.key === '__archive__' || realFolders.length === 0) {
+            return null
+          }
         }
         const isArchiveSection = section.key === '__archive__'
         const sectionNode = (
