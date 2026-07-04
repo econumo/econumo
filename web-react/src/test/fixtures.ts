@@ -126,6 +126,10 @@ export const fixtureWireBudget = {
   },
 }
 
+export const fixtureConnections = [
+  { user: { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }, sharedAccounts: [] },
+]
+
 const envelope = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
 
 export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
@@ -140,9 +144,11 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     rates: fixtureRates,
     budgets: fixtureBudgets,
     user: fixtureUser,
+    connections: [],
     ...overrides,
   }
   return [
+    http.get('*/api/v1/connection/get-connection-list', () => envelope({ items: data.connections })),
     http.get('*/api/v1/account/get-account-list', () => envelope({ items: data.accounts })),
     http.get('*/api/v1/account/get-folder-list', () => envelope({ items: data.folders })),
     http.get('*/api/v1/transaction/get-transaction-list', () => envelope({ items: data.transactions })),
