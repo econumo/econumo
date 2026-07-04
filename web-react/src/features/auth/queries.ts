@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query'
 import * as userApi from '@/api/user'
 import { setToken } from '@/lib/storage'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 export function useLogin() {
   return useMutation({
@@ -8,6 +9,7 @@ export function useLogin() {
       userApi.login(username, password),
     onSuccess: (data) => {
       setToken(data.token)
+      trackEvent(METRICS.USER_LOGIN)
     },
   })
 }

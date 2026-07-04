@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto, TransactionType } from '@/api/dto/transaction'
@@ -28,11 +29,23 @@ interface UiState {
 
 export const useUiStore = create<UiState>()((set) => ({
   transactionModal: null,
-  openTransactionModal: (params) => set({ transactionModal: params }),
-  closeTransactionModal: () => set({ transactionModal: null }),
+  openTransactionModal: (params) => {
+    trackEvent(METRICS.UI_MODAL_TRANSACTION_OPEN)
+    set({ transactionModal: params })
+  },
+  closeTransactionModal: () => {
+    trackEvent(METRICS.UI_MODAL_TRANSACTION_CLOSE)
+    set({ transactionModal: null })
+  },
   accountModal: null,
-  openAccountModal: (params) => set({ accountModal: params }),
-  closeAccountModal: () => set({ accountModal: null }),
+  openAccountModal: (params) => {
+    trackEvent(METRICS.UI_MODAL_ACCOUNT_OPEN)
+    set({ accountModal: params })
+  },
+  closeAccountModal: () => {
+    trackEvent(METRICS.UI_MODAL_ACCOUNT_CLOSE)
+    set({ accountModal: null })
+  },
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
 }))
@@ -48,7 +61,11 @@ export const useSidebarStore = create<SidebarState>()(
     (set) => ({
       folderOpen: {},
       toggleFolder: (id) =>
-        set((state) => ({ folderOpen: { ...state.folderOpen, [id]: !(state.folderOpen[id] ?? true) } })),
+        set((state) => {
+          const next = !(state.folderOpen[id] ?? true)
+          trackEvent(next ? METRICS.ACCOUNT_FOLDER_EXPAND : METRICS.ACCOUNT_FOLDER_COLLAPSE)
+          return { folderOpen: { ...state.folderOpen, [id]: next } }
+        }),
     }),
     { name: 'sidebarFolders' },
   ),

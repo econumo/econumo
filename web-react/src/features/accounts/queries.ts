@@ -4,6 +4,7 @@ import type { AccountDto, AccountItemDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 export function useAccounts() {
   return useQuery({
@@ -56,7 +57,10 @@ export function useCreateAccount() {
   const applyItem = useAccountItemEffects()
   return useMutation({
     mutationFn: accountApi.createAccount,
-    onSuccess: (result) => applyItem(result, { checkFirstFolder: true }),
+    onSuccess: (result) => {
+      applyItem(result, { checkFirstFolder: true })
+      trackEvent(METRICS.ACCOUNT_CREATE)
+    },
   })
 }
 
@@ -64,7 +68,10 @@ export function useUpdateAccount() {
   const applyItem = useAccountItemEffects()
   return useMutation({
     mutationFn: accountApi.updateAccount,
-    onSuccess: (result) => applyItem(result),
+    onSuccess: (result) => {
+      applyItem(result)
+      trackEvent(METRICS.ACCOUNT_UPDATE)
+    },
   })
 }
 

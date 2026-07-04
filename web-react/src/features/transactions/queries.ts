@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as transactionApi from '@/api/transaction'
 import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 export function useTransactions() {
   return useQuery({
@@ -35,7 +36,10 @@ export function useCreateTransaction() {
   const apply = useApplyTransactionItem()
   return useMutation({
     mutationFn: transactionApi.createTransaction,
-    onSuccess: (result) => apply(result, 'add'),
+    onSuccess: (result) => {
+      apply(result, 'add')
+      trackEvent(METRICS.TRANSACTION_CREATE)
+    },
   })
 }
 
@@ -43,7 +47,10 @@ export function useUpdateTransaction() {
   const apply = useApplyTransactionItem()
   return useMutation({
     mutationFn: transactionApi.updateTransaction,
-    onSuccess: (result) => apply(result, 'update'),
+    onSuccess: (result) => {
+      apply(result, 'update')
+      trackEvent(METRICS.TRANSACTION_UPDATE)
+    },
   })
 }
 
@@ -51,6 +58,9 @@ export function useDeleteTransaction() {
   const apply = useApplyTransactionItem()
   return useMutation({
     mutationFn: transactionApi.deleteTransaction,
-    onSuccess: (result) => apply(result, 'delete'),
+    onSuccess: (result) => {
+      apply(result, 'delete')
+      trackEvent(METRICS.TRANSACTION_DELETE)
+    },
   })
 }
