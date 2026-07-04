@@ -14,6 +14,11 @@ if (jsdom) {
   }
 }
 
+// jsdom has no scrollIntoView; cmdk (Command) calls it on selection changes.
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {}
+}
+
 // jsdom has no ResizeObserver; Radix primitives (checkbox, etc.) expect one.
 if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = class ResizeObserver {
