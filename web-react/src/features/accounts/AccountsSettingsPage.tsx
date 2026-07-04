@@ -3,7 +3,7 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { EyeOff, FolderPlus, GripVertical, MoreVertical } from 'lucide-react'
+import { EyeOff, FolderPlus, GripVertical, MoreVertical, PlusCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -116,7 +116,7 @@ function FolderSection({
   accounts: AccountDto[]
   index: number
   total: number
-  onAction: (action: 'up' | 'down' | 'rename' | 'hide' | 'show' | 'delete') => void
+  onAction: (action: 'add' | 'up' | 'down' | 'rename' | 'hide' | 'show' | 'delete') => void
   children: React.ReactNode
 }) {
   const { t } = useTranslation()
@@ -128,6 +128,15 @@ function FolderSection({
           {folder.name}
         </span>
         {folder.isVisible === 0 ? <EyeOff className="size-4 text-muted-foreground" aria-label="hidden" /> : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`add account to ${folder.name}`}
+          onClick={() => onAction('add')}
+        >
+          <PlusCircle className="size-4" />
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" size="icon" aria-label={`folder actions ${folder.name}`}>
@@ -206,8 +215,10 @@ export function AccountsSettingsPage() {
     return null
   }
 
-  const handleFolderAction = (folder: FolderDto, index: number, action: 'up' | 'down' | 'rename' | 'hide' | 'show' | 'delete') => {
-    if (action === 'rename') {
+  const handleFolderAction = (folder: FolderDto, index: number, action: 'add' | 'up' | 'down' | 'rename' | 'hide' | 'show' | 'delete') => {
+    if (action === 'add') {
+      openAccountModal({ folderId: folder.id })
+    } else if (action === 'rename') {
       setRenameTarget(folder)
     } else if (action === 'hide') {
       hideFolder.mutate(folder.id)

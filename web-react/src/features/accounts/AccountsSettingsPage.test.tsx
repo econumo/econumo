@@ -195,3 +195,11 @@ it('access control: shared avatars, grant and revoke through the dialogs', async
   await user.click(await screen.findByRole('button', { name: 'Revoke access' }))
   await waitFor(() => expect(revoked).toEqual({ accountId: 'a1', userId: 'u2' }))
 })
+
+it('each folder header offers an add-account button preset to that folder', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByRole('button', { name: 'add account to Savings' }))
+  expect(useUiStore.getState().accountModal?.folderId).toBe('f2')
+})
