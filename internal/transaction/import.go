@@ -10,64 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// ImportMapping maps logical fields to CSV column names. Empty string = unmapped.
-// amountInflow/amountOutflow enable dual-amount mode (both required together).
-type ImportMapping struct {
-	Account       string
-	Date          string
-	Amount        string
-	AmountInflow  string
-	AmountOutflow string
-	Description   string
-	Category      string
-	Payee         string
-	Tag           string
-}
-
-// ImportRequest is the decoded import request: the CSV bytes, the mapping, and
-// the optional per-import overrides (nil pointer = not provided; a blank string
-// is treated the same as absent for ids).
-type ImportRequest struct {
-	File        []byte
-	Mapping     ImportMapping
-	AccountId   *string
-	Date        *string
-	CategoryId  *string
-	Description *string
-	PayeeId     *string
-	TagId       *string
-}
-
-// ImportResult is the wire result: counts + an errors map (message ->
-// [rowNumbers]).
-type ImportResult struct {
-	Imported int              `json:"imported"`
-	Skipped  int              `json:"skipped"`
-	Errors   map[string][]int `json:"errors"`
-}
-
-// ImportAccount / ImportCategory / ImportPayee / ImportTag are the lightweight
-// entity views the importer works with (id + name + owner for the belongs-to
-// checks; category carries no type since it's only matched by name).
-type ImportAccount struct {
-	ID      string
-	Name    string
-	OwnerID string
-}
-type ImportNamed struct {
-	ID      string
-	Name    string
-	OwnerID string
-}
 
 // ImportTransactionList runs the CSV import for the user. It returns the result
 // with counts + errors; only an infrastructure error (tx failure, override
 // resolution failure) returns a non-nil error.
-func (s *Service) ImportTransactionList(ctx context.Context, userID vo.Id, req ImportRequest) (*ImportResult, error) {
-	result := &ImportResult{Errors: map[string][]int{}}
+func (s *Service) ImportTransactionList(ctx context.Context, userID vo.Id, req model.ImportRequest) (*model.ImportResult, error) {
+	result := &model.ImportResult{Errors: map[string][]int{}}
 
 	if len(req.File) == 0 {
 		addImportError(result, "No file provided", 0)
@@ -119,7 +70,7 @@ func (s *Service) ImportTransactionList(ctx context.Context, userID vo.Id, req I
 // find-or-create caches, then process each row. Override-resolution failures
 // abort the whole import with a single top-level error recorded in the result,
 // returning nil to keep the 200 envelope; only true infra errors return non-nil.
-func (s *Service) runImport(ctx context.Context, userID vo.Id, req ImportRequest, overrideAccountID, overrideDateStr string, dualMode bool, header []string, records []map[string]string, result *ImportResult) error {
+func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportRequest, overrideAccountID, overrideDateStr string, dualMode bool, header []string, records []map[string]string, result *model.ImportResult) error {
 	imp := s.importer
 
 	accounts, err := imp.AvailableAccounts(ctx, userID)
@@ -132,7 +83,7 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req ImportRequest
 	}
 
 	// Override account (must exist + be accessible).
-	var overrideAccount *ImportAccount
+	var overrideAccount *model.ImportAccount
 	accountOwnerID := userID
 	if overrideAccountID != "" {
 		oid, perr := vo.ParseId(overrideAccountID)
@@ -238,16 +189,16 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req ImportRequest
 // internally (missing required field) — those paths record the error + increment
 // skipped here and return nil so the import continues to the next row.
 func (s *Service) importRow(
-	ctx context.Context, userID, accountOwnerID vo.Id, req ImportRequest, dualMode bool,
+	ctx context.Context, userID, accountOwnerID vo.Id, req model.ImportRequest, dualMode bool,
 	row map[string]string, rowNumber int,
-	overrideAccount *ImportAccount, overrideDate *time.Time,
-	overrideCategory, overridePayee, overrideTag *ImportNamed, overrideDescription *string,
-	accountByName *nameCache, categoryByName, payeeByName, tagByName *nameCache, result *ImportResult,
+	overrideAccount *model.ImportAccount, overrideDate *time.Time,
+	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideDescription *string,
+	accountByName *nameCache, categoryByName, payeeByName, tagByName *nameCache, result *model.ImportResult,
 ) error {
 	imp := s.importer
 
 	// account
-	var account ImportAccount
+	var account model.ImportAccount
 	if overrideAccount != nil {
 		account = *overrideAccount
 	} else {
@@ -313,7 +264,7 @@ func (s *Service) importRow(
 		id, _ := vo.ParseId(overrideCategory.ID)
 		categoryID = &id
 	} else if name := fieldValue(row, req.Mapping.Category); name != "" {
-		c, err := s.findOrCreateNamed(ctx, name, categoryByName, func(ctx context.Context) (ImportNamed, error) {
+		c, err := s.findOrCreateNamed(ctx, name, categoryByName, func(ctx context.Context) (model.ImportNamed, error) {
 			return imp.CreateCategory(ctx, accountOwnerID, name, income)
 		})
 		if err != nil {
@@ -326,7 +277,7 @@ func (s *Service) importRow(
 		id, _ := vo.ParseId(overridePayee.ID)
 		payeeID = &id
 	} else if name := fieldValue(row, req.Mapping.Payee); name != "" {
-		p, err := s.findOrCreateNamed(ctx, name, payeeByName, func(ctx context.Context) (ImportNamed, error) {
+		p, err := s.findOrCreateNamed(ctx, name, payeeByName, func(ctx context.Context) (model.ImportNamed, error) {
 			return imp.CreatePayee(ctx, accountOwnerID, name)
 		})
 		if err != nil {
@@ -339,7 +290,7 @@ func (s *Service) importRow(
 		id, _ := vo.ParseId(overrideTag.ID)
 		tagID = &id
 	} else if name := fieldValue(row, req.Mapping.Tag); name != "" {
-		tg, err := s.findOrCreateNamed(ctx, name, tagByName, func(ctx context.Context) (ImportNamed, error) {
+		tg, err := s.findOrCreateNamed(ctx, name, tagByName, func(ctx context.Context) (model.ImportNamed, error) {
 			return imp.CreateTag(ctx, accountOwnerID, name)
 		})
 		if err != nil {
@@ -350,12 +301,12 @@ func (s *Service) importRow(
 	}
 
 	accID, _ := vo.ParseId(account.ID)
-	typ := TypeExpense
+	typ := model.TransactionTypeExpense
 	if income {
-		typ = TypeIncome
+		typ = model.TransactionTypeIncome
 	}
 	now := s.clock.Now()
-	t := New(NewState{
+	t := model.New(model.NewState{
 		ID: s.repo.NextIdentity(), UserID: userID, Type: typ, AccountID: accID,
 		Amount: amount.Abs().String(), CategoryID: categoryID, PayeeID: payeeID, TagID: tagID,
 		Description: description, SpentAt: date, CreatedAt: now, UpdatedAt: now,
@@ -369,13 +320,13 @@ func (s *Service) importRow(
 
 // findOrCreateAccount returns a cached/existing account by case-insensitive name
 // (only if the user can add a transaction to it) or creates one.
-func (s *Service) findOrCreateAccount(ctx context.Context, userID vo.Id, name string, cache *nameCache) (ImportAccount, error) {
+func (s *Service) findOrCreateAccount(ctx context.Context, userID vo.Id, name string, cache *nameCache) (model.ImportAccount, error) {
 	if a, ok := cache.get(name); ok {
-		acct := a.(ImportAccount)
+		acct := a.(model.ImportAccount)
 		id, _ := vo.ParseId(acct.ID)
 		can, err := s.importer.CanAddTransaction(ctx, userID, id)
 		if err != nil {
-			return ImportAccount{}, err
+			return model.ImportAccount{}, err
 		}
 		if can {
 			return acct, nil
@@ -383,7 +334,7 @@ func (s *Service) findOrCreateAccount(ctx context.Context, userID vo.Id, name st
 	}
 	created, err := s.importer.CreateAccount(ctx, userID, name)
 	if err != nil {
-		return ImportAccount{}, err
+		return model.ImportAccount{}, err
 	}
 	cache.put(created.Name, created)
 	return created, nil
@@ -391,13 +342,13 @@ func (s *Service) findOrCreateAccount(ctx context.Context, userID vo.Id, name st
 
 // findOrCreateNamed returns a cached/existing named entity by case-insensitive
 // name, or creates one via create.
-func (s *Service) findOrCreateNamed(ctx context.Context, name string, cache *nameCache, create func(ctx context.Context) (ImportNamed, error)) (ImportNamed, error) {
+func (s *Service) findOrCreateNamed(ctx context.Context, name string, cache *nameCache, create func(ctx context.Context) (model.ImportNamed, error)) (model.ImportNamed, error) {
 	if v, ok := cache.get(name); ok {
-		return v.(ImportNamed), nil
+		return v.(model.ImportNamed), nil
 	}
 	created, err := create(ctx)
 	if err != nil {
-		return ImportNamed{}, err
+		return model.ImportNamed{}, err
 	}
 	cache.put(created.Name, created)
 	return created, nil
@@ -428,7 +379,7 @@ func fieldValue(row map[string]string, column string) string {
 // resolveOverrideNamed resolves an optional override id among the owner's
 // entities. Returns (nil, true) when the id is absent/blank; (entity, true) when
 // found; (nil, false) when an id was given but not found.
-func resolveOverrideNamed(idPtr *string, list []ImportNamed) (*ImportNamed, bool) {
+func resolveOverrideNamed(idPtr *string, list []model.ImportNamed) (*model.ImportNamed, bool) {
 	id := trimPtr(idPtr)
 	if id == "" {
 		return nil, true
@@ -443,7 +394,7 @@ func resolveOverrideNamed(idPtr *string, list []ImportNamed) (*ImportNamed, bool
 
 // addImportError appends a row number to the errors map under message (creating
 // the bucket if needed). rowNumber 0 means a top-level error with no row.
-func addImportError(result *ImportResult, message string, rowNumber int) {
+func addImportError(result *model.ImportResult, message string, rowNumber int) {
 	if _, ok := result.Errors[message]; !ok {
 		result.Errors[message] = []int{}
 	}
@@ -455,7 +406,7 @@ func addImportError(result *ImportResult, message string, rowNumber int) {
 // parseRowAmount extracts the signed amount for a row. Returns (amount, ok,
 // errMsg): errMsg non-empty is a specific dual-mode error; ok=false with empty
 // errMsg is the generic "invalid amount" path.
-func parseRowAmount(m ImportMapping, dualMode bool, row map[string]string) (vo.DecimalNumber, bool, string) {
+func parseRowAmount(m model.ImportMapping, dualMode bool, row map[string]string) (vo.DecimalNumber, bool, string) {
 	if dualMode {
 		inflowStr := fieldValue(row, m.AmountInflow)
 		outflowStr := fieldValue(row, m.AmountOutflow)

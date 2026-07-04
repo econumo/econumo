@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 
-	apptransaction "github.com/econumo/econumo/internal/transaction"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc/apptransaction import aliases visible to swag's
-// annotation parser (this file's handler bodies no longer reference
-// apptransaction types directly, since they delegate to method values).
+// _ keeps the apidoc/model import aliases visible to swag's annotation parser
+// (this file's handler bodies no longer reference model types directly, since
+// they delegate to method values).
 var _ = apidoc.JsonResponseError{}
-var _ = apptransaction.CreateTransactionResult{}
+var _ = model.CreateTransactionResult{}
 
 // CreateTransaction handles POST /api/v1/transaction/create-transaction (auth).
 //
@@ -21,8 +21,8 @@ var _ = apptransaction.CreateTransactionResult{}
 // @Tags        Transaction
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptransaction.CreateTransactionRequest true "Create transaction request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptransaction.CreateTransactionResult}
+// @Param       request body     model.CreateTransactionRequest true "Create transaction request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -39,8 +39,8 @@ func (h *Handlers) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Tags        Transaction
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptransaction.UpdateTransactionRequest true "Update transaction request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptransaction.UpdateTransactionResult}
+// @Param       request body     model.UpdateTransactionRequest true "Update transaction request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -57,8 +57,8 @@ func (h *Handlers) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 // @Tags        Transaction
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptransaction.DeleteTransactionRequest true "Delete transaction request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptransaction.DeleteTransactionResult}
+// @Param       request body     model.DeleteTransactionRequest true "Delete transaction request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException

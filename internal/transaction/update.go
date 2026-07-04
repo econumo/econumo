@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -21,7 +22,7 @@ func parseSpentAt(v string) (time.Time, error) {
 
 // UpdateTransaction applies a full update to the transaction (access required on
 // the target account) and returns it plus the refreshed account list.
-func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req UpdateTransactionRequest) (*UpdateTransactionResult, error) {
+func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -43,7 +44,7 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req Updat
 		description = *req.Description
 	}
 
-	var updated *Transaction
+	var updated *model.Transaction
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if aerr := s.checkWriteAccess(ctx, userID, accountID, "account.account.not_available"); aerr != nil {
 			return aerr
@@ -77,5 +78,5 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req Updat
 	if err != nil {
 		return nil, err
 	}
-	return &UpdateTransactionResult{Item: item, Accounts: accounts}, nil
+	return &model.UpdateTransactionResult{Item: item, Accounts: accounts}, nil
 }

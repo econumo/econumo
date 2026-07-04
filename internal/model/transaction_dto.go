@@ -1,4 +1,7 @@
-package transaction
+// Request/result DTOs for the transaction use cases (tier-1 Validate()).
+// JSON field names are frozen to the existing API wire contract; see
+// CLAUDE.md.
+package model
 
 import (
 	"strings"
@@ -9,70 +12,22 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// AuthorResult is the embedded transaction author: {id, avatar, name}.
-type AuthorResult struct {
-	Id     string `json:"id"`
-	Avatar string `json:"avatar"`
-	Name   string `json:"name"`
-}
-
-// AccountOwnerResult mirrors account.OwnerResult's wire shape ({id, avatar,
-// name}) — duplicated here (not imported) because features must not import
-// each other; the create/update/delete responses embed the caller's full
-// account list under "accounts", produced by
-// server.TransactionAccountResolver from the real account.AccountResult.
-type AccountOwnerResult struct {
-	Id     string `json:"id"`
-	Avatar string `json:"avatar"`
-	Name   string `json:"name"`
-}
-
-// AccountCurrencyResult mirrors account.CurrencyResult's wire shape.
-type AccountCurrencyResult struct {
-	Id             string `json:"id"`
-	Code           string `json:"code"`
-	Name           string `json:"name"`
-	Symbol         string `json:"symbol"`
-	FractionDigits int    `json:"fractionDigits"`
-}
-
-// AccountSharedAccess mirrors account.SharedAccess's wire shape.
-type AccountSharedAccess struct {
-	User AccountOwnerResult `json:"user"`
-	Role string             `json:"role"`
-}
-
-// AccountResult mirrors account.AccountResult's wire shape exactly (frozen;
-// see CLAUDE.md).
-type AccountResult struct {
-	Id           string                `json:"id"`
-	Owner        AccountOwnerResult    `json:"owner"`
-	FolderId     *string               `json:"folderId"`
-	Name         string                `json:"name"`
-	Position     int                   `json:"position"`
-	Currency     AccountCurrencyResult `json:"currency"`
-	Balance      string                `json:"balance"`
-	Type         int                   `json:"type"`
-	Icon         string                `json:"icon"`
-	SharedAccess []AccountSharedAccess `json:"sharedAccess"`
-}
-
 // TransactionResult is one transaction in the API. type is the alias string;
 // amount/amountRecipient are normalized decimals (amountRecipient falls back to
 // amount when null); date is "Y-m-d H:i:s". Optional ids are null when absent.
 type TransactionResult struct {
-	Id                 string       `json:"id"`
-	Author             AuthorResult `json:"author"`
-	Type               string       `json:"type"`
-	AccountId          string       `json:"accountId"`
-	AccountRecipientId *string      `json:"accountRecipientId"`
-	Amount             string       `json:"amount"`
-	AmountRecipient    *string      `json:"amountRecipient"`
-	CategoryId         *string      `json:"categoryId"`
-	Description        string       `json:"description"`
-	PayeeId            *string      `json:"payeeId"`
-	TagId              *string      `json:"tagId"`
-	Date               string       `json:"date"`
+	Id                 string     `json:"id"`
+	Author             UserResult `json:"author"`
+	Type               string     `json:"type"`
+	AccountId          string     `json:"accountId"`
+	AccountRecipientId *string    `json:"accountRecipientId"`
+	Amount             string     `json:"amount"`
+	AmountRecipient    *string    `json:"amountRecipient"`
+	CategoryId         *string    `json:"categoryId"`
+	Description        string     `json:"description"`
+	PayeeId            *string    `json:"payeeId"`
+	TagId              *string    `json:"tagId"`
+	Date               string     `json:"date"`
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
@@ -174,9 +129,9 @@ type DeleteTransactionResult struct {
 	Accounts []AccountResult   `json:"accounts"`
 }
 
-// GetTransactionListRequest is the get-transaction-list query (all optional):
-// by accountId, or by [periodStart, periodEnd), or neither (all visible).
-type GetTransactionListRequest struct {
+// TransactionListRequest is the get-transaction-list query (all optional): by
+// accountId, or by [periodStart, periodEnd), or neither (all visible).
+type TransactionListRequest struct {
 	AccountId   string `json:"accountId"`
 	PeriodStart string `json:"periodStart"`
 	PeriodEnd   string `json:"periodEnd"`
@@ -185,7 +140,7 @@ type GetTransactionListRequest struct {
 // Validate: every field is optional, but when present accountId must be a UUID
 // and periodStart/periodEnd must match the strict "Y-m-d H:i:s" datetime format.
 // The exact messages and field grouping are wire-frozen.
-func (r GetTransactionListRequest) Validate() error {
+func (r TransactionListRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.AccountId) != "" {
 		if _, err := vo.ParseId(r.AccountId); err != nil {

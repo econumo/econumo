@@ -3945,7 +3945,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/transaction.CreateTransactionRequest"
+                            "$ref": "#/definitions/model.CreateTransactionRequest"
                         }
                     }
                 ],
@@ -3961,7 +3961,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/transaction.CreateTransactionResult"
+                                            "$ref": "#/definitions/model.CreateTransactionResult"
                                         }
                                     }
                                 }
@@ -4014,7 +4014,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/transaction.DeleteTransactionRequest"
+                            "$ref": "#/definitions/model.DeleteTransactionRequest"
                         }
                     }
                 ],
@@ -4030,7 +4030,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/transaction.DeleteTransactionResult"
+                                            "$ref": "#/definitions/model.DeleteTransactionResult"
                                         }
                                     }
                                 }
@@ -4156,7 +4156,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/transaction.GetTransactionListResult"
+                                            "$ref": "#/definitions/model.GetTransactionListResult"
                                         }
                                     }
                                 }
@@ -4260,7 +4260,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/transaction.ImportResult"
+                                            "$ref": "#/definitions/model.ImportResult"
                                         }
                                     }
                                 }
@@ -4313,7 +4313,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/transaction.UpdateTransactionRequest"
+                            "$ref": "#/definitions/model.UpdateTransactionRequest"
                         }
                     }
                 ],
@@ -4329,7 +4329,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/transaction.UpdateTransactionResult"
+                                            "$ref": "#/definitions/model.UpdateTransactionResult"
                                         }
                                     }
                                 }
@@ -6467,6 +6467,58 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreateTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/model.TransactionResult"
+                }
+            }
+        },
         "model.CurrencyRateResult": {
             "type": "object",
             "properties": {
@@ -6583,6 +6635,28 @@ const docTemplate = `{
         "model.DeleteTagResult": {
             "type": "object"
         },
+        "model.DeleteTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/model.TransactionResult"
+                }
+            }
+        },
         "model.FolderPositionChange": {
             "type": "object",
             "properties": {
@@ -6682,6 +6756,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GetTransactionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TransactionResult"
+                    }
+                }
+            }
+        },
         "model.GetUserDataResult": {
             "type": "object",
             "properties": {
@@ -6700,6 +6785,26 @@ const docTemplate = `{
         },
         "model.HideFolderResult": {
             "type": "object"
+        },
+        "model.ImportResult": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "imported": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                }
+            }
         },
         "model.LoginRequest": {
             "type": "object",
@@ -6993,6 +7098,47 @@ const docTemplate = `{
                 }
             }
         },
+        "model.TransactionResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "author": {
+                    "$ref": "#/definitions/model.UserResult"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "model.UnarchiveCategoryRequest": {
             "type": "object",
             "properties": {
@@ -7207,6 +7353,58 @@ const docTemplate = `{
                 }
             }
         },
+        "model.UpdateTransactionRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateTransactionResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                },
+                "item": {
+                    "$ref": "#/definitions/model.TransactionResult"
+                }
+            }
+        },
         "model.UserResult": {
             "type": "object",
             "properties": {
@@ -7218,301 +7416,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                }
-            }
-        },
-        "transaction.AccountCurrencyResult": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "fractionDigits": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "symbol": {
-                    "type": "string"
-                }
-            }
-        },
-        "transaction.AccountOwnerResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "transaction.AccountResult": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currency": {
-                    "$ref": "#/definitions/transaction.AccountCurrencyResult"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "owner": {
-                    "$ref": "#/definitions/transaction.AccountOwnerResult"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "sharedAccess": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/transaction.AccountSharedAccess"
-                    }
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
-        "transaction.AccountSharedAccess": {
-            "type": "object",
-            "properties": {
-                "role": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/transaction.AccountOwnerResult"
-                }
-            }
-        },
-        "transaction.AuthorResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "transaction.CreateTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "transaction.CreateTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/transaction.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "transaction.DeleteTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "transaction.DeleteTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/transaction.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
-                }
-            }
-        },
-        "transaction.GetTransactionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/transaction.TransactionResult"
-                    }
-                }
-            }
-        },
-        "transaction.ImportResult": {
-            "type": "object",
-            "properties": {
-                "errors": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    }
-                },
-                "imported": {
-                    "type": "integer"
-                },
-                "skipped": {
-                    "type": "integer"
-                }
-            }
-        },
-        "transaction.TransactionResult": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "author": {
-                    "$ref": "#/definitions/transaction.AuthorResult"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "transaction.UpdateTransactionRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "transaction.UpdateTransactionResult": {
-            "type": "object",
-            "properties": {
-                "accounts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/transaction.AccountResult"
-                    }
-                },
-                "item": {
-                    "$ref": "#/definitions/transaction.TransactionResult"
                 }
             }
         }

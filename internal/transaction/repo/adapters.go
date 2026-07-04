@@ -13,6 +13,7 @@ package repo
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
@@ -60,14 +61,14 @@ func NewExportLookup(accounts exportAccountLister, categories categoryNameLookup
 
 // ExportAccounts returns the user's accessible accounts (own + shared, not
 // deleted) with their currency code.
-func (l *ExportLookup) ExportAccounts(ctx context.Context, userID vo.Id) ([]apptransaction.ExportAccount, error) {
+func (l *ExportLookup) ExportAccounts(ctx context.Context, userID vo.Id) ([]model.ExportAccount, error) {
 	rows, err := l.accounts.ListExportAccountsForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]apptransaction.ExportAccount, len(rows))
+	out := make([]model.ExportAccount, len(rows))
 	for i, r := range rows {
-		out[i] = apptransaction.ExportAccount{ID: r.ID, Name: r.Name, CurrencyCode: r.CurrencyCode}
+		out[i] = model.ExportAccount{ID: r.ID, Name: r.Name, CurrencyCode: r.CurrencyCode}
 	}
 	return out, nil
 }

@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	apptransaction "github.com/econumo/econumo/internal/transaction"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/httpx"
 	"github.com/econumo/econumo/internal/web/middleware"
@@ -21,7 +21,7 @@ var _ = apidoc.JsonResponseUnauthorized{}
 // @Param       accountId   query    string false "Account id filter"
 // @Param       periodStart query    string false "Period start (Y-m-d H:i:s or Y-m-d)"
 // @Param       periodEnd   query    string false "Period end (Y-m-d H:i:s or Y-m-d)"
-// @Success     200 {object} apidoc.JsonResponseOk{data=apptransaction.GetTransactionListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetTransactionListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
@@ -32,7 +32,7 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	req := apptransaction.GetTransactionListRequest{
+	req := model.TransactionListRequest{
 		AccountId:   q.Get("accountId"),
 		PeriodStart: q.Get("periodStart"),
 		PeriodEnd:   q.Get("periodEnd"),

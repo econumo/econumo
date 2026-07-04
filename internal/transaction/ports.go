@@ -8,12 +8,13 @@ package transaction
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UserLookup resolves the author (id, name, avatar).
 type UserLookup interface {
-	GetOwner(ctx context.Context, userID string) (AuthorView, error)
+	GetOwner(ctx context.Context, userID string) (model.AuthorView, error)
 }
 
 // AccountResolver answers ownership/existence questions about an account and
@@ -25,7 +26,7 @@ type AccountResolver interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 	// AccountListForUser returns the user's available accounts in the wire shape
 	// (reverse order), for the create/update/delete result embed.
-	AccountListForUser(ctx context.Context, userID vo.Id) ([]AccountResult, error)
+	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)
 }
 
 // VisibleAccounts supplies the set of account ids whose transactions a user may
@@ -48,7 +49,7 @@ type AccountGrants interface {
 // optional category/tag/payee of each transaction. Name lookups return "" when
 // the entity is missing.
 type ExportLookup interface {
-	ExportAccounts(ctx context.Context, userID vo.Id) ([]ExportAccount, error)
+	ExportAccounts(ctx context.Context, userID vo.Id) ([]model.ExportAccount, error)
 	CategoryName(ctx context.Context, id vo.Id) (string, error)
 	TagName(ctx context.Context, id vo.Id) (string, error)
 	PayeeName(ctx context.Context, id vo.Id) (string, error)
@@ -66,26 +67,26 @@ type ExportLookup interface {
 // planning).
 type Importer interface {
 	// AvailableAccounts returns the user's available (own, not deleted) accounts.
-	AvailableAccounts(ctx context.Context, userID vo.Id) ([]ImportAccount, error)
+	AvailableAccounts(ctx context.Context, userID vo.Id) ([]model.ImportAccount, error)
 	// AccountByID returns an available account by id (nil if not found).
-	AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*ImportAccount, error)
+	AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*model.ImportAccount, error)
 	// CanAddTransaction reports whether the user may add a transaction to the
 	// account: they own it, or hold an admin/user grant on it.
 	CanAddTransaction(ctx context.Context, userID vo.Id, accountID vo.Id) (bool, error)
 	// CreateAccount creates a new account (base currency, first/new folder, icon
 	// 'wallet', balance 0) and returns its view.
-	CreateAccount(ctx context.Context, userID vo.Id, name string) (ImportAccount, error)
+	CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error)
 
 	// CategoriesByOwner / PayeesByOwner / TagsByOwner return the owner's entities.
-	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]ImportNamed, error)
-	PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]ImportNamed, error)
-	TagsByOwner(ctx context.Context, ownerID vo.Id) ([]ImportNamed, error)
+	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 	// CreateCategory creates a category (income type when income==true, else
 	// expense; icon 'category'). CreatePayee/CreateTag create by name.
-	CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (ImportNamed, error)
-	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (ImportNamed, error)
-	CreateTag(ctx context.Context, ownerID vo.Id, name string) (ImportNamed, error)
+	CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (model.ImportNamed, error)
+	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
+	CreateTag(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
 
 	// SaveTransaction persists a built transaction (no idempotency id).
-	SaveTransaction(ctx context.Context, t *Transaction) error
+	SaveTransaction(ctx context.Context, t *model.Transaction) error
 }

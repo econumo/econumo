@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -11,7 +12,7 @@ import (
 // plus the refreshed account list (balances updated). The user must have write
 // access to the account: they own it, or hold an admin/user grant on it (see
 // checkWriteAccess).
-func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req CreateTransactionRequest) (*CreateTransactionResult, error) {
+func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
 	// req.Id is the operation/idempotency id; the entity id is freshly minted.
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -35,7 +36,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 		description = *req.Description
 	}
 
-	var created *Transaction
+	var created *model.Transaction
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if aerr := s.checkWriteAccess(ctx, userID, accountID, "account.account.not_available"); aerr != nil {
 			return aerr
@@ -54,7 +55,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 		if berr != nil {
 			return berr
 		}
-		t := New(st)
+		t := model.New(st)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
 		}
@@ -75,5 +76,5 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req Creat
 	if err != nil {
 		return nil, err
 	}
-	return &CreateTransactionResult{Item: item, Accounts: accounts}, nil
+	return &model.CreateTransactionResult{Item: item, Accounts: accounts}, nil
 }
