@@ -1,21 +1,91 @@
-// TransactionImportAccounts adapts the account service/repos to the
-// transaction import adapter's account port (internal/transaction/repo's
-// importAccountPort), TransactionImportCategories adapts the category
-// service/repo to its category port (importCategoryPort),
-// TransactionImportTags adapts the tag service/repo to its tag port
-// (importTagPort), and TransactionImportPayees adapts the payee service/repo
-// to its payee port (importPayeePort). All four live here, not in
-// internal/transaction/repo, because they need the
-// account/category/tag/payee features' types and an infra package must not
-// import a feature (see archtest).
+// Transaction glue: every adapter satisfying a port that the transaction
+// feature declares (see internal/transaction/ports.go). Features must not
+// import each other (archtest); the composition root bridges them here.
 package server
 
 import (
 	"context"
-
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+// transactionCategoryByID is the minimal category-repo surface the export
+// adapter's name lookup uses.
+type transactionCategoryByID interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.Category, error)
+}
+
+// TransactionCategoryNameLookup adapts the category repository to the
+// transaction export adapter's categoryNameLookup port.
+type TransactionCategoryNameLookup struct {
+	categories transactionCategoryByID
+}
+
+// NewTransactionCategoryNameLookup wraps a category repository.
+func NewTransactionCategoryNameLookup(categories transactionCategoryByID) *TransactionCategoryNameLookup {
+	return &TransactionCategoryNameLookup{categories: categories}
+}
+
+// CategoryName resolves a category's name ("" if not found).
+func (l *TransactionCategoryNameLookup) CategoryName(ctx context.Context, id vo.Id) (string, error) {
+	c, err := l.categories.GetByID(ctx, id)
+	if err != nil {
+		return "", nil
+	}
+	return c.Name, nil
+}
+
+// transactionTagByID is the minimal tag-repo surface the export adapter's
+// name lookup uses.
+type transactionTagByID interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.Tag, error)
+}
+
+// TransactionTagNameLookup adapts the tag repository to the transaction
+// export adapter's tagNameLookup port.
+type TransactionTagNameLookup struct {
+	tags transactionTagByID
+}
+
+// NewTransactionTagNameLookup wraps a tag repository.
+func NewTransactionTagNameLookup(tags transactionTagByID) *TransactionTagNameLookup {
+	return &TransactionTagNameLookup{tags: tags}
+}
+
+// TagName resolves a tag's name ("" if not found).
+func (l *TransactionTagNameLookup) TagName(ctx context.Context, id vo.Id) (string, error) {
+	t, err := l.tags.GetByID(ctx, id)
+	if err != nil {
+		return "", nil
+	}
+	return t.Name, nil
+}
+
+// transactionPayeeByID is the minimal payee-repo surface the export adapter's
+// name lookup uses.
+type transactionPayeeByID interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.Payee, error)
+}
+
+// TransactionPayeeNameLookup adapts the payee repository to the transaction
+// export adapter's payeeNameLookup port.
+type TransactionPayeeNameLookup struct {
+	payees transactionPayeeByID
+}
+
+// NewTransactionPayeeNameLookup wraps a payee repository.
+func NewTransactionPayeeNameLookup(payees transactionPayeeByID) *TransactionPayeeNameLookup {
+	return &TransactionPayeeNameLookup{payees: payees}
+}
+
+// PayeeName resolves a payee's name ("" if not found).
+func (l *TransactionPayeeNameLookup) PayeeName(ctx context.Context, id vo.Id) (string, error) {
+	p, err := l.payees.GetByID(ctx, id)
+	if err != nil {
+		return "", nil
+	}
+	return p.Name, nil
+}
 
 // transactionImportAccountService is the account-service surface the importer
 // uses.
