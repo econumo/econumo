@@ -5,12 +5,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CompleteOnboarding marks onboarding complete and returns the current user.
-func (s *Service) CompleteOnboarding(ctx context.Context, userID vo.Id) (*CompleteOnboardingResult, error) {
-	u, err := s.mutate(ctx, userID, func(u *User, now time.Time) error {
+func (s *Service) CompleteOnboarding(ctx context.Context, userID vo.Id) (*model.CompleteOnboardingResult, error) {
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
 		u.CompleteOnboarding(now)
 		return nil
 	})
@@ -21,5 +22,5 @@ func (s *Service) CompleteOnboarding(ctx context.Context, userID vo.Id) (*Comple
 	if err != nil {
 		return nil, err
 	}
-	return &CompleteOnboardingResult{User: cur}, nil
+	return &model.CompleteOnboardingResult{User: cur}, nil
 }

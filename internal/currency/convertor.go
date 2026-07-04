@@ -17,27 +17,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// FullRate is one currency's average rate for a period: rate units of the
-// currency per one base unit.
-type FullRate struct {
-	CurrencyID vo.Id
-	Rate       vo.DecimalNumber
-}
-
-// ConvertItem is one bulk-conversion request: convert `Amount` from From to To,
-// using the rate period containing PeriodStart.
-type ConvertItem struct {
-	PeriodStart time.Time
-	PeriodEnd   time.Time
-	From        vo.Id
-	To          vo.Id
-	Amount      vo.DecimalNumber
-}
 
 // RateProvider supplies period-averaged rates and the base-currency id. The
 // infra adapter implements it over the stored rate rows.
@@ -46,7 +30,7 @@ type RateProvider interface {
 	// base currency, with the period snapped to the rate month (latest rate date
 	// -> first-of-month .. next month; falls back to the raw [start,end) when no
 	// rates exist).
-	AverageRates(ctx context.Context, start, end time.Time) ([]FullRate, error)
+	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	// BaseCurrencyID returns the base currency's id.
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 	// FractionDigits returns a currency's fraction digits (for result rounding).
@@ -71,7 +55,7 @@ func monthKey(t time.Time) string { return t.Format("200601") }
 //
 // items maps an arbitrary key -> the list of ConvertItem that sum into that
 // key's result.
-func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]ConvertItem) (map[string]vo.DecimalNumber, error) {
+func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]model.ConvertItem) (map[string]vo.DecimalNumber, error) {
 	// Determine which rate periods are needed: always the top-level period, plus
 	// each distinct month of a cross-currency sub-item.
 	currentKey := monthKey(periodStart)
@@ -90,7 +74,7 @@ func (c *Convertor) BulkConvert(ctx context.Context, periodStart, periodEnd time
 	}
 
 	// Load the average rates for each needed period, keyed by month.
-	ratesByKey := map[string][]FullRate{}
+	ratesByKey := map[string][]model.FullRate{}
 	for k, rng := range needed {
 		rs, err := c.rates.AverageRates(ctx, rng[0], rng[1])
 		if err != nil {
@@ -143,7 +127,7 @@ func (c *Convertor) Convert(ctx context.Context, periodStart, periodEnd time.Tim
 
 // convert is the core two-hop conversion through the base currency, rounded to
 // the result currency's fraction digits.
-func (c *Convertor) convert(ctx context.Context, rates []FullRate, baseID, from, to vo.Id, amount vo.DecimalNumber) (vo.DecimalNumber, error) {
+func (c *Convertor) convert(ctx context.Context, rates []model.FullRate, baseID, from, to vo.Id, amount vo.DecimalNumber) (vo.DecimalNumber, error) {
 	if from.Equal(to) {
 		return amount, nil
 	}
@@ -177,10 +161,10 @@ func (c *Convertor) convert(ctx context.Context, rates []FullRate, baseID, from,
 
 // summarize collapses items sharing (from, to, periodStart-date, periodEnd-date)
 // into one, summing their amounts. Order is preserved by first appearance.
-func summarize(items []ConvertItem) []ConvertItem {
+func summarize(items []model.ConvertItem) []model.ConvertItem {
 	type key struct{ from, to, ps, pe string }
 	idx := map[key]int{}
-	var out []ConvertItem
+	var out []model.ConvertItem
 	for _, it := range items {
 		k := key{it.From.String(), it.To.String(), it.PeriodStart.Format(datetime.DateLayout), it.PeriodEnd.Format(datetime.DateLayout)}
 		if i, ok := idx[k]; ok {

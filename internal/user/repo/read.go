@@ -11,6 +11,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/user"
 )
@@ -41,25 +42,25 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-func (r *ReadRepo) UserView(ctx context.Context, id string) (user.UserViewRow, error) {
+func (r *ReadRepo) UserView(ctx context.Context, id string) (model.UserViewRow, error) {
 	row, err := r.q.GetUserView(ctx, r.db(ctx), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return user.UserViewRow{}, errs.NewNotFound("User not found")
+			return model.UserViewRow{}, errs.NewNotFound("User not found")
 		}
-		return user.UserViewRow{}, err
+		return model.UserViewRow{}, err
 	}
-	return user.UserViewRow{ID: row.ID, Email: row.Email, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
+	return model.UserViewRow{ID: row.ID, Email: row.Email, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
 }
 
-func (r *ReadRepo) OptionViews(ctx context.Context, userID string) ([]user.OptionViewRow, error) {
+func (r *ReadRepo) OptionViews(ctx context.Context, userID string) ([]model.OptionViewRow, error) {
 	rows, err := r.q.GetUserOptionsView(ctx, r.db(ctx), userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]user.OptionViewRow, 0, len(rows))
+	out := make([]model.OptionViewRow, 0, len(rows))
 	for _, o := range rows {
-		out = append(out, user.OptionViewRow{Name: o.Name, Value: o.Value})
+		out = append(out, model.OptionViewRow{Name: o.Name, Value: o.Value})
 	}
 	return out, nil
 }

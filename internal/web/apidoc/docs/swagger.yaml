@@ -1,251 +1,5 @@
 basePath: /
 definitions:
-  account.AccountPositionChange:
-    properties:
-      folderId:
-        type: string
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  account.AccountResult:
-    properties:
-      balance:
-        type: string
-      currency:
-        $ref: '#/definitions/account.CurrencyResult'
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      owner:
-        $ref: '#/definitions/account.OwnerResult'
-      position:
-        type: integer
-      sharedAccess:
-        items:
-          $ref: '#/definitions/account.SharedAccess'
-        type: array
-      type:
-        type: integer
-    type: object
-  account.CorrectionResult:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      author:
-        $ref: '#/definitions/account.OwnerResult'
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  account.CreateAccountRequest:
-    properties:
-      balance:
-        type: string
-      currencyId:
-        type: string
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  account.CreateAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.AccountResult'
-      transaction:
-        $ref: '#/definitions/account.CorrectionResult'
-    type: object
-  account.CreateFolderRequest:
-    properties:
-      name:
-        type: string
-    type: object
-  account.CreateFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.FolderResult'
-    type: object
-  account.CurrencyResult:
-    properties:
-      code:
-        type: string
-      fractionDigits:
-        type: integer
-      id:
-        type: string
-      name:
-        type: string
-      symbol:
-        type: string
-    type: object
-  account.DeleteAccountRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  account.DeleteAccountResult:
-    type: object
-  account.FolderPositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  account.FolderResult:
-    properties:
-      id:
-        type: string
-      isVisible:
-        type: integer
-      name:
-        type: string
-      position:
-        type: integer
-    type: object
-  account.GetAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.AccountResult'
-        type: array
-    type: object
-  account.GetFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.FolderResult'
-        type: array
-    type: object
-  account.HideFolderRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  account.HideFolderResult:
-    type: object
-  account.OrderAccountListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/account.AccountPositionChange'
-        type: array
-    type: object
-  account.OrderAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.AccountResult'
-        type: array
-    type: object
-  account.OrderFolderListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/account.FolderPositionChange'
-        type: array
-    type: object
-  account.OrderFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.FolderResult'
-        type: array
-    type: object
-  account.OwnerResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  account.ReplaceFolderRequest:
-    properties:
-      id:
-        type: string
-      replaceId:
-        type: string
-    type: object
-  account.ReplaceFolderResult:
-    type: object
-  account.SharedAccess:
-    properties:
-      role:
-        type: string
-      user:
-        $ref: '#/definitions/account.OwnerResult'
-    type: object
-  account.ShowFolderRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  account.ShowFolderResult:
-    type: object
-  account.UpdateAccountRequest:
-    properties:
-      balance:
-        type: string
-      currencyId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  account.UpdateAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.AccountResult'
-      transaction:
-        $ref: '#/definitions/account.CorrectionResult'
-    type: object
-  account.UpdateFolderRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  account.UpdateFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.FolderResult'
-    type: object
   apidoc.JsonResponseError:
     properties:
       code:
@@ -307,28 +61,115 @@ definitions:
         example: false
         type: boolean
     type: object
-  budget.AcceptAccessRequest:
+  model.AcceptAccessRequest:
     properties:
       budgetId:
         type: string
     type: object
-  budget.AcceptAccessResult:
+  model.AcceptAccessResult:
     properties:
       items:
         items:
-          $ref: '#/definitions/budget.MetaResult'
+          $ref: '#/definitions/model.MetaResult'
         type: array
     type: object
-  budget.AccessResult:
+  model.AcceptInviteRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  model.AcceptInviteResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ConnectionResult'
+        type: array
+    type: object
+  model.AccessResult:
     properties:
       isAccepted:
         type: integer
       role:
         type: string
       user:
-        $ref: '#/definitions/budget.UserResult'
+        $ref: '#/definitions/model.UserResult'
     type: object
-  budget.AverageCurrencyRateResult:
+  model.AccountAccessResult:
+    properties:
+      id:
+        type: string
+      ownerUserId:
+        type: string
+      role:
+        type: string
+    type: object
+  model.AccountFolderResult:
+    properties:
+      id:
+        type: string
+      isVisible:
+        type: integer
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.AccountPositionChange:
+    properties:
+      folderId:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.AccountResult:
+    properties:
+      balance:
+        type: string
+      currency:
+        $ref: '#/definitions/model.CurrencyResult'
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner:
+        $ref: '#/definitions/model.UserResult'
+      position:
+        type: integer
+      sharedAccess:
+        items:
+          $ref: '#/definitions/model.SharedAccess'
+        type: array
+      type:
+        type: integer
+    type: object
+  model.ArchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveCategoryResult:
+    type: object
+  model.ArchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchivePayeeResult:
+    type: object
+  model.ArchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveTagResult:
+    type: object
+  model.AverageCurrencyRateResult:
     properties:
       baseCurrencyId:
         type: string
@@ -341,31 +182,40 @@ definitions:
       rate:
         type: string
     type: object
-  budget.BudgetResult:
+  model.BudgetFolderResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.BudgetResult:
     properties:
       balances:
         items:
-          $ref: '#/definitions/budget.CurrencyBalanceResult'
+          $ref: '#/definitions/model.CurrencyBalanceResult'
         type: array
       currencyRates:
         items:
-          $ref: '#/definitions/budget.AverageCurrencyRateResult'
+          $ref: '#/definitions/model.AverageCurrencyRateResult'
         type: array
       filters:
-        $ref: '#/definitions/budget.FiltersResult'
+        $ref: '#/definitions/model.FiltersResult'
       meta:
-        $ref: '#/definitions/budget.MetaResult'
+        $ref: '#/definitions/model.MetaResult'
       structure:
-        $ref: '#/definitions/budget.StructureResult'
+        $ref: '#/definitions/model.StructureResult'
     type: object
-  budget.BudgetTransactionResult:
+  model.BudgetTransactionResult:
     properties:
       amount:
         type: string
       author:
-        $ref: '#/definitions/budget.UserResult'
+        $ref: '#/definitions/model.UserResult'
       category:
-        $ref: '#/definitions/budget.TxCategoryResult'
+        $ref: '#/definitions/model.TxCategoryResult'
       currencyId:
         type: string
       description:
@@ -373,13 +223,34 @@ definitions:
       id:
         type: string
       payee:
-        $ref: '#/definitions/budget.TxPayeeResult'
+        $ref: '#/definitions/model.TxPayeeResult'
       spentAt:
         type: string
       tag:
-        $ref: '#/definitions/budget.TxTagResult'
+        $ref: '#/definitions/model.TxTagResult'
     type: object
-  budget.ChangeElementCurrencyRequest:
+  model.CategoryResult:
+    properties:
+      createdAt:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.ChangeElementCurrencyRequest:
     properties:
       budgetId:
         type: string
@@ -388,9 +259,9 @@ definitions:
       elementId:
         type: string
     type: object
-  budget.ChangeElementCurrencyResult:
+  model.ChangeElementCurrencyResult:
     type: object
-  budget.ChildElementResult:
+  model.ChildElementResult:
     properties:
       budgetSpent:
         type: string
@@ -409,7 +280,77 @@ definitions:
       type:
         type: integer
     type: object
-  budget.CreateBudgetFolderRequest:
+  model.CompleteOnboardingResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.ConnectionInviteResult:
+    properties:
+      code:
+        type: string
+      expiredAt:
+        type: string
+    type: object
+  model.ConnectionResult:
+    properties:
+      sharedAccounts:
+        items:
+          $ref: '#/definitions/model.AccountAccessResult'
+        type: array
+      user:
+        $ref: '#/definitions/model.UserResult'
+    type: object
+  model.CorrectionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountResult'
+      transaction:
+        $ref: '#/definitions/model.CorrectionResult'
+    type: object
+  model.CreateBudgetFolderRequest:
     properties:
       budgetId:
         type: string
@@ -418,12 +359,12 @@ definitions:
       name:
         type: string
     type: object
-  budget.CreateBudgetFolderResult:
+  model.CreateBudgetFolderResult:
     properties:
       item:
-        $ref: '#/definitions/budget.FolderResult'
+        $ref: '#/definitions/model.BudgetFolderResult'
     type: object
-  budget.CreateBudgetRequest:
+  model.CreateBudgetRequest:
     properties:
       currencyId:
         type: string
@@ -438,12 +379,30 @@ definitions:
       startDate:
         type: string
     type: object
-  budget.CreateBudgetResult:
+  model.CreateBudgetResult:
     properties:
       item:
-        $ref: '#/definitions/budget.BudgetResult'
+        $ref: '#/definitions/model.BudgetResult'
     type: object
-  budget.CreateEnvelopeRequest:
+  model.CreateCategoryRequest:
+    properties:
+      accountId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateCategoryResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.CategoryResult'
+    type: object
+  model.CreateEnvelopeRequest:
     properties:
       budgetId:
         type: string
@@ -462,12 +421,84 @@ definitions:
       name:
         type: string
     type: object
-  budget.CreateEnvelopeResult:
+  model.CreateEnvelopeResult:
     properties:
       item:
-        $ref: '#/definitions/budget.ParentElementResult'
+        $ref: '#/definitions/model.ParentElementResult'
     type: object
-  budget.CurrencyBalanceResult:
+  model.CreateFolderRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  model.CreateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountFolderResult'
+    type: object
+  model.CreatePayeeRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreatePayeeResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.PayeeResult'
+    type: object
+  model.CreateTagRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.TagResult'
+    type: object
+  model.CreateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
+  model.CurrencyBalanceResult:
     properties:
       currencyId:
         type: string
@@ -484,51 +515,151 @@ definitions:
       startBalance:
         type: string
     type: object
-  budget.DeclineAccessRequest:
+  model.CurrencyRateResult:
+    properties:
+      baseCurrencyId:
+        type: string
+      currencyId:
+        type: string
+      rate:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.CurrencyResult:
+    properties:
+      code:
+        type: string
+      fractionDigits:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      symbol:
+        type: string
+    type: object
+  model.CurrentUserResult:
+    properties:
+      avatar:
+        type: string
+      currency:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/model.OptionResult'
+        type: array
+      reportPeriod:
+        type: string
+    type: object
+  model.DeclineAccessRequest:
     properties:
       budgetId:
         type: string
     type: object
-  budget.DeclineAccessResult:
+  model.DeclineAccessResult:
     type: object
-  budget.DeleteBudgetRequest:
+  model.DeleteAccountRequest:
     properties:
       id:
         type: string
     type: object
-  budget.DeleteBudgetResult:
+  model.DeleteAccountResult:
     type: object
-  budget.DeleteEnvelopeRequest:
+  model.DeleteBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteBudgetResult:
+    type: object
+  model.DeleteCategoryRequest:
+    properties:
+      id:
+        type: string
+      mode:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  model.DeleteCategoryResult:
+    type: object
+  model.DeleteConnectionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteConnectionResult:
+    type: object
+  model.DeleteEnvelopeRequest:
     properties:
       budgetId:
         type: string
       id:
         type: string
     type: object
-  budget.DeleteEnvelopeResult:
+  model.DeleteEnvelopeResult:
     type: object
-  budget.DeleteFolderRequest:
+  model.DeleteFolderRequest:
     properties:
       budgetId:
         type: string
       id:
         type: string
     type: object
-  budget.DeleteFolderResult:
+  model.DeleteFolderResult:
     type: object
-  budget.ExcludeAccountRequest:
+  model.DeleteInviteRequest:
+    type: object
+  model.DeleteInviteResult:
+    type: object
+  model.DeletePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeletePayeeResult:
+    type: object
+  model.DeleteTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteTagResult:
+    type: object
+  model.DeleteTransactionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
+  model.ExcludeAccountRequest:
     properties:
       accountId:
         type: string
       id:
         type: string
     type: object
-  budget.ExcludeAccountResult:
+  model.ExcludeAccountResult:
     properties:
       item:
-        $ref: '#/definitions/budget.MetaResult'
+        $ref: '#/definitions/model.MetaResult'
     type: object
-  budget.FiltersResult:
+  model.FiltersResult:
     properties:
       excludedAccountsIds:
         items:
@@ -539,35 +670,115 @@ definitions:
       periodStart:
         type: string
     type: object
-  budget.FolderResult:
+  model.FolderPositionChange:
     properties:
       id:
-        type: string
-      name:
         type: string
       position:
         type: integer
     type: object
-  budget.GetBudgetListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.MetaResult'
-        type: array
+  model.GenerateInviteRequest:
     type: object
-  budget.GetBudgetResult:
+  model.GenerateInviteResult:
     properties:
       item:
-        $ref: '#/definitions/budget.BudgetResult'
+        $ref: '#/definitions/model.ConnectionInviteResult'
     type: object
-  budget.GetBudgetTransactionListResult:
+  model.GetAccountListResult:
     properties:
       items:
         items:
-          $ref: '#/definitions/budget.BudgetTransactionResult'
+          $ref: '#/definitions/model.AccountResult'
         type: array
     type: object
-  budget.GrantAccessRequest:
+  model.GetBudgetListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.MetaResult'
+        type: array
+    type: object
+  model.GetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
+    type: object
+  model.GetBudgetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.BudgetTransactionResult'
+        type: array
+    type: object
+  model.GetCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.GetConnectionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ConnectionResult'
+        type: array
+    type: object
+  model.GetCurrencyListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CurrencyResult'
+        type: array
+    type: object
+  model.GetCurrencyRateListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CurrencyRateResult'
+        type: array
+    type: object
+  model.GetFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.GetOptionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.OptionResult'
+        type: array
+    type: object
+  model.GetPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.GetTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
+  model.GetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TransactionResult'
+        type: array
+    type: object
+  model.GetUserDataResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.GrantAccessRequest:
     properties:
       budgetId:
         type: string
@@ -576,30 +787,69 @@ definitions:
       userId:
         type: string
     type: object
-  budget.GrantAccessResult:
+  model.GrantAccessResult:
     properties:
       items:
         items:
-          $ref: '#/definitions/budget.MetaResult'
+          $ref: '#/definitions/model.MetaResult'
         type: array
     type: object
-  budget.IncludeAccountRequest:
+  model.HideFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.HideFolderResult:
+    type: object
+  model.ImportResult:
+    properties:
+      errors:
+        additionalProperties:
+          items:
+            type: integer
+          type: array
+        type: object
+      imported:
+        type: integer
+      skipped:
+        type: integer
+    type: object
+  model.IncludeAccountRequest:
     properties:
       accountId:
         type: string
       id:
         type: string
     type: object
-  budget.IncludeAccountResult:
+  model.IncludeAccountResult:
     properties:
       item:
-        $ref: '#/definitions/budget.MetaResult'
+        $ref: '#/definitions/model.MetaResult'
     type: object
-  budget.MetaResult:
+  model.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.LoginResult:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.LogoutResult:
+    properties:
+      result:
+        type: string
+    type: object
+  model.MetaResult:
     properties:
       access:
         items:
-          $ref: '#/definitions/budget.AccessResult'
+          $ref: '#/definitions/model.AccessResult'
         type: array
       currencyId:
         type: string
@@ -612,7 +862,7 @@ definitions:
       startedAt:
         type: string
     type: object
-  budget.MoveElementListItem:
+  model.MoveElementListItem:
     properties:
       folderId:
         type: string
@@ -621,36 +871,113 @@ definitions:
       position:
         type: integer
     type: object
-  budget.MoveElementListRequest:
+  model.MoveElementListRequest:
     properties:
       budgetId:
         type: string
       items:
         items:
-          $ref: '#/definitions/budget.MoveElementListItem'
+          $ref: '#/definitions/model.MoveElementListItem'
         type: array
     type: object
-  budget.MoveElementListResult:
+  model.MoveElementListResult:
     type: object
-  budget.OrderBudgetFolderListRequest:
+  model.OptionResult:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+  model.OrderAccountListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.AccountPositionChange'
+        type: array
+    type: object
+  model.OrderAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+    type: object
+  model.OrderBudgetFolderListRequest:
     properties:
       budgetId:
         type: string
       items:
         items:
-          $ref: '#/definitions/budget.OrderFolderListItem'
+          $ref: '#/definitions/model.OrderFolderListItem'
         type: array
     type: object
-  budget.OrderBudgetFolderListResult:
+  model.OrderBudgetFolderListResult:
     type: object
-  budget.OrderFolderListItem:
+  model.OrderCategoryListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.OrderFolderListItem:
     properties:
       id:
         type: string
       position:
         type: integer
     type: object
-  budget.ParentElementResult:
+  model.OrderFolderListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.FolderPositionChange'
+        type: array
+    type: object
+  model.OrderFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.OrderPayeeListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.OrderTagListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
+  model.ParentElementResult:
     properties:
       available:
         type: string
@@ -660,7 +987,7 @@ definitions:
         type: string
       children:
         items:
-          $ref: '#/definitions/budget.ChildElementResult'
+          $ref: '#/definitions/model.ChildElementResult'
         type: array
       currencyId:
         type: string
@@ -683,28 +1010,108 @@ definitions:
       type:
         type: integer
     type: object
-  budget.ResetBudgetRequest:
+  model.PayeeResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  model.PositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+  model.RemindPasswordRequest:
+    properties:
+      username:
+        type: string
+    type: object
+  model.RemindPasswordResult:
+    type: object
+  model.ReplaceFolderRequest:
+    properties:
+      id:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  model.ReplaceFolderResult:
+    type: object
+  model.ResetBudgetRequest:
     properties:
       id:
         type: string
       startedAt:
         type: string
     type: object
-  budget.ResetBudgetResult:
+  model.ResetBudgetResult:
     properties:
       item:
-        $ref: '#/definitions/budget.MetaResult'
+        $ref: '#/definitions/model.MetaResult'
     type: object
-  budget.RevokeAccessRequest:
+  model.ResetPasswordRequest:
+    properties:
+      code:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.ResetPasswordResult:
+    type: object
+  model.RevokeAccessRequest:
     properties:
       budgetId:
         type: string
       userId:
         type: string
     type: object
-  budget.RevokeAccessResult:
+  model.RevokeAccessResult:
     type: object
-  budget.SetLimitRequest:
+  model.RevokeAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.RevokeAccountAccessResult:
+    type: object
+  model.SetAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.SetAccountAccessResult:
+    type: object
+  model.SetLimitRequest:
     properties:
       amount:
         type: string
@@ -715,20 +1122,78 @@ definitions:
       period:
         type: string
     type: object
-  budget.SetLimitResult:
+  model.SetLimitResult:
     type: object
-  budget.StructureResult:
+  model.SharedAccess:
+    properties:
+      role:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResult'
+    type: object
+  model.ShowFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ShowFolderResult:
+    type: object
+  model.StructureResult:
     properties:
       elements:
         items:
-          $ref: '#/definitions/budget.ParentElementResult'
+          $ref: '#/definitions/model.ParentElementResult'
         type: array
       folders:
         items:
-          $ref: '#/definitions/budget.FolderResult'
+          $ref: '#/definitions/model.BudgetFolderResult'
         type: array
     type: object
-  budget.TxCategoryResult:
+  model.TagResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  model.TransactionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.TxCategoryResult:
     properties:
       icon:
         type: string
@@ -737,21 +1202,74 @@ definitions:
       name:
         type: string
     type: object
-  budget.TxPayeeResult:
+  model.TxPayeeResult:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
-  budget.TxTagResult:
+  model.TxTagResult:
     properties:
       id:
         type: string
       name:
         type: string
     type: object
-  budget.UpdateBudgetFolderRequest:
+  model.UnarchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveCategoryResult:
+    type: object
+  model.UnarchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchivePayeeResult:
+    type: object
+  model.UnarchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveTagResult:
+    type: object
+  model.UpdateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.UpdateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountResult'
+      transaction:
+        $ref: '#/definitions/model.CorrectionResult'
+    type: object
+  model.UpdateActiveBudgetRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  model.UpdateActiveBudgetResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateBudgetFolderRequest:
     properties:
       budgetId:
         type: string
@@ -760,12 +1278,12 @@ definitions:
       name:
         type: string
     type: object
-  budget.UpdateBudgetFolderResult:
+  model.UpdateBudgetFolderResult:
     properties:
       item:
-        $ref: '#/definitions/budget.FolderResult'
+        $ref: '#/definitions/model.BudgetFolderResult'
     type: object
-  budget.UpdateBudgetRequest:
+  model.UpdateBudgetRequest:
     properties:
       currencyId:
         type: string
@@ -778,12 +1296,33 @@ definitions:
       name:
         type: string
     type: object
-  budget.UpdateBudgetResult:
+  model.UpdateBudgetResult:
     properties:
       item:
-        $ref: '#/definitions/budget.MetaResult'
+        $ref: '#/definitions/model.MetaResult'
     type: object
-  budget.UpdateEnvelopeRequest:
+  model.UpdateCategoryRequest:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateCategoryResult:
+    type: object
+  model.UpdateCurrencyRequest:
+    properties:
+      currency:
+        type: string
+    type: object
+  model.UpdateCurrencyResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateEnvelopeRequest:
     properties:
       budgetId:
         type: string
@@ -802,762 +1341,115 @@ definitions:
       name:
         type: string
     type: object
-  budget.UpdateEnvelopeResult:
+  model.UpdateEnvelopeResult:
     properties:
       item:
-        $ref: '#/definitions/budget.ParentElementResult'
+        $ref: '#/definitions/model.ParentElementResult'
     type: object
-  budget.UserResult:
+  model.UpdateFolderRequest:
     properties:
-      avatar:
-        type: string
       id:
         type: string
       name:
         type: string
     type: object
-  category.ArchiveCategoryRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  category.ArchiveCategoryResult:
-    type: object
-  category.CategoryResult:
-    properties:
-      createdAt:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      position:
-        type: integer
-      type:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  category.CreateCategoryRequest:
-    properties:
-      accountId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      type:
-        type: string
-    type: object
-  category.CreateCategoryResult:
+  model.UpdateFolderResult:
     properties:
       item:
-        $ref: '#/definitions/category.CategoryResult'
+        $ref: '#/definitions/model.AccountFolderResult'
     type: object
-  category.DeleteCategoryRequest:
+  model.UpdateNameRequest:
     properties:
-      id:
-        type: string
-      mode:
-        type: string
-      replaceId:
-        type: string
-    type: object
-  category.DeleteCategoryResult:
-    type: object
-  category.GetCategoryListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/category.CategoryResult'
-        type: array
-    type: object
-  category.OrderCategoryListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/category.PositionChange'
-        type: array
-    type: object
-  category.OrderCategoryListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/category.CategoryResult'
-        type: array
-    type: object
-  category.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  category.UnarchiveCategoryRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  category.UnarchiveCategoryResult:
-    type: object
-  category.UpdateCategoryRequest:
-    properties:
-      icon:
-        type: string
-      id:
-        type: string
       name:
         type: string
     type: object
-  category.UpdateCategoryResult:
-    type: object
-  connection.AcceptInviteRequest:
-    properties:
-      code:
-        type: string
-    type: object
-  connection.AcceptInviteResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/connection.ConnectionResult'
-        type: array
-    type: object
-  connection.AccountAccessResult:
-    properties:
-      id:
-        type: string
-      ownerUserId:
-        type: string
-      role:
-        type: string
-    type: object
-  connection.ConnectionInviteResult:
-    properties:
-      code:
-        type: string
-      expiredAt:
-        type: string
-    type: object
-  connection.ConnectionResult:
-    properties:
-      sharedAccounts:
-        items:
-          $ref: '#/definitions/connection.AccountAccessResult'
-        type: array
-      user:
-        $ref: '#/definitions/connection.UserResult'
-    type: object
-  connection.DeleteConnectionRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  connection.DeleteConnectionResult:
-    type: object
-  connection.DeleteInviteRequest:
-    type: object
-  connection.DeleteInviteResult:
-    type: object
-  connection.GenerateInviteRequest:
-    type: object
-  connection.GenerateInviteResult:
-    properties:
-      item:
-        $ref: '#/definitions/connection.ConnectionInviteResult'
-    type: object
-  connection.GetConnectionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/connection.ConnectionResult'
-        type: array
-    type: object
-  connection.RevokeAccountAccessRequest:
-    properties:
-      accountId:
-        type: string
-      userId:
-        type: string
-    type: object
-  connection.RevokeAccountAccessResult:
-    type: object
-  connection.SetAccountAccessRequest:
-    properties:
-      accountId:
-        type: string
-      role:
-        type: string
-      userId:
-        type: string
-    type: object
-  connection.SetAccountAccessResult:
-    type: object
-  connection.UserResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  currency.CurrencyRateResult:
-    properties:
-      baseCurrencyId:
-        type: string
-      currencyId:
-        type: string
-      rate:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  currency.CurrencyResult:
-    properties:
-      code:
-        type: string
-      fractionDigits:
-        type: integer
-      id:
-        type: string
-      name:
-        type: string
-      symbol:
-        type: string
-    type: object
-  currency.GetCurrencyListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/currency.CurrencyResult'
-        type: array
-    type: object
-  currency.GetCurrencyRateListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/currency.CurrencyRateResult'
-        type: array
-    type: object
-  payee.ArchivePayeeRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  payee.ArchivePayeeResult:
-    type: object
-  payee.CreatePayeeRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  payee.CreatePayeeResult:
-    properties:
-      item:
-        $ref: '#/definitions/payee.PayeeResult'
-    type: object
-  payee.DeletePayeeRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  payee.DeletePayeeResult:
-    type: object
-  payee.GetPayeeListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/payee.PayeeResult'
-        type: array
-    type: object
-  payee.OrderPayeeListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/payee.PositionChange'
-        type: array
-    type: object
-  payee.OrderPayeeListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/payee.PayeeResult'
-        type: array
-    type: object
-  payee.PayeeResult:
-    properties:
-      createdAt:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      position:
-        type: integer
-      updatedAt:
-        type: string
-    type: object
-  payee.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  payee.UnarchivePayeeRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  payee.UnarchivePayeeResult:
-    type: object
-  payee.UpdatePayeeRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  payee.UpdatePayeeResult:
-    type: object
-  tag.ArchiveTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  tag.ArchiveTagResult:
-    type: object
-  tag.CreateTagRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  tag.CreateTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
-    type: object
-  tag.DeleteTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  tag.DeleteTagResult:
-    type: object
-  tag.GetTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/tag.TagResult'
-        type: array
-    type: object
-  tag.OrderTagListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/tag.PositionChange'
-        type: array
-    type: object
-  tag.OrderTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/tag.TagResult'
-        type: array
-    type: object
-  tag.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  tag.TagResult:
-    properties:
-      createdAt:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      position:
-        type: integer
-      updatedAt:
-        type: string
-    type: object
-  tag.UnarchiveTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  tag.UnarchiveTagResult:
-    type: object
-  tag.UpdateTagRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  tag.UpdateTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
-    type: object
-  transaction.AccountCurrencyResult:
-    properties:
-      code:
-        type: string
-      fractionDigits:
-        type: integer
-      id:
-        type: string
-      name:
-        type: string
-      symbol:
-        type: string
-    type: object
-  transaction.AccountOwnerResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  transaction.AccountResult:
-    properties:
-      balance:
-        type: string
-      currency:
-        $ref: '#/definitions/transaction.AccountCurrencyResult'
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      owner:
-        $ref: '#/definitions/transaction.AccountOwnerResult'
-      position:
-        type: integer
-      sharedAccess:
-        items:
-          $ref: '#/definitions/transaction.AccountSharedAccess'
-        type: array
-      type:
-        type: integer
-    type: object
-  transaction.AccountSharedAccess:
-    properties:
-      role:
-        type: string
-      user:
-        $ref: '#/definitions/transaction.AccountOwnerResult'
-    type: object
-  transaction.AuthorResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  transaction.CreateTransactionRequest:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  transaction.CreateTransactionResult:
-    properties:
-      accounts:
-        items:
-          $ref: '#/definitions/transaction.AccountResult'
-        type: array
-      item:
-        $ref: '#/definitions/transaction.TransactionResult'
-    type: object
-  transaction.DeleteTransactionRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  transaction.DeleteTransactionResult:
-    properties:
-      accounts:
-        items:
-          $ref: '#/definitions/transaction.AccountResult'
-        type: array
-      item:
-        $ref: '#/definitions/transaction.TransactionResult'
-    type: object
-  transaction.GetTransactionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/transaction.TransactionResult'
-        type: array
-    type: object
-  transaction.ImportResult:
-    properties:
-      errors:
-        additionalProperties:
-          items:
-            type: integer
-          type: array
-        type: object
-      imported:
-        type: integer
-      skipped:
-        type: integer
-    type: object
-  transaction.TransactionResult:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      author:
-        $ref: '#/definitions/transaction.AuthorResult'
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  transaction.UpdateTransactionRequest:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  transaction.UpdateTransactionResult:
-    properties:
-      accounts:
-        items:
-          $ref: '#/definitions/transaction.AccountResult'
-        type: array
-      item:
-        $ref: '#/definitions/transaction.TransactionResult'
-    type: object
-  user.CompleteOnboardingResult:
+  model.UpdateNameResult:
     properties:
       user:
-        $ref: '#/definitions/user.CurrentUserResult'
+        $ref: '#/definitions/model.CurrentUserResult'
     type: object
-  user.CurrentUserResult:
-    properties:
-      avatar:
-        type: string
-      currency:
-        type: string
-      email:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      options:
-        items:
-          $ref: '#/definitions/user.OptionResult'
-        type: array
-      reportPeriod:
-        type: string
-    type: object
-  user.GetOptionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/user.OptionResult'
-        type: array
-    type: object
-  user.GetUserDataResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.LoginRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  user.LoginResult:
-    properties:
-      token:
-        type: string
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.LogoutResult:
-    properties:
-      result:
-        type: string
-    type: object
-  user.OptionResult:
-    properties:
-      name:
-        type: string
-      value:
-        type: string
-    type: object
-  user.RegisterRequest:
-    properties:
-      email:
-        type: string
-      name:
-        type: string
-      password:
-        type: string
-    type: object
-  user.RemindPasswordRequest:
-    properties:
-      username:
-        type: string
-    type: object
-  user.RemindPasswordResult:
-    type: object
-  user.ResetPasswordRequest:
-    properties:
-      code:
-        type: string
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  user.ResetPasswordResult:
-    type: object
-  user.UpdateBudgetRequest:
-    properties:
-      value:
-        type: string
-    type: object
-  user.UpdateBudgetResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.UpdateCurrencyRequest:
-    properties:
-      currency:
-        type: string
-    type: object
-  user.UpdateCurrencyResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.UpdateNameRequest:
-    properties:
-      name:
-        type: string
-    type: object
-  user.UpdateNameResult:
-    properties:
-      user:
-        $ref: '#/definitions/user.CurrentUserResult'
-    type: object
-  user.UpdatePasswordRequest:
+  model.UpdatePasswordRequest:
     properties:
       newPassword:
         type: string
       oldPassword:
         type: string
     type: object
-  user.UpdatePasswordResult:
+  model.UpdatePasswordResult:
     type: object
-  user.UpdateReportPeriodRequest:
+  model.UpdatePayeeRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdatePayeeResult:
+    type: object
+  model.UpdateReportPeriodRequest:
     properties:
       value:
         type: string
     type: object
-  user.UpdateReportPeriodResult:
+  model.UpdateReportPeriodResult:
     properties:
       user:
-        $ref: '#/definitions/user.CurrentUserResult'
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateTagRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.TagResult'
+    type: object
+  model.UpdateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.UpdateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
+  model.UserResult:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
     type: object
 info:
   contact: {}
@@ -1577,7 +1469,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.CreateAccountRequest'
+          $ref: '#/definitions/model.CreateAccountRequest'
       produces:
       - application/json
       responses:
@@ -1588,7 +1480,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.CreateAccountResult'
+                  $ref: '#/definitions/model.CreateAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -1619,7 +1511,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.CreateFolderRequest'
+          $ref: '#/definitions/model.CreateFolderRequest'
       produces:
       - application/json
       responses:
@@ -1630,7 +1522,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.CreateFolderResult'
+                  $ref: '#/definitions/model.CreateFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1660,7 +1552,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.DeleteAccountRequest'
+          $ref: '#/definitions/model.DeleteAccountRequest'
       produces:
       - application/json
       responses:
@@ -1671,7 +1563,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.DeleteAccountResult'
+                  $ref: '#/definitions/model.DeleteAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -1704,7 +1596,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.GetAccountListResult'
+                  $ref: '#/definitions/model.GetAccountListResult'
               type: object
         "401":
           description: Unauthorized
@@ -1732,7 +1624,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.GetFolderListResult'
+                  $ref: '#/definitions/model.GetFolderListResult'
               type: object
         "401":
           description: Unauthorized
@@ -1758,7 +1650,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.HideFolderRequest'
+          $ref: '#/definitions/model.HideFolderRequest'
       produces:
       - application/json
       responses:
@@ -1769,7 +1661,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.HideFolderResult'
+                  $ref: '#/definitions/model.HideFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1800,7 +1692,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.OrderAccountListRequest'
+          $ref: '#/definitions/model.OrderAccountListRequest'
       produces:
       - application/json
       responses:
@@ -1811,7 +1703,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.OrderAccountListResult'
+                  $ref: '#/definitions/model.OrderAccountListResult'
               type: object
         "400":
           description: Bad Request
@@ -1842,7 +1734,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.OrderFolderListRequest'
+          $ref: '#/definitions/model.OrderFolderListRequest'
       produces:
       - application/json
       responses:
@@ -1853,7 +1745,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.OrderFolderListResult'
+                  $ref: '#/definitions/model.OrderFolderListResult'
               type: object
         "400":
           description: Bad Request
@@ -1884,7 +1776,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.ReplaceFolderRequest'
+          $ref: '#/definitions/model.ReplaceFolderRequest'
       produces:
       - application/json
       responses:
@@ -1895,7 +1787,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.ReplaceFolderResult'
+                  $ref: '#/definitions/model.ReplaceFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1925,7 +1817,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.ShowFolderRequest'
+          $ref: '#/definitions/model.ShowFolderRequest'
       produces:
       - application/json
       responses:
@@ -1936,7 +1828,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.ShowFolderResult'
+                  $ref: '#/definitions/model.ShowFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1967,7 +1859,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.UpdateAccountRequest'
+          $ref: '#/definitions/model.UpdateAccountRequest'
       produces:
       - application/json
       responses:
@@ -1978,7 +1870,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.UpdateAccountResult'
+                  $ref: '#/definitions/model.UpdateAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -2008,7 +1900,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.UpdateFolderRequest'
+          $ref: '#/definitions/model.UpdateFolderRequest'
       produces:
       - application/json
       responses:
@@ -2019,7 +1911,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.UpdateFolderResult'
+                  $ref: '#/definitions/model.UpdateFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -2048,7 +1940,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.AcceptAccessRequest'
+          $ref: '#/definitions/model.AcceptAccessRequest'
       produces:
       - application/json
       responses:
@@ -2059,7 +1951,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.AcceptAccessResult'
+                  $ref: '#/definitions/model.AcceptAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2076,7 +1968,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.ChangeElementCurrencyRequest'
+          $ref: '#/definitions/model.ChangeElementCurrencyRequest'
       produces:
       - application/json
       responses:
@@ -2087,7 +1979,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.ChangeElementCurrencyResult'
+                  $ref: '#/definitions/model.ChangeElementCurrencyResult'
               type: object
       security:
       - Bearer: []
@@ -2104,7 +1996,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.CreateBudgetRequest'
+          $ref: '#/definitions/model.CreateBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2115,7 +2007,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.CreateBudgetResult'
+                  $ref: '#/definitions/model.CreateBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -2144,7 +2036,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.CreateEnvelopeRequest'
+          $ref: '#/definitions/model.CreateEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2155,7 +2047,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.CreateEnvelopeResult'
+                  $ref: '#/definitions/model.CreateEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2172,7 +2064,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.CreateBudgetFolderRequest'
+          $ref: '#/definitions/model.CreateBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -2183,7 +2075,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.CreateBudgetFolderResult'
+                  $ref: '#/definitions/model.CreateBudgetFolderResult'
               type: object
       security:
       - Bearer: []
@@ -2200,7 +2092,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeclineAccessRequest'
+          $ref: '#/definitions/model.DeclineAccessRequest'
       produces:
       - application/json
       responses:
@@ -2211,7 +2103,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeclineAccessResult'
+                  $ref: '#/definitions/model.DeclineAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2228,7 +2120,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeleteBudgetRequest'
+          $ref: '#/definitions/model.DeleteBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2239,7 +2131,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeleteBudgetResult'
+                  $ref: '#/definitions/model.DeleteBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2256,7 +2148,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeleteEnvelopeRequest'
+          $ref: '#/definitions/model.DeleteEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2267,7 +2159,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeleteEnvelopeResult'
+                  $ref: '#/definitions/model.DeleteEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2284,7 +2176,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeleteFolderRequest'
+          $ref: '#/definitions/model.DeleteFolderRequest'
       produces:
       - application/json
       responses:
@@ -2295,7 +2187,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeleteFolderResult'
+                  $ref: '#/definitions/model.DeleteFolderResult'
               type: object
       security:
       - Bearer: []
@@ -2312,7 +2204,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.ExcludeAccountRequest'
+          $ref: '#/definitions/model.ExcludeAccountRequest'
       produces:
       - application/json
       responses:
@@ -2323,7 +2215,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.ExcludeAccountResult'
+                  $ref: '#/definitions/model.ExcludeAccountResult'
               type: object
       security:
       - Bearer: []
@@ -2352,7 +2244,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GetBudgetResult'
+                  $ref: '#/definitions/model.GetBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2371,7 +2263,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GetBudgetListResult'
+                  $ref: '#/definitions/model.GetBudgetListResult'
               type: object
       security:
       - Bearer: []
@@ -2413,7 +2305,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GetBudgetTransactionListResult'
+                  $ref: '#/definitions/model.GetBudgetTransactionListResult'
               type: object
       security:
       - Bearer: []
@@ -2430,7 +2322,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.GrantAccessRequest'
+          $ref: '#/definitions/model.GrantAccessRequest'
       produces:
       - application/json
       responses:
@@ -2441,7 +2333,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GrantAccessResult'
+                  $ref: '#/definitions/model.GrantAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2458,7 +2350,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.IncludeAccountRequest'
+          $ref: '#/definitions/model.IncludeAccountRequest'
       produces:
       - application/json
       responses:
@@ -2469,7 +2361,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.IncludeAccountResult'
+                  $ref: '#/definitions/model.IncludeAccountResult'
               type: object
       security:
       - Bearer: []
@@ -2486,7 +2378,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.MoveElementListRequest'
+          $ref: '#/definitions/model.MoveElementListRequest'
       produces:
       - application/json
       responses:
@@ -2497,7 +2389,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.MoveElementListResult'
+                  $ref: '#/definitions/model.MoveElementListResult'
               type: object
       security:
       - Bearer: []
@@ -2514,7 +2406,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.OrderBudgetFolderListRequest'
+          $ref: '#/definitions/model.OrderBudgetFolderListRequest'
       produces:
       - application/json
       responses:
@@ -2525,7 +2417,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.OrderBudgetFolderListResult'
+                  $ref: '#/definitions/model.OrderBudgetFolderListResult'
               type: object
       security:
       - Bearer: []
@@ -2542,7 +2434,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.ResetBudgetRequest'
+          $ref: '#/definitions/model.ResetBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2553,7 +2445,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.ResetBudgetResult'
+                  $ref: '#/definitions/model.ResetBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2570,7 +2462,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.RevokeAccessRequest'
+          $ref: '#/definitions/model.RevokeAccessRequest'
       produces:
       - application/json
       responses:
@@ -2581,7 +2473,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.RevokeAccessResult'
+                  $ref: '#/definitions/model.RevokeAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2598,7 +2490,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.SetLimitRequest'
+          $ref: '#/definitions/model.SetLimitRequest'
       produces:
       - application/json
       responses:
@@ -2609,7 +2501,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.SetLimitResult'
+                  $ref: '#/definitions/model.SetLimitResult'
               type: object
       security:
       - Bearer: []
@@ -2626,7 +2518,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.UpdateBudgetRequest'
+          $ref: '#/definitions/model.UpdateBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2637,7 +2529,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.UpdateBudgetResult'
+                  $ref: '#/definitions/model.UpdateBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -2658,7 +2550,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.UpdateEnvelopeRequest'
+          $ref: '#/definitions/model.UpdateEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2669,7 +2561,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.UpdateEnvelopeResult'
+                  $ref: '#/definitions/model.UpdateEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2686,7 +2578,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.UpdateBudgetFolderRequest'
+          $ref: '#/definitions/model.UpdateBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -2697,7 +2589,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.UpdateBudgetFolderResult'
+                  $ref: '#/definitions/model.UpdateBudgetFolderResult'
               type: object
       security:
       - Bearer: []
@@ -2715,7 +2607,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/category.ArchiveCategoryRequest'
+          $ref: '#/definitions/model.ArchiveCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2726,7 +2618,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/category.ArchiveCategoryResult'
+                  $ref: '#/definitions/model.ArchiveCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2757,7 +2649,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/category.CreateCategoryRequest'
+          $ref: '#/definitions/model.CreateCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2768,7 +2660,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/category.CreateCategoryResult'
+                  $ref: '#/definitions/model.CreateCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2799,7 +2691,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/category.DeleteCategoryRequest'
+          $ref: '#/definitions/model.DeleteCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2810,7 +2702,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/category.DeleteCategoryResult'
+                  $ref: '#/definitions/model.DeleteCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2843,7 +2735,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/category.GetCategoryListResult'
+                  $ref: '#/definitions/model.GetCategoryListResult'
               type: object
         "401":
           description: Unauthorized
@@ -2870,7 +2762,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/category.OrderCategoryListRequest'
+          $ref: '#/definitions/model.OrderCategoryListRequest'
       produces:
       - application/json
       responses:
@@ -2881,7 +2773,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/category.OrderCategoryListResult'
+                  $ref: '#/definitions/model.OrderCategoryListResult'
               type: object
         "400":
           description: Bad Request
@@ -2911,7 +2803,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/category.UnarchiveCategoryRequest'
+          $ref: '#/definitions/model.UnarchiveCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2922,7 +2814,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/category.UnarchiveCategoryResult'
+                  $ref: '#/definitions/model.UnarchiveCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2952,7 +2844,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/category.UpdateCategoryRequest'
+          $ref: '#/definitions/model.UpdateCategoryRequest'
       produces:
       - application/json
       responses:
@@ -2963,7 +2855,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/category.UpdateCategoryResult'
+                  $ref: '#/definitions/model.UpdateCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -2993,7 +2885,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.AcceptInviteRequest'
+          $ref: '#/definitions/model.AcceptInviteRequest'
       produces:
       - application/json
       responses:
@@ -3004,7 +2896,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.AcceptInviteResult'
+                  $ref: '#/definitions/model.AcceptInviteResult'
               type: object
         "400":
           description: Bad Request
@@ -3034,7 +2926,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.DeleteConnectionRequest'
+          $ref: '#/definitions/model.DeleteConnectionRequest'
       produces:
       - application/json
       responses:
@@ -3045,7 +2937,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.DeleteConnectionResult'
+                  $ref: '#/definitions/model.DeleteConnectionResult'
               type: object
         "400":
           description: Bad Request
@@ -3074,7 +2966,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/connection.DeleteInviteRequest'
+          $ref: '#/definitions/model.DeleteInviteRequest'
       produces:
       - application/json
       responses:
@@ -3085,7 +2977,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.DeleteInviteResult'
+                  $ref: '#/definitions/model.DeleteInviteResult'
               type: object
         "401":
           description: Unauthorized
@@ -3110,7 +3002,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/connection.GenerateInviteRequest'
+          $ref: '#/definitions/model.GenerateInviteRequest'
       produces:
       - application/json
       responses:
@@ -3121,7 +3013,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.GenerateInviteResult'
+                  $ref: '#/definitions/model.GenerateInviteResult'
               type: object
         "401":
           description: Unauthorized
@@ -3150,7 +3042,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.GetConnectionListResult'
+                  $ref: '#/definitions/model.GetConnectionListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3176,7 +3068,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.RevokeAccountAccessRequest'
+          $ref: '#/definitions/model.RevokeAccountAccessRequest'
       produces:
       - application/json
       responses:
@@ -3187,7 +3079,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.RevokeAccountAccessResult'
+                  $ref: '#/definitions/model.RevokeAccountAccessResult'
               type: object
         "400":
           description: Bad Request
@@ -3218,7 +3110,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.SetAccountAccessRequest'
+          $ref: '#/definitions/model.SetAccountAccessRequest'
       produces:
       - application/json
       responses:
@@ -3229,7 +3121,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.SetAccountAccessResult'
+                  $ref: '#/definitions/model.SetAccountAccessResult'
               type: object
         "400":
           description: Bad Request
@@ -3262,7 +3154,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/currency.GetCurrencyListResult'
+                  $ref: '#/definitions/model.GetCurrencyListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3291,7 +3183,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/currency.GetCurrencyRateListResult'
+                  $ref: '#/definitions/model.GetCurrencyRateListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3317,7 +3209,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.ArchivePayeeRequest'
+          $ref: '#/definitions/model.ArchivePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3328,7 +3220,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.ArchivePayeeResult'
+                  $ref: '#/definitions/model.ArchivePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3359,7 +3251,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.CreatePayeeRequest'
+          $ref: '#/definitions/model.CreatePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3370,7 +3262,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.CreatePayeeResult'
+                  $ref: '#/definitions/model.CreatePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3401,7 +3293,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.DeletePayeeRequest'
+          $ref: '#/definitions/model.DeletePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3412,7 +3304,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.DeletePayeeResult'
+                  $ref: '#/definitions/model.DeletePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3445,7 +3337,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.GetPayeeListResult'
+                  $ref: '#/definitions/model.GetPayeeListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3472,7 +3364,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.OrderPayeeListRequest'
+          $ref: '#/definitions/model.OrderPayeeListRequest'
       produces:
       - application/json
       responses:
@@ -3483,7 +3375,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.OrderPayeeListResult'
+                  $ref: '#/definitions/model.OrderPayeeListResult'
               type: object
         "400":
           description: Bad Request
@@ -3513,7 +3405,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.UnarchivePayeeRequest'
+          $ref: '#/definitions/model.UnarchivePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3524,7 +3416,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.UnarchivePayeeResult'
+                  $ref: '#/definitions/model.UnarchivePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3555,7 +3447,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/payee.UpdatePayeeRequest'
+          $ref: '#/definitions/model.UpdatePayeeRequest'
       produces:
       - application/json
       responses:
@@ -3566,7 +3458,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/payee.UpdatePayeeResult'
+                  $ref: '#/definitions/model.UpdatePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -3596,7 +3488,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.ArchiveTagRequest'
+          $ref: '#/definitions/model.ArchiveTagRequest'
       produces:
       - application/json
       responses:
@@ -3607,7 +3499,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.ArchiveTagResult'
+                  $ref: '#/definitions/model.ArchiveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3638,7 +3530,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.CreateTagRequest'
+          $ref: '#/definitions/model.CreateTagRequest'
       produces:
       - application/json
       responses:
@@ -3649,7 +3541,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.CreateTagResult'
+                  $ref: '#/definitions/model.CreateTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3680,7 +3572,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.DeleteTagRequest'
+          $ref: '#/definitions/model.DeleteTagRequest'
       produces:
       - application/json
       responses:
@@ -3691,7 +3583,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.DeleteTagResult'
+                  $ref: '#/definitions/model.DeleteTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3724,7 +3616,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.GetTagListResult'
+                  $ref: '#/definitions/model.GetTagListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3751,7 +3643,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.OrderTagListRequest'
+          $ref: '#/definitions/model.OrderTagListRequest'
       produces:
       - application/json
       responses:
@@ -3762,7 +3654,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.OrderTagListResult'
+                  $ref: '#/definitions/model.OrderTagListResult'
               type: object
         "400":
           description: Bad Request
@@ -3792,7 +3684,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.UnarchiveTagRequest'
+          $ref: '#/definitions/model.UnarchiveTagRequest'
       produces:
       - application/json
       responses:
@@ -3803,7 +3695,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.UnarchiveTagResult'
+                  $ref: '#/definitions/model.UnarchiveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3834,7 +3726,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.UpdateTagRequest'
+          $ref: '#/definitions/model.UpdateTagRequest'
       produces:
       - application/json
       responses:
@@ -3845,7 +3737,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.UpdateTagResult'
+                  $ref: '#/definitions/model.UpdateTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3876,7 +3768,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/transaction.CreateTransactionRequest'
+          $ref: '#/definitions/model.CreateTransactionRequest'
       produces:
       - application/json
       responses:
@@ -3887,7 +3779,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.CreateTransactionResult'
+                  $ref: '#/definitions/model.CreateTransactionResult'
               type: object
         "400":
           description: Bad Request
@@ -3918,7 +3810,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/transaction.DeleteTransactionRequest'
+          $ref: '#/definitions/model.DeleteTransactionRequest'
       produces:
       - application/json
       responses:
@@ -3929,7 +3821,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.DeleteTransactionResult'
+                  $ref: '#/definitions/model.DeleteTransactionResult'
               type: object
         "400":
           description: Bad Request
@@ -4008,7 +3900,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.GetTransactionListResult'
+                  $ref: '#/definitions/model.GetTransactionListResult'
               type: object
         "401":
           description: Unauthorized
@@ -4074,7 +3966,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.ImportResult'
+                  $ref: '#/definitions/model.ImportResult'
               type: object
         "400":
           description: Bad Request
@@ -4105,7 +3997,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/transaction.UpdateTransactionRequest'
+          $ref: '#/definitions/model.UpdateTransactionRequest'
       produces:
       - application/json
       responses:
@@ -4116,7 +4008,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.UpdateTransactionResult'
+                  $ref: '#/definitions/model.UpdateTransactionResult'
               type: object
         "400":
           description: Bad Request
@@ -4149,7 +4041,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.CompleteOnboardingResult'
+                  $ref: '#/definitions/model.CompleteOnboardingResult'
               type: object
         "401":
           description: Unauthorized
@@ -4178,7 +4070,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.GetOptionListResult'
+                  $ref: '#/definitions/model.GetOptionListResult'
               type: object
         "401":
           description: Unauthorized
@@ -4206,7 +4098,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.GetUserDataResult'
+                  $ref: '#/definitions/model.GetUserDataResult'
               type: object
         "401":
           description: Unauthorized
@@ -4233,7 +4125,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.LoginRequest'
+          $ref: '#/definitions/model.LoginRequest'
       produces:
       - application/json
       responses:
@@ -4241,7 +4133,7 @@ paths:
           description: Raw {token,user} body — NOT wrapped in the standard envelope
             (matches PHP login).
           schema:
-            $ref: '#/definitions/user.LoginResult'
+            $ref: '#/definitions/model.LoginResult'
         "400":
           description: Bad Request
           schema:
@@ -4271,7 +4163,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.LogoutResult'
+                  $ref: '#/definitions/model.LogoutResult'
               type: object
         "401":
           description: Unauthorized
@@ -4298,7 +4190,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.RegisterRequest'
+          $ref: '#/definitions/model.RegisterRequest'
       produces:
       - application/json
       responses:
@@ -4309,7 +4201,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.CurrentUserResult'
+                  $ref: '#/definitions/model.CurrentUserResult'
               type: object
         "400":
           description: Bad Request
@@ -4337,7 +4229,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.RemindPasswordRequest'
+          $ref: '#/definitions/model.RemindPasswordRequest'
       produces:
       - application/json
       responses:
@@ -4348,7 +4240,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.RemindPasswordResult'
+                  $ref: '#/definitions/model.RemindPasswordResult'
               type: object
         "400":
           description: Bad Request
@@ -4377,7 +4269,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.ResetPasswordRequest'
+          $ref: '#/definitions/model.ResetPasswordRequest'
       produces:
       - application/json
       responses:
@@ -4388,7 +4280,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.ResetPasswordResult'
+                  $ref: '#/definitions/model.ResetPasswordResult'
               type: object
         "400":
           description: Bad Request
@@ -4417,7 +4309,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateBudgetRequest'
+          $ref: '#/definitions/model.UpdateActiveBudgetRequest'
       produces:
       - application/json
       responses:
@@ -4428,7 +4320,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateBudgetResult'
+                  $ref: '#/definitions/model.UpdateActiveBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -4459,7 +4351,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateCurrencyRequest'
+          $ref: '#/definitions/model.UpdateCurrencyRequest'
       produces:
       - application/json
       responses:
@@ -4470,7 +4362,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateCurrencyResult'
+                  $ref: '#/definitions/model.UpdateCurrencyResult'
               type: object
         "400":
           description: Bad Request
@@ -4501,7 +4393,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateNameRequest'
+          $ref: '#/definitions/model.UpdateNameRequest'
       produces:
       - application/json
       responses:
@@ -4512,7 +4404,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateNameResult'
+                  $ref: '#/definitions/model.UpdateNameResult'
               type: object
         "400":
           description: Bad Request
@@ -4543,7 +4435,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdatePasswordRequest'
+          $ref: '#/definitions/model.UpdatePasswordRequest'
       produces:
       - application/json
       responses:
@@ -4554,7 +4446,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdatePasswordResult'
+                  $ref: '#/definitions/model.UpdatePasswordResult'
               type: object
         "400":
           description: Bad Request
@@ -4585,7 +4477,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/user.UpdateReportPeriodRequest'
+          $ref: '#/definitions/model.UpdateReportPeriodRequest'
       produces:
       - application/json
       responses:
@@ -4596,7 +4488,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/user.UpdateReportPeriodResult'
+                  $ref: '#/definitions/model.UpdateReportPeriodResult'
               type: object
         "400":
           description: Bad Request

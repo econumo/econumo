@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
@@ -58,8 +59,8 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 // and saves. It returns the mutated (in-memory) aggregate so the caller can
 // build its result without a second read. Ownership failure -> AccessDenied
 // (403).
-func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *Category, now time.Time)) (*Category, error) {
-	var loaded *Category
+func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *model.Category, now time.Time)) (*model.Category, error) {
+	var loaded *model.Category
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		c, err := s.repo.GetByID(ctx, id)
 		if err != nil {
@@ -86,12 +87,12 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *Categ
 // toResult is the single entity->DTO conversion in the module. It formats the
 // timestamps in the "2006-01-02 15:04:05" wire form and maps the bool/type to
 // the wire shapes (isArchived int 0/1, type alias string). See CLAUDE.md.
-func toResult(c *Category) CategoryResult {
+func toResult(c *model.Category) model.CategoryResult {
 	archived := 0
 	if c.IsArchived {
 		archived = 1
 	}
-	return CategoryResult{
+	return model.CategoryResult{
 		Id:          c.ID.String(),
 		OwnerUserId: c.UserID.String(),
 		Name:        c.Name,
@@ -108,12 +109,12 @@ func toResult(c *Category) CategoryResult {
 // access), ordered by position, in the wire shape — used by order-category-list.
 // It reads through the same own+shared view as get-category-list so the order
 // response carries the full list (own + shared, not owner-only).
-func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]CategoryResult, error) {
+func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]model.CategoryResult, error) {
 	rows, err := s.read.CategoryListView(ctx, userID.String())
 	if err != nil {
 		return nil, err
 	}
-	items := make([]CategoryResult, 0, len(rows))
+	items := make([]model.CategoryResult, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
@@ -143,8 +144,8 @@ func newIcon(v string) (string, error) {
 
 // newCategoryType parses a type alias via the domain parser, accepting only
 // "expense"/"income". The field key is "type".
-func newCategoryType(alias string) (Type, error) {
-	typ, ok := TypeFromAlias(alias)
+func newCategoryType(alias string) (model.CategoryType, error) {
+	typ, ok := model.TypeFromAlias(alias)
 	if !ok {
 		return 0, errs.NewValidation("CategoryType not exists",
 			errs.FieldError{Key: "type", Message: "CategoryType not exists"})

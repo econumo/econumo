@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	domtransaction "github.com/econumo/econumo/internal/transaction"
@@ -71,7 +72,7 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
 // GetByID loads a transaction by id.
-func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domtransaction.Transaction, error) {
+func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
 	row, err := r.q.GetTransactionByID(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -83,7 +84,7 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domtransaction.Transacti
 }
 
 // Save upserts a transaction.
-func (r *Repo) Save(ctx context.Context, t *domtransaction.Transaction) error {
+func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
 	return r.q.UpsertTransaction(ctx, r.db(ctx), upsertParams{
 		ID:                 t.ID.String(),
 		UserID:             t.UserID.String(),
@@ -108,7 +109,7 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 }
 
 // ListByAccount returns transactions on an account (source or recipient).
-func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*domtransaction.Transaction, error) {
+func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Transaction, error) {
 	s := accountID.String()
 	rows, err := r.q.ListTransactionsByAccount(ctx, r.db(ctx), listAccParams{AccountID: s, AccountRecipientID: &s})
 	if err != nil {
@@ -120,7 +121,7 @@ func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*domtransa
 // ListByAccountIDs returns transactions whose source OR recipient is in
 // accountIDs, optionally bounded by [periodStart, periodEnd). Built by hand
 // (dynamic IN); placeholders differ per engine.
-func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time) ([]*domtransaction.Transaction, error) {
+func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time) ([]*model.Transaction, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -163,7 +164,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 	}
 	defer rows.Close()
 
-	var out []*domtransaction.Transaction
+	var out []*model.Transaction
 	for rows.Next() {
 		var row txRow
 		if serr := rows.Scan(
@@ -218,7 +219,7 @@ func idPtr(id *vo.Id) *string {
 	return &s
 }
 
-func hydrate(row txRow) (*domtransaction.Transaction, error) {
+func hydrate(row txRow) (*model.Transaction, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -247,16 +248,16 @@ func hydrate(row txRow) (*domtransaction.Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
-	return domtransaction.FromState(domtransaction.NewState{
-		ID: id, UserID: userID, Type: domtransaction.Type(row.Type), AccountID: accountID,
+	return model.FromState(model.NewState{
+		ID: id, UserID: userID, Type: model.TransactionType(row.Type), AccountID: accountID,
 		AccountRecipID: recip, Amount: row.Amount, AmountRecipient: row.AmountRecipient,
 		CategoryID: cat, PayeeID: payee, TagID: tag, Description: row.Description,
 		SpentAt: row.SpentAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}), nil
 }
 
-func hydrateAll(rows []txRow) ([]*domtransaction.Transaction, error) {
-	out := make([]*domtransaction.Transaction, 0, len(rows))
+func hydrateAll(rows []txRow) ([]*model.Transaction, error) {
+	out := make([]*model.Transaction, 0, len(rows))
 	for _, row := range rows {
 		t, err := hydrate(row)
 		if err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -81,7 +82,7 @@ func (p *RateProvider) FractionDigits(ctx context.Context, currencyID vo.Id) (in
 
 // AverageRates snaps the period to the rate month and averages each currency's
 // rate over it for the base currency.
-func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) ([]domcurrency.FullRate, error) {
+func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error) {
 	baseID, err := p.BaseCurrencyID(ctx)
 	if err != nil {
 		return nil, err
@@ -96,13 +97,13 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 	if err != nil {
 		return nil, err
 	}
-	out := make([]domcurrency.FullRate, 0, len(rows))
+	out := make([]model.FullRate, 0, len(rows))
 	for _, r := range rows {
 		id, perr := vo.ParseId(r.CurrencyID)
 		if perr != nil {
 			return nil, perr
 		}
-		out = append(out, domcurrency.FullRate{CurrencyID: id, Rate: vo.NewDecimal(r.Rate)})
+		out = append(out, model.FullRate{CurrencyID: id, Rate: vo.NewDecimal(r.Rate)})
 	}
 	return out, nil
 }

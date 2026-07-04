@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	dompayee "github.com/econumo/econumo/internal/payee"
+	"github.com/econumo/econumo/internal/model"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -36,8 +36,8 @@ func newRepo(t *testing.T) (*payeerepo.Repo, *payeerepo.ReadRepo, *dbtest.DB, *f
 	return payeerepo.NewRepo("sqlite", db.TX), payeerepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
-func payee(id, userID, name string, pos int16) *dompayee.Payee {
-	return &dompayee.Payee{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+func payee(id, userID, name string, pos int16) *model.Payee {
+	return &model.Payee{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
 		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 

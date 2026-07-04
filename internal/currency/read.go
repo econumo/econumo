@@ -6,6 +6,7 @@ package currency
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -14,30 +15,10 @@ import (
 // hydration.
 type ReadModel interface {
 	// CurrencyListView returns all currencies ordered by code ASC.
-	CurrencyListView(ctx context.Context) ([]CurrencyViewRow, error)
+	CurrencyListView(ctx context.Context) ([]model.CurrencyViewRow, error)
 	// LatestCurrencyRateListView returns every rate on the most-recent published
 	// date.
-	LatestCurrencyRateListView(ctx context.Context) ([]CurrencyRateViewRow, error)
-}
-
-// CurrencyViewRow is the read-side currency row. Name is the raw (nullable) DB
-// value, which is NULL in practice — the service resolves the wire name from the
-// Intl display-name table as a fallback.
-type CurrencyViewRow struct {
-	ID             string
-	Code           string
-	Symbol         string
-	Name           *string
-	FractionDigits int16
-}
-
-// CurrencyRateViewRow is the read-side rate row. UpdatedAt arrives pre-formatted
-// "Y-m-d 00:00:00" from the repo.
-type CurrencyRateViewRow struct {
-	CurrencyID     string
-	BaseCurrencyID string
-	Rate           string
-	UpdatedAt      string
+	LatestCurrencyRateListView(ctx context.Context) ([]model.CurrencyRateViewRow, error)
 }
 
 // ReadService serves both currency read endpoints.
@@ -53,14 +34,14 @@ func NewReadService(read ReadModel) *ReadService {
 // GetCurrencyList returns all currencies ordered by code, in the wire shape.
 // The display name comes from the Intl table (currencies.name is NULL), with a
 // fallback to the code when no entry exists.
-func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*GetCurrencyListResult, error) {
+func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*model.GetCurrencyListResult, error) {
 	rows, err := s.read.CurrencyListView(ctx)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]CurrencyResult, 0, len(rows))
+	items := make([]model.CurrencyResult, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, CurrencyResult{
+		items = append(items, model.CurrencyResult{
 			Id:             r.ID,
 			Code:           r.Code,
 			Name:           currencyName(r),
@@ -68,13 +49,13 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*GetCurrenc
 			FractionDigits: int(r.FractionDigits),
 		})
 	}
-	return &GetCurrencyListResult{Items: items}, nil
+	return &model.GetCurrencyListResult{Items: items}, nil
 }
 
 // currencyName resolves the wire display name: a non-empty stored name wins,
 // otherwise the Intl table by code (which itself falls back to the code). In the
 // live data the stored name is always NULL, so this resolves via the Intl table.
-func currencyName(r CurrencyViewRow) string {
+func currencyName(r model.CurrencyViewRow) string {
 	if r.Name != nil && *r.Name != "" {
 		return *r.Name
 	}
@@ -82,19 +63,19 @@ func currencyName(r CurrencyViewRow) string {
 }
 
 // GetCurrencyRateList returns the latest published rates, in the wire shape.
-func (s *ReadService) GetCurrencyRateList(ctx context.Context, _ vo.Id) (*GetCurrencyRateListResult, error) {
+func (s *ReadService) GetCurrencyRateList(ctx context.Context, _ vo.Id) (*model.GetCurrencyRateListResult, error) {
 	rows, err := s.read.LatestCurrencyRateListView(ctx)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]CurrencyRateResult, 0, len(rows))
+	items := make([]model.CurrencyRateResult, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, CurrencyRateResult{
+		items = append(items, model.CurrencyRateResult{
 			CurrencyId:     r.CurrencyID,
 			BaseCurrencyId: r.BaseCurrencyID,
 			Rate:           r.Rate,
 			UpdatedAt:      r.UpdatedAt,
 		})
 	}
-	return &GetCurrencyRateListResult{Items: items}, nil
+	return &model.GetCurrencyRateListResult{Items: items}, nil
 }

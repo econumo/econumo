@@ -10,10 +10,9 @@ import (
 	"time"
 
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	appcategory "github.com/econumo/econumo/internal/category"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
-	domconnection "github.com/econumo/econumo/internal/connection"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -56,7 +55,7 @@ func TestEngines_CategoryOwnAndShared(t *testing.T) {
 	})
 }
 
-func snapshotCategories(rows []appcategory.CategoryViewRow) string {
+func snapshotCategories(rows []model.CategoryViewRow) string {
 	out := make([]string, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, fmt.Sprintf("%s|%s|%s|pos=%d|type=%d|arch=%t|%s|%s",
@@ -106,7 +105,7 @@ func TestEngines_ConnectionInviteByCode(t *testing.T) {
 		fixture.New(t, db).User(fixture.User{ID: userA, Email: "a@test"})
 		repo := connectionrepo.NewInviteRepo(db.Engine, db.TX)
 
-		inv := domconnection.NewConnectionInvite(mustID(t, userA))
+		inv := model.NewConnectionInvite(mustID(t, userA))
 		inv.GenerateNewCode(fixedTime) // expiry = fixedTime + 5min
 		if err := repo.Save(ctx, inv); err != nil {
 			t.Fatalf("Save invite: %v", err)

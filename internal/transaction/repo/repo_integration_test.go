@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	domtransaction "github.com/econumo/econumo/internal/transaction"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 )
 
@@ -51,9 +51,9 @@ func deref(s *string) string {
 	return *s
 }
 
-func expense(id, account, amount string, spentAt time.Time) *domtransaction.Transaction {
-	return domtransaction.FromState(domtransaction.NewState{
-		ID: vo.MustParseId(id), UserID: vo.MustParseId(userA), Type: domtransaction.TypeExpense,
+func expense(id, account, amount string, spentAt time.Time) *model.Transaction {
+	return model.FromState(model.NewState{
+		ID: vo.MustParseId(id), UserID: vo.MustParseId(userA), Type: model.TransactionTypeExpense,
 		AccountID: vo.MustParseId(account), Amount: amount, Description: "exp",
 		SpentAt: spentAt, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	})
@@ -77,7 +77,7 @@ func TestTransactionRepo_SaveGetRoundTrip_Expense(t *testing.T) {
 	if got.Amount != "123.45" {
 		t.Errorf("amount mismatch: %q", got.Amount)
 	}
-	if got.Type != domtransaction.TypeExpense || got.AccountID.String() != acct1 {
+	if got.Type != model.TransactionTypeExpense || got.AccountID.String() != acct1 {
 		t.Errorf("fields mismatch: type=%d account=%s", got.Type, got.AccountID)
 	}
 	if !got.SpentAt.Equal(spent) {
@@ -94,8 +94,8 @@ func TestTransactionRepo_SaveGetRoundTrip_Transfer(t *testing.T) {
 	id := "7c000000-0000-0000-0000-000000000002"
 	recip := vo.MustParseId(acct2)
 	amtRecip := "90.5"
-	tx := domtransaction.FromState(domtransaction.NewState{
-		ID: vo.MustParseId(id), UserID: vo.MustParseId(userA), Type: domtransaction.TypeTransfer,
+	tx := model.FromState(model.NewState{
+		ID: vo.MustParseId(id), UserID: vo.MustParseId(userA), Type: model.TransactionTypeTransfer,
 		AccountID: vo.MustParseId(acct1), AccountRecipID: &recip,
 		Amount: "100.25", AmountRecipient: &amtRecip, Description: "xfer",
 		SpentAt: fixedTime, CreatedAt: fixedTime, UpdatedAt: fixedTime,
@@ -151,9 +151,9 @@ func TestTransactionRepo_ListByAccount_SourceOrRecipient(t *testing.T) {
 	_ = repo.Save(ctx, expense("7c000000-0000-0000-0000-000000000004", acct1, "5.00000000", fixedTime))
 	recip := vo.MustParseId(acct1)
 	amtR := "7.00000000"
-	_ = repo.Save(ctx, domtransaction.FromState(domtransaction.NewState{
+	_ = repo.Save(ctx, model.FromState(model.NewState{
 		ID: vo.MustParseId("7c000000-0000-0000-0000-000000000005"), UserID: vo.MustParseId(userA),
-		Type: domtransaction.TypeTransfer, AccountID: vo.MustParseId(acct2), AccountRecipID: &recip,
+		Type: model.TransactionTypeTransfer, AccountID: vo.MustParseId(acct2), AccountRecipID: &recip,
 		Amount: "7.00000000", AmountRecipient: &amtR, Description: "x",
 		SpentAt: fixedTime, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}))

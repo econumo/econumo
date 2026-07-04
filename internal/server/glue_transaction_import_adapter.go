@@ -13,29 +13,25 @@ package server
 import (
 	"context"
 
-	account "github.com/econumo/econumo/internal/account"
-	category "github.com/econumo/econumo/internal/category"
-	payee "github.com/econumo/econumo/internal/payee"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
-	tag "github.com/econumo/econumo/internal/tag"
-	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 // transactionImportAccountService is the account-service surface the importer
 // uses.
 type transactionImportAccountService interface {
-	CreateAccount(ctx context.Context, userID vo.Id, req account.CreateAccountRequest) (*account.CreateAccountResult, error)
-	CreateFolder(ctx context.Context, userID vo.Id, req account.CreateFolderRequest) (*account.CreateFolderResult, error)
+	CreateAccount(ctx context.Context, userID vo.Id, req model.CreateAccountRequest) (*model.CreateAccountResult, error)
+	CreateFolder(ctx context.Context, userID vo.Id, req model.CreateFolderRequest) (*model.CreateFolderResult, error)
 }
 
 // transactionImportAccountRepo / transactionImportFolderRepo are the read
 // surfaces over the account + folder repos.
 type transactionImportAccountRepo interface {
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*account.Account, error)
-	GetByID(ctx context.Context, id vo.Id) (*account.Account, error)
+	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 }
 type transactionImportFolderRepo interface {
-	ListByUser(ctx context.Context, userID vo.Id) ([]*account.Folder, error)
+	ListByUser(ctx context.Context, userID vo.Id) ([]*model.Folder, error)
 }
 
 // transactionImportCurrencyByCode resolves the base-currency id from its code
@@ -66,19 +62,19 @@ func NewTransactionImportAccounts(
 	return &TransactionImportAccounts{svc: svc, accountRepo: accountRepo, folderRepo: folderRepo, currency: currency, baseCode: baseCode}
 }
 
-func (a *TransactionImportAccounts) AvailableAccounts(ctx context.Context, userID vo.Id) ([]apptransaction.ImportAccount, error) {
+func (a *TransactionImportAccounts) AvailableAccounts(ctx context.Context, userID vo.Id) ([]model.ImportAccount, error) {
 	accts, err := a.accountRepo.ListAvailable(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]apptransaction.ImportAccount, len(accts))
+	out := make([]model.ImportAccount, len(accts))
 	for i, acct := range accts {
-		out[i] = apptransaction.ImportAccount{ID: acct.ID.String(), Name: acct.Name, OwnerID: acct.UserID.String()}
+		out[i] = model.ImportAccount{ID: acct.ID.String(), Name: acct.Name, OwnerID: acct.UserID.String()}
 	}
 	return out, nil
 }
 
-func (a *TransactionImportAccounts) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*apptransaction.ImportAccount, error) {
+func (a *TransactionImportAccounts) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*model.ImportAccount, error) {
 	acct, err := a.accountRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, nil // not found -> nil
@@ -87,33 +83,33 @@ func (a *TransactionImportAccounts) AccountByID(ctx context.Context, userID vo.I
 	if !acct.UserID.Equal(userID) {
 		return nil, nil
 	}
-	return &apptransaction.ImportAccount{ID: acct.ID.String(), Name: acct.Name, OwnerID: acct.UserID.String()}, nil
+	return &model.ImportAccount{ID: acct.ID.String(), Name: acct.Name, OwnerID: acct.UserID.String()}, nil
 }
 
-func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error) {
+func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error) {
 	// folder: first existing, else create "Imported Accounts".
 	folders, err := a.folderRepo.ListByUser(ctx, userID)
 	if err != nil {
-		return apptransaction.ImportAccount{}, err
+		return model.ImportAccount{}, err
 	}
 	var folderID string
 	if len(folders) > 0 {
 		folderID = folders[0].ID.String()
 	} else {
-		fres, ferr := a.svc.CreateFolder(ctx, userID, account.CreateFolderRequest{
+		fres, ferr := a.svc.CreateFolder(ctx, userID, model.CreateFolderRequest{
 			Name: "Imported Accounts",
 		})
 		if ferr != nil {
-			return apptransaction.ImportAccount{}, ferr
+			return model.ImportAccount{}, ferr
 		}
 		folderID = fres.Item.Id
 	}
 
 	currencyID, err := a.currency.GetIDByCode(ctx, a.baseCode)
 	if err != nil {
-		return apptransaction.ImportAccount{}, err
+		return model.ImportAccount{}, err
 	}
-	res, err := a.svc.CreateAccount(ctx, userID, account.CreateAccountRequest{
+	res, err := a.svc.CreateAccount(ctx, userID, model.CreateAccountRequest{
 		Id:         vo.NewId().String(),
 		Name:       name,
 		CurrencyId: currencyID,
@@ -122,20 +118,20 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 		Icon:       "wallet",
 	})
 	if err != nil {
-		return apptransaction.ImportAccount{}, err
+		return model.ImportAccount{}, err
 	}
-	return apptransaction.ImportAccount{ID: res.Item.Id, Name: res.Item.Name, OwnerID: userID.String()}, nil
+	return model.ImportAccount{ID: res.Item.Id, Name: res.Item.Name, OwnerID: userID.String()}, nil
 }
 
 // transactionImportCategoryService is the category-service create surface the
 // importer uses.
 type transactionImportCategoryService interface {
-	CreateCategory(ctx context.Context, userID vo.Id, req category.CreateCategoryRequest) (*category.CreateCategoryResult, error)
+	CreateCategory(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error)
 }
 
 // transactionImportCategoryLister is the read surface over the category repo.
 type transactionImportCategoryLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 }
 
 // TransactionImportCategories adapts the category service/repo to the
@@ -150,42 +146,42 @@ func NewTransactionImportCategories(svc transactionImportCategoryService, list t
 	return &TransactionImportCategories{svc: svc, list: list}
 }
 
-func (c *TransactionImportCategories) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+func (c *TransactionImportCategories) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
 	list, err := c.list.ListByOwner(ctx, ownerID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]apptransaction.ImportNamed, len(list))
+	out := make([]model.ImportNamed, len(list))
 	for i, cat := range list {
-		out[i] = apptransaction.ImportNamed{ID: cat.ID.String(), Name: cat.Name, OwnerID: cat.UserID.String()}
+		out[i] = model.ImportNamed{ID: cat.ID.String(), Name: cat.Name, OwnerID: cat.UserID.String()}
 	}
 	return out, nil
 }
 
-func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (apptransaction.ImportNamed, error) {
+func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (model.ImportNamed, error) {
 	typ := "expense"
 	if income {
 		typ = "income"
 	}
 	icon := "category"
-	res, err := c.svc.CreateCategory(ctx, ownerID, category.CreateCategoryRequest{
+	res, err := c.svc.CreateCategory(ctx, ownerID, model.CreateCategoryRequest{
 		Id: vo.NewId().String(), Name: name, Type: typ, Icon: &icon,
 	})
 	if err != nil {
-		return apptransaction.ImportNamed{}, err
+		return model.ImportNamed{}, err
 	}
-	return apptransaction.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
 }
 
 // transactionImportTagService is the tag-service create surface the importer
 // uses.
 type transactionImportTagService interface {
-	CreateTag(ctx context.Context, userID vo.Id, req tag.CreateTagRequest) (*tag.CreateTagResult, error)
+	CreateTag(ctx context.Context, userID vo.Id, req model.CreateTagRequest) (*model.CreateTagResult, error)
 }
 
 // transactionImportTagLister is the read surface over the tag repo.
 type transactionImportTagLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*tag.Tag, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
 }
 
 // TransactionImportTags adapts the tag service/repo to the transaction
@@ -200,37 +196,37 @@ func NewTransactionImportTags(svc transactionImportTagService, list transactionI
 	return &TransactionImportTags{svc: svc, list: list}
 }
 
-func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
 	list, err := t.list.ListByOwner(ctx, ownerID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]apptransaction.ImportNamed, len(list))
+	out := make([]model.ImportNamed, len(list))
 	for i, tg := range list {
-		out[i] = apptransaction.ImportNamed{ID: tg.ID.String(), Name: tg.Name, OwnerID: tg.UserID.String()}
+		out[i] = model.ImportNamed{ID: tg.ID.String(), Name: tg.Name, OwnerID: tg.UserID.String()}
 	}
 	return out, nil
 }
 
-func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
-	res, err := t.svc.CreateTag(ctx, ownerID, tag.CreateTagRequest{
+func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error) {
+	res, err := t.svc.CreateTag(ctx, ownerID, model.CreateTagRequest{
 		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {
-		return apptransaction.ImportNamed{}, err
+		return model.ImportNamed{}, err
 	}
-	return apptransaction.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
 }
 
 // transactionImportPayeeService is the payee-service create surface the
 // importer uses.
 type transactionImportPayeeService interface {
-	CreatePayee(ctx context.Context, userID vo.Id, req payee.CreatePayeeRequest) (*payee.CreatePayeeResult, error)
+	CreatePayee(ctx context.Context, userID vo.Id, req model.CreatePayeeRequest) (*model.CreatePayeeResult, error)
 }
 
 // transactionImportPayeeLister is the read surface over the payee repo.
 type transactionImportPayeeLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
 }
 
 // TransactionImportPayees adapts the payee service/repo to the transaction
@@ -245,24 +241,24 @@ func NewTransactionImportPayees(svc transactionImportPayeeService, list transact
 	return &TransactionImportPayees{svc: svc, list: list}
 }
 
-func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
 	list, err := p.list.ListByOwner(ctx, ownerID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]apptransaction.ImportNamed, len(list))
+	out := make([]model.ImportNamed, len(list))
 	for i, py := range list {
-		out[i] = apptransaction.ImportNamed{ID: py.ID.String(), Name: py.Name, OwnerID: py.UserID.String()}
+		out[i] = model.ImportNamed{ID: py.ID.String(), Name: py.Name, OwnerID: py.UserID.String()}
 	}
 	return out, nil
 }
 
-func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
-	res, err := p.svc.CreatePayee(ctx, ownerID, payee.CreatePayeeRequest{
+func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error) {
+	res, err := p.svc.CreatePayee(ctx, ownerID, model.CreatePayeeRequest{
 		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {
-		return apptransaction.ImportNamed{}, err
+		return model.ImportNamed{}, err
 	}
-	return apptransaction.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
 }

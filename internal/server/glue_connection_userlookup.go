@@ -1,6 +1,6 @@
 // ConnectionUserLookup satisfies the connection service's UserLookup port
 // (connected-user embed) by delegating to the user repository. It lives here,
-// not in internal/connection/repo, because it needs the user feature's
+// not in internal/connection/repo, because it needs the model package's
 // Header type and an infra package must not import a feature (see archtest).
 package server
 
@@ -8,13 +8,13 @@ import (
 	"context"
 
 	appconnection "github.com/econumo/econumo/internal/connection"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/user"
 )
 
 // connectionUserByID is the minimal user-repo surface this adapter needs.
 type connectionUserByID interface {
-	GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
 }
 
 // ConnectionUserLookup adapts the user repository to connection.UserLookup.
@@ -28,14 +28,14 @@ func NewConnectionUserLookup(users connectionUserByID) *ConnectionUserLookup {
 }
 
 // GetOwner resolves the connected-user embed (id, name, avatar).
-func (l *ConnectionUserLookup) GetOwner(ctx context.Context, userID string) (appconnection.OwnerView, error) {
+func (l *ConnectionUserLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
-		return appconnection.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
 	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
-		return appconnection.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
-	return appconnection.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }

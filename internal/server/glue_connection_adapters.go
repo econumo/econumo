@@ -12,13 +12,14 @@ import (
 
 	account "github.com/econumo/econumo/internal/account"
 	domconnection "github.com/econumo/econumo/internal/connection"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // connectionFolderRepo is the slice of the account FolderRepository the
 // connection side effects need.
 type connectionFolderRepo interface {
-	ListByUser(ctx context.Context, userID vo.Id) ([]*account.Folder, error)
+	ListByUser(ctx context.Context, userID vo.Id) ([]*model.Folder, error)
 	MembershipsByUser(ctx context.Context, userID vo.Id) (map[string][]string, error)
 	AddAccount(ctx context.Context, folderID, accountID vo.Id) error
 	RemoveAccount(ctx context.Context, folderID, accountID vo.Id) error
@@ -41,7 +42,7 @@ func (p *ConnectionFolderPort) LastFolderID(ctx context.Context, userID vo.Id) (
 	if err != nil {
 		return vo.Id{}, false, err
 	}
-	var last *account.Folder
+	var last *model.Folder
 	for _, f := range fs {
 		if last == nil || f.Position > last.Position {
 			last = f
@@ -88,7 +89,7 @@ func (p *ConnectionFolderPort) RemoveAccount(ctx context.Context, folderID, acco
 // connectionAccountAccessLister is the slice of the connection repo the
 // account module's sharedAccess[] embed needs.
 type connectionAccountAccessLister interface {
-	ListByAccount(ctx context.Context, accountID vo.Id) ([]*domconnection.AccountAccess, error)
+	ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.AccountAccess, error)
 }
 
 // ConnectionSharedAccessLookup adapts the connection repo to
@@ -104,14 +105,14 @@ func NewConnectionSharedAccessLookup(access connectionAccountAccessLister) *Conn
 }
 
 // ListByAccount returns the grants on an account as {userID, role alias}.
-func (l *ConnectionSharedAccessLookup) ListByAccount(ctx context.Context, accountID vo.Id) ([]account.SharedAccessView, error) {
+func (l *ConnectionSharedAccessLookup) ListByAccount(ctx context.Context, accountID vo.Id) ([]model.SharedAccessView, error) {
 	grants, err := l.access.ListByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]account.SharedAccessView, len(grants))
+	out := make([]model.SharedAccessView, len(grants))
 	for i, g := range grants {
-		out[i] = account.SharedAccessView{UserID: g.UserID.String(), Role: g.Role.Alias()}
+		out[i] = model.SharedAccessView{UserID: g.UserID.String(), Role: g.Role.Alias()}
 	}
 	return out, nil
 }
@@ -120,7 +121,7 @@ func (l *ConnectionSharedAccessLookup) ListByAccount(ctx context.Context, accoun
 // module's delete-account non-owner branch needs.
 type connectionAccessRevokerDeps interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	Get(ctx context.Context, accountID, userID vo.Id) (*domconnection.AccountAccess, error)
+	Get(ctx context.Context, accountID, userID vo.Id) (*model.AccountAccess, error)
 }
 
 // connectionOwnAccessRevoker is the connection-service method that drops the

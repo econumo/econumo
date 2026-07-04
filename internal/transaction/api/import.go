@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
-	apptransaction "github.com/econumo/econumo/internal/transaction"
 	"github.com/econumo/econumo/internal/web/httpx"
 	"github.com/econumo/econumo/internal/web/middleware"
 )
@@ -32,7 +32,7 @@ const maxImportUpload = 10 << 20
 // @Param       description formData string false "Override description"
 // @Param       payeeId    formData string false "Override payee id"
 // @Param       tagId      formData string false "Override tag id"
-// @Success     200 {object} apidoc.JsonResponseOk{data=apptransaction.ImportResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.ImportResult}
 // @Failure     400 {object} apidoc.JsonResponseError
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
@@ -56,7 +56,7 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	req := apptransaction.ImportRequest{
+	req := model.ImportRequest{
 		Mapping:     mapping,
 		AccountId:   optFormValue(r, "accountId"),
 		Date:        optFormValue(r, "date"),
@@ -87,8 +87,8 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 
 // parseImportMapping decodes the mapping JSON object into an ImportMapping. An
 // invalid JSON object is a 400 ValidationError ("Invalid mapping JSON").
-func parseImportMapping(raw string) (apptransaction.ImportMapping, error) {
-	var m apptransaction.ImportMapping
+func parseImportMapping(raw string) (model.ImportMapping, error) {
+	var m model.ImportMapping
 	if raw == "" {
 		return m, nil
 	}

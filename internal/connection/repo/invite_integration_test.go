@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	domconnection "github.com/econumo/econumo/internal/connection"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -25,9 +25,9 @@ func newInviteRepo(t *testing.T) (*connectionrepo.InviteRepo, *dbtest.DB) {
 	return connectionrepo.NewInviteRepo("sqlite", db.TX), db
 }
 
-func newInvite(userID vo.Id, code string, expiredAt *time.Time) *domconnection.ConnectionInvite {
-	return &domconnection.ConnectionInvite{
-		UserID: userID, Code: domconnection.ReconstituteConnectionCode(code), ExpiredAt: expiredAt,
+func newInvite(userID vo.Id, code string, expiredAt *time.Time) *model.ConnectionInvite {
+	return &model.ConnectionInvite{
+		UserID: userID, Code: model.ReconstituteConnectionCode(code), ExpiredAt: expiredAt,
 	}
 }
 
@@ -73,7 +73,7 @@ func TestInviteRepo_GetByCode_ExpiryBoundary(t *testing.T) {
 	if err := repo.Save(ctx, inv); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	code, err := domconnection.NewConnectionCode("LIVEX")
+	code, err := model.NewConnectionCode("LIVEX")
 	if err != nil {
 		t.Fatalf("NewConnectionCode: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestInviteRepo_GetByCode_ExpiryBoundary(t *testing.T) {
 
 func TestInviteRepo_GetByCode_Missing(t *testing.T) {
 	repo, _ := newInviteRepo(t)
-	code, _ := domconnection.NewConnectionCode("NOPEX")
+	code, _ := model.NewConnectionCode("NOPEX")
 	_, err := repo.GetByCode(context.Background(), code, time.Now())
 	var nf *errs.NotFoundError
 	if !errors.As(err, &nf) {

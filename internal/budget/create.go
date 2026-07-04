@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -11,12 +12,12 @@ import (
 
 // CreateBudget creates a budget, seeds its category + tag elements, marks it the
 // user's active budget, and returns the full built budget.
-func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudgetRequest) (*CreateBudgetResult, error) {
+func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.CreateBudgetRequest) (*model.CreateBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	if err := ValidateName("Budget", req.Name); err != nil {
+	if err := model.ValidateName("Budget", req.Name); err != nil {
 		return nil, err
 	}
 
@@ -44,18 +45,18 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 	}
 	curID, err := vo.ParseId(currencyID)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"currencyId": ""})
+		return nil, model.ValidateBlank(map[string]string{"currencyId": ""})
 	}
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		budget := NewBudget(budgetID, userID, req.Name, curID, startDate, now)
+		budget := model.NewBudget(budgetID, userID, req.Name, curID, startDate, now)
 		if serr := s.budgets.Save(txCtx, budget); serr != nil {
 			return serr
 		}
 		for _, raw := range req.ExcludedAccounts {
 			aid, perr := vo.ParseId(raw)
 			if perr != nil {
-				return validateBlank(map[string]string{"excludedAccounts": ""})
+				return model.ValidateBlank(map[string]string{"excludedAccounts": ""})
 			}
 			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
 				return serr
@@ -83,7 +84,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req CreateBudg
 	if err != nil {
 		return nil, err
 	}
-	return &CreateBudgetResult{Item: result}, nil
+	return &model.CreateBudgetResult{Item: result}, nil
 }
 
 // seedCategoryElements creates a budget element for each non-income category of
@@ -99,7 +100,7 @@ func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.
 		if c.IsIncome {
 			continue
 		}
-		position := PositionUnset
+		position := model.PositionUnset
 		if !c.IsArchived {
 			position = pos
 			pos++
@@ -108,7 +109,7 @@ func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.
 		if perr != nil {
 			return pos, perr
 		}
-		el := NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, ElementCategory, nil, nil, int16(position), now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, int16(position), now)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {
 			return pos, serr
 		}
@@ -125,7 +126,7 @@ func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, s
 	}
 	pos := startPos
 	for _, t := range tags {
-		position := PositionUnset
+		position := model.PositionUnset
 		if !t.IsArchived {
 			position = pos
 			pos++
@@ -134,7 +135,7 @@ func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, s
 		if perr != nil {
 			return perr
 		}
-		el := NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, ElementTag, nil, nil, int16(position), now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementTag, nil, nil, int16(position), now)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {
 			return serr
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -56,7 +57,7 @@ func NewInviteRepo(driver string, tx *backend.TxManager) *InviteRepo {
 func (r *InviteRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 // GetByUser returns the user's invite row, or nil if they have none.
-func (r *InviteRepo) GetByUser(ctx context.Context, userID vo.Id) (*domconnection.ConnectionInvite, error) {
+func (r *InviteRepo) GetByUser(ctx context.Context, userID vo.Id) (*model.ConnectionInvite, error) {
 	row, err := r.q.GetByUser(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -68,7 +69,7 @@ func (r *InviteRepo) GetByUser(ctx context.Context, userID vo.Id) (*domconnectio
 }
 
 // GetByCode returns the non-expired invite bearing the code; NotFound otherwise.
-func (r *InviteRepo) GetByCode(ctx context.Context, code domconnection.ConnectionCode, now time.Time) (*domconnection.ConnectionInvite, error) {
+func (r *InviteRepo) GetByCode(ctx context.Context, code model.ConnectionCode, now time.Time) (*model.ConnectionInvite, error) {
 	row, err := r.q.GetByCode(ctx, r.db(ctx), code.Value(), now)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -80,7 +81,7 @@ func (r *InviteRepo) GetByCode(ctx context.Context, code domconnection.Connectio
 }
 
 // Save upserts the user's invite row.
-func (r *InviteRepo) Save(ctx context.Context, inv *domconnection.ConnectionInvite) error {
+func (r *InviteRepo) Save(ctx context.Context, inv *model.ConnectionInvite) error {
 	var code *string
 	if !inv.Code.IsZero() {
 		v := inv.Code.Value()
@@ -89,7 +90,7 @@ func (r *InviteRepo) Save(ctx context.Context, inv *domconnection.ConnectionInvi
 	return r.q.Upsert(ctx, r.db(ctx), inv.UserID.String(), code, inv.ExpiredAt)
 }
 
-func hydrateInvite(row inviteRow) (*domconnection.ConnectionInvite, error) {
+func hydrateInvite(row inviteRow) (*model.ConnectionInvite, error) {
 	userID, err := vo.ParseId(row.UserID)
 	if err != nil {
 		return nil, err
@@ -98,8 +99,8 @@ func hydrateInvite(row inviteRow) (*domconnection.ConnectionInvite, error) {
 	if row.Code != nil {
 		code = *row.Code
 	}
-	return &domconnection.ConnectionInvite{
-		UserID: userID, Code: domconnection.ReconstituteConnectionCode(code), ExpiredAt: row.ExpiredAt,
+	return &model.ConnectionInvite{
+		UserID: userID, Code: model.ReconstituteConnectionCode(code), ExpiredAt: row.ExpiredAt,
 	}, nil
 }
 

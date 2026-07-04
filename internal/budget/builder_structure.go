@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -33,7 +34,7 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 		return nil, err
 	}
 	// Map element id -> (externalId, typeAlias) for the limit rows.
-	elemByID := map[string]*BudgetElement{}
+	elemByID := map[string]*model.BudgetElement{}
 	for _, e := range b.elements {
 		elemByID[e.ID.String()] = e
 	}
@@ -60,7 +61,7 @@ func (s *Service) buildElementsLimits(ctx context.Context, b *budgetAggregate, f
 		return nil, err
 	}
 	for _, sl := range summed {
-		key := elementKey(sl.ExternalID, ElementType(sl.Type))
+		key := elementKey(sl.ExternalID, model.ElementType(sl.Type))
 		amt := data[key]
 		if amt.budgeted.String() == "" {
 			amt.budgeted = vo.NewDecimal("0")
@@ -110,9 +111,9 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 		for _, row := range rows {
 			var key string
 			if row.TagID != nil && *row.TagID != "" {
-				key = elementKey(*row.TagID, ElementTag)
+				key = elementKey(*row.TagID, model.ElementTag)
 			} else {
-				key = elementKey(row.CategoryID, ElementCategory)
+				key = elementKey(row.CategoryID, model.ElementCategory)
 			}
 			es := data[key]
 			if es == nil {
@@ -152,13 +153,13 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 }
 
 // elementKey is "<id>-<typeAlias>".
-func elementKey(id string, t ElementType) string {
+func elementKey(id string, t model.ElementType) string {
 	return fmt.Sprintf("%s-%s", id, t.Alias())
 }
 
-// convItem builds a ConvertItem from an amountSpent into a target currency.
-func convItem(a amountSpent, to vo.Id) ConvertItem {
-	return ConvertItem{
+// convItem builds a model.ConvertItem from an amountSpent into a target currency.
+func convItem(a amountSpent, to vo.Id) model.ConvertItem {
+	return model.ConvertItem{
 		PeriodStart: a.periodStart,
 		PeriodEnd:   a.periodEnd,
 		From:        a.currencyID,

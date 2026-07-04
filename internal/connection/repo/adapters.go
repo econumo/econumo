@@ -10,7 +10,7 @@ import (
 	"context"
 	"errors"
 
-	domconnection "github.com/econumo/econumo/internal/connection"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -46,7 +46,7 @@ func (r *AccountAccessResolver) HasWriteGrant(ctx context.Context, accountID, us
 		return false, err
 	}
 	role := grant.Role
-	return role == domconnection.RoleAdmin || role == domconnection.RoleUser, nil
+	return role == model.RoleAdmin || role == model.RoleUser, nil
 }
 
 // HasAdminGrant reports whether the user holds an admin grant on the account —
@@ -63,5 +63,5 @@ func (r *AccountAccessResolver) HasAdminGrant(ctx context.Context, accountID, us
 		}
 		return false, err
 	}
-	return grant.Role == domconnection.RoleAdmin, nil
+	return grant.Role == model.RoleAdmin, nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 )
 
@@ -34,14 +35,14 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-func (r *ReadRepo) CategoryListView(ctx context.Context, userID string) ([]appcategory.CategoryViewRow, error) {
+func (r *ReadRepo) CategoryListView(ctx context.Context, userID string) ([]model.CategoryViewRow, error) {
 	rows, err := r.q.GetCategoryListView(ctx, r.db(ctx), userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]appcategory.CategoryViewRow, 0, len(rows))
+	out := make([]model.CategoryViewRow, 0, len(rows))
 	for _, c := range rows {
-		out = append(out, appcategory.CategoryViewRow{
+		out = append(out, model.CategoryViewRow{
 			ID:         c.ID,
 			UserID:     c.UserID,
 			Name:       c.Name,

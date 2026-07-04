@@ -7,8 +7,8 @@ import (
 	"context"
 	"sort"
 	"strings"
-	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -25,38 +25,9 @@ type WriteModel interface {
 	// code exists.
 	CurrencyExists(ctx context.Context, code string) (bool, error)
 	// InsertCurrency adds a new currency row.
-	InsertCurrency(ctx context.Context, c CurrencyRow) error
+	InsertCurrency(ctx context.Context, c model.CurrencyRow) error
 	// UpsertRate inserts or updates a single (date, currency, base) rate.
-	UpsertRate(ctx context.Context, r RateRow) error
-}
-
-// CurrencyRow is the data for a new currencies row.
-type CurrencyRow struct {
-	ID             string
-	Code           string
-	Symbol         string
-	Name           *string
-	FractionDigits int
-	CreatedAt      time.Time
-}
-
-// RateRow is one currencies_rates row to upsert. Date is the published date
-// (midnight); the repo stores it as a 'Y-m-d' DATE.
-type RateRow struct {
-	ID             string
-	CurrencyID     string
-	BaseCurrencyID string
-	Date           time.Time
-	Rate           string // decimal string
-}
-
-// RateInput is one loaded exchange rate (from the Open Exchange Rates loader),
-// keyed by ISO codes. The WriteService resolves the codes to currency ids.
-type RateInput struct {
-	Code string
-	Base string
-	Rate string
-	Date time.Time
+	UpsertRate(ctx context.Context, r model.RateRow) error
 }
 
 // WriteService is the currency write-use-case orchestrator.
@@ -92,7 +63,7 @@ func (s *WriteService) AvailableCodes(ctx context.Context) ([]string, error) {
 // UpdateRates upserts every loaded rate whose currency AND base code both resolve
 // to a known currency, in one transaction. Unknown codes are skipped (not an
 // error). Returns the number of rates actually written.
-func (s *WriteService) UpdateRates(ctx context.Context, rates []RateInput) (int, error) {
+func (s *WriteService) UpdateRates(ctx context.Context, rates []model.RateInput) (int, error) {
 	codes, err := s.write.CurrencyCodes(ctx)
 	if err != nil {
 		return 0, err
@@ -108,7 +79,7 @@ func (s *WriteService) UpdateRates(ctx context.Context, rates []RateInput) (int,
 			if !ok {
 				continue
 			}
-			if err := s.write.UpsertRate(ctx, RateRow{
+			if err := s.write.UpsertRate(ctx, model.RateRow{
 				ID:             s.nextID().String(),
 				CurrencyID:     currencyID,
 				BaseCurrencyID: baseID,
@@ -146,7 +117,7 @@ func (s *WriteService) AddCurrency(ctx context.Context, code string, name *strin
 	if fractionDigits != nil {
 		digits = *fractionDigits
 	}
-	row := CurrencyRow{
+	row := model.CurrencyRow{
 		ID:             s.nextID().String(),
 		Code:           c,
 		Symbol:         Symbol(c),

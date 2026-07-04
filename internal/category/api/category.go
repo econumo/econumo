@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	appcategory "github.com/econumo/econumo/internal/category"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/web/apidoc"
@@ -21,15 +21,15 @@ var _ = apidoc.JsonResponseError{}
 // @Tags        Category
 // @Accept      json
 // @Produce     json
-// @Param       request body     appcategory.CreateCategoryRequest true "Create category request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appcategory.CreateCategoryResult}
+// @Param       request body     model.CreateCategoryRequest true "Create category request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/create-category [post]
 func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req appcategory.CreateCategoryRequest) (*appcategory.CreateCategoryResult, error) {
+	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error) {
 		reqctx.AddLogAttr(ctx, "category_id", req.Id)
 		return h.svc.CreateCategory(ctx, userID, req)
 	})
@@ -42,15 +42,15 @@ func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
 // @Tags        Category
 // @Accept      json
 // @Produce     json
-// @Param       request body     appcategory.UpdateCategoryRequest true "Update category request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appcategory.UpdateCategoryResult}
+// @Param       request body     model.UpdateCategoryRequest true "Update category request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/update-category [post]
 func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req appcategory.UpdateCategoryRequest) (*appcategory.UpdateCategoryResult, error) {
+	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.UpdateCategoryRequest) (*model.UpdateCategoryResult, error) {
 		reqctx.AddLogAttr(ctx, "category_id", req.Id)
 		return h.svc.UpdateCategory(ctx, userID, req)
 	})
@@ -63,8 +63,8 @@ func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 // @Tags        Category
 // @Accept      json
 // @Produce     json
-// @Param       request body     appcategory.ArchiveCategoryRequest true "Archive category request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appcategory.ArchiveCategoryResult}
+// @Param       request body     model.ArchiveCategoryRequest true "Archive category request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ArchiveCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -81,8 +81,8 @@ func (h *Handlers) ArchiveCategory(w http.ResponseWriter, r *http.Request) {
 // @Tags        Category
 // @Accept      json
 // @Produce     json
-// @Param       request body     appcategory.UnarchiveCategoryRequest true "Unarchive category request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appcategory.UnarchiveCategoryResult}
+// @Param       request body     model.UnarchiveCategoryRequest true "Unarchive category request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UnarchiveCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -99,15 +99,15 @@ func (h *Handlers) UnarchiveCategory(w http.ResponseWriter, r *http.Request) {
 // @Tags        Category
 // @Accept      json
 // @Produce     json
-// @Param       request body     appcategory.DeleteCategoryRequest true "Delete category request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appcategory.DeleteCategoryResult}
+// @Param       request body     model.DeleteCategoryRequest true "Delete category request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/delete-category [post]
 func (h *Handlers) DeleteCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req appcategory.DeleteCategoryRequest) (*appcategory.DeleteCategoryResult, error) {
+	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.DeleteCategoryRequest) (*model.DeleteCategoryResult, error) {
 		reqctx.AddLogAttr(ctx, "category_id", req.Id)
 		return h.svc.DeleteCategory(ctx, userID, req)
 	})

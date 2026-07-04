@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 
-	appuser "github.com/econumo/econumo/internal/user"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc/appuser import aliases visible to swag's annotation
-// parser (this file's handler body no longer references appuser types
+// _ keeps the apidoc/model import aliases visible to swag's annotation
+// parser (this file's handler body no longer references model types
 // directly, since it delegates to a method value).
 var _ = apidoc.JsonResponseError{}
-var _ = appuser.UpdateBudgetResult{}
+var _ = model.UpdateActiveBudgetResult{}
 
 // UpdateBudget handles POST /api/v1/user/update-budget (auth). The JSON field is
 // "value" (a budget id); tier-1 validates NotBlank + Uuid, and the service
@@ -24,8 +24,8 @@ var _ = appuser.UpdateBudgetResult{}
 // @Tags        User
 // @Accept      json
 // @Produce     json
-// @Param       request body     appuser.UpdateBudgetRequest true "Update budget request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appuser.UpdateBudgetResult}
+// @Param       request body     model.UpdateActiveBudgetRequest true "Update budget request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateActiveBudgetResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException

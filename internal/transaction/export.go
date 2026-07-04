@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -24,14 +25,6 @@ var exportHeaders = []string{
 	"date",
 }
 
-// ExportAccount is one accessible account in the export universe: id, name, and
-// currency code.
-type ExportAccount struct {
-	ID           string
-	Name         string
-	CurrencyCode string
-}
-
 // ExportTransactionList builds the CSV rows for the given user, optionally
 // restricted to a set of account ids (nil = all accessible accounts). The first
 // row is the header.
@@ -43,14 +36,14 @@ func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accou
 	if err != nil {
 		return nil, err
 	}
-	allAccountsByID := make(map[string]ExportAccount, len(accts))
+	allAccountsByID := make(map[string]model.ExportAccount, len(accts))
 	for _, a := range accts {
 		allAccountsByID[a.ID] = a
 	}
 
 	selectedByID := allAccountsByID
 	if accountIDs != nil {
-		selectedByID = make(map[string]ExportAccount)
+		selectedByID = make(map[string]model.ExportAccount)
 		for _, id := range accountIDs {
 			if a, ok := allAccountsByID[id.String()]; ok {
 				selectedByID[a.ID] = a
@@ -118,7 +111,7 @@ func cachedName(ctx context.Context, cache map[string]string, id vo.Id, fetch fu
 // buildExportRows emits the 0, 1, or 2 CSV rows for one transaction: a row on
 // the source account if it is selected, plus a second row on the recipient
 // account if this is a transfer whose recipient is selected.
-func (s *Service) buildExportRows(ctx context.Context, t *Transaction, selectedByID, allAccountsByID map[string]ExportAccount, names *exportNameCache) ([][]string, error) {
+func (s *Service) buildExportRows(ctx context.Context, t *model.Transaction, selectedByID, allAccountsByID map[string]model.ExportAccount, names *exportNameCache) ([][]string, error) {
 	var rows [][]string
 	accountID := t.AccountID.String()
 
@@ -175,7 +168,7 @@ func (s *Service) buildExportRows(ctx context.Context, t *Transaction, selectedB
 
 // buildExportRow assembles one CSV row in the fixed column order: id,
 // account_name, account_currency, category, description, tag, payee, amount, date.
-func (s *Service) buildExportRow(t *Transaction, account ExportAccount, amount, category, tag, payee, description string) []string {
+func (s *Service) buildExportRow(t *model.Transaction, account model.ExportAccount, amount, category, tag, payee, description string) []string {
 	return []string{
 		t.ID.String(),
 		sanitizeExportValue(account.Name),
@@ -191,7 +184,7 @@ func (s *Service) buildExportRow(t *Transaction, account ExportAccount, amount, 
 
 // resolveNames resolves the optional category/tag/payee names for a transaction
 // (empty when absent or missing).
-func (s *Service) resolveNames(ctx context.Context, t *Transaction, names *exportNameCache) (category, tag, payee string, err error) {
+func (s *Service) resolveNames(ctx context.Context, t *model.Transaction, names *exportNameCache) (category, tag, payee string, err error) {
 	if id := t.CategoryID; id != nil {
 		if category, err = cachedName(ctx, names.categories, *id, s.export.CategoryName); err != nil {
 			return "", "", "", err

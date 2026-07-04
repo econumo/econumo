@@ -3,13 +3,13 @@ package api
 import (
 	"net/http"
 
-	appaccount "github.com/econumo/econumo/internal/account"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
 var _ = apidoc.JsonResponseUnauthorized{}
-var _ = appaccount.GetFolderListResult{}
+var _ = model.GetFolderListResult{}
 
 // CreateFolder handles POST /api/v1/account/create-folder (auth).
 //
@@ -18,8 +18,8 @@ var _ = appaccount.GetFolderListResult{}
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.CreateFolderRequest true "Create folder request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.CreateFolderResult}
+// @Param       request body     model.CreateFolderRequest true "Create folder request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -36,8 +36,8 @@ func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.UpdateFolderRequest true "Update folder request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.UpdateFolderResult}
+// @Param       request body     model.UpdateFolderRequest true "Update folder request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -54,8 +54,8 @@ func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.HideFolderRequest true "Hide folder request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.HideFolderResult}
+// @Param       request body     model.HideFolderRequest true "Hide folder request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.HideFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -72,8 +72,8 @@ func (h *Handlers) HideFolder(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.ShowFolderRequest true "Show folder request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.ShowFolderResult}
+// @Param       request body     model.ShowFolderRequest true "Show folder request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ShowFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -90,8 +90,8 @@ func (h *Handlers) ShowFolder(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.ReplaceFolderRequest true "Replace folder request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.ReplaceFolderResult}
+// @Param       request body     model.ReplaceFolderRequest true "Replace folder request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ReplaceFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -107,7 +107,7 @@ func (h *Handlers) ReplaceFolder(w http.ResponseWriter, r *http.Request) {
 // @Description Returns the user's account folders ordered by position.
 // @Tags        Account
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appaccount.GetFolderListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetFolderListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
@@ -123,8 +123,8 @@ func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.OrderFolderListRequest true "Order folder list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.OrderFolderListResult}
+// @Param       request body     model.OrderFolderListRequest true "Order folder list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderFolderListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException

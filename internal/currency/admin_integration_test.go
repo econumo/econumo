@@ -11,6 +11,7 @@ import (
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -95,7 +96,7 @@ func TestUpdateRates(t *testing.T) {
 
 	// A date with a wall-clock time: the stored published_at must collapse to Y-m-d.
 	date := time.Date(2025, 4, 1, 13, 30, 0, 0, time.UTC)
-	rates := []appcurrency.RateInput{
+	rates := []model.RateInput{
 		{Code: "EUR", Base: "USD", Rate: "0.92000000", Date: date},
 		{Code: "USD", Base: "USD", Rate: "1.00000000", Date: date},
 		{Code: "ZZZ", Base: "USD", Rate: "9.99000000", Date: date}, // unknown -> skipped

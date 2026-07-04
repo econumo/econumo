@@ -9,13 +9,13 @@ import (
 	"context"
 
 	appaccount "github.com/econumo/econumo/internal/account"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/user"
 )
 
 // accountUserByID is the minimal user-repo surface this adapter needs.
 type accountUserByID interface {
-	GetHeaderByID(ctx context.Context, id vo.Id) (user.Header, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
 }
 
 // AccountUserLookup adapts the user repository to account.UserLookup.
@@ -31,14 +31,14 @@ func NewAccountUserLookup(users accountUserByID) *AccountUserLookup {
 }
 
 // GetOwner resolves the owner (id, name, avatar) for the account-result embed.
-func (l *AccountUserLookup) GetOwner(ctx context.Context, userID string) (appaccount.OwnerView, error) {
+func (l *AccountUserLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
-		return appaccount.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
 	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
-		return appaccount.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
-	return appaccount.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }

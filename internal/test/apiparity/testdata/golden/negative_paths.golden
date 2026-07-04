@@ -16,6 +16,9 @@
 == err:update-budget-bad-uuid POST /api/v1/user/update-budget [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"value":["This value is not a valid UUID."]}}
 
+== err:budget-name-too-short POST /api/v1/budget/create-budget [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Budget name must be 3-64 characters"]}}
+
 == err:update-tx-bad-type POST /api/v1/transaction/update-transaction [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"type":["The value you selected is not a valid choice."]}}
 

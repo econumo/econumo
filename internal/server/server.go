@@ -129,7 +129,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
-	txAccountResolver := NewTransactionAccountResolver(accountSvc)
 	txUserLookup := NewTransactionUserLookup(userRepo)
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))
 	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
@@ -141,7 +140,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 		transactionRepo,
 	)
 	transactionSvc := apptransaction.NewService(
-		transactionRepo, txAccountResolver, accountAccessResolver, accountSvc, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
+		transactionRepo, accountSvc, accountAccessResolver, accountSvc, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 
@@ -152,7 +151,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
 	convertor := appcurrency.NewConvertor(rateProvider)
 	budgetSvc := appbudget.NewService(
-		budgetRepo, budgetReadRepo, NewBudgetConvertor(convertor), NewBudgetAverageRateLookup(rateProvider),
+		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		NewBudgetUserLookup(userRepo, clk),
 		NewBudgetAccountLookup(accountRepo),
 		currencyLookup,

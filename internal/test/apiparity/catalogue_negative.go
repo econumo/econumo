@@ -28,6 +28,11 @@ func init() {
 				Body: map[string]any{"value": "not-a-uuid"}},
 			// type is parsed before the write-access check, so an invalid type pins
 			// the tier-2 "invalid choice" validation message, not an access denial.
+			// Pins the frozen budget-name validation label at its CALL SITE — a
+			// Phase 7 sed once corrupted the "Budget" label literal and no gate
+			// caught it because this exact path was unpinned.
+			{Label: "err:budget-name-too-short", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
+				Body: map[string]any{"id": "b0000000-0000-0000-0000-0000000000ee", "name": "ab", "currencyId": USD, "startDate": "2024-04-01"}},
 			{Label: "err:update-tx-bad-type", Method: "POST", Path: "/api/v1/transaction/update-transaction", Auth: "owner",
 				Body: map[string]any{"id": Txn1, "type": "bogus", "amount": "1.00", "accountId": OwnerAccount,
 					"date": ClockTime.Format("2006-01-02 15:04:05")}},

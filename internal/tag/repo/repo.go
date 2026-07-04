@@ -11,6 +11,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	domtag "github.com/econumo/econumo/internal/tag"
@@ -59,7 +60,7 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
-func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domtag.Tag, error) {
+func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Tag, error) {
 	row, err := r.q.GetTagByID(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -70,12 +71,12 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domtag.Tag, error) {
 	return hydrate(row)
 }
 
-func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*domtag.Tag, error) {
+func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error) {
 	rows, err := r.q.ListTagsByOwner(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domtag.Tag, 0, len(rows))
+	out := make([]*model.Tag, 0, len(rows))
 	for _, row := range rows {
 		t, herr := hydrate(row)
 		if herr != nil {
@@ -95,7 +96,7 @@ func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 }
 
 // Save: the caller runs this inside TxManager.WithTx.
-func (r *Repo) Save(ctx context.Context, t *domtag.Tag) error {
+func (r *Repo) Save(ctx context.Context, t *model.Tag) error {
 	return r.q.UpsertTag(ctx, r.db(ctx), upsertParams{
 		ID:         t.ID.String(),
 		UserID:     t.UserID.String(),
@@ -111,7 +112,7 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteTag(ctx, r.db(ctx), id.String())
 }
 
-func hydrate(row tagRow) (*domtag.Tag, error) {
+func hydrate(row tagRow) (*model.Tag, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -120,6 +121,6 @@ func hydrate(row tagRow) (*domtag.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &domtag.Tag{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Tag{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

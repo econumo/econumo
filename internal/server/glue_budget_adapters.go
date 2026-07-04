@@ -10,17 +10,14 @@ package server
 import (
 	"context"
 
-	account "github.com/econumo/econumo/internal/account"
 	appbudget "github.com/econumo/econumo/internal/budget"
-	category "github.com/econumo/econumo/internal/category"
-	payee "github.com/econumo/econumo/internal/payee"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
-	tag "github.com/econumo/econumo/internal/tag"
 )
 
 type budgetAccountRepo interface {
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*account.Account, error)
-	GetByID(ctx context.Context, id vo.Id) (*account.Account, error)
+	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 }
 
 // BudgetAccountLookup adapts the account repository to budget.AccountLookup.
@@ -40,12 +37,12 @@ func NewBudgetAccountLookup(accounts budgetAccountRepo) *BudgetAccountLookup {
 // set. ListAvailable returns own + shared accounts, so we filter to accounts
 // actually owned by one of the participants — otherwise shared accounts inflate
 // the budget's start balance.
-func (l *BudgetAccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.AccountView, error) {
+func (l *BudgetAccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]model.AccountView, error) {
 	owners := make(map[string]bool, len(userIDs))
 	for _, uid := range userIDs {
 		owners[uid.String()] = true
 	}
-	var out []appbudget.AccountView
+	var out []model.AccountView
 	seen := map[string]bool{}
 	for _, uid := range userIDs {
 		accts, err := l.accounts.ListAvailable(ctx, uid)
@@ -60,7 +57,7 @@ func (l *BudgetAccountLookup) AccountsForOwners(ctx context.Context, userIDs []v
 				continue
 			}
 			seen[a.ID.String()] = true
-			out = append(out, appbudget.AccountView{
+			out = append(out, model.AccountView{
 				ID: a.ID.String(), CurrencyID: a.CurrencyID.String(), OwnerID: a.UserID.String(),
 			})
 		}
@@ -78,7 +75,7 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 }
 
 type budgetCategoryRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 }
 
 // BudgetCategoryMetadataLookup adapts the category repository to the category
@@ -96,8 +93,8 @@ func NewBudgetCategoryMetadataLookup(categories budgetCategoryRepo) *BudgetCateg
 }
 
 // CategoriesByOwners returns all categories owned by the given users.
-func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.CategoryMeta, error) {
-	var out []appbudget.CategoryMeta
+func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.CategoryMeta, error) {
+	var out []model.CategoryMeta
 	seen := map[string]bool{}
 	for _, uid := range userIDs {
 		cats, err := l.categories.ListByOwner(ctx, uid)
@@ -109,9 +106,9 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 				continue
 			}
 			seen[c.ID.String()] = true
-			out = append(out, appbudget.CategoryMeta{
+			out = append(out, model.CategoryMeta{
 				ID: c.ID.String(), OwnerID: c.UserID.String(), Name: c.Name, Icon: c.Icon,
-				IsIncome: c.Type == category.TypeIncome, IsArchived: c.IsArchived,
+				IsIncome: c.Type == model.TypeIncome, IsArchived: c.IsArchived,
 			})
 		}
 	}
@@ -119,7 +116,7 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 }
 
 type budgetTagRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*tag.Tag, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
 }
 
 // BudgetTagMetadataLookup adapts the tag repository to the tag slice of
@@ -137,8 +134,8 @@ func NewBudgetTagMetadataLookup(tags budgetTagRepo) *BudgetTagMetadataLookup {
 }
 
 // TagsByOwners returns all tags owned by the given users.
-func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.TagMeta, error) {
-	var out []appbudget.TagMeta
+func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]model.TagMeta, error) {
+	var out []model.TagMeta
 	seen := map[string]bool{}
 	for _, uid := range userIDs {
 		tags, err := l.tags.ListByOwner(ctx, uid)
@@ -150,7 +147,7 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 				continue
 			}
 			seen[t.ID.String()] = true
-			out = append(out, appbudget.TagMeta{
+			out = append(out, model.TagMeta{
 				ID: t.ID.String(), OwnerID: t.UserID.String(), Name: t.Name, IsArchived: t.IsArchived,
 			})
 		}
@@ -159,7 +156,7 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 }
 
 type budgetPayeeRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
 }
 
 // BudgetPayeeMetadataLookup adapts the payee repository to the payee slice of
@@ -177,8 +174,8 @@ func NewBudgetPayeeMetadataLookup(payees budgetPayeeRepo) *BudgetPayeeMetadataLo
 }
 
 // PayeesByOwners returns all payees owned by the given users.
-func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]appbudget.PayeeMeta, error) {
-	var out []appbudget.PayeeMeta
+func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.PayeeMeta, error) {
+	var out []model.PayeeMeta
 	seen := map[string]bool{}
 	for _, uid := range userIDs {
 		payees, err := l.payees.ListByOwner(ctx, uid)
@@ -190,7 +187,7 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 				continue
 			}
 			seen[p.ID.String()] = true
-			out = append(out, appbudget.PayeeMeta{ID: p.ID.String(), Name: p.Name})
+			out = append(out, model.PayeeMeta{ID: p.ID.String(), Name: p.Name})
 		}
 	}
 	return out, nil

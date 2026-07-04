@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	domcategory "github.com/econumo/econumo/internal/category"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -36,8 +36,8 @@ func newRepo(t *testing.T) (*categoryrepo.Repo, *categoryrepo.ReadRepo, *dbtest.
 	return categoryrepo.NewRepo("sqlite", db.TX), categoryrepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
-func cat(id, userID, name string, pos int16, typ domcategory.Type) *domcategory.Category {
-	return &domcategory.Category{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+func cat(id, userID, name string, pos int16, typ model.CategoryType) *model.Category {
+	return &model.Category{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
 		Type: typ, Icon: "icon", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
@@ -46,14 +46,14 @@ func TestCategoryRepo_SaveGetRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	seedUser(t, f, userA)
 
-	if err := repo.Save(ctx, cat(catA1, userA, "Food", 2, domcategory.TypeExpense)); err != nil {
+	if err := repo.Save(ctx, cat(catA1, userA, "Food", 2, model.TypeExpense)); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	got, err := repo.GetByID(ctx, vo.MustParseId(catA1))
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name != "Food" || got.Position != 2 || got.Type != domcategory.TypeExpense {
+	if got.Name != "Food" || got.Position != 2 || got.Type != model.TypeExpense {
 		t.Errorf("mismatch: name=%q pos=%d type=%d", got.Name, got.Position, got.Type)
 	}
 	if got.IsArchived {
@@ -79,9 +79,9 @@ func TestCategoryRepo_ListAndCountByOwner(t *testing.T) {
 	ctx := context.Background()
 	seedUser(t, f, userA)
 	seedUser(t, f, userB)
-	_ = repo.Save(ctx, cat(catA1, userA, "A1", 1, domcategory.TypeExpense))
-	_ = repo.Save(ctx, cat(catA2, userA, "A2", 0, domcategory.TypeIncome))
-	_ = repo.Save(ctx, cat(catB1, userB, "B1", 0, domcategory.TypeExpense))
+	_ = repo.Save(ctx, cat(catA1, userA, "A1", 1, model.TypeExpense))
+	_ = repo.Save(ctx, cat(catA2, userA, "A2", 0, model.TypeIncome))
+	_ = repo.Save(ctx, cat(catB1, userB, "B1", 0, model.TypeExpense))
 
 	list, err := repo.ListByOwner(ctx, vo.MustParseId(userA))
 	if err != nil {
@@ -104,7 +104,7 @@ func TestCategoryRepo_Delete(t *testing.T) {
 	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA)
-	_ = repo.Save(ctx, cat(catA1, userA, "A1", 0, domcategory.TypeExpense))
+	_ = repo.Save(ctx, cat(catA1, userA, "A1", 0, model.TypeExpense))
 	if err := repo.Delete(ctx, vo.MustParseId(catA1)); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -121,8 +121,8 @@ func TestCategoryReadRepo_OwnPlusShared(t *testing.T) {
 	seedUser(t, f, userA)
 	seedUser(t, f, userB)
 	// userA owns A1; userB owns B1.
-	_ = repo.Save(ctx, cat(catA1, userA, "A1", 0, domcategory.TypeExpense))
-	_ = repo.Save(ctx, cat(catB1, userB, "B1", 0, domcategory.TypeExpense))
+	_ = repo.Save(ctx, cat(catA1, userA, "A1", 0, model.TypeExpense))
+	_ = repo.Save(ctx, cat(catB1, userB, "B1", 0, model.TypeExpense))
 
 	// Without a grant, A sees only own.
 	own, err := read.CategoryListView(ctx, userA)
@@ -154,8 +154,8 @@ func TestCategoryRepo_ReassignTransactions(t *testing.T) {
 	repo, _, db, f := newRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA)
-	_ = repo.Save(ctx, cat(catA1, userA, "Old", 0, domcategory.TypeExpense))
-	_ = repo.Save(ctx, cat(catA2, userA, "New", 1, domcategory.TypeExpense))
+	_ = repo.Save(ctx, cat(catA1, userA, "Old", 0, model.TypeExpense))
+	_ = repo.Save(ctx, cat(catA2, userA, "New", 1, model.TypeExpense))
 	f.Account(fixture.Account{ID: "acc00000-0000-0000-0000-0000000000a1", UserID: userA, CurrencyID: usdID, Name: "C", Type: 2, Icon: "x"})
 	f.Transaction(fixture.Transaction{ID: "7c000000-0000-0000-0000-000000000001", UserID: userA, AccountID: "acc00000-0000-0000-0000-0000000000a1", CategoryID: catA1, Type: 0, Amount: "10.00", SpentAt: "2024-03-01 00:00:00"})
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -12,7 +13,7 @@ import (
 // before the bulkConvert resolves spent/available amounts.
 type structElement struct {
 	id             string
-	typ            ElementType
+	typ            model.ElementType
 	name           string
 	icon           string
 	ownerID        *string
@@ -27,7 +28,7 @@ type structElement struct {
 
 type structChild struct {
 	id         string
-	typ        ElementType
+	typ        model.ElementType
 	name       string
 	icon       string
 	ownerID    string
@@ -38,15 +39,15 @@ type structChild struct {
 // buildStructure walks envelopes -> tags -> standalone categories, accumulates a
 // toConvert map, runs one bulkConvert, then emits the pruned, sorted parent
 // elements.
-func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (StructureResult, error) {
+func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (model.StructureResult, error) {
 	options := s.elementOptions(b)
-	folders := make([]FolderResult, 0, len(b.folders))
+	folders := make([]model.BudgetFolderResult, 0, len(b.folders))
 	for _, fl := range b.folders {
-		folders = append(folders, FolderResult{Id: fl.ID.String(), Name: fl.Name, Position: int(fl.Position)})
+		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: int(fl.Position)})
 	}
-	sortByPositionThenID(folders, func(f FolderResult) int { return f.Position }, func(f FolderResult) string { return f.Id })
+	sortByPositionThenID(folders, func(f model.BudgetFolderResult) int { return f.Position }, func(f model.BudgetFolderResult) string { return f.Id })
 
-	toConvert := map[string][]ConvertItem{}
+	toConvert := map[string][]model.ConvertItem{}
 	categoryUsed := map[string]bool{}
 	budgetCurrencyID := b.budget.CurrencyID
 	var elements []*structElement
@@ -57,12 +58,12 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	// expense-only, so envelope children reference it.
 	envelopeCats, err := s.envelopeCategories(ctx, b)
 	if err != nil {
-		return StructureResult{}, err
+		return model.StructureResult{}, err
 	}
 
 	// --- Envelopes ---
 	for _, env := range b.envelopes {
-		index := elementKey(env.ID.String(), ElementEnvelope)
+		index := elementKey(env.ID.String(), model.ElementEnvelope)
 		opt := options[index]
 		currencyID := budgetCurrencyID
 		if opt.currencyID != nil {
@@ -71,7 +72,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		bud := limits[index]
 		budgeted, budgetedBefore := orZero(bud.budgeted, zero), orZero(bud.budgetedBefore, zero)
 		el := &structElement{
-			id: env.ID.String(), typ: ElementEnvelope, name: env.Name, icon: env.Icon,
+			id: env.ID.String(), typ: model.ElementEnvelope, name: env.Name, icon: env.Icon,
 			ownerID: nil, currencyID: currencyID, isArchived: env.IsArchived,
 			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
@@ -83,11 +84,11 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			if !ok {
 				continue // income or not a participant category
 			}
-			subIndex := elementKey(catID, ElementCategory)
+			subIndex := elementKey(catID, model.ElementCategory)
 			cs := categorySpendingFor(spending, subIndex, catID)
 			addSpendingConvert(toConvert, index, subIndex, cs, currencyID, budgetCurrencyID)
 			el.children = append(el.children, structChild{
-				id: catID, typ: ElementCategory, name: cat.Name, icon: cat.Icon,
+				id: catID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon,
 				ownerID: cat.OwnerID, isArchived: cat.IsArchived, subIndex: subIndex,
 			})
 			categoryUsed[catID] = true
@@ -99,7 +100,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 
 	// --- Tags ---
 	for tagID, tag := range f.tags {
-		index := elementKey(tagID, ElementTag)
+		index := elementKey(tagID, model.ElementTag)
 		bud := limits[index]
 		budgeted, budgetedBefore := orZero(bud.budgeted, zero), orZero(bud.budgetedBefore, zero)
 		es, hasSpending := spending[index]
@@ -119,7 +120,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			currencyID = *opt.currencyID
 		}
 		el := &structElement{
-			id: tagID, typ: ElementTag, name: tag.Name, icon: "tag",
+			id: tagID, typ: model.ElementTag, name: tag.Name, icon: "tag",
 			ownerID: strPtr(tag.OwnerID), currencyID: currencyID, isArchived: tag.IsArchived,
 			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
@@ -129,10 +130,10 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 				if !ok {
 					continue
 				}
-				subIndex := elementKey(catID, ElementCategory)
+				subIndex := elementKey(catID, model.ElementCategory)
 				addSpendingConvert(toConvert, index, subIndex, cs, currencyID, budgetCurrencyID)
 				el.children = append(el.children, structChild{
-					id: catID, typ: ElementCategory, name: cat.Name, icon: cat.Icon,
+					id: catID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon,
 					ownerID: cat.OwnerID, isArchived: cat.IsArchived, subIndex: subIndex,
 				})
 			}
@@ -147,7 +148,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		if categoryUsed[catID] {
 			continue
 		}
-		index := elementKey(catID, ElementCategory)
+		index := elementKey(catID, model.ElementCategory)
 		opt := options[index]
 		currencyID := budgetCurrencyID
 		if opt.currencyID != nil {
@@ -161,7 +162,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			continue
 		}
 		el := &structElement{
-			id: catID, typ: ElementCategory, name: cat.Name, icon: cat.Icon,
+			id: catID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon,
 			ownerID: strPtr(cat.OwnerID), currencyID: currencyID, isArchived: cat.IsArchived,
 			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
@@ -181,7 +182,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	// One bulk conversion for everything.
 	amounts, err := s.convertor.BulkConvert(ctx, f.periodStart, f.periodEnd, toConvert)
 	if err != nil {
-		return StructureResult{}, err
+		return model.StructureResult{}, err
 	}
 	get := func(key string) vo.DecimalNumber {
 		if v, ok := amounts[key]; ok {
@@ -190,7 +191,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		return zero
 	}
 
-	result := []ParentElementResult{}
+	result := []model.ParentElementResult{}
 	for _, el := range elements {
 		index := elementKey(el.id, el.typ)
 		spent := get(fmt.Sprintf("spent_%s", index))
@@ -199,17 +200,17 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 
 		// An element with no children must emit "children":[], never null. Start from
 		// a non-nil empty slice so the JSON matches (a nil slice marshals to null).
-		children := []ChildElementResult{}
+		children := []model.ChildElementResult{}
 		for _, ch := range el.children {
 			subSpent := get(fmt.Sprintf("%s_spent_%s", index, ch.subIndex))
 			subBudget := get(fmt.Sprintf("%s_spent-budget_%s", index, ch.subIndex))
 			if ch.isArchived && subSpent.IsZero() {
 				continue
 			}
-			if el.typ == ElementTag && subSpent.IsZero() {
+			if el.typ == model.ElementTag && subSpent.IsZero() {
 				continue
 			}
-			children = append(children, ChildElementResult{
+			children = append(children, model.ChildElementResult{
 				Id: ch.id, Type: int(ch.typ.Int16()), Name: ch.name, Icon: ch.icon,
 				IsArchived: boolToInt(ch.isArchived), Spent: subSpent.String(), BudgetSpent: subBudget.String(),
 				OwnerUserId: ch.ownerID,
@@ -221,11 +222,11 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 
 		available := el.budgetedBefore.Sub(spentBefore)
 		if el.isArchived && available.IsZero() && spent.IsZero() && el.budgeted.IsZero() &&
-			(el.typ != ElementEnvelope || len(children) == 0) {
+			(el.typ != model.ElementEnvelope || len(children) == 0) {
 			continue
 		}
 
-		result = append(result, ParentElementResult{
+		result = append(result, model.ParentElementResult{
 			Id: el.id, Type: int(el.typ.Int16()), Name: el.name, Icon: el.icon,
 			CurrencyId: el.currencyID.String(), IsArchived: boolToInt(el.isArchived),
 			FolderId: el.folderID, Position: int(el.position),
@@ -234,15 +235,15 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			Children: children, OwnerUserId: el.ownerID,
 		})
 	}
-	sortByPositionThenID(result, func(p ParentElementResult) int { return p.Position }, func(p ParentElementResult) string { return p.Id })
+	sortByPositionThenID(result, func(p model.ParentElementResult) int { return p.Position }, func(p model.ParentElementResult) string { return p.Id })
 
-	return StructureResult{Folders: folders, Elements: result}, nil
+	return model.StructureResult{Folders: folders, Elements: result}, nil
 }
 
 // addSpendingConvert appends the spent / spent-budget / spent-before convert
 // items for a child category under a parent (envelope or tag), keyed both
 // per-child and per-parent.
-func addSpendingConvert(toConvert map[string][]ConvertItem, index, subIndex string, cs *categorySpending, elementCurrency, budgetCurrency vo.Id) {
+func addSpendingConvert(toConvert map[string][]model.ConvertItem, index, subIndex string, cs *categorySpending, elementCurrency, budgetCurrency vo.Id) {
 	if cs == nil {
 		return
 	}

@@ -6,6 +6,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	apptag "github.com/econumo/econumo/internal/tag"
 )
@@ -34,14 +35,14 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-func (r *ReadRepo) TagListView(ctx context.Context, userID string) ([]apptag.TagViewRow, error) {
+func (r *ReadRepo) TagListView(ctx context.Context, userID string) ([]model.TagViewRow, error) {
 	rows, err := r.q.GetTagListView(ctx, r.db(ctx), userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]apptag.TagViewRow, 0, len(rows))
+	out := make([]model.TagViewRow, 0, len(rows))
 	for _, t := range rows {
-		out = append(out, apptag.TagViewRow{
+		out = append(out, model.TagViewRow{
 			ID:         t.ID,
 			UserID:     t.UserID,
 			Name:       t.Name,

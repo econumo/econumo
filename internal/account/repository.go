@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -16,20 +17,20 @@ type AccountStore interface {
 	// NextIdentity allocates a fresh id (accounts and corrections share the pool).
 	NextIdentity() vo.Id
 
-	GetByID(ctx context.Context, id vo.Id) (*Account, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 
 	// ListAvailable returns the user's non-deleted accounts.
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*Account, error)
+	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 
 	// CountAvailable returns how many non-deleted accounts the user has (seeds a
 	// new account's position when no options rows exist).
 	CountAvailable(ctx context.Context, userID vo.Id) (int, error)
 
-	Save(ctx context.Context, a *Account) error
+	Save(ctx context.Context, a *model.Account) error
 
 	// SaveCorrection inserts a balance-correction transaction (type income/expense
 	// by sign; amount is the absolute value).
-	SaveCorrection(ctx context.Context, c Correction) error
+	SaveCorrection(ctx context.Context, c model.AccountCorrection) error
 }
 
 // PositionStore is the per-user account ordering surface (the accounts_options
@@ -69,19 +70,6 @@ type Repository interface {
 	BalanceReader
 }
 
-// Correction is a balance-correction transaction to insert (account create with
-// non-zero balance, or update changing the balance).
-type Correction struct {
-	ID          vo.Id
-	UserID      vo.Id
-	AccountID   vo.Id
-	Description string
-	Type        int16 // 0 expense, 1 income
-	Amount      string
-	SpentAt     time.Time
-	CreatedAt   time.Time
-}
-
 // FolderStore is the folder entity's own persistence surface: identity,
 // lookup/listing, write and delete. Consumed by CreateAccount's
 // resolveAccountFolder/defaultFolderOr, CreateFolder/createFolderTx,
@@ -93,16 +81,16 @@ type FolderStore interface {
 	// NextIdentity allocates a fresh folder id.
 	NextIdentity() vo.Id
 
-	GetByID(ctx context.Context, id vo.Id) (*Folder, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Folder, error)
 
 	// ListByUser returns the user's folders (unordered; the caller sorts by
 	// position).
-	ListByUser(ctx context.Context, userID vo.Id) ([]*Folder, error)
+	ListByUser(ctx context.Context, userID vo.Id) ([]*model.Folder, error)
 
 	// CountByUser returns how many folders the user has.
 	CountByUser(ctx context.Context, userID vo.Id) (int, error)
 
-	Save(ctx context.Context, f *Folder) error
+	Save(ctx context.Context, f *model.Folder) error
 
 	// Delete removes a folder row (its membership rows cascade).
 	Delete(ctx context.Context, id vo.Id) error

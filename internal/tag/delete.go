@@ -3,6 +3,7 @@ package tag
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -11,7 +12,7 @@ import (
 // as AccessDenied (HTTP 403). Transactions referencing the tag have tag_id set
 // to NULL via the ON DELETE SET NULL FK. Delete is unconditional — there is no
 // mode/replaceId.
-func (s *Service) DeleteTag(ctx context.Context, userID vo.Id, req DeleteTagRequest) (*DeleteTagResult, error) {
+func (s *Service) DeleteTag(ctx context.Context, userID vo.Id, req model.DeleteTagRequest) (*model.DeleteTagResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -30,5 +31,5 @@ func (s *Service) DeleteTag(ctx context.Context, userID vo.Id, req DeleteTagRequ
 		return nil, err
 	}
 
-	return &DeleteTagResult{}, nil
+	return &model.DeleteTagResult{}, nil
 }

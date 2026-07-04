@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
@@ -52,7 +52,7 @@ func TestBudgetUserLookup_CurrencyCode_DefaultsWhenOptionMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrencyCode: %v", err)
 	}
-	if code != user.DefaultCurrency {
+	if code != model.DefaultCurrency {
 		t.Errorf("want the domain default currency, got %q", code)
 	}
 }

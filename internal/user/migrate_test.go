@@ -8,6 +8,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -115,7 +116,7 @@ func TestMigrateThenLoginSaltFree(t *testing.T) {
 
 	// Now authenticate with a SALT-FREE service (post-removal state).
 	saltFreeSvc, _ := newSaltFreeUserSvc(t, db)
-	res, err := saltFreeSvc.Login(ctx, appuser.LoginRequest{Username: email, Password: password}, clock.New().Now())
+	res, err := saltFreeSvc.Login(ctx, model.LoginRequest{Username: email, Password: password}, clock.New().Now())
 	if err != nil {
 		t.Fatalf("login after migration (salt removed): %v", err)
 	}

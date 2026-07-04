@@ -11,6 +11,7 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	dompayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -59,7 +60,7 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
-func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*dompayee.Payee, error) {
+func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Payee, error) {
 	row, err := r.q.GetPayeeByID(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -70,12 +71,12 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*dompayee.Payee, error) {
 	return hydrate(row)
 }
 
-func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*dompayee.Payee, error) {
+func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error) {
 	rows, err := r.q.ListPayeesByOwner(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*dompayee.Payee, 0, len(rows))
+	out := make([]*model.Payee, 0, len(rows))
 	for _, row := range rows {
 		p, herr := hydrate(row)
 		if herr != nil {
@@ -95,7 +96,7 @@ func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 }
 
 // Save: the caller runs this inside TxManager.WithTx.
-func (r *Repo) Save(ctx context.Context, p *dompayee.Payee) error {
+func (r *Repo) Save(ctx context.Context, p *model.Payee) error {
 	return r.q.UpsertPayee(ctx, r.db(ctx), upsertParams{
 		ID:         p.ID.String(),
 		UserID:     p.UserID.String(),
@@ -111,7 +112,7 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeletePayee(ctx, r.db(ctx), id.String())
 }
 
-func hydrate(row payeeRow) (*dompayee.Payee, error) {
+func hydrate(row payeeRow) (*model.Payee, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -120,6 +121,6 @@ func hydrate(row payeeRow) (*dompayee.Payee, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dompayee.Payee{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Payee{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 
-	apptag "github.com/econumo/econumo/internal/tag"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc/apptag import aliases visible to swag's annotation
-// parser (this file's handler bodies no longer reference apptag types
+// _ keeps the apidoc/model import aliases visible to swag's annotation
+// parser (this file's handler bodies no longer reference these types
 // directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
-var _ = apptag.GetTagListResult{}
+var _ = model.GetTagListResult{}
 
 // OrderTagList handles POST /api/v1/tag/order-tag-list (auth).
 //
@@ -21,8 +21,8 @@ var _ = apptag.GetTagListResult{}
 // @Tags        Tag
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptag.OrderTagListRequest true "Order tag list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptag.OrderTagListResult}
+// @Param       request body     model.OrderTagListRequest true "Order tag list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderTagListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -40,7 +40,7 @@ func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
 // @Description Returns all the authenticated user's tags (archived and not) ordered by position.
 // @Tags        Tag
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=apptag.GetTagListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetTagListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer

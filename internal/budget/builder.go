@@ -1,5 +1,5 @@
 // The BudgetBuilder: the heaviest read in the module. It assembles the full
-// get-budget BudgetResult from the budget aggregate + the financial reports +
+// get-budget model.BudgetResult from the budget aggregate + the financial reports +
 // per-element limits & spending, converting multi-currency amounts through the
 // budget/element currency via the currency convertor. The work splits into six
 // sub-builders: meta, filters, financial summary, element limits, element
@@ -11,53 +11,10 @@ import (
 	"sort"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// CategoryMeta is a category's display metadata for the structure.
-type CategoryMeta struct {
-	ID         string
-	OwnerID    string
-	Name       string
-	Icon       string
-	IsIncome   bool
-	IsArchived bool
-}
-
-// TagMeta is a tag's display metadata.
-type TagMeta struct {
-	ID         string
-	OwnerID    string
-	Name       string
-	IsArchived bool
-}
-
-// PayeeMeta is a payee's display metadata (for the transaction list).
-type PayeeMeta struct {
-	ID   string
-	Name string
-}
-
-// ConvertItem is one bulk-conversion request: convert Amount from From to To,
-// using the rate period containing PeriodStart. A structural copy of
-// currency.ConvertItem — budget's own port must not import the currency
-// feature's domain type (see internal/server's BudgetConvertor adapter, which
-// converts to/from currency.ConvertItem at the composition root).
-type ConvertItem struct {
-	PeriodStart time.Time
-	PeriodEnd   time.Time
-	From        vo.Id
-	To          vo.Id
-	Amount      vo.DecimalNumber
-}
-
-// FullRate is one currency's average rate for a period. A structural copy of
-// currency.FullRate — see ConvertItem's doc for why.
-type FullRate struct {
-	CurrencyID vo.Id
-	Rate       vo.DecimalNumber
-}
 
 // filters is the internal filter set the builder derives.
 type filters struct {
@@ -66,44 +23,44 @@ type filters struct {
 	excludedAccountIDs     []vo.Id
 	includedAccountIDs     []vo.Id
 	currencyIDs            []vo.Id
-	categories             map[string]CategoryMeta // expense-only, keyed by id
-	tags                   map[string]TagMeta
+	categories             map[string]model.CategoryMeta // expense-only, keyed by id
+	tags                   map[string]model.TagMeta
 }
 
-// BuildBudget assembles the full BudgetResult for a budget as of periodStart
+// BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
 // (which the caller has already snapped to first-of-month). now is the clock
 // time (controls nullable balance fields).
-func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (BudgetResult, error) {
+func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (model.BudgetResult, error) {
 	periodEnd := periodStart.AddDate(0, 1, 0)
 
 	meta, err := s.buildMeta(ctx, b)
 	if err != nil {
-		return BudgetResult{}, err
+		return model.BudgetResult{}, err
 	}
 	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
 	if err != nil {
-		return BudgetResult{}, err
+		return model.BudgetResult{}, err
 	}
 	balances, rates, err := s.buildFinancialSummary(ctx, b.budget.CurrencyID, f, now)
 	if err != nil {
-		return BudgetResult{}, err
+		return model.BudgetResult{}, err
 	}
 	limits, err := s.buildElementsLimits(ctx, b, f)
 	if err != nil {
-		return BudgetResult{}, err
+		return model.BudgetResult{}, err
 	}
 	spending, err := s.buildElementsSpending(ctx, b, f)
 	if err != nil {
-		return BudgetResult{}, err
+		return model.BudgetResult{}, err
 	}
 	structure, err := s.buildStructure(ctx, b, f, limits, spending)
 	if err != nil {
-		return BudgetResult{}, err
+		return model.BudgetResult{}, err
 	}
 
-	return BudgetResult{
+	return model.BudgetResult{
 		Meta: meta,
-		Filters: FiltersResult{
+		Filters: model.FiltersResult{
 			PeriodStart:         f.periodStart.Format(datetime.Layout),
 			PeriodEnd:           f.periodEnd.Format(datetime.Layout),
 			ExcludedAccountsIds: idStrings(f.excludedAccountIDs),
@@ -115,29 +72,29 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 }
 
 // buildMeta builds the access list plus a synthetic owner entry.
-func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (MetaResult, error) {
-	access := make([]AccessResult, 0, len(b.access)+1)
+func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.MetaResult, error) {
+	access := make([]model.AccessResult, 0, len(b.access)+1)
 	for _, a := range b.access {
 		owner, err := s.users.GetOwner(ctx, a.UserID.String())
 		if err != nil {
-			return MetaResult{}, err
+			return model.MetaResult{}, err
 		}
-		access = append(access, AccessResult{
-			User:       UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
+		access = append(access, model.AccessResult{
+			User:       model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
 			Role:       a.Role.Alias(),
 			IsAccepted: boolToInt(a.IsAccepted),
 		})
 	}
 	owner, err := s.users.GetOwner(ctx, b.budget.UserID.String())
 	if err != nil {
-		return MetaResult{}, err
+		return model.MetaResult{}, err
 	}
-	access = append(access, AccessResult{
-		User:       UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
+	access = append(access, model.AccessResult{
+		User:       model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
 		Role:       "owner",
 		IsAccepted: 1,
 	})
-	return MetaResult{
+	return model.MetaResult{
 		Id:          b.budget.ID.String(),
 		OwnerUserId: b.budget.UserID.String(),
 		Name:        b.budget.Name,
@@ -207,7 +164,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	if err != nil {
 		return filters{}, err
 	}
-	catMap := map[string]CategoryMeta{}
+	catMap := map[string]model.CategoryMeta{}
 	for _, c := range cats {
 		if !c.IsIncome { // expense categories only
 			catMap[c.ID] = c
@@ -217,7 +174,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	if err != nil {
 		return filters{}, err
 	}
-	tagMap := map[string]TagMeta{}
+	tagMap := map[string]model.TagMeta{}
 	for _, t := range tags {
 		tagMap[t.ID] = t
 	}

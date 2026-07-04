@@ -4,18 +4,19 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // GetBudgetList returns the user's budgets as meta entries.
-func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*GetBudgetListResult, error) {
+func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*model.GetBudgetListResult, error) {
 	budgets, err := s.budgets.ListForUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]MetaResult, 0, len(budgets))
+	items := make([]model.MetaResult, 0, len(budgets))
 	for _, b := range budgets {
 		agg, lerr := s.loadAggregate(ctx, b.ID)
 		if lerr != nil {
@@ -27,15 +28,15 @@ func (s *Service) GetBudgetList(ctx context.Context, userID vo.Id) (*GetBudgetLi
 		}
 		items = append(items, meta)
 	}
-	return &GetBudgetListResult{Items: items}, nil
+	return &model.GetBudgetListResult{Items: items}, nil
 }
 
 // GetBudget returns the full budget for the period containing `date` (snapped to
 // first-of-month). Requires read access.
-func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req GetBudgetRequest) (*GetBudgetResult, error) {
+func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudgetRequest) (*model.GetBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
 	periodStart, err := parsePeriodDate(req.Date, localMonth(s.clock.Now(), reqctx.Location(ctx)))
 	if err != nil {
@@ -49,7 +50,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req GetBudgetRequ
 	if err != nil {
 		return nil, err
 	}
-	return &GetBudgetResult{Item: result}, nil
+	return &model.GetBudgetResult{Item: result}, nil
 }
 
 // parsePeriodDate parses the get-budget date and snaps it to first-of-month. An
@@ -62,7 +63,7 @@ func parsePeriodDate(s string, fallback time.Time) (time.Time, error) {
 	}
 	for _, layout := range []string{datetime.Layout, datetime.DateLayout, time.RFC3339} {
 		if t, err := time.Parse(layout, s); err == nil {
-			return firstOfMonth(t), nil
+			return model.FirstOfMonth(t), nil
 		}
 	}
 	return fallback, nil
