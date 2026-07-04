@@ -49,9 +49,9 @@ Produce `useUpdateName()`, `useUpdatePassword()`, `useUpdateCurrency()`, `useUpd
 - `useUpdatePassword` stays `Promise<void>`; rejection carries the axios error (dialog handled by the page).
 - Metrics: `USER_UPDATE_NAME`, `USER_UPDATE_PASSWORD`, `USER_UPDATE_CURRENCY`, `USER_UPDATE_DEFAULT_BUDGET` on success.
 
-- [ ] **Step 1: failing tests** — MSW echoes `{user}` with a changed name → `['user']` cache equals the echoed user; update-budget invalidates `['budget']`; update-password rejects on the 400 `Form validation error` envelope.
-- [ ] **Step 2: implement.** **Step 3:** targeted tests → PASS.
-- [ ] **Step 4: commit** `feat(web-react): user settings mutations`.
+- [x] **Step 1: failing tests** — MSW echoes `{user}` with a changed name → `['user']` cache equals the echoed user; update-budget invalidates `['budget']`; update-password rejects on the 400 `Form validation error` envelope.
+- [x] **Step 2: implement.** **Step 3:** targeted tests → PASS.
+- [x] **Step 4: commit** `feat(web-react): user settings mutations`.
 
 ---
 
@@ -62,8 +62,8 @@ Produce `useUpdateName()`, `useUpdatePassword()`, `useUpdateCurrency()`, `useUpd
 - **PromptDialog** (port of `PromptDialogModal.vue`): props `{open, onClose, onSubmit(value), title, inputLabel, initialValue?, validate?: (v: string) => string | null, submitLabel, cancelLabel}` on `ResponsiveDialog` (`dismissible={false}` — Vue uses `no-backdrop-dismiss`); single autofocused input; the validate callback returns the exact catalog message or null; submit on Enter/button.
 - **SortDialog** (port of `SortDialogModal.vue`): props `{open, onClose, onPick(direction: 'asc' | 'desc')}`; title `modals.sort.header` ("Sorting"); exactly two option buttons — `modals.sort.mode.alphabet.asc` ("Alphabetically (A-Z)") / `.desc` ("Alphabetically (Z-A)") — plus Cancel. (The usage-count options are dead in Vue; do not render them.)
 
-- [ ] **Step 1: failing tests** (prompt: validation message blocks submit, valid value submits and closes, initialValue seeds edit mode; sort: pick fires direction). **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): prompt and sort dialogs`.
+- [x] **Step 1: failing tests** (prompt: validation message blocks submit, valid value submits and closes, initialValue seeds edit mode; sort: pick fires direction). **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): prompt and sort dialogs`.
 
 ---
 
@@ -75,8 +75,8 @@ A generic vertical sortable list: `{items: {id}[], onReorder(ids: string[]), ren
 
 Helper `getChangedPositions(current: {id, position}[], orderedIds: string[]): {id, position}[]` — 0-based index diff, changed items only (exact Vue port; also handles the "no changes → empty array" case). Put it in `web-react/src/lib/ordering.ts` with unit tests.
 
-- [ ] **Step 1: failing tests** — `getChangedPositions` (no-op, swap, insert), SortableList renders items and calls `onReorder` (simulate via keyboard sensor: space, arrow, space). **Step 2: implement.** **Step 3:** PASS + `pnpm build`.
-- [ ] **Step 4: commit** `feat(web-react): dnd-kit sortable list and position diff helper`.
+- [x] **Step 1: failing tests** — `getChangedPositions` (no-op, swap, insert), SortableList renders items and calls `onReorder` (simulate via keyboard sensor: space, arrow, space). **Step 2: implement.** **Step 3:** PASS + `pnpm build`.
+- [x] **Step 4: commit** `feat(web-react): dnd-kit sortable list and position diff helper`.
 
 ---
 
@@ -99,9 +99,9 @@ Parity with `Settings.vue` (NO redirect — the hub is a real page at every brea
   9. **Default currency** (`pages.settings.currency.menu_item`): inline `CurrencySelect` bound to the user's currency **code**; change → `useUpdateCurrency({currency: code})` immediately.
 - "User Interface" group + Language row only when `getLocaleOptions().length > 1` (currently hidden).
 
-- [ ] **Step 1: failing tests** — menu rows render with exact labels and navigate; currency change posts `{currency:"EUR"}` and the user cache updates; language group absent with one locale.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): settings hub page`.
+- [x] **Step 1: failing tests** — menu rows render with exact labels and navigate; currency change posts `{currency:"EUR"}` and the user cache updates; language group absent with one locale.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): settings hub page`.
 
 ---
 
@@ -116,9 +116,9 @@ Parity with `Profile.vue`:
 - **E-mail**: disabled/readonly input, label/placeholder from `modules.user.form.user.email.*`.
 - Security group (`modules.user.page.settings.profile.groups.security`): row `modules.user.page.settings.profile.change_password.menu_item` → `/settings/profile/change-password`.
 
-- [ ] **Step 1: failing tests** — name blur posts `{name}` and cache updates; server 400 with `errors.name` shows the message; logout confirm shows exact copy and navigates; email input disabled.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): profile page with inline name edit and logout confirm`.
+- [x] **Step 1: failing tests** — name blur posts `{name}` and cache updates; server 400 with `errors.name` shows the message; logout confirm shows exact copy and navigates; email input disabled.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): profile page with inline name edit and logout confirm`.
 
 ---
 
@@ -136,9 +136,9 @@ Parity with `ChangePassword.vue` (exact keys — they cross two namespaces):
 - Failure (incl. wrong old password → generic 400): dialog `modules.user.modal.change_password_error.{header,text}` + Close.
 - Breadcrumbs: "Service settings" → `/settings`, "Profile" (`modules.user.page.settings.profile.menu_item`) → `/settings/profile`; mobile back → `/settings/profile`.
 
-- [ ] **Step 1: failing tests** — all validation messages exact; success flow posts `{oldPassword,newPassword}` only and shows the success text; MSW 400 shows the error dialog.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): change password page`.
+- [x] **Step 1: failing tests** — all validation messages exact; success flow posts `{oldPassword,newPassword}` only and shows the success text; MSW 400 shows the error dialog.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): change password page`.
 
 ---
 
@@ -158,9 +158,9 @@ Parity with `pages/Settings/Accounts.vue`:
 - Account row actions: desktop `more_vert` menu — **Edit** → the Plan-2 `AccountDialog`; **Delete** → ConfirmDialog (question `pages.settings.accounts.delete_account_modal.question` "Are you sure you want to remove the account «{account}»?") → `useDeleteAccount`. Mobile row tap → a details dialog (`pages.settings.accounts.preview_account_modal.header` "Account details": icon, name, balance, currency) with Edit/Delete buttons. *(Access control deferred to Plan 6.)*
 - Empty state: `pages.settings.accounts.list_empty_create` ("Add") + `...list_empty_new_account` ("new account") → opens `AccountDialog`.
 
-- [ ] **Step 1: failing tests** — folder create/rename via PromptDialog post the right payloads; move-down posts swapped positions; delete-folder confirm posts `{id, replaceId}`; account delete confirm removes from cache; cross-folder reorder posts `{id, folderId, position}` changes (drive `onReorder` directly if dnd simulation is brittle).
-- [ ] **Step 2: implement.** **Step 3:** PASS + full suite + build.
-- [ ] **Step 4: commit** `feat(web-react): accounts and folders settings page with drag reorder`.
+- [x] **Step 1: failing tests** — folder create/rename via PromptDialog post the right payloads; move-down posts swapped positions; delete-folder confirm posts `{id, replaceId}`; account delete confirm removes from cache; cross-folder reorder posts `{id, folderId, position}` changes (drive `onReorder` directly if dnd simulation is brittle).
+- [x] **Step 2: implement.** **Step 3:** PASS + full suite + build.
+- [x] **Step 4: commit** `feat(web-react): accounts and folders settings page with drag reorder`.
 
 ---
 
@@ -175,9 +175,9 @@ Parity with `Categories.vue` (+ its composables/modals):
 - Delete → ConfirmDialog (title `...modals.delete.title` "Delete category?", label = the category name) → `useDeleteCategory(id)` (`mode:'delete'`); on success drop the category from cache + null out `categoryId` on cached transactions + invalidate `['budget']` (Vue's `TRANSACTIONS_CATEGORY_DELETE`).
 - Empty state `blocks.list.list_empty`.
 
-- [ ] **Step 1: failing tests** — create payload exact (type/icon, no accountId); edit payload has no type; archive toggle hits archive/unarchive; delete confirm posts `{id, mode:'delete'}` and clears the category from a cached transaction; A-Z sort posts changed positions.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): categories settings page`.
+- [x] **Step 1: failing tests** — create payload exact (type/icon, no accountId); edit payload has no type; archive toggle hits archive/unarchive; delete confirm posts `{id, mode:'delete'}` and clears the category from a cached transaction; A-Z sort posts changed positions.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): categories settings page`.
 
 ---
 
@@ -192,9 +192,9 @@ Per-entity config (exact keys):
 - Tags: header `...tags.pages.settings.header` ("Tags"); create `...create_tag` ("Create a new tag"); dialog headers `...modals.create.header` ("Create a new tag") / `...modals.edit.header` ("Edit tag"); rules `...forms.tag.name.validation.*`; delete title `...modals.delete.title` ("Delete tag?"). Tag archive/delete invalidate `['budget']`.
 - Delete also scrubs the id from cached transactions (`payeeId`/`tagId` → null).
 
-- [ ] **Step 1: failing tests** (parameterized where possible) — create/edit/delete payloads per entity; edit uses the id even when the name matches another row; archive toggle; A-Z sort persists positions; tag delete invalidates budget, payee delete does not.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): payees and tags settings pages`.
+- [x] **Step 1: failing tests** (parameterized where possible) — create/edit/delete payloads per entity; edit uses the id even when the name matches another row; archive toggle; A-Z sort persists positions; tag delete invalidates budget, payee delete does not.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): payees and tags settings pages`.
 
 ---
 
@@ -214,9 +214,9 @@ Queries: `useBudgets()` (key `['budgets']`, staleTime 10min, select: name-asc so
 
 Also add `['budgets']` to the shell's `useIsFullyLoaded` set? — Vue includes budgets in `isFullyLoaded`. **Yes**: add `useBudgets()` to the loading gate (and to the Task-4 lastSync min).
 
-- [ ] **Step 1: failing tests** with wire-exact fixtures (access array incl. the synthetic owner entry, `isAccepted` ints) — list sorted by name; create posts the exact payload and the client id becomes the entity id (echo asserts same id); delete removes from cache.
-- [ ] **Step 2: implement (incl. the loading-gate addition).** **Step 3:** PASS + full suite.
-- [ ] **Step 4: commit** `feat(web-react): budget list API and queries`.
+- [x] **Step 1: failing tests** with wire-exact fixtures (access array incl. the synthetic owner entry, `isAccepted` ints) — list sorted by name; create posts the exact payload and the client id becomes the entity id (echo asserts same id); delete removes from cache.
+- [x] **Step 2: implement (incl. the loading-gate addition).** **Step 3:** PASS + full suite.
+- [x] **Step 4: commit** `feat(web-react): budget list API and queries`.
 
 ---
 
@@ -230,9 +230,9 @@ Parity with `Budgets.vue` (minus deferred access actions):
 - Row menu: **Go to the budget** (`...list_actions.go_to`) → set default (if not already) then navigate `/budget`; **Delete** (owner only) → ConfirmDialog (`...delete_modal.title` "Delete the budget?", question `...delete_modal.question` "Are you sure you want to delete {name}?") → `useDeleteBudget`.
 - **BudgetDialog** (create): name (rules `modules.budget.form.budget.name.validation.{required_field,invalid_name}`, maxLength 64), `CurrencySelect` (default = user currency; required → `modules.budget.form.budget_envelope.currency.validation.required_field`), accounts include/exclude toggle list (`modules.budget.modal.budget_form.accounts` "Accounts"; all own accounts, toggled-off ids go to `excludedAccounts`). Header `modules.budget.page.settings.create_modal.header` ("Create a new budget"); submit `elements.button.create.label`. Posts `{id: v7(), name, startDate: '', currencyId, excludedAccounts}` (Vue sends `startDate: ''`). Client dedupe: same-name own budget resolves without an API call (Vue guard). Failure → dialog `modules.budget.modal.generic_error.{header,description}`.
 
-- [ ] **Step 1: failing tests** — rows name-sorted with the default bookmark on the user's `budget` option; set-as-default posts `{value:id}` and re-marks; create posts the exact payload and appends the row; delete confirm removes it.
-- [ ] **Step 2: implement.** **Step 3:** PASS + full suite + build + lint.
-- [ ] **Step 4: commit** `feat(web-react): budgets settings page`.
+- [x] **Step 1: failing tests** — rows name-sorted with the default bookmark on the user's `budget` option; set-as-default posts `{value:id}` and re-marks; create posts the exact payload and appends the row; delete confirm removes it.
+- [x] **Step 2: implement.** **Step 3:** PASS + full suite + build + lint.
+- [x] **Step 4: commit** `feat(web-react): budgets settings page`.
 
 ---
 
@@ -240,8 +240,8 @@ Parity with `Budgets.vue` (minus deferred access actions):
 
 **Files:** none (fix divergences with tests before closing).
 
-- [ ] **Step 1: run** backend (scratch sqlite, inline env — see Plan 2 Task 18), React dev server; the Vue reference at `:8181`. Seed: user + a few accounts/folders/categories/payees/tags/transactions + a second currency (`currency:add EUR Euro 2`).
-- [ ] **Step 2: walk in BOTH apps at 1280px / 375px:**
+- [x] **Step 1: run** backend (scratch sqlite, inline env — see Plan 2 Task 18), React dev server; the Vue reference at `:8181`. Seed: user + a few accounts/folders/categories/payees/tags/transactions + a second currency (`currency:add EUR Euro 2`).
+- [x] **Step 2: walk in BOTH apps at 1280px / 375px:**
 
 1. Hub: menu order and labels, sync row (spinner/refetch + last-sync hint), default-currency inline select (change → immediately persisted; verify via reload and the Vue app), language group hidden.
 2. Profile: rename inline (blur saves; sidebar user block updates), server rejection of a >20-char name shows the message (React divergence — Vue silently fails: confirm Vue's silence), email readonly, logout confirm copy → logs out.
@@ -253,7 +253,7 @@ Parity with `Budgets.vue` (minus deferred access actions):
 8. Mobile: hub→page→back navigation single-pane; dialogs as bottom sheets; account settings page usable (context actions via tap).
 9. Known temporary gaps to confirm and note (not fix): CSV rows absent, access-control/Accept/Decline absent, `/budget` and `/settings/connections` still placeholders.
 
-- [ ] **Step 3: record** results:
+- [x] **Step 3: record** results:
 
 ```bash
 git commit --allow-empty -m "chore(web-react): settings parity check vs Vue app passed (desktop/mobile)"
