@@ -110,26 +110,26 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
 	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
-	accountUserLookup := NewAccountUserLookup(userRepo)
+	userOwnerLookup := NewUserOwnerLookup(userRepo)
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
 	connectionFolderPort := NewConnectionFolderPort(folderRepo)
-	connectionUserLookup := NewConnectionUserLookup(userRepo)
+
 	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
 	connectionSvc := appconnection.NewService(
 		connectionRepo, connectionInviteRepo, connectionFolderPort, accountRepo,
-		connectionUserLookup, connectionBudgetRevoker, txm, clk,
+		userOwnerLookup, connectionBudgetRevoker, txm, clk,
 	)
 	accountSharedLookup := NewConnectionSharedAccessLookup(connectionRepo)
 	accountRevoker := NewConnectionAccessRevoker(connectionRepo, connectionSvc)
 	accountSvc := appaccount.NewService(
-		accountRepo, folderRepo, accountCurrencyLookup, accountUserLookup, accountSharedLookup, accountRevoker, txm, opGuard, clk,
+		accountRepo, folderRepo, accountCurrencyLookup, userOwnerLookup, accountSharedLookup, accountRevoker, txm, opGuard, clk,
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
-	txUserLookup := NewTransactionUserLookup(userRepo)
+
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))
 	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
 	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)
@@ -140,7 +140,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 		transactionRepo,
 	)
 	transactionSvc := apptransaction.NewService(
-		transactionRepo, accountSvc, accountAccessResolver, accountSvc, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
+		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 

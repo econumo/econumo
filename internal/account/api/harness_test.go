@@ -82,7 +82,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	folderRepo := accountrepo.NewFolderRepo("sqlite", txm)
 	curLookup := currencyrepo.New("sqlite", txm)
 	accCur := server.NewAccountCurrencyLookup(curLookup)
-	accUser := server.NewAccountUserLookup(userrepo.NewRepo("sqlite", txm))
+	accUser := server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm))
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
@@ -92,7 +92,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	connSvc := appconnection.NewService(
 		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
 		server.NewConnectionFolderPort(folderRepo), repo,
-		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
 		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
 	)
 	sharedLookup := server.NewConnectionSharedAccessLookup(connRepo)

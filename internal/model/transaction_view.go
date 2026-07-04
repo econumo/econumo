@@ -3,13 +3,6 @@
 // except ImportResult which is the import-transaction-list response body).
 package model
 
-// AuthorView is the minimal author shape the transaction result embeds.
-type AuthorView struct {
-	ID     string
-	Name   string
-	Avatar string
-}
-
 // ExportAccount is one accessible account in the CSV export universe: id,
 // name, and currency code.
 type ExportAccount struct {

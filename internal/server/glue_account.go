@@ -1,3 +1,6 @@
+// Account glue: every adapter satisfying a port that the account feature
+// declares (see internal/account/ports.go). Features must not import each
+// other (archtest); the composition root bridges them here.
 package server
 
 import (

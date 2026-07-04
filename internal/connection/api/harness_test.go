@@ -97,7 +97,7 @@ func newHarness(t *testing.T) *harness {
 		connectionrepo.NewInviteRepo("sqlite", txm),
 		server.NewConnectionFolderPort(folderRepo),
 		accountRepo,
-		server.NewConnectionUserLookup(userrepo.NewRepo("sqlite", txm)),
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
 		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)),
 		txm, clock.New(),
 	)

@@ -1,17 +1,13 @@
-// BudgetAccountLookup adapts the account repository to budget.AccountLookup,
-// BudgetCategoryMetadataLookup adapts the category repository,
-// BudgetTagMetadataLookup adapts the tag repository, and
-// BudgetPayeeMetadataLookup adapts the payee repository. They live here, not
-// in internal/budget/repo, because they need the
-// account/category/tag/payee features' types and an infra package must not
-// import a feature (see archtest).
+// Budget glue: every adapter satisfying a port that the budget feature
+// declares (see internal/budget/ports.go). Features must not import each
+// other (archtest); the composition root bridges them here.
 package server
 
 import (
 	"context"
-
 	appbudget "github.com/econumo/econumo/internal/budget"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -191,4 +187,63 @@ func (l *BudgetPayeeMetadataLookup) PayeesByOwners(ctx context.Context, userIDs 
 		}
 	}
 	return out, nil
+}
+
+// budgetUserRepo is the minimal user-repo surface this adapter needs.
+type budgetUserRepo interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
+	GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error)
+	Save(ctx context.Context, u *model.User) error
+}
+
+// BudgetUserLookup adapts the user repository to budget.UserLookup.
+type BudgetUserLookup struct {
+	users budgetUserRepo
+	clock port.Clock
+}
+
+var _ appbudget.UserLookup = (*BudgetUserLookup)(nil)
+
+// NewBudgetUserLookup wraps a user repository + clock.
+func NewBudgetUserLookup(users budgetUserRepo, clock port.Clock) *BudgetUserLookup {
+	return &BudgetUserLookup{users: users, clock: clock}
+}
+
+// GetOwner resolves the embed (id, name, avatar).
+func (l *BudgetUserLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
+	id, err := vo.ParseId(userID)
+	if err != nil {
+		return model.OwnerView{}, err
+	}
+	h, err := l.users.GetHeaderByID(ctx, id)
+	if err != nil {
+		return model.OwnerView{}, err
+	}
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+}
+
+// CurrencyCode returns the user's default currency code (the currency option).
+func (l *BudgetUserLookup) CurrencyCode(ctx context.Context, userID string) (string, error) {
+	id, err := vo.ParseId(userID)
+	if err != nil {
+		return "", err
+	}
+	u, err := l.users.GetByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil {
+		return *o.Value, nil
+	}
+	return model.DefaultCurrency, nil
+}
+
+// SetActiveBudget writes the user's active-budget option.
+func (l *BudgetUserLookup) SetActiveBudget(ctx context.Context, userID, budgetID vo.Id) error {
+	u, err := l.users.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	u.UpdateBudget(budgetID.String(), l.clock.Now())
+	return l.users.Save(ctx, u)
 }
