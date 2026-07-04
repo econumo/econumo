@@ -1,3 +1,5 @@
+import { sanitizeInput, validateFormula } from './calculator'
+
 export function isValidHttpUrl(value: string): boolean {
   let url
   try {
@@ -73,4 +75,12 @@ export function isNotEmpty(value: string): boolean {
 
 export function isValidRecoveryCode(value: string): boolean {
   return value.length === 12
+}
+
+export function isValidFormula(value: string): boolean {
+  return validateFormula(sanitizeInput(value))
+}
+
+export function hasIncompleteFormula(value: string): boolean {
+  return /[+\-*/]$/.test(value)
 }
