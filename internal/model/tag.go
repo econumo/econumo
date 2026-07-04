@@ -1,10 +1,10 @@
-// Package tag is the tag aggregate's domain layer: the Tag entity and the
-// repository interface.
+// The Tag entity: the Tag aggregate root. The repository interface, the
+// write-side Service, and the read-side ReadService stay in internal/tag.
 //
 // Unlike a category, a tag has no type and no persisted icon: its icon is a
 // fixed "tag" and is not stored or returned on the wire (the TagResult DTO has
 // no icon field).
-package tag
+package model
 
 import (
 	"time"

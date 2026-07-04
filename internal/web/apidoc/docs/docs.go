@@ -3482,7 +3482,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.ArchiveTagRequest"
+                            "$ref": "#/definitions/model.ArchiveTagRequest"
                         }
                     }
                 ],
@@ -3498,7 +3498,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.ArchiveTagResult"
+                                            "$ref": "#/definitions/model.ArchiveTagResult"
                                         }
                                     }
                                 }
@@ -3551,7 +3551,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.CreateTagRequest"
+                            "$ref": "#/definitions/model.CreateTagRequest"
                         }
                     }
                 ],
@@ -3567,7 +3567,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.CreateTagResult"
+                                            "$ref": "#/definitions/model.CreateTagResult"
                                         }
                                     }
                                 }
@@ -3620,7 +3620,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.DeleteTagRequest"
+                            "$ref": "#/definitions/model.DeleteTagRequest"
                         }
                     }
                 ],
@@ -3636,7 +3636,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.DeleteTagResult"
+                                            "$ref": "#/definitions/model.DeleteTagResult"
                                         }
                                     }
                                 }
@@ -3691,7 +3691,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.GetTagListResult"
+                                            "$ref": "#/definitions/model.GetTagListResult"
                                         }
                                     }
                                 }
@@ -3738,7 +3738,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.OrderTagListRequest"
+                            "$ref": "#/definitions/model.OrderTagListRequest"
                         }
                     }
                 ],
@@ -3754,7 +3754,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.OrderTagListResult"
+                                            "$ref": "#/definitions/model.OrderTagListResult"
                                         }
                                     }
                                 }
@@ -3807,7 +3807,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.UnarchiveTagRequest"
+                            "$ref": "#/definitions/model.UnarchiveTagRequest"
                         }
                     }
                 ],
@@ -3823,7 +3823,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.UnarchiveTagResult"
+                                            "$ref": "#/definitions/model.UnarchiveTagResult"
                                         }
                                     }
                                 }
@@ -3876,7 +3876,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/tag.UpdateTagRequest"
+                            "$ref": "#/definitions/model.UpdateTagRequest"
                         }
                     }
                 ],
@@ -3892,7 +3892,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/tag.UpdateTagResult"
+                                            "$ref": "#/definitions/model.UpdateTagResult"
                                         }
                                     }
                                 }
@@ -6242,6 +6242,17 @@ const docTemplate = `{
         "model.ArchiveCategoryResult": {
             "type": "object"
         },
+        "model.ArchiveTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ArchiveTagResult": {
+            "type": "object"
+        },
         "model.CategoryResult": {
             "type": "object",
             "properties": {
@@ -6401,6 +6412,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreateTagRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateTagResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.TagResult"
+                }
+            }
+        },
         "model.CurrencyRateResult": {
             "type": "object",
             "properties": {
@@ -6495,6 +6528,17 @@ const docTemplate = `{
         "model.DeleteCategoryResult": {
             "type": "object"
         },
+        "model.DeleteTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteTagResult": {
+            "type": "object"
+        },
         "model.FolderPositionChange": {
             "type": "object",
             "properties": {
@@ -6568,6 +6612,17 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.OptionResult"
+                    }
+                }
+            }
+        },
+        "model.GetTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TagResult"
                     }
                 }
             }
@@ -6698,6 +6753,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OrderTagListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PositionChange"
+                    }
+                }
+            }
+        },
+        "model.OrderTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TagResult"
+                    }
+                }
+            }
+        },
         "model.PositionChange": {
             "type": "object",
             "properties": {
@@ -6787,6 +6864,32 @@ const docTemplate = `{
         "model.ShowFolderResult": {
             "type": "object"
         },
+        "model.TagResult": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "model.UnarchiveCategoryRequest": {
             "type": "object",
             "properties": {
@@ -6796,6 +6899,17 @@ const docTemplate = `{
             }
         },
         "model.UnarchiveCategoryResult": {
+            "type": "object"
+        },
+        "model.UnarchiveTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UnarchiveTagResult": {
             "type": "object"
         },
         "model.UpdateAccountRequest": {
@@ -6943,6 +7057,25 @@ const docTemplate = `{
             "properties": {
                 "user": {
                     "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateTagRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateTagResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.TagResult"
                 }
             }
         },
@@ -7098,150 +7231,6 @@ const docTemplate = `{
         },
         "payee.UpdatePayeeResult": {
             "type": "object"
-        },
-        "tag.ArchiveTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "tag.ArchiveTagResult": {
-            "type": "object"
-        },
-        "tag.CreateTagRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "tag.CreateTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
-        },
-        "tag.DeleteTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "tag.DeleteTagResult": {
-            "type": "object"
-        },
-        "tag.GetTagListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.TagResult"
-                    }
-                }
-            }
-        },
-        "tag.OrderTagListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.PositionChange"
-                    }
-                }
-            }
-        },
-        "tag.OrderTagListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/tag.TagResult"
-                    }
-                }
-            }
-        },
-        "tag.PositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "tag.TagResult": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "ownerUserId": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "tag.UnarchiveTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "tag.UnarchiveTagResult": {
-            "type": "object"
-        },
-        "tag.UpdateTagRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "tag.UpdateTagResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/tag.TagResult"
-                }
-            }
         },
         "transaction.AccountCurrencyResult": {
             "type": "object",

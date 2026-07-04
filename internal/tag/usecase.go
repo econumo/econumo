@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
@@ -52,8 +53,8 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 // mutate loads the tag, checks ownership, applies fn inside a transaction, and
 // saves. It returns the mutated (in-memory) aggregate so the caller can build
 // its result without a second read. Ownership failure -> AccessDenied (403).
-func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *Tag, now time.Time)) (*Tag, error) {
-	var loaded *Tag
+func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *model.Tag, now time.Time)) (*model.Tag, error) {
+	var loaded *model.Tag
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		t, err := s.repo.GetByID(ctx, id)
 		if err != nil {
@@ -84,8 +85,8 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *Tag, 
 // connection rather than reaching for the pool — critical under a single-
 // connection pool, where a pool read while the tx holds the only connection
 // would deadlock.
-func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, t *Tag, now time.Time) error) (*Tag, error) {
-	var loaded *Tag
+func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, t *model.Tag, now time.Time) error) (*model.Tag, error) {
+	var loaded *model.Tag
 	err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		t, err := s.repo.GetByID(txCtx, id)
 		if err != nil {
@@ -111,12 +112,12 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 
 // toResult formats the timestamps in the "2006-01-02 15:04:05" wire form and
 // maps the archived bool to the wire shape (isArchived int 0/1). See CLAUDE.md.
-func toResult(t *Tag) TagResult {
+func toResult(t *model.Tag) model.TagResult {
 	archived := 0
 	if t.IsArchived {
 		archived = 1
 	}
-	return TagResult{
+	return model.TagResult{
 		Id:          t.ID.String(),
 		OwnerUserId: t.UserID.String(),
 		Name:        t.Name,
@@ -130,12 +131,12 @@ func toResult(t *Tag) TagResult {
 // listResults returns the user's AVAILABLE tags (own + shared via account
 // access), ordered by position, in the wire shape — used by order-tag-list. It
 // reads through the same own+shared view as get-tag-list, not owner-only.
-func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]TagResult, error) {
+func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]model.TagResult, error) {
 	rows, err := s.read.TagListView(ctx, userID.String())
 	if err != nil {
 		return nil, err
 	}
-	items := make([]TagResult, 0, len(rows))
+	items := make([]model.TagResult, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
-	tag "github.com/econumo/econumo/internal/tag"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
@@ -114,7 +113,7 @@ func (l *TransactionCategoryNameLookup) CategoryName(ctx context.Context, id vo.
 // transactionTagByID is the minimal tag-repo surface the export adapter's
 // name lookup uses.
 type transactionTagByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*tag.Tag, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Tag, error)
 }
 
 // TransactionTagNameLookup adapts the tag repository to the transaction

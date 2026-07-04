@@ -3,6 +3,7 @@ package tag
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -11,7 +12,7 @@ import (
 // operation_requests_ids; a second request with the same id finds the row
 // already present and is rejected ("Operation is locked"). The new tag's
 // position is count(user's existing tags).
-func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequest) (*CreateTagResult, error) {
+func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req model.CreateTagRequest) (*model.CreateTagResult, error) {
 	// The request id is the OPERATION id (idempotency key), not the entity id;
 	// the entity gets a fresh UUIDv7.
 	opID, err := vo.ParseId(req.Id)
@@ -40,7 +41,7 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 		ownerID = resolved
 	}
 
-	var created *Tag
+	var created *model.Tag
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
@@ -59,7 +60,7 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 			return cerr
 		}
 		now := s.clock.Now()
-		t := NewTag(id, ownerID, name, now)
+		t := model.NewTag(id, ownerID, name, now)
 		t.SetPosition(int16(count))
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
@@ -73,5 +74,5 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req CreateTagRequ
 		return nil, err
 	}
 
-	return &CreateTagResult{Item: toResult(created)}, nil
+	return &model.CreateTagResult{Item: toResult(created)}, nil
 }

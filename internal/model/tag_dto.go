@@ -1,4 +1,5 @@
-package tag
+// Request/result DTOs for the tag API, with their tier-1 Validate() methods.
+package model
 
 import (
 	"strings"
@@ -112,12 +113,6 @@ func (r DeleteTagRequest) Validate() error {
 }
 
 type DeleteTagResult struct{}
-
-// PositionChange is one {id, position} entry in an order request.
-type PositionChange struct {
-	Id       string `json:"id"`
-	Position int    `json:"position"`
-}
 
 type OrderTagListRequest struct {
 	Changes []PositionChange `json:"changes"`

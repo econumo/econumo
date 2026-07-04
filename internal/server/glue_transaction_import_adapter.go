@@ -16,7 +16,6 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
-	tag "github.com/econumo/econumo/internal/tag"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
@@ -179,12 +178,12 @@ func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerI
 // transactionImportTagService is the tag-service create surface the importer
 // uses.
 type transactionImportTagService interface {
-	CreateTag(ctx context.Context, userID vo.Id, req tag.CreateTagRequest) (*tag.CreateTagResult, error)
+	CreateTag(ctx context.Context, userID vo.Id, req model.CreateTagRequest) (*model.CreateTagResult, error)
 }
 
 // transactionImportTagLister is the read surface over the tag repo.
 type transactionImportTagLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*tag.Tag, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
 }
 
 // TransactionImportTags adapts the tag service/repo to the transaction
@@ -212,7 +211,7 @@ func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) 
 }
 
 func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
-	res, err := t.svc.CreateTag(ctx, ownerID, tag.CreateTagRequest{
+	res, err := t.svc.CreateTag(ctx, ownerID, model.CreateTagRequest{
 		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {

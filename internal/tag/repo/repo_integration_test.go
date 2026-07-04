@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
-	domtag "github.com/econumo/econumo/internal/tag"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -36,8 +36,8 @@ func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *dbtest.DB, *fixtu
 	return tagrepo.NewRepo("sqlite", db.TX), tagrepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
 }
 
-func tag(id, userID, name string, pos int16) *domtag.Tag {
-	return &domtag.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+func tag(id, userID, name string, pos int16) *model.Tag {
+	return &model.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
 		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 

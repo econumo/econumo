@@ -713,6 +713,13 @@ definitions:
     type: object
   model.ArchiveCategoryResult:
     type: object
+  model.ArchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveTagResult:
+    type: object
   model.CategoryResult:
     properties:
       createdAt:
@@ -816,6 +823,20 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.CreateTagRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.TagResult'
+    type: object
   model.CurrencyRateResult:
     properties:
       baseCurrencyId:
@@ -877,6 +898,13 @@ definitions:
     type: object
   model.DeleteCategoryResult:
     type: object
+  model.DeleteTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteTagResult:
+    type: object
   model.FolderPositionChange:
     properties:
       id:
@@ -924,6 +952,13 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.OptionResult'
+        type: array
+    type: object
+  model.GetTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
         type: array
     type: object
   model.GetUserDataResult:
@@ -1006,6 +1041,20 @@ definitions:
           $ref: '#/definitions/model.AccountFolderResult'
         type: array
     type: object
+  model.OrderTagListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
   model.PositionChange:
     properties:
       id:
@@ -1063,12 +1112,36 @@ definitions:
     type: object
   model.ShowFolderResult:
     type: object
+  model.TagResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
   model.UnarchiveCategoryRequest:
     properties:
       id:
         type: string
     type: object
   model.UnarchiveCategoryResult:
+    type: object
+  model.UnarchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveTagResult:
     type: object
   model.UpdateAccountRequest:
     properties:
@@ -1163,6 +1236,18 @@ definitions:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateTagRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.TagResult'
     type: object
   model.UserResult:
     properties:
@@ -1261,98 +1346,6 @@ definitions:
         type: string
     type: object
   payee.UpdatePayeeResult:
-    type: object
-  tag.ArchiveTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  tag.ArchiveTagResult:
-    type: object
-  tag.CreateTagRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  tag.CreateTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
-    type: object
-  tag.DeleteTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  tag.DeleteTagResult:
-    type: object
-  tag.GetTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/tag.TagResult'
-        type: array
-    type: object
-  tag.OrderTagListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/tag.PositionChange'
-        type: array
-    type: object
-  tag.OrderTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/tag.TagResult'
-        type: array
-    type: object
-  tag.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  tag.TagResult:
-    properties:
-      createdAt:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      position:
-        type: integer
-      updatedAt:
-        type: string
-    type: object
-  tag.UnarchiveTagRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  tag.UnarchiveTagResult:
-    type: object
-  tag.UpdateTagRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  tag.UpdateTagResult:
-    properties:
-      item:
-        $ref: '#/definitions/tag.TagResult'
     type: object
   transaction.AccountCurrencyResult:
     properties:
@@ -3583,7 +3576,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.ArchiveTagRequest'
+          $ref: '#/definitions/model.ArchiveTagRequest'
       produces:
       - application/json
       responses:
@@ -3594,7 +3587,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.ArchiveTagResult'
+                  $ref: '#/definitions/model.ArchiveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3625,7 +3618,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.CreateTagRequest'
+          $ref: '#/definitions/model.CreateTagRequest'
       produces:
       - application/json
       responses:
@@ -3636,7 +3629,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.CreateTagResult'
+                  $ref: '#/definitions/model.CreateTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3667,7 +3660,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.DeleteTagRequest'
+          $ref: '#/definitions/model.DeleteTagRequest'
       produces:
       - application/json
       responses:
@@ -3678,7 +3671,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.DeleteTagResult'
+                  $ref: '#/definitions/model.DeleteTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3711,7 +3704,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.GetTagListResult'
+                  $ref: '#/definitions/model.GetTagListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3738,7 +3731,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.OrderTagListRequest'
+          $ref: '#/definitions/model.OrderTagListRequest'
       produces:
       - application/json
       responses:
@@ -3749,7 +3742,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.OrderTagListResult'
+                  $ref: '#/definitions/model.OrderTagListResult'
               type: object
         "400":
           description: Bad Request
@@ -3779,7 +3772,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.UnarchiveTagRequest'
+          $ref: '#/definitions/model.UnarchiveTagRequest'
       produces:
       - application/json
       responses:
@@ -3790,7 +3783,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.UnarchiveTagResult'
+                  $ref: '#/definitions/model.UnarchiveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -3821,7 +3814,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/tag.UpdateTagRequest'
+          $ref: '#/definitions/model.UpdateTagRequest'
       produces:
       - application/json
       responses:
@@ -3832,7 +3825,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/tag.UpdateTagResult'
+                  $ref: '#/definitions/model.UpdateTagResult'
               type: object
         "400":
           description: Bad Request
