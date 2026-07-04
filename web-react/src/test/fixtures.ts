@@ -73,6 +73,17 @@ export const fixtureTransactions = [
   },
 ]
 
+export const fixtureBudgets = [
+  {
+    id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+    access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+  },
+  {
+    id: 'b2', ownerUserId: 'u1', name: 'Alpha plan', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+    access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+  },
+]
+
 export const fixtureRates = [
   { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', updatedAt: '2026-07-01 00:00:00' },
   { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.9', updatedAt: '2026-07-01 00:00:00' },
@@ -90,6 +101,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     tags: fixtureTags,
     currencies: [fixtureUsd, fixtureEur],
     rates: fixtureRates,
+    budgets: fixtureBudgets,
     user: fixtureUser,
     ...overrides,
   }
@@ -103,5 +115,6 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/currency/get-currency-list', () => envelope({ items: data.currencies })),
     http.get('*/api/v1/currency/get-currency-rate-list', () => envelope({ items: data.rates })),
     http.get('*/api/v1/user/get-user-data', () => envelope({ user: data.user })),
+    http.get('*/api/v1/budget/get-budget-list', () => envelope({ items: data.budgets })),
   ]
 }

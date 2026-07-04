@@ -18,6 +18,7 @@ import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
+import { useBudgets } from '@/features/budgets/queries'
 
 function useIsFullyLoaded() {
   const queries = [
@@ -30,6 +31,7 @@ function useIsFullyLoaded() {
     useCurrencies(),
     useCurrencyRates(),
     useUserData(),
+    useBudgets(),
   ]
   return queries.every((q) => q.data !== undefined)
 }
