@@ -41,9 +41,8 @@ type PayeeMeta struct {
 
 // ConvertItem is one bulk-conversion request: convert Amount from From to To,
 // using the rate period containing PeriodStart. A structural copy of
-// currency.ConvertItem — budget's own port must not import the currency
-// feature's domain type (see internal/server's BudgetConvertor adapter, which
-// converts to/from currency.ConvertItem at the composition root).
+// model.ConvertItem (see internal/server's BudgetConvertor adapter, which
+// converts to/from model.ConvertItem at the composition root).
 type ConvertItem struct {
 	PeriodStart time.Time
 	PeriodEnd   time.Time
@@ -53,7 +52,7 @@ type ConvertItem struct {
 }
 
 // FullRate is one currency's average rate for a period. A structural copy of
-// currency.FullRate — see ConvertItem's doc for why.
+// model.FullRate — see ConvertItem's doc for why.
 type FullRate struct {
 	CurrencyID vo.Id
 	Rate       vo.DecimalNumber

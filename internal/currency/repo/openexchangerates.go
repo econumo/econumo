@@ -1,7 +1,7 @@
 // Loader is the adapter that loads exchange rates from the Open Exchange
 // Rates API for the currency:update-rates CLI command: it picks the latest or
 // historical endpoint by date, requests the configured base + symbols, and
-// maps the response into currency.RateInput values keyed by ISO code.
+// maps the response into model.RateInput values keyed by ISO code.
 package repo
 
 import (
@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	appcurrency "github.com/econumo/econumo/internal/currency"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 )
 
@@ -55,7 +55,7 @@ type apiResponse struct {
 // (when non-empty). It uses the latest endpoint when date is today, else the
 // historical endpoint. The returned rates carry the published date derived from
 // the response timestamp (at midnight UTC).
-func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols []string) ([]appcurrency.RateInput, error) {
+func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols []string) ([]model.RateInput, error) {
 	if l.token == "" {
 		return nil, fmt.Errorf("OPEN_EXCHANGE_RATES_TOKEN is not set")
 	}
@@ -106,9 +106,9 @@ func (l *Loader) Load(ctx context.Context, date time.Time, base string, symbols 
 	published := time.Unix(data.Timestamp, 0).UTC()
 	pubDate := time.Date(published.Year(), published.Month(), published.Day(), 0, 0, 0, 0, time.UTC)
 
-	out := make([]appcurrency.RateInput, 0, len(data.Rates))
+	out := make([]model.RateInput, 0, len(data.Rates))
 	for code, rate := range data.Rates {
-		out = append(out, appcurrency.RateInput{
+		out = append(out, model.RateInput{
 			Code: code,
 			Base: data.Base,
 			// NUMERIC(19,8): fixed 8 fractional digits, matching the rate column

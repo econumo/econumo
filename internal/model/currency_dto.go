@@ -1,9 +1,7 @@
-// Package currency is the currency aggregate's application layer. Both currency
-// endpoints (get-currency-list, get-currency-rate-list) are pure reads; the
-// write side (admin.go) exists only for the CLI commands.
-//
-// JSON field names are frozen to the existing API wire contract; see CLAUDE.md.
-package currency
+// Result DTOs for the currency read endpoints (get-currency-list,
+// get-currency-rate-list). JSON field names are frozen to the existing API
+// wire contract; see CLAUDE.md.
+package model
 
 // CurrencyResult is one currency in the API. name is the English display name
 // resolved from the Intl table (the stored currencies.name is NULL in practice);

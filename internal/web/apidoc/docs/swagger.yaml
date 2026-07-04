@@ -1010,7 +1010,12 @@ definitions:
       name:
         type: string
     type: object
-  currency.CurrencyRateResult:
+  model.CompleteOnboardingResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.CurrencyRateResult:
     properties:
       baseCurrencyId:
         type: string
@@ -1021,7 +1026,7 @@ definitions:
       updatedAt:
         type: string
     type: object
-  currency.CurrencyResult:
+  model.CurrencyResult:
     properties:
       code:
         type: string
@@ -1033,25 +1038,6 @@ definitions:
         type: string
       symbol:
         type: string
-    type: object
-  currency.GetCurrencyListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/currency.CurrencyResult'
-        type: array
-    type: object
-  currency.GetCurrencyRateListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/currency.CurrencyRateResult'
-        type: array
-    type: object
-  model.CompleteOnboardingResult:
-    properties:
-      user:
-        $ref: '#/definitions/model.CurrentUserResult'
     type: object
   model.CurrentUserResult:
     properties:
@@ -1071,6 +1057,20 @@ definitions:
         type: array
       reportPeriod:
         type: string
+    type: object
+  model.GetCurrencyListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CurrencyResult'
+        type: array
+    type: object
+  model.GetCurrencyRateListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CurrencyRateResult'
+        type: array
     type: object
   model.GetOptionListResult:
     properties:
@@ -3262,7 +3262,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/currency.GetCurrencyListResult'
+                  $ref: '#/definitions/model.GetCurrencyListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3291,7 +3291,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/currency.GetCurrencyRateListResult'
+                  $ref: '#/definitions/model.GetCurrencyRateListResult'
               type: object
         "401":
           description: Unauthorized
