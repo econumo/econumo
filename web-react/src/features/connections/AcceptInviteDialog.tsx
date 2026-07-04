@@ -57,7 +57,7 @@ export function AcceptInviteDialog({ open, pending, error, onSubmit, onClose }: 
             </p>
           ) : null}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

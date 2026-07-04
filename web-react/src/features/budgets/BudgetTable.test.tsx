@@ -45,7 +45,7 @@ it('shows -spent and available+budgeted with sign colors', async () => {
   const food = await screen.findByTestId('element-cat-food')
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent('45.50'))
   expect(within(food).getByTestId('cell-available')).toHaveTextContent('354.50')
-  expect(within(food).getByTestId('cell-available').className).toContain('text-green-600')
+  expect(within(food).getByTestId('cell-available').className).toContain('text-income')
 })
 
 it('fold toggle expands children and persists in the store', async () => {

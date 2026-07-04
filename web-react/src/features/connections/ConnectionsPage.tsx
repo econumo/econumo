@@ -58,9 +58,9 @@ export function ConnectionsPage() {
       {connections.length === 0 ? (
         <p className="px-1 py-2 text-sm text-muted-foreground">{t('blocks.list.list_empty')}</p>
       ) : (
-        <ul className="flex flex-col">
+        <ul className="flex max-w-md flex-col gap-2">
           {connections.map((connection) => (
-            <li key={connection.user.id} className="flex items-center gap-3 rounded-md px-1 py-2">
+            <li key={connection.user.id} className="flex items-center gap-3 rounded-lg bg-econumo-card px-3 py-2 hover:bg-econumo-hover">
               <button
                 type="button"
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"

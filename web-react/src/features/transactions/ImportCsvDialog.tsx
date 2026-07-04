@@ -337,7 +337,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
           <Progress value={(progress.done / progress.total) * 100} aria-label="import progress" />
         ) : null}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" disabled={submitting} onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

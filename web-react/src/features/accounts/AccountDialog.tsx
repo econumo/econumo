@@ -122,6 +122,7 @@ export function AccountDialog() {
   return (
     <ResponsiveDialog
       open
+      caps
       onOpenChange={(o) => !o && close()}
       title={isNew ? t('modals.account.create_form.header') : t('modals.account.update_form.header')}
     >
@@ -180,7 +181,7 @@ export function AccountDialog() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" onClick={close}>
             {t('elements.button.cancel.label')}
           </Button>

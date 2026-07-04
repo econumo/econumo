@@ -66,8 +66,14 @@ export function ClassificationList<T extends ClassificationItem>({
       actions={
         <>
           {items.length > 1 ? (
-            <Button type="button" variant="secondary" size="sm" onClick={() => setSortOpen(true)}>
-              <ArrowDownUp className="size-4" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="normal-case tracking-normal text-muted-foreground"
+              onClick={() => setSortOpen(true)}
+            >
+              <ArrowDownUp className="size-4 text-econumo-purple" />
               <span className="hidden sm:inline">{t('blocks.list.order_list')}</span>
             </Button>
           ) : null}

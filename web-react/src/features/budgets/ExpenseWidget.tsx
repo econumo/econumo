@@ -31,7 +31,7 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
         <span className="text-xs font-normal text-muted-foreground">{period}</span>
       </header>
       <div className="flex items-baseline justify-between text-sm">
-        <span className="text-red-600">{moneyFormat(math.spent, currency)}</span>
+        <span className="text-expense">{moneyFormat(math.spent, currency)}</span>
         <span className="text-muted-foreground">{moneyFormat(math.total, currency)}</span>
       </div>
       <Progress

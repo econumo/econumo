@@ -51,7 +51,7 @@ export function PromptDialog({ open, onClose, onSubmit, title, inputLabel, initi
           <Input id="prompt-input" autoFocus maxLength={64} value={value} onChange={(e) => setValue(e.target.value)} />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
             {cancelLabel}
           </Button>

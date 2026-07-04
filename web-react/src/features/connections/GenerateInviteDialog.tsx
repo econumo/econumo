@@ -15,7 +15,7 @@ export function GenerateInviteDialog({ open, code, onClose }: { open: boolean; c
         <p className="py-3 text-center font-mono text-3xl tracking-widest" data-testid="invite-code">
           {code}
         </p>
-        <Button type="button" className="w-full" onClick={onClose}>
+        <Button type="button" variant="ghost" className="w-full text-econumo-magenta hover:text-econumo-magenta-dark" onClick={onClose}>
           {t('elements.button.ok.label')}
         </Button>
       </div>

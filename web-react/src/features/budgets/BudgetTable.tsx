@@ -93,7 +93,7 @@ function ElementRow({
           {moneyFormat(displaySpent(element.spent), currency, opts)}
         </span>
         <span
-          className={`w-24 text-right text-sm tabular-nums ${available >= 0 ? 'text-green-600' : 'text-red-600'}`}
+          className={`w-24 text-right text-sm tabular-nums ${available >= 0 ? 'text-income' : 'text-expense'}`}
           data-testid="cell-available"
         >
           {moneyFormat(available, currency, opts)}
@@ -183,7 +183,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
         <span className="w-24 text-right text-sm tabular-nums text-muted-foreground">
           {moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}
         </span>
-        <span className={`w-24 text-right text-sm tabular-nums ${totals.available >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        <span className={`w-24 text-right text-sm tabular-nums ${totals.available >= 0 ? 'text-income' : 'text-expense'}`}>
           {moneyFormat(totals.available, budgetCurrency, opts)}
         </span>
         <span className="w-6 text-right text-xs text-muted-foreground">{budgetCurrency?.symbol}</span>

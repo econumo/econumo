@@ -79,7 +79,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
           </div>
         ))}
       </dl>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <div className="mt-4 grid grid-cols-2 gap-3">
         <Button type="button" variant="secondary" onClick={onClose}>
           {t('elements.button.cancel.label')}
         </Button>

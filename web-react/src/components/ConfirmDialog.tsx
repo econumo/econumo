@@ -14,11 +14,12 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({ open, onClose, onConfirm, title, question, confirmLabel, cancelLabel }: ConfirmDialogProps) {
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title ?? question} description={title ? question : undefined}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+      {/* Vue pairs full-width grey + magenta actions, even for deletions */}
+      <div className="grid grid-cols-2 gap-3">
         <Button type="button" variant="secondary" onClick={onClose}>
           {cancelLabel}
         </Button>
-        <Button type="button" variant="destructive" onClick={onConfirm}>
+        <Button type="button" onClick={onConfirm}>
           {confirmLabel}
         </Button>
       </div>

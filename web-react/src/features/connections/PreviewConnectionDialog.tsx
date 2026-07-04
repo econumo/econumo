@@ -107,7 +107,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
         <div className="flex flex-col gap-4">
           {section('budgets', sharedBudgets)}
           {section('accounts', sharedAccounts)}
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className="grid grid-cols-2 gap-3">
             <Button type="button" variant="destructive" onClick={() => onDelete(other.id)}>
               {t('elements.button.delete.label')}
             </Button>

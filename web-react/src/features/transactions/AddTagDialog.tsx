@@ -46,7 +46,7 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
           <Input id="new-tag-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

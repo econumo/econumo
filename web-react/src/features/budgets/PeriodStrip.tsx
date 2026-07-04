@@ -22,8 +22,12 @@ export function PeriodStrip({ startedAt }: { startedAt: string | null }) {
           type="button"
           role="tab"
           aria-selected={item.isActive}
-          className={`shrink-0 rounded-full px-3 py-1 text-sm ${
-            item.isActive ? 'bg-primary text-primary-foreground' : item.outsideBudget ? 'text-muted-foreground/50' : 'text-muted-foreground hover:bg-accent'
+          className={`shrink-0 px-2.5 py-1 text-sm uppercase tracking-wide ${
+            item.isActive
+              ? 'font-bold text-foreground'
+              : item.outsideBudget
+                ? 'text-[#E6E6E6] hover:text-muted-foreground'
+                : 'text-[#999999] hover:text-foreground'
           }`}
           onClick={() => setPeriod(item.value)}
         >

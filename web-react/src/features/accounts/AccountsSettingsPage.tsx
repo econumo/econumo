@@ -64,23 +64,27 @@ function AccountRow({
       </button>
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
         onClick={() => (isCompact ? onMenu('view') : undefined)}
       >
-        <EntityIcon name={account.icon} className="text-base text-muted-foreground" />
-        <span className="truncate text-sm" title={account.name}>
-          {account.name}
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-econumo-card">
+          <EntityIcon name={account.icon} className="text-lg text-[#666666]" />
+        </span>
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate text-sm leading-tight" title={account.name}>
+            {account.name}
+          </span>
+          <span className="text-[13px] leading-tight text-muted-foreground">{moneyFormat(account.balance, account.currency)}</span>
         </span>
       </button>
       {account.sharedAccess.length > 0 ? (
-        <span className="flex items-center gap-0.5" data-testid={`shared-avatars-${account.name}`}>
-          <img src={`${account.owner.avatar}?s=30`} alt={account.owner.name} className="size-4 rounded-full" />
+        <span className="flex items-center -space-x-2" data-testid={`shared-avatars-${account.name}`}>
+          <img src={`${account.owner.avatar}?s=50`} alt={account.owner.name} className="size-7 rounded-full ring-2 ring-background" />
           {account.sharedAccess.map((entry) => (
-            <img key={entry.user.id} src={`${entry.user.avatar}?s=30`} alt={entry.user.name} className="size-4 rounded-full" />
+            <img key={entry.user.id} src={`${entry.user.avatar}?s=50`} alt={entry.user.name} className="size-7 rounded-full ring-2 ring-background" />
           ))}
         </span>
       ) : null}
-      <span className="text-xs text-muted-foreground">{moneyFormat(account.balance, account.currency)}</span>
       {!isCompact ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -443,7 +447,7 @@ export function AccountsSettingsPage() {
               </span>
             </span>
           </div>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className="mt-4 grid grid-cols-2 gap-3">
             <Button
               type="button"
               variant="destructive"
