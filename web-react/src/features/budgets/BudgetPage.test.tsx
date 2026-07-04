@@ -126,14 +126,14 @@ it('empty state: no default budget shows create-budget when accounts+categories 
   renderPage()
   expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
   expect(screen.getByText('You haven’t created a budget yet.')).toBeInTheDocument()
-  expect(await screen.findByRole('button', { name: 'Create a budget' })).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create a budget' })).toBeInTheDocument())
 })
 
 it('empty state: no accounts shows the initial-setup prompt', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderPage()
   expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
-  expect(await screen.findByRole('button', { name: 'Create an account' })).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create an account' })).toBeInTheDocument())
 })
 
 it('/ renders the budget for an onboarded user with a default budget', async () => {
