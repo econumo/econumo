@@ -66,7 +66,7 @@ it('success posts only old/new, clears the form and shows the success dialog', a
   await user.click(screen.getByRole('button', { name: 'Change password' }))
   await waitFor(() => expect(body).toEqual({ oldPassword: 'oldpass1', newPassword: 'newpass1' }))
   expect(await screen.findByText('You have successfully changed your password.')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Close' }))
+  await user.click(screen.getAllByRole('button', { name: 'Close' })[0])
   expect(screen.getByLabelText('Current password')).toHaveValue('')
 })
 
