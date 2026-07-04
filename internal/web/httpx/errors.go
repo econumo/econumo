@@ -39,9 +39,16 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 		Err(w, v.Error(), 0, nil, http.StatusBadRequest)
 		return
 	}
-	// Unhandled: 500 exception envelope. We pass the Go type name as
-	// exceptionType for debugging; stackTrace only in dev.
-	Exception(w, err.Error(), typeName(err), nil, dev)
+	// Unhandled: 500 exception envelope. The real error was already captured to
+	// the access log via recordError above, so the client receives a generic
+	// message — internal detail (DB driver/constraint text, parse internals)
+	// must not leak in production. dev surfaces the real error for local use,
+	// matching the static-message discipline of the panic recovery path.
+	msg := "Internal Server Error"
+	if dev {
+		msg = err.Error()
+	}
+	Exception(w, msg, typeName(err), nil, dev)
 }
 
 // fieldsToMap converts the flat field-error list into the wire map shape

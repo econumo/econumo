@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -64,6 +65,43 @@ func TestWriteError_ValidationEnvelope(t *testing.T) {
 		t.Errorf("errors[accountId] = %v, want [%q]", got, "This value is not a valid UUID.")
 	}
 }
+
+// TestWriteError_500SuppressesRawErrorInProd locks the security property that
+// an unhandled error's raw text (which can carry DB driver / constraint /
+// internal detail) never reaches the client in production, only under dev.
+func TestWriteError_500SuppressesRawErrorInProd(t *testing.T) {
+	secret := errPlainMsg("UNIQUE constraint failed: users.identifier")
+
+	rec := httptest.NewRecorder()
+	WriteError(rec, secret, false) // production
+	var prod struct {
+		Message string `json:"message"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &prod)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d want 500", rec.Code)
+	}
+	if prod.Message != "Internal Server Error" {
+		t.Fatalf("prod message=%q must be the static message, not the raw error", prod.Message)
+	}
+	if strings.Contains(rec.Body.String(), "users.identifier") {
+		t.Fatalf("prod 500 body leaked internal error text: %s", rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	WriteError(rec, secret, true) // dev
+	var dev struct {
+		Message string `json:"message"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &dev)
+	if dev.Message != string(secret) {
+		t.Fatalf("dev message=%q want the raw error", dev.Message)
+	}
+}
+
+type errPlainMsg string
+
+func (e errPlainMsg) Error() string { return string(e) }
 
 // TestWriteError_AccessDenied maps to HTTP 403.
 func TestWriteError_AccessDenied(t *testing.T) {

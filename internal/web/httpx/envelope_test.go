@@ -157,7 +157,7 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 		{"access denied", errs.NewAccessDenied("nope"), http.StatusForbidden, "nope"},
 		{"unauthorized", errs.NewUnauthorized("no token"), http.StatusUnauthorized, "no token"},
 		{"not found", errs.NewNotFound("Plan not found"), http.StatusBadRequest, "Plan not found"},
-		{"unknown", errPlain("kaboom"), http.StatusInternalServerError, "kaboom"},
+		{"unknown", errPlain("kaboom"), http.StatusInternalServerError, "Internal Server Error"}, // raw error suppressed in prod (dev=false)
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

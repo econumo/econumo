@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -128,8 +129,13 @@ func TestHandle_ServiceErrorGoesThroughWriteError(t *testing.T) {
 	if env["success"] != false {
 		t.Fatalf("success = %v, want false; body: %s", env["success"], rec.Body.String())
 	}
-	if env["message"] != wantErr.Error() {
-		t.Fatalf("message = %v, want %q; body: %s", env["message"], wantErr.Error(), rec.Body.String())
+	// dev=false: the unmapped error goes through the exception envelope with a
+	// generic message; the raw error text must not leak to the client.
+	if env["message"] != "Internal Server Error" {
+		t.Fatalf("message = %v, want generic; body: %s", env["message"], rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), wantErr.Error()) {
+		t.Fatalf("prod 500 body leaked raw error %q: %s", wantErr.Error(), rec.Body.String())
 	}
 }
 

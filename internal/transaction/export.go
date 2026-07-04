@@ -230,11 +230,21 @@ func formatAmountForDescription(amount string) string {
 	return strings.TrimPrefix(vo.NewDecimal(amount).String(), "-")
 }
 
-// sanitizeExportValue collapses CR/LF runs to a single space and trims.
+// sanitizeExportValue collapses CR/LF runs to a single space, trims, and
+// defuses spreadsheet formula injection: a cell a spreadsheet would evaluate as
+// a formula (leading =, +, -, or @) is prefixed with a single quote so it
+// renders as literal text. These cells are free-text user fields (account,
+// category, tag, payee names; transaction descriptions) that can carry another
+// user's input via a shared account, so an unprefixed "=HYPERLINK(...)" would
+// execute in the exporting user's spreadsheet.
 func sanitizeExportValue(value string) string {
 	if value == "" {
 		return ""
 	}
 	value = crlfRun.ReplaceAllString(value, " ")
-	return strings.TrimSpace(value)
+	value = strings.TrimSpace(value)
+	if value != "" && strings.IndexByte("=+-@", value[0]) >= 0 {
+		value = "'" + value
+	}
+	return value
 }
