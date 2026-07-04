@@ -16,7 +16,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource/roboto": "^5.2.10",
     "@shadcn/react": "^0.2.0",
     "@tailwindcss/vite": "^4.3.2",
     "@tanstack/react-query": "^5.101.2",

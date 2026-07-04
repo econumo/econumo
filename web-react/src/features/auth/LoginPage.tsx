@@ -151,7 +151,7 @@ export function LoginPage() {
           </div>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={login.isPending}>
+        <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85" disabled={login.isPending}>
           {t('modules.user.form.sign_in.action.sign_in')}
         </Button>
         <Button type="button" variant="secondary" className="w-full" onClick={() => setRecoveryOpen(true)}>

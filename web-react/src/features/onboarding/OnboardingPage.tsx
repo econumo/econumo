@@ -40,7 +40,7 @@ function Step({
     <li data-testid={`step-${id}`} data-done={done} className="flex gap-3">
       <div className="flex flex-col items-center">
         <span
-          className={`flex size-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+          className={`flex size-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-econumo-purple bg-econumo-purple text-white' : 'text-muted-foreground'}`}
         >
           {avatar ? (
             <img src={avatar} alt="" className="size-8 rounded-full" />
@@ -50,14 +50,19 @@ function Step({
             (idleIcon ?? <ChevronRight className="size-4" />)
           )}
         </span>
-        <span className="w-px flex-1 bg-border" />
+        <span className="w-px flex-1 bg-econumo-magenta-light" />
       </div>
       <div className="flex flex-col gap-1 pb-8">
-        <h2 className="text-base font-semibold">{title}</h2>
-        <a href={guideHref} target="_blank" rel="noreferrer" className="text-xs text-primary underline">
+        <a
+          href={guideHref}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs font-medium uppercase tracking-wide text-econumo-purple underline underline-offset-2"
+        >
           {guideText}
         </a>
-        <div className="text-sm text-muted-foreground">{children}</div>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <div className="text-sm text-foreground/80">{children}</div>
       </div>
     </li>
   )
@@ -90,7 +95,7 @@ export function OnboardingPage() {
   const isBudgetCreated = budgets.length > 0
 
   const settingsLink = (to: string, label: string) => (
-    <Link to={to} className="font-medium text-foreground hover:underline">
+    <Link to={to} className="text-econumo-purple underline underline-offset-2">
       {label}
     </Link>
   )
@@ -106,14 +111,15 @@ export function OnboardingPage() {
           <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
             <ChevronLeft className="size-5" />
           </Button>
-          <h1 className="flex-1 truncate text-lg font-semibold">{t('modules.user.pages.onboarding.header')}</h1>
+          <h1 className="flex-1 truncate text-center text-lg uppercase">{t('modules.user.pages.onboarding.header')}</h1>
+          <span className="min-w-9" />
         </header>
       ) : (
-        <h1 className="text-xl font-semibold">{t('modules.user.pages.onboarding.header')}</h1>
+        <h1 className="border-b pb-2 text-[22px] uppercase tracking-wide">{t('modules.user.pages.onboarding.header')}</h1>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <h2 className="pb-4 text-2xl font-semibold">{t('modules.user.pages.onboarding.title')}</h2>
+        <h2 className="pb-5 text-[32px] font-normal">{t('modules.user.pages.onboarding.title')}</h2>
         <ul className="flex flex-col">
           <Step
             id="accounts"
@@ -131,7 +137,7 @@ export function OnboardingPage() {
             <Button
               type="button"
               size="sm"
-              className="mt-2"
+              className="mt-2 bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85"
               onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}
             >
               {t('modules.user.pages.onboarding.add_account')}
@@ -152,7 +158,12 @@ export function OnboardingPage() {
               You can create categories, tags, and payees directly from the transaction modal by entering their names and pressing
               Enter.
             </p>
-            <Button type="button" size="sm" className="mt-2" onClick={() => setImportOpen(true)}>
+            <Button
+              type="button"
+              size="sm"
+              className="mt-2 bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85"
+              onClick={() => setImportOpen(true)}
+            >
               {t('modules.user.pages.onboarding.import_transactions')}
             </Button>
           </Step>
@@ -184,11 +195,11 @@ export function OnboardingPage() {
           >
             <p>
               Econumo pulls your avatar from{' '}
-              <a href="https://gravatar.com" target="_blank" rel="nofollow noreferrer" className="font-medium text-foreground hover:underline">
+              <a href="https://gravatar.com" target="_blank" rel="nofollow noreferrer" className="text-econumo-purple underline underline-offset-2">
                 Gravatar
               </a>
               , linked to your email address. To change your avatar, please visit{' '}
-              <a href="https://gravatar.com" target="_blank" rel="nofollow noreferrer" className="font-medium text-foreground hover:underline">
+              <a href="https://gravatar.com" target="_blank" rel="nofollow noreferrer" className="text-econumo-purple underline underline-offset-2">
                 Gravatar
               </a>
               .
@@ -223,14 +234,7 @@ export function OnboardingPage() {
               {settingsLink(RouterPage.SETTINGS_BUDGETS, t('modules.budget.page.settings.menu_item'))} page to manage your budgets,
               shared access, and more.
             </p>
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              className="mt-2"
-              disabled={completeOnboarding.isPending}
-              onClick={handleComplete}
-            >
+            <Button type="button" size="sm" className="mt-2" disabled={completeOnboarding.isPending} onClick={handleComplete}>
               {t('modules.user.pages.onboarding.complete')}
             </Button>
           </Step>

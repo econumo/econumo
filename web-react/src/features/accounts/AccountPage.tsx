@@ -60,60 +60,115 @@ export function AccountPage() {
     openTransactionModal({ transaction: tx })
   }
 
+  const sharedAvatars =
+    account.sharedAccess.length > 0 ? (
+      <span className="flex items-center gap-0.5">
+        <img src={`${account.owner.avatar}?s=30`} alt={account.owner.name} className="size-5 rounded-full" />
+        {account.sharedAccess.map((access) => (
+          <img key={access.user.id} src={`${access.user.avatar}?s=30`} alt={access.user.name} className="size-5 rounded-full" />
+        ))}
+      </span>
+    ) : null
+
   return (
     <div className="flex h-full flex-col gap-3 p-4">
-      <header className="flex items-center gap-3">
-        {isCompact ? (
-          <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
-            <ChevronLeft className="size-5" />
-          </Button>
-        ) : null}
-        <EntityIcon name={account.icon} className="text-2xl text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold" title={account.name}>
-            {account.name}
-          </h1>
-          <p className="text-sm text-muted-foreground" data-testid="account-balance">
-            {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
-          </p>
-        </div>
-        {account.sharedAccess.length > 0 ? (
-          <span className="flex items-center gap-0.5">
-            <img src={`${account.owner.avatar}?s=30`} alt={account.owner.name} className="size-5 rounded-full" />
-            {account.sharedAccess.map((access) => (
-              <img key={access.user.id} src={`${access.user.avatar}?s=30`} alt={access.user.name} className="size-5 rounded-full" />
-            ))}
-          </span>
-        ) : null}
-        {canUpdateSettings ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={t('pages.account.toolbar.settings')}
-            onClick={() => openAccountModal({ account })}
-          >
-            <Settings2 className="size-5" />
-          </Button>
-        ) : null}
-        {canChangeTransaction ? (
-          <Button
-            type="button"
-            aria-label={t('pages.account.transaction_list.action.add_transaction')}
-            onClick={() => openTransactionModal({ type: 'expense' })}
-          >
-            <Plus className="size-4" />
-            <span className="hidden sm:inline">{t('pages.account.transaction_list.action.add_transaction')}</span>
-          </Button>
-        ) : null}
-      </header>
-
-      <Input
-        aria-label={t('pages.account.toolbar.search')}
-        placeholder={t('pages.account.toolbar.search')}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      {isCompact ? (
+        <>
+          <header className="flex items-center gap-3">
+            <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
+              <ChevronLeft className="size-5" />
+            </Button>
+            <EntityIcon name={account.icon} className="text-2xl text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-lg uppercase" title={account.name}>
+                {account.name}
+              </h1>
+              <p className="text-sm text-muted-foreground" data-testid="account-balance">
+                {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
+              </p>
+            </div>
+            {sharedAvatars}
+            {canUpdateSettings ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t('pages.account.toolbar.settings')}
+                onClick={() => openAccountModal({ account })}
+              >
+                <Settings2 className="size-5" />
+              </Button>
+            ) : null}
+            {canChangeTransaction ? (
+              <Button
+                type="button"
+                size="icon"
+                aria-label={t('pages.account.transaction_list.action.add_transaction')}
+                onClick={() => openTransactionModal({ type: 'expense' })}
+              >
+                <Plus className="size-4" />
+              </Button>
+            ) : null}
+          </header>
+          <Input
+            aria-label={t('pages.account.toolbar.search')}
+            placeholder={t('pages.account.toolbar.search')}
+            className="border-0 bg-econumo-card shadow-none"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </>
+      ) : (
+        <>
+          {/* Vue workspace header: uppercase name + icon, bold balance, hairline */}
+          <header className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <h1 className="truncate text-[22px] uppercase tracking-wide" title={account.name}>
+                {account.name}
+              </h1>
+              <span className="grid size-8 place-items-center rounded-lg bg-econumo-card">
+                <EntityIcon name={account.icon} className="text-lg text-[#666666]" />
+              </span>
+              {sharedAvatars}
+            </div>
+            <div className="flex items-end justify-between gap-3 border-b pb-2">
+              <p className="text-[15px] font-medium" data-testid="account-balance">
+                {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
+              </p>
+              {canUpdateSettings ? (
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground normal-case hover:text-foreground"
+                  aria-label={t('pages.account.toolbar.settings')}
+                  onClick={() => openAccountModal({ account })}
+                >
+                  {t('pages.account.toolbar.settings')}
+                </button>
+              ) : null}
+            </div>
+          </header>
+          <div className="flex items-center justify-between gap-3">
+            {canChangeTransaction ? (
+              <Button
+                type="button"
+                aria-label={t('pages.account.transaction_list.action.add_transaction')}
+                onClick={() => openTransactionModal({ type: 'expense' })}
+              >
+                {t('pages.account.transaction_list.action.add_transaction')}
+              </Button>
+            ) : (
+              <span />
+            )}
+            <Input
+              aria-label={t('pages.account.toolbar.search')}
+              placeholder={t('pages.account.toolbar.search')}
+              className="w-60 border-0 bg-econumo-card shadow-none"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {entries.map((entry) =>

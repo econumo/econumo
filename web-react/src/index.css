@@ -1,7 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource/roboto/300.css";
+@import "@fontsource/roboto/400.css";
+@import "@fontsource/roboto/500.css";
+@import "@fontsource/roboto/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -35,7 +38,18 @@
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    /* econumo brand palette (web/src/css/quasar.variables.scss — frozen brand) */
+    --color-econumo-yellow: #FFC71F;
+    --color-econumo-yellow-text: #765910;
+    --color-econumo-magenta: #BD51CF;
+    --color-econumo-magenta-dark: #93489F;
+    --color-econumo-magenta-light: #F4CFFF;
+    --color-econumo-purple: #9C27B0;
+    --color-econumo-card: #F5F5F5;
+    --color-econumo-hover: #EBEBEB;
+    --color-income: #4E8F26;
+    --color-expense: #D34949;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -78,23 +92,23 @@
 
 :root {
     --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --foreground: #333333;
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: #333333;
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --popover-foreground: #333333;
+    --primary: #BD51CF;
+    --primary-foreground: oklch(1 0 0);
+    --secondary: #F5F5F5;
+    --secondary-foreground: #333333;
+    --muted: #F5F5F5;
+    --muted-foreground: #808080;
+    --accent: #F5F5F5;
+    --accent-foreground: #333333;
+    --destructive: #D34949;
+    --border: #E6E6E6;
+    --input: #E6E6E6;
+    --ring: #D988F3;
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -155,4 +169,11 @@
   html {
     @apply font-sans;
     }
+}
+
+/* Quasar parity: action buttons speak uppercase. Value-bearing triggers
+   (selects, comboboxes, menus showing data) keep their own casing. */
+[data-slot="button"]:not([aria-haspopup]):not([role="combobox"]) {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }

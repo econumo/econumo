@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
@@ -44,6 +45,14 @@ export function ApplicationLayout() {
   const isFullyLoaded = useIsFullyLoaded()
   const { data: user } = useUserData()
 
+  // The blocking loader belongs to the FIRST boot only; once data has been on
+  // screen, refetches and cache churn must never re-cover the app (Vue parity).
+  const hasLoadedOnce = useRef(false)
+  if (isFullyLoaded) {
+    hasLoadedOnce.current = true
+  }
+  const showBootLoader = !isFullyLoaded && !hasLoadedOnce.current
+
   const showSidebar = !isCompact || location.pathname === '/'
   const showWorkspace = !isCompact || location.pathname !== '/'
   const websiteUrl = getWebsiteUrl()
@@ -66,15 +75,15 @@ export function ApplicationLayout() {
             </Link>
           ) : null}
 
-          {isFullyLoaded ? (
+          {isFullyLoaded || hasLoadedOnce.current ? (
             <div className="flex-1 overflow-y-auto">
-              <div className="flex flex-col gap-1 px-3 py-2">
+              <div className="flex flex-col px-3 py-1">
                 {!isOnboardingCompleted(user) ? (
-                  <Link to={RouterPage.ONBOARDING} className="rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent">
+                  <Link to={RouterPage.ONBOARDING} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
                     {t('blocks.main.onboarding')}
                   </Link>
                 ) : null}
-                <Link to={RouterPage.BUDGET} className="rounded-md px-2 py-1.5 text-sm font-medium hover:bg-accent">
+                <Link to={RouterPage.BUDGET} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
                   {t('blocks.main.budget')}
                 </Link>
               </div>
@@ -120,7 +129,7 @@ export function ApplicationLayout() {
       <AccountDialog />
       <TransactionDialog />
       <SwitchAccountPrompt />
-      <LoadingDialog open={!isFullyLoaded} label={t('modules.app.modal.loading.data_loading')} />
+      <LoadingDialog open={showBootLoader} label={t('modules.app.modal.loading.data_loading')} />
     </div>
   )
 }

@@ -164,26 +164,13 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         void submit()
       }}
     >
-      <div className="flex rounded-md border p-0.5" role="radiogroup" aria-label="type">
-        {TYPE_ORDER.map((type) => (
-          <button
-            key={type}
-            type="button"
-            role="radio"
-            aria-checked={form.type === type}
-            className={`flex-1 rounded px-2 py-1.5 text-sm ${form.type === type ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
-            onClick={() => setType(type)}
-          >
-            {t(`modals.transaction.transaction_type.${type}`)}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-2">
+      {/* Vue header row: back-a-day arrow + date chip, right-aligned */}
+      <div className="-mt-9 flex items-center justify-end gap-1">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
+          className="size-7"
           aria-label="previous day"
           onClick={() => {
             const d = parseDateTime(form.date)
@@ -195,11 +182,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </Button>
         <Popover>
           <PopoverTrigger asChild>
-            <Button type="button" variant="outline" className="flex-1 justify-start font-normal" aria-label="date">
+            <Button type="button" variant="secondary" className="h-7 rounded bg-econumo-card px-2 text-xs font-normal" aria-label="date">
               {dateOnly}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-auto p-0" align="end">
             <Calendar
               mode="single"
               weekStartsOn={1}
@@ -214,21 +201,42 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </Popover>
       </div>
 
-      {!isTransfer ? (
-        <div className="flex flex-col gap-2">
-          <EntitySelect
-            aria-label="account"
-            value={form.accountId}
-            onChange={(id) => patch({ accountId: id })}
-            options={selectableAccounts.map(accountToOption)}
-          />
-        </div>
-      ) : null}
+      <div className="flex rounded-lg bg-econumo-card p-1" role="radiogroup" aria-label="type">
+        {TYPE_ORDER.map((type) => (
+          <button
+            key={type}
+            type="button"
+            role="radio"
+            aria-checked={form.type === type}
+            className={`flex-1 rounded-md px-2 py-2 text-[13px] uppercase tracking-wide transition-colors ${
+              form.type === type ? 'bg-econumo-magenta text-white' : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setType(type)}
+          >
+            {t(`modals.transaction.transaction_type.${type}`)}
+          </button>
+        ))}
+      </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="tx-amount">{t('modals.transaction.form.amount.label')}</Label>
-        <CalculatorInput id="tx-amount" autoFocus value={form.amount} onChange={setAmount} />
-        {errors.amount ? <p className="text-sm text-destructive">{errors.amount}</p> : null}
+      {/* Vue fuses the account and the oversized amount into one gray card */}
+      <div className="flex flex-col rounded-lg bg-econumo-card px-3 py-2">
+        {!isTransfer ? (
+          <div className="[&_button]:h-auto [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-0 [&_button]:py-1 [&_button]:shadow-none">
+            <EntitySelect
+              aria-label="account"
+              value={form.accountId}
+              onChange={(id) => patch({ accountId: id })}
+              options={selectableAccounts.map(accountToOption)}
+            />
+          </div>
+        ) : null}
+        <div className="[&_input]:h-12 [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:text-[28px] [&_input]:font-light [&_input]:shadow-none [&_input]:focus-visible:ring-0 [&_input]:placeholder:text-muted-foreground/50">
+          <Label htmlFor="tx-amount" className="sr-only">
+            {t('modals.transaction.form.amount.label')}
+          </Label>
+          <CalculatorInput id="tx-amount" autoFocus placeholder={t('modals.transaction.form.amount.label')} value={form.amount} onChange={setAmount} />
+        </div>
+        {errors.amount ? <p className="pb-1 text-sm text-destructive">{errors.amount}</p> : null}
       </div>
 
       {isTransfer ? (
@@ -343,24 +351,25 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </>
       )}
 
-      <details>
-        <summary className="cursor-pointer text-sm text-muted-foreground">{t('modals.transaction.form.options.header')}</summary>
-        <div className="mt-2 flex flex-col gap-2">
-          <Label htmlFor="tx-description">{t('modals.transaction.form.description.label')}</Label>
-          <Textarea
-            id="tx-description"
-            placeholder={t('modals.transaction.form.description.placeholder')}
-            value={form.description}
-            onChange={(e) => patch({ description: e.target.value })}
-          />
-        </div>
-      </details>
+      <div className="flex flex-col gap-2">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('modals.transaction.form.options.header')}</p>
+        <Label htmlFor="tx-description" className="sr-only">
+          {t('modals.transaction.form.description.label')}
+        </Label>
+        <Textarea
+          id="tx-description"
+          className="bg-econumo-card border-0 shadow-none"
+          placeholder={t('modals.transaction.form.description.placeholder')}
+          value={form.description}
+          onChange={(e) => patch({ description: e.target.value })}
+        />
+      </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Button type="button" variant="secondary" onClick={onDone}>
+      <div className="grid grid-cols-2 gap-3">
+        <Button type="button" size="lg" variant="secondary" onClick={onDone}>
           {t('elements.button.cancel.label')}
         </Button>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" size="lg" disabled={pending}>
           {form.isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
         </Button>
       </div>
@@ -396,6 +405,7 @@ export function TransactionDialog() {
   return (
     <ResponsiveDialog
       open
+      caps
       onOpenChange={(o) => !o && close()}
       title={params.transaction ? t('modals.transaction.update_form.header') : t('modals.transaction.create_form.header')}
       dismissible={false}

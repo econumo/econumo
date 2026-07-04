@@ -41,7 +41,9 @@ export function TransactionRow({ transaction: tx, pageAccount, onClick }: Transa
       className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-accent ${tx.isInFuture ? 'opacity-50' : ''}`}
       onClick={onClick}
     >
-      <EntityIcon name={icon} className="text-xl text-muted-foreground" />
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-econumo-card">
+        <EntityIcon name={icon} className="text-lg text-[#666666]" />
+      </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-sm">{title.text}</span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -53,7 +55,7 @@ export function TransactionRow({ transaction: tx, pageAccount, onClick }: Transa
       {pageAccount.sharedAccess.length > 0 && tx.author ? (
         <img src={`${tx.author.avatar}?s=30`} alt={tx.author.name} className="size-4 rounded-full" />
       ) : null}
-      <span className={`text-sm tabular-nums ${income ? 'text-green-600' : 'text-red-600'}`}>
+      <span className={`text-sm tabular-nums ${income ? 'text-income' : 'text-expense'}`}>
         {displayAmount(tx, pageAccount.id)}
         <span className="ml-1 text-muted-foreground">{pageAccount.currency.symbol}</span>
       </span>

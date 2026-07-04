@@ -189,7 +189,7 @@ export function RegistrationPage() {
           </div>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+        <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85" disabled={registerMutation.isPending}>
           {t('modules.user.form.sign_up.action.sign_up')}
         </Button>
 

@@ -10,10 +10,13 @@ interface ResponsiveDialogProps {
   description?: string
   children: ReactNode
   dismissible?: boolean
+  /** Quasar-parity headers (ADD TRANSACTION, …); confirmation questions stay sentence case */
+  caps?: boolean
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false }: ResponsiveDialogProps) {
   const isMobile = useIsMobile()
+  const titleClass = caps ? 'uppercase tracking-wide' : undefined
   const handleOpenChange = (next: boolean) => {
     if (!next && !dismissible) {
       return
@@ -25,10 +28,10 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
       <Drawer open={open} onOpenChange={handleOpenChange} dismissible={dismissible}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle>{title}</DrawerTitle>
+            <DrawerTitle className={titleClass}>{title}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
           </DrawerHeader>
-          <div className="px-4 pb-4">{children}</div>
+          <div className="overflow-y-auto px-4 pb-4">{children}</div>
         </DrawerContent>
       </Drawer>
     )
@@ -40,7 +43,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
         showCloseButton={dismissible}
       >
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className={titleClass}>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         {children}

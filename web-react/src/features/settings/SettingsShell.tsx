@@ -36,22 +36,25 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
           <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(backTo)}>
             <ChevronLeft className="size-5" />
           </Button>
-          <h1 className="flex-1 truncate text-lg font-semibold">{title}</h1>
-          {actions}
+          <h1 className="flex-1 truncate text-center text-lg">{title}</h1>
+          <div className="flex min-w-9 justify-end">{actions}</div>
         </header>
       ) : (
+        // Vue anatomy: breadcrumb chip, large light title, wide action button UNDER the title
         <header className="flex flex-col gap-1">
-          <nav className="flex gap-1 text-xs text-muted-foreground">
+          <nav className="flex gap-1">
             {(crumbs ?? [{ label: t('pages.settings.settings.header_desktop'), to: '/settings' }]).map((crumb) => (
-              <Link key={crumb.to} to={crumb.to} className="hover:text-foreground">
-                {crumb.label} /
+              <Link
+                key={crumb.to}
+                to={crumb.to}
+                className="rounded bg-econumo-card px-2 py-0.5 text-xs text-muted-foreground hover:bg-econumo-hover"
+              >
+                {crumb.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
-            <h1 className="flex-1 truncate text-xl font-semibold">{heading ?? title}</h1>
-            {actions}
-          </div>
+          <h1 className="truncate text-[26px] font-normal leading-snug">{heading ?? title}</h1>
+          {actions ? <div className="mt-2 flex items-center gap-2 [&_button]:min-w-44">{actions}</div> : null}
         </header>
       )}
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>

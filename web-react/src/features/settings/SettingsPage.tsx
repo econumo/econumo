@@ -21,9 +21,10 @@ import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 
+// Vue renders the hub as light-gray card rows in a narrow column
 function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string; onClick?: () => void; trailing?: React.ReactNode }) {
   const inner = (
-    <span className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2.5 text-sm hover:bg-accent">
+    <span className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover">
       <span>{label}</span>
       {trailing ?? <ChevronRight className="size-4 text-muted-foreground" />}
     </span>
@@ -72,52 +73,59 @@ export function SettingsPage() {
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {user ? (
-          <Link to={RouterPage.SETTINGS_PROFILE} className="flex items-center gap-3 rounded-md px-3 py-3 hover:bg-accent">
-            <img src={`${user.avatar}?s=50`} alt={user.name} className="size-10 rounded-full" />
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-medium">{user.name}</span>
-              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-            </span>
-          </Link>
-        ) : null}
-
-        <p className="px-3 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">{t('pages.settings.settings.groups.service')}</p>
-        <nav className="flex flex-col">
-          <MenuRow
-            label={t('pages.settings.sync.menu_item')}
-            onClick={() => void queryClient.invalidateQueries()}
-            trailing={
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                {lastSyncAt}
-                <RefreshCw className="size-4" />
+        <div className="flex max-w-md flex-col gap-2">
+          {user ? (
+            <Link
+              to={RouterPage.SETTINGS_PROFILE}
+              className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3 hover:bg-econumo-hover"
+            >
+              <img src={`${user.avatar}?s=50`} alt={user.name} className="size-10 rounded-full" />
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-medium">{user.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </span>
-            }
-          />
-          <MenuRow label={t('pages.settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
-          <MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
-          <MenuRow label={t('modules.connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
-          <MenuRow label={t('modules.budget.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
-          <MenuRow label={t('pages.settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
-          <MenuRow label={t('modules.classifications.categories.pages.settings.menu_item')} to={RouterPage.SETTINGS_CATEGORIES} />
-          <MenuRow label={t('modules.classifications.payees.pages.settings.menu_item')} to={RouterPage.SETTINGS_PAYEES} />
-          <MenuRow label={t('modules.classifications.tags.pages.settings.menu_item')} to={RouterPage.SETTINGS_TAGS} />
-          <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-            <span className="text-sm">{t('pages.settings.currency.menu_item')}</span>
-            <div className="w-40">
-              <CurrencySelect
-                aria-label={t('pages.settings.currency.menu_item')}
-                value={currentCurrencyId}
-                onChange={(id) => {
-                  const currency = currencies?.find((c) => c.id === id)
-                  if (currency) {
-                    updateCurrency.mutate({ currency: currency.code })
-                  }
-                }}
-              />
+            </Link>
+          ) : null}
+
+          <p className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t('pages.settings.settings.groups.service')}</p>
+          <nav className="flex flex-col gap-2">
+            <MenuRow
+              label={t('pages.settings.sync.menu_item')}
+              onClick={() => void queryClient.invalidateQueries()}
+              trailing={
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {lastSyncAt}
+                  <RefreshCw className="size-4" />
+                </span>
+              }
+            />
+            <MenuRow label={t('modules.connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
+            <MenuRow label={t('modules.budget.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
+            <MenuRow label={t('pages.settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
+            <MenuRow label={t('modules.classifications.categories.pages.settings.menu_item')} to={RouterPage.SETTINGS_CATEGORIES} />
+            <MenuRow label={t('modules.classifications.payees.pages.settings.menu_item')} to={RouterPage.SETTINGS_PAYEES} />
+            <MenuRow label={t('modules.classifications.tags.pages.settings.menu_item')} to={RouterPage.SETTINGS_TAGS} />
+            <MenuRow label={t('pages.settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
+            <MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-2">
+              <span className="flex flex-col">
+                <span className="text-[11px] text-muted-foreground">{t('pages.settings.currency.menu_item')}</span>
+              </span>
+              <div className="w-40">
+                <CurrencySelect
+                  aria-label={t('pages.settings.currency.menu_item')}
+                  value={currentCurrencyId}
+                  onChange={(id) => {
+                    const currency = currencies?.find((c) => c.id === id)
+                    if (currency) {
+                      updateCurrency.mutate({ currency: currency.code })
+                    }
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        </nav>
+          </nav>
+        </div>
 
         {getLocaleOptions().length > 1 ? (
           <>

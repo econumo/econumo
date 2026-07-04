@@ -339,7 +339,7 @@ export function BudgetPage() {
             <ChevronLeft className="size-5" />
           </Button>
         ) : null}
-        <h1 className="min-w-0 flex-1 truncate text-lg font-semibold" title={budget.meta.name}>
+        <h1 className="min-w-0 flex-1 truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
         <span className="flex items-center gap-1">
@@ -353,7 +353,7 @@ export function BudgetPage() {
                 aria-label={`currency ${currency?.code ?? currencyId}`}
                 aria-pressed={active}
                 title={currency?.name}
-                className={`flex size-7 items-center justify-center rounded-full border text-xs ${active ? 'border-primary bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                className={`flex size-7 items-center justify-center rounded-full border text-xs ${active ? 'border-econumo-magenta bg-econumo-magenta text-white' : 'text-muted-foreground hover:bg-accent'}`}
                 onClick={() => setSelectedCurrencyId(active ? null : currencyId)}
               >
                 {currency?.symbol ?? '?'}
@@ -369,7 +369,13 @@ export function BudgetPage() {
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="secondary" size="sm" aria-label={t('modules.budget.page.budget.settings.button')}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="uppercase tracking-wide text-muted-foreground"
+                aria-label={t('modules.budget.page.budget.settings.button')}
+              >
                 <Settings2 className="size-4" />
                 <span className="hidden sm:inline">{t('modules.budget.page.budget.settings.button')}</span>
               </Button>
