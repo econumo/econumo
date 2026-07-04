@@ -22,7 +22,7 @@ it('login posts username/password to login-user and unwraps data', async () => {
   server.use(
     http.post('*/api/v1/user/login-user', async ({ request }) => {
       body = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: { user, token: 'jwt-token' } })
+      return HttpResponse.json({ user, token: 'jwt-token' })
     }),
   )
   const result = await userApi.login('ada@example.test', 'secret')

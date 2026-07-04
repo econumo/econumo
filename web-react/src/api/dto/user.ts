@@ -32,13 +32,10 @@ export interface CurrentUserDto {
   reportPeriod: string
 }
 
+// The login-user response body itself — bare, not wrapped in the envelope.
 export interface UserLoginItemDto {
   user: CurrentUserDto
   token: string
-}
-
-export interface UserLoginResponseDto {
-  data: UserLoginItemDto
 }
 
 export interface CurrentUserResponseDto {

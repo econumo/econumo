@@ -29,8 +29,8 @@ it('logs in and stores the token', async () => {
   server.use(
     http.post('*/api/v1/user/login-user', () =>
       HttpResponse.json({
-        success: true, message: '',
-        data: { user: { id: 'u1', name: 'Ada', email: 'a@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' }, token: 'jwt' },
+        user: { id: 'u1', name: 'Ada', email: 'a@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' },
+        token: 'jwt',
       }),
     ),
   )

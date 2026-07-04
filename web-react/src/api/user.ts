@@ -1,10 +1,12 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CurrentUserDto, CurrentUserResponseDto, UserLoginItemDto, UserLoginResponseDto } from './dto/user'
+import type { CurrentUserDto, CurrentUserResponseDto, UserLoginItemDto } from './dto/user'
 
+// login-user is the one endpoint that responds with a bare {token, user}
+// body instead of the standard {success, message, data} envelope.
 export async function login(username: string, password: string): Promise<UserLoginItemDto> {
-  const response = await api.post<UserLoginResponseDto>(apiUrl('/api/v1/user/login-user'), { username, password })
-  return response.data.data
+  const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/user/login-user'), { username, password })
+  return response.data
 }
 
 export async function logout(): Promise<void> {
