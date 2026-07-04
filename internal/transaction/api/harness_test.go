@@ -119,7 +119,7 @@ func newHarness(t *testing.T) *harness {
 		txImportCategories, txImportPayees, txImportTags, txRepo,
 	)
 	svc := apptransaction.NewService(
-		txRepo, server.NewTransactionAccountResolver(accSvc),
+		txRepo, accSvc,
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		accSvc,
 		server.NewTransactionUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),

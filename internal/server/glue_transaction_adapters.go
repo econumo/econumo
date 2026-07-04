@@ -1,12 +1,21 @@
-// TransactionAccountResolver adapts the account service to
-// transaction.AccountResolver, TransactionCategoryNameLookup adapts the
-// category repository to the transaction export adapter's categoryNameLookup
-// port, TransactionTagNameLookup adapts the tag repository to its
-// tagNameLookup port, and TransactionPayeeNameLookup adapts the payee
-// repository to its payeeNameLookup port. All four live here, not in
-// internal/transaction/repo, because they need the
-// account/category/tag/payee features' types and an infra package must not
-// import a feature (see archtest).
+// TransactionCategoryNameLookup adapts the category repository to the
+// transaction export adapter's categoryNameLookup port, TransactionTagNameLookup
+// adapts the tag repository to its tagNameLookup port, and
+// TransactionPayeeNameLookup adapts the payee repository to its
+// payeeNameLookup port. All three live here, not in internal/transaction/repo,
+// because they need the category/tag/payee features' types and an infra
+// package must not import a feature (see archtest).
+//
+// The account counterpart (transaction.AccountResolver) needs no adapter here:
+// now that transaction's own AccountResult/AccountOwnerResult/
+// AccountCurrencyResult/AccountSharedAccess twins are retired in favor of
+// model.AccountResult (etc.), the account service's AccountOwner/
+// AccountListForUser methods already match the port's signatures exactly, so
+// server.go wires the account service directly (the former
+// TransactionAccountResolver wrapper + its toTransactionAccountResults
+// conversion were a pure pass-through once both sides spoke model.AccountResult
+// — deleted per the Phase 4 "delete the adapter once it's an identity
+// conversion" rule).
 package server
 
 import (
@@ -14,43 +23,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
-	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
-
-// transactionAccountResolverPort is the subset of the account service this
-// adapter uses.
-type transactionAccountResolverPort interface {
-	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)
-}
-
-// TransactionAccountResolver adapts the account service to
-// transaction.AccountResolver.
-type TransactionAccountResolver struct {
-	svc transactionAccountResolverPort
-}
-
-var _ apptransaction.AccountResolver = (*TransactionAccountResolver)(nil)
-
-// NewTransactionAccountResolver wraps the account service.
-func NewTransactionAccountResolver(svc transactionAccountResolverPort) *TransactionAccountResolver {
-	return &TransactionAccountResolver{svc: svc}
-}
-
-func (a *TransactionAccountResolver) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error) {
-	return a.svc.AccountOwner(ctx, accountID)
-}
-
-// AccountListForUser now returns the account feature's own model.AccountResult
-// directly: transaction's AccountResult/AccountOwnerResult/AccountCurrencyResult/
-// AccountSharedAccess twins retired in favor of the shared model.* survivors
-// (see the collision map), so no field-for-field conversion remains — this
-// method (and the resolver as a whole) is now a pure pass-through, retired in
-// the next commit per the Phase 4 "delete the adapter once it's an identity
-// conversion" rule.
-func (a *TransactionAccountResolver) AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error) {
-	return a.svc.AccountListForUser(ctx, userID)
-}
 
 // transactionCategoryByID is the minimal category-repo surface the export
 // adapter's name lookup uses.
