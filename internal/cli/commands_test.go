@@ -202,11 +202,8 @@ func TestQuietFlag(t *testing.T) {
 	}
 }
 
-// TestUserDeactivate covers user:deactivate's success path. (Note: unlike the
-// CLI doc list in CLAUDE.md, which shows "user:deactivate <email>",
-// the actual implementation in user_commands.go takes a single <email>
-// positional and has no --before flag; this test exercises the real
-// signature, not the documented one.)
+// TestUserDeactivate covers user:deactivate's success path: a single <email>
+// positional (no flags), matching the CLI doc list in CLAUDE.md.
 func TestUserDeactivate(t *testing.T) {
 	cliEnv(t)
 	if got := Run([]string{"user:create", "Old User", "old@example.test", "secret-pw"}); got != 0 {
