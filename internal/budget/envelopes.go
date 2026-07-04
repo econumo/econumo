@@ -3,32 +3,33 @@ package budget
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateEnvelope creates an envelope + its budget element, assigns categories,
 // and returns the new element (canUpdate). A new envelope has zero budgeted/spent.
-func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEnvelopeRequest) (*CreateEnvelopeResult, error) {
+func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.CreateEnvelopeRequest) (*model.CreateEnvelopeResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"budgetId": ""})
+		return nil, model.ValidateBlank(map[string]string{"budgetId": ""})
 	}
 	envelopeID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	if err := ValidateName("Envelope", req.Name); err != nil {
+	if err := model.ValidateName("Envelope", req.Name); err != nil {
 		return nil, err
 	}
 	curID, err := vo.ParseId(req.CurrencyId)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"currencyId": ""})
+		return nil, model.ValidateBlank(map[string]string{"currencyId": ""})
 	}
 	var folderID *vo.Id
 	if req.FolderId != nil && *req.FolderId != "" {
 		fid, ferr := vo.ParseId(*req.FolderId)
 		if ferr != nil {
-			return nil, validateBlank(map[string]string{"folderId": ""})
+			return nil, model.ValidateBlank(map[string]string{"folderId": ""})
 		}
 		folderID = &fid
 	}
@@ -52,18 +53,18 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEn
 		if serr := s.shiftElements(txCtx, b, folderID, newPosition, now); serr != nil {
 			return serr
 		}
-		env := NewBudgetEnvelope(envelopeID, budgetID, req.Name, req.Icon, now)
+		env := model.NewBudgetEnvelope(envelopeID, budgetID, req.Name, req.Icon, now)
 		if serr := s.envelopes.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		el := NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, ElementEnvelope, &curID, folderID, int16(newPosition), now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, model.ElementEnvelope, &curID, folderID, int16(newPosition), now)
 		if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 			return serr
 		}
 		for _, raw := range req.Categories {
 			catID, perr := vo.ParseId(raw)
 			if perr != nil {
-				return validateBlank(map[string]string{"categories": ""})
+				return model.ValidateBlank(map[string]string{"categories": ""})
 			}
 			if serr := s.envelopes.AddEnvelopeCategory(txCtx, envelopeID, catID); serr != nil {
 				return serr
@@ -78,25 +79,25 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req CreateEn
 	if err != nil {
 		return nil, err
 	}
-	return &CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, newPosition, false, children)}, nil
+	return &model.CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, newPosition, false, children)}, nil
 }
 
 // UpdateEnvelope updates an envelope's name/icon/archived + categories (canUpdate).
-func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEnvelopeRequest) (*UpdateEnvelopeResult, error) {
+func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.UpdateEnvelopeRequest) (*model.UpdateEnvelopeResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"budgetId": ""})
+		return nil, model.ValidateBlank(map[string]string{"budgetId": ""})
 	}
 	envelopeID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	if err := ValidateName("Envelope", req.Name); err != nil {
+	if err := model.ValidateName("Envelope", req.Name); err != nil {
 		return nil, err
 	}
 	curID, err := vo.ParseId(req.CurrencyId)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"currencyId": ""})
+		return nil, model.ValidateBlank(map[string]string{"currencyId": ""})
 	}
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
@@ -137,7 +138,7 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 		for _, raw := range req.Categories {
 			catID, perr := vo.ParseId(raw)
 			if perr != nil {
-				return validateBlank(map[string]string{"categories": ""})
+				return model.ValidateBlank(map[string]string{"categories": ""})
 			}
 			want[catID.String()] = true
 			if serr := s.envelopes.AddEnvelopeCategory(txCtx, envelopeID, catID); serr != nil {
@@ -160,18 +161,18 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req UpdateEn
 	if err != nil {
 		return nil, err
 	}
-	return &UpdateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, int(position), req.IsArchived == 1, children)}, nil
+	return &model.UpdateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, int(position), req.IsArchived == 1, children)}, nil
 }
 
 // DeleteEnvelope removes an envelope + its element (canDelete).
-func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req DeleteEnvelopeRequest) (*DeleteEnvelopeResult, error) {
+func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.DeleteEnvelopeRequest) (*model.DeleteEnvelopeResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"budgetId": ""})
+		return nil, model.ValidateBlank(map[string]string{"budgetId": ""})
 	}
 	envelopeID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
@@ -196,7 +197,7 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req DeleteEn
 	if err != nil {
 		return nil, err
 	}
-	return &DeleteEnvelopeResult{}, nil
+	return &model.DeleteEnvelopeResult{}, nil
 }
 
 // nextElementPosition returns max(element position)+1 for a budget.
@@ -210,20 +211,20 @@ func nextElementPosition(b *budgetAggregate) int {
 	return max + 1
 }
 
-// newEnvelopeElementResult builds the ParentElementResult for a freshly
+// newEnvelopeElementResult builds the model.ParentElementResult for a freshly
 // created/updated envelope (no spending yet -> zero money fields). children are
 // the envelope's category children (also zero spending).
-func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, folderID *vo.Id, position int, archived bool, children []ChildElementResult) ParentElementResult {
+func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, folderID *vo.Id, position int, archived bool, children []model.ChildElementResult) model.ParentElementResult {
 	var fid *string
 	if folderID != nil {
 		s := folderID.String()
 		fid = &s
 	}
 	if children == nil {
-		children = []ChildElementResult{}
+		children = []model.ChildElementResult{}
 	}
-	return ParentElementResult{
-		Id: id.String(), Type: int(ElementEnvelope.Int16()), Name: name, Icon: icon,
+	return model.ParentElementResult{
+		Id: id.String(), Type: int(model.ElementEnvelope.Int16()), Name: name, Icon: icon,
 		CurrencyId: currencyID.String(), IsArchived: boolToInt(archived), FolderId: fid, Position: position,
 		Budgeted: "0", Available: "0", Spent: "0", BudgetSpent: "0",
 		Children: children, OwnerUserId: nil,
@@ -233,9 +234,9 @@ func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, fol
 // envelopeChildren resolves a set of category ids to the response child shape
 // (category metadata + zero spending). Order follows the requested category ids;
 // the API comparison is order-insensitive.
-func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, categoryIDs []string) ([]ChildElementResult, error) {
+func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, categoryIDs []string) ([]model.ChildElementResult, error) {
 	if len(categoryIDs) == 0 {
-		return []ChildElementResult{}, nil
+		return []model.ChildElementResult{}, nil
 	}
 	userIDs := []vo.Id{b.budget.UserID}
 	for _, a := range b.access {
@@ -247,21 +248,21 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	if err != nil {
 		return nil, err
 	}
-	byID := map[string]CategoryMeta{}
+	byID := map[string]model.CategoryMeta{}
 	for _, c := range cats {
 		if c.IsIncome { // only expense categories are eligible participants
 			continue
 		}
 		byID[c.ID] = c
 	}
-	out := make([]ChildElementResult, 0, len(categoryIDs))
+	out := make([]model.ChildElementResult, 0, len(categoryIDs))
 	for _, cid := range categoryIDs {
 		c, ok := byID[cid]
 		if !ok {
 			continue
 		}
-		out = append(out, ChildElementResult{
-			Id: c.ID, Type: int(ElementCategory.Int16()), Name: c.Name, Icon: c.Icon,
+		out = append(out, model.ChildElementResult{
+			Id: c.ID, Type: int(model.ElementCategory.Int16()), Name: c.Name, Icon: c.Icon,
 			IsArchived: boolToInt(c.IsArchived), Spent: "0", BudgetSpent: "0", OwnerUserId: c.OwnerID,
 		})
 	}

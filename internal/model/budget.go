@@ -1,14 +1,9 @@
-// Package budget is the budget feature: the Budget aggregate root and its
-// related entities (BudgetAccess, BudgetFolder, BudgetEnvelope, BudgetElement,
-// BudgetElementLimit), the ElementType/UserRole value objects, and the
-// repository interface (domain), plus the request/result DTOs (with their
-// tier-1 Validate() methods), the write-side Service (the use-case
-// orchestrator, its many dependency seams, and the heavy BudgetBuilder read),
-// and the read-model row types/port the builder depends on.
-//
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md.
-package budget
+// Budget is the budget feature's aggregate root and its related entities
+// (BudgetAccess, BudgetFolder, BudgetEnvelope, BudgetElement,
+// BudgetElementLimit). The write-side Service (use-case orchestrator),
+// repository interface, and read-model port stay in internal/budget; only the
+// entity/value-object/DTO shapes live here.
+package model
 
 import (
 	"time"
@@ -42,7 +37,7 @@ func NewBudget(id, userID vo.Id, name string, currencyID vo.Id, startDate, now t
 		UserID:     userID,
 		Name:       name,
 		CurrencyID: currencyID,
-		StartedAt:  firstOfMonth(startDate),
+		StartedAt:  FirstOfMonth(startDate),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -66,7 +61,7 @@ func (b *Budget) UpdateCurrency(currencyID vo.Id, now time.Time) {
 
 // StartFrom resets the budget's start month (snapped to first-of-month).
 func (b *Budget) StartFrom(startedAt, now time.Time) {
-	b.StartedAt = firstOfMonth(startedAt)
+	b.StartedAt = FirstOfMonth(startedAt)
 	b.UpdatedAt = now
 }
 
@@ -75,19 +70,19 @@ type BudgetAccess struct {
 	ID         vo.Id
 	BudgetID   vo.Id
 	UserID     vo.Id
-	Role       UserRole
+	Role       BudgetRole
 	IsAccepted bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
 
 // NewBudgetAccess creates a pending (not accepted) grant.
-func NewBudgetAccess(id, budgetID, userID vo.Id, role UserRole, now time.Time) *BudgetAccess {
+func NewBudgetAccess(id, budgetID, userID vo.Id, role BudgetRole, now time.Time) *BudgetAccess {
 	return &BudgetAccess{ID: id, BudgetID: budgetID, UserID: userID, Role: role, IsAccepted: false, CreatedAt: now, UpdatedAt: now}
 }
 
 // UpdateRole changes the role, bumping updated_at only on change.
-func (a *BudgetAccess) UpdateRole(role UserRole, now time.Time) {
+func (a *BudgetAccess) UpdateRole(role BudgetRole, now time.Time) {
 	if a.Role != role {
 		a.Role = role
 		a.UpdatedAt = now
@@ -232,7 +227,7 @@ type BudgetElementLimit struct {
 // NewBudgetElementLimit creates a limit for an element in a period (snapped to
 // first-of-month).
 func NewBudgetElementLimit(id, elementID vo.Id, amount vo.DecimalNumber, period, now time.Time) *BudgetElementLimit {
-	return &BudgetElementLimit{ID: id, ElementID: elementID, Amount: amount, Period: firstOfMonth(period), CreatedAt: now, UpdatedAt: now}
+	return &BudgetElementLimit{ID: id, ElementID: elementID, Amount: amount, Period: FirstOfMonth(period), CreatedAt: now, UpdatedAt: now}
 }
 
 func (l *BudgetElementLimit) UpdateAmount(amount vo.DecimalNumber, now time.Time) {
@@ -242,8 +237,8 @@ func (l *BudgetElementLimit) UpdateAmount(amount vo.DecimalNumber, now time.Time
 	}
 }
 
-// firstOfMonth returns the first day of t's month at 00:00:00 in t's location.
-func firstOfMonth(t time.Time) time.Time {
+// FirstOfMonth returns the first day of t's month at 00:00:00 in t's location.
+func FirstOfMonth(t time.Time) time.Time {
 	y, m, _ := t.Date()
 	return time.Date(y, m, 1, 0, 0, 0, 0, t.Location())
 }

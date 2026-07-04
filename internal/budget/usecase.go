@@ -9,23 +9,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// OwnerView is the minimal user shape embedded in a budget access entry.
-type OwnerView struct {
-	ID     string
-	Name   string
-	Avatar string
-}
-
-// AccountView is an account as the filters builder needs it: id + currency + owner.
-type AccountView struct {
-	ID         string
-	CurrencyID string
-	OwnerID    string
-}
 
 // Service is the budget module orchestrator. The one Repository constructor
 // param splits into its role interfaces here so every use-case file
@@ -78,12 +65,12 @@ func NewService(
 // passed to the builders (avoids re-querying access/excluded/folders/envelopes/
 // elements repeatedly).
 type budgetAggregate struct {
-	budget             *Budget
-	access             []*BudgetAccess
+	budget             *model.Budget
+	access             []*model.BudgetAccess
 	excludedAccountIDs []vo.Id
-	folders            []*BudgetFolder
-	envelopes          []*BudgetEnvelope
-	elements           []*BudgetElement
+	folders            []*model.BudgetFolder
+	envelopes          []*model.BudgetEnvelope
+	elements           []*model.BudgetElement
 }
 
 func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAggregate, error) {
@@ -115,10 +102,10 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 }
 
 // roleGuest returns the guest role (the read-only "reader" role).
-func roleGuest() UserRole { return RoleGuest }
+func roleGuest() model.BudgetRole { return model.BudgetRoleGuest }
 
 // localMonth returns the first of now's month as seen in loc (the caller's
-// request timezone), expressed as a UTC-typed wall-clock. Budget timestamps are
+// request timezone), expressed as a UTC-typed wall-clock. model.Budget timestamps are
 // stored as naive "Y-m-d H:i:s", so the value must be UTC-typed to serialize as
 // that bare wall-clock. Snapping in UTC instead would start a budget in the
 // NEXT month for a behind-UTC caller creating it on the evening of the 30th/31st

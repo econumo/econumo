@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	dombudget "github.com/econumo/econumo/internal/budget"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -38,16 +38,16 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	revoker := server.NewConnectionBudgetRevoker(budgets)
 
 	// userA owns budgetA; userB has an access grant on it.
-	b := &dombudget.Budget{
+	b := &model.Budget{
 		ID: vo.MustParseId(revokerBudgetA), UserID: vo.MustParseId(revokerUserA), Name: "Shared",
 		CurrencyID: vo.MustParseId(revokerUSDID), StartedAt: revokerFixedTime, CreatedAt: revokerFixedTime, UpdatedAt: revokerFixedTime,
 	}
 	if err := budgets.Save(ctx, b); err != nil {
 		t.Fatalf("Save budget: %v", err)
 	}
-	access := &dombudget.BudgetAccess{
+	access := &model.BudgetAccess{
 		ID: vo.MustParseId(revokerBudgetA), BudgetID: vo.MustParseId(revokerBudgetA), UserID: vo.MustParseId(revokerUserB),
-		Role: dombudget.RoleUser, IsAccepted: true, CreatedAt: revokerFixedTime, UpdatedAt: revokerFixedTime,
+		Role: model.BudgetRoleUser, IsAccepted: true, CreatedAt: revokerFixedTime, UpdatedAt: revokerFixedTime,
 	}
 	if err := budgets.SaveAccess(ctx, access); err != nil {
 		t.Fatalf("SaveAccess: %v", err)

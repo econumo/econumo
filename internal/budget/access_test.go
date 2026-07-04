@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -25,17 +26,17 @@ var (
 )
 
 // agg builds a budgetAggregate owned by ownerID with the given access grants.
-func agg(t *testing.T, grants ...*BudgetAccess) *budgetAggregate {
+func agg(t *testing.T, grants ...*model.BudgetAccess) *budgetAggregate {
 	t.Helper()
-	b := NewBudget(mustID(t, budgetID), mustID(t, ownerID), "B",
+	b := model.NewBudget(mustID(t, budgetID), mustID(t, ownerID), "B",
 		mustID(t, "44444444-4444-4444-4444-444444444444"), now, now)
 	return &budgetAggregate{budget: b, access: grants}
 }
 
 // grant builds an access row for a user with a role + accepted flag.
-func grant(t *testing.T, userID string, role UserRole, accepted bool) *BudgetAccess {
+func grant(t *testing.T, userID string, role model.BudgetRole, accepted bool) *model.BudgetAccess {
 	t.Helper()
-	a := NewBudgetAccess(
+	a := model.NewBudgetAccess(
 		mustID(t, "55555555-5555-5555-5555-555555555555"),
 		mustID(t, budgetID), mustID(t, userID), role, now)
 	if accepted {
@@ -47,23 +48,23 @@ func grant(t *testing.T, userID string, role UserRole, accepted bool) *BudgetAcc
 func TestBudgetRole_Owner(t *testing.T) {
 	s := &Service{}
 	r, err := s.budgetRole(agg(t), mustID(t, ownerID))
-	if err != nil || r != RoleOwner {
+	if err != nil || r != model.BudgetRoleOwner {
 		t.Fatalf("owner role=%d err=%v want owner", r, err)
 	}
 }
 
 func TestBudgetRole_AcceptedGrant(t *testing.T) {
 	s := &Service{}
-	a := agg(t, grant(t, otherID, RoleAdmin, true))
+	a := agg(t, grant(t, otherID, model.BudgetRoleAdmin, true))
 	r, err := s.budgetRole(a, mustID(t, otherID))
-	if err != nil || r != RoleAdmin {
+	if err != nil || r != model.BudgetRoleAdmin {
 		t.Fatalf("accepted admin role=%d err=%v", r, err)
 	}
 }
 
 func TestBudgetRole_UnacceptedGrant_AccessDenied(t *testing.T) {
 	s := &Service{}
-	a := agg(t, grant(t, otherID, RoleAdmin, false))
+	a := agg(t, grant(t, otherID, model.BudgetRoleAdmin, false))
 	_, err := s.budgetRole(a, mustID(t, otherID))
 	if !isAccessDenied(err) {
 		t.Fatalf("unaccepted grant should be AccessDenied, got %v", err)
@@ -103,27 +104,27 @@ func TestAccessMatrix(t *testing.T) {
 		},
 		{
 			name: "accepted admin",
-			a:    agg(t, grant(t, otherID, RoleAdmin, true)),
+			a:    agg(t, grant(t, otherID, model.BudgetRoleAdmin, true)),
 			user: other,
 			want: want{true, true, true, true, false, true},
 		},
 		{
 			name: "accepted user",
-			a:    agg(t, grant(t, otherID, RoleUser, true)),
+			a:    agg(t, grant(t, otherID, model.BudgetRoleUser, true)),
 			user: other,
 			// user can update/edit but NOT delete/reset; not share.
 			want: want{true, false, true, false, false, true},
 		},
 		{
 			name: "accepted guest",
-			a:    agg(t, grant(t, otherID, RoleGuest, true)),
+			a:    agg(t, grant(t, otherID, model.BudgetRoleGuest, true)),
 			user: other,
 			// guest reads only.
 			want: want{true, false, false, false, false, true},
 		},
 		{
 			name: "unaccepted user (invited, pending)",
-			a:    agg(t, grant(t, otherID, RoleUser, false)),
+			a:    agg(t, grant(t, otherID, model.BudgetRoleUser, false)),
 			user: other,
 			// no accepted access -> read/del/upd false; canShare TRUE (legacy quirk);
 			// can accept (pending row exists) + can decline (row exists).
@@ -167,12 +168,12 @@ func TestAccessMatrix(t *testing.T) {
 func TestCanShare_Quirk(t *testing.T) {
 	s := &Service{}
 	// accepted guest: real role, no share -> false.
-	guest := agg(t, grant(t, otherID, RoleGuest, true))
+	guest := agg(t, grant(t, otherID, model.BudgetRoleGuest, true))
 	if s.canShare(guest, mustID(t, otherID)) {
 		t.Error("accepted guest must NOT canShare")
 	}
 	// pending (unaccepted) grant -> budgetRole errors -> canShare returns true.
-	pending := agg(t, grant(t, otherID, RoleGuest, false))
+	pending := agg(t, grant(t, otherID, model.BudgetRoleGuest, false))
 	if !s.canShare(pending, mustID(t, otherID)) {
 		t.Error("pending grant should canShare via the access-denied catch quirk")
 	}

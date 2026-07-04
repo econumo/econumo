@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	dombudget "github.com/econumo/econumo/internal/budget"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -44,7 +44,7 @@ func newRepo(t *testing.T) (*budgetrepo.Repo, *dbtest.DB) {
 // saveBudget persists a base budget so child rows have a valid FK.
 func saveBudget(t *testing.T, repo *budgetrepo.Repo, ctx context.Context) {
 	t.Helper()
-	b := &dombudget.Budget{
+	b := &model.Budget{
 		ID: vo.MustParseId(budgetID), UserID: vo.MustParseId(userA), Name: "Household",
 		CurrencyID: vo.MustParseId(usdID), StartedAt: startedAt, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
@@ -93,9 +93,9 @@ func TestBudgetRepo_AccessCRUD(t *testing.T) {
 	seedUser(t, db, userB)
 	saveBudget(t, repo, ctx)
 
-	a := &dombudget.BudgetAccess{
+	a := &model.BudgetAccess{
 		ID: vo.MustParseId(budgetID), BudgetID: vo.MustParseId(budgetID), UserID: vo.MustParseId(userB),
-		Role: dombudget.RoleUser, IsAccepted: true, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		Role: model.BudgetRoleUser, IsAccepted: true, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	if err := repo.SaveAccess(ctx, a); err != nil {
 		t.Fatalf("SaveAccess: %v", err)
@@ -104,7 +104,7 @@ func TestBudgetRepo_AccessCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAccess: %v", err)
 	}
-	if got.Role != dombudget.RoleUser || !got.IsAccepted {
+	if got.Role != model.BudgetRoleUser || !got.IsAccepted {
 		t.Errorf("access mismatch: role=%d accepted=%v", got.Role, got.IsAccepted)
 	}
 	list, err := repo.ListAccess(ctx, vo.MustParseId(budgetID))
@@ -149,7 +149,7 @@ func TestBudgetRepo_FolderCRUD(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	fid := vo.NewId()
-	f := &dombudget.BudgetFolder{ID: fid, BudgetID: vo.MustParseId(budgetID), Name: "Bills", Position: 3, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+	f := &model.BudgetFolder{ID: fid, BudgetID: vo.MustParseId(budgetID), Name: "Bills", Position: 3, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 	if err := repo.SaveFolder(ctx, f); err != nil {
 		t.Fatalf("SaveFolder: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestBudgetRepo_EnvelopeCRUDAndCategories(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	eid := vo.NewId()
-	e := &dombudget.BudgetEnvelope{ID: eid, BudgetID: vo.MustParseId(budgetID), Name: "Groceries", Icon: "cart", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+	e := &model.BudgetEnvelope{ID: eid, BudgetID: vo.MustParseId(budgetID), Name: "Groceries", Icon: "cart", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 	if err := repo.SaveEnvelope(ctx, e); err != nil {
 		t.Fatalf("SaveEnvelope: %v", err)
 	}
@@ -219,8 +219,8 @@ func TestBudgetRepo_ElementCRUD(t *testing.T) {
 	eid := vo.NewId()
 	externalID := vo.NewId()
 	ccy := vo.MustParseId(usdID)
-	el := &dombudget.BudgetElement{
-		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: externalID, Type: dombudget.ElementCategory,
+	el := &model.BudgetElement{
+		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: externalID, Type: model.ElementCategory,
 		CurrencyID: &ccy, Position: 5, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	if err := repo.SaveElement(ctx, el); err != nil {
@@ -230,7 +230,7 @@ func TestBudgetRepo_ElementCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetElement: %v", err)
 	}
-	if got.Type != dombudget.ElementCategory || got.Position != 5 {
+	if got.Type != model.ElementCategory || got.Position != 5 {
 		t.Errorf("element mismatch: type=%d pos=%d", got.Type, got.Position)
 	}
 	if got.CurrencyID == nil || got.CurrencyID.String() != usdID {
@@ -259,8 +259,8 @@ func TestBudgetRepo_SaveLimit_Decimal(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	eid := vo.NewId()
-	el := &dombudget.BudgetElement{
-		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: vo.NewId(), Type: dombudget.ElementCategory,
+	el := &model.BudgetElement{
+		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: vo.NewId(), Type: model.ElementCategory,
 		Position: 0, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	if err := repo.SaveElement(ctx, el); err != nil {
@@ -269,7 +269,7 @@ func TestBudgetRepo_SaveLimit_Decimal(t *testing.T) {
 
 	lid := vo.NewId()
 	// An exact scale-8 amount must persist byte-identical in the NUMERIC column.
-	limit := &dombudget.BudgetElementLimit{ID: lid, ElementID: eid, Amount: vo.NewDecimal("250.12345678"), Period: aprPeriod, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+	limit := &model.BudgetElementLimit{ID: lid, ElementID: eid, Amount: vo.NewDecimal("250.12345678"), Period: aprPeriod, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 	if err := repo.SaveLimit(ctx, limit); err != nil {
 		t.Fatalf("SaveLimit: %v", err)
 	}

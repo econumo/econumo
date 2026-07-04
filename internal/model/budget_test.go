@@ -1,4 +1,4 @@
-package budget
+package model
 
 import (
 	"testing"
@@ -7,15 +7,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-func id(t *testing.T, s string) vo.Id {
-	t.Helper()
-	v, err := vo.ParseId(s)
-	if err != nil {
-		t.Fatalf("parse id %q: %v", s, err)
-	}
-	return v
-}
 
 var (
 	t0 = time.Date(2024, 3, 15, 9, 30, 0, 0, time.UTC)
@@ -69,45 +60,45 @@ func TestElementType_AliasOutOfRange(t *testing.T) {
 	}
 }
 
-func TestUserRole_Values(t *testing.T) {
-	if RoleOwner != -1 || RoleAdmin != 0 || RoleUser != 1 || RoleGuest != 2 {
-		t.Fatalf("role values drifted: owner=%d admin=%d user=%d guest=%d", RoleOwner, RoleAdmin, RoleUser, RoleGuest)
+func TestBudgetRole_Values(t *testing.T) {
+	if BudgetRoleOwner != -1 || BudgetRoleAdmin != 0 || BudgetRoleUser != 1 || BudgetRoleGuest != 2 {
+		t.Fatalf("role values drifted: owner=%d admin=%d user=%d guest=%d", BudgetRoleOwner, BudgetRoleAdmin, BudgetRoleUser, BudgetRoleGuest)
 	}
 }
 
-func TestUserRole_AliasRoundTrip_StoredRoles(t *testing.T) {
+func TestBudgetRole_AliasRoundTrip_StoredRoles(t *testing.T) {
 	for _, c := range []struct {
-		role  UserRole
+		role  BudgetRole
 		alias string
 	}{
-		{RoleAdmin, "admin"}, {RoleUser, "user"}, {RoleGuest, "guest"},
+		{BudgetRoleAdmin, "admin"}, {BudgetRoleUser, "user"}, {BudgetRoleGuest, "guest"},
 	} {
 		if c.role.Alias() != c.alias {
 			t.Errorf("%d.Alias()=%q want %q", c.role, c.role.Alias(), c.alias)
 		}
-		got, err := RoleFromAlias(c.alias)
+		got, err := BudgetRoleFromAlias(c.alias)
 		if err != nil {
-			t.Errorf("RoleFromAlias(%q) err: %v", c.alias, err)
+			t.Errorf("BudgetRoleFromAlias(%q) err: %v", c.alias, err)
 		}
 		if got != c.role {
-			t.Errorf("RoleFromAlias(%q)=%d want %d", c.alias, got, c.role)
+			t.Errorf("BudgetRoleFromAlias(%q)=%d want %d", c.alias, got, c.role)
 		}
 	}
 }
 
-func TestUserRole_OwnerAliasIsPresentationOnly(t *testing.T) {
+func TestBudgetRole_OwnerAliasIsPresentationOnly(t *testing.T) {
 	// owner has a wire alias...
-	if RoleOwner.Alias() != "owner" {
-		t.Errorf("RoleOwner.Alias()=%q want owner", RoleOwner.Alias())
+	if BudgetRoleOwner.Alias() != "owner" {
+		t.Errorf("BudgetRoleOwner.Alias()=%q want owner", BudgetRoleOwner.Alias())
 	}
-	// ...but is NOT a valid INPUT role (RoleFromAlias rejects it).
-	if _, err := RoleFromAlias("owner"); err == nil {
-		t.Fatal("RoleFromAlias(owner) must error (presentation-only)")
+	// ...but is NOT a valid INPUT role (BudgetRoleFromAlias rejects it).
+	if _, err := BudgetRoleFromAlias("owner"); err == nil {
+		t.Fatal("BudgetRoleFromAlias(owner) must error (presentation-only)")
 	}
 }
 
-func TestRoleFromAlias_Invalid(t *testing.T) {
-	if _, err := RoleFromAlias("superuser"); err == nil {
+func TestBudgetRoleFromAlias_Invalid(t *testing.T) {
+	if _, err := BudgetRoleFromAlias("superuser"); err == nil {
 		t.Fatal("want error for unknown role alias")
 	}
 }
@@ -158,9 +149,9 @@ func TestValidateName_MessageUsesLabel(t *testing.T) {
 }
 
 func TestNewBudget_SnapsStartToFirstOfMonth(t *testing.T) {
-	b := NewBudget(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"),
-		"My Budget", id(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
+	b := NewBudget(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"),
+		"My Budget", mustID(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
 	want := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
 	if !b.StartedAt.Equal(want) {
 		t.Fatalf("startedAt=%v want %v (first of month)", b.StartedAt, want)
@@ -168,9 +159,9 @@ func TestNewBudget_SnapsStartToFirstOfMonth(t *testing.T) {
 }
 
 func TestBudget_UpdateName_OnlyBumpsOnChange(t *testing.T) {
-	b := NewBudget(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"), "Original",
-		id(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
+	b := NewBudget(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), "Original",
+		mustID(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
 	// no-op update keeps updatedAt.
 	b.UpdateName("Original", t1)
 	if !b.UpdatedAt.Equal(t0) {
@@ -184,10 +175,10 @@ func TestBudget_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 }
 
 func TestBudget_UpdateCurrency_OnlyBumpsOnChange(t *testing.T) {
-	cur := id(t, "33333333-3333-3333-3333-333333333333")
-	other := id(t, "44444444-4444-4444-4444-444444444444")
-	b := NewBudget(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"), "B", cur, t0, t0)
+	cur := mustID(t, "33333333-3333-3333-3333-333333333333")
+	other := mustID(t, "44444444-4444-4444-4444-444444444444")
+	b := NewBudget(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), "B", cur, t0, t0)
 	b.UpdateCurrency(cur, t1)
 	if !b.UpdatedAt.Equal(t0) {
 		t.Fatal("same-currency update bumped updatedAt")
@@ -199,9 +190,9 @@ func TestBudget_UpdateCurrency_OnlyBumpsOnChange(t *testing.T) {
 }
 
 func TestBudget_StartFrom_SnapsAndAlwaysBumps(t *testing.T) {
-	b := NewBudget(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"), "B",
-		id(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
+	b := NewBudget(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), "B",
+		mustID(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
 	reset := time.Date(2024, 6, 20, 8, 0, 0, 0, time.UTC)
 	b.StartFrom(reset, t1)
 	want := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
@@ -214,21 +205,21 @@ func TestBudget_StartFrom_SnapsAndAlwaysBumps(t *testing.T) {
 }
 
 func TestNewBudgetAccess_StartsPending(t *testing.T) {
-	a := NewBudgetAccess(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"),
-		id(t, "33333333-3333-3333-3333-333333333333"), RoleUser, t0)
+	a := NewBudgetAccess(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"),
+		mustID(t, "33333333-3333-3333-3333-333333333333"), BudgetRoleUser, t0)
 	if a.IsAccepted {
 		t.Fatal("new access must be pending (not accepted)")
 	}
-	if a.Role != RoleUser {
+	if a.Role != BudgetRoleUser {
 		t.Fatalf("role=%d want user", a.Role)
 	}
 }
 
 func TestBudgetAccess_Accept_Idempotent(t *testing.T) {
-	a := NewBudgetAccess(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"),
-		id(t, "33333333-3333-3333-3333-333333333333"), RoleUser, t0)
+	a := NewBudgetAccess(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"),
+		mustID(t, "33333333-3333-3333-3333-333333333333"), BudgetRoleUser, t0)
 	a.Accept(t1)
 	if !a.IsAccepted || !a.UpdatedAt.Equal(t1) {
 		t.Fatalf("accept: accepted=%v updatedAt=%v", a.IsAccepted, a.UpdatedAt)
@@ -241,23 +232,23 @@ func TestBudgetAccess_Accept_Idempotent(t *testing.T) {
 }
 
 func TestBudgetAccess_UpdateRole_OnlyBumpsOnChange(t *testing.T) {
-	a := NewBudgetAccess(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"),
-		id(t, "33333333-3333-3333-3333-333333333333"), RoleUser, t0)
-	a.UpdateRole(RoleUser, t1)
+	a := NewBudgetAccess(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"),
+		mustID(t, "33333333-3333-3333-3333-333333333333"), BudgetRoleUser, t0)
+	a.UpdateRole(BudgetRoleUser, t1)
 	if !a.UpdatedAt.Equal(t0) {
 		t.Fatal("same-role update bumped updatedAt")
 	}
-	a.UpdateRole(RoleAdmin, t1)
-	if a.Role != RoleAdmin || !a.UpdatedAt.Equal(t1) {
+	a.UpdateRole(BudgetRoleAdmin, t1)
+	if a.Role != BudgetRoleAdmin || !a.UpdatedAt.Equal(t1) {
 		t.Fatalf("role change: role=%d updatedAt=%v", a.Role, a.UpdatedAt)
 	}
 }
 
 func TestBudgetElement_PositionUnset(t *testing.T) {
-	e := NewBudgetElement(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"),
-		id(t, "33333333-3333-3333-3333-333333333333"), ElementCategory, nil, nil, PositionUnset, t0)
+	e := NewBudgetElement(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"),
+		mustID(t, "33333333-3333-3333-3333-333333333333"), ElementCategory, nil, nil, PositionUnset, t0)
 	if !e.IsPositionUnset() {
 		t.Fatal("position 0 should be unset")
 	}
@@ -268,10 +259,10 @@ func TestBudgetElement_PositionUnset(t *testing.T) {
 }
 
 func TestBudgetElement_UpdateCurrency_NilTransitions(t *testing.T) {
-	cur := id(t, "33333333-3333-3333-3333-333333333333")
-	e := NewBudgetElement(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"),
-		id(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
+	cur := mustID(t, "33333333-3333-3333-3333-333333333333")
+	e := NewBudgetElement(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"),
+		mustID(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
 	// nil -> nil: no bump.
 	e.UpdateCurrency(nil, t1)
 	if !e.UpdatedAt.Equal(t0) {
@@ -291,10 +282,10 @@ func TestBudgetElement_UpdateCurrency_NilTransitions(t *testing.T) {
 }
 
 func TestBudgetElement_UpdateFolder_NilTransitions(t *testing.T) {
-	folder := id(t, "55555555-5555-5555-5555-555555555555")
-	e := NewBudgetElement(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"),
-		id(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
+	folder := mustID(t, "55555555-5555-5555-5555-555555555555")
+	e := NewBudgetElement(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"),
+		mustID(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
 	e.UpdateFolder(&folder, t1)
 	if e.FolderID == nil || !e.FolderID.Equal(folder) || !e.UpdatedAt.Equal(t1) {
 		t.Fatalf("move to folder failed: %v", e.FolderID)
@@ -307,8 +298,8 @@ func TestBudgetElement_UpdateFolder_NilTransitions(t *testing.T) {
 }
 
 func TestNewBudgetElementLimit_SnapsPeriod(t *testing.T) {
-	l := NewBudgetElementLimit(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"), vo.NewDecimal("200"), t0, t0)
+	l := NewBudgetElementLimit(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), vo.NewDecimal("200"), t0, t0)
 	want := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
 	if !l.Period.Equal(want) {
 		t.Fatalf("period=%v want %v (first of month)", l.Period, want)
@@ -319,8 +310,8 @@ func TestNewBudgetElementLimit_SnapsPeriod(t *testing.T) {
 }
 
 func TestBudgetElementLimit_UpdateAmount_OnlyBumpsOnChange(t *testing.T) {
-	l := NewBudgetElementLimit(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"), vo.NewDecimal("200"), t0, t0)
+	l := NewBudgetElementLimit(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), vo.NewDecimal("200"), t0, t0)
 	// "200" == "200.00000000" -> no change.
 	l.UpdateAmount(vo.NewDecimal("200.00000000"), t1)
 	if !l.UpdatedAt.Equal(t0) {
@@ -333,8 +324,8 @@ func TestBudgetElementLimit_UpdateAmount_OnlyBumpsOnChange(t *testing.T) {
 }
 
 func TestBudgetEnvelope_SetArchived_OnlyBumpsOnChange(t *testing.T) {
-	e := NewBudgetEnvelope(id(t, "11111111-1111-1111-1111-111111111111"),
-		id(t, "22222222-2222-2222-2222-222222222222"), "Travel", "plane", t0)
+	e := NewBudgetEnvelope(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), "Travel", "plane", t0)
 	if e.IsArchived {
 		t.Fatal("new envelope must not be archived")
 	}
@@ -350,25 +341,25 @@ func TestBudgetEnvelope_SetArchived_OnlyBumpsOnChange(t *testing.T) {
 
 func TestFirstOfMonth(t *testing.T) {
 	in := time.Date(2024, 7, 31, 23, 59, 59, 0, time.UTC)
-	got := firstOfMonth(in)
+	got := FirstOfMonth(in)
 	want := time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC)
 	if !got.Equal(want) {
-		t.Fatalf("firstOfMonth=%v want %v", got, want)
+		t.Fatalf("FirstOfMonth=%v want %v", got, want)
 	}
 }
 
 func TestFirstOfMonth_PreservesLocation(t *testing.T) {
 	loc := time.FixedZone("X", 5*3600)
 	in := time.Date(2024, 7, 15, 10, 0, 0, 0, loc)
-	got := firstOfMonth(in)
+	got := FirstOfMonth(in)
 	if got.Location() != loc {
 		t.Fatalf("location not preserved: %v", got.Location())
 	}
 }
 
 func TestIdPtrEqual(t *testing.T) {
-	a := id(t, "11111111-1111-1111-1111-111111111111")
-	b := id(t, "22222222-2222-2222-2222-222222222222")
+	a := mustID(t, "11111111-1111-1111-1111-111111111111")
+	b := mustID(t, "22222222-2222-2222-2222-222222222222")
 	if !idPtrEqual(nil, nil) {
 		t.Error("nil==nil should be equal")
 	}

@@ -5,15 +5,16 @@ import (
 	"sort"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // MoveElementList repositions budget elements and moves them between folders
 // (canUpdate). Each item identifies an element by its external id + type.
-func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveElementListRequest) (*MoveElementListResult, error) {
+func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req model.MoveElementListRequest) (*model.MoveElementListResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"budgetId": ""})
+		return nil, model.ValidateBlank(map[string]string{"budgetId": ""})
 	}
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
@@ -25,7 +26,7 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 
 	// Index elements by their EXTERNAL id (first-seen wins): the move request keys
 	// elements by external id with no type discriminator.
-	byExternal := map[string]*BudgetElement{}
+	byExternal := map[string]*model.BudgetElement{}
 	for _, e := range b.elements {
 		k := e.ExternalID.String()
 		if _, seen := byExternal[k]; !seen {
@@ -44,7 +45,7 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 			if item.FolderId != nil && *item.FolderId != "" {
 				fid, ferr := vo.ParseId(*item.FolderId)
 				if ferr != nil {
-					return validateBlank(map[string]string{"folderId": ""})
+					return model.ValidateBlank(map[string]string{"folderId": ""})
 				}
 				folderID = &fid
 			}
@@ -62,7 +63,7 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 	if err != nil {
 		return nil, err
 	}
-	return &MoveElementListResult{}, nil
+	return &model.MoveElementListResult{}, nil
 }
 
 // shiftElements bumps the positions of same-group (same folder) elements with
@@ -70,7 +71,7 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req MoveEle
 // Iterates in position order; the counter starts at startPosition and
 // pre-increments per match.
 func (s *Service) shiftElements(ctx context.Context, b *budgetAggregate, folderID *vo.Id, startPosition int16, now time.Time) error {
-	elems := append([]*BudgetElement(nil), b.elements...)
+	elems := append([]*model.BudgetElement(nil), b.elements...)
 	sort.SliceStable(elems, func(i, j int) bool {
 		if elems[i].Position != elems[j].Position {
 			return elems[i].Position < elems[j].Position
@@ -129,19 +130,19 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	}
 
 	// Index existing elements by "<externalId>-<typeAlias>".
-	byKey := map[string]*BudgetElement{}
+	byKey := map[string]*model.BudgetElement{}
 	for _, e := range b.elements {
 		byKey[elementKey(e.ExternalID.String(), e.Type)] = e
 	}
 	seen := map[string]bool{}
-	created := map[string]*BudgetElement{}
-	dirty := map[string]*BudgetElement{}
+	created := map[string]*model.BudgetElement{}
+	dirty := map[string]*model.BudgetElement{}
 	// live marks element keys that participate in the renumbering (a non-archived
 	// participant element that is not an envelope-child category). Archived /
 	// child / non-participant elements are forced to position 0 and excluded.
 	live := map[string]bool{}
 
-	ensure := func(externalID vo.Id, typ ElementType) (*BudgetElement, string) {
+	ensure := func(externalID vo.Id, typ model.ElementType) (*model.BudgetElement, string) {
 		key := elementKey(externalID.String(), typ)
 		seen[key] = true
 		if e, ok := byKey[key]; ok {
@@ -149,15 +150,15 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		}
 		// Missing element: create it at posMax so it sorts to the END of its group
 		// during renumber.
-		e := NewBudgetElement(s.elements.NextIdentity(), budgetID, externalID, typ, nil, nil, posMax, now)
+		e := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, externalID, typ, nil, nil, posMax, now)
 		byKey[key] = e
 		created[key] = e
 		return e, key
 	}
-	mark := func(e *BudgetElement) { dirty[e.ID.String()] = e }
-	forceUnset := func(e *BudgetElement) {
+	mark := func(e *model.BudgetElement) { dirty[e.ID.String()] = e }
+	forceUnset := func(e *model.BudgetElement) {
 		if !e.IsPositionUnset() {
-			e.UpdatePosition(PositionUnset, now)
+			e.UpdatePosition(model.PositionUnset, now)
 			mark(e)
 		}
 	}
@@ -165,7 +166,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	// --- envelopes (+ collect child categories) ---
 	childCategories := map[string]bool{}
 	for _, env := range b.envelopes {
-		e, key := ensure(env.ID, ElementEnvelope)
+		e, key := ensure(env.ID, model.ElementEnvelope)
 		if env.IsArchived {
 			forceUnset(e)
 		} else {
@@ -193,7 +194,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		if perr != nil {
 			return perr
 		}
-		e, key := ensure(cid, ElementCategory)
+		e, key := ensure(cid, model.ElementCategory)
 		if childCategories[c.ID] {
 			// A category that belongs to an envelope is hidden from the top level:
 			// position unset + no folder.
@@ -219,7 +220,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		if perr != nil {
 			return perr
 		}
-		e, key := ensure(tid, ElementTag)
+		e, key := ensure(tid, model.ElementTag)
 		if t.IsArchived {
 			forceUnset(e)
 		} else {
@@ -230,8 +231,8 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	// Renumber: iterate LIVE elements in position-ASC order, assigning contiguous
 	// 0-based positions within each folder, then within the no-folder group.
 	// Archived/child/non-participant elements stay at position 0 (excluded).
-	all := make([]*BudgetElement, 0, len(byKey))
-	keyOf := map[*BudgetElement]string{}
+	all := make([]*model.BudgetElement, 0, len(byKey))
+	keyOf := map[*model.BudgetElement]string{}
 	for k, e := range byKey {
 		all = append(all, e)
 		keyOf[e] = k
@@ -245,7 +246,7 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 		return all[i].ID.String() < all[j].ID.String()
 	})
 
-	renumber := func(match func(*BudgetElement) bool) {
+	renumber := func(match func(*model.BudgetElement) bool) {
 		pos := int16(0)
 		for _, e := range all {
 			if !live[keyOf[e]] || !match(e) {
@@ -260,11 +261,11 @@ func (s *Service) restoreElementsOrder(ctx context.Context, budgetID vo.Id, now 
 	}
 	for _, f := range b.folders {
 		fid := f.ID
-		renumber(func(e *BudgetElement) bool {
+		renumber(func(e *model.BudgetElement) bool {
 			return e.FolderID != nil && e.FolderID.Equal(fid)
 		})
 	}
-	renumber(func(e *BudgetElement) bool { return e.FolderID == nil })
+	renumber(func(e *model.BudgetElement) bool { return e.FolderID == nil })
 
 	// Persist created + dirtied elements.
 	for _, e := range created {

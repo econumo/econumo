@@ -3,15 +3,16 @@ package budget
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // budgetRole returns the requesting user's role on a budget: owner if they own
 // it; the accepted access role otherwise; AccessDenied if no accepted access.
-func (s *Service) budgetRole(b *budgetAggregate, userID vo.Id) (UserRole, error) {
+func (s *Service) budgetRole(b *budgetAggregate, userID vo.Id) (model.BudgetRole, error) {
 	if b.budget.UserID.Equal(userID) {
-		return RoleOwner, nil
+		return model.BudgetRoleOwner, nil
 	}
 	for _, a := range b.access {
 		if a.UserID.Equal(userID) {
@@ -32,13 +33,13 @@ func (s *Service) canRead(b *budgetAggregate, userID vo.Id) bool {
 // canDelete/canReset = owner|admin.
 func (s *Service) canDelete(b *budgetAggregate, userID vo.Id) bool {
 	r, err := s.budgetRole(b, userID)
-	return err == nil && (r == RoleOwner || r == RoleAdmin)
+	return err == nil && (r == model.BudgetRoleOwner || r == model.BudgetRoleAdmin)
 }
 
 // canUpdate/canEdit = owner|admin|user.
 func (s *Service) canUpdate(b *budgetAggregate, userID vo.Id) bool {
 	r, err := s.budgetRole(b, userID)
-	return err == nil && (r == RoleOwner || r == RoleAdmin || r == RoleUser)
+	return err == nil && (r == model.BudgetRoleOwner || r == model.BudgetRoleAdmin || r == model.BudgetRoleUser)
 }
 
 // canShare = owner|admin; the access-denied fallback intentionally returns true —
@@ -48,7 +49,7 @@ func (s *Service) canShare(b *budgetAggregate, userID vo.Id) bool {
 	if err != nil {
 		return true // access-denied path is treated as shareable (legacy quirk)
 	}
-	return r == RoleOwner || r == RoleAdmin
+	return r == model.BudgetRoleOwner || r == model.BudgetRoleAdmin
 }
 
 // canAccept = has an UNaccepted access row for the user.

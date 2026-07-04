@@ -12,6 +12,7 @@ import (
 
 	appbudget "github.com/econumo/econumo/internal/budget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -123,7 +124,7 @@ func sqliteDatetime(t time.Time) string { return t.Format(datetime.Layout) }
 // phFrom is ph for pgsql numbered params starting at `start` (sqlite ignores start).
 func (r *ReadRepo) phFrom(start, n int) string { return r.ph(start, n) }
 
-func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs []vo.Id, date time.Time) ([]appbudget.AccountBalanceRow, error) {
+func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -134,9 +135,9 @@ func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs [
 		return nil, err
 	}
 	defer rows.Close()
-	var out []appbudget.AccountBalanceRow
+	var out []model.AccountBalanceRow
 	for rows.Next() {
-		var row appbudget.AccountBalanceRow
+		var row model.AccountBalanceRow
 		// SQLite's SUM over NUMERIC is float; scanning it as a string yields the
 		// driver's full-precision rendering (e.g. "358.34999999999127"). Round to
 		// 8 decimals (the stored-balance scale) by scanning the float and
@@ -169,17 +170,17 @@ func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs [
 }
 
 // AccountsBalancesOnDate implements ReadModel.
-func (r *ReadRepo) AccountsBalancesOnDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]appbudget.AccountBalanceRow, error) {
+func (r *ReadRepo) AccountsBalancesOnDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error) {
 	return r.accountBalances(ctx, "<=", accountIDs, date)
 }
 
 // AccountsBalancesBeforeDate implements ReadModel.
-func (r *ReadRepo) AccountsBalancesBeforeDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]appbudget.AccountBalanceRow, error) {
+func (r *ReadRepo) AccountsBalancesBeforeDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error) {
 	return r.accountBalances(ctx, "<", accountIDs, date)
 }
 
 // AccountsReport implements ReadModel.
-func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]appbudget.AccountReportRow, error) {
+func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.AccountReportRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -207,9 +208,9 @@ func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start
 		return nil, err
 	}
 	defer rows.Close()
-	var out []appbudget.AccountReportRow
+	var out []model.AccountReportRow
 	for rows.Next() {
-		var row appbudget.AccountReportRow
+		var row model.AccountReportRow
 		if err := rows.Scan(&row.AccountID, &row.CurrencyID, &row.Incomes, &row.TransferIncomes, &row.ExchangeIncomes, &row.Expenses, &row.TransferExpenses, &row.ExchangeExpenses); err != nil {
 			return nil, err
 		}
@@ -219,7 +220,7 @@ func (r *ReadRepo) AccountsReport(ctx context.Context, accountIDs []vo.Id, start
 }
 
 // HoldingsReport implements ReadModel (two queries, merged per currency).
-func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]appbudget.HoldingsRow, error) {
+func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.HoldingsRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -267,9 +268,9 @@ func (r *ReadRepo) HoldingsReport(ctx context.Context, accountIDs []vo.Id, start
 		return nil, err
 	}
 
-	out := make([]appbudget.HoldingsRow, 0, len(merged))
+	out := make([]model.HoldingsRow, 0, len(merged))
 	for cid, m := range merged {
-		out = append(out, appbudget.HoldingsRow{CurrencyID: cid, FromHoldings: m.from, ToHoldings: m.to})
+		out = append(out, model.HoldingsRow{CurrencyID: cid, FromHoldings: m.from, ToHoldings: m.to})
 	}
 	return out, nil
 }
@@ -324,7 +325,7 @@ func (r *ReadRepo) holdingsSQL(toHoldings bool, ids []any, start, end time.Time)
 }
 
 // CountSpending implements ReadModel.
-func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]appbudget.SpendingRow, error) {
+func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
 	if len(categoryIDs) == 0 {
 		return nil, nil
 	}
@@ -358,7 +359,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		return nil, err
 	}
 	defer rows.Close()
-	var out []appbudget.SpendingRow
+	var out []model.SpendingRow
 	for rows.Next() {
 		var categoryID, currencyID, tagID *string
 		// SQLite's SUM(amount) is a float; scan it as float and format with %.8f
@@ -389,13 +390,13 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 				a = strconv.FormatFloat(*amount, 'f', 8, 64)
 			}
 		}
-		out = append(out, appbudget.SpendingRow{CategoryID: *categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+		out = append(out, model.SpendingRow{CategoryID: *categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
 	}
 	return out, rows.Err()
 }
 
 // SummarizedLimits implements ReadModel.
-func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, end time.Time) ([]appbudget.SummarizedLimitRow, error) {
+func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, end time.Time) ([]model.SummarizedLimitRow, error) {
 	var sql string
 	var pStart, pEnd any = start, end
 	if r.driver == "postgresql" {
@@ -411,9 +412,9 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 		return nil, err
 	}
 	defer rows.Close()
-	var out []appbudget.SummarizedLimitRow
+	var out []model.SummarizedLimitRow
 	for rows.Next() {
-		var row appbudget.SummarizedLimitRow
+		var row model.SummarizedLimitRow
 		// SQLite's SUM(amount) over NUMERIC is a float; scanning it as a string
 		// yields full float precision (e.g. "155.56000000001"), which leaks a 1e-8
 		// into budgetedBefore. Scan as float and format with %.8f (round to 8
@@ -453,10 +454,10 @@ func scanBudgetTxRows(rows interface {
 	Next() bool
 	Scan(...any) error
 	Err() error
-}) ([]appbudget.BudgetTransactionRow, error) {
-	var out []appbudget.BudgetTransactionRow
+}) ([]model.BudgetTransactionRow, error) {
+	var out []model.BudgetTransactionRow
 	for rows.Next() {
-		var r appbudget.BudgetTransactionRow
+		var r model.BudgetTransactionRow
 		var currencyID, desc *string
 		if err := rows.Scan(&r.ID, &r.UserID, &currencyID, &r.Amount, &desc, &r.SpentAt, &r.CategoryID, &r.PayeeID, &r.TagID); err != nil {
 			return nil, err
@@ -473,7 +474,7 @@ func scanBudgetTxRows(rows interface {
 }
 
 // BudgetTransactionsByCategories implements ReadModel.
-func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]appbudget.BudgetTransactionRow, error) {
+func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -504,7 +505,7 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 }
 
 // BudgetTransactionsByTag implements ReadModel.
-func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, categoryID *vo.Id, accountIDs []vo.Id, start, end time.Time) ([]appbudget.BudgetTransactionRow, error) {
+func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, categoryID *vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}

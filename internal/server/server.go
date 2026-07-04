@@ -151,7 +151,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
 	convertor := appcurrency.NewConvertor(rateProvider)
 	budgetSvc := appbudget.NewService(
-		budgetRepo, budgetReadRepo, NewBudgetConvertor(convertor), NewBudgetAverageRateLookup(rateProvider),
+		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		NewBudgetUserLookup(userRepo, clk),
 		NewBudgetAccountLookup(accountRepo),
 		currencyLookup,

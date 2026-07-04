@@ -1,6 +1,6 @@
 // Budget module application DTOs: request bodies (with tier-1 Validate()) and
 // response result shapes, frozen to the existing wire contract.
-package budget
+package model
 
 import (
 	"strings"
@@ -9,14 +9,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UserResult is the embedded user shape in a budget access entry: {id, avatar, name}.
-type UserResult struct {
-	Id     string `json:"id"`
-	Avatar string `json:"avatar"`
-	Name   string `json:"name"`
-}
-
 // AccessResult is one access entry in a budget's meta: {user, role, isAccepted}.
+// User embeds the shared UserResult {id, avatar, name} shape.
 type AccessResult struct {
 	User       UserResult `json:"user"`
 	Role       string     `json:"role"`
@@ -61,8 +55,8 @@ type AverageCurrencyRateResult struct {
 	PeriodEnd      string `json:"periodEnd"`
 }
 
-// FolderResult is one budget folder.
-type FolderResult struct {
+// BudgetFolderResult is one budget folder.
+type BudgetFolderResult struct {
 	Id       string `json:"id"`
 	Name     string `json:"name"`
 	Position int    `json:"position"`
@@ -100,7 +94,7 @@ type ParentElementResult struct {
 
 // StructureResult is the budget's folders + ordered elements.
 type StructureResult struct {
-	Folders  []FolderResult        `json:"folders"`
+	Folders  []BudgetFolderResult  `json:"folders"`
 	Elements []ParentElementResult `json:"elements"`
 }
 
@@ -124,7 +118,7 @@ type CreateBudgetRequest struct {
 
 // Validate enforces id + name NotBlank.
 func (r CreateBudgetRequest) Validate() error {
-	return validateBlank(map[string]string{"id": r.Id, "name": r.Name})
+	return ValidateBlank(map[string]string{"id": r.Id, "name": r.Name})
 }
 
 // CreateBudgetResult is {item: BudgetResult}.
@@ -142,7 +136,7 @@ type UpdateBudgetRequest struct {
 
 // Validate enforces id, name, currencyId NotBlank.
 func (r UpdateBudgetRequest) Validate() error {
-	return validateBlank(map[string]string{"id": r.Id, "name": r.Name, "currencyId": r.CurrencyId})
+	return ValidateBlank(map[string]string{"id": r.Id, "name": r.Name, "currencyId": r.CurrencyId})
 }
 
 // UpdateBudgetResult is {item: MetaResult}.
@@ -155,7 +149,7 @@ type DeleteBudgetRequest struct {
 	Id string `json:"id"`
 }
 
-func (r DeleteBudgetRequest) Validate() error { return validateBlank(map[string]string{"id": r.Id}) }
+func (r DeleteBudgetRequest) Validate() error { return ValidateBlank(map[string]string{"id": r.Id}) }
 
 // DeleteBudgetResult is empty.
 type DeleteBudgetResult struct{}
@@ -167,7 +161,7 @@ type ResetBudgetRequest struct {
 }
 
 func (r ResetBudgetRequest) Validate() error {
-	return validateBlank(map[string]string{"id": r.Id, "startedAt": r.StartedAt})
+	return ValidateBlank(map[string]string{"id": r.Id, "startedAt": r.StartedAt})
 }
 
 // ResetBudgetResult is {item: MetaResult}.
@@ -181,7 +175,7 @@ type GetBudgetRequest struct {
 	Date string `json:"date"`
 }
 
-func (r GetBudgetRequest) Validate() error { return validateBlank(map[string]string{"id": r.Id}) }
+func (r GetBudgetRequest) Validate() error { return ValidateBlank(map[string]string{"id": r.Id}) }
 
 // GetBudgetResult is {item: BudgetResult}.
 type GetBudgetResult struct {
@@ -201,12 +195,12 @@ type CreateBudgetFolderRequest struct {
 }
 
 func (r CreateBudgetFolderRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name})
 }
 
-// CreateBudgetFolderResult is {item: FolderResult}.
+// CreateBudgetFolderResult is {item: BudgetFolderResult}.
 type CreateBudgetFolderResult struct {
-	Item FolderResult `json:"item"`
+	Item BudgetFolderResult `json:"item"`
 }
 
 // UpdateBudgetFolderRequest updates a folder name.
@@ -217,12 +211,12 @@ type UpdateBudgetFolderRequest struct {
 }
 
 func (r UpdateBudgetFolderRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name})
 }
 
-// UpdateBudgetFolderResult is {item: FolderResult}.
+// UpdateBudgetFolderResult is {item: BudgetFolderResult}.
 type UpdateBudgetFolderResult struct {
-	Item FolderResult `json:"item"`
+	Item BudgetFolderResult `json:"item"`
 }
 
 // DeleteFolderRequest deletes a folder.
@@ -232,7 +226,7 @@ type DeleteFolderRequest struct {
 }
 
 func (r DeleteFolderRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id})
 }
 
 // DeleteFolderResult is empty.
@@ -251,7 +245,7 @@ type OrderBudgetFolderListRequest struct {
 }
 
 func (r OrderBudgetFolderListRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
 }
 
 // OrderBudgetFolderListResult is empty.
@@ -269,7 +263,7 @@ type CreateEnvelopeRequest struct {
 }
 
 func (r CreateEnvelopeRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name, "icon": r.Icon, "currencyId": r.CurrencyId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name, "icon": r.Icon, "currencyId": r.CurrencyId})
 }
 
 // CreateEnvelopeResult is {item: ParentElementResult}.
@@ -289,7 +283,7 @@ type UpdateEnvelopeRequest struct {
 }
 
 func (r UpdateEnvelopeRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name, "icon": r.Icon, "currencyId": r.CurrencyId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id, "name": r.Name, "icon": r.Icon, "currencyId": r.CurrencyId})
 }
 
 // UpdateEnvelopeResult is {item: ParentElementResult}.
@@ -304,7 +298,7 @@ type DeleteEnvelopeRequest struct {
 }
 
 func (r DeleteEnvelopeRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "id": r.Id})
 }
 
 // DeleteEnvelopeResult is empty.
@@ -318,7 +312,7 @@ type GrantAccessRequest struct {
 }
 
 func (r GrantAccessRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "userId": r.UserId, "role": r.Role})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "userId": r.UserId, "role": r.Role})
 }
 
 // GrantAccessResult / AcceptAccessResult are {items: [MetaResult]}.
@@ -332,7 +326,7 @@ type AcceptAccessRequest struct {
 }
 
 func (r AcceptAccessRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
 }
 
 // AcceptAccessResult is {items: [MetaResult]}.
@@ -346,7 +340,7 @@ type DeclineAccessRequest struct {
 }
 
 func (r DeclineAccessRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
 }
 
 // DeclineAccessResult is empty.
@@ -359,7 +353,7 @@ type RevokeAccessRequest struct {
 }
 
 func (r RevokeAccessRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "userId": r.UserId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "userId": r.UserId})
 }
 
 // RevokeAccessResult is empty.
@@ -375,7 +369,7 @@ type ExcludeAccountRequest struct {
 }
 
 func (r ExcludeAccountRequest) Validate() error {
-	return validateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
+	return ValidateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
 // ExcludeAccountResult / IncludeAccountResult are {item: MetaResult}.
@@ -391,7 +385,7 @@ type IncludeAccountRequest struct {
 }
 
 func (r IncludeAccountRequest) Validate() error {
-	return validateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
+	return ValidateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
 // IncludeAccountResult is {item: MetaResult}.
@@ -407,7 +401,7 @@ type ChangeElementCurrencyRequest struct {
 }
 
 func (r ChangeElementCurrencyRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "elementId": r.ElementId, "currencyId": r.CurrencyId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "elementId": r.ElementId, "currencyId": r.CurrencyId})
 }
 
 // ChangeElementCurrencyResult is empty.
@@ -422,7 +416,7 @@ type SetLimitRequest struct {
 }
 
 func (r SetLimitRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId, "elementId": r.ElementId, "period": r.Period})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId, "elementId": r.ElementId, "period": r.Period})
 }
 
 // SetLimitResult is empty.
@@ -445,14 +439,14 @@ type MoveElementListRequest struct {
 }
 
 func (r MoveElementListRequest) Validate() error {
-	return validateBlank(map[string]string{"budgetId": r.BudgetId})
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
 }
 
 // MoveElementListResult is empty.
 type MoveElementListResult struct{}
 
-// GetTransactionListRequest is the budget transaction-list query.
-type GetTransactionListRequest struct {
+// BudgetTransactionListRequest is the budget transaction-list query.
+type BudgetTransactionListRequest struct {
 	BudgetId    string  `json:"budgetId"`
 	PeriodStart string  `json:"periodStart"`
 	CategoryId  *string `json:"categoryId"`
@@ -493,9 +487,9 @@ type GetBudgetTransactionListResult struct {
 	Items []BudgetTransactionResult `json:"items"`
 }
 
-// validateBlank returns a ValidationError listing every blank field with the
+// ValidateBlank returns a ValidationError listing every blank field with the
 // frozen "This value should not be blank." message.
-func validateBlank(fields map[string]string) error {
+func ValidateBlank(fields map[string]string) error {
 	var fe []errs.FieldError
 	for key, val := range fields {
 		if strings.TrimSpace(val) == "" {
