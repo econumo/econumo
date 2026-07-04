@@ -68,6 +68,52 @@ func TestIssueVerifyRoundTrip(t *testing.T) {
 	}
 }
 
+// TestClaims_RegisteredClaimsGetters covers the jwtv5.Claims interface getters:
+// GetIssuedAt derives from Iat, while GetIssuer/GetSubject/GetAudience return
+// the zero value because Econumo sets no such claims.
+func TestClaims_RegisteredClaimsGetters(t *testing.T) {
+	iat := int64(1700000000)
+	c := Claims{
+		Iat:      iat,
+		Exp:      iat + 2592000,
+		Roles:    []string{"ROLE_USER"},
+		Username: "alice@example.com",
+		ID:       "id-1",
+	}
+
+	issuedAt, err := c.GetIssuedAt()
+	if err != nil {
+		t.Fatalf("GetIssuedAt: %v", err)
+	}
+	if issuedAt.Unix() != iat {
+		t.Errorf("GetIssuedAt() = %d, want %d", issuedAt.Unix(), iat)
+	}
+
+	issuer, err := c.GetIssuer()
+	if err != nil {
+		t.Fatalf("GetIssuer: %v", err)
+	}
+	if issuer != "" {
+		t.Errorf("GetIssuer() = %q, want empty", issuer)
+	}
+
+	subject, err := c.GetSubject()
+	if err != nil {
+		t.Fatalf("GetSubject: %v", err)
+	}
+	if subject != "" {
+		t.Errorf("GetSubject() = %q, want empty", subject)
+	}
+
+	audience, err := c.GetAudience()
+	if err != nil {
+		t.Fatalf("GetAudience: %v", err)
+	}
+	if audience != nil {
+		t.Errorf("GetAudience() = %v, want nil", audience)
+	}
+}
+
 // tokenFixture mirrors testdata/lexik_token.json, a golden token signed with the
 // repo private key by an external issuer (the cross-compatibility witness).
 type tokenFixture struct {

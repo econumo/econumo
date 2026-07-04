@@ -75,6 +75,35 @@ func TestDecimal_Sub(t *testing.T) {
 	}
 }
 
+// TestDecimal_IsGreaterThan_IsLessThan covers the scale-8 comparison helpers
+// across greater/less/equal and negative pairs.
+func TestDecimal_IsGreaterThan_IsLessThan(t *testing.T) {
+	cases := []struct {
+		a, b                  string
+		wantGreater, wantLess bool
+	}{
+		{"5", "3", true, false},
+		{"3", "5", false, true},
+		{"5", "5", false, false},
+		{"-1", "1", false, true},
+		{"1", "-1", true, false},
+		{"-5", "-3", false, true},
+		{"-3", "-5", true, false},
+		{"0", "0", false, false},
+		{"0.00000001", "0", true, false},
+		{"1.5", "1.50000000", false, false},
+	}
+	for _, c := range cases {
+		a, b := NewDecimal(c.a), NewDecimal(c.b)
+		if got := a.IsGreaterThan(b); got != c.wantGreater {
+			t.Errorf("NewDecimal(%q).IsGreaterThan(%q) = %v, want %v", c.a, c.b, got, c.wantGreater)
+		}
+		if got := a.IsLessThan(b); got != c.wantLess {
+			t.Errorf("NewDecimal(%q).IsLessThan(%q) = %v, want %v", c.a, c.b, got, c.wantLess)
+		}
+	}
+}
+
 func TestDecimal_IsZeroNegativeAbs(t *testing.T) {
 	if !NewDecimal("0.00000000").IsZero() {
 		t.Error("0.00000000 should be zero")

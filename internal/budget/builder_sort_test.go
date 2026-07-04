@@ -37,3 +37,34 @@ func TestSortByPositionThenID_BreaksTiesByID(t *testing.T) {
 		}
 	}
 }
+
+// TestSortByPosition orders by position ascending, stably preserving the
+// relative order of equal-position elements (unlike sortByPositionThenID,
+// which breaks ties by id).
+func TestSortByPosition(t *testing.T) {
+	type row struct {
+		pos int
+		id  string
+	}
+	items := []row{
+		{pos: 2, id: "ccc"},
+		{pos: 0, id: "bbb"},
+		{pos: 0, id: "aaa"},
+		{pos: 1, id: "zzz"},
+		{pos: 0, id: "ddd"},
+	}
+	sortByPosition(items, func(r row) int { return r.pos })
+
+	want := []row{
+		{pos: 0, id: "bbb"},
+		{pos: 0, id: "aaa"},
+		{pos: 0, id: "ddd"},
+		{pos: 1, id: "zzz"},
+		{pos: 2, id: "ccc"},
+	}
+	for i := range want {
+		if items[i] != want[i] {
+			t.Fatalf("index %d = %+v, want %+v (full: %+v)", i, items[i], want[i], items)
+		}
+	}
+}

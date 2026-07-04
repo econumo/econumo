@@ -33,6 +33,33 @@ func TestNewId_TimeOrdered(t *testing.T) {
 	}
 }
 
+// TestId_IsZero confirms the zero-value Id reports IsZero, while a parsed
+// non-zero Id does not.
+func TestId_IsZero(t *testing.T) {
+	var zero Id
+	if !zero.IsZero() {
+		t.Error("zero-value Id.IsZero() = false, want true")
+	}
+	id := MustParseId("f680553f-6b40-407d-a528-5123913be0aa")
+	if id.IsZero() {
+		t.Error("parsed non-zero Id.IsZero() = true, want false")
+	}
+}
+
+// TestId_MarshalJSON confirms an Id marshals to its bare quoted string form.
+func TestId_MarshalJSON(t *testing.T) {
+	const s = "f680553f-6b40-407d-a528-5123913be0aa"
+	id := MustParseId(s)
+	got, err := id.MarshalJSON()
+	if err != nil {
+		t.Fatalf("MarshalJSON: %v", err)
+	}
+	want := `"` + s + `"`
+	if string(got) != want {
+		t.Errorf("MarshalJSON() = %s, want %s", got, want)
+	}
+}
+
 // TestParseId_AcceptsExistingV4 confirms we still accept the existing (v4) ids
 // already in the database — the migration to v7 is for NEW ids only.
 func TestParseId_AcceptsExistingV4(t *testing.T) {
