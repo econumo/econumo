@@ -338,7 +338,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		catIn := r.ph(1+len(accArgs), len(catArgs))
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.category_id IN (" + catIn + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND t.category_id IN (" + catIn + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, start, end)
@@ -349,7 +349,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		// serialized by the driver in a form that does not compare correctly
 		// against the stored datetime TEXT at month boundaries (it drops the
 		// first-of-month row).
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.category_id IN (" + catIn + ") AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND t.category_id IN (" + catIn + ") AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))

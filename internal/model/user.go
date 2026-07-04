@@ -191,15 +191,8 @@ func (u *User) UpdateCurrency(code string, now time.Time) {
 	}
 }
 
-// UpdateReportPeriod preserves a long-standing bug that clients depend on: it
-// writes the period string into the CURRENCY option, not REPORT_PERIOD, which
-// is never touched. After the call the currency option holds the period string
-// (e.g. "monthly"), which then fails the currency_id lookup and falls back to
-// USD in the result, while the deprecated reportPeriod field still reads
-// "monthly" from its own (unchanged) option. This behavior is asserted by the
-// user-settings mutation-compare harness.
 func (u *User) UpdateReportPeriod(period string, now time.Time) {
-	if o := u.Option(OptionCurrency); o != nil {
+	if o := u.Option(OptionReportPeriod); o != nil {
 		v := period
 		o.setValue(&v, now)
 	}

@@ -248,27 +248,25 @@ func TestUser_CompleteOnboarding(t *testing.T) {
 	}
 }
 
-// TestUser_UpdateReportPeriod_ReplicatesPHPBug pins the documented quirk: the
-// method writes the period string into the CURRENCY option, never the
-// report_period option. The wrong target is preserved deliberately — a frozen
-// behavior clients depend on, not a bug to fix.
-func TestUser_UpdateReportPeriod_ReplicatesPHPBug(t *testing.T) {
+// TestUser_UpdateReportPeriod writes the period into the report_period option
+// and leaves the currency option untouched.
+func TestUser_UpdateReportPeriod(t *testing.T) {
 	u := seeded(t)
 	u.UpdateReportPeriod("weekly", tu1)
 
-	// The currency option is the one that gets clobbered.
-	cur := u.Option(OptionCurrency)
-	if cur == nil || cur.Value == nil || *cur.Value != "weekly" {
-		t.Fatalf("expected currency option to be clobbered to 'weekly', got %+v", cur)
-	}
-	// The report_period option is left untouched at its default.
+	// The report_period option holds the new value.
 	rp := u.Option(OptionReportPeriod)
-	if rp == nil || rp.Value == nil || *rp.Value != DefaultReportPeriod {
-		t.Fatalf("report_period option should be untouched, got %+v", rp)
+	if rp == nil || rp.Value == nil || *rp.Value != "weekly" {
+		t.Fatalf("expected report_period option 'weekly', got %+v", rp)
 	}
-	// And ReportPeriod() still reads the (unchanged) report_period option.
-	if u.ReportPeriod() != DefaultReportPeriod {
-		t.Errorf("ReportPeriod()=%q want %q (unchanged)", u.ReportPeriod(), DefaultReportPeriod)
+	// The currency option is untouched at its seeded default.
+	cur := u.Option(OptionCurrency)
+	if cur == nil || cur.Value == nil || *cur.Value != DefaultCurrency {
+		t.Fatalf("currency option should be untouched at %q, got %+v", DefaultCurrency, cur)
+	}
+	// ReportPeriod() reads the updated report_period option.
+	if u.ReportPeriod() != "weekly" {
+		t.Errorf("ReportPeriod()=%q want %q", u.ReportPeriod(), "weekly")
 	}
 }
 

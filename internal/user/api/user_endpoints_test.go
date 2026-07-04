@@ -332,12 +332,12 @@ func TestUpdateBudget_BadUUID_400(t *testing.T) {
 	}
 }
 
-// TestUpdateReportPeriod_OverwritesCurrencyOption pins a long-standing,
-// intentionally-preserved bug: update-report-period writes the period value onto
-// the CURRENCY option (not report_period). After the call the currency option
-// holds "monthly", the currency_id falls back to USD, and the deprecated
-// reportPeriod field still reads "monthly".
-func TestUpdateReportPeriod_OverwritesCurrencyOption(t *testing.T) {
+// TestUpdateReportPeriod_WritesReportPeriodOption verifies update-report-period
+// writes the period onto the report_period option and leaves the currency option
+// (and the currency_id it resolves) untouched. Only "monthly" passes the
+// report-period invariant, so that is the value under test; the load-bearing
+// assertion is that the currency option is no longer clobbered.
+func TestUpdateReportPeriod_WritesReportPeriodOption(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
@@ -351,16 +351,19 @@ func TestUpdateReportPeriod_OverwritesCurrencyOption(t *testing.T) {
 		User currentUser `json:"user"`
 	}](t, env.Data)
 
-	// The currency option must now hold the period string (the preserved bug).
-	cur, ok := res.User.optionValue("currency")
-	if !ok || cur == nil || *cur != "monthly" {
-		t.Fatalf("currency option = %v (ok=%v), want %q (preserved bug); body: %s", cur, ok, "monthly", env.raw)
+	// The report_period option holds the written value.
+	rp, ok := res.User.optionValue("report_period")
+	if !ok || rp == nil || *rp != "monthly" {
+		t.Fatalf("report_period option = %v (ok=%v), want %q; body: %s", rp, ok, "monthly", env.raw)
 	}
-	// "monthly" is not a currency code -> currency_id falls back to USD and the
-	// deprecated top-level currency field reads back "USD".
+	// The currency option and the currency_id it resolves are untouched.
+	cur, ok := res.User.optionValue("currency")
+	if !ok || cur == nil || *cur != "USD" {
+		t.Fatalf("currency option = %v (ok=%v), want USD (untouched); body: %s", cur, ok, env.raw)
+	}
 	cid, ok := res.User.optionValue("currency_id")
 	if !ok || cid == nil || *cid != usdCurrencyID {
-		t.Fatalf("currency_id = %v (ok=%v), want USD fallback %q; body: %s", cid, ok, usdCurrencyID, env.raw)
+		t.Fatalf("currency_id = %v (ok=%v), want %q; body: %s", cid, ok, usdCurrencyID, env.raw)
 	}
 	if res.User.Currency != "USD" {
 		t.Fatalf("deprecated currency field = %q, want USD; body: %s", res.User.Currency, env.raw)

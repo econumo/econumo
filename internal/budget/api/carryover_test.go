@@ -115,34 +115,29 @@ func TestGetBudget_MultiPeriodCarryover(t *testing.T) {
 	}
 }
 
-// TestGetBudget_IncomeTransactionInflatesSpending_KnownBug pins current behaviour
-// that is very likely a bug, so a future intentional fix trips this test and
-// forces a conscious golden update rather than silently changing the wire.
-//
-// KNOWN BUG: the budget spending query (CountSpending, internal/budget/repo/read.go)
-// sums transactions by category_id with NO filter on transaction type, so an
-// INCOME transaction (type=1) that happens to reference an expense category is
-// counted as spending against that category's budget element. A correct
-// implementation would count only expenses (type=0) toward an expense category's
-// spent. This test seeds one 300 income transaction on the seeded Food (expense)
-// category and asserts it currently inflates `spent` to 300.
-//
-// If you are here because you fixed CountSpending to filter by type, the expected
-// value becomes "0" — update this assertion and the apiparity goldens together.
-func TestGetBudget_IncomeTransactionInflatesSpending_KnownBug(t *testing.T) {
+// TestGetBudget_IncomeTransactionNotCountedAsSpending guards the CountSpending
+// type filter: an INCOME transaction (type=1) that references an expense category
+// must NOT inflate that category's budget `spent`. Only expenses (type=0) count.
+// Mixing an expense and an income on the same category isolates the filter — the
+// element's spent must equal the expense alone.
+func TestGetBudget_IncomeTransactionNotCountedAsSpending(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 
-	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Income Bug Budget")); st != 200 {
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Income Filter Budget")); st != 200 {
 		t.Fatalf("create=%d body=%s", st, e.raw)
 	}
 
-	// An INCOME transaction (type=1) categorized to the expense Food category,
-	// dated inside the viewed period.
+	// Both categorized to the expense Food category, inside the viewed period:
+	// a 120 expense (counts) and a 300 income (must not count).
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	f.Transaction(fixture.Transaction{
 		ID: "eeee3333-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
-		CategoryID: catID, Type: 1, Amount: "300.00", SpentAt: "2025-04-10 00:00:00",
+		CategoryID: catID, Type: 0, Amount: "120.00", SpentAt: "2025-04-10 00:00:00",
+	})
+	f.Transaction(fixture.Transaction{
+		ID: "eeee3333-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 1, Amount: "300.00", SpentAt: "2025-04-11 00:00:00",
 	})
 
 	status, env := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1+"&date=2025-04-15", tok, nil)
@@ -161,8 +156,7 @@ func TestGetBudget_IncomeTransactionInflatesSpending_KnownBug(t *testing.T) {
 	if !found {
 		t.Fatalf("Food element not in structure: %+v", res.Item.Structure.Elements)
 	}
-	if foodSpent != "300" {
-		t.Fatalf("Food spent=%q want 300 (KNOWN BUG: income counted as spending); "+
-			"if you filtered CountSpending by type this becomes 0 — update goldens too", foodSpent)
+	if foodSpent != "120" {
+		t.Fatalf("Food spent=%q want 120 (expense only; the 300 income must not count)", foodSpent)
 	}
 }
