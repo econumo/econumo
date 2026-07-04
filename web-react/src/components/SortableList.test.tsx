@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { SortableList } from './SortableList'
+import { SortableList, orderByPreview } from './SortableList'
 
 const items = [
   { id: 'a', name: 'Alpha' },
@@ -48,4 +48,10 @@ it('disabled mode renders plain rows without dnd wiring', () => {
     />,
   )
   expect(screen.getByLabelText('drag a')).not.toHaveAttribute('aria-roledescription')
+})
+
+it('orderByPreview keeps the dropped order, drops vanished ids, appends unknown items', () => {
+  expect(orderByPreview(items, null)).toEqual(items)
+  expect(orderByPreview(items, ['c', 'a', 'b']).map((i) => i.id)).toEqual(['c', 'a', 'b'])
+  expect(orderByPreview(items, ['c', 'gone', 'a']).map((i) => i.id)).toEqual(['c', 'a', 'b'])
 })

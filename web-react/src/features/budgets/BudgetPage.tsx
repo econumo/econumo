@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { DndContext, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { Check, ChevronLeft, FolderPlus, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { useTranslation } from 'react-i18next'
@@ -52,7 +52,8 @@ import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
 import { useCreateBudget } from './queries'
-import { computeElementMove } from './elementMove'
+import type { ElementContainer } from './elementMove'
+import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement } from './elementMove'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 
 function DraggableElement({ id, children }: { id: string; children: ReactNode }) {
@@ -129,12 +130,30 @@ export function BudgetPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
-  const buckets = useMemo(() => {
+  // Live drag preview: while an element drag is in flight (and until the
+  // refetched budget lands) the table renders this arrangement, so the row
+  // moves across folders during the drag and never snaps back on drop.
+  const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
+  useEffect(() => {
+    setDragArrangement(null)
+  }, [budget])
+
+  const serverBuckets = useMemo(() => {
     if (!budget) {
       return null
     }
     return bucketElements(budget, makeBudgetExchange(budget, currencies))
   }, [budget, currencies])
+
+  const buckets = useMemo(() => {
+    if (!budget || !serverBuckets) {
+      return serverBuckets
+    }
+    if (!dragArrangement) {
+      return serverBuckets
+    }
+    return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies))
+  }, [budget, serverBuckets, dragArrangement, currencies])
 
   const configure = budget ? canConfigureBudget(budget.meta, user?.id) : false
   const limitsEditable = budget ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
@@ -192,15 +211,34 @@ export function BudgetPage() {
 
   const budgetCurrencyIds = budget.balances.map((b) => b.currencyId)
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragStart = () => {
+    setDragArrangement(arrangementFromBuckets(buckets))
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) {
       return
     }
-    const item = computeElementMove(buckets, String(active.id), String(over.id))
-    if (item) {
-      moveElements.mutate({ budgetId: budget.meta.id, items: [item] })
+    setDragArrangement((prev) => moveElementInArrangement(prev ?? arrangementFromBuckets(buckets), String(active.id), String(over.id)))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    const base = arrangementFromBuckets(serverBuckets ?? buckets)
+    const final =
+      over && active.id !== over.id
+        ? moveElementInArrangement(dragArrangement ?? base, String(active.id), String(over.id))
+        : dragArrangement ?? base
+    const item = arrangementItem(final, String(active.id))
+    const before = arrangementItem(base, String(active.id))
+    if (!item || (before && before.folderId === item.folderId && before.position === item.position)) {
+      setDragArrangement(null)
+      return
     }
+    // keep the preview until the refetched budget replaces it (or rolls it back)
+    setDragArrangement(final)
+    moveElements.mutate({ budgetId: budget.meta.id, items: [item] })
   }
 
   const folderActions = (bucket: FolderBucket, index: number, total: number) =>
@@ -365,7 +403,14 @@ export function BudgetPage() {
       {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setDragArrangement(null)}
+        >
           <BudgetTable
             budget={budget}
             buckets={buckets}
