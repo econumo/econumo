@@ -19,8 +19,8 @@ import (
 const seededUSD = "dffc2a06-6f29-4704-8575-31709adee926"
 
 func TestCurrencyLookup_GetIDByCode(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	lookup := currencyrepo.New("sqlite", db.TX)
+	db := dbtest.New(t)
+	lookup := currencyrepo.New(db.Engine, db.TX)
 	ctx := context.Background()
 
 	id, err := lookup.GetIDByCode(ctx, "USD")
@@ -43,8 +43,8 @@ func TestCurrencyLookup_GetIDByCode(t *testing.T) {
 }
 
 func TestCurrencyLookup_GetByID(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	lookup := currencyrepo.New("sqlite", db.TX)
+	db := dbtest.New(t)
+	lookup := currencyrepo.New(db.Engine, db.TX)
 	ctx := context.Background()
 
 	v, err := lookup.GetByID(ctx, seededUSD)
@@ -66,8 +66,8 @@ func TestCurrencyLookup_GetByID(t *testing.T) {
 }
 
 func TestCurrencyReadRepo_CurrencyListView(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	read := currencyrepo.NewReadRepo("sqlite", db.TX)
+	db := dbtest.New(t)
+	read := currencyrepo.NewReadRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	rows, err := read.CurrencyListView(ctx)
@@ -92,8 +92,8 @@ func TestCurrencyReadRepo_CurrencyListView(t *testing.T) {
 }
 
 func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	read := currencyrepo.NewReadRepo("sqlite", db.TX)
+	db := dbtest.New(t)
+	read := currencyrepo.NewReadRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	// Seed a second currency + a rate; the rate's NUMERIC(19,8) must normalize to
@@ -119,9 +119,9 @@ func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
 }
 
 func TestRateProvider_FractionDigitsAndBase(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	lookup := currencyrepo.New("sqlite", db.TX)
-	provider := currencyrepo.NewRateProvider("sqlite", db.TX, lookup, "USD")
+	db := dbtest.New(t)
+	lookup := currencyrepo.New(db.Engine, db.TX)
+	provider := currencyrepo.NewRateProvider(db.Engine, db.TX, lookup, "USD")
 	ctx := context.Background()
 
 	baseID, err := provider.BaseCurrencyID(ctx)

@@ -20,8 +20,8 @@ const (
 
 func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
-	return accountrepo.NewFolderRepo("sqlite", db.TX), db, fixture.New(t, db)
+	db := dbtest.New(t)
+	return accountrepo.NewFolderRepo(db.Engine, db.TX), db, fixture.New(t, db)
 }
 
 // newTestFolder builds a visible fixedTime-stamped folder for userA.

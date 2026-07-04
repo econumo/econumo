@@ -37,8 +37,8 @@ func seedAccount(t *testing.T, f *fixture.Builder, id, userID, name string) {
 
 func newAccountRepo(t *testing.T) (*accountrepo.Repo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
-	return accountrepo.NewRepo("sqlite", db.TX), db, fixture.New(t, db)
+	db := dbtest.New(t)
+	return accountrepo.NewRepo(db.Engine, db.TX), db, fixture.New(t, db)
 }
 
 func TestAccountRepo_SaveGetRoundTrip(t *testing.T) {
@@ -237,10 +237,10 @@ func TestAccountRepo_SaveCorrection(t *testing.T) {
 		t.Fatalf("SaveCorrection: %v", err)
 	}
 	var amount string
-	if err := db.Raw.QueryRowContext(ctx, `SELECT amount FROM transactions WHERE id = ?`, corrID.String()).Scan(&amount); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT amount FROM transactions WHERE id = ?`), corrID.String()).Scan(&amount); err != nil {
 		t.Fatalf("read correction: %v", err)
 	}
-	if amount != "12.34" {
+	if vo.NewDecimal(amount).String() != vo.NewDecimal("12.34").String() {
 		t.Errorf("want amount 12.34, got %q", amount)
 	}
 }

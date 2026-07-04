@@ -36,9 +36,9 @@ func seedUser(t *testing.T, db *dbtest.DB, id string) {
 
 func newRepo(t *testing.T) (*budgetrepo.Repo, *dbtest.DB) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	seedUser(t, db, userA)
-	return budgetrepo.NewRepo("sqlite", db.TX), db
+	return budgetrepo.NewRepo(db.Engine, db.TX), db
 }
 
 // saveBudget persists a base budget so child rows have a valid FK.
@@ -274,7 +274,7 @@ func TestBudgetRepo_SaveLimit_Decimal(t *testing.T) {
 		t.Fatalf("SaveLimit: %v", err)
 	}
 	var amount string
-	if err := db.Raw.QueryRowContext(ctx, `SELECT amount FROM budgets_elements_limits WHERE id = ?`, lid.String()).Scan(&amount); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT amount FROM budgets_elements_limits WHERE id = ?`), lid.String()).Scan(&amount); err != nil {
 		t.Fatalf("read amount: %v", err)
 	}
 	if amount != "250.12345678" {
@@ -286,7 +286,7 @@ func TestBudgetRepo_SaveLimit_Decimal(t *testing.T) {
 		t.Fatalf("DeleteLimit: %v", err)
 	}
 	var n int
-	if err := db.Raw.QueryRowContext(ctx, `SELECT COUNT(*) FROM budgets_elements_limits WHERE id = ?`, lid.String()).Scan(&n); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT COUNT(*) FROM budgets_elements_limits WHERE id = ?`), lid.String()).Scan(&n); err != nil {
 		t.Fatalf("count: %v", err)
 	}
 	if n != 0 {

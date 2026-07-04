@@ -12,6 +12,8 @@ package dbtest
 import (
 	"context"
 	"database/sql"
+	"strconv"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite" // register the pure-Go sqlite driver for tests
@@ -28,6 +30,28 @@ type DB struct {
 	Raw    *sql.DB
 	TX     *backend.TxManager
 	Engine string // "sqlite" or "postgresql"
+}
+
+// Rebind converts a query written with sqlite-style '?' placeholders to the
+// engine's dialect, so raw verification SQL in a test runs on either engine
+// ('?' -> '$1','$2',... on PostgreSQL; unchanged on sqlite). Use it whenever a
+// test issues raw SQL through DB.Raw/DB.TX instead of a repository method.
+func (d *DB) Rebind(query string) string {
+	if d.Engine != "postgresql" {
+		return query
+	}
+	var b strings.Builder
+	n := 0
+	for i := 0; i < len(query); i++ {
+		if query[i] == '?' {
+			n++
+			b.WriteByte('$')
+			b.WriteString(strconv.Itoa(n))
+			continue
+		}
+		b.WriteByte(query[i])
+	}
+	return b.String()
 }
 
 // NewSQLite opens a fresh in-memory SQLite database, runs every migration, and

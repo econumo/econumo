@@ -27,17 +27,17 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 	t.Helper()
 	enc := auth.NewEncodeService(testSalt)
 	hasher := auth.NewPasswordHasher()
-	repo := userrepo.NewRepo("sqlite", db.TX)
-	lookup := currencyrepo.New("sqlite", db.TX)
-	budgets := server.NewUserBudgetExistence("sqlite", db.TX)
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	lookup := currencyrepo.New(db.Engine, db.TX)
+	budgets := server.NewUserBudgetExistence(db.Engine, db.TX)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, nil, lookup, budgets, nil, nil, clock.New(), false)
 	return svc, enc, hasher
 }
 
 func TestAdminCreateUser(t *testing.T) {
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	svc, enc, hasher := newUserSvc(t, db)
-	repo := userrepo.NewRepo("sqlite", db.TX)
+	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	id, err := svc.AdminCreateUser(ctx, "Synth Tester", "Synth@Econumo.test", "secretpass")
@@ -77,9 +77,9 @@ func TestAdminCreateUser(t *testing.T) {
 }
 
 func TestAdminChangeEmail(t *testing.T) {
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	svc, enc, _ := newUserSvc(t, db)
-	repo := userrepo.NewRepo("sqlite", db.TX)
+	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	if _, err := svc.AdminCreateUser(ctx, "A", "old@econumo.test", "pw"); err != nil {
@@ -116,9 +116,9 @@ func TestAdminChangeEmail(t *testing.T) {
 }
 
 func TestAdminChangePassword(t *testing.T) {
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	svc, enc, hasher := newUserSvc(t, db)
-	repo := userrepo.NewRepo("sqlite", db.TX)
+	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	if _, err := svc.AdminCreateUser(ctx, "A", "pw@econumo.test", "oldpw"); err != nil {
@@ -145,9 +145,9 @@ func TestAdminChangePassword(t *testing.T) {
 }
 
 func TestAdminActivateDeactivate(t *testing.T) {
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	svc, enc, _ := newUserSvc(t, db)
-	repo := userrepo.NewRepo("sqlite", db.TX)
+	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	// Seed two real (crypto) users at controlled creation times.

@@ -32,8 +32,8 @@ func seedUser(t *testing.T, f *fixture.Builder, id string) {
 
 func newRepo(t *testing.T) (*categoryrepo.Repo, *categoryrepo.ReadRepo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
-	return categoryrepo.NewRepo("sqlite", db.TX), categoryrepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
+	db := dbtest.New(t)
+	return categoryrepo.NewRepo(db.Engine, db.TX), categoryrepo.NewReadRepo(db.Engine, db.TX), db, fixture.New(t, db)
 }
 
 func cat(id, userID, name string, pos int16, typ model.CategoryType) *model.Category {
@@ -163,7 +163,7 @@ func TestCategoryRepo_ReassignTransactions(t *testing.T) {
 		t.Fatalf("ReassignTransactions: %v", err)
 	}
 	var catID string
-	if err := db.Raw.QueryRowContext(ctx, `SELECT category_id FROM transactions WHERE id = ?`, "7c000000-0000-0000-0000-000000000001").Scan(&catID); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT category_id FROM transactions WHERE id = ?`), "7c000000-0000-0000-0000-000000000001").Scan(&catID); err != nil {
 		t.Fatalf("read tx: %v", err)
 	}
 	if catID != catA2 {
@@ -208,7 +208,7 @@ func TestCategoryRepo_OperationGuard_Idempotency(t *testing.T) {
 		t.Fatalf("MarkHandled: %v", err)
 	}
 	var handled bool
-	if err := db.Raw.QueryRowContext(ctx, `SELECT is_handled FROM operation_requests_ids WHERE id = ?`, opID.String()).Scan(&handled); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT is_handled FROM operation_requests_ids WHERE id = ?`), opID.String()).Scan(&handled); err != nil {
 		t.Fatalf("read op row: %v", err)
 	}
 	if !handled {

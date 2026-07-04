@@ -193,6 +193,13 @@ Tests live alongside the Go code:
   then INSPECT the diff — a golden change means observable behavior changed;
   never hand-edit a golden. If route-registration files move, update
   `handlerGlobs` in `guard_test.go`.
+- `dbtest.New(t)` selects the engine by `DBTEST_ENGINE` (default sqlite; `pgsql`
+  under `-tags enginecompare` → Postgres, each test in its own schema). `make
+  test-repo-pgsql` reruns the whole repo/unit suite against PostgreSQL so the
+  pgsql adapters + generated queries are exercised, not just the parity
+  catalogue; it is part of `make regression` and the CI regression job. Raw SQL
+  in a test must use `db.Rebind(query)` for `?`→`$N`, and decimal assertions
+  compare normalized `vo.Decimal` values (sqlite text vs pgsql NUMERIC differ).
 - `internal/test/enginecompare/` — the strongest contract: replays the same
   catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
   responses (build tag `enginecompare`).

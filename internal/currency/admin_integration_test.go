@@ -19,12 +19,12 @@ import (
 
 func newCurrencySvc(t *testing.T, db *dbtest.DB) *appcurrency.WriteService {
 	t.Helper()
-	repo := currencyrepo.NewWriteRepo("sqlite", db.TX)
+	repo := currencyrepo.NewWriteRepo(db.Engine, db.TX)
 	return appcurrency.NewWriteService(repo, db.TX, clock.New())
 }
 
 func TestAddCurrency(t *testing.T) {
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	svc := newCurrencySvc(t, db)
 	ctx := context.Background()
 
@@ -86,7 +86,7 @@ func TestAddCurrency(t *testing.T) {
 }
 
 func TestUpdateRates(t *testing.T) {
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	svc := newCurrencySvc(t, db)
 	ctx := context.Background()
 
@@ -134,7 +134,7 @@ func TestUpdateRates(t *testing.T) {
 
 func readCurrency(t *testing.T, db *dbtest.DB, code string) (symbol string, name sql.NullString, fractionDigits int) {
 	t.Helper()
-	row := db.Raw.QueryRow(`SELECT symbol, name, fraction_digits FROM currencies WHERE code = ?`, code)
+	row := db.Raw.QueryRow(db.Rebind(`SELECT symbol, name, fraction_digits FROM currencies WHERE code = ?`), code)
 	if err := row.Scan(&symbol, &name, &fractionDigits); err != nil {
 		t.Fatalf("read currency %s: %v", code, err)
 	}

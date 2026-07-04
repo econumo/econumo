@@ -32,8 +32,8 @@ func seedUser(t *testing.T, f *fixture.Builder, id string) {
 
 func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
-	return tagrepo.NewRepo("sqlite", db.TX), tagrepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
+	db := dbtest.New(t)
+	return tagrepo.NewRepo(db.Engine, db.TX), tagrepo.NewReadRepo(db.Engine, db.TX), db, fixture.New(t, db)
 }
 
 func tag(id, userID, name string, pos int16) *model.Tag {

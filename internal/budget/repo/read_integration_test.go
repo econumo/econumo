@@ -33,10 +33,10 @@ func seedExpense(t *testing.T, db *dbtest.DB, id, account, category, amount, spe
 
 func newReadRepo(t *testing.T) (*budgetrepo.ReadRepo, *dbtest.DB) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	seedUser(t, db, userA)
 	seedAccount(t, db, acctA, userA)
-	return budgetrepo.NewReadRepo("sqlite", db.TX), db
+	return budgetrepo.NewReadRepo(db.Engine, db.TX), db
 }
 
 func TestBudgetReadRepo_AccountsBalances(t *testing.T) {
@@ -122,7 +122,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("want 1 tagged transaction, got %d: %+v", len(rows), rows)
 	}
-	if rows[0].Amount != "12.5" {
+	if vo.NewDecimal(rows[0].Amount).String() != vo.NewDecimal("12.5").String() {
 		t.Errorf("amount mismatch: %q", rows[0].Amount)
 	}
 	if rows[0].TagID == nil || *rows[0].TagID != tag {

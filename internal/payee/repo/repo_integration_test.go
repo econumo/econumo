@@ -32,8 +32,8 @@ func seedUser(t *testing.T, f *fixture.Builder, id string) {
 
 func newRepo(t *testing.T) (*payeerepo.Repo, *payeerepo.ReadRepo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
-	return payeerepo.NewRepo("sqlite", db.TX), payeerepo.NewReadRepo("sqlite", db.TX), db, fixture.New(t, db)
+	db := dbtest.New(t)
+	return payeerepo.NewRepo(db.Engine, db.TX), payeerepo.NewReadRepo(db.Engine, db.TX), db, fixture.New(t, db)
 }
 
 func payee(id, userID, name string, pos int16) *model.Payee {

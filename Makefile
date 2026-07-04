@@ -151,8 +151,8 @@ DATABASE_TEST_PGSQL_URL ?= postgres://econumo:econumo@localhost:5432/econumo_tes
 # real PostgreSQL. If no Postgres is reachable it auto-creates a throwaway test
 # DB in the compose `postgres` service (start it with `make up` or
 # `docker compose up -d postgres` first).
-regression: test pg-ensure test-engines
-	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison)."
+regression: test pg-ensure test-engines test-repo-pgsql
+	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL)."
 
 # Ensure the throwaway test database exists in the compose postgres service.
 # No-op if it already exists; harmless if you point DATABASE_TEST_PGSQL_URL at
@@ -169,6 +169,15 @@ pg-ensure:
 test-engines:
 	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare ./...
+
+# Run the SAME repo/unit test suite that the smoke gate runs against sqlite, but
+# against PostgreSQL: DBTEST_ENGINE=pgsql makes dbtest.New open Postgres (each
+# test in its own schema), so every repository/integration test exercises the
+# real pgsql adapters + generated pgsql queries — the code the sqlite-only smoke
+# gate can't reach. Skips per-test when DATABASE_TEST_PGSQL_URL is unreachable.
+test-repo-pgsql:
+	CGO_ENABLED=0 DBTEST_ENGINE=pgsql DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
+		go test -tags enginecompare -count=1 $(shell go list ./internal/... | grep -vE '/sqlc/gen/|/test/enginecompare')
 
 # --- Publishing (GitHub Container Registry only) ---------------------------
 # `make publish` builds the multi-arch image locally and pushes the "dev" tag to

@@ -27,11 +27,11 @@ var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
 func setup(t *testing.T) (*transactionrepo.Repo, *dbtest.DB) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	seedUser(t, db, userA)
 	seedAccount(t, db, acct1, userA)
 	seedAccount(t, db, acct2, userA)
-	return transactionrepo.NewRepo("sqlite", db.TX), db
+	return transactionrepo.NewRepo(db.Engine, db.TX), db
 }
 
 func seedUser(t *testing.T, db *dbtest.DB, id string) {
@@ -74,7 +74,7 @@ func TestTransactionRepo_SaveGetRoundTrip_Expense(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Amount != "123.45" {
+	if vo.NewDecimal(got.Amount).String() != vo.NewDecimal("123.45").String() {
 		t.Errorf("amount mismatch: %q", got.Amount)
 	}
 	if got.Type != model.TransactionTypeExpense || got.AccountID.String() != acct1 {
@@ -107,13 +107,13 @@ func TestTransactionRepo_SaveGetRoundTrip_Transfer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Amount != "100.25" {
+	if vo.NewDecimal(got.Amount).String() != vo.NewDecimal("100.25").String() {
 		t.Errorf("amount mismatch: %q", got.Amount)
 	}
 	if got.AccountRecipID == nil || got.AccountRecipID.String() != acct2 {
 		t.Errorf("recipient mismatch: %v", got.AccountRecipID)
 	}
-	if got.AmountRecipient == nil || *got.AmountRecipient != "90.5" {
+	if got.AmountRecipient == nil || vo.NewDecimal(*got.AmountRecipient).String() != vo.NewDecimal("90.5").String() {
 		t.Errorf("amount_recipient mismatch: %v", deref(got.AmountRecipient))
 	}
 }

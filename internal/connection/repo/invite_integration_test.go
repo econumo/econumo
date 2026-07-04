@@ -20,9 +20,9 @@ import (
 
 func newInviteRepo(t *testing.T) (*connectionrepo.InviteRepo, *dbtest.DB) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	seedUser(t, fixture.New(t, db), userA)
-	return connectionrepo.NewInviteRepo("sqlite", db.TX), db
+	return connectionrepo.NewInviteRepo(db.Engine, db.TX), db
 }
 
 func newInvite(userID vo.Id, code string, expiredAt *time.Time) *model.ConnectionInvite {

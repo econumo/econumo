@@ -36,13 +36,13 @@ func seedAccount(t *testing.T, f *fixture.Builder, id, userID string) {
 
 func newRepo(t *testing.T) (*connectionrepo.Repo, *dbtest.DB, *fixture.Builder) {
 	t.Helper()
-	db := dbtest.NewSQLite(t)
+	db := dbtest.New(t)
 	f := fixture.New(t, db)
 	seedUser(t, f, userA)
 	seedUser(t, f, userB)
 	seedAccount(t, f, acctA, userA)
 	seedAccount(t, f, acctB, userB)
-	return connectionrepo.NewRepo("sqlite", db.TX), db, f
+	return connectionrepo.NewRepo(db.Engine, db.TX), db, f
 }
 
 func newAccess(accountID, userID vo.Id, role model.Role, createdAt, updatedAt time.Time) *model.AccountAccess {
@@ -188,7 +188,7 @@ func TestConnectionRepo_DeleteOption(t *testing.T) {
 		t.Fatalf("DeleteOption: %v", err)
 	}
 	var n int
-	if err := db.Raw.QueryRowContext(ctx, `SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`, acctA, userB).Scan(&n); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctA, userB).Scan(&n); err != nil {
 		t.Fatalf("count options: %v", err)
 	}
 	if n != 0 {

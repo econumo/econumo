@@ -13,8 +13,8 @@ import (
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
 func TestGuard_Claim_Idempotency(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	guard := operation.NewGuard("sqlite", db.TX)
+	db := dbtest.New(t)
+	guard := operation.NewGuard(db.Engine, db.TX)
 	ctx := context.Background()
 	id := vo.NewId()
 
@@ -45,8 +45,8 @@ func TestGuard_Claim_Idempotency(t *testing.T) {
 }
 
 func TestGuard_MarkHandled(t *testing.T) {
-	db := dbtest.NewSQLite(t)
-	guard := operation.NewGuard("sqlite", db.TX)
+	db := dbtest.New(t)
+	guard := operation.NewGuard(db.Engine, db.TX)
 	ctx := context.Background()
 	id := vo.NewId()
 
@@ -54,7 +54,7 @@ func TestGuard_MarkHandled(t *testing.T) {
 		t.Fatalf("Claim: %v", err)
 	}
 	var handled bool
-	if err := db.Raw.QueryRowContext(ctx, `SELECT is_handled FROM operation_requests_ids WHERE id = ?`, id.String()).Scan(&handled); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT is_handled FROM operation_requests_ids WHERE id = ?`), id.String()).Scan(&handled); err != nil {
 		t.Fatalf("read before: %v", err)
 	}
 	if handled {
@@ -66,7 +66,7 @@ func TestGuard_MarkHandled(t *testing.T) {
 		t.Fatalf("MarkHandled: %v", err)
 	}
 	var updatedAt time.Time
-	if err := db.Raw.QueryRowContext(ctx, `SELECT is_handled, updated_at FROM operation_requests_ids WHERE id = ?`, id.String()).Scan(&handled, &updatedAt); err != nil {
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT is_handled, updated_at FROM operation_requests_ids WHERE id = ?`), id.String()).Scan(&handled, &updatedAt); err != nil {
 		t.Fatalf("read after: %v", err)
 	}
 	if !handled {
