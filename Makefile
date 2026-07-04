@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish publish-buildx-ensure swagger swagger-check
+.PHONY: help web-install web-dev web-bundle web-lint web-react-install web-react-dev web-react-test web-react-lint web-react-bundle go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish publish-buildx-ensure swagger swagger-check
 
 # Default target
 .DEFAULT_GOAL := help
@@ -21,6 +21,13 @@ help:
 	@echo "  make web-dev      - Start web development server"
 	@echo "  make web-bundle   - Bundle web for production"
 	@echo "  make web-lint     - Run web linter"
+	@echo ""
+	@echo "Frontend rewrite (web-react/):"
+	@echo "  make web-react-install - Install web-react dependencies"
+	@echo "  make web-react-dev     - Start web-react development server"
+	@echo "  make web-react-test    - Run web-react tests"
+	@echo "  make web-react-lint    - Run web-react linter"
+	@echo "  make web-react-bundle  - Bundle web-react for production"
 
 # --- Frontend (web/) ---
 
@@ -39,6 +46,28 @@ web-bundle:
 web-lint:
 	@echo "Running web linter..."
 	cd web && npm run lint
+
+# --- Frontend rewrite (web-react/) ---
+
+web-react-install:
+	@echo "Installing web-react dependencies..."
+	cd web-react && pnpm install
+
+web-react-dev:
+	@echo "Starting web-react development server..."
+	cd web-react && pnpm dev
+
+web-react-test:
+	@echo "Running web-react tests..."
+	cd web-react && pnpm test
+
+web-react-lint:
+	@echo "Running web-react linter..."
+	cd web-react && pnpm lint
+
+web-react-bundle:
+	@echo "Bundling web-react for production..."
+	cd web-react && pnpm build
 
 # --- Backend (Go) ---
 
