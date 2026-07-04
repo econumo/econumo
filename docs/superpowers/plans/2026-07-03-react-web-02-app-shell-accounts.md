@@ -53,10 +53,10 @@
   - `formatDayHeading(day: string): string` → `"3rd July 2026"` (Vue uses `Do MMMM YYYY`; implement English ordinal — 1st/2nd/3rd/4th…11th/12th/13th→th — plus full month name via `Intl.DateTimeFormat('en',{month:'long'})`).
   - `isToday(day: string): boolean`, `isYesterday(day: string): boolean`, `isFuture(dateTime: string): boolean` (>= tomorrow 00:00 local — Vue marks rows `isInFuture`).
 
-- [ ] **Step 1: failing tests** covering: round-trip format/parse, zero padding, day extraction, ordinals (1st, 2nd, 3rd, 11th, 21st, 22nd, 23rd), today/yesterday against a mocked `Date` (use `vi.setSystemTime`), future detection at the day boundary.
-- [ ] **Step 2: implement** (pure functions, no deps).
-- [ ] **Step 3:** `pnpm vitest run src/lib/datetime.test.ts` → PASS.
-- [ ] **Step 4: commit** `feat(web-react): datetime helpers for the frozen Y-m-d H:i:s contract`.
+- [x] **Step 1: failing tests** covering: round-trip format/parse, zero padding, day extraction, ordinals (1st, 2nd, 3rd, 11th, 21st, 22nd, 23rd), today/yesterday against a mocked `Date` (use `vi.setSystemTime`), future detection at the day boundary.
+- [x] **Step 2: implement** (pure functions, no deps).
+- [x] **Step 3:** `pnpm vitest run src/lib/datetime.test.ts` → PASS.
+- [x] **Step 4: commit** `feat(web-react): datetime helpers for the frozen Y-m-d H:i:s contract`.
 
 ---
 
@@ -87,9 +87,9 @@ Behavior parity (source of truth `useDecimalNumber.ts`/`useMoney.ts`):
 - Negative numbers keep their `-` inside the number (no parentheses); `+`/`-` signs for transaction rows are prepended by the caller, not here.
 - Decimal separator `.`, thousands `,` — hard-coded (not locale-aware), same as Vue.
 
-- [ ] **Step 1: failing tests** — normalize (0, tiny values, trailing zeros, strings), digits matrix (native/non-native × integer/decimal × with/without currency), thousand separators, symbol placement, negative passthrough, edge `"0"` balance string from the wire.
-- [ ] **Step 2: implement.** **Step 3: run** → PASS.
-- [ ] **Step 4: commit** `feat(web-react): money and decimal formatting helpers`.
+- [x] **Step 1: failing tests** — normalize (0, tiny values, trailing zeros, strings), digits matrix (native/non-native × integer/decimal × with/without currency), thousand separators, symbol placement, negative passthrough, edge `"0"` balance string from the wire.
+- [x] **Step 2: implement.** **Step 3: run** → PASS.
+- [x] **Step 4: commit** `feat(web-react): money and decimal formatting helpers`.
 
 ---
 
@@ -116,9 +116,9 @@ export function isValidFormula(value: string): boolean      // validateFormula(s
 export function hasIncompleteFormula(value: string): boolean // /[+\-*/]$/.test(value)
 ```
 
-- [ ] **Step 1: failing tests** (the parity table above + operator precedence, unary minus `-5+2`, division rounding, garbage input).
-- [ ] **Step 2: implement.** **Step 3: run** calculator + validation tests → PASS.
-- [ ] **Step 4: commit** `feat(web-react): safe calculator engine replacing the Vue eval-based one`.
+- [x] **Step 1: failing tests** (the parity table above + operator precedence, unary minus `-5+2`, division rounding, garbage input).
+- [x] **Step 2: implement.** **Step 3: run** calculator + validation tests → PASS.
+- [x] **Step 4: commit** `feat(web-react): safe calculator engine replacing the Vue eval-based one`.
 
 ---
 
@@ -203,9 +203,9 @@ getCurrencyList(): Promise<CurrencyDto[]>
 getCurrencyRateList(): Promise<CurrencyRateDto[]>          // coerce rate
 ```
 
-- [ ] **Step 1: failing tests** with MSW fixtures using EXACT wire shapes: balance/amount as strings (`"balance":"100.5"`, `"amount":"9.99"`, `"rate":"1.08"`), `isVisible: 1`, `isArchived: 0`, envelope wrapping, `{item, transaction:null}`, `{item, accounts:[...]}`. Assert numeric coercion and id passthrough.
-- [ ] **Step 2: implement.** **Step 3: run** → PASS. `pnpm build` → clean.
-- [ ] **Step 4: commit** `feat(web-react): account, transaction, classification and currency API modules`.
+- [x] **Step 1: failing tests** with MSW fixtures using EXACT wire shapes: balance/amount as strings (`"balance":"100.5"`, `"amount":"9.99"`, `"rate":"1.08"`), `isVisible: 1`, `isArchived: 0`, envelope wrapping, `{item, transaction:null}`, `{item, accounts:[...]}`. Assert numeric coercion and id passthrough.
+- [x] **Step 2: implement.** **Step 3: run** → PASS. `pnpm build` → clean.
+- [x] **Step 4: commit** `feat(web-react): account, transaction, classification and currency API modules`.
 
 ---
 
@@ -237,9 +237,9 @@ getCurrencyRateList(): Promise<CurrencyRateDto[]>          // coerce rate
 
 Client-generated ids: every `create*` call sends `id: v7()` generated at call time (the caller passes it or the hook generates it — generate in the hook, return the response item). Remember: response `item.id` is authoritative.
 
-- [ ] **Step 1: failing tests**: create-transaction updates BOTH caches from `{item, accounts}` (assert the accounts cache equals the response accounts, coerced); create-account with `transaction` non-null prepends to transactions; create-account while `['folders']` cache is `[]` triggers a folders refetch (spy via MSW hit count); delete-transaction removes and updates accounts.
-- [ ] **Step 2: implement.** **Step 3: run** → PASS.
-- [ ] **Step 4: commit** `feat(web-react): TanStack Query data layer with the Vue store invalidation semantics`.
+- [x] **Step 1: failing tests**: create-transaction updates BOTH caches from `{item, accounts}` (assert the accounts cache equals the response accounts, coerced); create-account with `transaction` non-null prepends to transactions; create-account while `['folders']` cache is `[]` triggers a folders refetch (spy via MSW hit count); delete-transaction removes and updates accounts.
+- [x] **Step 2: implement.** **Step 3: run** → PASS.
+- [x] **Step 4: commit** `feat(web-react): TanStack Query data layer with the Vue store invalidation semantics`.
 
 ---
 
@@ -249,8 +249,8 @@ Client-generated ids: every `create*` call sends `id: v7()` generated at call ti
 
 Port of `composables/useCurrency.ts`: `exchange(fromCurrencyId, toCurrencyId, amount, rates: CurrencyRateDto[]): number` — same-currency passthrough; convert via base-currency rates (`amount / rate(from) * rate(to)` per the Vue implementation — port the exact arithmetic from `useCurrency.ts`, verify against it while implementing); missing rate → passthrough (Vue behavior). `useExchange()` binds it to the `['currencyRates']` query. Used by: sidebar folder totals, transfer recipient-amount prefill.
 
-- [ ] **Step 1: failing tests** (same currency, through-base conversion both directions, missing rate fallback). **Step 2: implement.** **Step 3: run** → PASS.
-- [ ] **Step 4: commit** `feat(web-react): currency exchange helper`.
+- [x] **Step 1: failing tests** (same currency, through-base conversion both directions, missing rate fallback). **Step 2: implement.** **Step 3: run** → PASS.
+- [x] **Step 4: commit** `feat(web-react): currency exchange helper`.
 
 ---
 
@@ -260,8 +260,8 @@ Port of `composables/useCurrency.ts`: `exchange(fromCurrencyId, toCurrencyId, am
 
 Stored `account.icon` / `category.icon` values are **Material icon ligature names** (production data — frozen). Vendor the Material Symbols Outlined woff2 locally (self-hosted app must not depend on Google CDN): download once into `public/fonts/`, add `@font-face` + a `.material-icon` ligature class in `src/index.css` (font-feature ligatures on). `EntityIcon({ name, className })` renders `<span className="material-icon">{name}</span>`; empty/unknown name renders the `question_mark` glyph like Vue's fallbacks.
 
-- [ ] **Step 1:** vendor font + CSS. **Step 2:** `EntityIcon` + a render test asserting the ligature text content. **Step 3:** `pnpm test`/`build` pass.
-- [ ] **Step 4: commit** `feat(web-react): material entity icons for frozen account/category icon names`.
+- [x] **Step 1:** vendor font + CSS. **Step 2:** `EntityIcon` + a render test asserting the ligature text content. **Step 3:** `pnpm test`/`build` pass.
+- [x] **Step 4: commit** `feat(web-react): material entity icons for frozen account/category icon names`.
 
 ---
 
@@ -277,7 +277,7 @@ One small store (the design's "one small zustand store"):
 
 No tests needed beyond usage in later tasks (pure state).
 
-- [ ] **Step 1:** implement + `pnpm build`. **Step 2: commit** `feat(web-react): ui-state store for modals and sidebar folders`.
+- [x] **Step 1:** implement + `pnpm build`. **Step 2: commit** `feat(web-react): ui-state store for modals and sidebar folders`.
 
 ---
 
@@ -308,9 +308,9 @@ No tests needed beyond usage in later tasks (pure state).
 
 **Home page:** create `web-react/src/features/home/HomePage.tsx` — desktop: empty workspace placeholder (`<div/>`; Budget lands here in Plan 5, onboarding branch in Plan 6); mobile: nothing (the shell already shows the sidebar pane at `/`). Swap into `routes.tsx` for `/`.
 
-- [ ] **Step 1: failing tests**: (a) tree grouping — folders sorted, hidden folder excluded, synthetic "All accounts" holds folderless accounts and renders translated, empty folders dropped; (b) single-currency folder total vs mixed-currency converted total; (c) loading gate shows "Loading details" until MSW answers all core queries, then the tree renders; (d) mobile: at `/` sidebar visible + workspace hidden, at `/account/:id` reversed.
-- [ ] **Step 2: implement.** **Step 3:** targeted tests + `pnpm test` + `pnpm build` → PASS.
-- [ ] **Step 4: commit** `feat(web-react): application shell with sidebar account tree and loading gate`.
+- [x] **Step 1: failing tests**: (a) tree grouping — folders sorted, hidden folder excluded, synthetic "All accounts" holds folderless accounts and renders translated, empty folders dropped; (b) single-currency folder total vs mixed-currency converted total; (c) loading gate shows "Loading details" until MSW answers all core queries, then the tree renders; (d) mobile: at `/` sidebar visible + workspace hidden, at `/account/:id` reversed.
+- [x] **Step 2: implement.** **Step 3:** targeted tests + `pnpm test` + `pnpm build` → PASS.
+- [x] **Step 4: commit** `feat(web-react): application shell with sidebar account tree and loading gate`.
 
 ---
 
@@ -320,8 +320,8 @@ No tests needed beyond usage in later tasks (pure state).
 
 Props: `{ value: Id | null; onChange: (id: Id) => void; disabled?: boolean }`. shadcn `Select` (or `Combobox` if the list warrants search — Vue uses a plain select) listing `useCurrencies()` sorted by code; option label `"USD — US Dollar"` style matching the Vue `CurrencySelect.vue` (check `web/src/components/CurrencySelect.vue` for the exact label format and mirror it).
 
-- [ ] **Step 1: failing test** (options render from MSW currencies; change fires with the id). **Step 2: implement + verify against the Vue component's label format.** **Step 3: run** → PASS.
-- [ ] **Step 4: commit** `feat(web-react): currency select`.
+- [x] **Step 1: failing test** (options render from MSW currencies; change fires with the id). **Step 2: implement + verify against the Vue component's label format.** **Step 3: run** → PASS.
+- [x] **Step 4: commit** `feat(web-react): currency select`.
 
 ---
 
@@ -336,9 +336,9 @@ Behavior parity with `Calculator/CalculatorInput.vue`:
 - On **Enter**: if the sanitized value contains an operator and validates → `preventDefault()` (block form submit) + `onChange(evaluateFormula(sanitized + '='))`. Plain number → let the form submit.
 - Mobile-only operator keypad (Vue's `CalculatorWidget`, hidden ≥1024px): a simple fixed row of `+ − × ÷ =` buttons rendered below the focused input on mobile (`useIsMobile`), mapping `×→*`, `÷→/`, `−→-`, appending via `sanitizeInput`, keeping focus on the input. The Vue draggable-floating-card behavior is simplified to a static row (same functions, simpler plumbing — allowed by "cleaner internals"); position persistence is dropped.
 
-- [ ] **Step 1: failing tests**: typing `5+3*2` then `=` → value `11`; Enter with operators evaluates and does NOT submit the form; Enter on plain number submits; invalid trailing-operator input left as-is; keypad buttons append and evaluate on `=`.
-- [ ] **Step 2: implement.** **Step 3: run** → PASS.
-- [ ] **Step 4: commit** `feat(web-react): calculator amount input`.
+- [x] **Step 1: failing tests**: typing `5+3*2` then `=` → value `11`; Enter with operators evaluates and does NOT submit the form; Enter on plain number submits; invalid trailing-operator input left as-is; keypad buttons append and evaluate on `=`.
+- [x] **Step 2: implement.** **Step 3: run** → PASS.
+- [x] **Step 4: commit** `feat(web-react): calculator amount input`.
 
 ---
 
@@ -348,8 +348,8 @@ Behavior parity with `Calculator/CalculatorInput.vue`:
 
 `{ open, onClose, onConfirm, title?, question, confirmLabel, cancelLabel }` on `ResponsiveDialog`. Default labels `t('elements.button.delete.label')` / `t('elements.button.cancel.label')` are passed by callers (keep the component copy-free). Used by: delete transaction (this plan), folder/account/category deletes (Plan 4).
 
-- [ ] **Step 1: failing test** (renders question, confirm fires + closes, cancel closes). **Step 2: implement.** **Step 3: run** → PASS.
-- [ ] **Step 4: commit** `feat(web-react): confirm dialog`.
+- [x] **Step 1: failing test** (renders question, confirm fires + closes, cancel closes). **Step 2: implement.** **Step 3: run** → PASS.
+- [x] **Step 4: commit** `feat(web-react): confirm dialog`.
 
 ---
 
@@ -366,10 +366,10 @@ Parity with `components/AccountModal.vue` + `stores/account-modal.ts`:
 - **Submit:** create → `useCreateAccount` with `{ id: v7(), name, balance: Number(evaluated), icon, folderId, currencyId }`; edit → `useUpdateAccount` with `{ id, name, balance, icon, currencyId, updatedAt: formatDateTime(new Date()) }`. Close on success. (The `{item, transaction}` cache handling is already in the Task-5 hooks.)
 - **Headers/buttons:** `modals.account.create_form.header` "New account" / `modals.account.update_form.header` "Update account"; `elements.button.add.label` / `elements.button.update.label` / `elements.button.cancel.label`.
 
-- [ ] **Step 1: failing tests**: create posts the exact payload (id UUIDv7, numeric balance) and the new account appears in the accounts cache; a non-zero balance response with `transaction` lands in the transactions cache; validation messages exact; edit seeds the unformatted balance and posts `updatedAt` in `Y-m-d H:i:s`.
-- [ ] **Step 2: implement (check `ResponsiveModalIcons.vue` for the icon list + `defaultAccountIcon` constant first).**
-- [ ] **Step 3: run** targeted + full tests → PASS.
-- [ ] **Step 4: commit** `feat(web-react): account create/edit dialog`.
+- [x] **Step 1: failing tests**: create posts the exact payload (id UUIDv7, numeric balance) and the new account appears in the accounts cache; a non-zero balance response with `transaction` lands in the transactions cache; validation messages exact; edit seeds the unformatted balance and posts `updatedAt` in `Y-m-d H:i:s`.
+- [x] **Step 2: implement (check `ResponsiveModalIcons.vue` for the icon list + `defaultAccountIcon` constant first).**
+- [x] **Step 3: run** targeted + full tests → PASS.
+- [x] **Step 4: commit** `feat(web-react): account create/edit dialog`.
 
 ---
 
@@ -395,11 +395,11 @@ Parity with `components/AccountModal.vue` + `stores/account-modal.ts`:
 - **Headers/buttons:** `modals.transaction.create_form.header` "Add transaction" / `.update_form.header` "Update transaction"; Add/Update/Cancel buttons.
 - The Vue hand-rolled q-select typing quirks (typing replaces selection, blur restores) are covered by shadcn `Combobox` defaults — match the *outcomes* (filter as you type, restore selection on blur, create option visible when no match), not the implementation.
 
-- [ ] **Step 1: failing hook tests** (`useTransactionForm`): defaults on create (uuid v7 id, now-date, expense, selected account), type switch clears category, transfer recipient-amount computed only on create and only cross-currency, payload building for all three types (nulls in the right places).
-- [ ] **Step 2: failing dialog tests**: expense create happy path posts the exact payload and MSW's `{item, accounts}` updates the accounts cache; category required message; transfer with different currencies shows the recipient amount prefilled (assert `exchange` applied); tags row present on expense, absent on income; create-on-fly category appears and is selected.
-- [ ] **Step 3: implement** (hook → shell → fields → transfer → add-tag).
-- [ ] **Step 4: run** targeted + `pnpm test` + `pnpm build` → PASS.
-- [ ] **Step 5: commit** `feat(web-react): transaction dialog for expense, income and transfer`.
+- [x] **Step 1: failing hook tests** (`useTransactionForm`): defaults on create (uuid v7 id, now-date, expense, selected account), type switch clears category, transfer recipient-amount computed only on create and only cross-currency, payload building for all three types (nulls in the right places).
+- [x] **Step 2: failing dialog tests**: expense create happy path posts the exact payload and MSW's `{item, accounts}` updates the accounts cache; category required message; transfer with different currencies shows the recipient amount prefilled (assert `exchange` applied); tags row present on expense, absent on income; create-on-fly category appears and is selected.
+- [x] **Step 3: implement** (hook → shell → fields → transfer → add-tag).
+- [x] **Step 4: run** targeted + `pnpm test` + `pnpm build` → PASS.
+- [x] **Step 5: commit** `feat(web-react): transaction dialog for expense, income and transfer`.
 
 ---
 
@@ -409,8 +409,8 @@ Parity with `components/AccountModal.vue` + `stores/account-modal.ts`:
 
 Parity with the layout's bottom `q-dialog`: after a transfer create, a bottom bar/sheet appears — `t('elements.switch_to_account')` ("Switch to") + the recipient account name; clicking navigates to `/account/:id` and clears the prompt; a close button clears it. Render as a fixed bottom bar (shadcn-styled), non-modal.
 
-- [ ] **Step 1: failing test** (renders name, click navigates + clears). **Step 2: implement.** **Step 3: run** → PASS.
-- [ ] **Step 4: commit** `feat(web-react): switch-to-account prompt after transfers`.
+- [x] **Step 1: failing test** (renders name, click navigates + clears). **Step 2: implement.** **Step 3: run** → PASS.
+- [x] **Step 4: commit** `feat(web-react): switch-to-account prompt after transfers`.
 
 ---
 
@@ -436,10 +436,10 @@ Parity with the layout's bottom `q-dialog`: after a transfer create, a bottom ba
 - **Delete flow:** `ConfirmDialog` — question `t('pages.account.delete_transaction_modal.question')`, Delete/Cancel → `useDeleteTransaction`.
 - **Empty list renders nothing** (no empty-state UI — Vue parity).
 
-- [ ] **Step 1: failing hook tests** (`useAccountTransactions`): account filtering incl. recipient leg, day grouping with Today/Yesterday/ordinal headings, desc order, search across category/payee/description/amount, future flag.
-- [ ] **Step 2: failing page tests**: renders header balance + rows from MSW data; transfer row incoming/outgoing titles and signs; title-source suppression (a category-titled row still shows description, a description-titled row doesn't duplicate it); delete confirm → MSW delete hit → row disappears and accounts cache updates; edit opens the transaction dialog prefilled.
-- [ ] **Step 3: implement.** **Step 4: run** targeted + full suite + build → PASS.
-- [ ] **Step 5: commit** `feat(web-react): account page with day-grouped transaction list`.
+- [x] **Step 1: failing hook tests** (`useAccountTransactions`): account filtering incl. recipient leg, day grouping with Today/Yesterday/ordinal headings, desc order, search across category/payee/description/amount, future flag.
+- [x] **Step 2: failing page tests**: renders header balance + rows from MSW data; transfer row incoming/outgoing titles and signs; title-source suppression (a category-titled row still shows description, a description-titled row doesn't duplicate it); delete confirm → MSW delete hit → row disappears and accounts cache updates; edit opens the transaction dialog prefilled.
+- [x] **Step 3: implement.** **Step 4: run** targeted + full suite + build → PASS.
+- [x] **Step 5: commit** `feat(web-react): account page with day-grouped transaction list`.
 
 ---
 
@@ -449,8 +449,8 @@ Parity with the layout's bottom `q-dialog`: after a transfer create, a bottom ba
 
 Port `web/src/modules/metrics.ts` as-is (dataLayer push + the `METRICS` event-name constants). Wire the same events this plan's surfaces fire in Vue: `TRANSACTION_CREATE/UPDATE/DELETE`, `ACCOUNT_CREATE/UPDATE/DELETE`, `ACCOUNT_FOLDER_EXPAND/COLLAPSE`, `UI_MODAL_TRANSACTION_OPEN/CLOSE`, `UI_MODAL_ACCOUNT_OPEN/CLOSE`, `USER_LOGIN` (retro-wire into the Plan-1 login mutation). Fire from the mutation `onSuccess`/store actions — keep call sites minimal.
 
-- [ ] **Step 1:** port + wire + one unit test (dataLayer receives the event name). **Step 2:** `pnpm test`/`build` → PASS.
-- [ ] **Step 3: commit** `feat(web-react): dataLayer metrics events`.
+- [x] **Step 1:** port + wire + one unit test (dataLayer receives the event name). **Step 2:** `pnpm test`/`build` → PASS.
+- [x] **Step 3: commit** `feat(web-react): dataLayer metrics events`.
 
 ---
 
@@ -458,7 +458,7 @@ Port `web/src/modules/metrics.ts` as-is (dataLayer push + the `METRICS` event-na
 
 **Files:** none (verification only; fix divergences with a test before closing).
 
-- [ ] **Step 1: run everything**
+- [x] **Step 1: run everything**
 
 ```bash
 # backend on a scratch DB (no .env in this repo — use inline env)
@@ -468,7 +468,7 @@ make web-react-dev   # React on :9000 (proxies /api)
 go run ./cmd/econumo user:create "Parity Tester" parity@example.test secret123
 ```
 
-- [ ] **Step 2: walk the flows in BOTH apps at 1280px / 820px / 375px**
+- [x] **Step 2: walk the flows in BOTH apps at 1280px / 820px / 375px**
 
 1. First login → loading gate → sidebar renders; create the FIRST account with a non-zero balance → a "General" folder appears, the account lands in it, and the opening-balance transaction is visible on the account page immediately (no reload).
 2. Sidebar: folder totals (single-currency native vs mixed-currency converted), collapse/expand persists across reloads (React divergence: state honored — note it), hidden folder absent, "All accounts" label translated (divergence vs Vue's raw key — expected), shared-account avatar badges.
@@ -481,7 +481,7 @@ go run ./cmd/econumo user:create "Parity Tester" parity@example.test secret123
 9. Sync button refetches; changing data via the VUE app then focusing the React window refetches (refetchOnWindowFocus) within staleTime rules.
 10. Mobile: `/` shows the sidebar pane; opening an account shows only the workspace with a working back button; dialogs are bottom sheets.
 
-- [ ] **Step 3: record** divergences found/fixed, then:
+- [x] **Step 3: record** divergences found/fixed, then:
 
 ```bash
 git commit --allow-empty -m "chore(web-react): shell+accounts parity check vs Vue app passed (desktop/tablet/mobile)"
