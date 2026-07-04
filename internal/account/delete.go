@@ -4,6 +4,7 @@ package account
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -14,7 +15,7 @@ import (
 // (RevokeOwnAccess), unwinding their folder memberships + accounts_options.
 // Without a connection module wired, a non-owner gets AccessDenied (403). Returns
 // an empty result ({}).
-func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req DeleteAccountRequest) (*DeleteAccountResult, error) {
+func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req model.DeleteAccountRequest) (*model.DeleteAccountResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -32,7 +33,7 @@ func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req DeleteAcc
 		}); err != nil {
 			return nil, err
 		}
-		return &DeleteAccountResult{}, nil
+		return &model.DeleteAccountResult{}, nil
 	}
 
 	// Non-owner: must have a grant, then revoke their own access. No connection
@@ -50,5 +51,5 @@ func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req DeleteAcc
 	if rerr := s.revoker.RevokeOwnAccess(ctx, userID, id); rerr != nil {
 		return nil, rerr
 	}
-	return &DeleteAccountResult{}, nil
+	return &model.DeleteAccountResult{}, nil
 }

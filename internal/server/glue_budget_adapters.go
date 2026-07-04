@@ -10,17 +10,17 @@ package server
 import (
 	"context"
 
-	account "github.com/econumo/econumo/internal/account"
 	appbudget "github.com/econumo/econumo/internal/budget"
 	category "github.com/econumo/econumo/internal/category"
+	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
 )
 
 type budgetAccountRepo interface {
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*account.Account, error)
-	GetByID(ctx context.Context, id vo.Id) (*account.Account, error)
+	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 }
 
 // BudgetAccountLookup adapts the account repository to budget.AccountLookup.

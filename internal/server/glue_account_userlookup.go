@@ -31,14 +31,14 @@ func NewAccountUserLookup(users accountUserByID) *AccountUserLookup {
 }
 
 // GetOwner resolves the owner (id, name, avatar) for the account-result embed.
-func (l *AccountUserLookup) GetOwner(ctx context.Context, userID string) (appaccount.OwnerView, error) {
+func (l *AccountUserLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
-		return appaccount.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
 	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
-		return appaccount.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
-	return appaccount.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }

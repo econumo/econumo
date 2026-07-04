@@ -13,8 +13,8 @@ package server
 import (
 	"context"
 
-	account "github.com/econumo/econumo/internal/account"
 	category "github.com/econumo/econumo/internal/category"
+	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
@@ -24,18 +24,18 @@ import (
 // transactionImportAccountService is the account-service surface the importer
 // uses.
 type transactionImportAccountService interface {
-	CreateAccount(ctx context.Context, userID vo.Id, req account.CreateAccountRequest) (*account.CreateAccountResult, error)
-	CreateFolder(ctx context.Context, userID vo.Id, req account.CreateFolderRequest) (*account.CreateFolderResult, error)
+	CreateAccount(ctx context.Context, userID vo.Id, req model.CreateAccountRequest) (*model.CreateAccountResult, error)
+	CreateFolder(ctx context.Context, userID vo.Id, req model.CreateFolderRequest) (*model.CreateFolderResult, error)
 }
 
 // transactionImportAccountRepo / transactionImportFolderRepo are the read
 // surfaces over the account + folder repos.
 type transactionImportAccountRepo interface {
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*account.Account, error)
-	GetByID(ctx context.Context, id vo.Id) (*account.Account, error)
+	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
 }
 type transactionImportFolderRepo interface {
-	ListByUser(ctx context.Context, userID vo.Id) ([]*account.Folder, error)
+	ListByUser(ctx context.Context, userID vo.Id) ([]*model.Folder, error)
 }
 
 // transactionImportCurrencyByCode resolves the base-currency id from its code
@@ -100,7 +100,7 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 	if len(folders) > 0 {
 		folderID = folders[0].ID.String()
 	} else {
-		fres, ferr := a.svc.CreateFolder(ctx, userID, account.CreateFolderRequest{
+		fres, ferr := a.svc.CreateFolder(ctx, userID, model.CreateFolderRequest{
 			Name: "Imported Accounts",
 		})
 		if ferr != nil {
@@ -113,7 +113,7 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 	if err != nil {
 		return apptransaction.ImportAccount{}, err
 	}
-	res, err := a.svc.CreateAccount(ctx, userID, account.CreateAccountRequest{
+	res, err := a.svc.CreateAccount(ctx, userID, model.CreateAccountRequest{
 		Id:         vo.NewId().String(),
 		Name:       name,
 		CurrencyId: currencyID,

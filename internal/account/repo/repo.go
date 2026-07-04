@@ -18,6 +18,7 @@ import (
 	domaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -87,7 +88,7 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
 // GetByID loads an account by id.
-func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domaccount.Account, error) {
+func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Account, error) {
 	row, err := r.q.GetAccount(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -99,12 +100,12 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domaccount.Account, erro
 }
 
 // ListAvailable returns the user's non-deleted accounts.
-func (r *Repo) ListAvailable(ctx context.Context, userID vo.Id) ([]*domaccount.Account, error) {
+func (r *Repo) ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error) {
 	rows, err := r.q.ListAvailableAccounts(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domaccount.Account, 0, len(rows))
+	out := make([]*model.Account, 0, len(rows))
 	for _, row := range rows {
 		a, herr := hydrateAccount(row)
 		if herr != nil {
@@ -122,7 +123,7 @@ func (r *Repo) CountAvailable(ctx context.Context, userID vo.Id) (int, error) {
 }
 
 // Save upserts an account row.
-func (r *Repo) Save(ctx context.Context, a *domaccount.Account) error {
+func (r *Repo) Save(ctx context.Context, a *model.Account) error {
 	return r.q.UpsertAccount(ctx, r.db(ctx), upsertAccountP{
 		ID:         a.ID.String(),
 		CurrencyID: a.CurrencyID.String(),
@@ -217,7 +218,7 @@ func (r *Repo) SaveCorrection(ctx context.Context, c domaccount.Correction) erro
 }
 
 // hydrateAccount reconstitutes an Account from a row.
-func hydrateAccount(row accountRow) (*domaccount.Account, error) {
+func hydrateAccount(row accountRow) (*model.Account, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -230,9 +231,9 @@ func hydrateAccount(row accountRow) (*domaccount.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &domaccount.Account{
+	return &model.Account{
 		ID: id, UserID: userID, CurrencyID: currencyID, Name: row.Name,
-		Type: domaccount.Type(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
+		Type: model.AccountType(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
 }

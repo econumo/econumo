@@ -8,17 +8,18 @@ import (
 	"context"
 	"sort"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // GetAccountList returns all the user's available accounts (each with the full
 // embed) in reverse order (the list is reversed before returning).
-func (s *Service) GetAccountList(ctx context.Context, userID vo.Id) (*GetAccountListResult, error) {
+func (s *Service) GetAccountList(ctx context.Context, userID vo.Id) (*model.GetAccountListResult, error) {
 	items, err := s.buildAccountList(ctx, userID, true)
 	if err != nil {
 		return nil, err
 	}
-	return &GetAccountListResult{Items: items}, nil
+	return &model.GetAccountListResult{Items: items}, nil
 }
 
 // AccountListForUser returns the user's available accounts (each with the full
@@ -26,7 +27,7 @@ func (s *Service) GetAccountList(ctx context.Context, userID vo.Id) (*GetAccount
 // exported so other modules (notably transaction, whose create/update/delete
 // results embed the full account list) can reuse the embed builder without
 // duplicating the join logic.
-func (s *Service) AccountListForUser(ctx context.Context, userID vo.Id) ([]AccountResult, error) {
+func (s *Service) AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error) {
 	return s.buildAccountList(ctx, userID, true)
 }
 
@@ -77,15 +78,15 @@ func (s *Service) VisibleAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id,
 }
 
 // GetFolderList returns the user's folders ordered by position.
-func (s *Service) GetFolderList(ctx context.Context, userID vo.Id) (*GetFolderListResult, error) {
+func (s *Service) GetFolderList(ctx context.Context, userID vo.Id) (*model.GetFolderListResult, error) {
 	folders, err := s.folders.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
-	items := make([]FolderResult, 0, len(folders))
+	items := make([]model.AccountFolderResult, 0, len(folders))
 	for _, f := range folders {
 		items = append(items, toFolderResult(f))
 	}
-	return &GetFolderListResult{Items: items}, nil
+	return &model.GetFolderListResult{Items: items}, nil
 }

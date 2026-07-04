@@ -4,6 +4,7 @@ package account
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -12,7 +13,7 @@ import (
 // folders) and updates its per-user position (accounts_options). Changes
 // referencing an account the user does not own are ignored. Returns the full
 // account list (NOT reversed, unlike get-account-list).
-func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderAccountListRequest) (*OrderAccountListResult, error) {
+func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req model.OrderAccountListRequest) (*model.OrderAccountListResult, error) {
 	// Parse + validate all ids up front.
 	type change struct {
 		accountID vo.Id
@@ -37,7 +38,7 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 		if err != nil {
 			return err
 		}
-		owned := make(map[string]*Account, len(accts))
+		owned := make(map[string]*model.Account, len(accts))
 		for _, a := range accts {
 			owned[a.ID.String()] = a
 		}
@@ -93,5 +94,5 @@ func (s *Service) OrderAccountList(ctx context.Context, userID vo.Id, req OrderA
 	if err != nil {
 		return nil, err
 	}
-	return &OrderAccountListResult{Items: list}, nil
+	return &model.OrderAccountListResult{Items: list}, nil
 }

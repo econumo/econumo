@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	domaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -25,8 +25,8 @@ func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *dbtest.DB, *fixture.
 }
 
 // newTestFolder builds a visible fixedTime-stamped folder for userA.
-func newTestFolder(id vo.Id, name string, position int16) *domaccount.Folder {
-	return &domaccount.Folder{
+func newTestFolder(id vo.Id, name string, position int16) *model.Folder {
+	return &model.Folder{
 		ID: id, UserID: vo.MustParseId(userA), Name: name, Position: position,
 		IsVisible: true, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}

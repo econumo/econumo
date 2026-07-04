@@ -40,7 +40,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.CreateAccountRequest"
+                            "$ref": "#/definitions/model.CreateAccountRequest"
                         }
                     }
                 ],
@@ -56,7 +56,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.CreateAccountResult"
+                                            "$ref": "#/definitions/model.CreateAccountResult"
                                         }
                                     }
                                 }
@@ -109,7 +109,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.CreateFolderRequest"
+                            "$ref": "#/definitions/model.CreateFolderRequest"
                         }
                     }
                 ],
@@ -125,7 +125,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.CreateFolderResult"
+                                            "$ref": "#/definitions/model.CreateFolderResult"
                                         }
                                     }
                                 }
@@ -178,7 +178,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.DeleteAccountRequest"
+                            "$ref": "#/definitions/model.DeleteAccountRequest"
                         }
                     }
                 ],
@@ -194,7 +194,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.DeleteAccountResult"
+                                            "$ref": "#/definitions/model.DeleteAccountResult"
                                         }
                                     }
                                 }
@@ -249,7 +249,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.GetAccountListResult"
+                                            "$ref": "#/definitions/model.GetAccountListResult"
                                         }
                                     }
                                 }
@@ -298,7 +298,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.GetFolderListResult"
+                                            "$ref": "#/definitions/model.GetFolderListResult"
                                         }
                                     }
                                 }
@@ -345,7 +345,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.HideFolderRequest"
+                            "$ref": "#/definitions/model.HideFolderRequest"
                         }
                     }
                 ],
@@ -361,7 +361,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.HideFolderResult"
+                                            "$ref": "#/definitions/model.HideFolderResult"
                                         }
                                     }
                                 }
@@ -414,7 +414,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.OrderAccountListRequest"
+                            "$ref": "#/definitions/model.OrderAccountListRequest"
                         }
                     }
                 ],
@@ -430,7 +430,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.OrderAccountListResult"
+                                            "$ref": "#/definitions/model.OrderAccountListResult"
                                         }
                                     }
                                 }
@@ -483,7 +483,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.OrderFolderListRequest"
+                            "$ref": "#/definitions/model.OrderFolderListRequest"
                         }
                     }
                 ],
@@ -499,7 +499,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.OrderFolderListResult"
+                                            "$ref": "#/definitions/model.OrderFolderListResult"
                                         }
                                     }
                                 }
@@ -552,7 +552,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.ReplaceFolderRequest"
+                            "$ref": "#/definitions/model.ReplaceFolderRequest"
                         }
                     }
                 ],
@@ -568,7 +568,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.ReplaceFolderResult"
+                                            "$ref": "#/definitions/model.ReplaceFolderResult"
                                         }
                                     }
                                 }
@@ -621,7 +621,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.ShowFolderRequest"
+                            "$ref": "#/definitions/model.ShowFolderRequest"
                         }
                     }
                 ],
@@ -637,7 +637,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.ShowFolderResult"
+                                            "$ref": "#/definitions/model.ShowFolderResult"
                                         }
                                     }
                                 }
@@ -690,7 +690,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.UpdateAccountRequest"
+                            "$ref": "#/definitions/model.UpdateAccountRequest"
                         }
                     }
                 ],
@@ -706,7 +706,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.UpdateAccountResult"
+                                            "$ref": "#/definitions/model.UpdateAccountResult"
                                         }
                                     }
                                 }
@@ -759,7 +759,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/account.UpdateFolderRequest"
+                            "$ref": "#/definitions/model.UpdateFolderRequest"
                         }
                     }
                 ],
@@ -775,7 +775,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/account.UpdateFolderResult"
+                                            "$ref": "#/definitions/model.UpdateFolderResult"
                                         }
                                     }
                                 }
@@ -5144,388 +5144,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "account.AccountPositionChange": {
-            "type": "object",
-            "properties": {
-                "folderId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "account.AccountResult": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currency": {
-                    "$ref": "#/definitions/account.CurrencyResult"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "owner": {
-                    "$ref": "#/definitions/account.OwnerResult"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "sharedAccess": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.SharedAccess"
-                    }
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
-        "account.CorrectionResult": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "accountRecipientId": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "string"
-                },
-                "amountRecipient": {
-                    "type": "string"
-                },
-                "author": {
-                    "$ref": "#/definitions/account.OwnerResult"
-                },
-                "categoryId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payeeId": {
-                    "type": "string"
-                },
-                "tagId": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.CreateAccountRequest": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.CreateAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.AccountResult"
-                },
-                "transaction": {
-                    "$ref": "#/definitions/account.CorrectionResult"
-                }
-            }
-        },
-        "account.CreateFolderRequest": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.CreateFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.FolderResult"
-                }
-            }
-        },
-        "account.CurrencyResult": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "fractionDigits": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "symbol": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.DeleteAccountRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.DeleteAccountResult": {
-            "type": "object"
-        },
-        "account.FolderPositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "account.FolderResult": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "isVisible": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "account.GetAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                }
-            }
-        },
-        "account.GetFolderListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderResult"
-                    }
-                }
-            }
-        },
-        "account.HideFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.HideFolderResult": {
-            "type": "object"
-        },
-        "account.OrderAccountListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountPositionChange"
-                    }
-                }
-            }
-        },
-        "account.OrderAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.AccountResult"
-                    }
-                }
-            }
-        },
-        "account.OrderFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderPositionChange"
-                    }
-                }
-            }
-        },
-        "account.OrderFolderListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/account.FolderResult"
-                    }
-                }
-            }
-        },
-        "account.OwnerResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.ReplaceFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "replaceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.ReplaceFolderResult": {
-            "type": "object"
-        },
-        "account.SharedAccess": {
-            "type": "object",
-            "properties": {
-                "role": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/account.OwnerResult"
-                }
-            }
-        },
-        "account.ShowFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.ShowFolderResult": {
-            "type": "object"
-        },
-        "account.UpdateAccountRequest": {
-            "type": "object",
-            "properties": {
-                "balance": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.UpdateAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.AccountResult"
-                },
-                "transaction": {
-                    "$ref": "#/definitions/account.CorrectionResult"
-                }
-            }
-        },
-        "account.UpdateFolderRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "account.UpdateFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/account.FolderResult"
-                }
-            }
-        },
         "apidoc.JsonResponseError": {
             "type": "object",
             "properties": {
@@ -6704,11 +6322,171 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AccountFolderResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "isVisible": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.AccountPositionChange": {
+            "type": "object",
+            "properties": {
+                "folderId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.AccountResult": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currency": {
+                    "$ref": "#/definitions/model.CurrencyResult"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner": {
+                    "$ref": "#/definitions/model.UserResult"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "sharedAccess": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.SharedAccess"
+                    }
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.CompleteOnboardingResult": {
             "type": "object",
             "properties": {
                 "user": {
                     "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.CorrectionResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "accountRecipientId": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string"
+                },
+                "amountRecipient": {
+                    "type": "string"
+                },
+                "author": {
+                    "$ref": "#/definitions/model.UserResult"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.AccountResult"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/model.CorrectionResult"
+                }
+            }
+        },
+        "model.CreateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.AccountFolderResult"
                 }
             }
         },
@@ -6778,6 +6556,39 @@ const docTemplate = `{
                 }
             }
         },
+        "model.DeleteAccountRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteAccountResult": {
+            "type": "object"
+        },
+        "model.FolderPositionChange": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.GetAccountListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                }
+            }
+        },
         "model.GetCurrencyListResult": {
             "type": "object",
             "properties": {
@@ -6800,6 +6611,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GetFolderListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountFolderResult"
+                    }
+                }
+            }
+        },
         "model.GetOptionListResult": {
             "type": "object",
             "properties": {
@@ -6818,6 +6640,17 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.CurrentUserResult"
                 }
             }
+        },
+        "model.HideFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.HideFolderResult": {
+            "type": "object"
         },
         "model.LoginRequest": {
             "type": "object",
@@ -6860,6 +6693,50 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OrderAccountListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountPositionChange"
+                    }
+                }
+            }
+        },
+        "model.OrderAccountListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                }
+            }
+        },
+        "model.OrderFolderListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.FolderPositionChange"
+                    }
+                }
+            }
+        },
+        "model.OrderFolderListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountFolderResult"
+                    }
+                }
+            }
+        },
         "model.RegisterRequest": {
             "type": "object",
             "properties": {
@@ -6885,6 +6762,20 @@ const docTemplate = `{
         "model.RemindPasswordResult": {
             "type": "object"
         },
+        "model.ReplaceFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "replaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ReplaceFolderResult": {
+            "type": "object"
+        },
         "model.ResetPasswordRequest": {
             "type": "object",
             "properties": {
@@ -6901,6 +6792,62 @@ const docTemplate = `{
         },
         "model.ResetPasswordResult": {
             "type": "object"
+        },
+        "model.SharedAccess": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResult"
+                }
+            }
+        },
+        "model.ShowFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ShowFolderResult": {
+            "type": "object"
+        },
+        "model.UpdateAccountRequest": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.AccountResult"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/model.CorrectionResult"
+                }
+            }
         },
         "model.UpdateActiveBudgetRequest": {
             "type": "object",
@@ -6931,6 +6878,25 @@ const docTemplate = `{
             "properties": {
                 "user": {
                     "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateFolderRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.AccountFolderResult"
                 }
             }
         },
@@ -6977,6 +6943,20 @@ const docTemplate = `{
             "properties": {
                 "user": {
                     "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UserResult": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },
