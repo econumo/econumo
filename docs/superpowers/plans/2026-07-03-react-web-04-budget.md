@@ -63,9 +63,9 @@ export interface BudgetDto { meta: BudgetMetaDto; filters: {periodStart: string;
 ```
 API functions (coercing per the exact list): `getBudget(id, date): Promise<BudgetDto>`; `setLimit({budgetId, elementId, period, amount: string|null})`; `createEnvelope(form)` / `updateEnvelope(form)` / `deleteEnvelope(budgetId, id)`; `createBudgetFolder({budgetId, id, name})` / `updateBudgetFolder` / `deleteBudgetFolder` / `orderBudgetFolders({budgetId, items})`; `moveElements({budgetId, items})`; `changeElementCurrency({budgetId, elementId, currencyId})`; `getBudgetTransactions(params): Promise<TransactionDto[]>` (reuse `coerceTransaction`).
 
-- [ ] **Step 1: failing tests** with a wire-exact `get-budget` fixture (decimal strings, nullable balance fields incl. an all-null future month, `folderId: null`, children, rate strings) asserting every coercion; set-limit posts `amount: null` verbatim; move-element payload shape.
-- [ ] **Step 2: implement.** **Step 3:** PASS + build.
-- [ ] **Step 4: commit** `feat(web-react): budget detail API with wire-exact coercions`.
+- [x] **Step 1: failing tests** with a wire-exact `get-budget` fixture (decimal strings, nullable balance fields incl. an all-null future month, `folderId: null`, children, rate strings) asserting every coercion; set-limit posts `amount: null` verbatim; move-element payload shape.
+- [x] **Step 2: implement.** **Step 3:** PASS + build.
+- [x] **Step 4: commit** `feat(web-react): budget detail API with wire-exact coercions`.
 
 ---
 
@@ -78,9 +78,9 @@ API functions (coercing per the exact list): `getBudget(id, date): Promise<Budge
 - **Mutations:** `useSetLimit` — optimistic `setQueryData` patch of the element's `budgeted` (+ rollback in `onError`), no refetch on success; `useCreateEnvelope`/`useUpdateEnvelope`/`useDeleteEnvelope`/`useCreateBudgetFolder`/`useUpdateBudgetFolder`/`useDeleteBudgetFolder`/`useOrderBudgetFolders`/`useMoveElements`/`useChangeElementCurrency`/`useUpdateBudgetDetail` (update-budget + also refresh the `['budgets']` meta) — all invalidate `['budget']` on success. Metrics: `BUDGET_UPDATE`, `BUDGET_SET_LIMIT`-family events per the Vue store (check `metrics.ts` for exact names; wire what exists).
 - Role helpers: `canConfigureBudget(meta, userId)` (owner|admin), `canUpdateLimits(meta, userId, selectedDate)` (owner|admin|user AND `startedAt` month ≤ selected month), `canDeleteEnvelope` (owner|admin).
 
-- [ ] **Step 1: failing tests** — set-limit optimistic patch + rollback on a 400; budget-id change clears the fold map, period change keeps it; no default budget → `data: null` without a network call; envelope create invalidates `['budget']`.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): budget detail query, period store and mutations`.
+- [x] **Step 1: failing tests** — set-limit optimistic patch + rollback on a 400; budget-id change clears the fold map, period change keeps it; no default budget → `data: null` without a network call; envelope create invalidates `['budget']`.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): budget detail query, period store and mutations`.
 
 ---
 
@@ -95,9 +95,9 @@ Pure ports of the Vue page computeds:
 - `periodRange(selectedDate, startedAt)` → 47 items (±23 months): `{value: 'YYYY-MM-01', label (MMMM same-year / MMM YYYY), isActive, outsideBudget (month < startedAt month)}`.
 - Display helpers: `displaySpent(el) = -el.spent`, `displayAvailable(el) = el.available + el.budgeted` (color by sign), expense-widget math: `spent = |expenses| + (exchanges<0 ? |exchanges| : 0) + (holdings<0 ? |holdings| : 0)`; `total = |startBalance + income| + (exchanges>0) + (holdings>0)`; `progress = clamp(spent/total, 0, 1)` (0 when total ≤ 0); `overspent = spent > total` (null balance fields count as 0).
 
-- [ ] **Step 1: failing tests** — bucketing (incl. zero-folder quirk and archived name-sort), stats with a cross-currency element (exchanged budgeted/available, unexchanged budgetSpent), totals, period range labels/flags at a year boundary, widget math with a future-month all-null balance.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): budget bucketing, stats and period math`.
+- [x] **Step 1: failing tests** — bucketing (incl. zero-folder quirk and archived name-sort), stats with a cross-currency element (exchanged budgeted/available, unexchanged budgetSpent), totals, period range labels/flags at a year boundary, widget math with a future-month all-null balance.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): budget bucketing, stats and period math`.
 
 ---
 
@@ -107,8 +107,8 @@ Pure ports of the Vue page computeds:
 
 Horizontal scroll strip of the 47 `periodRange` items (no arrows/dropdown — Vue parity): active item styled, `outsideBudget` items dimmed but clickable; click → `setPeriod(value)` (the query refetches via the key). Center the active chip with `scrollIntoView({inline:'center'})` in an effect (no setTimeout chains).
 
-- [ ] **Step 1: failing tests** — renders labels, marks active, click fires setPeriod with `YYYY-MM-01`. **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): budget period strip`.
+- [x] **Step 1: failing tests** — renders labels, marks active, click fires setPeriod with `YYYY-MM-01`. **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): budget period strip`.
 
 ---
 
@@ -118,8 +118,8 @@ Horizontal scroll strip of the 47 `periodRange` items (no arrows/dropdown — Vu
 
 Parity with `BudgetExpenseWidget.vue`: rendered only when a currency chip is selected; header `modules.budget.modal.expense_widget.header` ("Outflow vs. Total", `{period}` = "Mon YYYY" via `elements.date.month_short.*`); spent vs total amounts, progress bar (shadcn `Progress`), `-overbudget` styling when overspent; conversion-rate hint (`...expense_widget.conversion_rate`) when the selected currency ≠ budget currency, rate = `exchange(budgetCurrency → selected, 1)` over `budget.currencyRates`.
 
-- [ ] **Step 1: failing tests** — spent/total/progress values from a fixture balance, overspent class, conversion hint text with the rate. **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): budget expense widget`.
+- [x] **Step 1: failing tests** — spent/total/progress values from a fixture balance, overspent class, conversion hint text with the rate. **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): budget expense widget`.
 
 ---
 
@@ -134,9 +134,9 @@ Parity with `BudgetTableFolder.vue`/`BudgetTotal.vue` (read mode; edit-mode acti
 - Totals row: `...structure.total.name` ("Total") with `budgetTotals` values; mobile adds `...total.expenses`.
 - Currency chips row (budget currencies from `balances[].currencyId`): toggling selects/deselects the widget currency (local state, not persisted).
 
-- [ ] **Step 1: failing tests** — sections render from a fixture (folder, default, archived), fold toggle persists and expands children, available color flips by sign, totals match `budgetTotals`, currency chip toggle mounts/unmounts the widget.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): budget table with fold state and totals`.
+- [x] **Step 1: failing tests** — sections render from a fixture (folder, default, archived), fold toggle persists and expands children, available color flips by sign, totals match `budgetTotals`, currency chip toggle mounts/unmounts the widget.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): budget table with fold state and totals`.
 
 ---
 
@@ -148,9 +148,9 @@ Parity with `BudgetTableFolder.vue`/`BudgetTotal.vue` (read mode; edit-mode acti
 - **Mobile:** long-press on the row (a small `useLongPress` hook, ~500ms) opens `SetLimitDialog` (`modules.budget.modal.set_limit_form.header` "Set limit", label `modules.budget.form.budget_limit.limit.label`, `CalculatorInput`) — same unified amount rule (approved divergence).
 - Both call `useSetLimit` with `period = selectedDate`; the optimistic patch makes the cell update instantly.
 
-- [ ] **Step 1: failing tests** — commit posts the normalized string; `5+5=` evaluates; clearing posts null; a 400 rolls the cell back; long-press opens the dialog (fire pointer events with fake timers).
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): set-limit inline editor and mobile dialog`.
+- [x] **Step 1: failing tests** — commit posts the normalized string; `5+5=` evaluates; clearing posts null; a 400 rolls the cell back; long-press opens the dialog (fire pointer events with fake timers).
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): set-limit inline editor and mobile dialog`.
 
 ---
 
@@ -162,9 +162,9 @@ Parity with `BudgetTableFolder.vue`/`BudgetTotal.vue` (read mode; edit-mode acti
 - Element rows gain drag handles: dnd-kit cross-container drag (same pattern as the accounts settings page) → `moveElements({budgetId, items})` with the moved element's `{id, folderId, position}` (+ renumbered siblings). Element `⋮` menu: **Change currency** (categories/tags only, `...structure.element.action.change_currency`), **Edit**/**Delete** (envelopes only; delete → ConfirmDialog `...modal.delete_envelope.{header,question}`, hidden unless owner/admin).
 - Envelope create posts `{budgetId, id: v7(), name, icon, currencyId, folderId, categories}`; update posts `isArchived` from the status select. Validation: envelope name keys `modules.budget.form.budget_envelope.name.validation.*`.
 
-- [ ] **Step 1: failing tests** — folder create/rename/delete payloads (delete blocked on non-empty), up/down order payload, envelope create/update/delete payloads (categories replace, status → isArchived), change-currency payload, move via a directly-driven reorder callback.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): budget edit mode with envelope and folder management`.
+- [x] **Step 1: failing tests** — folder create/rename/delete payloads (delete blocked on non-empty), up/down order payload, envelope create/update/delete payloads (categories replace, status → isArchived), change-currency payload, move via a directly-driven reorder callback.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): budget edit mode with envelope and folder management`.
 
 ---
 
@@ -172,9 +172,9 @@ Parity with `BudgetTableFolder.vue`/`BudgetTotal.vue` (read mode; edit-mode acti
 
 **Files:** Create `web-react/src/features/budgets/BudgetUpdateDialog.tsx` (generalize the Plan-3 `BudgetDialog` form: initial values from `meta` + `filters.excludedAccountsIds`, name disabled unless `canConfigureBudget`, header `modules.budget.modal.update_budget_form.header`) and `web-react/src/features/budgets/BudgetTransactionsDialog.tsx` (row click in read mode → per-element transactions for the period: `getBudgetTransactions({budgetId, periodStart: selectedDate, categoryId|tagId|envelopeId by element type})`, day-grouped read-only list reusing the Plan-2 grouping helpers); tests alongside.
 
-- [ ] **Step 1: failing tests** — update dialog seeds and posts `{id, name, currencyId, excludedAccounts}` and invalidates budget+budgets; transactions dialog passes the right id param per element type and renders grouped rows.
-- [ ] **Step 2: implement.** **Step 3:** PASS.
-- [ ] **Step 4: commit** `feat(web-react): budget update and element transactions dialogs`.
+- [x] **Step 1: failing tests** — update dialog seeds and posts `{id, name, currencyId, excludedAccounts}` and invalidates budget+budgets; transactions dialog passes the right id param per element type and renders grouped rows.
+- [x] **Step 2: implement.** **Step 3:** PASS.
+- [x] **Step 4: commit** `feat(web-react): budget update and element transactions dialogs`.
 
 ---
 
@@ -187,16 +187,16 @@ Parity with `BudgetTableFolder.vue`/`BudgetTotal.vue` (read mode; edit-mode acti
 - **HomePage:** onboarded → `<BudgetPage/>`; not onboarded → keep the placeholder (Plan 5 swaps in Onboarding).
 - Assemble: PeriodStrip (hidden without a budget meta), widget, table, edit-mode create-folder button, all dialogs.
 
-- [ ] **Step 1: failing tests** — full-page MSW fixture renders strip + table + totals; empty state shows the right copy with/without accounts; configure menu toggles edit mode; `/` renders the budget for an onboarded fixture user.
-- [ ] **Step 2: implement.** **Step 3:** PASS + full suite + build + lint.
-- [ ] **Step 4: commit** `feat(web-react): budget page assembly with onboarding empty state`.
+- [x] **Step 1: failing tests** — full-page MSW fixture renders strip + table + totals; empty state shows the right copy with/without accounts; configure menu toggles edit mode; `/` renders the budget for an onboarded fixture user.
+- [x] **Step 2: implement.** **Step 3:** PASS + full suite + build + lint.
+- [x] **Step 4: commit** `feat(web-react): budget page assembly with onboarding empty state`.
 
 ---
 
 ### Task 11: Budget parity check (manual, gate for Plan 4)
 
-- [ ] **Step 1: run** the stack (inline env, scratch DB with the Plan-3 data: user, accounts, categories, budget) + the Vue reference at `:8181`.
-- [ ] **Step 2: walk in BOTH apps at 1280px / 375px:**
+- [x] **Step 1: run** the stack (inline env, scratch DB with the Plan-3 data: user, accounts, categories, budget) + the Vue reference at `:8181`.
+- [x] **Step 2: walk in BOTH apps at 1280px / 375px:**
 
 1. `/` and `/budget` land on the budget; month strip centered on the current month, months before `startedAt` dimmed; switching periods refetches (check a future month: widget balances null-safe).
 2. Category/tag elements appear with spent from real transactions; set a limit inline (formula `100+50=`), clear it (empty → null on the wire — verify no zero-limit row is left via the Vue app), long-press on mobile.
@@ -208,7 +208,7 @@ Parity with `BudgetTableFolder.vue`/`BudgetTotal.vue` (read mode; edit-mode acti
 8. Empty state: fresh user with no default budget sees the no-budget copy; with no accounts sees initial-setup + create-account.
 9. Fold state persists across reload; switching budgets resets it.
 
-- [ ] **Step 3: record:**
+- [x] **Step 3: record:**
 
 ```bash
 git commit --allow-empty -m "chore(web-react): budget parity check vs Vue app passed (desktop/mobile)"
