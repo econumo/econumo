@@ -13,3 +13,7 @@ if (jsdom) {
     })
   }
 }
+
+// Imported dynamically so the storage rebind above runs first (i18n reads the
+// persisted locale from localStorage at init).
+await import('@/app/i18n')
