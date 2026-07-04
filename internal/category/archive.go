@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -14,30 +15,30 @@ import (
 // Simplification: a full archive also touches budget-element archival and
 // position effects; until those modules are ported this just toggles
 // is_archived, matching the entity's archive() semantics.
-func (s *Service) ArchiveCategory(ctx context.Context, userID vo.Id, req ArchiveCategoryRequest) (*ArchiveCategoryResult, error) {
+func (s *Service) ArchiveCategory(ctx context.Context, userID vo.Id, req model.ArchiveCategoryRequest) (*model.ArchiveCategoryResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.mutate(ctx, id, userID, func(c *Category, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(c *model.Category, now time.Time) {
 		c.Archive(now)
 	}); err != nil {
 		return nil, err
 	}
-	return &ArchiveCategoryResult{}, nil
+	return &model.ArchiveCategoryResult{}, nil
 }
 
 // UnarchiveCategory loads the category, checks ownership (403 otherwise), clears
 // the archived flag, and returns the refreshed item.
-func (s *Service) UnarchiveCategory(ctx context.Context, userID vo.Id, req UnarchiveCategoryRequest) (*UnarchiveCategoryResult, error) {
+func (s *Service) UnarchiveCategory(ctx context.Context, userID vo.Id, req model.UnarchiveCategoryRequest) (*model.UnarchiveCategoryResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.mutate(ctx, id, userID, func(c *Category, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(c *model.Category, now time.Time) {
 		c.Unarchive(now)
 	}); err != nil {
 		return nil, err
 	}
-	return &UnarchiveCategoryResult{}, nil
+	return &model.UnarchiveCategoryResult{}, nil
 }

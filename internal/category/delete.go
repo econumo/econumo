@@ -5,6 +5,7 @@ package category
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -20,7 +21,7 @@ import (
 //     same type.
 //
 // Returns an empty result ({}).
-func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req DeleteCategoryRequest) (*DeleteCategoryResult, error) {
+func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.DeleteCategoryRequest) (*model.DeleteCategoryResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -35,7 +36,7 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req DeleteCa
 			return errs.NewValidation("Category not found")
 		}
 
-		if req.Mode == ModeReplace {
+		if req.Mode == model.ModeReplace {
 			if req.ReplaceId == nil {
 				return errs.NewValidation("Category not found")
 			}
@@ -63,5 +64,5 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req DeleteCa
 		return nil, err
 	}
 
-	return &DeleteCategoryResult{}, nil
+	return &model.DeleteCategoryResult{}, nil
 }

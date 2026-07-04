@@ -11,11 +11,8 @@ import (
 	"context"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
-	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/model"
-	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
-	tag "github.com/econumo/econumo/internal/tag"
 )
 
 type budgetAccountRepo interface {
@@ -78,7 +75,7 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 }
 
 type budgetCategoryRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 }
 
 // BudgetCategoryMetadataLookup adapts the category repository to the category
@@ -111,7 +108,7 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 			seen[c.ID.String()] = true
 			out = append(out, appbudget.CategoryMeta{
 				ID: c.ID.String(), OwnerID: c.UserID.String(), Name: c.Name, Icon: c.Icon,
-				IsIncome: c.Type == category.TypeIncome, IsArchived: c.IsArchived,
+				IsIncome: c.Type == model.TypeIncome, IsArchived: c.IsArchived,
 			})
 		}
 	}
@@ -119,7 +116,7 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 }
 
 type budgetTagRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*tag.Tag, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
 }
 
 // BudgetTagMetadataLookup adapts the tag repository to the tag slice of
@@ -159,7 +156,7 @@ func (l *BudgetTagMetadataLookup) TagsByOwners(ctx context.Context, userIDs []vo
 }
 
 type budgetPayeeRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
 }
 
 // BudgetPayeeMetadataLookup adapts the payee repository to the payee slice of

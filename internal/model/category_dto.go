@@ -1,6 +1,6 @@
 // Request/result DTOs for the category API, with their tier-1 Validate()
 // methods.
-package category
+package model
 
 import (
 	"strings"

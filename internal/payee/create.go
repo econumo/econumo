@@ -3,6 +3,7 @@ package payee
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -11,7 +12,7 @@ import (
 // operation_requests_ids; a second request with the same id finds the row
 // already present and is rejected ("Operation is locked"). The new payee's
 // position is count(user's existing payees).
-func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayeeRequest) (*CreatePayeeResult, error) {
+func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req model.CreatePayeeRequest) (*model.CreatePayeeResult, error) {
 	// The request id is the OPERATION id; the entity gets a fresh UUIDv7.
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -40,7 +41,7 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 		ownerID = resolved
 	}
 
-	var created *Payee
+	var created *model.Payee
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		already, cerr := s.ops.Claim(txCtx, opID, s.clock.Now())
 		if cerr != nil {
@@ -59,7 +60,7 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 			return cerr
 		}
 		now := s.clock.Now()
-		p := NewPayee(id, ownerID, name, now)
+		p := model.NewPayee(id, ownerID, name, now)
 		p.SetPosition(int16(count))
 		if serr := s.repo.Save(txCtx, p); serr != nil {
 			return serr
@@ -73,5 +74,5 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req CreatePayee
 		return nil, err
 	}
 
-	return &CreatePayeeResult{Item: toResult(created)}, nil
+	return &model.CreatePayeeResult{Item: toResult(created)}, nil
 }

@@ -4,6 +4,7 @@ package category
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -15,7 +16,7 @@ import (
 // (Tag/payee order, by contrast, reorder the full available set and DO update
 // shared.) The RESPONSE, however, is the full available list (own + shared) via
 // the read view.
-func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req OrderCategoryListRequest) (*OrderCategoryListResult, error) {
+func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req model.OrderCategoryListRequest) (*model.OrderCategoryListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
 	for _, ch := range req.Changes {
 		id, err := vo.ParseId(ch.Id)
@@ -25,7 +26,7 @@ func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req Order
 		positions[id.String()] = int16(ch.Position)
 	}
 
-	var items []CategoryResult
+	var items []model.CategoryResult
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		// Owner-only set: shared categories are not reordered.
 		cats, err := s.repo.ListByOwner(ctx, userID)
@@ -57,5 +58,5 @@ func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req Order
 		return nil, err
 	}
 
-	return &OrderCategoryListResult{Items: items}, nil
+	return &model.OrderCategoryListResult{Items: items}, nil
 }

@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 
-	apppayee "github.com/econumo/econumo/internal/payee"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc/apppayee import aliases visible to swag's annotation
-// parser (this file's handler bodies no longer reference apppayee types
+// _ keeps the apidoc/model import aliases visible to swag's annotation
+// parser (this file's handler bodies no longer reference these types
 // directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
-var _ = apppayee.GetPayeeListResult{}
+var _ = model.GetPayeeListResult{}
 
 // OrderPayeeList handles POST /api/v1/payee/order-payee-list (auth).
 //
@@ -21,8 +21,8 @@ var _ = apppayee.GetPayeeListResult{}
 // @Tags        Payee
 // @Accept      json
 // @Produce     json
-// @Param       request body     apppayee.OrderPayeeListRequest true "Order payee list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apppayee.OrderPayeeListResult}
+// @Param       request body     model.OrderPayeeListRequest true "Order payee list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderPayeeListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -40,7 +40,7 @@ func (h *Handlers) OrderPayeeList(w http.ResponseWriter, r *http.Request) {
 // @Description Returns all the authenticated user's payees (archived and not) ordered by position.
 // @Tags        Payee
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=apppayee.GetPayeeListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetPayeeListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer

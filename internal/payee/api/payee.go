@@ -3,14 +3,14 @@ package api
 import (
 	"net/http"
 
-	apppayee "github.com/econumo/econumo/internal/payee"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc import alias visible to swag's annotation parser.
+// _ keeps the apidoc/model import aliases visible to swag's annotation parser.
 var _ = apidoc.JsonResponseError{}
-var _ = apppayee.CreatePayeeResult{}
+var _ = model.CreatePayeeResult{}
 
 // CreatePayee handles POST /api/v1/payee/create-payee (auth).
 //
@@ -19,8 +19,8 @@ var _ = apppayee.CreatePayeeResult{}
 // @Tags        Payee
 // @Accept      json
 // @Produce     json
-// @Param       request body     apppayee.CreatePayeeRequest true "Create payee request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apppayee.CreatePayeeResult}
+// @Param       request body     model.CreatePayeeRequest true "Create payee request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CreatePayeeResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -37,8 +37,8 @@ func (h *Handlers) CreatePayee(w http.ResponseWriter, r *http.Request) {
 // @Tags        Payee
 // @Accept      json
 // @Produce     json
-// @Param       request body     apppayee.UpdatePayeeRequest true "Update payee request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apppayee.UpdatePayeeResult}
+// @Param       request body     model.UpdatePayeeRequest true "Update payee request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdatePayeeResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -55,8 +55,8 @@ func (h *Handlers) UpdatePayee(w http.ResponseWriter, r *http.Request) {
 // @Tags        Payee
 // @Accept      json
 // @Produce     json
-// @Param       request body     apppayee.ArchivePayeeRequest true "Archive payee request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apppayee.ArchivePayeeResult}
+// @Param       request body     model.ArchivePayeeRequest true "Archive payee request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ArchivePayeeResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -73,8 +73,8 @@ func (h *Handlers) ArchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Tags        Payee
 // @Accept      json
 // @Produce     json
-// @Param       request body     apppayee.UnarchivePayeeRequest true "Unarchive payee request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apppayee.UnarchivePayeeResult}
+// @Param       request body     model.UnarchivePayeeRequest true "Unarchive payee request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UnarchivePayeeResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -91,8 +91,8 @@ func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Tags        Payee
 // @Accept      json
 // @Produce     json
-// @Param       request body     apppayee.DeletePayeeRequest true "Delete payee request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apppayee.DeletePayeeResult}
+// @Param       request body     model.DeletePayeeRequest true "Delete payee request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DeletePayeeResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException

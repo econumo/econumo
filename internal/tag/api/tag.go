@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 
-	apptag "github.com/econumo/econumo/internal/tag"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc/apptag import aliases visible to swag's annotation
-// parser (this file's handler bodies no longer reference apptag types
+// _ keeps the apidoc/model import aliases visible to swag's annotation
+// parser (this file's handler bodies no longer reference these types
 // directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
-var _ = apptag.CreateTagResult{}
+var _ = model.CreateTagResult{}
 
 // CreateTag handles POST /api/v1/tag/create-tag (auth).
 //
@@ -21,8 +21,8 @@ var _ = apptag.CreateTagResult{}
 // @Tags        Tag
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptag.CreateTagRequest true "Create tag request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptag.CreateTagResult}
+// @Param       request body     model.CreateTagRequest true "Create tag request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateTagResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -39,8 +39,8 @@ func (h *Handlers) CreateTag(w http.ResponseWriter, r *http.Request) {
 // @Tags        Tag
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptag.UpdateTagRequest true "Update tag request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptag.UpdateTagResult}
+// @Param       request body     model.UpdateTagRequest true "Update tag request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateTagResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -57,8 +57,8 @@ func (h *Handlers) UpdateTag(w http.ResponseWriter, r *http.Request) {
 // @Tags        Tag
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptag.ArchiveTagRequest true "Archive tag request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptag.ArchiveTagResult}
+// @Param       request body     model.ArchiveTagRequest true "Archive tag request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ArchiveTagResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -75,8 +75,8 @@ func (h *Handlers) ArchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Tags        Tag
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptag.UnarchiveTagRequest true "Unarchive tag request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptag.UnarchiveTagResult}
+// @Param       request body     model.UnarchiveTagRequest true "Unarchive tag request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UnarchiveTagResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -93,8 +93,8 @@ func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Tags        Tag
 // @Accept      json
 // @Produce     json
-// @Param       request body     apptag.DeleteTagRequest true "Delete tag request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=apptag.DeleteTagResult}
+// @Param       request body     model.DeleteTagRequest true "Delete tag request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteTagResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException

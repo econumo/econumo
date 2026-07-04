@@ -3,6 +3,7 @@ package tag
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -12,7 +13,7 @@ import (
 // is updated too: the changes are restricted to the available id set (an id the
 // user has no access to is ignored), then each is loaded via GetByID (not
 // owner-scoped) and persisted.
-func (s *Service) OrderTagList(ctx context.Context, userID vo.Id, req OrderTagListRequest) (*OrderTagListResult, error) {
+func (s *Service) OrderTagList(ctx context.Context, userID vo.Id, req model.OrderTagListRequest) (*model.OrderTagListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
 	order := make([]string, 0, len(req.Changes))
 	for _, ch := range req.Changes {
@@ -26,7 +27,7 @@ func (s *Service) OrderTagList(ctx context.Context, userID vo.Id, req OrderTagLi
 		positions[id.String()] = int16(ch.Position)
 	}
 
-	var items []TagResult
+	var items []model.TagResult
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		avail, err := s.read.TagListView(ctx, userID.String())
 		if err != nil {
@@ -64,5 +65,5 @@ func (s *Service) OrderTagList(ctx context.Context, userID vo.Id, req OrderTagLi
 		return nil, err
 	}
 
-	return &OrderTagListResult{Items: items}, nil
+	return &model.OrderTagListResult{Items: items}, nil
 }

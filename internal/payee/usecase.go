@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
@@ -52,8 +53,8 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 // mutate loads the payee, checks ownership, applies fn inside a transaction, and
 // saves. It returns the mutated (in-memory) aggregate so the caller can build
 // its result without a second read. Ownership failure -> AccessDenied (403).
-func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *Payee, now time.Time)) (*Payee, error) {
-	var loaded *Payee
+func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *model.Payee, now time.Time)) (*model.Payee, error) {
+	var loaded *model.Payee
 	err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		p, err := s.repo.GetByID(txCtx, id)
 		if err != nil {
@@ -84,8 +85,8 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *Payee
 // connection rather than reaching for the pool — critical under a single-
 // connection pool, where a pool read while the tx holds the only connection
 // would deadlock.
-func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, p *Payee, now time.Time) error) (*Payee, error) {
-	var loaded *Payee
+func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(ctx context.Context, p *model.Payee, now time.Time) error) (*model.Payee, error) {
+	var loaded *model.Payee
 	err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		p, err := s.repo.GetByID(txCtx, id)
 		if err != nil {
@@ -111,12 +112,12 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 
 // toResult formats the timestamps in the "2006-01-02 15:04:05" wire form and
 // maps the archived bool to the wire shape (isArchived int 0/1). See CLAUDE.md.
-func toResult(p *Payee) PayeeResult {
+func toResult(p *model.Payee) model.PayeeResult {
 	archived := 0
 	if p.IsArchived {
 		archived = 1
 	}
-	return PayeeResult{
+	return model.PayeeResult{
 		Id:          p.ID.String(),
 		OwnerUserId: p.UserID.String(),
 		Name:        p.Name,
@@ -130,12 +131,12 @@ func toResult(p *Payee) PayeeResult {
 // listResults returns the user's AVAILABLE payees (own + shared via account
 // access), ordered by position, in the wire shape — used by order-payee-list.
 // It reads through the same own+shared view as get-payee-list, not owner-only.
-func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]PayeeResult, error) {
+func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]model.PayeeResult, error) {
 	rows, err := s.read.PayeeListView(ctx, userID.String())
 	if err != nil {
 		return nil, err
 	}
-	items := make([]PayeeResult, 0, len(rows))
+	items := make([]model.PayeeResult, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}

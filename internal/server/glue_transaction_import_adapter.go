@@ -13,11 +13,8 @@ package server
 import (
 	"context"
 
-	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/model"
-	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
-	tag "github.com/econumo/econumo/internal/tag"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
@@ -130,12 +127,12 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 // transactionImportCategoryService is the category-service create surface the
 // importer uses.
 type transactionImportCategoryService interface {
-	CreateCategory(ctx context.Context, userID vo.Id, req category.CreateCategoryRequest) (*category.CreateCategoryResult, error)
+	CreateCategory(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error)
 }
 
 // transactionImportCategoryLister is the read surface over the category repo.
 type transactionImportCategoryLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 }
 
 // TransactionImportCategories adapts the category service/repo to the
@@ -168,7 +165,7 @@ func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerI
 		typ = "income"
 	}
 	icon := "category"
-	res, err := c.svc.CreateCategory(ctx, ownerID, category.CreateCategoryRequest{
+	res, err := c.svc.CreateCategory(ctx, ownerID, model.CreateCategoryRequest{
 		Id: vo.NewId().String(), Name: name, Type: typ, Icon: &icon,
 	})
 	if err != nil {
@@ -180,12 +177,12 @@ func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerI
 // transactionImportTagService is the tag-service create surface the importer
 // uses.
 type transactionImportTagService interface {
-	CreateTag(ctx context.Context, userID vo.Id, req tag.CreateTagRequest) (*tag.CreateTagResult, error)
+	CreateTag(ctx context.Context, userID vo.Id, req model.CreateTagRequest) (*model.CreateTagResult, error)
 }
 
 // transactionImportTagLister is the read surface over the tag repo.
 type transactionImportTagLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*tag.Tag, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
 }
 
 // TransactionImportTags adapts the tag service/repo to the transaction
@@ -213,7 +210,7 @@ func (t *TransactionImportTags) TagsByOwner(ctx context.Context, ownerID vo.Id) 
 }
 
 func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
-	res, err := t.svc.CreateTag(ctx, ownerID, tag.CreateTagRequest{
+	res, err := t.svc.CreateTag(ctx, ownerID, model.CreateTagRequest{
 		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {
@@ -225,12 +222,12 @@ func (t *TransactionImportTags) CreateTag(ctx context.Context, ownerID vo.Id, na
 // transactionImportPayeeService is the payee-service create surface the
 // importer uses.
 type transactionImportPayeeService interface {
-	CreatePayee(ctx context.Context, userID vo.Id, req payee.CreatePayeeRequest) (*payee.CreatePayeeResult, error)
+	CreatePayee(ctx context.Context, userID vo.Id, req model.CreatePayeeRequest) (*model.CreatePayeeResult, error)
 }
 
 // transactionImportPayeeLister is the read surface over the payee repo.
 type transactionImportPayeeLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*payee.Payee, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
 }
 
 // TransactionImportPayees adapts the payee service/repo to the transaction
@@ -258,7 +255,7 @@ func (p *TransactionImportPayees) PayeesByOwner(ctx context.Context, ownerID vo.
 }
 
 func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
-	res, err := p.svc.CreatePayee(ctx, ownerID, payee.CreatePayeeRequest{
+	res, err := p.svc.CreatePayee(ctx, ownerID, model.CreatePayeeRequest{
 		Id: vo.NewId().String(), Name: name,
 	})
 	if err != nil {

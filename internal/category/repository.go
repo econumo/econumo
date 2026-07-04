@@ -3,6 +3,7 @@ package category
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -13,16 +14,16 @@ type Repository interface {
 	// NextIdentity allocates a fresh aggregate id (no DB round-trip).
 	NextIdentity() vo.Id
 
-	GetByID(ctx context.Context, id vo.Id) (*Category, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Category, error)
 
 	// ListByOwner returns the owner's categories ordered by position.
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*Category, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 
 	// CountByOwner returns the number of categories the owner has (used to seed
 	// a new category's position).
 	CountByOwner(ctx context.Context, userID vo.Id) (int, error)
 
-	Save(ctx context.Context, c *Category) error
+	Save(ctx context.Context, c *model.Category) error
 
 	// Delete removes a category. Transactions referencing it have category_id set
 	// to NULL via the ON DELETE SET NULL FK.

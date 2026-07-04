@@ -12,11 +12,8 @@ package server
 import (
 	"context"
 
-	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/model"
-	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
-	tag "github.com/econumo/econumo/internal/tag"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 )
 
@@ -89,7 +86,7 @@ func toTransactionAccountResults(accts []model.AccountResult) []apptransaction.A
 // transactionCategoryByID is the minimal category-repo surface the export
 // adapter's name lookup uses.
 type transactionCategoryByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*category.Category, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Category, error)
 }
 
 // TransactionCategoryNameLookup adapts the category repository to the
@@ -115,7 +112,7 @@ func (l *TransactionCategoryNameLookup) CategoryName(ctx context.Context, id vo.
 // transactionTagByID is the minimal tag-repo surface the export adapter's
 // name lookup uses.
 type transactionTagByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*tag.Tag, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Tag, error)
 }
 
 // TransactionTagNameLookup adapts the tag repository to the transaction
@@ -141,7 +138,7 @@ func (l *TransactionTagNameLookup) TagName(ctx context.Context, id vo.Id) (strin
 // transactionPayeeByID is the minimal payee-repo surface the export adapter's
 // name lookup uses.
 type transactionPayeeByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*payee.Payee, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Payee, error)
 }
 
 // TransactionPayeeNameLookup adapts the payee repository to the transaction

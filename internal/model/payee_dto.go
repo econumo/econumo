@@ -1,4 +1,5 @@
-package tag
+// Request/result DTOs for the payee API, with their tier-1 Validate() methods.
+package model
 
 import (
 	"strings"
@@ -6,10 +7,10 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 )
 
-// TagResult is one tag in the API. isArchived is an int 0/1 (NOT bool);
+// PayeeResult is one payee in the API. isArchived is an int 0/1 (NOT bool);
 // createdAt/updatedAt are "2006-01-02 15:04:05" (space separator, no timezone).
 // These wire shapes are frozen; see CLAUDE.md.
-type TagResult struct {
+type PayeeResult struct {
 	Id          string `json:"id"`
 	OwnerUserId string `json:"ownerUserId"`
 	Name        string `json:"name"`
@@ -19,9 +20,9 @@ type TagResult struct {
 	UpdatedAt   string `json:"updatedAt"`
 }
 
-// CreateTagRequest is the create-tag request body. accountId is nullable (a
+// CreatePayeeRequest is the create-payee request body. accountId is nullable (a
 // pointer) so an absent field is distinct from "".
-type CreateTagRequest struct {
+type CreatePayeeRequest struct {
 	Id        string  `json:"id"`
 	Name      string  `json:"name"`
 	AccountId *string `json:"accountId"`
@@ -29,7 +30,7 @@ type CreateTagRequest struct {
 
 // Validate enforces the tier-1 NotBlank constraints; the 3-64 name length is
 // re-checked tier-2 in the service.
-func (r CreateTagRequest) Validate() error {
+func (r CreatePayeeRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
 		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
@@ -43,16 +44,16 @@ func (r CreateTagRequest) Validate() error {
 	return nil
 }
 
-type CreateTagResult struct {
-	Item TagResult `json:"item"`
+type CreatePayeeResult struct {
+	Item PayeeResult `json:"item"`
 }
 
-type UpdateTagRequest struct {
+type UpdatePayeeRequest struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
-func (r UpdateTagRequest) Validate() error {
+func (r UpdatePayeeRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
 		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
@@ -66,76 +67,68 @@ func (r UpdateTagRequest) Validate() error {
 	return nil
 }
 
-type UpdateTagResult struct {
-	Item TagResult `json:"item"`
-}
+// UpdatePayeeResult is the update-payee response: an EMPTY DTO -> {"data":{}}
+// (unlike tag, whose update echoes the item).
+type UpdatePayeeResult struct{}
 
-type ArchiveTagRequest struct {
+type ArchivePayeeRequest struct {
 	Id string `json:"id"`
 }
 
-func (r ArchiveTagRequest) Validate() error {
+func (r ArchivePayeeRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
 	}
 	return nil
 }
 
-// ArchiveTagResult is the archive-tag response: an empty DTO -> {"data":{}}.
-// (Note tag UPDATE, unlike archive, DOES echo the item.)
-type ArchiveTagResult struct{}
+type ArchivePayeeResult struct{}
 
-type UnarchiveTagRequest struct {
+type UnarchivePayeeRequest struct {
 	Id string `json:"id"`
 }
 
-func (r UnarchiveTagRequest) Validate() error {
+func (r UnarchivePayeeRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
 	}
 	return nil
 }
 
-type UnarchiveTagResult struct{}
+type UnarchivePayeeResult struct{}
 
-// DeleteTagRequest is the delete-tag request body. Tag delete is unconditional —
-// there is no mode/replaceId.
-type DeleteTagRequest struct {
+// DeletePayeeRequest is the delete-payee request body. Payee delete is
+// unconditional — there is no mode/replaceId.
+type DeletePayeeRequest struct {
 	Id string `json:"id"`
 }
 
-func (r DeleteTagRequest) Validate() error {
+func (r DeletePayeeRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
 	}
 	return nil
 }
 
-type DeleteTagResult struct{}
+type DeletePayeeResult struct{}
 
-// PositionChange is one {id, position} entry in an order request.
-type PositionChange struct {
-	Id       string `json:"id"`
-	Position int    `json:"position"`
-}
-
-type OrderTagListRequest struct {
+type OrderPayeeListRequest struct {
 	Changes []PositionChange `json:"changes"`
 }
 
 // Validate enforces a non-empty changes list (an empty list is rejected with
-// "Tags list is empty").
-func (r OrderTagListRequest) Validate() error {
+// "Payees list is empty").
+func (r OrderPayeeListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Tags list is empty")
+		return errs.NewValidation("Payees list is empty")
 	}
 	return nil
 }
 
-type OrderTagListResult struct {
-	Items []TagResult `json:"items"`
+type OrderPayeeListResult struct {
+	Items []PayeeResult `json:"items"`
 }
 
-type GetTagListResult struct {
-	Items []TagResult `json:"items"`
+type GetPayeeListResult struct {
+	Items []PayeeResult `json:"items"`
 }
