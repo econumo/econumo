@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -13,15 +14,15 @@ import (
 
 // GenerateInvite creates (or refreshes) the user's outstanding invite code and
 // returns {code, expiredAt}.
-func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateInviteRequest) (*GenerateInviteResult, error) {
-	var inv *ConnectionInvite
+func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ model.GenerateInviteRequest) (*model.GenerateInviteResult, error) {
+	var inv *model.ConnectionInvite
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		existing, err := s.invites.GetByUser(txCtx, userID)
 		if err != nil {
 			return err
 		}
 		if existing == nil {
-			existing = NewConnectionInvite(userID)
+			existing = model.NewConnectionInvite(userID)
 		}
 		existing.GenerateNewCode(s.clock.Now())
 		if serr := s.invites.Save(txCtx, existing); serr != nil {
@@ -32,14 +33,14 @@ func (s *Service) GenerateInvite(ctx context.Context, userID vo.Id, _ GenerateIn
 	}); err != nil {
 		return nil, err
 	}
-	return &GenerateInviteResult{Item: ConnectionInviteResult{
+	return &model.GenerateInviteResult{Item: model.ConnectionInviteResult{
 		Code:      inv.Code.Value(),
 		ExpiredAt: inv.ExpiredAt.Format(datetime.Layout),
 	}}, nil
 }
 
 // DeleteInvite clears the user's outstanding invite (no-op if none).
-func (s *Service) DeleteInvite(ctx context.Context, userID vo.Id, _ DeleteInviteRequest) (*DeleteInviteResult, error) {
+func (s *Service) DeleteInvite(ctx context.Context, userID vo.Id, _ model.DeleteInviteRequest) (*model.DeleteInviteResult, error) {
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		inv, err := s.invites.GetByUser(txCtx, userID)
 		if err != nil {
@@ -53,14 +54,14 @@ func (s *Service) DeleteInvite(ctx context.Context, userID vo.Id, _ DeleteInvite
 	}); err != nil {
 		return nil, err
 	}
-	return &DeleteInviteResult{}, nil
+	return &model.DeleteInviteResult{}, nil
 }
 
 // AcceptInvite redeems a code: it connects the redeeming user with the invite's
 // owner (symmetric users_connections link), clears the code, and returns the
 // redeeming user's full connection list.
-func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req AcceptInviteRequest) (*AcceptInviteResult, error) {
-	code, err := NewConnectionCode(req.Code)
+func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.AcceptInviteRequest) (*model.AcceptInviteResult, error) {
+	code, err := model.NewConnectionCode(req.Code)
 	if err != nil {
 		return nil, err
 	}
@@ -85,14 +86,14 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req AcceptInvi
 	if err != nil {
 		return nil, err
 	}
-	return &AcceptInviteResult{Items: list.Items}, nil
+	return &model.AcceptInviteResult{Items: list.Items}, nil
 }
 
 // DeleteConnection disconnects the requesting user from a connected user: it
 // revokes every account-access grant shared between them (both directions),
 // drops any budget access between them (both directions), and removes the
 // symmetric users_connections link.
-func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req DeleteConnectionRequest) (*DeleteConnectionResult, error) {
+func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req model.DeleteConnectionRequest) (*model.DeleteConnectionResult, error) {
 	connectedID, err := parseID("id", req.Id)
 	if err != nil {
 		return nil, err
@@ -145,7 +146,7 @@ func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req Delete
 	}); err != nil {
 		return nil, err
 	}
-	return &DeleteConnectionResult{}, nil
+	return &model.DeleteConnectionResult{}, nil
 }
 
 // revokeGrantTx unwinds one grant (folders + options + the grant row) on the

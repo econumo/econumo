@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -12,7 +13,7 @@ import (
 // requesting user owns (or admins). On a FIRST grant to the affected user it
 // also seeds that user's per-account ordering row (accounts_options at max+1)
 // and adds the account to their last folder.
-func (s *Service) SetAccountAccess(ctx context.Context, userID vo.Id, req SetAccountAccessRequest) (*SetAccountAccessResult, error) {
+func (s *Service) SetAccountAccess(ctx context.Context, userID vo.Id, req model.SetAccountAccessRequest) (*model.SetAccountAccessResult, error) {
 	accountID, err := parseID("accountId", req.AccountId)
 	if err != nil {
 		return nil, err
@@ -21,7 +22,7 @@ func (s *Service) SetAccountAccess(ctx context.Context, userID vo.Id, req SetAcc
 	if err != nil {
 		return nil, err
 	}
-	role, err := RoleFromAlias(req.Role)
+	role, err := model.RoleFromAlias(req.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func (s *Service) SetAccountAccess(ctx context.Context, userID vo.Id, req SetAcc
 			}
 			// First grant: create it, seed the affected user's ordering row and
 			// add the account to their last folder.
-			grant = NewAccountAccess(accountID, affectedUserID, role, now)
+			grant = model.NewAccountAccess(accountID, affectedUserID, role, now)
 
 			max, perr := s.options.MaxPosition(txCtx, affectedUserID)
 			if perr != nil {
@@ -65,5 +66,5 @@ func (s *Service) SetAccountAccess(ctx context.Context, userID vo.Id, req SetAcc
 	if err != nil {
 		return nil, err
 	}
-	return &SetAccountAccessResult{}, nil
+	return &model.SetAccountAccessResult{}, nil
 }

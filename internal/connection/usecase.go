@@ -8,17 +8,11 @@ import (
 	"context"
 	"errors"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// OwnerView is the minimal user shape the connection list embeds.
-type OwnerView struct {
-	ID     string
-	Name   string
-	Avatar string
-}
 
 // Service is the connection write+read orchestrator. It owns the tx boundary and
 // builds response-shaped *Result structs directly.
@@ -83,7 +77,7 @@ func (s *Service) requireOwnerAdmin(ctx context.Context, userID, accountID vo.Id
 		}
 		return err
 	}
-	if grant.Role == RoleAdmin {
+	if grant.Role == model.RoleAdmin {
 		return nil
 	}
 	return errs.NewAccessDenied("Access denied")

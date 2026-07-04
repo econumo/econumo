@@ -28,14 +28,14 @@ func NewConnectionUserLookup(users connectionUserByID) *ConnectionUserLookup {
 }
 
 // GetOwner resolves the connected-user embed (id, name, avatar).
-func (l *ConnectionUserLookup) GetOwner(ctx context.Context, userID string) (appconnection.OwnerView, error) {
+func (l *ConnectionUserLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
-		return appconnection.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
 	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
-		return appconnection.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
-	return appconnection.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }

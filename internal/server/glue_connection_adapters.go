@@ -89,7 +89,7 @@ func (p *ConnectionFolderPort) RemoveAccount(ctx context.Context, folderID, acco
 // connectionAccountAccessLister is the slice of the connection repo the
 // account module's sharedAccess[] embed needs.
 type connectionAccountAccessLister interface {
-	ListByAccount(ctx context.Context, accountID vo.Id) ([]*domconnection.AccountAccess, error)
+	ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.AccountAccess, error)
 }
 
 // ConnectionSharedAccessLookup adapts the connection repo to
@@ -121,7 +121,7 @@ func (l *ConnectionSharedAccessLookup) ListByAccount(ctx context.Context, accoun
 // module's delete-account non-owner branch needs.
 type connectionAccessRevokerDeps interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	Get(ctx context.Context, accountID, userID vo.Id) (*domconnection.AccountAccess, error)
+	Get(ctx context.Context, accountID, userID vo.Id) (*model.AccountAccess, error)
 }
 
 // connectionOwnAccessRevoker is the connection-service method that drops the

@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -23,7 +24,7 @@ type BudgetAccessRevoker interface {
 
 // UserLookup resolves the connected-user embed (id, name, avatar).
 type UserLookup interface {
-	GetOwner(ctx context.Context, userID string) (OwnerView, error)
+	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
 }
 
 // FolderPort is the slice of folder behavior the connection side effects need:

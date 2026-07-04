@@ -1,18 +1,4 @@
-// Package connection is the connection feature: the AccountAccess entity (a
-// per-account grant of a Role to a connected user), the Role value object
-// (admin=0, user=1, guest=2), and the repository interfaces (domain), plus the
-// request/result DTOs (with their tier-1 Validate() methods) and the Service
-// (which owns the tx boundary and builds the response-shaped *Result directly).
-// The live endpoints are set-account-access, revoke-account-access (mutations,
-// owner-admin only) and get-connection-list (read); generate-invite,
-// delete-invite, accept-invite and delete-connection are implemented here too
-// (enabled in the cloud edition). The symmetric user-to-user link itself
-// carries no behavior beyond existence, so it is modeled as plain ids at the
-// repository boundary rather than an entity.
-//
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md.
-package connection
+package model
 
 import (
 	"time"

@@ -1,19 +1,12 @@
 // This file holds the connection module's request/result DTOs with tier-1
 // Validate(). JSON field names are frozen to the wire contract.
-package connection
+package model
 
 import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/shared/errs"
 )
-
-// UserResult is the embedded connected-user shape: {id, avatar, name}.
-type UserResult struct {
-	Id     string `json:"id"`
-	Avatar string `json:"avatar"`
-	Name   string `json:"name"`
-}
 
 // AccountAccessResult is one shared-account grant in the connection list:
 // {id (the account id), ownerUserId, role (alias)}.

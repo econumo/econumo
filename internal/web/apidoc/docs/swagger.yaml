@@ -570,95 +570,25 @@ definitions:
       name:
         type: string
     type: object
-  connection.AcceptInviteRequest:
+  model.AcceptInviteRequest:
     properties:
       code:
         type: string
     type: object
-  connection.AcceptInviteResult:
+  model.AcceptInviteResult:
     properties:
       items:
         items:
-          $ref: '#/definitions/connection.ConnectionResult'
+          $ref: '#/definitions/model.ConnectionResult'
         type: array
     type: object
-  connection.AccountAccessResult:
+  model.AccountAccessResult:
     properties:
       id:
         type: string
       ownerUserId:
         type: string
       role:
-        type: string
-    type: object
-  connection.ConnectionInviteResult:
-    properties:
-      code:
-        type: string
-      expiredAt:
-        type: string
-    type: object
-  connection.ConnectionResult:
-    properties:
-      sharedAccounts:
-        items:
-          $ref: '#/definitions/connection.AccountAccessResult'
-        type: array
-      user:
-        $ref: '#/definitions/connection.UserResult'
-    type: object
-  connection.DeleteConnectionRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  connection.DeleteConnectionResult:
-    type: object
-  connection.DeleteInviteRequest:
-    type: object
-  connection.DeleteInviteResult:
-    type: object
-  connection.GenerateInviteRequest:
-    type: object
-  connection.GenerateInviteResult:
-    properties:
-      item:
-        $ref: '#/definitions/connection.ConnectionInviteResult'
-    type: object
-  connection.GetConnectionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/connection.ConnectionResult'
-        type: array
-    type: object
-  connection.RevokeAccountAccessRequest:
-    properties:
-      accountId:
-        type: string
-      userId:
-        type: string
-    type: object
-  connection.RevokeAccountAccessResult:
-    type: object
-  connection.SetAccountAccessRequest:
-    properties:
-      accountId:
-        type: string
-      role:
-        type: string
-      userId:
-        type: string
-    type: object
-  connection.SetAccountAccessResult:
-    type: object
-  connection.UserResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
         type: string
     type: object
   model.AccountFolderResult:
@@ -752,6 +682,22 @@ definitions:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.ConnectionInviteResult:
+    properties:
+      code:
+        type: string
+      expiredAt:
+        type: string
+    type: object
+  model.ConnectionResult:
+    properties:
+      sharedAccounts:
+        items:
+          $ref: '#/definitions/model.AccountAccessResult'
+        type: array
+      user:
+        $ref: '#/definitions/model.UserResult'
     type: object
   model.CorrectionResult:
     properties:
@@ -953,6 +899,17 @@ definitions:
     type: object
   model.DeleteCategoryResult:
     type: object
+  model.DeleteConnectionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteConnectionResult:
+    type: object
+  model.DeleteInviteRequest:
+    type: object
+  model.DeleteInviteResult:
+    type: object
   model.DeletePayeeRequest:
     properties:
       id:
@@ -988,6 +945,13 @@ definitions:
       position:
         type: integer
     type: object
+  model.GenerateInviteRequest:
+    type: object
+  model.GenerateInviteResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ConnectionInviteResult'
+    type: object
   model.GetAccountListResult:
     properties:
       items:
@@ -1000,6 +964,13 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.GetConnectionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ConnectionResult'
         type: array
     type: object
   model.GetCurrencyListResult:
@@ -1231,6 +1202,26 @@ definitions:
         type: string
     type: object
   model.ResetPasswordResult:
+    type: object
+  model.RevokeAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.RevokeAccountAccessResult:
+    type: object
+  model.SetAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.SetAccountAccessResult:
     type: object
   model.SharedAccess:
     properties:
@@ -2903,7 +2894,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.AcceptInviteRequest'
+          $ref: '#/definitions/model.AcceptInviteRequest'
       produces:
       - application/json
       responses:
@@ -2914,7 +2905,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.AcceptInviteResult'
+                  $ref: '#/definitions/model.AcceptInviteResult'
               type: object
         "400":
           description: Bad Request
@@ -2944,7 +2935,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.DeleteConnectionRequest'
+          $ref: '#/definitions/model.DeleteConnectionRequest'
       produces:
       - application/json
       responses:
@@ -2955,7 +2946,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.DeleteConnectionResult'
+                  $ref: '#/definitions/model.DeleteConnectionResult'
               type: object
         "400":
           description: Bad Request
@@ -2984,7 +2975,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/connection.DeleteInviteRequest'
+          $ref: '#/definitions/model.DeleteInviteRequest'
       produces:
       - application/json
       responses:
@@ -2995,7 +2986,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.DeleteInviteResult'
+                  $ref: '#/definitions/model.DeleteInviteResult'
               type: object
         "401":
           description: Unauthorized
@@ -3020,7 +3011,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/connection.GenerateInviteRequest'
+          $ref: '#/definitions/model.GenerateInviteRequest'
       produces:
       - application/json
       responses:
@@ -3031,7 +3022,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.GenerateInviteResult'
+                  $ref: '#/definitions/model.GenerateInviteResult'
               type: object
         "401":
           description: Unauthorized
@@ -3060,7 +3051,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.GetConnectionListResult'
+                  $ref: '#/definitions/model.GetConnectionListResult'
               type: object
         "401":
           description: Unauthorized
@@ -3086,7 +3077,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.RevokeAccountAccessRequest'
+          $ref: '#/definitions/model.RevokeAccountAccessRequest'
       produces:
       - application/json
       responses:
@@ -3097,7 +3088,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.RevokeAccountAccessResult'
+                  $ref: '#/definitions/model.RevokeAccountAccessResult'
               type: object
         "400":
           description: Bad Request
@@ -3128,7 +3119,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/connection.SetAccountAccessRequest'
+          $ref: '#/definitions/model.SetAccountAccessRequest'
       produces:
       - application/json
       responses:
@@ -3139,7 +3130,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/connection.SetAccountAccessResult'
+                  $ref: '#/definitions/model.SetAccountAccessResult'
               type: object
         "400":
           description: Bad Request

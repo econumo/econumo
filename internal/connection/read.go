@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -12,7 +13,7 @@ import (
 // and issued-access grants (grants on accounts I own), keeping those whose
 // account is owned by either the connected user or me, deduplicated by account id
 // (last write wins), in account-id discovery order.
-func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConnectionListResult, error) {
+func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.GetConnectionListResult, error) {
 	received, err := s.access.ListReceived(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -40,29 +41,29 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConn
 		owners[key] = o
 		return o, nil
 	}
-	for _, a := range append(append([]*AccountAccess{}, received...), issued...) {
+	for _, a := range append(append([]*model.AccountAccess{}, received...), issued...) {
 		if _, oerr := resolveOwner(a.AccountID); oerr != nil {
 			return nil, oerr
 		}
 	}
 
-	result := &GetConnectionListResult{Items: []ConnectionResult{}}
+	result := &model.GetConnectionListResult{Items: []model.ConnectionResult{}}
 	for _, cu := range connected {
 		owner, oerr := s.users.GetOwner(ctx, cu.String())
 		if oerr != nil {
 			return nil, oerr
 		}
-		conn := ConnectionResult{
-			User:           UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
-			SharedAccounts: []AccountAccessResult{},
+		conn := model.ConnectionResult{
+			User:           model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
+			SharedAccounts: []model.AccountAccessResult{},
 		}
 
 		// Dedup by account id, preserving discovery order (received first, then
 		// issued): last write wins on the value, but the order follows the FIRST
 		// occurrence of each key, so we track order separately.
 		order := []string{}
-		byID := map[string]AccountAccessResult{}
-		add := func(a *AccountAccess) {
+		byID := map[string]model.AccountAccessResult{}
+		add := func(a *model.AccountAccess) {
 			accOwner := owners[a.AccountID.String()]
 			if !accOwner.Equal(cu) && !accOwner.Equal(userID) {
 				return
@@ -71,7 +72,7 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*GetConn
 			if _, seen := byID[key]; !seen {
 				order = append(order, key)
 			}
-			byID[key] = AccountAccessResult{Id: key, OwnerUserId: accOwner.String(), Role: a.Role.Alias()}
+			byID[key] = model.AccountAccessResult{Id: key, OwnerUserId: accOwner.String(), Role: a.Role.Alias()}
 		}
 		for _, a := range received {
 			add(a)

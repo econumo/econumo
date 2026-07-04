@@ -13,6 +13,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -59,7 +60,7 @@ func NewRepo(driver string, tx *backend.TxManager) *Repo {
 func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 // Get loads the grant for (accountID, userID).
-func (r *Repo) Get(ctx context.Context, accountID, userID vo.Id) (*domconnection.AccountAccess, error) {
+func (r *Repo) Get(ctx context.Context, accountID, userID vo.Id) (*model.AccountAccess, error) {
 	row, err := r.q.GetAccountAccess(ctx, r.db(ctx), accountID.String(), userID.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -71,7 +72,7 @@ func (r *Repo) Get(ctx context.Context, accountID, userID vo.Id) (*domconnection
 }
 
 // Save upserts a grant.
-func (r *Repo) Save(ctx context.Context, a *domconnection.AccountAccess) error {
+func (r *Repo) Save(ctx context.Context, a *model.AccountAccess) error {
 	return r.q.UpsertAccountAccess(ctx, r.db(ctx), upsertParams{
 		AccountID: a.AccountID.String(),
 		UserID:    a.UserID.String(),
@@ -87,7 +88,7 @@ func (r *Repo) Delete(ctx context.Context, accountID, userID vo.Id) error {
 }
 
 // ListReceived returns grants made TO userID.
-func (r *Repo) ListReceived(ctx context.Context, userID vo.Id) ([]*domconnection.AccountAccess, error) {
+func (r *Repo) ListReceived(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error) {
 	rows, err := r.q.ListReceived(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
@@ -96,7 +97,7 @@ func (r *Repo) ListReceived(ctx context.Context, userID vo.Id) ([]*domconnection
 }
 
 // ListIssued returns grants on accounts owned by userID.
-func (r *Repo) ListIssued(ctx context.Context, userID vo.Id) ([]*domconnection.AccountAccess, error) {
+func (r *Repo) ListIssued(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error) {
 	rows, err := r.q.ListIssued(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
@@ -106,7 +107,7 @@ func (r *Repo) ListIssued(ctx context.Context, userID vo.Id) ([]*domconnection.A
 
 // ListByAccount returns all grants on one account (for the account's
 // sharedAccess[] embed).
-func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*domconnection.AccountAccess, error) {
+func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.AccountAccess, error) {
 	rows, err := r.q.ListByAccount(ctx, r.db(ctx), accountID.String())
 	if err != nil {
 		return nil, err
@@ -163,7 +164,7 @@ func (r *Repo) DeleteOption(ctx context.Context, accountID, userID vo.Id) error 
 	return r.q.DeleteAccountOptionForUser(ctx, r.db(ctx), accountID.String(), userID.String())
 }
 
-func hydrate(row accessRow) (*domconnection.AccountAccess, error) {
+func hydrate(row accessRow) (*model.AccountAccess, error) {
 	accountID, err := vo.ParseId(row.AccountID)
 	if err != nil {
 		return nil, err
@@ -172,12 +173,12 @@ func hydrate(row accessRow) (*domconnection.AccountAccess, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &domconnection.AccountAccess{AccountID: accountID, UserID: userID, Role: domconnection.Role(row.Role),
+	return &model.AccountAccess{AccountID: accountID, UserID: userID, Role: model.Role(row.Role),
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
-func hydrateAll(rows []accessRow) ([]*domconnection.AccountAccess, error) {
-	out := make([]*domconnection.AccountAccess, 0, len(rows))
+func hydrateAll(rows []accessRow) ([]*model.AccountAccess, error) {
+	out := make([]*model.AccountAccess, 0, len(rows))
 	for _, row := range rows {
 		a, err := hydrate(row)
 		if err != nil {

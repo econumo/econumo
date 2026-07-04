@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -10,7 +11,7 @@ import (
 // requesting user owns (or admins). It also unwinds the affected user's view of
 // the account: removes it from their folders and drops their accounts_options
 // row.
-func (s *Service) RevokeAccountAccess(ctx context.Context, userID vo.Id, req RevokeAccountAccessRequest) (*RevokeAccountAccessResult, error) {
+func (s *Service) RevokeAccountAccess(ctx context.Context, userID vo.Id, req model.RevokeAccountAccessRequest) (*model.RevokeAccountAccessResult, error) {
 	accountID, err := parseID("accountId", req.AccountId)
 	if err != nil {
 		return nil, err
@@ -27,7 +28,7 @@ func (s *Service) RevokeAccountAccess(ctx context.Context, userID vo.Id, req Rev
 	if err := s.revokeGrant(ctx, accountID, affectedUserID); err != nil {
 		return nil, err
 	}
-	return &RevokeAccountAccessResult{}, nil
+	return &model.RevokeAccountAccessResult{}, nil
 }
 
 // RevokeOwnAccess removes the caller's OWN grant on a shared account (the

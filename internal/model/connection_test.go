@@ -1,21 +1,11 @@
-package connection
+package model
 
 import (
 	"testing"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-func mustID(t *testing.T, s string) vo.Id {
-	t.Helper()
-	v, err := vo.ParseId(s)
-	if err != nil {
-		t.Fatalf("parse id %q: %v", s, err)
-	}
-	return v
-}
 
 var (
 	tn0 = time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)

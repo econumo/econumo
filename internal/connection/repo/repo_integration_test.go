@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	domconnection "github.com/econumo/econumo/internal/connection"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -45,15 +45,15 @@ func newRepo(t *testing.T) (*connectionrepo.Repo, *dbtest.DB, *fixture.Builder) 
 	return connectionrepo.NewRepo("sqlite", db.TX), db, f
 }
 
-func newAccess(accountID, userID vo.Id, role domconnection.Role, createdAt, updatedAt time.Time) *domconnection.AccountAccess {
-	return &domconnection.AccountAccess{AccountID: accountID, UserID: userID, Role: role, CreatedAt: createdAt, UpdatedAt: updatedAt}
+func newAccess(accountID, userID vo.Id, role model.Role, createdAt, updatedAt time.Time) *model.AccountAccess {
+	return &model.AccountAccess{AccountID: accountID, UserID: userID, Role: role, CreatedAt: createdAt, UpdatedAt: updatedAt}
 }
 
 func TestConnectionRepo_GrantCRUD(t *testing.T) {
 	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	// userA grants access on acctA to userB.
-	access := newAccess(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime)
+	access := newAccess(vo.MustParseId(acctA), vo.MustParseId(userB), model.RoleUser, fixedTime, fixedTime)
 	if err := repo.Save(ctx, access); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestConnectionRepo_GrantCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if got.Role != domconnection.RoleUser {
+	if got.Role != model.RoleUser {
 		t.Errorf("role mismatch: %d", got.Role)
 	}
 	if !got.CreatedAt.Equal(fixedTime) {
@@ -91,7 +91,7 @@ func TestConnectionRepo_ReceivedIssuedByAccount(t *testing.T) {
 	repo, _, _ := newRepo(t)
 	ctx := context.Background()
 	// userA grants access on acctA to userB.
-	_ = repo.Save(ctx, newAccess(vo.MustParseId(acctA), vo.MustParseId(userB), domconnection.RoleUser, fixedTime, fixedTime))
+	_ = repo.Save(ctx, newAccess(vo.MustParseId(acctA), vo.MustParseId(userB), model.RoleUser, fixedTime, fixedTime))
 
 	// userB RECEIVED the grant.
 	recv, err := repo.ListReceived(ctx, vo.MustParseId(userB))
