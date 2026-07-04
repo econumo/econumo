@@ -99,7 +99,10 @@ export const fixtureWireBudget = {
     { currencyId: 'cur-usd', startBalance: '100.5', endBalance: null, income: '500', expenses: '-45.5', exchanges: '0', holdings: '0' },
     { currencyId: 'cur-eur', startBalance: null, endBalance: null, income: null, expenses: null, exchanges: null, holdings: '10' },
   ],
-  currencyRates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.9', periodStart: '2026-07-01', periodEnd: '2026-08-01' }],
+  currencyRates: [
+    { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-07-01', periodEnd: '2026-08-01' },
+    { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.9', periodStart: '2026-07-01', periodEnd: '2026-08-01' },
+  ],
   structure: {
     folders: [{ id: 'bf1', name: 'Essentials', position: 0 }],
     elements: [

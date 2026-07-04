@@ -24,7 +24,7 @@ it('get-budget coerces every decimal-string field, null-preserving for balances'
   expect(budget.balances[0].endBalance).toBeNull()
   expect(budget.balances[1].income).toBeNull()
   expect(budget.balances[1].holdings).toBe(10)
-  expect(budget.currencyRates[0].rate).toBe(0.9)
+  expect(budget.currencyRates[1].rate).toBe(0.9)
   const food = budget.structure.elements[0]
   expect(food.budgeted).toBe(200)
   expect(food.available).toBe(154.5)
