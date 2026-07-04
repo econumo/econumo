@@ -3,16 +3,16 @@ package api
 import (
 	"net/http"
 
-	appcategory "github.com/econumo/econumo/internal/category"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// Forces the apidoc/appcategory imports so swag annotations can resolve their
-// schemas (this file's handler bodies no longer reference appcategory types
+// Forces the apidoc/model imports so swag annotations can resolve their
+// schemas (this file's handler bodies no longer reference these types
 // directly, since they delegate to method values).
 var _ = apidoc.JsonResponseError{}
-var _ = appcategory.GetCategoryListResult{}
+var _ = model.GetCategoryListResult{}
 
 // OrderCategoryList handles POST /api/v1/category/order-category-list (auth).
 //
@@ -21,8 +21,8 @@ var _ = appcategory.GetCategoryListResult{}
 // @Tags        Category
 // @Accept      json
 // @Produce     json
-// @Param       request body     appcategory.OrderCategoryListRequest true "Order category list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appcategory.OrderCategoryListResult}
+// @Param       request body     model.OrderCategoryListRequest true "Order category list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderCategoryListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -40,7 +40,7 @@ func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
 // @Description Returns all the authenticated user's categories (archived and not) ordered by position.
 // @Tags        Category
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appcategory.GetCategoryListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetCategoryListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer

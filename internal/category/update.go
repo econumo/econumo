@@ -6,12 +6,13 @@ import (
 
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UpdateCategory loads the category, checks ownership (403 otherwise), updates
 // the name + icon, and returns the refreshed item.
-func (s *Service) UpdateCategory(ctx context.Context, userID vo.Id, req UpdateCategoryRequest) (*UpdateCategoryResult, error) {
+func (s *Service) UpdateCategory(ctx context.Context, userID vo.Id, req model.UpdateCategoryRequest) (*model.UpdateCategoryResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -24,12 +25,12 @@ func (s *Service) UpdateCategory(ctx context.Context, userID vo.Id, req UpdateCa
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.mutate(ctx, id, userID, func(c *Category, now time.Time) {
+	if _, err := s.mutate(ctx, id, userID, func(c *model.Category, now time.Time) {
 		c.UpdateName(name, now)
 		c.UpdateIcon(icon, now)
 	}); err != nil {
 		return nil, err
 	}
 	// Empty body ({"data":{}}); the entity is not echoed (frozen wire shape).
-	return &UpdateCategoryResult{}, nil
+	return &model.UpdateCategoryResult{}, nil
 }

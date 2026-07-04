@@ -13,7 +13,6 @@ package server
 import (
 	"context"
 
-	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -130,12 +129,12 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 // transactionImportCategoryService is the category-service create surface the
 // importer uses.
 type transactionImportCategoryService interface {
-	CreateCategory(ctx context.Context, userID vo.Id, req category.CreateCategoryRequest) (*category.CreateCategoryResult, error)
+	CreateCategory(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error)
 }
 
 // transactionImportCategoryLister is the read surface over the category repo.
 type transactionImportCategoryLister interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 }
 
 // TransactionImportCategories adapts the category service/repo to the
@@ -168,7 +167,7 @@ func (c *TransactionImportCategories) CreateCategory(ctx context.Context, ownerI
 		typ = "income"
 	}
 	icon := "category"
-	res, err := c.svc.CreateCategory(ctx, ownerID, category.CreateCategoryRequest{
+	res, err := c.svc.CreateCategory(ctx, ownerID, model.CreateCategoryRequest{
 		Id: vo.NewId().String(), Name: name, Type: typ, Icon: &icon,
 	})
 	if err != nil {

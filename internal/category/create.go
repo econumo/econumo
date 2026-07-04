@@ -4,6 +4,7 @@ package category
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -17,7 +18,7 @@ import (
 //
 // New-category position = count(user's existing categories); the new category is
 // active with created/updated = now.
-func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCategoryRequest) (*CreateCategoryResult, error) {
+func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error) {
 	// The request id is the OPERATION id (idempotency key), NOT the new entity's
 	// id: the request id is consumed only by the operation guard, while a fresh
 	// UUIDv7 is minted for the entity. So claim opID, then generate a new entity id.
@@ -34,7 +35,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 	if err != nil {
 		return nil, err
 	}
-	iconVal := DefaultIcon
+	iconVal := model.DefaultIcon
 	if req.Icon != nil && *req.Icon != "" {
 		iconVal = *req.Icon
 	}
@@ -60,7 +61,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 		ownerID = resolved
 	}
 
-	var created *Category
+	var created *model.Category
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
@@ -75,7 +76,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 			return cerr
 		}
 		now := s.clock.Now()
-		c := NewCategory(id, ownerID, name, typ, icon, now)
+		c := model.NewCategory(id, ownerID, name, typ, icon, now)
 		c.SetPosition(int16(count))
 		if serr := s.repo.Save(ctx, c); serr != nil {
 			return serr
@@ -89,5 +90,5 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req CreateCa
 		return nil, err
 	}
 
-	return &CreateCategoryResult{Item: toResult(created)}, nil
+	return &model.CreateCategoryResult{Item: toResult(created)}, nil
 }

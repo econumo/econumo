@@ -11,6 +11,7 @@ import (
 	domcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -66,7 +67,7 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
-func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domcategory.Category, error) {
+func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Category, error) {
 	row, err := r.q.GetCategoryByID(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -77,12 +78,12 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*domcategory.Category, er
 	return hydrate(row)
 }
 
-func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*domcategory.Category, error) {
+func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error) {
 	rows, err := r.q.ListCategoriesByOwner(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domcategory.Category, 0, len(rows))
+	out := make([]*model.Category, 0, len(rows))
 	for _, row := range rows {
 		c, herr := hydrate(row)
 		if herr != nil {
@@ -102,7 +103,7 @@ func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
 }
 
 // Save: the caller runs this inside TxManager.WithTx.
-func (r *Repo) Save(ctx context.Context, c *domcategory.Category) error {
+func (r *Repo) Save(ctx context.Context, c *model.Category) error {
 	return r.q.UpsertCategory(ctx, r.db(ctx), upsertParams{
 		ID:         c.ID.String(),
 		UserID:     c.UserID.String(),
@@ -164,7 +165,7 @@ func (r *Repo) MarkHandled(ctx context.Context, id vo.Id, now time.Time) error {
 	})
 }
 
-func hydrate(row categoryRow) (*domcategory.Category, error) {
+func hydrate(row categoryRow) (*model.Category, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -173,7 +174,7 @@ func hydrate(row categoryRow) (*domcategory.Category, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &domcategory.Category{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
-		Type: domcategory.Type(row.Type), Icon: row.Icon, IsArchived: row.IsArchived,
+	return &model.Category{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+		Type: model.CategoryType(row.Type), Icon: row.Icon, IsArchived: row.IsArchived,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

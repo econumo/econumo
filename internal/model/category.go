@@ -1,12 +1,10 @@
-// Package category is the category feature: the Category entity, the Type
-// value object, and the repository interface (domain), plus the request/result
-// DTOs (with their tier-1 Validate() methods), the write-side Service (which
-// owns the tx boundary and builds the response-shaped *Result directly), and
-// the read-side ReadService for the pure get-category-list read.
+// The Category entity: the Category aggregate root and the CategoryType value
+// object. The repository interface, the write-side Service, and the read-side
+// ReadService stay in internal/category.
 //
 // JSON field names are frozen to the existing API wire contract; see
 // CLAUDE.md.
-package category
+package model
 
 import (
 	"strings"
@@ -15,16 +13,16 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Type is the category type value object. The DB stores it as a SMALLINT
-// (expense=0, income=1); the wire contract uses the alias string ("expense" /
-// "income").
-type Type int16
+// CategoryType is the category type value object. The DB stores it as a
+// SMALLINT (expense=0, income=1); the wire contract uses the alias string
+// ("expense" / "income").
+type CategoryType int16
 
 const (
 	// TypeExpense is the default category type (db value 0, alias "expense").
-	TypeExpense Type = 0
+	TypeExpense CategoryType = 0
 	// TypeIncome is the income category type (db value 1, alias "income").
-	TypeIncome Type = 1
+	TypeIncome CategoryType = 1
 
 	aliasExpense = "expense"
 	aliasIncome  = "income"
@@ -33,10 +31,10 @@ const (
 // DefaultIcon is the create-time fallback icon used when none is provided.
 const DefaultIcon = "local_offer"
 
-func (t Type) Int16() int16 { return int16(t) }
+func (t CategoryType) Int16() int16 { return int16(t) }
 
 // Alias returns the wire alias ("expense" / "income").
-func (t Type) Alias() string {
+func (t CategoryType) Alias() string {
 	if t == TypeIncome {
 		return aliasIncome
 	}
@@ -44,8 +42,8 @@ func (t Type) Alias() string {
 }
 
 // TypeFromAlias parses a wire alias ("expense"/"income", case-insensitive and
-// space-trimmed) into a Type. ok is false for any other value.
-func TypeFromAlias(alias string) (Type, bool) {
+// space-trimmed) into a CategoryType. ok is false for any other value.
+func TypeFromAlias(alias string) (CategoryType, bool) {
 	switch strings.ToLower(strings.TrimSpace(alias)) {
 	case aliasExpense:
 		return TypeExpense, true
@@ -60,15 +58,16 @@ func TypeFromAlias(alias string) (Type, bool) {
 // the application layer; the entity holds already-valid state and its mutators
 // each bump UpdatedAt only on a real change. Fields are exported for direct read
 // access; all writes after construction go through the mutators. The Type field
-// shares its name with the Type value object (legal in Go: a struct field and a
-// package-level type occupy separate namespaces) — its wire alias logic lives on
-// the Type value object above (Alias/Int16/TypeFromAlias), not on Category.
+// shares its name with the CategoryType value object (legal in Go: a struct
+// field and a package-level type occupy separate namespaces) — its wire alias
+// logic lives on the CategoryType value object above (Alias/Int16/
+// TypeFromAlias), not on Category.
 type Category struct {
 	ID         vo.Id
 	UserID     vo.Id
 	Name       string
 	Position   int16
-	Type       Type
+	Type       CategoryType
 	Icon       string
 	IsArchived bool
 	CreatedAt  time.Time
@@ -77,7 +76,7 @@ type Category struct {
 
 // NewCategory constructs a freshly-created category. Position defaults to 0 and
 // is set by the service via SetPosition before the first save.
-func NewCategory(id, userID vo.Id, name string, typ Type, icon string, now time.Time) *Category {
+func NewCategory(id, userID vo.Id, name string, typ CategoryType, icon string, now time.Time) *Category {
 	return &Category{ID: id, UserID: userID, Name: name, Type: typ, Icon: icon, CreatedAt: now, UpdatedAt: now}
 }
 

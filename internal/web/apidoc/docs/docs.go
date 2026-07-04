@@ -2009,7 +2009,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.ArchiveCategoryRequest"
+                            "$ref": "#/definitions/model.ArchiveCategoryRequest"
                         }
                     }
                 ],
@@ -2025,7 +2025,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.ArchiveCategoryResult"
+                                            "$ref": "#/definitions/model.ArchiveCategoryResult"
                                         }
                                     }
                                 }
@@ -2078,7 +2078,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.CreateCategoryRequest"
+                            "$ref": "#/definitions/model.CreateCategoryRequest"
                         }
                     }
                 ],
@@ -2094,7 +2094,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.CreateCategoryResult"
+                                            "$ref": "#/definitions/model.CreateCategoryResult"
                                         }
                                     }
                                 }
@@ -2147,7 +2147,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.DeleteCategoryRequest"
+                            "$ref": "#/definitions/model.DeleteCategoryRequest"
                         }
                     }
                 ],
@@ -2163,7 +2163,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.DeleteCategoryResult"
+                                            "$ref": "#/definitions/model.DeleteCategoryResult"
                                         }
                                     }
                                 }
@@ -2218,7 +2218,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.GetCategoryListResult"
+                                            "$ref": "#/definitions/model.GetCategoryListResult"
                                         }
                                     }
                                 }
@@ -2265,7 +2265,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.OrderCategoryListRequest"
+                            "$ref": "#/definitions/model.OrderCategoryListRequest"
                         }
                     }
                 ],
@@ -2281,7 +2281,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.OrderCategoryListResult"
+                                            "$ref": "#/definitions/model.OrderCategoryListResult"
                                         }
                                     }
                                 }
@@ -2334,7 +2334,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.UnarchiveCategoryRequest"
+                            "$ref": "#/definitions/model.UnarchiveCategoryRequest"
                         }
                     }
                 ],
@@ -2350,7 +2350,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.UnarchiveCategoryResult"
+                                            "$ref": "#/definitions/model.UnarchiveCategoryResult"
                                         }
                                     }
                                 }
@@ -2403,7 +2403,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/category.UpdateCategoryRequest"
+                            "$ref": "#/definitions/model.UpdateCategoryRequest"
                         }
                     }
                 ],
@@ -2419,7 +2419,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/category.UpdateCategoryResult"
+                                            "$ref": "#/definitions/model.UpdateCategoryResult"
                                         }
                                     }
                                 }
@@ -6020,166 +6020,6 @@ const docTemplate = `{
                 }
             }
         },
-        "category.ArchiveCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "category.ArchiveCategoryResult": {
-            "type": "object"
-        },
-        "category.CategoryResult": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "ownerUserId": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "category.CreateCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "category.CreateCategoryResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/category.CategoryResult"
-                }
-            }
-        },
-        "category.DeleteCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "mode": {
-                    "type": "string"
-                },
-                "replaceId": {
-                    "type": "string"
-                }
-            }
-        },
-        "category.DeleteCategoryResult": {
-            "type": "object"
-        },
-        "category.GetCategoryListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/category.CategoryResult"
-                    }
-                }
-            }
-        },
-        "category.OrderCategoryListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/category.PositionChange"
-                    }
-                }
-            }
-        },
-        "category.OrderCategoryListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/category.CategoryResult"
-                    }
-                }
-            }
-        },
-        "category.PositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "category.UnarchiveCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "category.UnarchiveCategoryResult": {
-            "type": "object"
-        },
-        "category.UpdateCategoryRequest": {
-            "type": "object",
-            "properties": {
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "category.UpdateCategoryResult": {
-            "type": "object"
-        },
         "connection.AcceptInviteRequest": {
             "type": "object",
             "properties": {
@@ -6391,6 +6231,49 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ArchiveCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ArchiveCategoryResult": {
+            "type": "object"
+        },
+        "model.CategoryResult": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "model.CompleteOnboardingResult": {
             "type": "object",
             "properties": {
@@ -6471,6 +6354,34 @@ const docTemplate = `{
                 },
                 "transaction": {
                     "$ref": "#/definitions/model.CorrectionResult"
+                }
+            }
+        },
+        "model.CreateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateCategoryResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.CategoryResult"
                 }
             }
         },
@@ -6567,6 +6478,23 @@ const docTemplate = `{
         "model.DeleteAccountResult": {
             "type": "object"
         },
+        "model.DeleteCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "replaceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteCategoryResult": {
+            "type": "object"
+        },
         "model.FolderPositionChange": {
             "type": "object",
             "properties": {
@@ -6585,6 +6513,17 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.AccountResult"
+                    }
+                }
+            }
+        },
+        "model.GetCategoryListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategoryResult"
                     }
                 }
             }
@@ -6715,6 +6654,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OrderCategoryListRequest": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PositionChange"
+                    }
+                }
+            }
+        },
+        "model.OrderCategoryListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategoryResult"
+                    }
+                }
+            }
+        },
         "model.OrderFolderListRequest": {
             "type": "object",
             "properties": {
@@ -6734,6 +6695,17 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.AccountFolderResult"
                     }
+                }
+            }
+        },
+        "model.PositionChange": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
                 }
             }
         },
@@ -6815,6 +6787,17 @@ const docTemplate = `{
         "model.ShowFolderResult": {
             "type": "object"
         },
+        "model.UnarchiveCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UnarchiveCategoryResult": {
+            "type": "object"
+        },
         "model.UpdateAccountRequest": {
             "type": "object",
             "properties": {
@@ -6864,6 +6847,23 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.CurrentUserResult"
                 }
             }
+        },
+        "model.UpdateCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateCategoryResult": {
+            "type": "object"
         },
         "model.UpdateCurrencyRequest": {
             "type": "object",

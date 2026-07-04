@@ -1,20 +1,9 @@
-package category
+package model
 
 import (
 	"testing"
 	"time"
-
-	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-func mustID(t *testing.T, s string) vo.Id {
-	t.Helper()
-	v, err := vo.ParseId(s)
-	if err != nil {
-		t.Fatalf("parse id %q: %v", s, err)
-	}
-	return v
-}
 
 var (
 	tk0 = time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -33,7 +22,7 @@ func TestType_AliasAndInt(t *testing.T) {
 	}
 }
 
-func newCat(t *testing.T, typ Type) *Category {
+func newCat(t *testing.T, typ CategoryType) *Category {
 	return NewCategory(
 		mustID(t, "11111111-1111-1111-1111-111111111111"),
 		mustID(t, "22222222-2222-2222-2222-222222222222"),

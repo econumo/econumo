@@ -12,7 +12,6 @@ package server
 import (
 	"context"
 
-	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -89,7 +88,7 @@ func toTransactionAccountResults(accts []model.AccountResult) []apptransaction.A
 // transactionCategoryByID is the minimal category-repo surface the export
 // adapter's name lookup uses.
 type transactionCategoryByID interface {
-	GetByID(ctx context.Context, id vo.Id) (*category.Category, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Category, error)
 }
 
 // TransactionCategoryNameLookup adapts the category repository to the

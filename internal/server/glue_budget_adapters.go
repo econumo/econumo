@@ -11,7 +11,6 @@ import (
 	"context"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
-	category "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -78,7 +77,7 @@ func (l *BudgetAccountLookup) AccountOwner(ctx context.Context, accountID vo.Id)
 }
 
 type budgetCategoryRepo interface {
-	ListByOwner(ctx context.Context, userID vo.Id) ([]*category.Category, error)
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 }
 
 // BudgetCategoryMetadataLookup adapts the category repository to the category
@@ -111,7 +110,7 @@ func (l *BudgetCategoryMetadataLookup) CategoriesByOwners(ctx context.Context, u
 			seen[c.ID.String()] = true
 			out = append(out, appbudget.CategoryMeta{
 				ID: c.ID.String(), OwnerID: c.UserID.String(), Name: c.Name, Icon: c.Icon,
-				IsIncome: c.Type == category.TypeIncome, IsArchived: c.IsArchived,
+				IsIncome: c.Type == model.TypeIncome, IsArchived: c.IsArchived,
 			})
 		}
 	}
