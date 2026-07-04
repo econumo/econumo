@@ -15,6 +15,7 @@ import { AccountsSettingsPage } from '@/features/accounts/AccountsSettingsPage'
 import { CategoriesPage } from '@/features/classifications/CategoriesPage'
 import { PayeesPage } from '@/features/classifications/PayeesPage'
 import { TagsPage } from '@/features/classifications/TagsPage'
+import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 
 // Pages land here as Plans 2-6 build them; until then guarded paths show the empty shell.
 const EmptyPage = () => <div />
@@ -47,7 +48,7 @@ export function createRouter() {
             { path: '/settings/payees', element: <PayeesPage /> },
             { path: '/settings/tags', element: <TagsPage /> },
             { path: '/settings/connections', element: <EmptyPage /> },
-            { path: '/settings/budgets', element: <EmptyPage /> },
+            { path: '/settings/budgets', element: <BudgetsPage /> },
           ],
         },
       ],
