@@ -2,7 +2,7 @@
 // BudgetAverageRateLookup adapts currency's RateProvider (currencyrepo) to
 // budget.AverageRateLookup. They live here, not in
 // internal/budget/repo, because budget's own ConvertItem/FullRate
-// are structural copies of currency.ConvertItem/currency.FullRate (an infra
+// are structural copies of model.ConvertItem/model.FullRate (an infra
 // package must not import a feature, see archtest) — these adapters convert
 // between the two shapes at the composition root.
 package server
@@ -12,13 +12,13 @@ import (
 	"time"
 
 	appbudget "github.com/econumo/econumo/internal/budget"
-	currency "github.com/econumo/econumo/internal/currency"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // budgetConvertorPort is the currency Convertor's own surface.
 type budgetConvertorPort interface {
-	BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]currency.ConvertItem) (map[string]vo.DecimalNumber, error)
+	BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]model.ConvertItem) (map[string]vo.DecimalNumber, error)
 }
 
 // BudgetConvertor wraps a budgetConvertorPort (typically *currency.Convertor).
@@ -33,14 +33,14 @@ func NewBudgetConvertor(convertor budgetConvertorPort) *BudgetConvertor {
 	return &BudgetConvertor{convertor: convertor}
 }
 
-// BulkConvert converts budget's own ConvertItem slices to currency.ConvertItem
+// BulkConvert converts budget's own ConvertItem slices to model.ConvertItem
 // and delegates.
 func (c *BudgetConvertor) BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]appbudget.ConvertItem) (map[string]vo.DecimalNumber, error) {
-	converted := make(map[string][]currency.ConvertItem, len(items))
+	converted := make(map[string][]model.ConvertItem, len(items))
 	for k, v := range items {
-		out := make([]currency.ConvertItem, len(v))
+		out := make([]model.ConvertItem, len(v))
 		for i, item := range v {
-			out[i] = currency.ConvertItem{
+			out[i] = model.ConvertItem{
 				PeriodStart: item.PeriodStart,
 				PeriodEnd:   item.PeriodEnd,
 				From:        item.From,
@@ -56,7 +56,7 @@ func (c *BudgetConvertor) BulkConvert(ctx context.Context, periodStart, periodEn
 // budgetRateProviderPort is the currencyrepo.RateProvider surface app/budget's
 // AverageRateLookup needs.
 type budgetRateProviderPort interface {
-	AverageRates(ctx context.Context, start, end time.Time) ([]currency.FullRate, error)
+	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 }
@@ -74,7 +74,7 @@ func NewBudgetAverageRateLookup(rates budgetRateProviderPort) *BudgetAverageRate
 	return &BudgetAverageRateLookup{rates: rates}
 }
 
-// AverageRates converts currency.FullRate to budget's own FullRate.
+// AverageRates converts model.FullRate to budget's own FullRate.
 func (l *BudgetAverageRateLookup) AverageRates(ctx context.Context, start, end time.Time) ([]appbudget.FullRate, error) {
 	rates, err := l.rates.AverageRates(ctx, start, end)
 	if err != nil {

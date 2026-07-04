@@ -3,17 +3,17 @@ package api
 import (
 	"net/http"
 
-	appcurrency "github.com/econumo/econumo/internal/currency"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
-// _ keeps the apidoc and appcurrency import aliases visible to swag's annotation
+// _ keeps the apidoc and model import aliases visible to swag's annotation
 // parser (a type reference's leading identifier must resolve to an import alias).
 var (
 	_ = apidoc.JsonResponseError{}
-	_ = appcurrency.GetCurrencyListResult{}
-	_ = appcurrency.GetCurrencyRateListResult{}
+	_ = model.GetCurrencyListResult{}
+	_ = model.GetCurrencyRateListResult{}
 )
 
 // GetCurrencyList handles GET /api/v1/currency/get-currency-list (auth). No
@@ -23,7 +23,7 @@ var (
 // @Description Returns all currencies ordered by ISO code. The name is the English display name.
 // @Tags        Currency
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appcurrency.GetCurrencyListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetCurrencyListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
@@ -39,7 +39,7 @@ func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
 // @Description Returns all currency rates published on the most-recent available date.
 // @Tags        Currency
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appcurrency.GetCurrencyRateListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetCurrencyRateListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer

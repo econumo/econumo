@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 )
 
 // Canonical write row/param types (the sqlite-generated ones).
@@ -78,7 +79,7 @@ func (r *WriteRepo) CurrencyExists(ctx context.Context, code string) (bool, erro
 }
 
 // InsertCurrency adds a new currencies row.
-func (r *WriteRepo) InsertCurrency(ctx context.Context, c appcurrency.CurrencyRow) error {
+func (r *WriteRepo) InsertCurrency(ctx context.Context, c model.CurrencyRow) error {
 	return r.q.InsertCurrency(ctx, r.db(ctx), insertCurrencyP{
 		ID:             c.ID,
 		Code:           c.Code,
@@ -93,7 +94,7 @@ func (r *WriteRepo) InsertCurrency(ctx context.Context, c appcurrency.CurrencyRo
 // to midnight UTC so the value is stable per day (SQLite stores it ISO8601 via
 // modernc; PostgreSQL as a native DATE) and the per-day ON CONFLICT upsert
 // dedupes correctly.
-func (r *WriteRepo) UpsertRate(ctx context.Context, rr appcurrency.RateRow) error {
+func (r *WriteRepo) UpsertRate(ctx context.Context, rr model.RateRow) error {
 	day := time.Date(rr.Date.Year(), rr.Date.Month(), rr.Date.Day(), 0, 0, 0, 0, time.UTC)
 	return r.q.UpsertCurrencyRate(ctx, r.db(ctx), upsertRateP{
 		ID:             rr.ID,

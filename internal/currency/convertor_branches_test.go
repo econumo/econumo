@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -13,12 +14,12 @@ import (
 // flexRates lets each method be overridden per-test so we can exercise the
 // error branches of the convertor.
 type flexRates struct {
-	avg    func(start, end time.Time) ([]FullRate, error)
+	avg    func(start, end time.Time) ([]model.FullRate, error)
 	base   func() (vo.Id, error)
 	digits func(id vo.Id) (int, error)
 }
 
-func (f flexRates) AverageRates(_ context.Context, start, end time.Time) ([]FullRate, error) {
+func (f flexRates) AverageRates(_ context.Context, start, end time.Time) ([]model.FullRate, error) {
 	return f.avg(start, end)
 }
 func (f flexRates) BaseCurrencyID(_ context.Context) (vo.Id, error) { return f.base() }
@@ -36,8 +37,8 @@ func ids(t *testing.T) (usd, eur vo.Id) {
 func TestConvert_FractionDigitsNotFound_DefaultsToTwo(t *testing.T) {
 	usd, eur := ids(t)
 	f := flexRates{
-		avg: func(_, _ time.Time) ([]FullRate, error) {
-			return []FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("2")}}, nil
+		avg: func(_, _ time.Time) ([]model.FullRate, error) {
+			return []model.FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("2")}}, nil
 		},
 		base: func() (vo.Id, error) { return usd, nil },
 		digits: func(id vo.Id) (int, error) {
@@ -61,8 +62,8 @@ func TestConvert_FractionDigitsOtherError_Propagates(t *testing.T) {
 	usd, eur := ids(t)
 	sentinel := errors.New("db down")
 	f := flexRates{
-		avg: func(_, _ time.Time) ([]FullRate, error) {
-			return []FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("2")}}, nil
+		avg: func(_, _ time.Time) ([]model.FullRate, error) {
+			return []model.FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("2")}}, nil
 		},
 		base:   func() (vo.Id, error) { return usd, nil },
 		digits: func(id vo.Id) (int, error) { return 0, sentinel },
@@ -80,7 +81,7 @@ func TestConvert_FractionDigitsOtherError_Propagates(t *testing.T) {
 func TestConvert_MissingRate_SkipsHop(t *testing.T) {
 	usd, eur := ids(t)
 	f := flexRates{
-		avg:    func(_, _ time.Time) ([]FullRate, error) { return nil, nil }, // no rates at all
+		avg:    func(_, _ time.Time) ([]model.FullRate, error) { return nil, nil }, // no rates at all
 		base:   func() (vo.Id, error) { return usd, nil },
 		digits: func(id vo.Id) (int, error) { return 2, nil },
 	}
@@ -100,7 +101,7 @@ func TestConvert_AverageRatesError_Propagates(t *testing.T) {
 	usd, eur := ids(t)
 	sentinel := errors.New("rate fetch failed")
 	f := flexRates{
-		avg:    func(_, _ time.Time) ([]FullRate, error) { return nil, sentinel },
+		avg:    func(_, _ time.Time) ([]model.FullRate, error) { return nil, sentinel },
 		base:   func() (vo.Id, error) { return usd, nil },
 		digits: func(id vo.Id) (int, error) { return 2, nil },
 	}
@@ -116,7 +117,7 @@ func TestConvert_BaseCurrencyError_Propagates(t *testing.T) {
 	usd, eur := ids(t)
 	sentinel := errors.New("no base")
 	f := flexRates{
-		avg:    func(_, _ time.Time) ([]FullRate, error) { return nil, nil },
+		avg:    func(_, _ time.Time) ([]model.FullRate, error) { return nil, nil },
 		base:   func() (vo.Id, error) { return usd, sentinel },
 		digits: func(id vo.Id) (int, error) { return 2, nil },
 	}
@@ -133,7 +134,7 @@ func TestConvert_SameCurrency_NoProviderCalls(t *testing.T) {
 	usd, _ := ids(t)
 	called := false
 	f := flexRates{
-		avg:    func(_, _ time.Time) ([]FullRate, error) { called = true; return nil, nil },
+		avg:    func(_, _ time.Time) ([]model.FullRate, error) { called = true; return nil, nil },
 		base:   func() (vo.Id, error) { called = true; return usd, nil },
 		digits: func(id vo.Id) (int, error) { called = true; return 2, nil },
 	}
@@ -153,13 +154,13 @@ func TestConvert_SameCurrency_NoProviderCalls(t *testing.T) {
 func TestBulkConvert_Empty(t *testing.T) {
 	usd, _ := ids(t)
 	f := flexRates{
-		avg:    func(_, _ time.Time) ([]FullRate, error) { return nil, nil },
+		avg:    func(_, _ time.Time) ([]model.FullRate, error) { return nil, nil },
 		base:   func() (vo.Id, error) { return usd, nil },
 		digits: func(id vo.Id) (int, error) { return 2, nil },
 	}
 	c := NewConvertor(f)
 	ps := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	res, err := c.BulkConvert(context.Background(), ps, ps.AddDate(0, 1, 0), map[string][]ConvertItem{})
+	res, err := c.BulkConvert(context.Background(), ps, ps.AddDate(0, 1, 0), map[string][]model.ConvertItem{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -172,13 +173,13 @@ func TestBulkConvert_AverageRatesError_Propagates(t *testing.T) {
 	usd, eur := ids(t)
 	sentinel := errors.New("boom")
 	f := flexRates{
-		avg:    func(_, _ time.Time) ([]FullRate, error) { return nil, sentinel },
+		avg:    func(_, _ time.Time) ([]model.FullRate, error) { return nil, sentinel },
 		base:   func() (vo.Id, error) { return usd, nil },
 		digits: func(id vo.Id) (int, error) { return 2, nil },
 	}
 	c := NewConvertor(f)
 	ps := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
-	items := map[string][]ConvertItem{
+	items := map[string][]model.ConvertItem{
 		"a": {{PeriodStart: ps, PeriodEnd: ps.AddDate(0, 1, 0), From: eur, To: usd, Amount: vo.NewDecimal("10")}},
 	}
 	_, err := c.BulkConvert(context.Background(), ps, ps.AddDate(0, 1, 0), items)
@@ -196,18 +197,18 @@ func TestBulkConvert_CrossMonthRatePeriods(t *testing.T) {
 	top := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)   // March (top-level)
 	other := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC) // May (sub-item)
 	f := flexRates{
-		avg: func(start, _ time.Time) ([]FullRate, error) {
+		avg: func(start, _ time.Time) ([]model.FullRate, error) {
 			// March rate 0.5, May rate 0.25 (keyed by the start month).
 			if start.Month() == time.May {
-				return []FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("0.25")}}, nil
+				return []model.FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("0.25")}}, nil
 			}
-			return []FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("0.5")}}, nil
+			return []model.FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("0.5")}}, nil
 		},
 		base:   func() (vo.Id, error) { return usd, nil },
 		digits: func(id vo.Id) (int, error) { return 2, nil },
 	}
 	c := NewConvertor(f)
-	items := map[string][]ConvertItem{
+	items := map[string][]model.ConvertItem{
 		// March item: 10 EUR / 0.5 = 20 USD.
 		"march": {{PeriodStart: top, PeriodEnd: top.AddDate(0, 1, 0), From: eur, To: usd, Amount: vo.NewDecimal("10")}},
 		// May item: 10 EUR / 0.25 = 40 USD (must use the May-keyed rates).

@@ -2916,7 +2916,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/currency.GetCurrencyListResult"
+                                            "$ref": "#/definitions/model.GetCurrencyListResult"
                                         }
                                     }
                                 }
@@ -2965,7 +2965,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/currency.GetCurrencyRateListResult"
+                                            "$ref": "#/definitions/model.GetCurrencyRateListResult"
                                         }
                                     }
                                 }
@@ -6697,7 +6697,15 @@
                 }
             }
         },
-        "currency.CurrencyRateResult": {
+        "model.CompleteOnboardingResult": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.CurrencyRateResult": {
             "type": "object",
             "properties": {
                 "baseCurrencyId": {
@@ -6714,7 +6722,7 @@
                 }
             }
         },
-        "currency.CurrencyResult": {
+        "model.CurrencyResult": {
             "type": "object",
             "properties": {
                 "code": {
@@ -6731,36 +6739,6 @@
                 },
                 "symbol": {
                     "type": "string"
-                }
-            }
-        },
-        "currency.GetCurrencyListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/currency.CurrencyResult"
-                    }
-                }
-            }
-        },
-        "currency.GetCurrencyRateListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/currency.CurrencyRateResult"
-                    }
-                }
-            }
-        },
-        "model.CompleteOnboardingResult": {
-            "type": "object",
-            "properties": {
-                "user": {
-                    "$ref": "#/definitions/model.CurrentUserResult"
                 }
             }
         },
@@ -6790,6 +6768,28 @@
                 },
                 "reportPeriod": {
                     "type": "string"
+                }
+            }
+        },
+        "model.GetCurrencyListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CurrencyResult"
+                    }
+                }
+            }
+        },
+        "model.GetCurrencyRateListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CurrencyRateResult"
+                    }
                 }
             }
         },

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -13,11 +14,11 @@ import (
 // currency id to its fraction digits.
 type fakeRates struct {
 	base   vo.Id
-	rates  []FullRate
+	rates  []model.FullRate
 	digits map[string]int
 }
 
-func (f fakeRates) AverageRates(_ context.Context, _, _ time.Time) ([]FullRate, error) {
+func (f fakeRates) AverageRates(_ context.Context, _, _ time.Time) ([]model.FullRate, error) {
 	return f.rates, nil
 }
 func (f fakeRates) BaseCurrencyID(_ context.Context) (vo.Id, error) { return f.base, nil }
@@ -40,7 +41,7 @@ func TestConvertor_TwoHop(t *testing.T) {
 	gbp := mustID(t, "00000000-0000-7000-8000-000000000003") // rate 0.8 per USD
 	f := fakeRates{
 		base: usd,
-		rates: []FullRate{
+		rates: []model.FullRate{
 			{CurrencyID: eur, Rate: vo.NewDecimal("0.9")},
 			{CurrencyID: gbp, Rate: vo.NewDecimal("0.8")},
 		},
@@ -85,7 +86,7 @@ func TestConvertor_BulkSummarizesAndSums(t *testing.T) {
 	eur := mustID(t, "00000000-0000-7000-8000-000000000002")
 	f := fakeRates{
 		base:   usd,
-		rates:  []FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("0.5")}},
+		rates:  []model.FullRate{{CurrencyID: eur, Rate: vo.NewDecimal("0.5")}},
 		digits: map[string]int{usd.String(): 2, eur.String(): 2},
 	}
 	c := NewConvertor(f)
@@ -95,7 +96,7 @@ func TestConvertor_BulkSummarizesAndSums(t *testing.T) {
 
 	// key "a": two EUR->USD items in the same period summarize (40+60=100 EUR)
 	// then convert: 100 / 0.5 = 200 USD. key "b": single passthrough 25 USD.
-	items := map[string][]ConvertItem{
+	items := map[string][]model.ConvertItem{
 		"a": {
 			{PeriodStart: ps, PeriodEnd: pe, From: eur, To: usd, Amount: vo.NewDecimal("40")},
 			{PeriodStart: ps, PeriodEnd: pe, From: eur, To: usd, Amount: vo.NewDecimal("60")},

@@ -6,6 +6,7 @@ package currency
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -53,14 +54,14 @@ func NewReadService(read ReadModel) *ReadService {
 // GetCurrencyList returns all currencies ordered by code, in the wire shape.
 // The display name comes from the Intl table (currencies.name is NULL), with a
 // fallback to the code when no entry exists.
-func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*GetCurrencyListResult, error) {
+func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*model.GetCurrencyListResult, error) {
 	rows, err := s.read.CurrencyListView(ctx)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]CurrencyResult, 0, len(rows))
+	items := make([]model.CurrencyResult, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, CurrencyResult{
+		items = append(items, model.CurrencyResult{
 			Id:             r.ID,
 			Code:           r.Code,
 			Name:           currencyName(r),
@@ -68,7 +69,7 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, _ vo.Id) (*GetCurrenc
 			FractionDigits: int(r.FractionDigits),
 		})
 	}
-	return &GetCurrencyListResult{Items: items}, nil
+	return &model.GetCurrencyListResult{Items: items}, nil
 }
 
 // currencyName resolves the wire display name: a non-empty stored name wins,
@@ -82,19 +83,19 @@ func currencyName(r CurrencyViewRow) string {
 }
 
 // GetCurrencyRateList returns the latest published rates, in the wire shape.
-func (s *ReadService) GetCurrencyRateList(ctx context.Context, _ vo.Id) (*GetCurrencyRateListResult, error) {
+func (s *ReadService) GetCurrencyRateList(ctx context.Context, _ vo.Id) (*model.GetCurrencyRateListResult, error) {
 	rows, err := s.read.LatestCurrencyRateListView(ctx)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]CurrencyRateResult, 0, len(rows))
+	items := make([]model.CurrencyRateResult, 0, len(rows))
 	for _, r := range rows {
-		items = append(items, CurrencyRateResult{
+		items = append(items, model.CurrencyRateResult{
 			CurrencyId:     r.CurrencyID,
 			BaseCurrencyId: r.BaseCurrencyID,
 			Rate:           r.Rate,
 			UpdatedAt:      r.UpdatedAt,
 		})
 	}
-	return &GetCurrencyRateListResult{Items: items}, nil
+	return &model.GetCurrencyRateListResult{Items: items}, nil
 }
