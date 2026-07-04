@@ -99,7 +99,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 			corrID := s.accounts.NextIdentity()
 			corrType := correctionType(balance)
 			spentAt := s.localNow(ctx)
-			corr := Correction{
+			corr := model.AccountCorrection{
 				ID:          corrID,
 				UserID:      userID,
 				AccountID:   id,

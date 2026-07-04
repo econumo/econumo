@@ -30,7 +30,7 @@ type AccountStore interface {
 
 	// SaveCorrection inserts a balance-correction transaction (type income/expense
 	// by sign; amount is the absolute value).
-	SaveCorrection(ctx context.Context, c Correction) error
+	SaveCorrection(ctx context.Context, c model.AccountCorrection) error
 }
 
 // PositionStore is the per-user account ordering surface (the accounts_options
@@ -68,19 +68,6 @@ type Repository interface {
 	AccountStore
 	PositionStore
 	BalanceReader
-}
-
-// Correction is a balance-correction transaction to insert (account create with
-// non-zero balance, or update changing the balance).
-type Correction struct {
-	ID          vo.Id
-	UserID      vo.Id
-	AccountID   vo.Id
-	Description string
-	Type        int16 // 0 expense, 1 income
-	Amount      string
-	SpentAt     time.Time
-	CreatedAt   time.Time
 }
 
 // FolderStore is the folder entity's own persistence surface: identity,

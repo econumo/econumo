@@ -88,3 +88,16 @@ func (a *Account) Delete(now time.Time) {
 		a.UpdatedAt = now
 	}
 }
+
+// AccountCorrection is a balance-correction transaction to insert (account
+// create with non-zero balance, or update changing the balance).
+type AccountCorrection struct {
+	ID          vo.Id
+	UserID      vo.Id
+	AccountID   vo.Id
+	Description string
+	Type        int16 // 0 expense, 1 income
+	Amount      string
+	SpentAt     time.Time
+	CreatedAt   time.Time
+}

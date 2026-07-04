@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	domaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -224,7 +223,7 @@ func TestAccountRepo_SaveCorrection(t *testing.T) {
 	seedAccount(t, f, acctCash, userA, "Cash")
 
 	corrID := vo.NewId()
-	c := domaccount.Correction{
+	c := model.AccountCorrection{
 		ID:          corrID,
 		UserID:      vo.MustParseId(userA),
 		AccountID:   vo.MustParseId(acctCash),
