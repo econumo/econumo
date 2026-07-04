@@ -8,6 +8,7 @@ import { RegistrationPage } from '@/features/auth/RegistrationPage'
 import { LogoutPage } from '@/features/auth/LogoutPage'
 import { HomePage } from '@/features/home/HomePage'
 import { AccountPage } from '@/features/accounts/AccountPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
 
 // Pages land here as Plans 2-6 build them; until then guarded paths show the empty shell.
 const EmptyPage = () => <div />
@@ -32,7 +33,7 @@ export function createRouter() {
             { path: '/account/:id', element: <AccountPage /> },
             { path: '/budget', element: <EmptyPage /> },
             { path: '/onboarding', element: <EmptyPage /> },
-            { path: '/settings', element: <EmptyPage /> },
+            { path: '/settings', element: <SettingsPage /> },
             { path: '/settings/profile', element: <EmptyPage /> },
             { path: '/settings/profile/change-password', element: <EmptyPage /> },
             { path: '/settings/accounts', element: <EmptyPage /> },
