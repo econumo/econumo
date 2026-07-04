@@ -10,6 +10,7 @@ import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { GenerateInviteDialog } from './GenerateInviteDialog'
 import { AcceptInviteDialog } from './AcceptInviteDialog'
+import { PreviewConnectionDialog } from './PreviewConnectionDialog'
 import { useAcceptInvite, useConnections, useDeleteConnection, useGenerateInvite } from './queries'
 
 function serverMessage(error: unknown): string {
@@ -31,6 +32,7 @@ export function ConnectionsPage() {
   const [acceptOpen, setAcceptOpen] = useState(false)
   const [acceptError, setAcceptError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ConnectionDto | null>(null)
+  const [preview, setPreview] = useState<ConnectionDto | null>(null)
 
   const openAccept = () => {
     setAcceptError(null)
@@ -59,10 +61,16 @@ export function ConnectionsPage() {
         <ul className="flex flex-col">
           {connections.map((connection) => (
             <li key={connection.user.id} className="flex items-center gap-3 rounded-md px-1 py-2">
-              <img src={`${connection.user.avatar}?s=50`} alt={connection.user.name} className="size-10 rounded-full" />
-              <span className="min-w-0 flex-1 truncate text-sm" title={connection.user.name}>
-                {connection.user.name}
-              </span>
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                onClick={() => setPreview(connection)}
+              >
+                <img src={`${connection.user.avatar}?s=50`} alt={connection.user.name} className="size-10 rounded-full" />
+                <span className="min-w-0 flex-1 truncate text-sm" title={connection.user.name}>
+                  {connection.user.name}
+                </span>
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button type="button" variant="ghost" size="icon" aria-label={`connection actions ${connection.user.name}`}>
@@ -70,6 +78,7 @@ export function ConnectionsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setPreview(connection)}>{t('elements.button.view.label')}</DropdownMenuItem>
                   <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(connection)}>
                     {t('elements.button.delete.label')}
                   </DropdownMenuItem>
@@ -79,6 +88,17 @@ export function ConnectionsPage() {
           ))}
         </ul>
       )}
+
+      <PreviewConnectionDialog
+        open={preview !== null}
+        connection={preview}
+        onDelete={(userId) => {
+          const target = connections.find((c) => c.user.id === userId) ?? null
+          setPreview(null)
+          setDeleteTarget(target)
+        }}
+        onClose={() => setPreview(null)}
+      />
 
       <GenerateInviteDialog open={invite !== null} code={invite?.code ?? ''} onClose={() => setInvite(null)} />
 

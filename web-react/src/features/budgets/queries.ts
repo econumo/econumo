@@ -258,6 +258,53 @@ export function useBudgetTransactions(params: budgetApi.BudgetTransactionsParams
   })
 }
 
+export function useGrantBudgetAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { budgetId: Id; userId: Id; role: string }) => budgetApi.grantAccess(form),
+    onSuccess: (items) => {
+      queryClient.setQueryData(queryKeys.budgets, items)
+      trackEvent(METRICS.BUDGET_GRANT_ACCESS)
+    },
+  })
+}
+
+export function useRevokeBudgetAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { budgetId: Id; userId: Id }) => budgetApi.revokeAccess(form),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+      trackEvent(METRICS.BUDGET_REVOKE_ACCESS)
+    },
+  })
+}
+
+export function useAcceptBudgetAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (budgetId: Id) => budgetApi.acceptAccess(budgetId),
+    onSuccess: (items) => {
+      queryClient.setQueryData(queryKeys.budgets, items)
+      // accepting can change the default budget option + budget visibility
+      void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      trackEvent(METRICS.BUDGET_ACCEPT_ACCESS)
+    },
+  })
+}
+
+export function useDeclineBudgetAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (budgetId: Id) => budgetApi.declineAccess(budgetId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+      trackEvent(METRICS.BUDGET_DECLINE_ACCESS)
+    },
+  })
+}
+
 export function useDeleteBudget() {
   const queryClient = useQueryClient()
   return useMutation({
