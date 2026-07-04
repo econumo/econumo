@@ -83,7 +83,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 				corrType = 1 // income
 			}
 			corrID := s.accounts.NextIdentity()
-			corr := Correction{
+			corr := model.AccountCorrection{
 				ID:          corrID,
 				UserID:      userID,
 				AccountID:   id,

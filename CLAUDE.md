@@ -68,7 +68,9 @@ Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 The backend is organized as vertical feature packages rather than horizontal
 layers. Each of the nine features (`account`, `budget`, `category`, `connection`,
 `currency`, `payee`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
-tree holding its own domain logic, persistence, and HTTP edge:
+tree holding its own use cases, persistence, and HTTP edge; the entities and
+DTOs those use cases operate on live in the shared `internal/model` package
+(below), so a feature package is behavior-only:
 
 ```
 . (repo root = the Go module; web/ and deployment/ live alongside)
@@ -78,17 +80,18 @@ tree holding its own domain logic, persistence, and HTTP edge:
 │   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen),
 │   │                                port (Clock/TxRunner/OperationGuard seams), reqctx (request-scoped
 │   │                                context values, e.g. caller timezone + log attrs)
+│   ├── model/ ...................... the shared type universe: every feature's entities (with their
+│   │                                invariant-preserving mutators), value objects, and request/result DTOs,
+│   │                                one file per feature (account.go, account_dto.go, ...); imports only
+│   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, payee, tag, transaction, user); root package holds the
-│   │   │                            entities, repository interface, and use-case services:
-│   │   │   <feature>.go ..........   domain entities (file named after the package, e.g.
-│   │   │                             category/category.go): EXPORTED fields (direct reads), mutators
-│   │   │                             own all post-construction writes (change-tracking bumps
-│   │   │                             UpdatedAt only on real change); no getter methods
-│   │   │   dto.go ................   request/result DTOs for the use-case services
-│   │   │   repository.go .........   the repository INTERFACE(s); account and budget split
-│   │   │                             theirs into role interfaces + a composite for wiring
-│   │   │   usecase.go ............   the use-case service(s) implementing the feature's behavior
+│   │   │                            currency, payee, tag, transaction, user); root package holds only
+│   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
+│   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
+│   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
+│   │   │                             (or `ReadService`/`WriteService`) method per use case
+│   │   │   repository.go .........   the repository INTERFACE(s), in `model` types; account and budget
+│   │   │                             split theirs into role interfaces + a composite for wiring
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
 │   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
@@ -111,26 +114,28 @@ tree holding its own domain logic, persistence, and HTTP edge:
 │   └── test/ .................... shared test support: dbtest, fixture, testkeys, enginecompare, archtest
 ```
 
-Not every feature has all four root files — e.g. `currency` has no per-user
-entity/repository/use-case shape (it's rates + conversion + admin lookups), so
-it keeps `dto.go` but not `currency.go`/`usecase.go`/`repository.go`.
+Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
+per-user persistence shape (it's rates + conversion + admin lookups), so it
+keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`.
 
 ### Dependency rule
 
 Features never import features. When one feature needs another's data (e.g.
 account needs a currency lookup, or budget needs to resolve a user), the
-*consuming* feature declares a small interface in its own package, and
-`internal/server` wires a concrete adapter — usually a thin one implemented in
-a `glue_<feature>_<purpose>.go` file (e.g. `glue_account_currencylookup.go`,
-`glue_budget_userlookup.go`) — over the *providing* feature's public API at
-composition time. This keeps every feature package independently buildable
-and testable without pulling in its siblings.
+*consuming* feature declares a small interface in its own package (typed in
+`model`), and `internal/server` wires a concrete adapter — usually a thin one
+implemented in a `glue_<feature>_<purpose>.go` file (e.g.
+`glue_account_currencylookup.go`, `glue_budget_userlookup.go`) — over the
+*providing* feature's public API at composition time. This keeps every
+feature package independently buildable and testable without pulling in its
+siblings.
 
-Shared leaves (`shared`, `web`, `infra`) never import a feature; the
-kernel (`internal/shared`) imports nothing internal outside
-itself. This is enforced by `internal/test/archtest`, which auto-detects
-feature packages (any `internal/<top>` not in its infrastructure set) so newly
-moved features come under enforcement without edits to the test.
+Shared leaves (`shared`, `model`, `web`, `infra`) never import a feature; the
+kernel (`internal/shared` + `internal/model`) imports nothing internal outside
+itself — `model` may only depend on `shared`. This is enforced by
+`internal/test/archtest`, which auto-detects feature packages (any
+`internal/<top>` not in its infrastructure set) so newly moved features come
+under enforcement without edits to the test.
 
 ### The engine-adapter (sqlc) pattern
 
@@ -162,7 +167,7 @@ closure. A handful of endpoints stay hand-written because their shape is
 special: CSV export, multipart import, query-param reads, and login's raw
 `{token,user}` response. Routes are registered in
 `internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
-in `internal/<feature>/dto.go`.
+in `internal/model/<feature>_dto.go`.
 
 ### Frontend architecture (Vue 3 + Quasar)
 

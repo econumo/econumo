@@ -203,7 +203,7 @@ func (r *Repo) Balances(ctx context.Context, userID vo.Id, before time.Time) (ma
 }
 
 // SaveCorrection inserts a balance-correction transaction.
-func (r *Repo) SaveCorrection(ctx context.Context, c domaccount.Correction) error {
+func (r *Repo) SaveCorrection(ctx context.Context, c model.AccountCorrection) error {
 	return r.q.InsertCorrectionTransaction(ctx, r.db(ctx), insertCorrectionP{
 		ID:          c.ID.String(),
 		UserID:      c.UserID.String(),
