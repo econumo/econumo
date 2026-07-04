@@ -49,19 +49,39 @@ func TestOpen_PragmasAndPing(t *testing.T) {
 		t.Errorf("foreign_keys = %d, want 1", fk)
 	}
 
-	// The busy-timeout config value (SQLITE_BUSY_TIMEOUT) is not currently wired
-	// from cfg into the Backend (the busyTimeoutMS field is never set nor read
-	// by Open), so the pragma stays at the driver default regardless of config.
+	// An unconfigured Backend (busyTimeoutMS == 0) issues no PRAGMA, so the value
+	// stays at the driver default (0).
 	var busyTimeout int
 	if err := db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout); err != nil {
 		t.Fatal(err)
 	}
 	if busyTimeout != 0 {
-		t.Errorf("busy_timeout = %d, want 0 (driver default; Backend does not apply cfg.SQLiteBusyTimeout)", busyTimeout)
+		t.Errorf("busy_timeout = %d, want 0 (driver default when unconfigured)", busyTimeout)
 	}
 
 	if err := db.Ping(); err != nil {
 		t.Errorf("Ping: %v", err)
+	}
+}
+
+// TestOpen_AppliesBusyTimeout verifies SetBusyTimeout (fed from
+// cfg.SQLiteBusyTimeout at boot) reaches the connection as a busy_timeout PRAGMA.
+func TestOpen_AppliesBusyTimeout(t *testing.T) {
+	b := New()
+	b.SetBusyTimeout(5000)
+	dsn := "sqlite://" + filepath.Join(t.TempDir(), "t.sqlite")
+	db, err := b.Open(context.Background(), dsn)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Close()
+
+	var busyTimeout int
+	if err := db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout); err != nil {
+		t.Fatal(err)
+	}
+	if busyTimeout != 5000 {
+		t.Errorf("busy_timeout = %d, want 5000 (SetBusyTimeout must apply the PRAGMA)", busyTimeout)
 	}
 }
 

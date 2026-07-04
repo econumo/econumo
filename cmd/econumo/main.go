@@ -184,6 +184,12 @@ func run(serveArgs []string) error {
 			"] (is the backend package blank-imported in cmd/econumo?)")
 	}
 
+	// Apply the SQLite busy_timeout from config (no-op for engines without the
+	// knob) before opening the connection.
+	if c, ok := be.(backend.BusyTimeoutConfigurer); ok {
+		c.SetBusyTimeout(cfg.SQLiteBusyTimeout)
+	}
+
 	// Open the database.
 	db, err := be.Open(ctx, cfg.DatabaseURL)
 	if err != nil {

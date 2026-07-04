@@ -45,6 +45,9 @@ func newContainer(ctx context.Context) (*container, error) {
 		return nil, errors.New("no database backend registered for engine " + cfg.DatabaseDriver +
 			" (registered: [" + strings.Join(backend.Registered(), ", ") + "])")
 	}
+	if c, ok := be.(backend.BusyTimeoutConfigurer); ok {
+		c.SetBusyTimeout(cfg.SQLiteBusyTimeout)
+	}
 	db, err := be.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return nil, err
