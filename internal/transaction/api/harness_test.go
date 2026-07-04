@@ -97,7 +97,7 @@ func newHarness(t *testing.T) *harness {
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
 		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
-		server.NewAccountCurrencyLookup(curLookup), server.NewAccountUserLookup(userrepo.NewRepo("sqlite", txm)),
+		server.NewAccountCurrencyLookup(curLookup), server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
 		nil, nil, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	txRepo := transactionrepo.NewRepo("sqlite", txm)
@@ -122,7 +122,7 @@ func newHarness(t *testing.T) *harness {
 		txRepo, accSvc,
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		accSvc,
-		server.NewTransactionUserLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlertransaction.NewHandlers(svc, cfg.IsDev())

@@ -14,7 +14,7 @@ import (
 
 // UserLookup resolves the author (id, name, avatar).
 type UserLookup interface {
-	GetOwner(ctx context.Context, userID string) (model.AuthorView, error)
+	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
 }
 
 // AccountResolver answers ownership/existence questions about an account and
