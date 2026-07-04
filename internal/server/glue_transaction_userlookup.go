@@ -27,14 +27,14 @@ func NewTransactionUserLookup(users transactionUserByID) *TransactionUserLookup 
 	return &TransactionUserLookup{users: users}
 }
 
-func (l *TransactionUserLookup) GetOwner(ctx context.Context, userID string) (apptransaction.AuthorView, error) {
+func (l *TransactionUserLookup) GetOwner(ctx context.Context, userID string) (model.AuthorView, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
-		return apptransaction.AuthorView{}, err
+		return model.AuthorView{}, err
 	}
 	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
-		return apptransaction.AuthorView{}, err
+		return model.AuthorView{}, err
 	}
-	return apptransaction.AuthorView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.AuthorView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }

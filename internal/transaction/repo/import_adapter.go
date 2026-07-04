@@ -13,18 +13,18 @@ package repo
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
-	domtransaction "github.com/econumo/econumo/internal/transaction"
 )
 
 // importAccountPort is the account-touching surface the importer uses,
 // expressed purely in apptransaction types so this file never imports the
 // account feature directly.
 type importAccountPort interface {
-	AvailableAccounts(ctx context.Context, userID vo.Id) ([]apptransaction.ImportAccount, error)
-	AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*apptransaction.ImportAccount, error)
-	CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error)
+	AvailableAccounts(ctx context.Context, userID vo.Id) ([]model.ImportAccount, error)
+	AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*model.ImportAccount, error)
+	CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error)
 }
 
 // importAccountAccess resolves account ownership + whether a connected user
@@ -39,24 +39,24 @@ type importAccountAccess interface {
 // expressed purely in apptransaction types so this file never imports the
 // category feature directly.
 type importCategoryPort interface {
-	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error)
-	CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (apptransaction.ImportNamed, error)
+	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (model.ImportNamed, error)
 }
 
 // importTagPort is the tag-touching surface the importer uses, expressed
 // purely in apptransaction types so this file never imports the tag feature
 // directly.
 type importTagPort interface {
-	TagsByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error)
-	CreateTag(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error)
+	TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	CreateTag(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
 }
 
 // importPayeePort is the payee-touching surface the importer uses, expressed
 // purely in apptransaction types so this file never imports the payee
 // feature directly.
 type importPayeePort interface {
-	PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error)
-	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error)
+	PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
 }
 
 // ImportLookup adapts the collaborators to app/transaction.Importer.
@@ -90,11 +90,11 @@ func NewImportLookup(
 	}
 }
 
-func (l *ImportLookup) AvailableAccounts(ctx context.Context, userID vo.Id) ([]apptransaction.ImportAccount, error) {
+func (l *ImportLookup) AvailableAccounts(ctx context.Context, userID vo.Id) ([]model.ImportAccount, error) {
 	return l.accounts.AvailableAccounts(ctx, userID)
 }
 
-func (l *ImportLookup) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*apptransaction.ImportAccount, error) {
+func (l *ImportLookup) AccountByID(ctx context.Context, userID vo.Id, id vo.Id) (*model.ImportAccount, error) {
 	return l.accounts.AccountByID(ctx, userID, id)
 }
 
@@ -113,34 +113,34 @@ func (l *ImportLookup) CanAddTransaction(ctx context.Context, userID vo.Id, acco
 	return l.access.HasWriteGrant(ctx, accountID, userID)
 }
 
-func (l *ImportLookup) CreateAccount(ctx context.Context, userID vo.Id, name string) (apptransaction.ImportAccount, error) {
+func (l *ImportLookup) CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error) {
 	return l.accounts.CreateAccount(ctx, userID, name)
 }
 
-func (l *ImportLookup) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+func (l *ImportLookup) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
 	return l.category.CategoriesByOwner(ctx, ownerID)
 }
 
-func (l *ImportLookup) PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+func (l *ImportLookup) PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
 	return l.payee.PayeesByOwner(ctx, ownerID)
 }
 
-func (l *ImportLookup) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]apptransaction.ImportNamed, error) {
+func (l *ImportLookup) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
 	return l.tag.TagsByOwner(ctx, ownerID)
 }
 
-func (l *ImportLookup) CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (apptransaction.ImportNamed, error) {
+func (l *ImportLookup) CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (model.ImportNamed, error) {
 	return l.category.CreateCategory(ctx, ownerID, name, income)
 }
 
-func (l *ImportLookup) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
+func (l *ImportLookup) CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error) {
 	return l.payee.CreatePayee(ctx, ownerID, name)
 }
 
-func (l *ImportLookup) CreateTag(ctx context.Context, ownerID vo.Id, name string) (apptransaction.ImportNamed, error) {
+func (l *ImportLookup) CreateTag(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error) {
 	return l.tag.CreateTag(ctx, ownerID, name)
 }
 
-func (l *ImportLookup) SaveTransaction(ctx context.Context, t *domtransaction.Transaction) error {
+func (l *ImportLookup) SaveTransaction(ctx context.Context, t *model.Transaction) error {
 	return l.transRepo.Save(ctx, t)
 }

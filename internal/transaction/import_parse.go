@@ -15,19 +15,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// nameCache maps a lowercased name to an entity view (ImportAccount or
-// ImportNamed); it is mutated as new entities are created so later rows reuse them.
+// nameCache maps a lowercased name to an entity view (model.ImportAccount or
+// model.ImportNamed); it is mutated as new entities are created so later rows
+// reuse them.
 type nameCache struct {
 	m map[string]any
 }
 
 func newNameCache() *nameCache { return &nameCache{m: map[string]any{}} }
 
-func newNamedCache(items []ImportNamed) *nameCache {
+func newNamedCache(items []model.ImportNamed) *nameCache {
 	c := newNameCache()
 	for _, it := range items {
 		c.put(it.Name, it)

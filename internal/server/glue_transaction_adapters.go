@@ -41,46 +41,15 @@ func (a *TransactionAccountResolver) AccountOwner(ctx context.Context, accountID
 	return a.svc.AccountOwner(ctx, accountID)
 }
 
-func (a *TransactionAccountResolver) AccountListForUser(ctx context.Context, userID vo.Id) ([]apptransaction.AccountResult, error) {
-	accts, err := a.svc.AccountListForUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	return toTransactionAccountResults(accts), nil
-}
-
-// toTransactionAccountResults converts the account feature's wire type into
-// apptransaction's own copy of the same shape — the create/update/delete
-// responses embed the caller's full account list, but features must not
-// import each other, so apptransaction declares its own AccountResult and
-// this adapter (which may import both) does the field-for-field conversion.
-func toTransactionAccountResults(accts []model.AccountResult) []apptransaction.AccountResult {
-	out := make([]apptransaction.AccountResult, len(accts))
-	for i, a := range accts {
-		shared := make([]apptransaction.AccountSharedAccess, len(a.SharedAccess))
-		for j, sa := range a.SharedAccess {
-			shared[j] = apptransaction.AccountSharedAccess{
-				User: apptransaction.AccountOwnerResult{Id: sa.User.Id, Avatar: sa.User.Avatar, Name: sa.User.Name},
-				Role: sa.Role,
-			}
-		}
-		out[i] = apptransaction.AccountResult{
-			Id:       a.Id,
-			Owner:    apptransaction.AccountOwnerResult{Id: a.Owner.Id, Avatar: a.Owner.Avatar, Name: a.Owner.Name},
-			FolderId: a.FolderId,
-			Name:     a.Name,
-			Position: a.Position,
-			Currency: apptransaction.AccountCurrencyResult{
-				Id: a.Currency.Id, Code: a.Currency.Code, Name: a.Currency.Name,
-				Symbol: a.Currency.Symbol, FractionDigits: a.Currency.FractionDigits,
-			},
-			Balance:      a.Balance,
-			Type:         a.Type,
-			Icon:         a.Icon,
-			SharedAccess: shared,
-		}
-	}
-	return out
+// AccountListForUser now returns the account feature's own model.AccountResult
+// directly: transaction's AccountResult/AccountOwnerResult/AccountCurrencyResult/
+// AccountSharedAccess twins retired in favor of the shared model.* survivors
+// (see the collision map), so no field-for-field conversion remains — this
+// method (and the resolver as a whole) is now a pure pass-through, retired in
+// the next commit per the Phase 4 "delete the adapter once it's an identity
+// conversion" rule.
+func (a *TransactionAccountResolver) AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error) {
+	return a.svc.AccountListForUser(ctx, userID)
 }
 
 // transactionCategoryByID is the minimal category-repo surface the export

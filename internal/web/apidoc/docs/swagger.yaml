@@ -858,6 +858,40 @@ definitions:
       item:
         $ref: '#/definitions/model.TagResult'
     type: object
+  model.CreateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
   model.CurrencyRateResult:
     properties:
       baseCurrencyId:
@@ -933,6 +967,20 @@ definitions:
     type: object
   model.DeleteTagResult:
     type: object
+  model.DeleteTransactionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
   model.FolderPositionChange:
     properties:
       id:
@@ -996,6 +1044,13 @@ definitions:
           $ref: '#/definitions/model.TagResult'
         type: array
     type: object
+  model.GetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TransactionResult'
+        type: array
+    type: object
   model.GetUserDataResult:
     properties:
       user:
@@ -1007,6 +1062,19 @@ definitions:
         type: string
     type: object
   model.HideFolderResult:
+    type: object
+  model.ImportResult:
+    properties:
+      errors:
+        additionalProperties:
+          items:
+            type: integer
+          type: array
+        type: object
+      imported:
+        type: integer
+      skipped:
+        type: integer
     type: object
   model.LoginRequest:
     properties:
@@ -1195,6 +1263,33 @@ definitions:
       updatedAt:
         type: string
     type: object
+  model.TransactionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
   model.UnarchiveCategoryRequest:
     properties:
       id:
@@ -1331,6 +1426,40 @@ definitions:
       item:
         $ref: '#/definitions/model.TagResult'
     type: object
+  model.UpdateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.UpdateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
   model.UserResult:
     properties:
       avatar:
@@ -1339,198 +1468,6 @@ definitions:
         type: string
       name:
         type: string
-    type: object
-  transaction.AccountCurrencyResult:
-    properties:
-      code:
-        type: string
-      fractionDigits:
-        type: integer
-      id:
-        type: string
-      name:
-        type: string
-      symbol:
-        type: string
-    type: object
-  transaction.AccountOwnerResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  transaction.AccountResult:
-    properties:
-      balance:
-        type: string
-      currency:
-        $ref: '#/definitions/transaction.AccountCurrencyResult'
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      owner:
-        $ref: '#/definitions/transaction.AccountOwnerResult'
-      position:
-        type: integer
-      sharedAccess:
-        items:
-          $ref: '#/definitions/transaction.AccountSharedAccess'
-        type: array
-      type:
-        type: integer
-    type: object
-  transaction.AccountSharedAccess:
-    properties:
-      role:
-        type: string
-      user:
-        $ref: '#/definitions/transaction.AccountOwnerResult'
-    type: object
-  transaction.AuthorResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  transaction.CreateTransactionRequest:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  transaction.CreateTransactionResult:
-    properties:
-      accounts:
-        items:
-          $ref: '#/definitions/transaction.AccountResult'
-        type: array
-      item:
-        $ref: '#/definitions/transaction.TransactionResult'
-    type: object
-  transaction.DeleteTransactionRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  transaction.DeleteTransactionResult:
-    properties:
-      accounts:
-        items:
-          $ref: '#/definitions/transaction.AccountResult'
-        type: array
-      item:
-        $ref: '#/definitions/transaction.TransactionResult'
-    type: object
-  transaction.GetTransactionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/transaction.TransactionResult'
-        type: array
-    type: object
-  transaction.ImportResult:
-    properties:
-      errors:
-        additionalProperties:
-          items:
-            type: integer
-          type: array
-        type: object
-      imported:
-        type: integer
-      skipped:
-        type: integer
-    type: object
-  transaction.TransactionResult:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      author:
-        $ref: '#/definitions/transaction.AuthorResult'
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  transaction.UpdateTransactionRequest:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  transaction.UpdateTransactionResult:
-    properties:
-      accounts:
-        items:
-          $ref: '#/definitions/transaction.AccountResult'
-        type: array
-      item:
-        $ref: '#/definitions/transaction.TransactionResult'
     type: object
 info:
   contact: {}
@@ -3849,7 +3786,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/transaction.CreateTransactionRequest'
+          $ref: '#/definitions/model.CreateTransactionRequest'
       produces:
       - application/json
       responses:
@@ -3860,7 +3797,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.CreateTransactionResult'
+                  $ref: '#/definitions/model.CreateTransactionResult'
               type: object
         "400":
           description: Bad Request
@@ -3891,7 +3828,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/transaction.DeleteTransactionRequest'
+          $ref: '#/definitions/model.DeleteTransactionRequest'
       produces:
       - application/json
       responses:
@@ -3902,7 +3839,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.DeleteTransactionResult'
+                  $ref: '#/definitions/model.DeleteTransactionResult'
               type: object
         "400":
           description: Bad Request
@@ -3981,7 +3918,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.GetTransactionListResult'
+                  $ref: '#/definitions/model.GetTransactionListResult'
               type: object
         "401":
           description: Unauthorized
@@ -4047,7 +3984,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.ImportResult'
+                  $ref: '#/definitions/model.ImportResult'
               type: object
         "400":
           description: Bad Request
@@ -4078,7 +4015,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/transaction.UpdateTransactionRequest'
+          $ref: '#/definitions/model.UpdateTransactionRequest'
       produces:
       - application/json
       responses:
@@ -4089,7 +4026,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/transaction.UpdateTransactionResult'
+                  $ref: '#/definitions/model.UpdateTransactionResult'
               type: object
         "400":
           description: Bad Request

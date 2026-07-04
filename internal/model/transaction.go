@@ -1,17 +1,13 @@
-// Package transaction is the transaction feature: the Transaction entity, its
-// Type value object, and the repository interface (domain), plus the
-// request/result DTOs (with their tier-1 Validate() methods) and the
-// write-side Service (create/update/delete, export, and CSV import), which
-// owns the tx boundary and builds the response-shaped *Result directly.
+// The Transaction entity: the Transaction aggregate root and the
+// TransactionType value object, plus the New/FromState (re)constructors and
+// the Update mutator. The repository interface, use-case services, and their
+// request/result DTOs stay in internal/transaction.
 //
 // A transaction is an expense (type 0), income (1), or transfer (2). Transfers
 // carry a recipient account + recipient amount and no category/payee/tag;
 // non-transfers carry an optional category/payee/tag and no recipient. The
 // entity enforces those type-dependent field rules in its mutators.
-//
-// JSON field names are frozen to the existing API wire contract; see
-// CLAUDE.md.
-package transaction
+package model
 
 import (
 	"time"
@@ -19,27 +15,27 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// Type is the transaction type value object. DB SMALLINT; wire uses the alias
-// string (expense/income/transfer).
-type Type int16
+// TransactionType is the transaction type value object. DB SMALLINT; wire uses
+// the alias string (expense/income/transfer).
+type TransactionType int16
 
 const (
-	// TypeExpense is an expense (db 0, alias "expense").
-	TypeExpense Type = 0
-	// TypeIncome is income (db 1, alias "income").
-	TypeIncome Type = 1
-	// TypeTransfer is a transfer between accounts (db 2, alias "transfer").
-	TypeTransfer Type = 2
+	// TransactionTypeExpense is an expense (db 0, alias "expense").
+	TransactionTypeExpense TransactionType = 0
+	// TransactionTypeIncome is income (db 1, alias "income").
+	TransactionTypeIncome TransactionType = 1
+	// TransactionTypeTransfer is a transfer between accounts (db 2, alias "transfer").
+	TransactionTypeTransfer TransactionType = 2
 )
 
-func (t Type) Int16() int16 { return int16(t) }
+func (t TransactionType) Int16() int16 { return int16(t) }
 
 // Alias returns the wire alias.
-func (t Type) Alias() string {
+func (t TransactionType) Alias() string {
 	switch t {
-	case TypeIncome:
+	case TransactionTypeIncome:
 		return "income"
-	case TypeTransfer:
+	case TransactionTypeTransfer:
 		return "transfer"
 	default:
 		return "expense"
@@ -47,9 +43,9 @@ func (t Type) Alias() string {
 }
 
 // IsExpense / IsIncome / IsTransfer report the type.
-func (t Type) IsExpense() bool  { return t == TypeExpense }
-func (t Type) IsIncome() bool   { return t == TypeIncome }
-func (t Type) IsTransfer() bool { return t == TypeTransfer }
+func (t TransactionType) IsExpense() bool  { return t == TransactionTypeExpense }
+func (t TransactionType) IsIncome() bool   { return t == TransactionTypeIncome }
+func (t TransactionType) IsTransfer() bool { return t == TransactionTypeTransfer }
 
 // Transaction is the transaction aggregate root. Fields are exported for
 // direct read access; all writes after construction go through New/FromState
@@ -59,7 +55,7 @@ func (t Type) IsTransfer() bool { return t == TypeTransfer }
 type Transaction struct {
 	ID              vo.Id
 	UserID          vo.Id
-	Type            Type
+	Type            TransactionType
 	AccountID       vo.Id
 	AccountRecipID  *vo.Id
 	Amount          string
@@ -78,7 +74,7 @@ type Transaction struct {
 type NewState struct {
 	ID              vo.Id
 	UserID          vo.Id
-	Type            Type
+	Type            TransactionType
 	AccountID       vo.Id
 	AccountRecipID  *vo.Id
 	Amount          string

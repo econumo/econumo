@@ -4,18 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// AuthorView is the minimal author shape the result embeds.
-type AuthorView struct {
-	ID     string
-	Name   string
-	Avatar string
-}
 
 // Service is the transaction write-side orchestrator.
 type Service struct {
@@ -91,17 +85,17 @@ func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) 
 // amountRecipient falls back to amount when nil. Single-transaction callers
 // (create/update/delete) use this; the list endpoint uses buildResult with a
 // per-request author cache to avoid an N+1 (see GetTransactionList).
-func (s *Service) toResult(ctx context.Context, t *Transaction) (TransactionResult, error) {
+func (s *Service) toResult(ctx context.Context, t *model.Transaction) (model.TransactionResult, error) {
 	author, err := s.users.GetOwner(ctx, t.UserID.String())
 	if err != nil {
-		return TransactionResult{}, err
+		return model.TransactionResult{}, err
 	}
-	return s.buildResult(t, AuthorResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}), nil
+	return s.buildResult(t, model.UserResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}), nil
 }
 
 // buildResult assembles the wire DTO from an already-resolved author (no DB
 // access), so callers control author resolution / caching.
-func (s *Service) buildResult(t *Transaction, author AuthorResult) TransactionResult {
+func (s *Service) buildResult(t *model.Transaction, author model.UserResult) model.TransactionResult {
 	amountRecipient := t.Amount
 	if ar := t.AmountRecipient; ar != nil {
 		amountRecipient = *ar
@@ -123,7 +117,7 @@ func (s *Service) buildResult(t *Transaction, author AuthorResult) TransactionRe
 		s := v.String()
 		tagID = &s
 	}
-	return TransactionResult{
+	return model.TransactionResult{
 		Id:                 t.ID.String(),
 		Author:             author,
 		Type:               t.Type.Alias(),
@@ -147,20 +141,21 @@ func strPtrDecimal(v string) *string {
 
 // accountListEmbed builds the account-list embed for the create/update/delete
 // results (the full reversed list with balances).
-func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]AccountResult, error) {
+func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]model.AccountResult, error) {
 	return s.accounts.AccountListForUser(ctx, userID)
 }
 
-// buildState converts the request's primitive fields into a domain NewState,
-// applying the type-dependent field rules: a transfer keeps recipient
-// account+amount and drops category/payee/tag; a non-transfer requires a
-// category and keeps payee/tag, dropping recipient. amount is normalized.
+// buildState converts the request's primitive fields into a domain
+// model.NewState, applying the type-dependent field rules: a transfer keeps
+// recipient account+amount and drops category/payee/tag; a non-transfer
+// requires a category and keeps payee/tag, dropping recipient. amount is
+// normalized.
 func buildState(
-	id, userID vo.Id, typ Type, accountID vo.Id, amount string,
+	id, userID vo.Id, typ model.TransactionType, accountID vo.Id, amount string,
 	amountRecipient, accountRecipientID, categoryID, payeeID, tagID *string,
 	description string, spentAt, now time.Time,
-) (NewState, error) {
-	st := NewState{
+) (model.NewState, error) {
+	st := model.NewState{
 		ID: id, UserID: userID, Type: typ, AccountID: accountID,
 		Amount: vo.NewDecimal(amount).String(), Description: description,
 		SpentAt: spentAt, CreatedAt: now, UpdatedAt: now,
@@ -206,15 +201,15 @@ func buildState(
 	return st, nil
 }
 
-// parseType maps the wire alias to the domain Type.
-func parseType(alias string) (Type, error) {
+// parseType maps the wire alias to the domain TransactionType.
+func parseType(alias string) (model.TransactionType, error) {
 	switch alias {
 	case "expense":
-		return TypeExpense, nil
+		return model.TransactionTypeExpense, nil
 	case "income":
-		return TypeIncome, nil
+		return model.TransactionTypeIncome, nil
 	case "transfer":
-		return TypeTransfer, nil
+		return model.TransactionTypeTransfer, nil
 	default:
 		return 0, errs.NewValidation("Validation failed",
 			errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})

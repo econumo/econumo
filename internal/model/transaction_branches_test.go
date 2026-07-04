@@ -1,4 +1,4 @@
-package transaction
+package model
 
 import (
 	"testing"
@@ -6,8 +6,8 @@ import (
 
 func TestType_AliasUnknownFallsBackToExpense(t *testing.T) {
 	// Any unmapped numeric type defaults to "expense" (the switch default).
-	if Type(99).Alias() != "expense" {
-		t.Errorf("Type(99).Alias()=%q want expense", Type(99).Alias())
+	if TransactionType(99).Alias() != "expense" {
+		t.Errorf("TransactionType(99).Alias()=%q want expense", TransactionType(99).Alias())
 	}
 }
 
@@ -25,7 +25,7 @@ func TestFromState_RoundTrip_PreservesUpdatedAt(t *testing.T) {
 
 func TestFromState_AllAccessors(t *testing.T) {
 	s := baseState(t)
-	s.Type = TypeTransfer
+	s.Type = TransactionTypeTransfer
 	s.AccountRecipID = ptrID(t, "77777777-7777-7777-7777-777777777777")
 	s.AmountRecipient = strptr("99.99")
 	tx := FromState(s)
@@ -33,7 +33,7 @@ func TestFromState_AllAccessors(t *testing.T) {
 	if !tx.ID.Equal(s.ID) || !tx.UserID.Equal(s.UserID) {
 		t.Error("id/userId did not round-trip")
 	}
-	if tx.Type != TypeTransfer {
+	if tx.Type != TransactionTypeTransfer {
 		t.Errorf("type=%d want transfer", tx.Type)
 	}
 	if !tx.AccountID.Equal(s.AccountID) {
@@ -64,7 +64,7 @@ func TestFromState_AllAccessors(t *testing.T) {
 // recipient fields and adopt the supplied metadata.
 func TestUpdate_TransferToNonTransfer(t *testing.T) {
 	s := baseState(t)
-	s.Type = TypeTransfer
+	s.Type = TransactionTypeTransfer
 	s.CategoryID, s.PayeeID, s.TagID = nil, nil, nil
 	s.AccountRecipID = ptrID(t, "77777777-7777-7777-7777-777777777777")
 	s.AmountRecipient = strptr("5")
@@ -75,7 +75,7 @@ func TestUpdate_TransferToNonTransfer(t *testing.T) {
 
 	// Now switch to an expense carrying metadata.
 	upd := baseState(t)
-	upd.Type = TypeExpense
+	upd.Type = TransactionTypeExpense
 	tx.Update(upd, tc1)
 
 	if tx.AccountRecipID != nil || tx.AmountRecipient != nil {
