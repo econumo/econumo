@@ -17,20 +17,24 @@ export async function register(email: string, password: string, name: string): P
   await api.post(apiUrl('/api/v1/user/register-user'), { email, password, name })
 }
 
-export async function updateName(name: string): Promise<void> {
-  await api.post(apiUrl('/api/v1/user/update-name'), { name })
+// update-name/currency/budget echo the refreshed user (incl. the synthetic currency_id option)
+export async function updateName(name: string): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-name'), { name })
+  return response.data.data.user
 }
 
 export async function updatePassword(oldPassword: string, newPassword: string): Promise<void> {
   await api.post(apiUrl('/api/v1/user/update-password'), { oldPassword, newPassword })
 }
 
-export async function updateCurrency(currency: string): Promise<void> {
-  await api.post(apiUrl('/api/v1/user/update-currency'), { currency })
+export async function updateCurrency(currency: string): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-currency'), { currency })
+  return response.data.data.user
 }
 
-export async function updateDefaultBudget(budgetId: Id): Promise<void> {
-  await api.post(apiUrl('/api/v1/user/update-budget'), { value: budgetId })
+export async function updateDefaultBudget(budgetId: Id): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-budget'), { value: budgetId })
+  return response.data.data.user
 }
 
 export async function getUserData(): Promise<CurrentUserDto> {
