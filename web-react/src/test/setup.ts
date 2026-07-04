@@ -14,6 +14,15 @@ if (jsdom) {
   }
 }
 
+// jsdom has no ResizeObserver; Radix primitives (checkbox, etc.) expect one.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
+
 // Imported dynamically so the storage rebind above runs first (i18n reads the
 // persisted locale from localStorage at init).
 await import('@/app/i18n')
