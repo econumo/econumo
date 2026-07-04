@@ -19,11 +19,16 @@ import (
 func WriteError(w http.ResponseWriter, err error, dev bool) {
 	recordError(w, err)
 	if v, ok := errs.AsValidation(err); ok {
-		// Frozen wire contract: validation failures always carry the envelope
-		// message "Form validation error" and code 400, regardless of the
-		// per-field messages. Setting it centrally keeps every endpoint's
-		// validation envelope byte-identical instead of relying on each call site.
-		Err(w, "Form validation error", http.StatusBadRequest, fieldsToMap(v.Fields), http.StatusBadRequest)
+		// Field-level (form) validation keeps the generic "Form validation error"
+		// label: the actionable detail is the per-field errors{} map, which clients
+		// parse. A FIELDLESS validation error (e.g. "User already exists", "The code
+		// is expired") carries its message as the only signal, so surface that
+		// message instead of masking it behind the generic label.
+		msg := v.Msg
+		if len(v.Fields) > 0 {
+			msg = "Form validation error"
+		}
+		Err(w, msg, http.StatusBadRequest, fieldsToMap(v.Fields), http.StatusBadRequest)
 		return
 	}
 	if v, ok := errs.AsAccessDenied(err); ok {

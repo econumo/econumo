@@ -80,7 +80,7 @@ func TestCreateTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 	h.shareAccount(t, roleGuest, true)
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
-	assertValidationDenied(t, status, env)
+	assertValidationDenied(t, status, env, "account.account.not_available")
 }
 
 func TestCreateTransaction_SharedAccount_NoGrant_Denied(t *testing.T) {
@@ -88,7 +88,7 @@ func TestCreateTransaction_SharedAccount_NoGrant_Denied(t *testing.T) {
 	h.shareAccount(t, 0, false) // account owned by another user, no grant to seed user
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
-	assertValidationDenied(t, status, env)
+	assertValidationDenied(t, status, env, "account.account.not_available")
 }
 
 // TestGetTransactionList_SharedAccount_GuestCanView is the positive read-access
@@ -132,10 +132,11 @@ func TestImport_SharedAccount_UserRole_LandsInSharedAccount(t *testing.T) {
 	}
 }
 
-// assertValidationDenied checks the frozen denial envelope: HTTP 400, success
-// false, message "Form validation error" (the Go edge collapses every
-// ValidationError to that message — see ui/httpx/errors.go), code 400.
-func assertValidationDenied(t *testing.T, status int, env envelope) {
+// assertValidationDenied checks the denial envelope: HTTP 400, success false,
+// code 400, and the fieldless *ValidationError's own message on the wire (an
+// i18n key the frontend localizes — see WriteError, which surfaces a fieldless
+// validation message instead of masking it).
+func assertValidationDenied(t *testing.T, status int, env envelope, wantMsg string) {
 	t.Helper()
 	if status != http.StatusBadRequest {
 		t.Fatalf("status=%d want 400 (access denied); body: %s", status, env.raw)
@@ -143,8 +144,8 @@ func assertValidationDenied(t *testing.T, status int, env envelope) {
 	if env.Success {
 		t.Fatalf("success=true, want false; body: %s", env.raw)
 	}
-	if env.Message != "Form validation error" {
-		t.Fatalf("message = %q, want %q", env.Message, "Form validation error")
+	if env.Message != wantMsg {
+		t.Fatalf("message = %q, want %q", env.Message, wantMsg)
 	}
 }
 
@@ -176,7 +177,7 @@ func TestUpdateTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 		"id": txID1, "type": "income", "amount": "20", "accountId": sharedAcctID, "categoryId": catID,
 		"date": "2024-03-02 10:00:00", "description": "edited",
 	})
-	assertValidationDenied(t, status, env)
+	assertValidationDenied(t, status, env, "account.account.not_available")
 }
 
 func TestDeleteTransaction_SharedAccount_UserRole_Succeeds(t *testing.T) {
@@ -201,5 +202,5 @@ func TestDeleteTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 	seededTx := f.Transaction(fixture.Transaction{UserID: ownerTwoID, AccountID: sharedAcctID, CategoryID: catID, Type: 0, Amount: "5.00000000", Description: "owner tx"})
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/delete-transaction", tok, map[string]any{"id": seededTx})
-	assertValidationDenied(t, status, env)
+	assertValidationDenied(t, status, env, "transaction.transaction.not_available")
 }

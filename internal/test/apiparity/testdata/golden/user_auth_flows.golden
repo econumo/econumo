@@ -8,5 +8,5 @@
 {"success":true,"message":"","data":{}}
 
 == err:reset-password-bad-code POST /api/v1/user/reset-password [] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"Reset password error","code":400,"errors":{}}
 

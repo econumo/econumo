@@ -98,11 +98,10 @@ func TestUpdatePassword_WrongOld_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("update-password wrong old=%d want 400 body=%s", status, env.raw)
 	}
-	// A service-level *ValidationError is rendered with the centrally-overridden
-	// envelope message "Form validation error" (the per-error Msg "Password is not
-	// correct" is the internal message, not the wire envelope message).
-	if env.Message != "Form validation error" {
-		t.Fatalf("message=%q want %q; body=%s", env.Message, "Form validation error", env.raw)
+	// A fieldless *ValidationError surfaces its own message on the wire (no field
+	// errors to carry the detail), so the client sees the actual reason.
+	if env.Message != "Password is not correct" {
+		t.Fatalf("message=%q want %q; body=%s", env.Message, "Password is not correct", env.raw)
 	}
 }
 
@@ -233,11 +232,10 @@ func TestRegisterUser_DuplicateEmail_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("register dup=%d want 400 body=%s", status, env.raw)
 	}
-	// The "User already exists" *ValidationError surfaces with the centrally
-	// overridden envelope message (see WriteError); only the status is the stable
-	// wire contract here.
-	if env.Message != "Form validation error" {
-		t.Fatalf("message=%q want %q; body=%s", env.Message, "Form validation error", env.raw)
+	// The fieldless "User already exists" *ValidationError surfaces its own message
+	// on the wire, so a duplicate registration reports the real reason.
+	if env.Message != "User already exists" {
+		t.Fatalf("message=%q want %q; body=%s", env.Message, "User already exists", env.raw)
 	}
 }
 

@@ -2,10 +2,10 @@
 {"success":false,"message":"Form validation error","code":400,"errors":{"name":["Category name must be 3-64 characters"]}}
 
 == err:order-empty-changes POST /api/v1/category/order-category-list [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"Categories list is empty","code":400,"errors":{}}
 
 == err:account-order-empty POST /api/v1/account/order-account-list [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"Accounts list is empty","code":400,"errors":{}}
 
 == err:replace-folder-blank POST /api/v1/account/replace-folder [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"replaceId":["This value should not be blank."]}}
@@ -56,23 +56,23 @@
 {"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
 
 == err:show-folder-bad-uuid POST /api/v1/account/show-folder [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:order-account-bad-uuid POST /api/v1/account/order-account-list [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:order-folder-bad-uuid POST /api/v1/account/order-folder-list [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:archive-category-bad-uuid POST /api/v1/category/archive-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:unarchive-category-bad-uuid POST /api/v1/category/unarchive-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:delete-category-bad-uuid POST /api/v1/category/delete-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:order-category-bad-uuid POST /api/v1/category/order-category-list [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
