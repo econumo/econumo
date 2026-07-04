@@ -1,5 +1,5 @@
 // Request/result DTOs for the account+folder use cases (tier-1 Validate()).
-package account
+package model
 
 import (
 	"strings"
@@ -8,22 +8,13 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// OwnerResult is the embedded account owner: {id, avatar, name} (the minimal
-// owner shape — NOT the login user shape).
-type OwnerResult struct {
+// UserResult is the embedded {id, avatar, name} person shape shared by every
+// wire embed that refers to a user — an account/folder owner, a shared-access
+// grantee, a budget/connection member, or a transaction author.
+type UserResult struct {
 	Id     string `json:"id"`
 	Avatar string `json:"avatar"`
 	Name   string `json:"name"`
-}
-
-// CurrencyResult is the embedded account currency: {id, code, name, symbol,
-// fractionDigits} — identical to the currency module's CurrencyResult.
-type CurrencyResult struct {
-	Id             string `json:"id"`
-	Code           string `json:"code"`
-	Name           string `json:"name"`
-	Symbol         string `json:"symbol"`
-	FractionDigits int    `json:"fractionDigits"`
 }
 
 // AccountResult is one account in the API. balance is a normalized decimal
@@ -32,7 +23,7 @@ type CurrencyResult struct {
 // (or null). These wire shapes are frozen; see CLAUDE.md.
 type AccountResult struct {
 	Id           string         `json:"id"`
-	Owner        OwnerResult    `json:"owner"`
+	Owner        UserResult     `json:"owner"`
 	FolderId     *string        `json:"folderId"`
 	Name         string         `json:"name"`
 	Position     int            `json:"position"`
@@ -46,8 +37,8 @@ type AccountResult struct {
 // SharedAccess is one accounts_access grant on the account: the granted user
 // (id, avatar, name) + the role alias (admin/user/guest).
 type SharedAccess struct {
-	User OwnerResult `json:"user"`
-	Role string      `json:"role"`
+	User UserResult `json:"user"`
+	Role string     `json:"role"`
 }
 
 // CreateAccountRequest is the create-account body. balance defaults to 0; icon
@@ -132,18 +123,18 @@ type UpdateAccountResult struct {
 // falls back to amount. Field order is irrelevant on the wire (canonical
 // compare), but the SET of keys is frozen and must match exactly.
 type CorrectionResult struct {
-	Id                 string      `json:"id"`
-	Author             OwnerResult `json:"author"`
-	Type               string      `json:"type"`
-	AccountId          string      `json:"accountId"`
-	AccountRecipientId *string     `json:"accountRecipientId"`
-	Amount             string      `json:"amount"`
-	AmountRecipient    string      `json:"amountRecipient"`
-	CategoryId         *string     `json:"categoryId"`
-	Description        string      `json:"description"`
-	PayeeId            *string     `json:"payeeId"`
-	TagId              *string     `json:"tagId"`
-	Date               string      `json:"date"`
+	Id                 string     `json:"id"`
+	Author             UserResult `json:"author"`
+	Type               string     `json:"type"`
+	AccountId          string     `json:"accountId"`
+	AccountRecipientId *string    `json:"accountRecipientId"`
+	Amount             string     `json:"amount"`
+	AmountRecipient    string     `json:"amountRecipient"`
+	CategoryId         *string    `json:"categoryId"`
+	Description        string     `json:"description"`
+	PayeeId            *string    `json:"payeeId"`
+	TagId              *string    `json:"tagId"`
+	Date               string     `json:"date"`
 }
 
 // DeleteAccountRequest is the delete-account body (id NotBlank).
@@ -195,8 +186,8 @@ type OrderAccountListResult struct {
 	Items []AccountResult `json:"items"`
 }
 
-// FolderResult is one folder in the API: {id, name, position, isVisible(int 0/1)}.
-type FolderResult struct {
+// AccountFolderResult is one folder in the API: {id, name, position, isVisible(int 0/1)}.
+type AccountFolderResult struct {
 	Id        string `json:"id"`
 	Name      string `json:"name"`
 	Position  int    `json:"position"`
@@ -216,9 +207,9 @@ func (r CreateFolderRequest) Validate() error {
 	return nil
 }
 
-// CreateFolderResult is the create-folder response: {item: FolderResult}.
+// CreateFolderResult is the create-folder response: {item: AccountFolderResult}.
 type CreateFolderResult struct {
-	Item FolderResult `json:"item"`
+	Item AccountFolderResult `json:"item"`
 }
 
 // UpdateFolderRequest is the update-folder body (id, name NotBlank).
@@ -242,9 +233,9 @@ func (r UpdateFolderRequest) Validate() error {
 	return nil
 }
 
-// UpdateFolderResult is the update-folder response: {item: FolderResult}.
+// UpdateFolderResult is the update-folder response: {item: AccountFolderResult}.
 type UpdateFolderResult struct {
-	Item FolderResult `json:"item"`
+	Item AccountFolderResult `json:"item"`
 }
 
 // HideFolderRequest / ShowFolderRequest carry the folder id (NotBlank).
@@ -306,7 +297,7 @@ type ReplaceFolderResult struct{}
 
 // GetFolderListResult is the get-folder-list response: {items: [...]}.
 type GetFolderListResult struct {
-	Items []FolderResult `json:"items"`
+	Items []AccountFolderResult `json:"items"`
 }
 
 // FolderPositionChange is one {id, position} entry in an order-folder request.
@@ -330,5 +321,5 @@ func (r OrderFolderListRequest) Validate() error {
 
 // OrderFolderListResult is the order-folder-list response: {items: [...]}.
 type OrderFolderListResult struct {
-	Items []FolderResult `json:"items"`
+	Items []AccountFolderResult `json:"items"`
 }

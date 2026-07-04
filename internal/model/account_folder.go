@@ -1,7 +1,7 @@
 // Folder aggregate (folders group accounts). A folder belongs to a user, has a
 // position and a visibility flag; its account membership is loaded/persisted by
 // the repo rather than held on the entity.
-package account
+package model
 
 import (
 	"time"

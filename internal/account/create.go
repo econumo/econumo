@@ -6,6 +6,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -25,7 +26,7 @@ import (
 // non-zero, write a balance-correction transaction dated at the account's
 // creation time; mark the operation handled. Returns {item} only (no accounts
 // list).
-func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAccountRequest) (*CreateAccountResult, error) {
+func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.CreateAccountRequest) (*model.CreateAccountResult, error) {
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -46,8 +47,8 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 	balance := vo.NewDecimal(req.Balance.String())
 
 	var (
-		created    *Account
-		correction *CorrectionResult
+		created    *model.Account
+		correction *model.CorrectionResult
 	)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
@@ -76,7 +77,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 		}
 
 		now := s.clock.Now()
-		acct := NewAccount(id, userID, currencyID, name, icon, now)
+		acct := model.NewAccount(id, userID, currencyID, name, icon, now)
 		if serr := s.accounts.Save(ctx, acct); serr != nil {
 			return serr
 		}
@@ -118,7 +119,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 			// amountRecipient falls back to amount; accountRecipientId/categoryId/
 			// payeeId/tagId are null for a balance correction. author is filled in
 			// after the tx (needs a UserLookup read).
-			correction = &CorrectionResult{
+			correction = &model.CorrectionResult{
 				Id:                 corrID.String(),
 				Type:               typeAlias,
 				AccountId:          id.String(),
@@ -166,9 +167,9 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req CreateAcc
 		if oerr != nil {
 			return nil, oerr
 		}
-		correction.Author = OwnerResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
+		correction.Author = model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
 	}
-	return &CreateAccountResult{Item: item, Transaction: correction}, nil
+	return &model.CreateAccountResult{Item: item, Transaction: correction}, nil
 }
 
 // defaultFolderName is the folder auto-created for a user's very first account

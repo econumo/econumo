@@ -12,8 +12,8 @@ package server
 import (
 	"context"
 
-	account "github.com/econumo/econumo/internal/account"
 	category "github.com/econumo/econumo/internal/category"
+	"github.com/econumo/econumo/internal/model"
 	payee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tag "github.com/econumo/econumo/internal/tag"
@@ -24,7 +24,7 @@ import (
 // adapter uses.
 type transactionAccountResolverPort interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
-	AccountListForUser(ctx context.Context, userID vo.Id) ([]account.AccountResult, error)
+	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)
 }
 
 // TransactionAccountResolver adapts the account service to
@@ -57,7 +57,7 @@ func (a *TransactionAccountResolver) AccountListForUser(ctx context.Context, use
 // responses embed the caller's full account list, but features must not
 // import each other, so apptransaction declares its own AccountResult and
 // this adapter (which may import both) does the field-for-field conversion.
-func toTransactionAccountResults(accts []account.AccountResult) []apptransaction.AccountResult {
+func toTransactionAccountResults(accts []model.AccountResult) []apptransaction.AccountResult {
 	out := make([]apptransaction.AccountResult, len(accts))
 	for i, a := range accts {
 		shared := make([]apptransaction.AccountSharedAccess, len(a.SharedAccess))

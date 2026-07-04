@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/reqctx"
@@ -20,31 +21,6 @@ import (
 // "Balance adjustment" (not a translation key), frozen as the stored/returned
 // value.
 const correctionComment = "Balance adjustment"
-
-// CurrencyView is the embeddable currency shape the account result needs. The
-// currencyrepo.Lookup.GetByID returns it (display name already resolved).
-type CurrencyView struct {
-	ID             string
-	Code           string
-	Name           string
-	Symbol         string
-	FractionDigits int
-}
-
-// OwnerView is the minimal owner shape the account result embeds.
-type OwnerView struct {
-	ID     string
-	Name   string
-	Avatar string
-}
-
-// SharedAccessView is one accounts_access grant on an account: the granted
-// user's id + the role alias. The owner embed (name/avatar) is resolved by the
-// account service via UserLookup.
-type SharedAccessView struct {
-	UserID string
-	Role   string
-}
 
 // Service is the account+folder write-side use-case orchestrator. It owns the tx
 // boundary and builds the response-shaped *Result structs directly. The one
@@ -143,14 +119,14 @@ func wallClockIn(now time.Time, loc *time.Location) time.Time {
 // containing the account among the user's folders), per-user position, the
 // supplied balance, and an empty sharedAccess (until the connection module
 // lands). memberships maps folderID -> account ids (pass nil to load lazily).
-func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *Account, balance string, foldersSorted []*Folder, memberships map[string][]string, cache *accountEmbedCache) (AccountResult, error) {
+func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *model.Account, balance string, foldersSorted []*model.Folder, memberships map[string][]string, cache *accountEmbedCache) (model.AccountResult, error) {
 	ownerRes, err := s.resolveOwner(ctx, cache, acct.UserID.String())
 	if err != nil {
-		return AccountResult{}, err
+		return model.AccountResult{}, err
 	}
 	curRes, err := s.resolveCurrency(ctx, cache, acct.CurrencyID.String())
 	if err != nil {
-		return AccountResult{}, err
+		return model.AccountResult{}, err
 	}
 
 	// folderId = first folder (by position) that contains the account.
@@ -172,15 +148,15 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *Ac
 	// position from accounts_options (0 if no row).
 	pos, _, err := s.positions.GetPosition(ctx, acct.ID, userID)
 	if err != nil {
-		return AccountResult{}, err
+		return model.AccountResult{}, err
 	}
 
 	shared, err := s.sharedAccessFor(ctx, acct.ID, cache)
 	if err != nil {
-		return AccountResult{}, err
+		return model.AccountResult{}, err
 	}
 
-	return AccountResult{
+	return model.AccountResult{
 		Id:           acct.ID.String(),
 		Owner:        ownerRes,
 		FolderId:     folderID,
@@ -200,16 +176,16 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *Ac
 // lookup alone is two queries (user row + options). A nil cache disables
 // memoization (single-account callers like create/update pass nil).
 type accountEmbedCache struct {
-	owners     map[string]OwnerResult
-	currencies map[string]CurrencyResult
+	owners     map[string]model.UserResult
+	currencies map[string]model.CurrencyResult
 }
 
 func newAccountEmbedCache() *accountEmbedCache {
-	return &accountEmbedCache{owners: map[string]OwnerResult{}, currencies: map[string]CurrencyResult{}}
+	return &accountEmbedCache{owners: map[string]model.UserResult{}, currencies: map[string]model.CurrencyResult{}}
 }
 
 // resolveOwner returns the owner embed for a user id, via the cache when present.
-func (s *Service) resolveOwner(ctx context.Context, cache *accountEmbedCache, userID string) (OwnerResult, error) {
+func (s *Service) resolveOwner(ctx context.Context, cache *accountEmbedCache, userID string) (model.UserResult, error) {
 	if cache != nil {
 		if o, ok := cache.owners[userID]; ok {
 			return o, nil
@@ -217,9 +193,9 @@ func (s *Service) resolveOwner(ctx context.Context, cache *accountEmbedCache, us
 	}
 	owner, err := s.users.GetOwner(ctx, userID)
 	if err != nil {
-		return OwnerResult{}, err
+		return model.UserResult{}, err
 	}
-	res := OwnerResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
+	res := model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
 	if cache != nil {
 		cache.owners[userID] = res
 	}
@@ -227,7 +203,7 @@ func (s *Service) resolveOwner(ctx context.Context, cache *accountEmbedCache, us
 }
 
 // resolveCurrency returns the currency embed for a currency id, via the cache when present.
-func (s *Service) resolveCurrency(ctx context.Context, cache *accountEmbedCache, currencyID string) (CurrencyResult, error) {
+func (s *Service) resolveCurrency(ctx context.Context, cache *accountEmbedCache, currencyID string) (model.CurrencyResult, error) {
 	if cache != nil {
 		if c, ok := cache.currencies[currencyID]; ok {
 			return c, nil
@@ -235,9 +211,9 @@ func (s *Service) resolveCurrency(ctx context.Context, cache *accountEmbedCache,
 	}
 	cur, err := s.currency.GetByID(ctx, currencyID)
 	if err != nil {
-		return CurrencyResult{}, err
+		return model.CurrencyResult{}, err
 	}
-	res := CurrencyResult{Id: cur.ID, Code: cur.Code, Name: cur.Name, Symbol: cur.Symbol, FractionDigits: cur.FractionDigits}
+	res := model.CurrencyResult{Id: cur.ID, Code: cur.Code, Name: cur.Name, Symbol: cur.Symbol, FractionDigits: cur.FractionDigits}
 	if cache != nil {
 		cache.currencies[currencyID] = res
 	}
@@ -247,8 +223,8 @@ func (s *Service) resolveCurrency(ctx context.Context, cache *accountEmbedCache,
 // sharedAccessFor builds the account's sharedAccess[] embed: one entry per
 // accounts_access grant, with the granted user resolved (id/avatar/name). Always
 // returns a non-nil slice (empty when no connection module or no grants).
-func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *accountEmbedCache) ([]SharedAccess, error) {
-	out := []SharedAccess{}
+func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *accountEmbedCache) ([]model.SharedAccess, error) {
+	out := []model.SharedAccess{}
 	if s.shared == nil {
 		return out, nil
 	}
@@ -261,7 +237,7 @@ func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *a
 		if uerr != nil {
 			return nil, uerr
 		}
-		out = append(out, SharedAccess{User: u, Role: g.Role})
+		out = append(out, model.SharedAccess{User: u, Role: g.Role})
 	}
 	return out, nil
 }
@@ -269,7 +245,7 @@ func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *a
 // buildAccountList builds the AccountResult list for all the user's available
 // accounts (bulk balances + memberships loaded once). When reversed is true the
 // list is reversed (get-account-list reverses; order-account-list does not).
-func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed bool) ([]AccountResult, error) {
+func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed bool) ([]model.AccountResult, error) {
 	accts, err := s.accounts.ListAvailable(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -288,7 +264,7 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 	}
 
 	cache := newAccountEmbedCache()
-	items := make([]AccountResult, 0, len(accts))
+	items := make([]model.AccountResult, 0, len(accts))
 	for _, a := range accts {
 		bal := balances[a.ID.String()]
 		if bal == "" {
@@ -309,7 +285,7 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 }
 
 // sortedFolders returns the user's folders ordered by position (ascending).
-func (s *Service) sortedFolders(ctx context.Context, userID vo.Id) ([]*Folder, error) {
+func (s *Service) sortedFolders(ctx context.Context, userID vo.Id) ([]*model.Folder, error) {
 	folders, err := s.folders.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -350,12 +326,12 @@ func newIcon(v string) (string, error) {
 }
 
 // toFolderResult maps a Folder to its wire shape (isVisible int 0/1).
-func toFolderResult(f *Folder) FolderResult {
+func toFolderResult(f *model.Folder) model.AccountFolderResult {
 	vis := 0
 	if f.IsVisible {
 		vis = 1
 	}
-	return FolderResult{
+	return model.AccountFolderResult{
 		Id:        f.ID.String(),
 		Name:      f.Name,
 		Position:  int(f.Position),

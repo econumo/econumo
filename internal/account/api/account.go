@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	appaccount "github.com/econumo/econumo/internal/account"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/web/apidoc"
@@ -20,15 +20,15 @@ var _ = apidoc.JsonResponseError{}
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.CreateAccountRequest true "Create account request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.CreateAccountResult}
+// @Param       request body     model.CreateAccountRequest true "Create account request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateAccountResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/create-account [post]
 func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req appaccount.CreateAccountRequest) (*appaccount.CreateAccountResult, error) {
+	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.CreateAccountRequest) (*model.CreateAccountResult, error) {
 		reqctx.AddLogAttr(ctx, "account_id", req.Id)
 		return h.svc.CreateAccount(ctx, userID, req)
 	})
@@ -41,8 +41,8 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.UpdateAccountRequest true "Update account request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.UpdateAccountResult}
+// @Param       request body     model.UpdateAccountRequest true "Update account request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateAccountResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -59,8 +59,8 @@ func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.DeleteAccountRequest true "Delete account request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.DeleteAccountResult}
+// @Param       request body     model.DeleteAccountRequest true "Delete account request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteAccountResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException
@@ -76,7 +76,7 @@ func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 // @Description Returns all the user's available accounts (each with owner, currency, folder, position, balance) in reverse order.
 // @Tags        Account
 // @Produce     json
-// @Success     200 {object} apidoc.JsonResponseOk{data=appaccount.GetAccountListResult}
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.GetAccountListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
@@ -92,8 +92,8 @@ func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     appaccount.OrderAccountListRequest true "Order account list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=appaccount.OrderAccountListResult}
+// @Param       request body     model.OrderAccountListRequest true "Order account list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderAccountListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     500     {object} apidoc.JsonResponseException

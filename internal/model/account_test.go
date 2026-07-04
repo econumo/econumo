@@ -1,20 +1,9 @@
-package account
+package model
 
 import (
 	"testing"
 	"time"
-
-	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-func mustID(t *testing.T, s string) vo.Id {
-	t.Helper()
-	v, err := vo.ParseId(s)
-	if err != nil {
-		t.Fatalf("parse id %q: %v", s, err)
-	}
-	return v
-}
 
 var (
 	ta0 = time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
@@ -31,7 +20,7 @@ func TestType_Values(t *testing.T) {
 	if !TypeCash.Valid() || !TypeCreditCard.Valid() {
 		t.Fatal("cash/credit-card must be valid")
 	}
-	if Type(0).Valid() || Type(3).Valid() {
+	if AccountType(0).Valid() || AccountType(3).Valid() {
 		t.Fatal("0 and 3 must be invalid types")
 	}
 }

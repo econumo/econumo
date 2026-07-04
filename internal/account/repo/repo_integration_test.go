@@ -8,6 +8,7 @@ import (
 
 	domaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -47,9 +48,9 @@ func TestAccountRepo_SaveGetRoundTrip(t *testing.T) {
 	seedUser(t, f, userA, "A")
 
 	id := vo.MustParseId(acctCash)
-	acc := &domaccount.Account{
+	acc := &model.Account{
 		ID: id, UserID: vo.MustParseId(userA), CurrencyID: vo.MustParseId(usdID),
-		Name: "Wallet", Type: domaccount.TypeCash, Icon: "icon-wallet",
+		Name: "Wallet", Type: model.TypeCash, Icon: "icon-wallet",
 		CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	if err := repo.Save(ctx, acc); err != nil {
@@ -63,7 +64,7 @@ func TestAccountRepo_SaveGetRoundTrip(t *testing.T) {
 	if got.ID != id || got.UserID.String() != userA || got.CurrencyID.String() != usdID {
 		t.Errorf("ids mismatch: %+v", got)
 	}
-	if got.Name != "Wallet" || got.Type != domaccount.TypeCash || got.Icon != "icon-wallet" {
+	if got.Name != "Wallet" || got.Type != model.TypeCash || got.Icon != "icon-wallet" {
 		t.Errorf("fields mismatch: name=%q type=%d icon=%q", got.Name, got.Type, got.Icon)
 	}
 	if got.IsDeleted {

@@ -11,6 +11,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -64,7 +65,7 @@ func (r *FolderRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(
 func (r *FolderRepo) NextIdentity() vo.Id { return vo.NewId() }
 
 // GetByID loads a folder by id.
-func (r *FolderRepo) GetByID(ctx context.Context, id vo.Id) (*domaccount.Folder, error) {
+func (r *FolderRepo) GetByID(ctx context.Context, id vo.Id) (*model.Folder, error) {
 	row, err := r.q.GetFolder(ctx, r.db(ctx), id.String())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -76,12 +77,12 @@ func (r *FolderRepo) GetByID(ctx context.Context, id vo.Id) (*domaccount.Folder,
 }
 
 // ListByUser returns the user's folders.
-func (r *FolderRepo) ListByUser(ctx context.Context, userID vo.Id) ([]*domaccount.Folder, error) {
+func (r *FolderRepo) ListByUser(ctx context.Context, userID vo.Id) ([]*model.Folder, error) {
 	rows, err := r.q.ListFoldersByUser(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*domaccount.Folder, 0, len(rows))
+	out := make([]*model.Folder, 0, len(rows))
 	for _, row := range rows {
 		f, herr := hydrateFolder(row)
 		if herr != nil {
@@ -99,7 +100,7 @@ func (r *FolderRepo) CountByUser(ctx context.Context, userID vo.Id) (int, error)
 }
 
 // Save upserts a folder row.
-func (r *FolderRepo) Save(ctx context.Context, f *domaccount.Folder) error {
+func (r *FolderRepo) Save(ctx context.Context, f *model.Folder) error {
 	return r.q.UpsertFolder(ctx, r.db(ctx), upsertFolderP{
 		ID:        f.ID.String(),
 		UserID:    f.UserID.String(),
@@ -144,7 +145,7 @@ func (r *FolderRepo) RemoveAccount(ctx context.Context, folderID, accountID vo.I
 	return r.q.RemoveAccountFromFolder(ctx, r.db(ctx), removeMemberP{FolderID: folderID.String(), AccountID: accountID.String()})
 }
 
-func hydrateFolder(row folderRow) (*domaccount.Folder, error) {
+func hydrateFolder(row folderRow) (*model.Folder, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -153,7 +154,7 @@ func hydrateFolder(row folderRow) (*domaccount.Folder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &domaccount.Folder{
+	return &model.Folder{
 		ID: id, UserID: userID, Name: row.Name, Position: row.Position,
 		IsVisible: row.IsVisible, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil

@@ -6,19 +6,20 @@ import (
 	"context"
 	"sort"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateFolder creates a folder for the user. The name must be unique among the
 // user's folders; the position is last+1. Returns {item}.
-func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateFolderRequest) (*CreateFolderResult, error) {
+func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.CreateFolderRequest) (*model.CreateFolderResult, error) {
 	name, err := newFolderName(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	var created *Folder
+	var created *model.Folder
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		f, cerr := s.createFolderTx(ctx, userID, name)
 		if cerr != nil {
@@ -29,13 +30,13 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req CreateFold
 	}); err != nil {
 		return nil, err
 	}
-	return &CreateFolderResult{Item: toFolderResult(created)}, nil
+	return &model.CreateFolderResult{Item: toFolderResult(created)}, nil
 }
 
 // createFolderTx creates a folder for the user within the caller's tx: the name
 // must be unique among the user's folders and the position is last+1. Shared by
 // CreateFolder and the first-account default-folder path in CreateAccount.
-func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string) (*Folder, error) {
+func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string) (*model.Folder, error) {
 	folders, lerr := s.folders.ListByUser(ctx, userID)
 	if lerr != nil {
 		return nil, lerr
@@ -50,7 +51,7 @@ func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string)
 		}
 	}
 	now := s.clock.Now()
-	f := NewFolder(s.folders.NextIdentity(), userID, name, now)
+	f := model.NewFolder(s.folders.NextIdentity(), userID, name, now)
 	f.SetPosition(maxPos + 1)
 	if serr := s.folders.Save(ctx, f); serr != nil {
 		return nil, serr
@@ -60,7 +61,7 @@ func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string)
 
 // UpdateFolder renames a folder the user owns. The new name must be unique among
 // the user's other folders. Returns {item}.
-func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req UpdateFolderRequest) (*UpdateFolderResult, error) {
+func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req model.UpdateFolderRequest) (*model.UpdateFolderResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -70,7 +71,7 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req UpdateFold
 		return nil, err
 	}
 
-	var updated *Folder
+	var updated *model.Folder
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		f, gerr := s.folders.GetByID(ctx, id)
 		if gerr != nil {
@@ -97,23 +98,23 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req UpdateFold
 	}); err != nil {
 		return nil, err
 	}
-	return &UpdateFolderResult{Item: toFolderResult(updated)}, nil
+	return &model.UpdateFolderResult{Item: toFolderResult(updated)}, nil
 }
 
 // HideFolder marks a folder (and its accounts) hidden. Ownership required.
-func (s *Service) HideFolder(ctx context.Context, userID vo.Id, req HideFolderRequest) (*HideFolderResult, error) {
+func (s *Service) HideFolder(ctx context.Context, userID vo.Id, req model.HideFolderRequest) (*model.HideFolderResult, error) {
 	if err := s.toggleVisibility(ctx, userID, req.Id, false); err != nil {
 		return nil, err
 	}
-	return &HideFolderResult{}, nil
+	return &model.HideFolderResult{}, nil
 }
 
 // ShowFolder clears a folder's hidden flag. Ownership required.
-func (s *Service) ShowFolder(ctx context.Context, userID vo.Id, req ShowFolderRequest) (*ShowFolderResult, error) {
+func (s *Service) ShowFolder(ctx context.Context, userID vo.Id, req model.ShowFolderRequest) (*model.ShowFolderResult, error) {
 	if err := s.toggleVisibility(ctx, userID, req.Id, true); err != nil {
 		return nil, err
 	}
-	return &ShowFolderResult{}, nil
+	return &model.ShowFolderResult{}, nil
 }
 
 func (s *Service) toggleVisibility(ctx context.Context, userID vo.Id, rawID string, visible bool) error {
@@ -142,7 +143,7 @@ func (s *Service) toggleVisibility(ctx context.Context, userID vo.Id, rawID stri
 // ReplaceFolder moves all of a folder's accounts into replaceId, deletes the
 // folder, and re-numbers the remaining folders' positions (0..n by position).
 // Both folders must belong to the user. Returns {}.
-func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req ReplaceFolderRequest) (*ReplaceFolderResult, error) {
+func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req model.ReplaceFolderRequest) (*model.ReplaceFolderResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -193,7 +194,7 @@ func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req ReplaceFo
 	}); err != nil {
 		return nil, err
 	}
-	return &ReplaceFolderResult{}, nil
+	return &model.ReplaceFolderResult{}, nil
 }
 
 // resetFolderPositions renumbers the user's folders to 0..n-1 ordered by their
@@ -216,7 +217,7 @@ func (s *Service) resetFolderPositions(ctx context.Context, userID vo.Id) error 
 
 // OrderFolderList applies {id, position} changes to the user's folders, saving
 // only those that actually changed, then returns the full ordered list.
-func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req OrderFolderListRequest) (*OrderFolderListResult, error) {
+func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req model.OrderFolderListRequest) (*model.OrderFolderListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
 	for _, c := range req.Changes {
 		fid, err := vo.ParseId(c.Id)
@@ -226,7 +227,7 @@ func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req OrderFo
 		positions[fid.String()] = int16(c.Position)
 	}
 
-	var items []FolderResult
+	var items []model.AccountFolderResult
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		folders, lerr := s.folders.ListByUser(ctx, userID)
 		if lerr != nil {
@@ -247,7 +248,7 @@ func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req OrderFo
 			}
 		}
 		sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
-		items = make([]FolderResult, 0, len(folders))
+		items = make([]model.AccountFolderResult, 0, len(folders))
 		for _, f := range folders {
 			items = append(items, toFolderResult(f))
 		}
@@ -255,5 +256,5 @@ func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req OrderFo
 	}); err != nil {
 		return nil, err
 	}
-	return &OrderFolderListResult{Items: items}, nil
+	return &model.OrderFolderListResult{Items: items}, nil
 }

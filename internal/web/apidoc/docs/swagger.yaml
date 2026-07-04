@@ -1,251 +1,5 @@
 basePath: /
 definitions:
-  account.AccountPositionChange:
-    properties:
-      folderId:
-        type: string
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  account.AccountResult:
-    properties:
-      balance:
-        type: string
-      currency:
-        $ref: '#/definitions/account.CurrencyResult'
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      owner:
-        $ref: '#/definitions/account.OwnerResult'
-      position:
-        type: integer
-      sharedAccess:
-        items:
-          $ref: '#/definitions/account.SharedAccess'
-        type: array
-      type:
-        type: integer
-    type: object
-  account.CorrectionResult:
-    properties:
-      accountId:
-        type: string
-      accountRecipientId:
-        type: string
-      amount:
-        type: string
-      amountRecipient:
-        type: string
-      author:
-        $ref: '#/definitions/account.OwnerResult'
-      categoryId:
-        type: string
-      date:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payeeId:
-        type: string
-      tagId:
-        type: string
-      type:
-        type: string
-    type: object
-  account.CreateAccountRequest:
-    properties:
-      balance:
-        type: string
-      currencyId:
-        type: string
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  account.CreateAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.AccountResult'
-      transaction:
-        $ref: '#/definitions/account.CorrectionResult'
-    type: object
-  account.CreateFolderRequest:
-    properties:
-      name:
-        type: string
-    type: object
-  account.CreateFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.FolderResult'
-    type: object
-  account.CurrencyResult:
-    properties:
-      code:
-        type: string
-      fractionDigits:
-        type: integer
-      id:
-        type: string
-      name:
-        type: string
-      symbol:
-        type: string
-    type: object
-  account.DeleteAccountRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  account.DeleteAccountResult:
-    type: object
-  account.FolderPositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  account.FolderResult:
-    properties:
-      id:
-        type: string
-      isVisible:
-        type: integer
-      name:
-        type: string
-      position:
-        type: integer
-    type: object
-  account.GetAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.AccountResult'
-        type: array
-    type: object
-  account.GetFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.FolderResult'
-        type: array
-    type: object
-  account.HideFolderRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  account.HideFolderResult:
-    type: object
-  account.OrderAccountListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/account.AccountPositionChange'
-        type: array
-    type: object
-  account.OrderAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.AccountResult'
-        type: array
-    type: object
-  account.OrderFolderListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/account.FolderPositionChange'
-        type: array
-    type: object
-  account.OrderFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/account.FolderResult'
-        type: array
-    type: object
-  account.OwnerResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  account.ReplaceFolderRequest:
-    properties:
-      id:
-        type: string
-      replaceId:
-        type: string
-    type: object
-  account.ReplaceFolderResult:
-    type: object
-  account.SharedAccess:
-    properties:
-      role:
-        type: string
-      user:
-        $ref: '#/definitions/account.OwnerResult'
-    type: object
-  account.ShowFolderRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  account.ShowFolderResult:
-    type: object
-  account.UpdateAccountRequest:
-    properties:
-      balance:
-        type: string
-      currencyId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      updatedAt:
-        type: string
-    type: object
-  account.UpdateAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.AccountResult'
-      transaction:
-        $ref: '#/definitions/account.CorrectionResult'
-    type: object
-  account.UpdateFolderRequest:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  account.UpdateFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/account.FolderResult'
-    type: object
   apidoc.JsonResponseError:
     properties:
       code:
@@ -1010,10 +764,114 @@ definitions:
       name:
         type: string
     type: object
+  model.AccountFolderResult:
+    properties:
+      id:
+        type: string
+      isVisible:
+        type: integer
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.AccountPositionChange:
+    properties:
+      folderId:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.AccountResult:
+    properties:
+      balance:
+        type: string
+      currency:
+        $ref: '#/definitions/model.CurrencyResult'
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner:
+        $ref: '#/definitions/model.UserResult'
+      position:
+        type: integer
+      sharedAccess:
+        items:
+          $ref: '#/definitions/model.SharedAccess'
+        type: array
+      type:
+        type: integer
+    type: object
   model.CompleteOnboardingResult:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.CorrectionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountResult'
+      transaction:
+        $ref: '#/definitions/model.CorrectionResult'
+    type: object
+  model.CreateFolderRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  model.CreateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountFolderResult'
     type: object
   model.CurrencyRateResult:
     properties:
@@ -1058,6 +916,27 @@ definitions:
       reportPeriod:
         type: string
     type: object
+  model.DeleteAccountRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteAccountResult:
+    type: object
+  model.FolderPositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.GetAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+    type: object
   model.GetCurrencyListResult:
     properties:
       items:
@@ -1072,6 +951,13 @@ definitions:
           $ref: '#/definitions/model.CurrencyRateResult'
         type: array
     type: object
+  model.GetFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
   model.GetOptionListResult:
     properties:
       items:
@@ -1083,6 +969,13 @@ definitions:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.HideFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.HideFolderResult:
     type: object
   model.LoginRequest:
     properties:
@@ -1110,6 +1003,34 @@ definitions:
       value:
         type: string
     type: object
+  model.OrderAccountListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.AccountPositionChange'
+        type: array
+    type: object
+  model.OrderAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+    type: object
+  model.OrderFolderListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.FolderPositionChange'
+        type: array
+    type: object
+  model.OrderFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
   model.RegisterRequest:
     properties:
       email:
@@ -1126,6 +1047,15 @@ definitions:
     type: object
   model.RemindPasswordResult:
     type: object
+  model.ReplaceFolderRequest:
+    properties:
+      id:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  model.ReplaceFolderResult:
+    type: object
   model.ResetPasswordRequest:
     properties:
       code:
@@ -1136,6 +1066,42 @@ definitions:
         type: string
     type: object
   model.ResetPasswordResult:
+    type: object
+  model.SharedAccess:
+    properties:
+      role:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResult'
+    type: object
+  model.ShowFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ShowFolderResult:
+    type: object
+  model.UpdateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.UpdateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountResult'
+      transaction:
+        $ref: '#/definitions/model.CorrectionResult'
     type: object
   model.UpdateActiveBudgetRequest:
     properties:
@@ -1156,6 +1122,18 @@ definitions:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateFolderRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountFolderResult'
     type: object
   model.UpdateNameRequest:
     properties:
@@ -1185,6 +1163,15 @@ definitions:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UserResult:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
     type: object
   payee.ArchivePayeeRequest:
     properties:
@@ -1577,7 +1564,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.CreateAccountRequest'
+          $ref: '#/definitions/model.CreateAccountRequest'
       produces:
       - application/json
       responses:
@@ -1588,7 +1575,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.CreateAccountResult'
+                  $ref: '#/definitions/model.CreateAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -1619,7 +1606,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.CreateFolderRequest'
+          $ref: '#/definitions/model.CreateFolderRequest'
       produces:
       - application/json
       responses:
@@ -1630,7 +1617,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.CreateFolderResult'
+                  $ref: '#/definitions/model.CreateFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1660,7 +1647,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.DeleteAccountRequest'
+          $ref: '#/definitions/model.DeleteAccountRequest'
       produces:
       - application/json
       responses:
@@ -1671,7 +1658,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.DeleteAccountResult'
+                  $ref: '#/definitions/model.DeleteAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -1704,7 +1691,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.GetAccountListResult'
+                  $ref: '#/definitions/model.GetAccountListResult'
               type: object
         "401":
           description: Unauthorized
@@ -1732,7 +1719,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.GetFolderListResult'
+                  $ref: '#/definitions/model.GetFolderListResult'
               type: object
         "401":
           description: Unauthorized
@@ -1758,7 +1745,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.HideFolderRequest'
+          $ref: '#/definitions/model.HideFolderRequest'
       produces:
       - application/json
       responses:
@@ -1769,7 +1756,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.HideFolderResult'
+                  $ref: '#/definitions/model.HideFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1800,7 +1787,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.OrderAccountListRequest'
+          $ref: '#/definitions/model.OrderAccountListRequest'
       produces:
       - application/json
       responses:
@@ -1811,7 +1798,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.OrderAccountListResult'
+                  $ref: '#/definitions/model.OrderAccountListResult'
               type: object
         "400":
           description: Bad Request
@@ -1842,7 +1829,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.OrderFolderListRequest'
+          $ref: '#/definitions/model.OrderFolderListRequest'
       produces:
       - application/json
       responses:
@@ -1853,7 +1840,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.OrderFolderListResult'
+                  $ref: '#/definitions/model.OrderFolderListResult'
               type: object
         "400":
           description: Bad Request
@@ -1884,7 +1871,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.ReplaceFolderRequest'
+          $ref: '#/definitions/model.ReplaceFolderRequest'
       produces:
       - application/json
       responses:
@@ -1895,7 +1882,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.ReplaceFolderResult'
+                  $ref: '#/definitions/model.ReplaceFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1925,7 +1912,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.ShowFolderRequest'
+          $ref: '#/definitions/model.ShowFolderRequest'
       produces:
       - application/json
       responses:
@@ -1936,7 +1923,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.ShowFolderResult'
+                  $ref: '#/definitions/model.ShowFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -1967,7 +1954,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.UpdateAccountRequest'
+          $ref: '#/definitions/model.UpdateAccountRequest'
       produces:
       - application/json
       responses:
@@ -1978,7 +1965,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.UpdateAccountResult'
+                  $ref: '#/definitions/model.UpdateAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -2008,7 +1995,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/account.UpdateFolderRequest'
+          $ref: '#/definitions/model.UpdateFolderRequest'
       produces:
       - application/json
       responses:
@@ -2019,7 +2006,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/account.UpdateFolderResult'
+                  $ref: '#/definitions/model.UpdateFolderResult'
               type: object
         "400":
           description: Bad Request

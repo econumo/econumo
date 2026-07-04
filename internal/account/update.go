@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -15,7 +16,7 @@ import (
 // balance. If the current computed balance differs from the requested one, it
 // writes a correction transaction of (actualBalance - requestedBalance) dated at
 // the request's updatedAt, and returns it; otherwise transaction is null.
-func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAccountRequest) (*UpdateAccountResult, error) {
+func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.UpdateAccountRequest) (*model.UpdateAccountResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -44,8 +45,8 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 	requested := vo.NewDecimal(req.Balance.String())
 
 	var (
-		updated    *Account
-		correction *CorrectionResult
+		updated    *model.Account
+		correction *model.CorrectionResult
 	)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		acct, gerr := s.accounts.GetByID(ctx, id)
@@ -102,7 +103,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 			// amountRecipient falls back to amount when null; accountRecipientId/
 			// categoryId/payeeId/tagId are null for a balance correction. author is
 			// filled in after the tx (needs a UserLookup read).
-			correction = &CorrectionResult{
+			correction = &model.CorrectionResult{
 				Id:                 corrID.String(),
 				Type:               typeAlias,
 				AccountId:          id.String(),
@@ -144,7 +145,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req UpdateAcc
 		if oerr != nil {
 			return nil, oerr
 		}
-		correction.Author = OwnerResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
+		correction.Author = model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name}
 	}
-	return &UpdateAccountResult{Item: item, Transaction: correction}, nil
+	return &model.UpdateAccountResult{Item: item, Transaction: correction}, nil
 }

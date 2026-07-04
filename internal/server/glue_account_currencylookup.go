@@ -5,6 +5,7 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	"github.com/econumo/econumo/internal/model"
 )
 
 // AccountCurrencyLookup adapts currencyrepo.Lookup to account.CurrencyLookup.
@@ -23,12 +24,12 @@ func NewAccountCurrencyLookup(inner *currencyrepo.Lookup) *AccountCurrencyLookup
 }
 
 // GetByID resolves a currency for the account-result embed.
-func (l *AccountCurrencyLookup) GetByID(ctx context.Context, id string) (appaccount.CurrencyView, error) {
+func (l *AccountCurrencyLookup) GetByID(ctx context.Context, id string) (model.CurrencyView, error) {
 	v, err := l.inner.GetByID(ctx, id)
 	if err != nil {
-		return appaccount.CurrencyView{}, err
+		return model.CurrencyView{}, err
 	}
-	return appaccount.CurrencyView{
+	return model.CurrencyView{
 		ID:             v.ID,
 		Code:           v.Code,
 		Name:           v.Name,
