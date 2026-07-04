@@ -20,6 +20,12 @@ import { RouterPage } from '@/app/router-pages'
 import type { AccountDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
 import { SettingsShell } from '@/features/settings/SettingsShell'
+import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
+import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
+import type { ShareEntry } from '@/features/connections/shared'
+import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
+import { useConnections, useRevokeAccountAccess, useSetAccountAccess } from '@/features/connections/queries'
+import { useUserData } from '@/features/user/queries'
 import {
   useAccounts,
   useFolders,
@@ -34,7 +40,15 @@ import {
 } from './queries'
 import { bucketsFromAccounts, moveAccount, buildAccountChanges } from './accountOrdering'
 
-function AccountRow({ account, onMenu }: { account: AccountDto; onMenu: (action: 'edit' | 'delete' | 'view') => void }) {
+function AccountRow({
+  account,
+  showAccess,
+  onMenu,
+}: {
+  account: AccountDto
+  showAccess: boolean
+  onMenu: (action: 'edit' | 'delete' | 'view' | 'access') => void
+}) {
   const { t } = useTranslation()
   const isCompact = useIsCompact()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: account.id })
@@ -57,6 +71,14 @@ function AccountRow({ account, onMenu }: { account: AccountDto; onMenu: (action:
           {account.name}
         </span>
       </button>
+      {account.sharedAccess.length > 0 ? (
+        <span className="flex items-center gap-0.5" data-testid={`shared-avatars-${account.name}`}>
+          <img src={`${account.owner.avatar}?s=30`} alt={account.owner.name} className="size-4 rounded-full" />
+          {account.sharedAccess.map((entry) => (
+            <img key={entry.user.id} src={`${entry.user.avatar}?s=30`} alt={entry.user.name} className="size-4 rounded-full" />
+          ))}
+        </span>
+      ) : null}
       <span className="text-xs text-muted-foreground">{moneyFormat(account.balance, account.currency)}</span>
       {!isCompact ? (
         <DropdownMenu>
@@ -67,6 +89,11 @@ function AccountRow({ account, onMenu }: { account: AccountDto; onMenu: (action:
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => onMenu('edit')}>{t('elements.button.edit.label')}</DropdownMenuItem>
+            {showAccess ? (
+              <DropdownMenuItem onSelect={() => onMenu('access')}>
+                {t('pages.settings.accounts.list_actions.access')}
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem variant="destructive" onSelect={() => onMenu('delete')}>
               {t('elements.button.delete.label')}
             </DropdownMenuItem>
@@ -135,7 +162,11 @@ export function AccountsSettingsPage() {
   const { t } = useTranslation()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
+  const { data: user } = useUserData()
+  const { data: connections = [] } = useConnections()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const setAccountAccess = useSetAccountAccess()
+  const revokeAccountAccess = useRevokeAccountAccess()
 
   const createFolder = useCreateFolder()
   const updateFolder = useUpdateFolder()
@@ -151,6 +182,11 @@ export function AccountsSettingsPage() {
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<FolderDto | null>(null)
   const [deleteAccountTarget, setDeleteAccountTarget] = useState<AccountDto | null>(null)
   const [previewAccount, setPreviewAccount] = useState<AccountDto | null>(null)
+  const [accessAccountId, setAccessAccountId] = useState<string | null>(null)
+  const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
+
+  // read the live cache copy so optimistic grant/revoke updates show immediately
+  const accessAccount = accessAccountId ? accounts.find((a) => a.id === accessAccountId) ?? null : null
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -236,11 +272,14 @@ export function AccountsSettingsPage() {
                   <AccountRow
                     key={account.id}
                     account={account}
+                    showAccess={user ? hasAccountAdminAccess(account, user.id) : false}
                     onMenu={(action) => {
                       if (action === 'edit') {
                         openAccountModal({ account })
                       } else if (action === 'delete') {
                         setDeleteAccountTarget(account)
+                      } else if (action === 'access') {
+                        setAccessAccountId(account.id)
                       } else {
                         setPreviewAccount(account)
                       }
@@ -251,6 +290,39 @@ export function AccountsSettingsPage() {
           ))}
         </div>
       </DndContext>
+
+      <ShareAccessDialog
+        open={accessAccount !== null && levelEntry === null}
+        title={accessAccount?.name ?? ''}
+        kind="accounts"
+        entries={accessAccount && user ? buildShareEntries(connections, accessAccount.sharedAccess, user.id, accessAccount.owner.id) : []}
+        onPick={(entry) => {
+          if (entry.role !== 'owner') {
+            setLevelEntry(entry)
+          }
+        }}
+        onClose={() => setAccessAccountId(null)}
+      />
+
+      <AccessLevelDialog
+        open={levelEntry !== null}
+        kind="accounts"
+        user={levelEntry?.user ?? null}
+        role={levelEntry?.role ?? null}
+        onSelect={(role) => {
+          if (levelEntry && accessAccountId) {
+            setAccountAccess.mutate({ accountId: accessAccountId, userId: levelEntry.user.id, role })
+          }
+          setLevelEntry(null)
+        }}
+        onRevoke={() => {
+          if (levelEntry && accessAccountId) {
+            revokeAccountAccess.mutate({ accountId: accessAccountId, userId: levelEntry.user.id })
+          }
+          setLevelEntry(null)
+        }}
+        onClose={() => setLevelEntry(null)}
+      />
 
       <PromptDialog
         open={createOpen}

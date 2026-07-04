@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureFolders } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts as fixtureAccountsForAccess, fixtureFolders } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { AccountsSettingsPage } from './AccountsSettingsPage'
 
@@ -155,4 +155,43 @@ it('account delete confirm posts and removes; edit opens the account modal', asy
   await user.click(screen.getByRole('button', { name: 'account actions Bank' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   expect(useUiStore.getState().accountModal?.account?.id).toBe('a2')
+})
+
+it('access control: shared avatars, grant and revoke through the dialogs', async () => {
+  const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+  const sharedAccounts = [
+    { ...fixtureAccountsForAccess[0], sharedAccess: [{ user: partner, role: 'user' }] },
+    ...fixtureAccountsForAccess.slice(1),
+  ]
+  let granted: unknown
+  let revoked: unknown
+  server.use(
+    ...coreHandlers({
+      accounts: sharedAccounts,
+      connections: [{ user: partner, sharedAccounts: [] }],
+    }),
+    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+      granted = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/connection/revoke-account-access', async ({ request }) => {
+      revoked = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  expect(screen.getByTestId('shared-avatars-Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'account actions Cash' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Access control' }))
+  await user.click(await screen.findByRole('button', { name: /Partner/ }))
+  await user.click(await screen.findByRole('button', { name: 'Full control' }))
+  await waitFor(() => expect(granted).toEqual({ accountId: 'a1', userId: 'u2', role: 'admin' }))
+
+  // the optimistic cache update relabels the row; revoke through the same path
+  await user.click(await screen.findByRole('button', { name: /Partner/ }))
+  await user.click(await screen.findByRole('button', { name: 'Revoke access' }))
+  await waitFor(() => expect(revoked).toEqual({ accountId: 'a1', userId: 'u2' }))
 })

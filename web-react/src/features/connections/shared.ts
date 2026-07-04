@@ -1,5 +1,6 @@
 import type { AccountDto, AccountRole } from '@/api/dto/account'
 import type { BudgetMetaDto } from '@/api/dto/budget'
+import type { ConnectionDto } from '@/api/dto/connection'
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 
@@ -56,6 +57,32 @@ export function removeAccountAccess(accounts: AccountDto[], accountId: Id, userI
   return accounts.map((account) =>
     account.id === accountId ? { ...account, sharedAccess: account.sharedAccess.filter((a) => a.user.id !== userId) } : account,
   )
+}
+
+export interface ShareEntry {
+  user: UserDto
+  role: string | null
+  /** budgets only; accounts have no accept step */
+  isAccepted?: boolean
+}
+
+// Vue seeds every connection user (owner role for the item owner, else none),
+// then overlays the item's access grants; the current user never lists themselves.
+export function buildShareEntries(
+  connections: ConnectionDto[],
+  access: { user: UserDto; role: string; isAccepted?: 0 | 1 }[],
+  meId: Id,
+  ownerUserId: Id,
+): ShareEntry[] {
+  return connections
+    .filter((connection) => connection.user.id !== meId)
+    .map((connection) => {
+      const entry = access.find((a) => a.user.id === connection.user.id)
+      if (entry) {
+        return { user: connection.user, role: entry.role, isAccepted: entry.isAccepted === undefined ? undefined : entry.isAccepted === 1 }
+      }
+      return { user: connection.user, role: connection.user.id === ownerUserId ? 'owner' : null, isAccepted: undefined }
+    })
 }
 
 export function hasAccountAdminAccess(account: AccountDto, meId: Id): boolean {
