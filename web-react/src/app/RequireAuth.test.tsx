@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { render, screen } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { RequireAuth } from './RequireAuth'
@@ -16,7 +17,13 @@ function renderAt(path: string) {
     ],
     { initialEntries: [path] },
   )
-  render(<RouterProvider router={router} />)
+  // StrictMode double-renders, like the real app entry — it caught a
+  // render-phase token purge losing the ?reason=expired redirect.
+  render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>,
+  )
   return router
 }
 
