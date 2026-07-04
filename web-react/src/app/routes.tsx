@@ -16,6 +16,7 @@ import { CategoriesPage } from '@/features/classifications/CategoriesPage'
 import { PayeesPage } from '@/features/classifications/PayeesPage'
 import { TagsPage } from '@/features/classifications/TagsPage'
 import { BudgetsPage } from '@/features/budgets/BudgetsPage'
+import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
 
 // Pages land here as Plans 2-6 build them; until then guarded paths show the empty shell.
@@ -48,7 +49,7 @@ export function createRouter() {
             { path: '/settings/categories', element: <CategoriesPage /> },
             { path: '/settings/payees', element: <PayeesPage /> },
             { path: '/settings/tags', element: <TagsPage /> },
-            { path: '/settings/connections', element: <EmptyPage /> },
+            { path: '/settings/connections', element: <ConnectionsPage /> },
             { path: '/settings/budgets', element: <BudgetsPage /> },
           ],
         },
