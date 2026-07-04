@@ -35,16 +35,16 @@ func NewBudgetUserLookup(users budgetUserRepo, clock port.Clock) *BudgetUserLook
 }
 
 // GetOwner resolves the embed (id, name, avatar).
-func (l *BudgetUserLookup) GetOwner(ctx context.Context, userID string) (appbudget.OwnerView, error) {
+func (l *BudgetUserLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
-		return appbudget.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
 	h, err := l.users.GetHeaderByID(ctx, id)
 	if err != nil {
-		return appbudget.OwnerView{}, err
+		return model.OwnerView{}, err
 	}
-	return appbudget.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
 }
 
 // CurrencyCode returns the user's default currency code (the currency option).

@@ -7,12 +7,13 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UserLookup resolves a budget participant's id/name/avatar + their currency code.
 type UserLookup interface {
-	GetOwner(ctx context.Context, userID string) (OwnerView, error)
+	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
 	// CurrencyCode returns the user's default currency code (for createBudget when
 	// no currencyId is supplied).
 	CurrencyCode(ctx context.Context, userID string) (string, error)
@@ -22,7 +23,7 @@ type UserLookup interface {
 
 // AccountLookup resolves accounts owned by the budget participants + ownership.
 type AccountLookup interface {
-	AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]AccountView, error)
+	AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]model.AccountView, error)
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 }
 
@@ -36,22 +37,22 @@ type CurrencyLookup interface {
 // transaction list. Categories include both income and expense; the builder
 // filters.
 type MetadataLookup interface {
-	CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]CategoryMeta, error)
-	TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]TagMeta, error)
-	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]PayeeMeta, error)
+	CategoriesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.CategoryMeta, error)
+	TagsByOwners(ctx context.Context, userIDs []vo.Id) ([]model.TagMeta, error)
+	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.PayeeMeta, error)
 }
 
 // Convertor is the currency convertor port (internal/server's BudgetConvertor
 // adapts currency.Convertor to it).
 type Convertor interface {
-	BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]ConvertItem) (map[string]vo.DecimalNumber, error)
+	BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]model.ConvertItem) (map[string]vo.DecimalNumber, error)
 }
 
 // AverageRateLookup resolves period-average rates for the financial summary's
 // currencyRates block (internal/server's BudgetAverageRateLookup adapts
 // currency.RateProvider to it).
 type AverageRateLookup interface {
-	AverageRates(ctx context.Context, start, end time.Time) ([]FullRate, error)
+	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
 	// latest-rate month <= end, or the requested period when no rate exists).
 	// The currencyRates block reports THIS period.

@@ -1,7 +1,9 @@
-// This file holds the ElementType/UserRole value objects. Names
+// This file holds the ElementType/BudgetRole value objects. BudgetRole is a
+// distinct type from the connection feature's Role (which lacks a synthetic
+// owner value) — same alias strings, different Go type. Names
 // (budget/folder/envelope) reuse the generic 3-64 rule, so they are plain
 // validated strings via the shared name helper rather than dedicated types.
-package budget
+package model
 
 import "github.com/econumo/econumo/internal/shared/errs"
 
@@ -38,29 +40,29 @@ func (t ElementType) Alias() string {
 
 func (t ElementType) Int16() int16 { return int16(t) }
 
-// UserRole is a budget participant's role: owner=-1, admin=0, user=1, guest=2.
+// BudgetRole is a budget participant's role: owner=-1, admin=0, user=1, guest=2.
 // owner is synthetic — never stored (only admin/user/guest are persisted); the
 // meta builder stamps the budget's owner with it.
-type UserRole int16
+type BudgetRole int16
 
 const (
-	RoleOwner UserRole = -1
-	RoleAdmin UserRole = 0
-	RoleUser  UserRole = 1
-	RoleGuest UserRole = 2
+	BudgetRoleOwner BudgetRole = -1
+	BudgetRoleAdmin BudgetRole = 0
+	BudgetRoleUser  BudgetRole = 1
+	BudgetRoleGuest BudgetRole = 2
 )
 
 // roleAliases maps the four roles to their wire aliases. Stored roles are only
 // admin/user/guest; owner is presentation-only.
-var roleAliasByValue = map[UserRole]string{
-	RoleOwner: "owner", RoleAdmin: "admin", RoleUser: "user", RoleGuest: "guest",
+var roleAliasByValue = map[BudgetRole]string{
+	BudgetRoleOwner: "owner", BudgetRoleAdmin: "admin", BudgetRoleUser: "user", BudgetRoleGuest: "guest",
 }
 
-// RoleFromAlias parses a role alias (admin/user/guest; owner is not a valid
+// BudgetRoleFromAlias parses a role alias (admin/user/guest; owner is not a valid
 // input role).
-func RoleFromAlias(alias string) (UserRole, error) {
+func BudgetRoleFromAlias(alias string) (BudgetRole, error) {
 	for v, a := range roleAliasByValue {
-		if v == RoleOwner {
+		if v == BudgetRoleOwner {
 			continue
 		}
 		if a == alias {
@@ -73,9 +75,9 @@ func RoleFromAlias(alias string) (UserRole, error) {
 }
 
 // Alias returns the wire alias for the role.
-func (r UserRole) Alias() string { return roleAliasByValue[r] }
+func (r BudgetRole) Alias() string { return roleAliasByValue[r] }
 
-func (r UserRole) Int16() int16 { return int16(r) }
+func (r BudgetRole) Int16() int16 { return int16(r) }
 
 // ValidateName enforces the generic 3-64 char rule shared by budget, folder, and
 // envelope names. label personalizes the error ("Budget"/"Folder"/"Envelope").

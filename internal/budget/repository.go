@@ -4,20 +4,21 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// BudgetStore is the Budget aggregate root's own persistence surface:
+// BudgetStore is the model.Budget aggregate root's own persistence surface:
 // identity, lookup/listing, the write/delete, and the excluded-accounts join
 // table. Consumed by loadAggregate (usecase.go), CreateBudget (create.go),
 // UpdateBudget/DeleteBudget/ResetBudget (crud.go), toggleAccount
 // (accounts.go), and GetBudgetList (read.go). A missing budget returns an
 // *errs.NotFoundError.
 type BudgetStore interface {
-	GetByID(ctx context.Context, id vo.Id) (*Budget, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Budget, error)
 	// ListForUser returns budgets the user owns or has (any) access to.
-	ListForUser(ctx context.Context, userID vo.Id) ([]*Budget, error)
-	Save(ctx context.Context, b *Budget) error
+	ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, error)
+	Save(ctx context.Context, b *model.Budget) error
 	Delete(ctx context.Context, id vo.Id) error
 
 	ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
@@ -32,9 +33,9 @@ type BudgetStore interface {
 type AccessStore interface {
 	NextIdentity() vo.Id
 
-	ListAccess(ctx context.Context, budgetID vo.Id) ([]*BudgetAccess, error)
-	GetAccess(ctx context.Context, budgetID, userID vo.Id) (*BudgetAccess, error)
-	SaveAccess(ctx context.Context, a *BudgetAccess) error
+	ListAccess(ctx context.Context, budgetID vo.Id) ([]*model.BudgetAccess, error)
+	GetAccess(ctx context.Context, budgetID, userID vo.Id) (*model.BudgetAccess, error)
+	SaveAccess(ctx context.Context, a *model.BudgetAccess) error
 	DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error
 }
 
@@ -43,9 +44,9 @@ type AccessStore interface {
 // OrderFolderList (folders.go). Folder ids are always client-supplied, so
 // there is no NextIdentity here.
 type FolderStore interface {
-	ListFolders(ctx context.Context, budgetID vo.Id) ([]*BudgetFolder, error)
-	GetFolder(ctx context.Context, id vo.Id) (*BudgetFolder, error)
-	SaveFolder(ctx context.Context, f *BudgetFolder) error
+	ListFolders(ctx context.Context, budgetID vo.Id) ([]*model.BudgetFolder, error)
+	GetFolder(ctx context.Context, id vo.Id) (*model.BudgetFolder, error)
+	SaveFolder(ctx context.Context, f *model.BudgetFolder) error
 	DeleteFolder(ctx context.Context, id vo.Id) error
 }
 
@@ -55,9 +56,9 @@ type FolderStore interface {
 // restoreElementsOrder (move.go). Envelope ids are always client-supplied, so
 // there is no NextIdentity here.
 type EnvelopeStore interface {
-	ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*BudgetEnvelope, error)
-	GetEnvelope(ctx context.Context, id vo.Id) (*BudgetEnvelope, error)
-	SaveEnvelope(ctx context.Context, e *BudgetEnvelope) error
+	ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*model.BudgetEnvelope, error)
+	GetEnvelope(ctx context.Context, id vo.Id) (*model.BudgetEnvelope, error)
+	SaveEnvelope(ctx context.Context, e *model.BudgetEnvelope) error
 	DeleteEnvelope(ctx context.Context, id vo.Id) error
 	// EnvelopeCategoryIDs returns the category ids assigned to an envelope.
 	EnvelopeCategoryIDs(ctx context.Context, envelopeID vo.Id) ([]vo.Id, error)
@@ -75,11 +76,11 @@ type EnvelopeStore interface {
 type ElementStore interface {
 	NextIdentity() vo.Id
 
-	ListElements(ctx context.Context, budgetID vo.Id) ([]*BudgetElement, error)
-	GetElement(ctx context.Context, id vo.Id) (*BudgetElement, error)
+	ListElements(ctx context.Context, budgetID vo.Id) ([]*model.BudgetElement, error)
+	GetElement(ctx context.Context, id vo.Id) (*model.BudgetElement, error)
 	// GetElementByExternal finds an element by its (budget, externalId) pair.
-	GetElementByExternal(ctx context.Context, budgetID, externalID vo.Id) (*BudgetElement, error)
-	SaveElement(ctx context.Context, e *BudgetElement) error
+	GetElementByExternal(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error)
+	SaveElement(ctx context.Context, e *model.BudgetElement) error
 	DeleteElement(ctx context.Context, id vo.Id) error
 }
 
@@ -90,9 +91,9 @@ type LimitStore interface {
 	NextIdentity() vo.Id
 
 	// ListLimitsForPeriod returns the limits for a budget's elements in a period.
-	ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*BudgetElementLimit, error)
-	GetLimit(ctx context.Context, elementID vo.Id, period time.Time) (*BudgetElementLimit, error)
-	SaveLimit(ctx context.Context, l *BudgetElementLimit) error
+	ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*model.BudgetElementLimit, error)
+	GetLimit(ctx context.Context, elementID vo.Id, period time.Time) (*model.BudgetElementLimit, error)
+	SaveLimit(ctx context.Context, l *model.BudgetElementLimit) error
 	DeleteLimit(ctx context.Context, id vo.Id) error
 	// DeleteLimitsByBudget removes every limit of every element of a budget (reset).
 	DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error

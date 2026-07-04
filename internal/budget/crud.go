@@ -4,23 +4,24 @@ import (
 	"context"
 	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UpdateBudget updates a budget's name/currency/excluded-accounts and returns its
 // meta. Requires read access; a name change additionally requires update access.
-func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudgetRequest) (*UpdateBudgetResult, error) {
+func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateBudgetRequest) (*model.UpdateBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
-	if err := ValidateName("Budget", req.Name); err != nil {
+	if err := model.ValidateName("model.Budget", req.Name); err != nil {
 		return nil, err
 	}
 	curID, err := vo.ParseId(req.CurrencyId)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"currencyId": ""})
+		return nil, model.ValidateBlank(map[string]string{"currencyId": ""})
 	}
 
 	b, err := s.loadAggregate(ctx, budgetID)
@@ -46,7 +47,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudg
 		for _, raw := range req.ExcludedAccounts {
 			aid, perr := vo.ParseId(raw)
 			if perr != nil {
-				return validateBlank(map[string]string{"excludedAccounts": ""})
+				return model.ValidateBlank(map[string]string{"excludedAccounts": ""})
 			}
 			want[aid.String()] = true
 			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
@@ -73,14 +74,14 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req UpdateBudg
 	if err != nil {
 		return nil, err
 	}
-	return &UpdateBudgetResult{Item: meta}, nil
+	return &model.UpdateBudgetResult{Item: meta}, nil
 }
 
 // DeleteBudget deletes a budget (owner|admin). Children cascade via FKs.
-func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req DeleteBudgetRequest) (*DeleteBudgetResult, error) {
+func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.DeleteBudgetRequest) (*model.DeleteBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
@@ -94,18 +95,18 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req DeleteBudg
 	}); err != nil {
 		return nil, err
 	}
-	return &DeleteBudgetResult{}, nil
+	return &model.DeleteBudgetResult{}, nil
 }
 
 // ResetBudget clears all element limits and resets the start month (owner|admin).
-func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req ResetBudgetRequest) (*ResetBudgetResult, error) {
+func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.ResetBudgetRequest) (*model.ResetBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"id": ""})
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
 	startedAt, err := time.Parse(datetime.Layout, req.StartedAt)
 	if err != nil {
-		return nil, validateBlank(map[string]string{"startedAt": ""})
+		return nil, model.ValidateBlank(map[string]string{"startedAt": ""})
 	}
 	b, err := s.loadAggregate(ctx, budgetID)
 	if err != nil {
@@ -133,7 +134,7 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req ResetBudget
 	if err != nil {
 		return nil, err
 	}
-	return &ResetBudgetResult{Item: meta}, nil
+	return &model.ResetBudgetResult{Item: meta}, nil
 }
 
 // canReset = owner|admin (same as canDelete).

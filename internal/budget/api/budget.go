@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	appbudget "github.com/econumo/econumo/internal/budget"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 	"github.com/econumo/econumo/internal/web/httpx"
@@ -18,8 +18,8 @@ var _ = apidoc.JsonResponseError{}
 // @Tags     Budget
 // @Accept   json
 // @Produce  json
-// @Param    request body appbudget.CreateBudgetRequest true "Create budget"
-// @Success  200 {object} apidoc.JsonResponseOk{data=appbudget.CreateBudgetResult}
+// @Param    request body model.CreateBudgetRequest true "Create budget"
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.CreateBudgetResult}
 // @Failure  400 {object} apidoc.JsonResponseError
 // @Failure  401 {object} apidoc.JsonResponseUnauthorized
 // @Failure  500 {object} apidoc.JsonResponseException
@@ -35,8 +35,8 @@ func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
 // @Tags     Budget
 // @Accept   json
 // @Produce  json
-// @Param    request body appbudget.UpdateBudgetRequest true "Update budget"
-// @Success  200 {object} apidoc.JsonResponseOk{data=appbudget.UpdateBudgetResult}
+// @Param    request body model.UpdateBudgetRequest true "Update budget"
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.UpdateBudgetResult}
 // @Failure  400 {object} apidoc.JsonResponseError
 // @Security Bearer
 // @Router   /api/v1/budget/update-budget [post]
@@ -50,8 +50,8 @@ func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
 // @Tags     Budget
 // @Accept   json
 // @Produce  json
-// @Param    request body appbudget.DeleteBudgetRequest true "Delete budget"
-// @Success  200 {object} apidoc.JsonResponseOk{data=appbudget.DeleteBudgetResult}
+// @Param    request body model.DeleteBudgetRequest true "Delete budget"
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.DeleteBudgetResult}
 // @Security Bearer
 // @Router   /api/v1/budget/delete-budget [post]
 func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
@@ -64,8 +64,8 @@ func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
 // @Tags     Budget
 // @Accept   json
 // @Produce  json
-// @Param    request body appbudget.ResetBudgetRequest true "Reset budget"
-// @Success  200 {object} apidoc.JsonResponseOk{data=appbudget.ResetBudgetResult}
+// @Param    request body model.ResetBudgetRequest true "Reset budget"
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.ResetBudgetResult}
 // @Security Bearer
 // @Router   /api/v1/budget/reset-budget [post]
 func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +79,7 @@ func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    id    query string true  "Budget id"
 // @Param    date  query string false "Period date (Y-m-d)"
-// @Success  200 {object} apidoc.JsonResponseOk{data=appbudget.GetBudgetResult}
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetResult}
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget [get]
 func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +87,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	req := appbudget.GetBudgetRequest{Id: r.URL.Query().Get("id"), Date: r.URL.Query().Get("date")}
+	req := model.GetBudgetRequest{Id: r.URL.Query().Get("id"), Date: r.URL.Query().Get("date")}
 	res, err := h.svc.GetBudget(r.Context(), userID, req)
 	if err != nil {
 		httpx.WriteError(w, err, h.dev)
@@ -106,7 +106,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    categoryId  query string false "Category id"
 // @Param    tagId       query string false "Tag id"
 // @Param    envelopeId  query string false "Envelope id"
-// @Success  200 {object} apidoc.JsonResponseOk{data=appbudget.GetBudgetTransactionListResult}
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetTransactionListResult}
 // @Security Bearer
 // @Router   /api/v1/budget/get-transaction-list [get]
 func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +115,7 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	req := appbudget.GetTransactionListRequest{
+	req := model.BudgetTransactionListRequest{
 		BudgetId:    q.Get("budgetId"),
 		PeriodStart: q.Get("periodStart"),
 		CategoryId:  optQuery(q.Get("categoryId")),
@@ -142,7 +142,7 @@ func optQuery(v string) *string {
 // @Summary  List budgets
 // @Tags     Budget
 // @Produce  json
-// @Success  200 {object} apidoc.JsonResponseOk{data=appbudget.GetBudgetListResult}
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetListResult}
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget-list [get]
 func (h *Handlers) GetBudgetList(w http.ResponseWriter, r *http.Request) {

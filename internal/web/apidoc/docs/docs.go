@@ -827,7 +827,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.AcceptAccessRequest"
+                            "$ref": "#/definitions/model.AcceptAccessRequest"
                         }
                     }
                 ],
@@ -843,7 +843,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.AcceptAccessResult"
+                                            "$ref": "#/definitions/model.AcceptAccessResult"
                                         }
                                     }
                                 }
@@ -877,7 +877,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.ChangeElementCurrencyRequest"
+                            "$ref": "#/definitions/model.ChangeElementCurrencyRequest"
                         }
                     }
                 ],
@@ -893,7 +893,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.ChangeElementCurrencyResult"
+                                            "$ref": "#/definitions/model.ChangeElementCurrencyResult"
                                         }
                                     }
                                 }
@@ -927,7 +927,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.CreateBudgetRequest"
+                            "$ref": "#/definitions/model.CreateBudgetRequest"
                         }
                     }
                 ],
@@ -943,7 +943,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.CreateBudgetResult"
+                                            "$ref": "#/definitions/model.CreateBudgetResult"
                                         }
                                     }
                                 }
@@ -995,7 +995,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.CreateEnvelopeRequest"
+                            "$ref": "#/definitions/model.CreateEnvelopeRequest"
                         }
                     }
                 ],
@@ -1011,7 +1011,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.CreateEnvelopeResult"
+                                            "$ref": "#/definitions/model.CreateEnvelopeResult"
                                         }
                                     }
                                 }
@@ -1045,7 +1045,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.CreateBudgetFolderRequest"
+                            "$ref": "#/definitions/model.CreateBudgetFolderRequest"
                         }
                     }
                 ],
@@ -1061,7 +1061,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.CreateBudgetFolderResult"
+                                            "$ref": "#/definitions/model.CreateBudgetFolderResult"
                                         }
                                     }
                                 }
@@ -1095,7 +1095,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.DeclineAccessRequest"
+                            "$ref": "#/definitions/model.DeclineAccessRequest"
                         }
                     }
                 ],
@@ -1111,7 +1111,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.DeclineAccessResult"
+                                            "$ref": "#/definitions/model.DeclineAccessResult"
                                         }
                                     }
                                 }
@@ -1145,7 +1145,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.DeleteBudgetRequest"
+                            "$ref": "#/definitions/model.DeleteBudgetRequest"
                         }
                     }
                 ],
@@ -1161,7 +1161,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.DeleteBudgetResult"
+                                            "$ref": "#/definitions/model.DeleteBudgetResult"
                                         }
                                     }
                                 }
@@ -1195,7 +1195,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.DeleteEnvelopeRequest"
+                            "$ref": "#/definitions/model.DeleteEnvelopeRequest"
                         }
                     }
                 ],
@@ -1211,7 +1211,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.DeleteEnvelopeResult"
+                                            "$ref": "#/definitions/model.DeleteEnvelopeResult"
                                         }
                                     }
                                 }
@@ -1245,7 +1245,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.DeleteFolderRequest"
+                            "$ref": "#/definitions/model.DeleteFolderRequest"
                         }
                     }
                 ],
@@ -1261,7 +1261,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.DeleteFolderResult"
+                                            "$ref": "#/definitions/model.DeleteFolderResult"
                                         }
                                     }
                                 }
@@ -1295,7 +1295,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.ExcludeAccountRequest"
+                            "$ref": "#/definitions/model.ExcludeAccountRequest"
                         }
                     }
                 ],
@@ -1311,7 +1311,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.ExcludeAccountResult"
+                                            "$ref": "#/definitions/model.ExcludeAccountResult"
                                         }
                                     }
                                 }
@@ -1362,7 +1362,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.GetBudgetResult"
+                                            "$ref": "#/definitions/model.GetBudgetResult"
                                         }
                                     }
                                 }
@@ -1398,7 +1398,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.GetBudgetListResult"
+                                            "$ref": "#/definitions/model.GetBudgetListResult"
                                         }
                                     }
                                 }
@@ -1468,7 +1468,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.GetBudgetTransactionListResult"
+                                            "$ref": "#/definitions/model.GetBudgetTransactionListResult"
                                         }
                                     }
                                 }
@@ -1502,7 +1502,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.GrantAccessRequest"
+                            "$ref": "#/definitions/model.GrantAccessRequest"
                         }
                     }
                 ],
@@ -1518,7 +1518,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.GrantAccessResult"
+                                            "$ref": "#/definitions/model.GrantAccessResult"
                                         }
                                     }
                                 }
@@ -1552,7 +1552,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.IncludeAccountRequest"
+                            "$ref": "#/definitions/model.IncludeAccountRequest"
                         }
                     }
                 ],
@@ -1568,7 +1568,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.IncludeAccountResult"
+                                            "$ref": "#/definitions/model.IncludeAccountResult"
                                         }
                                     }
                                 }
@@ -1602,7 +1602,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.MoveElementListRequest"
+                            "$ref": "#/definitions/model.MoveElementListRequest"
                         }
                     }
                 ],
@@ -1618,7 +1618,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.MoveElementListResult"
+                                            "$ref": "#/definitions/model.MoveElementListResult"
                                         }
                                     }
                                 }
@@ -1652,7 +1652,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.OrderBudgetFolderListRequest"
+                            "$ref": "#/definitions/model.OrderBudgetFolderListRequest"
                         }
                     }
                 ],
@@ -1668,7 +1668,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.OrderBudgetFolderListResult"
+                                            "$ref": "#/definitions/model.OrderBudgetFolderListResult"
                                         }
                                     }
                                 }
@@ -1702,7 +1702,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.ResetBudgetRequest"
+                            "$ref": "#/definitions/model.ResetBudgetRequest"
                         }
                     }
                 ],
@@ -1718,7 +1718,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.ResetBudgetResult"
+                                            "$ref": "#/definitions/model.ResetBudgetResult"
                                         }
                                     }
                                 }
@@ -1752,7 +1752,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.RevokeAccessRequest"
+                            "$ref": "#/definitions/model.RevokeAccessRequest"
                         }
                     }
                 ],
@@ -1768,7 +1768,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.RevokeAccessResult"
+                                            "$ref": "#/definitions/model.RevokeAccessResult"
                                         }
                                     }
                                 }
@@ -1802,7 +1802,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.SetLimitRequest"
+                            "$ref": "#/definitions/model.SetLimitRequest"
                         }
                     }
                 ],
@@ -1818,7 +1818,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.SetLimitResult"
+                                            "$ref": "#/definitions/model.SetLimitResult"
                                         }
                                     }
                                 }
@@ -1852,7 +1852,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.UpdateBudgetRequest"
+                            "$ref": "#/definitions/model.UpdateBudgetRequest"
                         }
                     }
                 ],
@@ -1868,7 +1868,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.UpdateBudgetResult"
+                                            "$ref": "#/definitions/model.UpdateBudgetResult"
                                         }
                                     }
                                 }
@@ -1908,7 +1908,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.UpdateEnvelopeRequest"
+                            "$ref": "#/definitions/model.UpdateEnvelopeRequest"
                         }
                     }
                 ],
@@ -1924,7 +1924,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.UpdateEnvelopeResult"
+                                            "$ref": "#/definitions/model.UpdateEnvelopeResult"
                                         }
                                     }
                                 }
@@ -1958,7 +1958,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/budget.UpdateBudgetFolderRequest"
+                            "$ref": "#/definitions/model.UpdateBudgetFolderRequest"
                         }
                     }
                 ],
@@ -1974,7 +1974,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/budget.UpdateBudgetFolderResult"
+                                            "$ref": "#/definitions/model.UpdateBudgetFolderResult"
                                         }
                                     }
                                 }
@@ -5231,7 +5231,7 @@ const docTemplate = `{
                 }
             }
         },
-        "budget.AcceptAccessRequest": {
+        "model.AcceptAccessRequest": {
             "type": "object",
             "properties": {
                 "budgetId": {
@@ -5239,784 +5239,14 @@ const docTemplate = `{
                 }
             }
         },
-        "budget.AcceptAccessResult": {
+        "model.AcceptAccessResult": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/budget.MetaResult"
+                        "$ref": "#/definitions/model.MetaResult"
                     }
-                }
-            }
-        },
-        "budget.AccessResult": {
-            "type": "object",
-            "properties": {
-                "isAccepted": {
-                    "type": "integer"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/budget.UserResult"
-                }
-            }
-        },
-        "budget.AverageCurrencyRateResult": {
-            "type": "object",
-            "properties": {
-                "baseCurrencyId": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "periodEnd": {
-                    "type": "string"
-                },
-                "periodStart": {
-                    "type": "string"
-                },
-                "rate": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.BudgetResult": {
-            "type": "object",
-            "properties": {
-                "balances": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.CurrencyBalanceResult"
-                    }
-                },
-                "currencyRates": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.AverageCurrencyRateResult"
-                    }
-                },
-                "filters": {
-                    "$ref": "#/definitions/budget.FiltersResult"
-                },
-                "meta": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                },
-                "structure": {
-                    "$ref": "#/definitions/budget.StructureResult"
-                }
-            }
-        },
-        "budget.BudgetTransactionResult": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "string"
-                },
-                "author": {
-                    "$ref": "#/definitions/budget.UserResult"
-                },
-                "category": {
-                    "$ref": "#/definitions/budget.TxCategoryResult"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "payee": {
-                    "$ref": "#/definitions/budget.TxPayeeResult"
-                },
-                "spentAt": {
-                    "type": "string"
-                },
-                "tag": {
-                    "$ref": "#/definitions/budget.TxTagResult"
-                }
-            }
-        },
-        "budget.ChangeElementCurrencyRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "elementId": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.ChangeElementCurrencyResult": {
-            "type": "object"
-        },
-        "budget.ChildElementResult": {
-            "type": "object",
-            "properties": {
-                "budgetSpent": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "ownerUserId": {
-                    "type": "string"
-                },
-                "spent": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
-        "budget.CreateBudgetFolderRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.CreateBudgetFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.FolderResult"
-                }
-            }
-        },
-        "budget.CreateBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "currencyId": {
-                    "type": "string"
-                },
-                "excludedAccounts": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "startDate": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.CreateBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.BudgetResult"
-                }
-            }
-        },
-        "budget.CreateEnvelopeRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "categories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.CreateEnvelopeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.ParentElementResult"
-                }
-            }
-        },
-        "budget.CurrencyBalanceResult": {
-            "type": "object",
-            "properties": {
-                "currencyId": {
-                    "type": "string"
-                },
-                "endBalance": {
-                    "type": "string"
-                },
-                "exchanges": {
-                    "type": "string"
-                },
-                "expenses": {
-                    "type": "string"
-                },
-                "holdings": {
-                    "type": "string"
-                },
-                "income": {
-                    "type": "string"
-                },
-                "startBalance": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.DeclineAccessRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.DeclineAccessResult": {
-            "type": "object"
-        },
-        "budget.DeleteBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.DeleteBudgetResult": {
-            "type": "object"
-        },
-        "budget.DeleteEnvelopeRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.DeleteEnvelopeResult": {
-            "type": "object"
-        },
-        "budget.DeleteFolderRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.DeleteFolderResult": {
-            "type": "object"
-        },
-        "budget.ExcludeAccountRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.ExcludeAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "budget.FiltersResult": {
-            "type": "object",
-            "properties": {
-                "excludedAccountsIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "periodEnd": {
-                    "type": "string"
-                },
-                "periodStart": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.FolderResult": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "budget.GetBudgetListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.MetaResult"
-                    }
-                }
-            }
-        },
-        "budget.GetBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.BudgetResult"
-                }
-            }
-        },
-        "budget.GetBudgetTransactionListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.BudgetTransactionResult"
-                    }
-                }
-            }
-        },
-        "budget.GrantAccessRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.GrantAccessResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.MetaResult"
-                    }
-                }
-            }
-        },
-        "budget.IncludeAccountRequest": {
-            "type": "object",
-            "properties": {
-                "accountId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.IncludeAccountResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "budget.MetaResult": {
-            "type": "object",
-            "properties": {
-                "access": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.AccessResult"
-                    }
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "ownerUserId": {
-                    "type": "string"
-                },
-                "startedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.MoveElementListItem": {
-            "type": "object",
-            "properties": {
-                "folderId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "budget.MoveElementListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.MoveElementListItem"
-                    }
-                }
-            }
-        },
-        "budget.MoveElementListResult": {
-            "type": "object"
-        },
-        "budget.OrderBudgetFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.OrderFolderListItem"
-                    }
-                }
-            }
-        },
-        "budget.OrderBudgetFolderListResult": {
-            "type": "object"
-        },
-        "budget.OrderFolderListItem": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "budget.ParentElementResult": {
-            "type": "object",
-            "properties": {
-                "available": {
-                    "type": "string"
-                },
-                "budgetSpent": {
-                    "type": "string"
-                },
-                "budgeted": {
-                    "type": "string"
-                },
-                "children": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.ChildElementResult"
-                    }
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "folderId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "ownerUserId": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "spent": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "integer"
-                }
-            }
-        },
-        "budget.ResetBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "startedAt": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.ResetBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "budget.RevokeAccessRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "userId": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.RevokeAccessResult": {
-            "type": "object"
-        },
-        "budget.SetLimitRequest": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "string"
-                },
-                "budgetId": {
-                    "type": "string"
-                },
-                "elementId": {
-                    "type": "string"
-                },
-                "period": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.SetLimitResult": {
-            "type": "object"
-        },
-        "budget.StructureResult": {
-            "type": "object",
-            "properties": {
-                "elements": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.ParentElementResult"
-                    }
-                },
-                "folders": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/budget.FolderResult"
-                    }
-                }
-            }
-        },
-        "budget.TxCategoryResult": {
-            "type": "object",
-            "properties": {
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.TxPayeeResult": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.TxTagResult": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.UpdateBudgetFolderRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.UpdateBudgetFolderResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.FolderResult"
-                }
-            }
-        },
-        "budget.UpdateBudgetRequest": {
-            "type": "object",
-            "properties": {
-                "currencyId": {
-                    "type": "string"
-                },
-                "excludedAccounts": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.UpdateBudgetResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.MetaResult"
-                }
-            }
-        },
-        "budget.UpdateEnvelopeRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "categories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "currencyId": {
-                    "type": "string"
-                },
-                "icon": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isArchived": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "budget.UpdateEnvelopeResult": {
-            "type": "object",
-            "properties": {
-                "item": {
-                    "$ref": "#/definitions/budget.ParentElementResult"
-                }
-            }
-        },
-        "budget.UserResult": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
                 }
             }
         },
@@ -6036,6 +5266,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.ConnectionResult"
                     }
+                }
+            }
+        },
+        "model.AccessResult": {
+            "type": "object",
+            "properties": {
+                "isAccepted": {
+                    "type": "integer"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResult"
                 }
             }
         },
@@ -6155,6 +5399,98 @@ const docTemplate = `{
         "model.ArchiveTagResult": {
             "type": "object"
         },
+        "model.AverageCurrencyRateResult": {
+            "type": "object",
+            "properties": {
+                "baseCurrencyId": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "periodEnd": {
+                    "type": "string"
+                },
+                "periodStart": {
+                    "type": "string"
+                },
+                "rate": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.BudgetFolderResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.BudgetResult": {
+            "type": "object",
+            "properties": {
+                "balances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CurrencyBalanceResult"
+                    }
+                },
+                "currencyRates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AverageCurrencyRateResult"
+                    }
+                },
+                "filters": {
+                    "$ref": "#/definitions/model.FiltersResult"
+                },
+                "meta": {
+                    "$ref": "#/definitions/model.MetaResult"
+                },
+                "structure": {
+                    "$ref": "#/definitions/model.StructureResult"
+                }
+            }
+        },
+        "model.BudgetTransactionResult": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "author": {
+                    "$ref": "#/definitions/model.UserResult"
+                },
+                "category": {
+                    "$ref": "#/definitions/model.TxCategoryResult"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payee": {
+                    "$ref": "#/definitions/model.TxPayeeResult"
+                },
+                "spentAt": {
+                    "type": "string"
+                },
+                "tag": {
+                    "$ref": "#/definitions/model.TxTagResult"
+                }
+            }
+        },
         "model.CategoryResult": {
             "type": "object",
             "properties": {
@@ -6184,6 +5520,52 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "model.ChangeElementCurrencyRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "elementId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ChangeElementCurrencyResult": {
+            "type": "object"
+        },
+        "model.ChildElementResult": {
+            "type": "object",
+            "properties": {
+                "budgetSpent": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "spent": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "integer"
                 }
             }
         },
@@ -6295,6 +5677,59 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreateBudgetFolderRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateBudgetFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.BudgetFolderResult"
+                }
+            }
+        },
+        "model.CreateBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "excludedAccounts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.BudgetResult"
+                }
+            }
+        },
         "model.CreateCategoryRequest": {
             "type": "object",
             "properties": {
@@ -6320,6 +5755,43 @@ const docTemplate = `{
             "properties": {
                 "item": {
                     "$ref": "#/definitions/model.CategoryResult"
+                }
+            }
+        },
+        "model.CreateEnvelopeRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateEnvelopeResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.ParentElementResult"
                 }
             }
         },
@@ -6435,6 +5907,32 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CurrencyBalanceResult": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "endBalance": {
+                    "type": "string"
+                },
+                "exchanges": {
+                    "type": "string"
+                },
+                "expenses": {
+                    "type": "string"
+                },
+                "holdings": {
+                    "type": "string"
+                },
+                "income": {
+                    "type": "string"
+                },
+                "startBalance": {
+                    "type": "string"
+                }
+            }
+        },
         "model.CurrencyRateResult": {
             "type": "object",
             "properties": {
@@ -6501,6 +5999,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.DeclineAccessRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeclineAccessResult": {
+            "type": "object"
+        },
         "model.DeleteAccountRequest": {
             "type": "object",
             "properties": {
@@ -6510,6 +6019,17 @@ const docTemplate = `{
             }
         },
         "model.DeleteAccountResult": {
+            "type": "object"
+        },
+        "model.DeleteBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteBudgetResult": {
             "type": "object"
         },
         "model.DeleteCategoryRequest": {
@@ -6538,6 +6058,34 @@ const docTemplate = `{
             }
         },
         "model.DeleteConnectionResult": {
+            "type": "object"
+        },
+        "model.DeleteEnvelopeRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteEnvelopeResult": {
+            "type": "object"
+        },
+        "model.DeleteFolderRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteFolderResult": {
             "type": "object"
         },
         "model.DeleteInviteRequest": {
@@ -6590,6 +6138,42 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ExcludeAccountRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ExcludeAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.MetaResult"
+                }
+            }
+        },
+        "model.FiltersResult": {
+            "type": "object",
+            "properties": {
+                "excludedAccountsIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "periodEnd": {
+                    "type": "string"
+                },
+                "periodStart": {
+                    "type": "string"
+                }
+            }
+        },
         "model.FolderPositionChange": {
             "type": "object",
             "properties": {
@@ -6619,6 +6203,36 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.AccountResult"
+                    }
+                }
+            }
+        },
+        "model.GetBudgetListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MetaResult"
+                    }
+                }
+            }
+        },
+        "model.GetBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.BudgetResult"
+                }
+            }
+        },
+        "model.GetBudgetTransactionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.BudgetTransactionResult"
                     }
                 }
             }
@@ -6730,6 +6344,31 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GrantAccessRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.GrantAccessResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MetaResult"
+                    }
+                }
+            }
+        },
         "model.HideFolderRequest": {
             "type": "object",
             "properties": {
@@ -6758,6 +6397,25 @@ const docTemplate = `{
                 },
                 "skipped": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.IncludeAccountRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.IncludeAccountResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.MetaResult"
                 }
             }
         },
@@ -6790,6 +6448,63 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.MetaResult": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccessResult"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveElementListItem": {
+            "type": "object",
+            "properties": {
+                "folderId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.MoveElementListRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MoveElementListItem"
+                    }
+                }
+            }
+        },
+        "model.MoveElementListResult": {
+            "type": "object"
         },
         "model.OptionResult": {
             "type": "object",
@@ -6824,6 +6539,23 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OrderBudgetFolderListRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OrderFolderListItem"
+                    }
+                }
+            }
+        },
+        "model.OrderBudgetFolderListResult": {
+            "type": "object"
+        },
         "model.OrderCategoryListRequest": {
             "type": "object",
             "properties": {
@@ -6843,6 +6575,17 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.CategoryResult"
                     }
+                }
+            }
+        },
+        "model.OrderFolderListItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
                 }
             }
         },
@@ -6909,6 +6652,56 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.TagResult"
                     }
+                }
+            }
+        },
+        "model.ParentElementResult": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "string"
+                },
+                "budgetSpent": {
+                    "type": "string"
+                },
+                "budgeted": {
+                    "type": "string"
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ChildElementResult"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "spent": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "integer"
                 }
             }
         },
@@ -6988,6 +6781,25 @@ const docTemplate = `{
         "model.ReplaceFolderResult": {
             "type": "object"
         },
+        "model.ResetBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ResetBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.MetaResult"
+                }
+            }
+        },
         "model.ResetPasswordRequest": {
             "type": "object",
             "properties": {
@@ -7003,6 +6815,20 @@ const docTemplate = `{
             }
         },
         "model.ResetPasswordResult": {
+            "type": "object"
+        },
+        "model.RevokeAccessRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RevokeAccessResult": {
             "type": "object"
         },
         "model.RevokeAccountAccessRequest": {
@@ -7036,6 +6862,26 @@ const docTemplate = `{
         "model.SetAccountAccessResult": {
             "type": "object"
         },
+        "model.SetLimitRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "budgetId": {
+                    "type": "string"
+                },
+                "elementId": {
+                    "type": "string"
+                },
+                "period": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SetLimitResult": {
+            "type": "object"
+        },
         "model.SharedAccess": {
             "type": "object",
             "properties": {
@@ -7057,6 +6903,23 @@ const docTemplate = `{
         },
         "model.ShowFolderResult": {
             "type": "object"
+        },
+        "model.StructureResult": {
+            "type": "object",
+            "properties": {
+                "elements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ParentElementResult"
+                    }
+                },
+                "folders": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.BudgetFolderResult"
+                    }
+                }
+            }
         },
         "model.TagResult": {
             "type": "object",
@@ -7121,6 +6984,42 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TxCategoryResult": {
+            "type": "object",
+            "properties": {
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TxPayeeResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TxTagResult": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -7208,6 +7107,56 @@ const docTemplate = `{
                 }
             }
         },
+        "model.UpdateBudgetFolderRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateBudgetFolderResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.BudgetFolderResult"
+                }
+            }
+        },
+        "model.UpdateBudgetRequest": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "excludedAccounts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateBudgetResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.MetaResult"
+                }
+            }
+        },
         "model.UpdateCategoryRequest": {
             "type": "object",
             "properties": {
@@ -7238,6 +7187,43 @@ const docTemplate = `{
             "properties": {
                 "user": {
                     "$ref": "#/definitions/model.CurrentUserResult"
+                }
+            }
+        },
+        "model.UpdateEnvelopeRequest": {
+            "type": "object",
+            "properties": {
+                "budgetId": {
+                    "type": "string"
+                },
+                "categories": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateEnvelopeResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.ParentElementResult"
                 }
             }
         },

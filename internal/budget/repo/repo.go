@@ -13,6 +13,7 @@ import (
 	dombudget "github.com/econumo/econumo/internal/budget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -55,7 +56,7 @@ func (r *Repo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *Repo) NextIdentity() vo.Id { return vo.NewId() }
 
-func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*dombudget.Budget, error) {
+func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Budget, error) {
 	row, err := r.q.GetBudget(ctx, r.db(ctx), id.String())
 	if err != nil {
 		return nil, mapNotFound(err, "Budget not found")
@@ -63,12 +64,12 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*dombudget.Budget, error)
 	return hydrateBudget(row)
 }
 
-func (r *Repo) ListForUser(ctx context.Context, userID vo.Id) ([]*dombudget.Budget, error) {
+func (r *Repo) ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, error) {
 	rows, err := r.q.ListBudgetsForUser(ctx, r.db(ctx), userID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*dombudget.Budget, 0, len(rows))
+	out := make([]*model.Budget, 0, len(rows))
 	for _, row := range rows {
 		b, herr := hydrateBudget(row)
 		if herr != nil {
@@ -79,7 +80,7 @@ func (r *Repo) ListForUser(ctx context.Context, userID vo.Id) ([]*dombudget.Budg
 	return out, nil
 }
 
-func (r *Repo) Save(ctx context.Context, b *dombudget.Budget) error {
+func (r *Repo) Save(ctx context.Context, b *model.Budget) error {
 	return r.q.UpsertBudget(ctx, r.db(ctx), upBudgetP{
 		ID: b.ID.String(), CurrencyID: b.CurrencyID.String(), UserID: b.UserID.String(),
 		Name: b.Name, StartedAt: b.StartedAt, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
@@ -106,12 +107,12 @@ func (r *Repo) IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) er
 	return r.q.RemoveBudgetExcludedAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
 
-func (r *Repo) ListAccess(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetAccess, error) {
+func (r *Repo) ListAccess(ctx context.Context, budgetID vo.Id) ([]*model.BudgetAccess, error) {
 	rows, err := r.q.ListBudgetAccess(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*dombudget.BudgetAccess, 0, len(rows))
+	out := make([]*model.BudgetAccess, 0, len(rows))
 	for _, row := range rows {
 		a, herr := hydrateAccess(row)
 		if herr != nil {
@@ -122,7 +123,7 @@ func (r *Repo) ListAccess(ctx context.Context, budgetID vo.Id) ([]*dombudget.Bud
 	return out, nil
 }
 
-func (r *Repo) GetAccess(ctx context.Context, budgetID, userID vo.Id) (*dombudget.BudgetAccess, error) {
+func (r *Repo) GetAccess(ctx context.Context, budgetID, userID vo.Id) (*model.BudgetAccess, error) {
 	row, err := r.q.GetBudgetAccess(ctx, r.db(ctx), budgetID.String(), userID.String())
 	if err != nil {
 		return nil, mapNotFound(err, "BudgetAccess not found")
@@ -130,7 +131,7 @@ func (r *Repo) GetAccess(ctx context.Context, budgetID, userID vo.Id) (*dombudge
 	return hydrateAccess(row)
 }
 
-func (r *Repo) SaveAccess(ctx context.Context, a *dombudget.BudgetAccess) error {
+func (r *Repo) SaveAccess(ctx context.Context, a *model.BudgetAccess) error {
 	return r.q.UpsertBudgetAccess(ctx, r.db(ctx), upAccessP{
 		BudgetID: a.BudgetID.String(), UserID: a.UserID.String(), Role: a.Role.Int16(),
 		IsAccepted: a.IsAccepted, CreatedAt: a.CreatedAt, UpdatedAt: a.UpdatedAt,
@@ -141,12 +142,12 @@ func (r *Repo) DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error {
 	return r.q.DeleteBudgetAccess(ctx, r.db(ctx), budgetID.String(), userID.String())
 }
 
-func (r *Repo) ListFolders(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetFolder, error) {
+func (r *Repo) ListFolders(ctx context.Context, budgetID vo.Id) ([]*model.BudgetFolder, error) {
 	rows, err := r.q.ListBudgetFolders(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*dombudget.BudgetFolder, 0, len(rows))
+	out := make([]*model.BudgetFolder, 0, len(rows))
 	for _, row := range rows {
 		f, herr := hydrateFolder(row)
 		if herr != nil {
@@ -157,7 +158,7 @@ func (r *Repo) ListFolders(ctx context.Context, budgetID vo.Id) ([]*dombudget.Bu
 	return out, nil
 }
 
-func (r *Repo) GetFolder(ctx context.Context, id vo.Id) (*dombudget.BudgetFolder, error) {
+func (r *Repo) GetFolder(ctx context.Context, id vo.Id) (*model.BudgetFolder, error) {
 	row, err := r.q.GetBudgetFolder(ctx, r.db(ctx), id.String())
 	if err != nil {
 		return nil, mapNotFound(err, "BudgetFolder not found")
@@ -165,7 +166,7 @@ func (r *Repo) GetFolder(ctx context.Context, id vo.Id) (*dombudget.BudgetFolder
 	return hydrateFolder(row)
 }
 
-func (r *Repo) SaveFolder(ctx context.Context, f *dombudget.BudgetFolder) error {
+func (r *Repo) SaveFolder(ctx context.Context, f *model.BudgetFolder) error {
 	return r.q.UpsertBudgetFolder(ctx, r.db(ctx), upFolderP{
 		ID: f.ID.String(), BudgetID: f.BudgetID.String(), Name: f.Name,
 		Position: f.Position, CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
@@ -176,12 +177,12 @@ func (r *Repo) DeleteFolder(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudgetFolder(ctx, r.db(ctx), id.String())
 }
 
-func (r *Repo) ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetEnvelope, error) {
+func (r *Repo) ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*model.BudgetEnvelope, error) {
 	rows, err := r.q.ListBudgetEnvelopes(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*dombudget.BudgetEnvelope, 0, len(rows))
+	out := make([]*model.BudgetEnvelope, 0, len(rows))
 	for _, row := range rows {
 		e, herr := hydrateEnvelope(row)
 		if herr != nil {
@@ -192,7 +193,7 @@ func (r *Repo) ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*dombudget.
 	return out, nil
 }
 
-func (r *Repo) GetEnvelope(ctx context.Context, id vo.Id) (*dombudget.BudgetEnvelope, error) {
+func (r *Repo) GetEnvelope(ctx context.Context, id vo.Id) (*model.BudgetEnvelope, error) {
 	row, err := r.q.GetBudgetEnvelope(ctx, r.db(ctx), id.String())
 	if err != nil {
 		return nil, mapNotFound(err, "BudgetEnvelope not found")
@@ -200,7 +201,7 @@ func (r *Repo) GetEnvelope(ctx context.Context, id vo.Id) (*dombudget.BudgetEnve
 	return hydrateEnvelope(row)
 }
 
-func (r *Repo) SaveEnvelope(ctx context.Context, e *dombudget.BudgetEnvelope) error {
+func (r *Repo) SaveEnvelope(ctx context.Context, e *model.BudgetEnvelope) error {
 	return r.q.UpsertBudgetEnvelope(ctx, r.db(ctx), upEnvelopeP{
 		ID: e.ID.String(), BudgetID: e.BudgetID.String(), Name: strPtr(e.Name),
 		Icon: strPtr(e.Icon), IsArchived: e.IsArchived, CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt,
@@ -227,12 +228,12 @@ func (r *Repo) RemoveEnvelopeCategory(ctx context.Context, envelopeID, categoryI
 	return r.q.RemoveEnvelopeCategory(ctx, r.db(ctx), envelopeID.String(), categoryID.String())
 }
 
-func (r *Repo) ListElements(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetElement, error) {
+func (r *Repo) ListElements(ctx context.Context, budgetID vo.Id) ([]*model.BudgetElement, error) {
 	rows, err := r.q.ListBudgetElements(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*dombudget.BudgetElement, 0, len(rows))
+	out := make([]*model.BudgetElement, 0, len(rows))
 	for _, row := range rows {
 		e, herr := hydrateElement(row)
 		if herr != nil {
@@ -243,7 +244,7 @@ func (r *Repo) ListElements(ctx context.Context, budgetID vo.Id) ([]*dombudget.B
 	return out, nil
 }
 
-func (r *Repo) GetElement(ctx context.Context, id vo.Id) (*dombudget.BudgetElement, error) {
+func (r *Repo) GetElement(ctx context.Context, id vo.Id) (*model.BudgetElement, error) {
 	row, err := r.q.GetBudgetElement(ctx, r.db(ctx), id.String())
 	if err != nil {
 		return nil, mapNotFound(err, "BudgetElement not found")
@@ -251,7 +252,7 @@ func (r *Repo) GetElement(ctx context.Context, id vo.Id) (*dombudget.BudgetEleme
 	return hydrateElement(row)
 }
 
-func (r *Repo) GetElementByExternal(ctx context.Context, budgetID, externalID vo.Id) (*dombudget.BudgetElement, error) {
+func (r *Repo) GetElementByExternal(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error) {
 	row, err := r.q.GetBudgetElementByExternal(ctx, r.db(ctx), budgetID.String(), externalID.String())
 	if err != nil {
 		return nil, mapNotFound(err, "BudgetElement not found")
@@ -259,7 +260,7 @@ func (r *Repo) GetElementByExternal(ctx context.Context, budgetID, externalID vo
 	return hydrateElement(row)
 }
 
-func (r *Repo) SaveElement(ctx context.Context, e *dombudget.BudgetElement) error {
+func (r *Repo) SaveElement(ctx context.Context, e *model.BudgetElement) error {
 	return r.q.UpsertBudgetElement(ctx, r.db(ctx), upElementP{
 		ID: e.ID.String(), BudgetID: e.BudgetID.String(), CurrencyID: idPtr(e.CurrencyID),
 		FolderID: idPtr(e.FolderID), ExternalID: e.ExternalID.String(), Type: e.Type.Int16(),
@@ -271,12 +272,12 @@ func (r *Repo) DeleteElement(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudgetElement(ctx, r.db(ctx), id.String())
 }
 
-func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*dombudget.BudgetElementLimit, error) {
+func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*model.BudgetElementLimit, error) {
 	rows, err := r.q.ListBudgetLimitsForPeriod(ctx, r.db(ctx), budgetID.String(), period)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*dombudget.BudgetElementLimit, 0, len(rows))
+	out := make([]*model.BudgetElementLimit, 0, len(rows))
 	for _, row := range rows {
 		l, herr := hydrateLimit(row)
 		if herr != nil {
@@ -287,7 +288,7 @@ func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period t
 	return out, nil
 }
 
-func (r *Repo) GetLimit(ctx context.Context, elementID vo.Id, period time.Time) (*dombudget.BudgetElementLimit, error) {
+func (r *Repo) GetLimit(ctx context.Context, elementID vo.Id, period time.Time) (*model.BudgetElementLimit, error) {
 	row, err := r.q.GetBudgetLimit(ctx, r.db(ctx), elementID.String(), period)
 	if err != nil {
 		return nil, mapNotFound(err, "BudgetElementLimit not found")
@@ -295,7 +296,7 @@ func (r *Repo) GetLimit(ctx context.Context, elementID vo.Id, period time.Time) 
 	return hydrateLimit(row)
 }
 
-func (r *Repo) SaveLimit(ctx context.Context, l *dombudget.BudgetElementLimit) error {
+func (r *Repo) SaveLimit(ctx context.Context, l *model.BudgetElementLimit) error {
 	return r.q.UpsertBudgetLimit(ctx, r.db(ctx), upLimitP{
 		ID: l.ID.String(), ElementID: l.ElementID.String(), Period: l.Period,
 		CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt, Amount: l.Amount.String(),
@@ -310,7 +311,7 @@ func (r *Repo) DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error {
 	return r.q.DeleteBudgetLimitsByBudget(ctx, r.db(ctx), budgetID.String())
 }
 
-func hydrateBudget(row budgetRow) (*dombudget.Budget, error) {
+func hydrateBudget(row budgetRow) (*model.Budget, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -323,10 +324,10 @@ func hydrateBudget(row budgetRow) (*dombudget.Budget, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dombudget.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
-func hydrateAccess(row accessRow) (*dombudget.BudgetAccess, error) {
+func hydrateAccess(row accessRow) (*model.BudgetAccess, error) {
 	budgetID, err := vo.ParseId(row.BudgetID)
 	if err != nil {
 		return nil, err
@@ -337,10 +338,10 @@ func hydrateAccess(row accessRow) (*dombudget.BudgetAccess, error) {
 	}
 	// BudgetAccess has no separate id column (PK is budget+user); ID is a
 	// stand-in equal to BudgetID (the access entity's ID is unused on the wire).
-	return &dombudget.BudgetAccess{ID: budgetID, BudgetID: budgetID, UserID: userID, Role: dombudget.UserRole(row.Role), IsAccepted: row.IsAccepted, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetAccess{ID: budgetID, BudgetID: budgetID, UserID: userID, Role: model.BudgetRole(row.Role), IsAccepted: row.IsAccepted, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
-func hydrateFolder(row folderRow) (*dombudget.BudgetFolder, error) {
+func hydrateFolder(row folderRow) (*model.BudgetFolder, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -349,10 +350,10 @@ func hydrateFolder(row folderRow) (*dombudget.BudgetFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dombudget.BudgetFolder{ID: id, BudgetID: budgetID, Name: row.Name, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetFolder{ID: id, BudgetID: budgetID, Name: row.Name, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
-func hydrateEnvelope(row envelopeRow) (*dombudget.BudgetEnvelope, error) {
+func hydrateEnvelope(row envelopeRow) (*model.BudgetEnvelope, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -361,10 +362,10 @@ func hydrateEnvelope(row envelopeRow) (*dombudget.BudgetEnvelope, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dombudget.BudgetEnvelope{ID: id, BudgetID: budgetID, Name: derefStr(row.Name), Icon: derefStr(row.Icon), IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetEnvelope{ID: id, BudgetID: budgetID, Name: derefStr(row.Name), Icon: derefStr(row.Icon), IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
-func hydrateElement(row elementRow) (*dombudget.BudgetElement, error) {
+func hydrateElement(row elementRow) (*model.BudgetElement, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -385,10 +386,10 @@ func hydrateElement(row elementRow) (*dombudget.BudgetElement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dombudget.BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: dombudget.ElementType(row.Type), CurrencyID: currencyID, FolderID: folderID, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: model.ElementType(row.Type), CurrencyID: currencyID, FolderID: folderID, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
-func hydrateLimit(row limitRow) (*dombudget.BudgetElementLimit, error) {
+func hydrateLimit(row limitRow) (*model.BudgetElementLimit, error) {
 	id, err := vo.ParseId(row.ID)
 	if err != nil {
 		return nil, err
@@ -397,7 +398,7 @@ func hydrateLimit(row limitRow) (*dombudget.BudgetElementLimit, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dombudget.BudgetElementLimit{ID: id, ElementID: elementID, Amount: vo.NewDecimal(row.Amount), Period: row.Period, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetElementLimit{ID: id, ElementID: elementID, Amount: vo.NewDecimal(row.Amount), Period: row.Period, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func mapNotFound(err error, msg string) error {

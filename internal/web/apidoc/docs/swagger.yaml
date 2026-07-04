@@ -61,514 +61,17 @@ definitions:
         example: false
         type: boolean
     type: object
-  budget.AcceptAccessRequest:
+  model.AcceptAccessRequest:
     properties:
       budgetId:
         type: string
     type: object
-  budget.AcceptAccessResult:
+  model.AcceptAccessResult:
     properties:
       items:
         items:
-          $ref: '#/definitions/budget.MetaResult'
+          $ref: '#/definitions/model.MetaResult'
         type: array
-    type: object
-  budget.AccessResult:
-    properties:
-      isAccepted:
-        type: integer
-      role:
-        type: string
-      user:
-        $ref: '#/definitions/budget.UserResult'
-    type: object
-  budget.AverageCurrencyRateResult:
-    properties:
-      baseCurrencyId:
-        type: string
-      currencyId:
-        type: string
-      periodEnd:
-        type: string
-      periodStart:
-        type: string
-      rate:
-        type: string
-    type: object
-  budget.BudgetResult:
-    properties:
-      balances:
-        items:
-          $ref: '#/definitions/budget.CurrencyBalanceResult'
-        type: array
-      currencyRates:
-        items:
-          $ref: '#/definitions/budget.AverageCurrencyRateResult'
-        type: array
-      filters:
-        $ref: '#/definitions/budget.FiltersResult'
-      meta:
-        $ref: '#/definitions/budget.MetaResult'
-      structure:
-        $ref: '#/definitions/budget.StructureResult'
-    type: object
-  budget.BudgetTransactionResult:
-    properties:
-      amount:
-        type: string
-      author:
-        $ref: '#/definitions/budget.UserResult'
-      category:
-        $ref: '#/definitions/budget.TxCategoryResult'
-      currencyId:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      payee:
-        $ref: '#/definitions/budget.TxPayeeResult'
-      spentAt:
-        type: string
-      tag:
-        $ref: '#/definitions/budget.TxTagResult'
-    type: object
-  budget.ChangeElementCurrencyRequest:
-    properties:
-      budgetId:
-        type: string
-      currencyId:
-        type: string
-      elementId:
-        type: string
-    type: object
-  budget.ChangeElementCurrencyResult:
-    type: object
-  budget.ChildElementResult:
-    properties:
-      budgetSpent:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      spent:
-        type: string
-      type:
-        type: integer
-    type: object
-  budget.CreateBudgetFolderRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  budget.CreateBudgetFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.FolderResult'
-    type: object
-  budget.CreateBudgetRequest:
-    properties:
-      currencyId:
-        type: string
-      excludedAccounts:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      name:
-        type: string
-      startDate:
-        type: string
-    type: object
-  budget.CreateBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.BudgetResult'
-    type: object
-  budget.CreateEnvelopeRequest:
-    properties:
-      budgetId:
-        type: string
-      categories:
-        items:
-          type: string
-        type: array
-      currencyId:
-        type: string
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  budget.CreateEnvelopeResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.ParentElementResult'
-    type: object
-  budget.CurrencyBalanceResult:
-    properties:
-      currencyId:
-        type: string
-      endBalance:
-        type: string
-      exchanges:
-        type: string
-      expenses:
-        type: string
-      holdings:
-        type: string
-      income:
-        type: string
-      startBalance:
-        type: string
-    type: object
-  budget.DeclineAccessRequest:
-    properties:
-      budgetId:
-        type: string
-    type: object
-  budget.DeclineAccessResult:
-    type: object
-  budget.DeleteBudgetRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  budget.DeleteBudgetResult:
-    type: object
-  budget.DeleteEnvelopeRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-    type: object
-  budget.DeleteEnvelopeResult:
-    type: object
-  budget.DeleteFolderRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-    type: object
-  budget.DeleteFolderResult:
-    type: object
-  budget.ExcludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  budget.ExcludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  budget.FiltersResult:
-    properties:
-      excludedAccountsIds:
-        items:
-          type: string
-        type: array
-      periodEnd:
-        type: string
-      periodStart:
-        type: string
-    type: object
-  budget.FolderResult:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-      position:
-        type: integer
-    type: object
-  budget.GetBudgetListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.MetaResult'
-        type: array
-    type: object
-  budget.GetBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.BudgetResult'
-    type: object
-  budget.GetBudgetTransactionListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.BudgetTransactionResult'
-        type: array
-    type: object
-  budget.GrantAccessRequest:
-    properties:
-      budgetId:
-        type: string
-      role:
-        type: string
-      userId:
-        type: string
-    type: object
-  budget.GrantAccessResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/budget.MetaResult'
-        type: array
-    type: object
-  budget.IncludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  budget.IncludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  budget.MetaResult:
-    properties:
-      access:
-        items:
-          $ref: '#/definitions/budget.AccessResult'
-        type: array
-      currencyId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      startedAt:
-        type: string
-    type: object
-  budget.MoveElementListItem:
-    properties:
-      folderId:
-        type: string
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  budget.MoveElementListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/budget.MoveElementListItem'
-        type: array
-    type: object
-  budget.MoveElementListResult:
-    type: object
-  budget.OrderBudgetFolderListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/budget.OrderFolderListItem'
-        type: array
-    type: object
-  budget.OrderBudgetFolderListResult:
-    type: object
-  budget.OrderFolderListItem:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  budget.ParentElementResult:
-    properties:
-      available:
-        type: string
-      budgetSpent:
-        type: string
-      budgeted:
-        type: string
-      children:
-        items:
-          $ref: '#/definitions/budget.ChildElementResult'
-        type: array
-      currencyId:
-        type: string
-      folderId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-      ownerUserId:
-        type: string
-      position:
-        type: integer
-      spent:
-        type: string
-      type:
-        type: integer
-    type: object
-  budget.ResetBudgetRequest:
-    properties:
-      id:
-        type: string
-      startedAt:
-        type: string
-    type: object
-  budget.ResetBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  budget.RevokeAccessRequest:
-    properties:
-      budgetId:
-        type: string
-      userId:
-        type: string
-    type: object
-  budget.RevokeAccessResult:
-    type: object
-  budget.SetLimitRequest:
-    properties:
-      amount:
-        type: string
-      budgetId:
-        type: string
-      elementId:
-        type: string
-      period:
-        type: string
-    type: object
-  budget.SetLimitResult:
-    type: object
-  budget.StructureResult:
-    properties:
-      elements:
-        items:
-          $ref: '#/definitions/budget.ParentElementResult'
-        type: array
-      folders:
-        items:
-          $ref: '#/definitions/budget.FolderResult'
-        type: array
-    type: object
-  budget.TxCategoryResult:
-    properties:
-      icon:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  budget.TxPayeeResult:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  budget.TxTagResult:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  budget.UpdateBudgetFolderRequest:
-    properties:
-      budgetId:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  budget.UpdateBudgetFolderResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.FolderResult'
-    type: object
-  budget.UpdateBudgetRequest:
-    properties:
-      currencyId:
-        type: string
-      excludedAccounts:
-        items:
-          type: string
-        type: array
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  budget.UpdateBudgetResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.MetaResult'
-    type: object
-  budget.UpdateEnvelopeRequest:
-    properties:
-      budgetId:
-        type: string
-      categories:
-        items:
-          type: string
-        type: array
-      currencyId:
-        type: string
-      icon:
-        type: string
-      id:
-        type: string
-      isArchived:
-        type: integer
-      name:
-        type: string
-    type: object
-  budget.UpdateEnvelopeResult:
-    properties:
-      item:
-        $ref: '#/definitions/budget.ParentElementResult'
-    type: object
-  budget.UserResult:
-    properties:
-      avatar:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
     type: object
   model.AcceptInviteRequest:
     properties:
@@ -581,6 +84,15 @@ definitions:
         items:
           $ref: '#/definitions/model.ConnectionResult'
         type: array
+    type: object
+  model.AccessResult:
+    properties:
+      isAccepted:
+        type: integer
+      role:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResult'
     type: object
   model.AccountAccessResult:
     properties:
@@ -657,6 +169,66 @@ definitions:
     type: object
   model.ArchiveTagResult:
     type: object
+  model.AverageCurrencyRateResult:
+    properties:
+      baseCurrencyId:
+        type: string
+      currencyId:
+        type: string
+      periodEnd:
+        type: string
+      periodStart:
+        type: string
+      rate:
+        type: string
+    type: object
+  model.BudgetFolderResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.BudgetResult:
+    properties:
+      balances:
+        items:
+          $ref: '#/definitions/model.CurrencyBalanceResult'
+        type: array
+      currencyRates:
+        items:
+          $ref: '#/definitions/model.AverageCurrencyRateResult'
+        type: array
+      filters:
+        $ref: '#/definitions/model.FiltersResult'
+      meta:
+        $ref: '#/definitions/model.MetaResult'
+      structure:
+        $ref: '#/definitions/model.StructureResult'
+    type: object
+  model.BudgetTransactionResult:
+    properties:
+      amount:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      category:
+        $ref: '#/definitions/model.TxCategoryResult'
+      currencyId:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payee:
+        $ref: '#/definitions/model.TxPayeeResult'
+      spentAt:
+        type: string
+      tag:
+        $ref: '#/definitions/model.TxTagResult'
+    type: object
   model.CategoryResult:
     properties:
       createdAt:
@@ -677,6 +249,36 @@ definitions:
         type: string
       updatedAt:
         type: string
+    type: object
+  model.ChangeElementCurrencyRequest:
+    properties:
+      budgetId:
+        type: string
+      currencyId:
+        type: string
+      elementId:
+        type: string
+    type: object
+  model.ChangeElementCurrencyResult:
+    type: object
+  model.ChildElementResult:
+    properties:
+      budgetSpent:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      spent:
+        type: string
+      type:
+        type: integer
     type: object
   model.CompleteOnboardingResult:
     properties:
@@ -748,6 +350,40 @@ definitions:
       transaction:
         $ref: '#/definitions/model.CorrectionResult'
     type: object
+  model.CreateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetFolderResult'
+    type: object
+  model.CreateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      startDate:
+        type: string
+    type: object
+  model.CreateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
+    type: object
   model.CreateCategoryRequest:
     properties:
       accountId:
@@ -765,6 +401,30 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/model.CategoryResult'
+    type: object
+  model.CreateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ParentElementResult'
     type: object
   model.CreateFolderRequest:
     properties:
@@ -838,6 +498,23 @@ definitions:
       item:
         $ref: '#/definitions/model.TransactionResult'
     type: object
+  model.CurrencyBalanceResult:
+    properties:
+      currencyId:
+        type: string
+      endBalance:
+        type: string
+      exchanges:
+        type: string
+      expenses:
+        type: string
+      holdings:
+        type: string
+      income:
+        type: string
+      startBalance:
+        type: string
+    type: object
   model.CurrencyRateResult:
     properties:
       baseCurrencyId:
@@ -881,12 +558,26 @@ definitions:
       reportPeriod:
         type: string
     type: object
+  model.DeclineAccessRequest:
+    properties:
+      budgetId:
+        type: string
+    type: object
+  model.DeclineAccessResult:
+    type: object
   model.DeleteAccountRequest:
     properties:
       id:
         type: string
     type: object
   model.DeleteAccountResult:
+    type: object
+  model.DeleteBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteBudgetResult:
     type: object
   model.DeleteCategoryRequest:
     properties:
@@ -905,6 +596,24 @@ definitions:
         type: string
     type: object
   model.DeleteConnectionResult:
+    type: object
+  model.DeleteEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.DeleteEnvelopeResult:
+    type: object
+  model.DeleteFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.DeleteFolderResult:
     type: object
   model.DeleteInviteRequest:
     type: object
@@ -938,6 +647,29 @@ definitions:
       item:
         $ref: '#/definitions/model.TransactionResult'
     type: object
+  model.ExcludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.ExcludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
+  model.FiltersResult:
+    properties:
+      excludedAccountsIds:
+        items:
+          type: string
+        type: array
+      periodEnd:
+        type: string
+      periodStart:
+        type: string
+    type: object
   model.FolderPositionChange:
     properties:
       id:
@@ -957,6 +689,25 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.AccountResult'
+        type: array
+    type: object
+  model.GetBudgetListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.MetaResult'
+        type: array
+    type: object
+  model.GetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
+    type: object
+  model.GetBudgetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.BudgetTransactionResult'
         type: array
     type: object
   model.GetCategoryListResult:
@@ -1027,6 +778,22 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.GrantAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.GrantAccessResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.MetaResult'
+        type: array
+    type: object
   model.HideFolderRequest:
     properties:
       id:
@@ -1047,6 +814,18 @@ definitions:
       skipped:
         type: integer
     type: object
+  model.IncludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.IncludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.LoginRequest:
     properties:
       password:
@@ -1065,6 +844,43 @@ definitions:
     properties:
       result:
         type: string
+    type: object
+  model.MetaResult:
+    properties:
+      access:
+        items:
+          $ref: '#/definitions/model.AccessResult'
+        type: array
+      currencyId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  model.MoveElementListItem:
+    properties:
+      folderId:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.MoveElementListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.MoveElementListItem'
+        type: array
+    type: object
+  model.MoveElementListResult:
     type: object
   model.OptionResult:
     properties:
@@ -1087,6 +903,17 @@ definitions:
           $ref: '#/definitions/model.AccountResult'
         type: array
     type: object
+  model.OrderBudgetFolderListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.OrderFolderListItem'
+        type: array
+    type: object
+  model.OrderBudgetFolderListResult:
+    type: object
   model.OrderCategoryListRequest:
     properties:
       changes:
@@ -1100,6 +927,13 @@ definitions:
         items:
           $ref: '#/definitions/model.CategoryResult'
         type: array
+    type: object
+  model.OrderFolderListItem:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
     type: object
   model.OrderFolderListRequest:
     properties:
@@ -1142,6 +976,39 @@ definitions:
         items:
           $ref: '#/definitions/model.TagResult'
         type: array
+    type: object
+  model.ParentElementResult:
+    properties:
+      available:
+        type: string
+      budgetSpent:
+        type: string
+      budgeted:
+        type: string
+      children:
+        items:
+          $ref: '#/definitions/model.ChildElementResult'
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      spent:
+        type: string
+      type:
+        type: integer
     type: object
   model.PayeeResult:
     properties:
@@ -1192,6 +1059,18 @@ definitions:
     type: object
   model.ReplaceFolderResult:
     type: object
+  model.ResetBudgetRequest:
+    properties:
+      id:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  model.ResetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.ResetPasswordRequest:
     properties:
       code:
@@ -1202,6 +1081,15 @@ definitions:
         type: string
     type: object
   model.ResetPasswordResult:
+    type: object
+  model.RevokeAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.RevokeAccessResult:
     type: object
   model.RevokeAccountAccessRequest:
     properties:
@@ -1223,6 +1111,19 @@ definitions:
     type: object
   model.SetAccountAccessResult:
     type: object
+  model.SetLimitRequest:
+    properties:
+      amount:
+        type: string
+      budgetId:
+        type: string
+      elementId:
+        type: string
+      period:
+        type: string
+    type: object
+  model.SetLimitResult:
+    type: object
   model.SharedAccess:
     properties:
       role:
@@ -1236,6 +1137,17 @@ definitions:
         type: string
     type: object
   model.ShowFolderResult:
+    type: object
+  model.StructureResult:
+    properties:
+      elements:
+        items:
+          $ref: '#/definitions/model.ParentElementResult'
+        type: array
+      folders:
+        items:
+          $ref: '#/definitions/model.BudgetFolderResult'
+        type: array
     type: object
   model.TagResult:
     properties:
@@ -1279,6 +1191,29 @@ definitions:
       tagId:
         type: string
       type:
+        type: string
+    type: object
+  model.TxCategoryResult:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.TxPayeeResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.TxTagResult:
+    properties:
+      id:
+        type: string
+      name:
         type: string
     type: object
   model.UnarchiveCategoryRequest:
@@ -1334,6 +1269,38 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.UpdateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetFolderResult'
+    type: object
+  model.UpdateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.UpdateCategoryRequest:
     properties:
       icon:
@@ -1354,6 +1321,30 @@ definitions:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+    type: object
+  model.UpdateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ParentElementResult'
     type: object
   model.UpdateFolderRequest:
     properties:
@@ -1949,7 +1940,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.AcceptAccessRequest'
+          $ref: '#/definitions/model.AcceptAccessRequest'
       produces:
       - application/json
       responses:
@@ -1960,7 +1951,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.AcceptAccessResult'
+                  $ref: '#/definitions/model.AcceptAccessResult'
               type: object
       security:
       - Bearer: []
@@ -1977,7 +1968,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.ChangeElementCurrencyRequest'
+          $ref: '#/definitions/model.ChangeElementCurrencyRequest'
       produces:
       - application/json
       responses:
@@ -1988,7 +1979,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.ChangeElementCurrencyResult'
+                  $ref: '#/definitions/model.ChangeElementCurrencyResult'
               type: object
       security:
       - Bearer: []
@@ -2005,7 +1996,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.CreateBudgetRequest'
+          $ref: '#/definitions/model.CreateBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2016,7 +2007,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.CreateBudgetResult'
+                  $ref: '#/definitions/model.CreateBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -2045,7 +2036,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.CreateEnvelopeRequest'
+          $ref: '#/definitions/model.CreateEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2056,7 +2047,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.CreateEnvelopeResult'
+                  $ref: '#/definitions/model.CreateEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2073,7 +2064,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.CreateBudgetFolderRequest'
+          $ref: '#/definitions/model.CreateBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -2084,7 +2075,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.CreateBudgetFolderResult'
+                  $ref: '#/definitions/model.CreateBudgetFolderResult'
               type: object
       security:
       - Bearer: []
@@ -2101,7 +2092,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeclineAccessRequest'
+          $ref: '#/definitions/model.DeclineAccessRequest'
       produces:
       - application/json
       responses:
@@ -2112,7 +2103,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeclineAccessResult'
+                  $ref: '#/definitions/model.DeclineAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2129,7 +2120,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeleteBudgetRequest'
+          $ref: '#/definitions/model.DeleteBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2140,7 +2131,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeleteBudgetResult'
+                  $ref: '#/definitions/model.DeleteBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2157,7 +2148,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeleteEnvelopeRequest'
+          $ref: '#/definitions/model.DeleteEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2168,7 +2159,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeleteEnvelopeResult'
+                  $ref: '#/definitions/model.DeleteEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2185,7 +2176,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.DeleteFolderRequest'
+          $ref: '#/definitions/model.DeleteFolderRequest'
       produces:
       - application/json
       responses:
@@ -2196,7 +2187,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.DeleteFolderResult'
+                  $ref: '#/definitions/model.DeleteFolderResult'
               type: object
       security:
       - Bearer: []
@@ -2213,7 +2204,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.ExcludeAccountRequest'
+          $ref: '#/definitions/model.ExcludeAccountRequest'
       produces:
       - application/json
       responses:
@@ -2224,7 +2215,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.ExcludeAccountResult'
+                  $ref: '#/definitions/model.ExcludeAccountResult'
               type: object
       security:
       - Bearer: []
@@ -2253,7 +2244,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GetBudgetResult'
+                  $ref: '#/definitions/model.GetBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2272,7 +2263,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GetBudgetListResult'
+                  $ref: '#/definitions/model.GetBudgetListResult'
               type: object
       security:
       - Bearer: []
@@ -2314,7 +2305,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GetBudgetTransactionListResult'
+                  $ref: '#/definitions/model.GetBudgetTransactionListResult'
               type: object
       security:
       - Bearer: []
@@ -2331,7 +2322,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.GrantAccessRequest'
+          $ref: '#/definitions/model.GrantAccessRequest'
       produces:
       - application/json
       responses:
@@ -2342,7 +2333,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.GrantAccessResult'
+                  $ref: '#/definitions/model.GrantAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2359,7 +2350,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.IncludeAccountRequest'
+          $ref: '#/definitions/model.IncludeAccountRequest'
       produces:
       - application/json
       responses:
@@ -2370,7 +2361,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.IncludeAccountResult'
+                  $ref: '#/definitions/model.IncludeAccountResult'
               type: object
       security:
       - Bearer: []
@@ -2387,7 +2378,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.MoveElementListRequest'
+          $ref: '#/definitions/model.MoveElementListRequest'
       produces:
       - application/json
       responses:
@@ -2398,7 +2389,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.MoveElementListResult'
+                  $ref: '#/definitions/model.MoveElementListResult'
               type: object
       security:
       - Bearer: []
@@ -2415,7 +2406,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.OrderBudgetFolderListRequest'
+          $ref: '#/definitions/model.OrderBudgetFolderListRequest'
       produces:
       - application/json
       responses:
@@ -2426,7 +2417,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.OrderBudgetFolderListResult'
+                  $ref: '#/definitions/model.OrderBudgetFolderListResult'
               type: object
       security:
       - Bearer: []
@@ -2443,7 +2434,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.ResetBudgetRequest'
+          $ref: '#/definitions/model.ResetBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2454,7 +2445,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.ResetBudgetResult'
+                  $ref: '#/definitions/model.ResetBudgetResult'
               type: object
       security:
       - Bearer: []
@@ -2471,7 +2462,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.RevokeAccessRequest'
+          $ref: '#/definitions/model.RevokeAccessRequest'
       produces:
       - application/json
       responses:
@@ -2482,7 +2473,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.RevokeAccessResult'
+                  $ref: '#/definitions/model.RevokeAccessResult'
               type: object
       security:
       - Bearer: []
@@ -2499,7 +2490,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.SetLimitRequest'
+          $ref: '#/definitions/model.SetLimitRequest'
       produces:
       - application/json
       responses:
@@ -2510,7 +2501,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.SetLimitResult'
+                  $ref: '#/definitions/model.SetLimitResult'
               type: object
       security:
       - Bearer: []
@@ -2527,7 +2518,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.UpdateBudgetRequest'
+          $ref: '#/definitions/model.UpdateBudgetRequest'
       produces:
       - application/json
       responses:
@@ -2538,7 +2529,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.UpdateBudgetResult'
+                  $ref: '#/definitions/model.UpdateBudgetResult'
               type: object
         "400":
           description: Bad Request
@@ -2559,7 +2550,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.UpdateEnvelopeRequest'
+          $ref: '#/definitions/model.UpdateEnvelopeRequest'
       produces:
       - application/json
       responses:
@@ -2570,7 +2561,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.UpdateEnvelopeResult'
+                  $ref: '#/definitions/model.UpdateEnvelopeResult'
               type: object
       security:
       - Bearer: []
@@ -2587,7 +2578,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/budget.UpdateBudgetFolderRequest'
+          $ref: '#/definitions/model.UpdateBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -2598,7 +2589,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/budget.UpdateBudgetFolderResult'
+                  $ref: '#/definitions/model.UpdateBudgetFolderResult'
               type: object
       security:
       - Bearer: []

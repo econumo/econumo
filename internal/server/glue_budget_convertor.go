@@ -1,10 +1,11 @@
 // BudgetConvertor adapts currency.Convertor to budget.Convertor, and
 // BudgetAverageRateLookup adapts currency's RateProvider (currencyrepo) to
-// budget.AverageRateLookup. They live here, not in
-// internal/budget/repo, because budget's own ConvertItem/FullRate
-// are structural copies of model.ConvertItem/model.FullRate (an infra
-// package must not import a feature, see archtest) — these adapters convert
-// between the two shapes at the composition root.
+// budget.AverageRateLookup. Now that budget's ConvertItem/FullRate have moved
+// into internal/model (retired as structural twins of model.ConvertItem/
+// model.FullRate), both wrappers are pure pass-throughs — kept for this
+// commit so the type move lands independently green; the next commit
+// recognizes the identity and deletes them, wiring the concrete currency
+// types directly.
 package server
 
 import (
@@ -33,24 +34,9 @@ func NewBudgetConvertor(convertor budgetConvertorPort) *BudgetConvertor {
 	return &BudgetConvertor{convertor: convertor}
 }
 
-// BulkConvert converts budget's own ConvertItem slices to model.ConvertItem
-// and delegates.
-func (c *BudgetConvertor) BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]appbudget.ConvertItem) (map[string]vo.DecimalNumber, error) {
-	converted := make(map[string][]model.ConvertItem, len(items))
-	for k, v := range items {
-		out := make([]model.ConvertItem, len(v))
-		for i, item := range v {
-			out[i] = model.ConvertItem{
-				PeriodStart: item.PeriodStart,
-				PeriodEnd:   item.PeriodEnd,
-				From:        item.From,
-				To:          item.To,
-				Amount:      item.Amount,
-			}
-		}
-		converted[k] = out
-	}
-	return c.convertor.BulkConvert(ctx, periodStart, periodEnd, converted)
+// BulkConvert delegates (both sides are model.ConvertItem now).
+func (c *BudgetConvertor) BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]model.ConvertItem) (map[string]vo.DecimalNumber, error) {
+	return c.convertor.BulkConvert(ctx, periodStart, periodEnd, items)
 }
 
 // budgetRateProviderPort is the currencyrepo.RateProvider surface app/budget's
@@ -74,17 +60,9 @@ func NewBudgetAverageRateLookup(rates budgetRateProviderPort) *BudgetAverageRate
 	return &BudgetAverageRateLookup{rates: rates}
 }
 
-// AverageRates converts model.FullRate to budget's own FullRate.
-func (l *BudgetAverageRateLookup) AverageRates(ctx context.Context, start, end time.Time) ([]appbudget.FullRate, error) {
-	rates, err := l.rates.AverageRates(ctx, start, end)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]appbudget.FullRate, len(rates))
-	for i, r := range rates {
-		out[i] = appbudget.FullRate{CurrencyID: r.CurrencyID, Rate: r.Rate}
-	}
-	return out, nil
+// AverageRates delegates (both sides are model.FullRate now).
+func (l *BudgetAverageRateLookup) AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error) {
+	return l.rates.AverageRates(ctx, start, end)
 }
 
 // SnappedRatePeriod passes through (primitive types only, no leak).

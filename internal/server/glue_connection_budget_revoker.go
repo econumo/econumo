@@ -8,8 +8,8 @@ package server
 import (
 	"context"
 
-	dombudget "github.com/econumo/econumo/internal/budget"
 	appconnection "github.com/econumo/econumo/internal/connection"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -18,8 +18,8 @@ import (
 // avoids importing the whole budget repo type and keeps the dependency
 // one-directional.
 type connectionBudgetRepoPort interface {
-	ListForUser(ctx context.Context, userID vo.Id) ([]*dombudget.Budget, error)
-	ListAccess(ctx context.Context, budgetID vo.Id) ([]*dombudget.BudgetAccess, error)
+	ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, error)
+	ListAccess(ctx context.Context, budgetID vo.Id) ([]*model.BudgetAccess, error)
 	DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error
 }
 
