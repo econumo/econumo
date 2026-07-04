@@ -42,15 +42,15 @@ type MetadataLookup interface {
 	PayeesByOwners(ctx context.Context, userIDs []vo.Id) ([]model.PayeeMeta, error)
 }
 
-// Convertor is the currency convertor port (internal/server's BudgetConvertor
-// adapts currency.Convertor to it).
+// Convertor is the currency convertor port; the currency feature's convertor
+// satisfies it directly (wired at the composition root).
 type Convertor interface {
 	BulkConvert(ctx context.Context, periodStart, periodEnd time.Time, items map[string][]model.ConvertItem) (map[string]vo.DecimalNumber, error)
 }
 
 // AverageRateLookup resolves period-average rates for the financial summary's
-// currencyRates block (internal/server's BudgetAverageRateLookup adapts
-// currency.RateProvider to it).
+// currencyRates block; the currency rate provider satisfies it directly
+// (wired at the composition root).
 type AverageRateLookup interface {
 	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
 	// SnappedRatePeriod returns the [start,end) AverageRates actually used (the
