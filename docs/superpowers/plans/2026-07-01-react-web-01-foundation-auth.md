@@ -33,7 +33,7 @@
 **Interfaces:**
 - Produces: a building, testing React app; path alias `@/` → `web-react/src/`; `pnpm test` runs Vitest; Vite dev server proxies `/api` to the Go backend on `:8181`.
 
-- [ ] **Step 1: Scaffold**
+- [x] **Step 1: Scaffold**
 
 Run from the repo root:
 
@@ -45,7 +45,7 @@ pnpm add axios uuid jwt-decode @tanstack/react-query react-router react-i18next 
 pnpm add -D vitest jsdom @testing-library/react @testing-library/user-event @testing-library/jest-dom msw @types/node
 ```
 
-- [ ] **Step 2: Configure Vite + Vitest + alias + proxy**
+- [x] **Step 2: Configure Vite + Vitest + alias + proxy**
 
 Replace `web-react/vite.config.ts`:
 
@@ -97,7 +97,7 @@ Add to `web-react/package.json` scripts:
 "test:watch": "vitest"
 ```
 
-- [ ] **Step 3: Write a smoke test**
+- [x] **Step 3: Write a smoke test**
 
 Create `web-react/src/test/smoke.test.ts`:
 
@@ -110,11 +110,11 @@ describe('harness', () => {
 })
 ```
 
-- [ ] **Step 4: Verify test + build + lint pass**
+- [x] **Step 4: Verify test + build + lint pass**
 
 Run in `web-react/`: `pnpm test` → 1 passed. `pnpm build` → succeeds. `pnpm lint` → clean.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web-react
@@ -132,7 +132,7 @@ git commit -m "feat(web-react): scaffold Vite + React 19 + Vitest harness"
 **Interfaces:**
 - Produces: every shadcn component importable as `@/components/ui/<name>`; Tailwind 4 active; theme tokens in `src/index.css`.
 
-- [ ] **Step 1: Install Tailwind 4**
+- [x] **Step 1: Install Tailwind 4**
 
 ```bash
 pnpm add tailwindcss @tailwindcss/vite
@@ -146,7 +146,7 @@ In `vite.config.ts` add `import tailwindcss from '@tailwindcss/vite'` and `tailw
 
 Delete `src/App.css` and the template's demo content in `src/App.tsx` (leave `App` returning `<div>econumo</div>` for now; it is replaced in Task 10).
 
-- [ ] **Step 2: Init shadcn and vendor the full set**
+- [x] **Step 2: Init shadcn and vendor the full set**
 
 ```bash
 pnpm dlx shadcn@latest init
@@ -155,7 +155,7 @@ pnpm dlx shadcn@latest add --all
 
 Accept defaults (base color: neutral; CSS variables: yes). This creates `components.json`, rewrites `src/index.css` with the token variables, adds `src/lib/utils.ts`, and vendors every component into `src/components/ui/`.
 
-- [ ] **Step 3: Verify with a render test**
+- [x] **Step 3: Verify with a render test**
 
 Create `web-react/src/test/shadcn.test.tsx`:
 
@@ -171,7 +171,7 @@ it('renders a shadcn button', () => {
 
 Run: `pnpm test` → all pass. Run `pnpm build` → succeeds.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react
@@ -189,7 +189,7 @@ git commit -m "feat(web-react): add Tailwind 4 and vendor full shadcn/ui set"
 **Interfaces:**
 - Produces: `window.econumoConfig` available before the app boots; LilTag loads when `LILTAG_CONFIG_URL` is set — identical to the Vue app's `index.template.html`.
 
-- [ ] **Step 1: Copy public assets from the Vue app**
+- [x] **Step 1: Copy public assets from the Vue app**
 
 Run from `web-react/`:
 
@@ -203,7 +203,7 @@ rm -f public/vite.svg
 
 Check `ls ../web/public/` first and copy every remaining static asset the Vue app ships (e.g. `robots.txt`) — the served file set must match.
 
-- [ ] **Step 2: Port index.html**
+- [x] **Step 2: Port index.html**
 
 Replace `web-react/index.html` `<head>` (keep Vite's module script for `/src/main.tsx` in `<body>`):
 
@@ -252,11 +252,11 @@ Replace `web-react/index.html` `<head>` (keep Vite's module script for `/src/mai
 </html>
 ```
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run `pnpm build`; confirm `dist/` contains `econumo-config.js`, `liltag.min.js`, `icons/`. Run `pnpm dev` and load `http://localhost:9000` — no console errors, `window.econumoConfig` is defined.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react
@@ -275,7 +275,7 @@ git commit -m "feat(web-react): port index.html, runtime config and LilTag loade
 - Produces: `getToken(): string | null`, `hasToken(): boolean`, `setToken(token: string): void`, `removeToken(): void`, `isTokenExpired(token: string): boolean`, `getItem(key: string): unknown`, `setItem(key: string, value: unknown): void`, `removeItem(key: string): void`.
 - Note: the Vue `StorageKeys` cache-key enum is NOT ported — TanStack Query replaces that caching. `config.ts` (Task 5) uses raw keys `selfHosted`, `backendHost`, `locale` via `getItem`/`setItem`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `web-react/src/lib/storage.test.ts`:
 
@@ -326,11 +326,11 @@ describe('JSON item storage', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run src/lib/storage.test.ts` — FAIL (module not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `web-react/src/lib/storage.ts`:
 
@@ -388,11 +388,11 @@ export function removeItem(key: string): void {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `pnpm vitest run src/lib/storage.test.ts` — PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web-react/src/lib/storage.ts web-react/src/lib/storage.test.ts
@@ -412,7 +412,7 @@ git commit -m "feat(web-react): token and localStorage helpers"
 - Produces: `backendHost(value?: string): string`, `selfHosted(value?: boolean): boolean`, `locale(value?: string): string`, `getLocaleOptions()`, `isHttps()`, `getWebsiteUrl()`, `getVersion()`, `isCustomApiAllowed()`, `isRegistrationAllowed()`, `isPaywallEnabled()`, and the `EconumoConfig` global typing (now including `LILTAG_CONFIG_URL?` and `LILTAG_CACHE_TTL?`). `lib/package.ts` exports `econumoPackage: { label, includesConnections, includesSharedAccess, isPaywallEnabled, paywallUrl }`.
 - Source of truth for behavior: `web/src/modules/config.ts` and `web/src/modules/package.ts` — same precedence and defaults, with two changes: locale detection uses `navigator.language` instead of Quasar, and build-time env comes from `import.meta.env` instead of `process.env`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `web-react/src/lib/config.test.ts`:
 
@@ -471,11 +471,11 @@ describe('locale and version', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run src/lib/config.test.ts` — FAIL (module not found).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `web-react/src/lib/config.ts` — a line-for-line port of `web/src/modules/config.ts` with the Quasar locale branch replaced and `LILTAG_*` added to the typing:
 
@@ -624,7 +624,7 @@ export function econumoPackage(): EconumoPackage {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `pnpm vitest run src/lib/config.test.ts` — PASS. Also `pnpm build` (checks the `import.meta.env` typing compiles; if TS complains, add `/// <reference types="vite/client" />` usage is already in `src/vite-env.d.ts` — extend it with:)
 
@@ -635,7 +635,7 @@ interface ImportMetaEnv {
 }
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web-react/src/lib/config.ts web-react/src/lib/config.test.ts web-react/src/lib/package.ts web-react/vite.config.ts web-react/src/vite-env.d.ts
@@ -653,7 +653,7 @@ git commit -m "feat(web-react): port runtime config and package metadata"
 **Interfaces:**
 - Produces: every function from `web/src/modules/helpers/validation.ts` EXCEPT `isValidFormula` and `hasIncompleteFormula` (they depend on the calculator, which is ported in Plan 3 — they move into `lib/validation.ts` then). Signatures: `isValidHttpUrl(value: string): boolean`, `isValidEmail`, `isValidNumber`, `isValidDecimalNumber`, `isValidName`, `isValidFolderName`, `isValidAccountName`, `isValidCategoryName`, `isValidTagName`, `isValidPayeeName`, `isValidBudgetName`, `isValidPassword`, `isValidBudgetFolderName`, `isValidBudgetEnvelopeName`, `isNotEmpty`, `isValidRecoveryCode` — all `(value: string) => boolean`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `web-react/src/lib/validation.test.ts`:
 
@@ -693,19 +693,19 @@ it('isNotEmpty rejects empty string and null', () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run src/lib/validation.test.ts` — FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `web-react/src/lib/validation.ts` by copying `web/src/modules/helpers/validation.ts` verbatim, then: delete the top import from `./calculator`, delete `isValidFormula` and `hasIncompleteFormula`, and add explicit `: boolean` return types. (All other function bodies unchanged — they are the message-parity source of truth.)
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `pnpm vitest run src/lib/validation.test.ts` — PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web-react/src/lib/validation.ts web-react/src/lib/validation.test.ts
@@ -725,7 +725,7 @@ git commit -m "feat(web-react): port form validators"
 - Consumes: `getToken`, `removeToken` from `@/lib/storage`; `backendHost`, `locale` from `@/lib/config`.
 - Produces: `api` (AxiosInstance) with request headers (`Accept`, `Authorization`, `Accept-Language`, `X-Timezone`, `X-Request-Id`) and the 401 handler; `apiUrl(path: string): string` returning `backendHost() + path`.
 
-- [ ] **Step 1: MSW test server helper**
+- [x] **Step 1: MSW test server helper**
 
 Create `web-react/src/test/msw.ts`:
 
@@ -741,7 +741,7 @@ afterAll(() => server.close())
 
 (Import this from individual test files, not from the global setup, so unit tests that need no network don't pay for it.)
 
-- [ ] **Step 2: Write failing tests**
+- [x] **Step 2: Write failing tests**
 
 Create `web-react/src/api/client.test.ts`:
 
@@ -819,11 +819,11 @@ it('does NOT redirect on 401 from login-user (invalid credentials case)', async 
 })
 ```
 
-- [ ] **Step 3: Run to verify failure**
+- [x] **Step 3: Run to verify failure**
 
 Run: `pnpm vitest run src/api/client.test.ts` — FAIL (module not found).
 
-- [ ] **Step 4: Implement**
+- [x] **Step 4: Implement**
 
 Create `web-react/src/api/client.ts`:
 
@@ -865,11 +865,11 @@ export function apiUrl(path: string): string {
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `pnpm vitest run src/api/client.test.ts` — PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add web-react/src/api/client.ts web-react/src/api/client.test.ts web-react/src/test/msw.ts
@@ -891,7 +891,7 @@ git commit -m "feat(web-react): axios client with auth, timezone and X-Request-I
   - `dto/user.ts`: `UserDto { id: Id; avatar: string; name: string }`, `CurrentUserDto { id: Id; name: string; email: string; avatar: string; options: UserOptionDto[]; currency: string; reportPeriod: string }`, `UserOptionDto { name: UserOptions; value: string | null }`, `enum UserOptions { CURRENCY='currency', CURRENCY_ID='currency_id', REPORT_PERIOD='report_period', BUDGET='budget', ONBOARDING='onboarding' }`, `UserLoginItemDto { user: CurrentUserDto; token: string }`, `UserLoginResponseDto { data: UserLoginItemDto }`, `CurrentUserResponseDto { data: { user: CurrentUserDto } }`
   - `user.ts`: `login(username, password): Promise<UserLoginItemDto>`, `logout(): Promise<void>`, `register(email, password, name): Promise<void>`, `updateName(name): Promise<void>`, `updatePassword(oldPassword, newPassword): Promise<void>`, `updateCurrency(currency): Promise<void>`, `updateDefaultBudget(budgetId: Id): Promise<void>`, `getUserData(): Promise<CurrentUserDto>`, `remindPassword(username): Promise<void>`, `resetPassword(username, code, password): Promise<void>`, `completeOnboarding(): Promise<void>` — all string params.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `web-react/src/api/user.test.ts`:
 
@@ -978,11 +978,11 @@ it('remindPassword and resetPassword hit their endpoints', async () => {
 })
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run src/api/user.test.ts` — FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `web-react/src/api/types.ts`:
 
@@ -1046,11 +1046,11 @@ export async function completeOnboarding(): Promise<void> {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `pnpm vitest run src/api/user.test.ts` — PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web-react/src/api
@@ -1069,7 +1069,7 @@ git commit -m "feat(web-react): promise-based user API module with frozen DTOs"
 - Produces: initialized i18next instance (default export of `@/app/i18n`); components use `useTranslation()` and call `t('modules.user.form.user.email.label')`-style dotted keys. Interpolation uses **single braces** `{name}` to match the ported catalog.
 - Adds ONE new key (the session-expired notice): under `modules.user.page.sign_in` add `'session_expired': 'Your session has expired. Please sign in again.'`.
 
-- [ ] **Step 1: Copy the catalog**
+- [x] **Step 1: Copy the catalog**
 
 ```bash
 mkdir -p src/locales
@@ -1078,7 +1078,7 @@ cp ../web/src/i18n/en-US/index.ts src/locales/en-US.ts
 
 Edit `src/locales/en-US.ts`: add the `session_expired` key under `modules.user.page.sign_in` (next to its existing `header` key). Leave everything else byte-identical — including the vue-i18n pipe-plural string in the CSV-import section (it is converted in Plan 6 when that feature is built; it is not referenced before then).
 
-- [ ] **Step 2: Write failing test**
+- [x] **Step 2: Write failing test**
 
 Create `web-react/src/app/i18n.test.tsx`:
 
@@ -1110,7 +1110,7 @@ it('resolves dotted keys and single-brace interpolation', () => {
 
 Run: `pnpm vitest run src/app/i18n.test.tsx` — FAIL.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Create `web-react/src/app/i18n.ts`:
 
@@ -1137,11 +1137,11 @@ i18n.use(initReactI18next).init({
 export default i18n
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `pnpm vitest run src/app/i18n.test.tsx` — PASS. (If the exact assertion strings differ from the copied catalog, fix the TEST to the catalog's actual text — the catalog is the source of truth.)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web-react/src/locales web-react/src/app/i18n.ts web-react/src/app/i18n.test.tsx
@@ -1166,13 +1166,13 @@ git commit -m "feat(web-react): react-i18next with ported en-US catalog"
   - `LoginLayout`: logo, Sign in / Sign up tab links (register tab disabled when `!isRegistrationAllowed() && !econumoPackage().isPaywallEnabled`), `<Outlet />`, GitHub/X social links, `© econumo.com` help link — the structure of `web/src/layouts/LoginLayout.vue` (language switcher arrives with the settings feature in Plan 4).
   - `ApplicationLayout`: minimal shell for now — `<div className="flex min-h-svh"><main className="flex-1"><Outlet /></main></div>`; the real sidebar shell is Plan 3's first task.
 
-- [ ] **Step 1: Copy the logo**
+- [x] **Step 1: Copy the logo**
 
 ```bash
 mkdir -p src/assets && cp ../web/src/assets/econumo.svg src/assets/
 ```
 
-- [ ] **Step 2: Write failing guard tests**
+- [x] **Step 2: Write failing guard tests**
 
 Create `web-react/src/app/RequireAuth.test.tsx`:
 
@@ -1224,7 +1224,7 @@ it('redirects to /login?reason=expired and purges an expired token', () => {
 
 Run: `pnpm vitest run src/app/RequireAuth.test.tsx` — FAIL.
 
-- [ ] **Step 3: Implement guard, layouts, routes, entry**
+- [x] **Step 3: Implement guard, layouts, routes, entry**
 
 Create `web-react/src/app/RequireAuth.tsx`:
 
@@ -1406,11 +1406,11 @@ createRoot(document.getElementById('root')!).render(
 
 Delete `web-react/src/App.tsx`.
 
-- [ ] **Step 4: Run tests + build**
+- [x] **Step 4: Run tests + build**
 
 Run: `pnpm vitest run src/app/RequireAuth.test.tsx` → PASS. `pnpm test` → all pass. `pnpm build` → succeeds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web-react/src
@@ -1432,7 +1432,7 @@ git commit -m "feat(web-react): router with auth guard, login/app layouts, app e
   - `ResponsiveDialog({ open, onOpenChange, title, description?, children, dismissible = true }: { open: boolean; onOpenChange: (open: boolean) => void; title: string; description?: string; children: ReactNode; dismissible?: boolean })` — renders a shadcn `Dialog` on desktop and a `Drawer` (bottom sheet) on mobile; `dismissible={false}` reproduces Quasar's `no-backdrop-dismiss`.
 - Every feature modal in this and later plans renders inside this component.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `web-react/src/components/ResponsiveDialog.test.tsx`:
 
@@ -1474,7 +1474,7 @@ it('renders as a drawer on mobile', () => {
 
 Run: `pnpm vitest run src/components/ResponsiveDialog.test.tsx` — FAIL.
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 Create `web-react/src/hooks/useIsMobile.ts`:
 
@@ -1552,11 +1552,11 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
 
 (If the vendored `DialogContent` has no `showCloseButton` prop in the pulled shadcn version, omit that prop — check `src/components/ui/dialog.tsx` and adapt the call, not the vendored file.)
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `pnpm vitest run src/components/ResponsiveDialog.test.tsx` — PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react/src/components/ResponsiveDialog.tsx web-react/src/components/ResponsiveDialog.test.tsx web-react/src/hooks/useIsMobile.ts
@@ -1575,7 +1575,7 @@ git commit -m "feat(web-react): responsive dialog primitive (dialog on desktop, 
 - Consumes: `@/api/user`, `setToken` from `@/lib/storage`.
 - Produces: `useLogin()` — mutation taking `{ username: string; password: string }`, on success stores the token via `setToken(data.token)` and returns `UserLoginItemDto`; `useRegister()` — mutation taking `{ email: string; password: string; name: string }`; `useRemindPassword()` — mutation taking `{ username: string }`; `useResetPassword()` — mutation taking `{ username: string; code: string; password: string }`. All are thin `useMutation` wrappers — pages read `isPending`, `mutateAsync`.
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Create `web-react/src/features/auth/queries.test.tsx`:
 
@@ -1630,7 +1630,7 @@ it('does not store a token on failed login', async () => {
 
 Run: `pnpm vitest run src/features/auth/queries.test.tsx` — FAIL.
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 Create `web-react/src/features/auth/queries.ts`:
 
@@ -1670,11 +1670,11 @@ export function useResetPassword() {
 }
 ```
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `pnpm vitest run src/features/auth/queries.test.tsx` — PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react/src/features/auth
@@ -1696,7 +1696,7 @@ git commit -m "feat(web-react): auth mutations with token persistence"
   - `SelfHostedInfoDialog({ open, onClose }: { open: boolean; onClose: () => void })` — shows `t('modules.app.modal.self_hosted.information')` + OK.
   - `RecoveryDialog({ open, onClose }: { open: boolean; onClose: () => void })` — two-step recovery, non-dismissible by backdrop (`dismissible={false}` mirrors the Vue `no-backdrop-dismiss`): step 1 email → `useRemindPassword` → step 2 adds code (12 chars) + new password → `useResetPassword` → `onClose()`. Field validation mirrors `RecoveryModal.vue` (required/`isValidEmail`, required/`isValidRecoveryCode`, required/`isValidPassword`) with the same i18n message keys.
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Create `web-react/src/features/auth/RecoveryDialog.test.tsx`:
 
@@ -1765,7 +1765,7 @@ The accessible-name regexes must match the catalog's actual label strings under 
 
 Run: `pnpm vitest run src/features/auth/RecoveryDialog.test.tsx` — FAIL.
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 Create `web-react/src/components/FailDialog.tsx`:
 
@@ -1923,11 +1923,11 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
 
 (`react-hook-form` was installed by shadcn's `add --all` in Task 2; if `pnpm ls react-hook-form` shows it missing, `pnpm add react-hook-form`. `getValues` import is unused — drop it if the linter flags it.)
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `pnpm vitest run src/features/auth/RecoveryDialog.test.tsx` — PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react/src/features/auth web-react/src/components/FailDialog.tsx
@@ -1954,7 +1954,7 @@ git commit -m "feat(web-react): recovery, self-hosted info and fail dialogs"
   - `?reason=expired` → shadcn `Alert` with `t('modules.user.page.sign_in.session_expired')`;
   - already authenticated (valid token) on mount → redirect to `/`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `web-react/src/features/auth/LoginPage.test.tsx`:
 
@@ -2040,7 +2040,7 @@ it('shows the self-hosted section when custom API is allowed', () => {
 
 Run: `pnpm vitest run src/features/auth/LoginPage.test.tsx` — FAIL.
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 Create `web-react/src/features/auth/LoginPage.tsx`:
 
@@ -2221,11 +2221,11 @@ export function LoginPage() {
 
 In `web-react/src/app/routes.tsx`, import `LoginPage` and replace the `/login` element: `{ path: '/login', element: <LoginPage /> }`.
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `pnpm vitest run src/features/auth/LoginPage.test.tsx` — PASS. Then `pnpm test` — all pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react/src/features/auth/LoginPage.tsx web-react/src/features/auth/LoginPage.test.tsx web-react/src/app/routes.tsx
@@ -2249,7 +2249,7 @@ git commit -m "feat(web-react): login page with recovery, self-hosted mode and s
   - success → navigate to `/login` (react-router `useNavigate`); failure → `FailDialog` with `modules.user.modal.sign_up_failed.{header,information}`;
   - valid token on mount → `window.location.assign('/')`.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `web-react/src/features/auth/RegistrationPage.test.tsx`:
 
@@ -2327,7 +2327,7 @@ it('shows the paywall instead of the form when enabled', () => {
 
 Run: `pnpm vitest run src/features/auth/RegistrationPage.test.tsx` — FAIL.
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 Create `web-react/src/features/auth/RegistrationPage.tsx`:
 
@@ -2544,11 +2544,11 @@ export function RegistrationPage() {
 
 In `routes.tsx` swap `/register` to `<RegistrationPage />`.
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `pnpm vitest run src/features/auth/RegistrationPage.test.tsx` — PASS. `pnpm test` — all pass. `pnpm build` — succeeds.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react/src/features/auth/RegistrationPage.tsx web-react/src/features/auth/RegistrationPage.test.tsx web-react/src/app/routes.tsx
@@ -2568,7 +2568,7 @@ git commit -m "feat(web-react): registration page with paywall branch"
 - Consumes: `logout` from `@/api/user`, `removeToken`, `hasToken`.
 - Produces: `LogoutPage` — on mount: if a token exists, fire `logout()` (ignore any error), always `removeToken()`, then `window.location.assign('/login')` (full reload clears all in-memory query caches).
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Create `web-react/src/features/auth/LogoutPage.test.tsx`:
 
@@ -2601,7 +2601,7 @@ it('calls logout, purges the token and redirects to /login', async () => {
 
 Run: `pnpm vitest run src/features/auth/LogoutPage.test.tsx` — FAIL.
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 Create `web-react/src/features/auth/LogoutPage.tsx`:
 
@@ -2631,11 +2631,11 @@ export function LogoutPage() {
 
 In `routes.tsx` swap `/logout` to `<LogoutPage />`.
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `pnpm vitest run src/features/auth/LogoutPage.test.tsx` — PASS.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add web-react/src/features/auth/LogoutPage.tsx web-react/src/features/auth/LogoutPage.test.tsx web-react/src/app/routes.tsx
@@ -2652,7 +2652,7 @@ git commit -m "feat(web-react): logout page"
 **Interfaces:**
 - Produces: `make web-react-install`, `web-react-dev`, `web-react-test`, `web-react-lint`, `web-react-bundle` — mirroring the existing `web-*` targets' style (look at how `web-install`/`web-dev`/`web-bundle`/`web-lint` are written in the root `Makefile` and copy that pattern with `cd web-react`).
 
-- [ ] **Step 1: Add targets**
+- [x] **Step 1: Add targets**
 
 Append to the root `Makefile`, matching the existing `web-*` targets' formatting:
 
@@ -2675,11 +2675,11 @@ web-react-bundle:
 
 Also add the new target names to the `.PHONY` line if the Makefile declares one.
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run from repo root: `make web-react-test` → all tests pass; `make web-react-lint` → clean; `make web-react-bundle` → builds.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add Makefile
@@ -2692,7 +2692,7 @@ git commit -m "chore(web-react): make targets for install/dev/test/lint/bundle"
 
 **Files:** none (verification only; fix any divergence found, with a test, before closing this task)
 
-- [ ] **Step 1: Run all three apps**
+- [x] **Step 1: Run all three apps**
 
 ```bash
 # terminal 1 — Go backend (ensure .env has PORT=8181 and a DATABASE_URL)
@@ -2705,7 +2705,7 @@ make web-react-dev
 
 Create a test user if needed: `go run ./cmd/econumo user:create "Parity Tester" parity@example.test secret123`.
 
-- [ ] **Step 2: Walk every auth flow in BOTH apps, at three widths**
+- [x] **Step 2: Walk every auth flow in BOTH apps, at three widths**
 
 Use browser devtools responsive mode at 1280px (desktop), 820px (tablet), 375px (mobile). For each flow confirm the React app matches the Vue app (same data, same validation messages, same navigation):
 
@@ -2719,7 +2719,7 @@ Use browser devtools responsive mode at 1280px (desktop), 820px (tablet), 375px 
 8. React-only (approved divergence): with a logged-in session, hand-edit the stored token to an expired one (or wait) and navigate — redirected to `/login?reason=expired` with the visible notice.
 9. Deep link while logged out (`/settings`) → redirected to login in both apps.
 
-- [ ] **Step 3: Record the result**
+- [x] **Step 3: Record the result**
 
 Note any divergences found and fixed in the final commit message. When the checklist is clean:
 
