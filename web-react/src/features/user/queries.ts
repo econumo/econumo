@@ -19,8 +19,14 @@ export function userCurrencyId(user: CurrentUserDto | undefined): string | null 
   return userOption(user, UserOptions.CURRENCY_ID)
 }
 
+// Vue quirk preserved: an ABSENT onboarding option means completed — only an
+// explicit non-'completed' value routes the user into onboarding.
 export function isOnboardingCompleted(user: CurrentUserDto | undefined): boolean {
-  return userOption(user, UserOptions.ONBOARDING) === 'completed'
+  if (!user) {
+    return false
+  }
+  const option = user.options.find((o) => o.name === UserOptions.ONBOARDING)
+  return option === undefined || option.value === 'completed'
 }
 
 export function useUpdateName() {
@@ -49,6 +55,17 @@ export function useUpdateCurrency() {
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.user, user)
       trackEvent(METRICS.USER_UPDATE_CURRENCY)
+    },
+  })
+}
+
+export function useCompleteOnboarding() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => userApi.completeOnboarding(),
+    onSuccess: (user) => {
+      queryClient.setQueryData(queryKeys.user, user)
+      trackEvent(METRICS.USER_COMPLETE_ONBOARDING)
     },
   })
 }

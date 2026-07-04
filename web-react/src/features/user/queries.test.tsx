@@ -63,3 +63,12 @@ it('update-password rejects on the generic 400 envelope', async () => {
   result.current.mutate({ oldPassword: 'bad', newPassword: 'newpass' })
   await waitFor(() => expect(result.current.isError).toBe(true))
 })
+
+it('isOnboardingCompleted treats an absent option as completed (Vue parity)', async () => {
+  const { isOnboardingCompleted } = await import('./queries')
+  const base = { id: 'u1', name: 'A', email: 'a@x.test', avatar: '', currency: 'USD', reportPeriod: 'monthly' }
+  expect(isOnboardingCompleted(undefined)).toBe(false)
+  expect(isOnboardingCompleted({ ...base, options: [] })).toBe(true)
+  expect(isOnboardingCompleted({ ...base, options: [{ name: 'onboarding', value: 'completed' }] })).toBe(true)
+  expect(isOnboardingCompleted({ ...base, options: [{ name: 'onboarding', value: '' }] })).toBe(false)
+})

@@ -103,7 +103,7 @@ it('runImport chunks at 500 rows, remaps error rows, and tolerates chunk failure
   const rows = Array.from({ length: 1200 }, (_, i) => ['Cash', '2026-01-02', String(i + 1)])
   const analysis = { header: ['Account', 'Date', 'Amount'], rows, samples: {} }
   const files: { name: string; rows: number }[] = []
-  const post = vi.fn(async (file: File) => {
+  const post = vi.fn(async (file: File): Promise<{ imported: number; skipped: number; errors: Record<string, number[]> }> => {
     files.push({ name: file.name, rows: (await file.text()).trim().split('\n').length - 1 })
     if (files.length === 2) {
       throw new Error('boom')

@@ -17,10 +17,8 @@ import { PayeesPage } from '@/features/classifications/PayeesPage'
 import { TagsPage } from '@/features/classifications/TagsPage'
 import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
+import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
-
-// Pages land here as Plans 2-6 build them; until then guarded paths show the empty shell.
-const EmptyPage = () => <div />
 
 export function createRouter() {
   return createBrowserRouter([
@@ -41,7 +39,7 @@ export function createRouter() {
             { path: '/', element: <HomePage /> },
             { path: '/account/:id', element: <AccountPage /> },
             { path: '/budget', element: <BudgetPage /> },
-            { path: '/onboarding', element: <EmptyPage /> },
+            { path: '/onboarding', element: <OnboardingPage /> },
             { path: '/settings', element: <SettingsPage /> },
             { path: '/settings/profile', element: <ProfilePage /> },
             { path: '/settings/profile/change-password', element: <ChangePasswordPage /> },
