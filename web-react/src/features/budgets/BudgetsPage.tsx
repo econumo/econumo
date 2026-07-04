@@ -11,8 +11,21 @@ import { UserOptions } from '@/api/dto/user'
 import type { BudgetMetaDto } from '@/api/dto/budget'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
+import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
+import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
+import type { ShareEntry } from '@/features/connections/shared'
+import { buildShareEntries, hasBudgetAdminAccess } from '@/features/connections/shared'
+import { useConnections } from '@/features/connections/queries'
 import { useUserData, useUpdateDefaultBudget, userOption } from '@/features/user/queries'
-import { useBudgets, useCreateBudget, useDeleteBudget } from './queries'
+import {
+  useAcceptBudgetAccess,
+  useBudgets,
+  useCreateBudget,
+  useDeclineBudgetAccess,
+  useDeleteBudget,
+  useGrantBudgetAccess,
+  useRevokeBudgetAccess,
+} from './queries'
 import { BudgetDialog } from './BudgetDialog'
 
 export function BudgetsPage() {
@@ -20,13 +33,24 @@ export function BudgetsPage() {
   const navigate = useNavigate()
   const { data: user } = useUserData()
   const { data: budgets = [] } = useBudgets()
+  const { data: connections = [] } = useConnections()
   const createBudget = useCreateBudget()
   const deleteBudget = useDeleteBudget()
   const updateDefaultBudget = useUpdateDefaultBudget()
+  const acceptAccess = useAcceptBudgetAccess()
+  const declineAccess = useDeclineBudgetAccess()
+  const grantAccess = useGrantBudgetAccess()
+  const revokeAccess = useRevokeBudgetAccess()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<BudgetMetaDto | null>(null)
+  const [declineTarget, setDeclineTarget] = useState<BudgetMetaDto | null>(null)
+  const [accessBudgetId, setAccessBudgetId] = useState<string | null>(null)
+  const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
   const [errorOpen, setErrorOpen] = useState(false)
+
+  // read the live cache copy so grant/revoke refreshes show in the open dialog
+  const accessBudget = accessBudgetId ? budgets.find((b) => b.id === accessBudgetId) ?? null : null
 
   const defaultBudgetId = userOption(user, UserOptions.BUDGET)
 
@@ -94,12 +118,27 @@ export function BudgetsPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {!accepted ? (
+                      <DropdownMenuItem onSelect={() => acceptAccess.mutate(budget.id)}>
+                        {t('elements.button.accept.label')}
+                      </DropdownMenuItem>
+                    ) : null}
                     {accepted ? (
                       <DropdownMenuItem onSelect={() => goTo(budget)}>
                         {t('modules.budget.page.settings.list_actions.go_to')}
                       </DropdownMenuItem>
                     ) : null}
-                    {budget.ownerUserId === user?.id ? (
+                    {user && hasBudgetAdminAccess(budget, user.id) ? (
+                      <DropdownMenuItem onSelect={() => setAccessBudgetId(budget.id)}>
+                        {t('modules.budget.page.settings.list_actions.access')}
+                      </DropdownMenuItem>
+                    ) : null}
+                    {budget.ownerUserId !== user?.id ? (
+                      <DropdownMenuItem variant="destructive" onSelect={() => setDeclineTarget(budget)}>
+                        {t('elements.button.decline.label')}
+                      </DropdownMenuItem>
+                    ) : null}
+                    {user && hasBudgetAdminAccess(budget, user.id) ? (
                       <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(budget)}>
                         {t('elements.button.delete.label')}
                       </DropdownMenuItem>
@@ -124,6 +163,53 @@ export function BudgetsPage() {
             },
           )
         }}
+      />
+
+      <ShareAccessDialog
+        open={accessBudget !== null && levelEntry === null}
+        title={accessBudget?.name ?? ''}
+        kind="budgets"
+        entries={accessBudget && user ? buildShareEntries(connections, accessBudget.access, user.id, accessBudget.ownerUserId) : []}
+        onPick={(entry) => {
+          if (entry.role !== 'owner') {
+            setLevelEntry(entry)
+          }
+        }}
+        onClose={() => setAccessBudgetId(null)}
+      />
+
+      <AccessLevelDialog
+        open={levelEntry !== null}
+        kind="budgets"
+        user={levelEntry?.user ?? null}
+        role={levelEntry?.role ?? null}
+        onSelect={(role) => {
+          if (levelEntry && accessBudgetId) {
+            grantAccess.mutate({ budgetId: accessBudgetId, userId: levelEntry.user.id, role }, { onError: () => setErrorOpen(true) })
+          }
+          setLevelEntry(null)
+        }}
+        onRevoke={() => {
+          if (levelEntry && accessBudgetId) {
+            revokeAccess.mutate({ budgetId: accessBudgetId, userId: levelEntry.user.id })
+          }
+          setLevelEntry(null)
+        }}
+        onClose={() => setLevelEntry(null)}
+      />
+
+      <ConfirmDialog
+        open={declineTarget !== null}
+        onClose={() => setDeclineTarget(null)}
+        onConfirm={() => {
+          if (declineTarget) {
+            declineAccess.mutate(declineTarget.id, { onSettled: () => setDeclineTarget(null) })
+          }
+        }}
+        title={t('modules.budget.page.settings.decline_access_modal.title')}
+        question={t('modules.budget.page.settings.decline_access_modal.question', { name: declineTarget?.name ?? '' })}
+        confirmLabel={t('elements.button.decline.label')}
+        cancelLabel={t('elements.button.cancel.label')}
       />
 
       <ConfirmDialog

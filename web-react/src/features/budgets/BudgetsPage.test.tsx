@@ -122,3 +122,101 @@ it('delete confirm removes the budget; go-to navigates', async () => {
   await user.click(await screen.findByRole('menuitem', { name: 'Go to the budget' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
 })
+
+const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+const ownedShared = {
+  id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+  access: [
+    { user: fixtureOwner, role: 'owner', isAccepted: 1 },
+    { user: partner, role: 'user', isAccepted: 1 },
+  ],
+}
+const incoming = {
+  id: 'b3', ownerUserId: 'u2', name: 'Partner plan', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+  access: [
+    { user: partner, role: 'owner', isAccepted: 1 },
+    { user: fixtureOwner, role: 'user', isAccepted: 0 },
+  ],
+}
+
+it('accept: incoming budget row accepts and the subtitle disappears', async () => {
+  let body: unknown
+  const accepted = { ...incoming, access: [incoming.access[0], { ...incoming.access[1], isAccepted: 1 }] }
+  server.use(
+    ...coreHandlers({ budgets: [ownedShared, incoming] }),
+    http.post('*/api/v1/budget/accept-access', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { items: [ownedShared, accepted] } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText(/Regular access - not accepted/)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'budget actions Partner plan' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Accept' }))
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b3' }))
+  await waitFor(() => expect(screen.queryByText(/not accepted/)).not.toBeInTheDocument())
+})
+
+it('decline: confirm dialog posts decline-access', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ budgets: [ownedShared, incoming] }),
+    http.post('*/api/v1/budget/decline-access', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Partner plan')
+  await user.click(screen.getByRole('button', { name: 'budget actions Partner plan' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Decline' }))
+  expect(await screen.findByText('Are you sure you want to decline access to the budget Partner plan?')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Decline' }))
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b3' }))
+})
+
+it('access control: grant and revoke via the share dialogs', async () => {
+  let granted: unknown
+  let revoked: unknown
+  server.use(
+    ...coreHandlers({ budgets: [ownedShared], connections: [{ user: partner, sharedAccounts: [] }] }),
+    http.post('*/api/v1/budget/grant-access', async ({ request }) => {
+      granted = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { items: [ownedShared] } })
+    }),
+    http.post('*/api/v1/budget/revoke-access', async ({ request }) => {
+      revoked = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Main budget')
+  await user.click(screen.getByRole('button', { name: 'budget actions Main budget' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Access control' }))
+  await user.click(await screen.findByRole('button', { name: /Partner/ }))
+  await user.click(await screen.findByRole('button', { name: 'Manage budget' }))
+  await waitFor(() => expect(granted).toEqual({ budgetId: 'b1', userId: 'u2', role: 'user' }))
+
+  await user.click(await screen.findByRole('button', { name: /Partner/ }))
+  await user.click(await screen.findByRole('button', { name: 'Revoke access' }))
+  await waitFor(() => expect(revoked).toEqual({ budgetId: 'b1', userId: 'u2' }))
+})
+
+it('delete is offered on an admin-shared budget, not only owned ones', async () => {
+  const adminShared = {
+    id: 'b4', ownerUserId: 'u2', name: 'Admin plan', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+    access: [
+      { user: partner, role: 'owner', isAccepted: 1 },
+      { user: fixtureOwner, role: 'admin', isAccepted: 1 },
+    ],
+  }
+  server.use(...coreHandlers({ budgets: [adminShared] }))
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Admin plan')
+  await user.click(screen.getByRole('button', { name: 'budget actions Admin plan' }))
+  expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+})
