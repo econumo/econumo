@@ -68,11 +68,11 @@ export function ApplicationLayout() {
         <img src={`${user.avatar}?s=100`} alt={user.name} className="size-10 rounded-xl" />
       </Link>
     ) : (
-      <Link to={RouterPage.SETTINGS_PROFILE} className={`flex items-center gap-3 px-4 py-3 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
+      <Link to={RouterPage.SETTINGS_PROFILE} className={`flex items-center gap-4 px-4 py-4 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
         <img src={`${user.avatar}?s=100`} alt={user.name} className="size-12 rounded-xl" />
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-medium">{user.name}</span>
-          <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="truncate text-lg leading-5">{user.name}</span>
+          <span className="truncate text-sm leading-4 text-muted-foreground">{user.email}</span>
         </span>
       </Link>
     )
