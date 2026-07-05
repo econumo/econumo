@@ -8,10 +8,27 @@ import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { ProfilePage } from './ProfilePage'
 
-function mockViewport() {
+function mockViewport(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023') ? compact : false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
+}
+
+function renderWithHistory(initialEntries: string[], initialIndex: number) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter(
+    [
+      { path: '/account/:id', element: <div>ACCOUNT ROUTE</div> },
+      { path: '/settings', element: <div>SETTINGS HUB ROUTE</div> },
+      { path: '/settings/profile', element: <ProfilePage /> },
+    ],
+    { initialEntries, initialIndex },
+  )
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
 }
 
 function renderPage() {
@@ -37,6 +54,22 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockViewport()
+})
+
+it('mobile back returns to the previous url', async () => {
+  mockViewport(true)
+  const user = userEvent.setup()
+  renderWithHistory(['/account/a1', '/settings/profile'], 1)
+  await user.click(await screen.findByRole('button', { name: 'back' }))
+  expect(await screen.findByText('ACCOUNT ROUTE')).toBeInTheDocument()
+})
+
+it('mobile back falls back to the settings hub on a deep link', async () => {
+  mockViewport(true)
+  const user = userEvent.setup()
+  renderWithHistory(['/settings/profile'], 0)
+  await user.click(await screen.findByRole('button', { name: 'back' }))
+  expect(await screen.findByText('SETTINGS HUB ROUTE')).toBeInTheDocument()
 })
 
 it('saves the name on blur and updates the cache', async () => {

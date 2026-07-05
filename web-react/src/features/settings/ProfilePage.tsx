@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Power } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { UserCard } from '@/components/UserCard'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useUserData, useUpdateName } from '@/features/user/queries'
@@ -57,25 +57,14 @@ export function ProfilePage() {
   }
 
   return (
-    <SettingsShell
-      title={t('modules.user.page.settings.profile.header')}
-      backTo={RouterPage.SETTINGS}
-      actions={
-        <Button type="button" variant="ghost" size="icon" aria-label={t('pages.settings.settings.logout')} onClick={() => setLogoutOpen(true)}>
-          <Power className="size-5" />
-        </Button>
-      }
-    >
+    <SettingsShell title={t('modules.user.page.settings.profile.header')} backTo={RouterPage.SETTINGS}>
       {user ? (
-        <div className="flex items-center gap-3 px-1 py-3">
-          <img src={`${user.avatar}?s=100`} alt={user.name} className="size-16 rounded-full" />
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-medium">{user.name}</span>
-            <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-            <button type="button" className="mt-1 self-start text-xs text-muted-foreground underline" onClick={() => setLogoutOpen(true)}>
+        <div className="px-1 py-3">
+          <UserCard user={user}>
+            <button type="button" className="self-start text-sm text-econumo-magenta underline hover:text-econumo-magenta-dark" onClick={() => setLogoutOpen(true)}>
               {t('pages.settings.settings.logout')}
             </button>
-          </span>
+          </UserCard>
         </div>
       ) : null}
 

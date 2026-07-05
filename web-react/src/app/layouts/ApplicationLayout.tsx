@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 // the header logo (under the cutoff, auto-inlined) still shows.
 import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { LoadingDialog } from '@/components/LoadingDialog'
+import { UserCard } from '@/components/UserCard'
 import { econumoPackage } from '@/lib/package'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useSidebarStore } from '@/app/uiStore'
@@ -68,12 +69,8 @@ export function ApplicationLayout() {
         <img src={`${user.avatar}?s=100`} alt={user.name} className="size-10 rounded-xl" />
       </Link>
     ) : (
-      <Link to={RouterPage.SETTINGS_PROFILE} className={`flex items-center gap-4 px-4 py-4 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
-        <img src={`${user.avatar}?s=100`} alt={user.name} className="size-12 rounded-xl" />
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="truncate text-lg leading-5">{user.name}</span>
-          <span className="truncate text-sm leading-4 text-muted-foreground">{user.email}</span>
-        </span>
+      <Link to={RouterPage.SETTINGS_PROFILE} className={`flex px-4 py-4 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
+        <UserCard user={user} />
       </Link>
     )
   ) : null
