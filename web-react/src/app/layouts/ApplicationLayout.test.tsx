@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
@@ -68,6 +69,26 @@ it('desktop shows sidebar and workspace together', async () => {
   await waitFor(() => expect(screen.getByTestId('sidebar')).toBeInTheDocument())
   expect(screen.getByTestId('workspace')).toBeInTheDocument()
   expect(screen.getByText('ACCOUNT CONTENT')).toBeInTheDocument()
+})
+
+it('desktop divider click collapses the sidebar to an icon rail and back', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  // account names and the user name are gone, only icons remain
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  expect(screen.queryByText('Ada')).not.toBeInTheDocument()
+  expect(screen.queryByText('Budget')).not.toBeInTheDocument()
+  // the account is still reachable as an icon button, avatar still shown
+  expect(screen.getByRole('button', { name: 'Cash' })).toBeInTheDocument()
+  expect(screen.getByAltText('Ada')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.getByText('Ada')).toBeInTheDocument()
 })
 
 it('compact viewport shows only the sidebar at / and only the workspace elsewhere', async () => {

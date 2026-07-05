@@ -42,7 +42,7 @@ function SharedAvatars({ account }: { account: AccountDto }) {
   )
 }
 
-export function SidebarAccountTree() {
+export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
@@ -79,6 +79,32 @@ export function SidebarAccountTree() {
           <span className="text-muted-foreground">0</span>
         </button>
       </div>
+    )
+  }
+
+  if (collapsed) {
+    // Icon rail: a flat list of account icons, folders elided.
+    return (
+      <nav className="flex flex-col items-center gap-1 px-2 py-1">
+        {tree.flatMap((item) => item.accounts).map((account) => {
+          const selected = account.id === selectedAccountId
+          return (
+            <button
+              key={account.id}
+              type="button"
+              aria-label={account.name}
+              aria-current={selected ? 'page' : undefined}
+              title={`${account.name} — ${moneyFormat(account.balance, account.currency)}`}
+              className={`grid size-10 shrink-0 place-items-center rounded-lg ${
+                selected ? 'bg-gradient-to-r from-econumo-magenta to-econumo-magenta-dark' : 'bg-econumo-card hover:bg-econumo-hover'
+              }`}
+              onClick={() => navigate(RouterPage.ACCOUNT(account.id))}
+            >
+              <EntityIcon name={account.icon} className={`text-lg ${selected ? 'text-white' : 'text-[#666666]'}`} />
+            </button>
+          )
+        })}
+      </nav>
     )
   }
 
@@ -155,6 +181,7 @@ export function SidebarAccountTree() {
                         <button
                           type="button"
                           aria-current={selected ? 'page' : undefined}
+                          title={`${account.name} — ${moneyFormat(account.balance, account.currency)}`}
                           className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left ${
                             selected
                               ? 'bg-gradient-to-r from-econumo-magenta to-econumo-magenta-dark text-white'

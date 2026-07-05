@@ -53,6 +53,8 @@ export const useUiStore = create<UiState>()((set) => ({
 interface SidebarState {
   folderOpen: Record<Id, boolean>
   toggleFolder: (id: Id) => void
+  collapsed: boolean
+  toggleCollapsed: () => void
 }
 
 // Persisted separately (replaces the Vue ACCOUNT_FOLDERS_OPENED localStorage map).
@@ -66,6 +68,9 @@ export const useSidebarStore = create<SidebarState>()(
           trackEvent(next ? METRICS.ACCOUNT_FOLDER_EXPAND : METRICS.ACCOUNT_FOLDER_COLLAPSE)
           return { folderOpen: { ...state.folderOpen, [id]: next } }
         }),
+      // Desktop-only icon-rail mode, toggled by clicking the sidebar divider.
+      collapsed: false,
+      toggleCollapsed: () => set((state) => ({ collapsed: !state.collapsed })),
     }),
     { name: 'sidebarFolders' },
   ),

@@ -118,7 +118,7 @@ export function AccountPage() {
       {isCompact ? (
         <>
           <header className="flex items-center gap-3">
-            <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
+            <Button type="button" variant="ghost" size="icon" aria-label="back" title={t('elements.button.back.label')} onClick={() => navigate(RouterPage.HOME)}>
               <ChevronLeft className="size-5" />
             </Button>
             <EntityIcon name={account.icon} className="text-2xl text-muted-foreground" />
@@ -137,6 +137,7 @@ export function AccountPage() {
                 variant="ghost"
                 size="icon"
                 aria-label={t('pages.account.toolbar.settings')}
+                title={t('pages.account.toolbar.settings')}
                 onClick={() => openAccountModal({ account })}
               >
                 <Settings2 className="size-5" />
@@ -147,6 +148,7 @@ export function AccountPage() {
                 type="button"
                 size="icon"
                 aria-label={t('pages.account.transaction_list.action.add_transaction')}
+                title={t('pages.account.transaction_list.action.add_transaction')}
                 onClick={() => openTransactionModal({ type: 'expense' })}
               >
                 <Plus className="size-4" />

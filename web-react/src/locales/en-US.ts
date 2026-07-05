@@ -15,7 +15,9 @@ export default {
     'main': {
       'budget': 'Budget',
       'onboarding': 'Onboarding',
-      'create_account': 'Add an account'
+      'create_account': 'Add an account',
+      'collapse_menu': 'Collapse the menu',
+      'expand_menu': 'Expand the menu'
     },
   },
   // elements

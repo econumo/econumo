@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Rocket, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
 // so without it the footer logo ships as a separate asset and can 404 where
@@ -10,6 +10,7 @@ import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { econumoPackage } from '@/lib/package'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
@@ -57,15 +58,24 @@ export function ApplicationLayout() {
   const showSidebar = !isCompact || location.pathname === '/'
   const showWorkspace = !isCompact || location.pathname !== '/'
   const isFetching = useIsFetching() > 0
+  const { collapsed, toggleCollapsed } = useSidebarStore()
+  // Icon-rail mode is desktop-only; compact keeps the full-width home sidebar.
+  const rail = collapsed && !isCompact
 
   const userBlock = user ? (
-    <Link to={RouterPage.SETTINGS_PROFILE} className={`flex items-center gap-3 px-4 py-3 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
-      <img src={`${user.avatar}?s=100`} alt={user.name} className="size-12 rounded-xl" />
-      <span className="flex min-w-0 flex-col">
-        <span className="truncate text-sm font-medium">{user.name}</span>
-        <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-      </span>
-    </Link>
+    rail ? (
+      <Link to={RouterPage.SETTINGS_PROFILE} className="mt-3 flex justify-center px-2 py-3" title={user.name}>
+        <img src={`${user.avatar}?s=100`} alt={user.name} className="size-10 rounded-xl" />
+      </Link>
+    ) : (
+      <Link to={RouterPage.SETTINGS_PROFILE} className={`flex items-center gap-3 px-4 py-3 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
+        <img src={`${user.avatar}?s=100`} alt={user.name} className="size-12 rounded-xl" />
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate text-sm font-medium">{user.name}</span>
+          <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+        </span>
+      </Link>
+    )
   ) : null
 
   return (
@@ -73,7 +83,7 @@ export function ApplicationLayout() {
     // (the window itself never scrolls), matching the Vue layout.
     <div className="flex h-svh overflow-hidden">
       {showSidebar ? (
-        <aside className="flex w-full flex-col border-r bg-sidebar lg:w-80" data-testid="sidebar">
+        <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
           {/* On desktop the user block stays pinned above the scrolling tree;
               on compact it scrolls away with the account list (Vue parity). */}
           {user && !isCompact ? userBlock : null}
@@ -81,42 +91,96 @@ export function ApplicationLayout() {
           {isFullyLoaded || hasLoadedOnce.current ? (
             <div className="flex-1 overflow-y-auto scrollbar-none">
               {user && isCompact ? userBlock : null}
-              <div className="flex flex-col px-3 py-1">
-                {!isOnboardingCompleted(user) ? (
-                  <Link to={RouterPage.ONBOARDING} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
-                    {t('blocks.main.onboarding')}
+              {rail ? (
+                <div className="flex flex-col items-center gap-1 py-1">
+                  {!isOnboardingCompleted(user) ? (
+                    <Link
+                      to={RouterPage.ONBOARDING}
+                      title={t('blocks.main.onboarding')}
+                      className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                    >
+                      <Rocket className="size-5" />
+                    </Link>
+                  ) : null}
+                  <Link
+                    to={RouterPage.BUDGET}
+                    title={t('blocks.main.budget')}
+                    className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                  >
+                    <Wallet className="size-5" />
                   </Link>
-                ) : null}
-                <Link to={RouterPage.BUDGET} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
-                  {t('blocks.main.budget')}
-                </Link>
-              </div>
-              <SidebarAccountTree />
+                </div>
+              ) : (
+                <div className="flex flex-col px-3 py-1">
+                  {!isOnboardingCompleted(user) ? (
+                    <Link to={RouterPage.ONBOARDING} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
+                      {t('blocks.main.onboarding')}
+                    </Link>
+                  ) : null}
+                  <Link to={RouterPage.BUDGET} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
+                    {t('blocks.main.budget')}
+                  </Link>
+                </div>
+              )}
+              <SidebarAccountTree collapsed={rail} />
             </div>
           ) : (
             <div className="flex-1" />
           )}
 
-          <footer className="flex items-center justify-between border-t px-4 py-3">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-0.5">
-                <img src={grayLogo} width={125} height={20} alt="" />
-                <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
-              </div>
-              <Link to={RouterPage.SETTINGS} className="text-xs text-muted-foreground hover:text-foreground">
-                {t('pages.settings.settings.menu_item')}
+          {rail ? (
+            <footer className="flex flex-col items-center gap-4 border-t px-2 py-3">
+              <Link
+                to={RouterPage.SETTINGS}
+                title={t('pages.settings.settings.menu_item')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Settings className="size-5" />
               </Link>
-            </div>
-            <button
-              type="button"
-              aria-label="sync"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => void queryClient.invalidateQueries()}
-            >
-              <RefreshCw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
-            </button>
-          </footer>
+              <button
+                type="button"
+                aria-label="sync"
+                title={t('pages.settings.sync.menu_item')}
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => void queryClient.invalidateQueries()}
+              >
+                <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
+              </button>
+            </footer>
+          ) : (
+            <footer className="flex items-center justify-between border-t px-4 py-3">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-0.5">
+                  <img src={grayLogo} width={125} height={20} alt="" />
+                  <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
+                </div>
+                <Link to={RouterPage.SETTINGS} className="text-xs text-muted-foreground hover:text-foreground">
+                  {t('pages.settings.settings.menu_item')}
+                </Link>
+              </div>
+              <button
+                type="button"
+                aria-label="sync"
+                title={t('pages.settings.sync.menu_item')}
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => void queryClient.invalidateQueries()}
+              >
+                <RefreshCw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
+              </button>
+            </footer>
+          )}
         </aside>
+      ) : null}
+
+      {/* The sidebar/workspace divider doubles as the collapse toggle (desktop only). */}
+      {showSidebar && !isCompact ? (
+        <button
+          type="button"
+          aria-label="toggle sidebar"
+          title={t(collapsed ? 'blocks.main.expand_menu' : 'blocks.main.collapse_menu')}
+          className="w-1.5 shrink-0 cursor-col-resize border-l bg-transparent p-0 hover:bg-accent"
+          onClick={toggleCollapsed}
+        />
       ) : null}
 
       {showWorkspace ? (

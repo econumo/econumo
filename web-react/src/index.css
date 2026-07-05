@@ -8,6 +8,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tailwind v4 preflight sets `button { cursor: default }`; every enabled
+   interactive control in this app must read as clickable. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
+
 /* Scrollable but with the scrollbar itself hidden (sidebar account tree). */
 @utility scrollbar-none {
   scrollbar-width: none;
