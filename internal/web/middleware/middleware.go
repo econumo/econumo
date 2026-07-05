@@ -155,7 +155,8 @@ func CORS(origins []string) Middleware {
 			}
 			if h.Get("Access-Control-Allow-Origin") != "" {
 				h.Set("Access-Control-Allow-Methods", "OPTIONS, POST, GET")
-				h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Timezone")
+				h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Timezone, X-Request-Id")
+				h.Set("Access-Control-Expose-Headers", requestIDHeader)
 				h.Set("Access-Control-Max-Age", "3600")
 			}
 			if r.Method == http.MethodOptions {

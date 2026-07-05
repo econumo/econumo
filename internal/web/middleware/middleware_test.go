@@ -143,8 +143,11 @@ func TestCORS_Preflight_ShortCircuits(t *testing.T) {
 	if got := hdr.Get("Access-Control-Allow-Methods"); got != "OPTIONS, POST, GET" {
 		t.Fatalf("Allow-Methods=%q", got)
 	}
-	if got := hdr.Get("Access-Control-Allow-Headers"); got != "Content-Type, Authorization, X-Timezone" {
+	if got := hdr.Get("Access-Control-Allow-Headers"); got != "Content-Type, Authorization, X-Timezone, X-Request-Id" {
 		t.Fatalf("Allow-Headers=%q", got)
+	}
+	if got := hdr.Get("Access-Control-Expose-Headers"); got != "X-Request-Id" {
+		t.Fatalf("Expose-Headers=%q want X-Request-Id", got)
 	}
 	if got := hdr.Get("Access-Control-Max-Age"); got != "3600" {
 		t.Fatalf("Max-Age=%q want 3600", got)
