@@ -21,9 +21,11 @@ it('calls logout, purges the token and redirects to /login', async () => {
     }),
   )
   setToken('tok')
+  localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
   const router = createMemoryRouter([{ path: '/logout', element: <LogoutPage /> }], { initialEntries: ['/logout'] })
   render(<RouterProvider router={router} />)
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
   expect(called).toBe(true)
   expect(localStorage.getItem('token')).toBeNull()
+  expect(localStorage.getItem('econumo.query-cache')).toBeNull()
 })

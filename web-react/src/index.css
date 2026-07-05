@@ -194,3 +194,77 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* Loading dialog: three "e"-stamped gold coins juggling while we wait.
+   All shades derive from the frozen brand gold (econumo-yellow). */
+.coin-loader {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.875rem;
+  padding-top: 1.5rem; /* headroom for the hop */
+}
+
+.coin-loader-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3125rem;
+}
+
+.coin-loader-coin {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 28%,
+    color-mix(in srgb, var(--color-econumo-yellow), white 45%),
+    var(--color-econumo-yellow) 55%,
+    color-mix(in srgb, var(--color-econumo-yellow), black 12%) 100%
+  );
+  border: 2px solid color-mix(in srgb, var(--color-econumo-yellow), black 22%);
+  /* embossed rim: a light lip on top, a milled inner ring below it */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 0 0 3px color-mix(in srgb, var(--color-econumo-yellow), black 8%);
+  color: var(--color-econumo-yellow-text);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+  transform-origin: 50% 100%;
+  animation: coin-bounce 1.5s ease-in-out infinite;
+  animation-delay: var(--coin-delay, 0s);
+}
+
+.coin-loader-shadow {
+  width: 1.375rem;
+  height: 0.3125rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-econumo-yellow-text), transparent 65%);
+  animation: coin-shadow 1.5s ease-in-out infinite;
+  animation-delay: var(--coin-delay, 0s);
+}
+
+/* rest → crouch → apex → landing squash → rest */
+@keyframes coin-bounce {
+  0%, 55%, 100% { transform: translateY(0) scale(1, 1); }
+  8%   { transform: translateY(0) scale(1.18, 0.78); }
+  30%  { transform: translateY(-1.25rem) scale(0.94, 1.08); }
+  46%  { transform: translateY(0) scale(1.12, 0.84); }
+}
+
+@keyframes coin-shadow {
+  0%, 55%, 100% { transform: scaleX(1); opacity: 0.5; }
+  8%   { transform: scaleX(1.2); opacity: 0.6; }
+  30%  { transform: scaleX(0.5); opacity: 0.2; }
+  46%  { transform: scaleX(1.15); opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin-loader-coin,
+  .coin-loader-shadow {
+    animation: none;
+  }
+}

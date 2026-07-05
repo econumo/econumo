@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
-import { useIsFetching, useQueryClient } from '@tanstack/react-query'
+import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw, Rocket, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
@@ -60,11 +60,14 @@ export function ApplicationLayout() {
 
   // The blocking loader belongs to the FIRST boot only; once data has been on
   // screen, refetches and cache churn must never re-cover the app (Vue parity).
+  // While the persisted cache is being restored the data is transiently
+  // undefined — that must not flash the loader either.
+  const isRestoring = useIsRestoring()
   const hasLoadedOnce = useRef(false)
   if (isFullyLoaded) {
     hasLoadedOnce.current = true
   }
-  const showBootLoader = !isFullyLoaded && !hasLoadedOnce.current
+  const showBootLoader = !isFullyLoaded && !hasLoadedOnce.current && !isRestoring
 
   const showSidebar = !isCompact || location.pathname === '/'
   const showWorkspace = !isCompact || location.pathname !== '/'

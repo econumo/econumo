@@ -1,9 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
+import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
 import { ApplicationLayout } from './ApplicationLayout'
 
 function mockViewport(compact: boolean) {
@@ -36,6 +40,25 @@ function renderShell(path: string) {
   )
 }
 
+function renderShellPersisted() {
+  const router = createMemoryRouter(
+    [{ element: <ApplicationLayout />, children: [{ path: '/', element: <div>HOME CONTENT</div> }] }],
+    { initialEntries: ['/'] },
+  )
+  const persister = createSyncStoragePersister({ storage: localStorage, key: QUERY_CACHE_KEY, throttleTime: 0 })
+  // a fresh QueryClient per call = a page reload (in-memory cache is gone)
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister }}
+      onSuccess={() => refreshRestoredQueries(queryClient)}
+    >
+      <RouterProvider router={router} />
+    </PersistQueryClientProvider>,
+  )
+}
+
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
@@ -61,6 +84,32 @@ it('shows the loading gate, then the sidebar tree with folder totals', async () 
   expect(screen.getByText('Ada')).toBeInTheDocument()
   expect(screen.getByText('Budget')).toBeInTheDocument()
   expect(screen.getByText('Settings')).toBeInTheDocument()
+})
+
+it('a reload with a persisted cache skips the boot loader and refreshes in the background', async () => {
+  mockViewport(false)
+  let accountFetches = 0
+  server.use(
+    http.get('*/api/v1/account/get-account-list', () => {
+      accountFetches++
+      return HttpResponse.json({ success: true, message: '', data: { items: fixtureAccounts } })
+    }),
+  )
+  // boot #1: cold cache — the gate shows, data loads from the network and persists
+  const first = renderShellPersisted()
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  await waitFor(() => expect(localStorage.getItem(QUERY_CACHE_KEY)).not.toBeNull())
+  const coldBootFetches = accountFetches
+  first.unmount()
+
+  // boot #2: fresh QueryClient (= page reload) — restored from localStorage,
+  // data on screen at once, no blocking gate, and a background refetch fires
+  // even though staleTime still considers the restored data fresh
+  renderShellPersisted()
+  expect(screen.queryByText('Loading details')).not.toBeInTheDocument()
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByText('Loading details')).not.toBeInTheDocument()
+  await waitFor(() => expect(accountFetches).toBeGreaterThan(coldBootFetches))
 })
 
 it('desktop shows sidebar and workspace together', async () => {

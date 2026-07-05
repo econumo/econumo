@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { logout } from '@/api/user'
+import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { hasToken, removeToken } from '@/lib/storage'
 
 export function LogoutPage() {
@@ -13,6 +14,7 @@ export function LogoutPage() {
         }
       }
       removeToken()
+      clearPersistedQueryCache()
       window.location.assign('/login')
     }
     void run()

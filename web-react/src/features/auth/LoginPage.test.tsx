@@ -36,11 +36,14 @@ it('logs in and stores the token', async () => {
   )
   const user = userEvent.setup()
   renderLogin()
+  // a previous user's persisted finances must not survive a new sign-in
+  localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
   await user.type(screen.getByLabelText(/e-?mail/i), 'ada@example.test')
   await user.type(screen.getByLabelText(/password/i), 'secret')
   await user.click(screen.getByRole('button', { name: /sign in/i }))
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
   expect(localStorage.getItem('token')).toBe('jwt')
+  expect(localStorage.getItem('econumo.query-cache')).toBeNull()
 })
 
 it('shows the failure dialog on invalid credentials', async () => {

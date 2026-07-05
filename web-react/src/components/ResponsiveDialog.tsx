@@ -12,15 +12,18 @@ interface ResponsiveDialogProps {
   dismissible?: boolean
   /** Quasar-parity headers (ADD TRANSACTION, …); confirmation questions stay sentence case */
   caps?: boolean
+  /** visually hide the header (title stays for screen readers) — pure-indicator dialogs */
+  hideHeader?: boolean
   /** mobile only: stretch the sheet to the full viewport (long forms; avoids a scrolling half-sheet) */
   fullScreen?: boolean
   /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
   footer?: ReactNode
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, fullScreen = false, footer }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, fullScreen = false, footer }: ResponsiveDialogProps) {
   const isMobile = useIsMobile()
   const titleClass = caps ? 'uppercase tracking-wide' : undefined
+  const headerClass = hideHeader ? 'sr-only' : undefined
   const handleOpenChange = (next: boolean) => {
     if (!next && !dismissible) {
       return
@@ -37,7 +40,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
               : undefined
           }
         >
-          <DrawerHeader>
+          <DrawerHeader className={headerClass}>
             <DrawerTitle className={titleClass}>{title}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
           </DrawerHeader>
@@ -56,7 +59,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
         onInteractOutside={dismissible ? undefined : (e) => e.preventDefault()}
         showCloseButton={dismissible}
       >
-        <DialogHeader>
+        <DialogHeader className={headerClass}>
           <DialogTitle className={titleClass}>{title}</DialogTitle>
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
