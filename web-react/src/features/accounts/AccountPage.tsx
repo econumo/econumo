@@ -37,13 +37,16 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
     if (!sentinel) {
       return
     }
+    // The parent is the scroll container; it must be the observer root —
+    // rootMargin on the default (viewport) root does not expand the clip
+    // rect of a scrollable ancestor, so prefetch would never trigger.
     const observer = new IntersectionObserver(
       (hits) => {
         if (hits.some((hit) => hit.isIntersecting)) {
           setVisibleCount((count) => count + LIST_CHUNK)
         }
       },
-      { rootMargin: '600px' },
+      { root: sentinel.parentElement, rootMargin: '600px' },
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
@@ -54,7 +57,7 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
   return (
     <>
       {entries.slice(0, visibleCount).map(children)}
-      {hasMore ? <div ref={sentinelRef} aria-hidden="true" /> : null}
+      {hasMore ? <div ref={sentinelRef} aria-hidden="true" className="h-px" /> : null}
     </>
   )
 }

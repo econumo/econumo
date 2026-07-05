@@ -58,7 +58,9 @@ export function ApplicationLayout() {
   const websiteUrl = getWebsiteUrl()
 
   return (
-    <div className="flex min-h-svh">
+    // Fixed-height shell: the sidebar and the workspace scroll independently
+    // (the window itself never scrolls), matching the Vue layout.
+    <div className="flex h-svh overflow-hidden">
       {showSidebar ? (
         <aside className="flex w-full flex-col border-r bg-sidebar lg:w-80" data-testid="sidebar">
           <div className="flex items-center gap-2 px-4 pb-2 pt-4">
@@ -76,7 +78,7 @@ export function ApplicationLayout() {
           ) : null}
 
           {isFullyLoaded || hasLoadedOnce.current ? (
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto scrollbar-none">
               <div className="flex flex-col px-3 py-1">
                 {!isOnboardingCompleted(user) ? (
                   <Link to={RouterPage.ONBOARDING} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
@@ -121,7 +123,7 @@ export function ApplicationLayout() {
       ) : null}
 
       {showWorkspace ? (
-        <main className="min-w-0 flex-1" data-testid="workspace">
+        <main className="min-w-0 flex-1 overflow-y-auto" data-testid="workspace">
           <Outlet />
         </main>
       ) : null}

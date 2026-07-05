@@ -8,6 +8,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Scrollable but with the scrollbar itself hidden (sidebar account tree). */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Entity icons (account.icon / category.icon) are Material icon ligature
    names stored in the production DB — rendered with the same web font the
    Vue app ships. Lucide is used for UI chrome only. */
