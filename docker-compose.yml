@@ -32,6 +32,30 @@ services:
       retries: 12
       start_period: 30s
 
+  # Optional PostgreSQL. Off by default — the app runs on SQLite (the `db` volume
+  # above). Uncomment this service (and the `pgdata` volume below) to either:
+  #   - run `make regression`: its pgsql tier + `pg-ensure` auto-create the
+  #     throwaway `econumo_test` database in here, or
+  #   - run the app itself on Postgres: set DATABASE_URL in .env to
+  #     postgres://econumo:econumo@postgres:5432/econumo?sslmode=disable
+  # postgres:
+  #   image: postgres:17-alpine
+  #   environment:
+  #     POSTGRES_USER: econumo
+  #     POSTGRES_PASSWORD: econumo
+  #     POSTGRES_DB: econumo
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U econumo"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
+
 volumes:
   db:
   jwt:
+  # pgdata:   # uncomment together with the postgres service above

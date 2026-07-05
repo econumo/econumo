@@ -143,25 +143,33 @@ swagger-check:
 # ---- REGRESSION (smoke + sqlite-vs-pgsql comparison) ----------------------
 
 # Where the regression suite finds PostgreSQL. If DATABASE_TEST_PGSQL_URL is set
-# in the environment it is used as-is; otherwise regression auto-provisions a
-# throwaway DB in the compose `postgres` service at this URL.
+# in the environment it is used as-is; otherwise it points at the compose
+# `postgres` service (which ships commented out — see pg-ensure / docker-compose.yml).
 DATABASE_TEST_PGSQL_URL ?= postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
 
 # Regression suite: the full smoke suite + the engine-comparison suite against a
-# real PostgreSQL. If no Postgres is reachable it auto-creates a throwaway test
-# DB in the compose `postgres` service (start it with `make up` or
-# `docker compose up -d postgres` first).
+# real PostgreSQL. Provide Postgres one of two ways: uncomment the `postgres`
+# service in docker-compose.yml (pg-ensure then starts it and creates the test
+# DB), or set DATABASE_TEST_PGSQL_URL to any reachable Postgres.
 regression: test pg-ensure test-engines test-repo-pgsql
 	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL)."
 
-# Ensure the throwaway test database exists in the compose postgres service.
-# No-op if it already exists; harmless if you point DATABASE_TEST_PGSQL_URL at
-# an external Postgres (the CREATE just runs against the compose one).
+# Ensure the throwaway `econumo_test` database exists in the compose `postgres`
+# service. That service ships commented out (the app defaults to SQLite), so this
+# is best-effort: if it isn't enabled, print an actionable NOTE and continue —
+# the pgsql tiers then use whatever DATABASE_TEST_PGSQL_URL points at (and SKIP if
+# it's unreachable). When the service IS enabled, start it and create the DB.
 pg-ensure:
-	@docker compose exec -T postgres psql -U econumo -d econumo -tAc \
-		"SELECT 1 FROM pg_database WHERE datname='econumo_test'" 2>/dev/null | grep -q 1 \
-		|| docker compose exec -T postgres psql -U econumo -d econumo -c "CREATE DATABASE econumo_test" \
-		|| echo "NOTE: could not auto-create econumo_test (set DATABASE_TEST_PGSQL_URL to an existing DB)"
+	@if ! docker compose config --services 2>/dev/null | grep -qx postgres; then \
+		echo "NOTE: the compose 'postgres' service is disabled (commented out in docker-compose.yml)."; \
+		echo "      Uncomment it to auto-provision here, or set DATABASE_TEST_PGSQL_URL to an existing Postgres."; \
+	else \
+		docker compose up -d postgres >/dev/null 2>&1 || true; \
+		docker compose exec -T postgres psql -U econumo -d econumo -tAc \
+			"SELECT 1 FROM pg_database WHERE datname='econumo_test'" 2>/dev/null | grep -q 1 \
+			|| docker compose exec -T postgres psql -U econumo -d econumo -c "CREATE DATABASE econumo_test" \
+			|| echo "NOTE: could not auto-create econumo_test (set DATABASE_TEST_PGSQL_URL to an existing DB)"; \
+	fi
 
 # Engine-comparison suite: runs each repo operation against BOTH sqlite and the
 # PostgreSQL at DATABASE_TEST_PGSQL_URL and asserts identical results. The pgsql
