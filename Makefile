@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish publish-buildx-ensure swagger swagger-check
+.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish-dev publish-buildx-ensure swagger swagger-check
 
 # Default target
 .DEFAULT_GOAL := help
@@ -14,7 +14,7 @@ help:
 	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/web/apidoc/docs)"
 	@echo "  make up           - Start the stack (compose, builds from source)"
 	@echo "  make down         - Stop the stack"
-	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
+	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
 	@echo ""
 	@echo "Frontend (web/):"
 	@echo "  make web-install  - Install web dependencies"
@@ -123,7 +123,7 @@ SWAG_VERSION := $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag 2>/d
 SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../../user,../../currency,../../account,../../category,../../tag,../../payee,../../transaction,../../connection,../../budget,../../model --parseInternal --parseDependency
 
 # Regenerate the committed OpenAPI docs from the handler/DTO annotations. This is
-# a prerequisite of go-build / go-run / publish / up so a built artifact never
+# a prerequisite of go-build / go-run / publish-dev / up so a built artifact never
 # embeds stale docs.
 swagger:
 	@echo "Regenerating OpenAPI docs (swag $(SWAG_VERSION))..."
@@ -180,10 +180,10 @@ test-repo-pgsql:
 		go test -tags enginecompare -count=1 $(shell go list ./internal/... | grep -vE '/sqlc/gen/|/test/enginecompare')
 
 # --- Publishing (GitHub Container Registry only) ---------------------------
-# `make publish` builds the multi-arch image locally and pushes the "dev" tag to
+# `make publish-dev` builds the multi-arch image locally and pushes the "dev" tag to
 # ghcr.io/econumo/econumo. Releases ("latest" + vX.Y.Z) are published by the
 # GitHub release workflow, NOT here. Requires `docker login ghcr.io` first.
-# Override any of these on the command line, e.g. `make publish PUBLISH_TAG=foo`.
+# Override any of these on the command line, e.g. `make publish-dev PUBLISH_TAG=foo`.
 GHCR_IMAGE        ?= ghcr.io/econumo/econumo
 PUBLISH_TAG       ?= dev
 PUBLISH_PLATFORMS ?= linux/amd64,linux/arm64
@@ -197,7 +197,7 @@ publish-buildx-ensure:
 
 # Regenerates the OpenAPI docs (swagger) first so the image built from source
 # embeds the current spec.
-publish: swagger publish-buildx-ensure
+publish-dev: swagger publish-buildx-ensure
 	@echo "Publishing $(GHCR_IMAGE):$(PUBLISH_TAG) ($(PUBLISH_PLATFORMS))..."
 	docker buildx build \
 		--builder $(BUILDX_BUILDER) \

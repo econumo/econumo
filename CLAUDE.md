@@ -54,7 +54,7 @@ make web-lint      # cd web && npm run lint
 ### Publishing
 
 ```bash
-make publish   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
+make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
@@ -379,7 +379,7 @@ data unreadable. Most are also asserted by the test suite.
 ## Deployment
 
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
-  - `:dev` — published locally via `make publish`.
+  - `:dev` — published locally via `make publish-dev`.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
