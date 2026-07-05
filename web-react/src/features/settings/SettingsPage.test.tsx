@@ -47,6 +47,11 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('Service settings')).toBeInTheDocument()
   // Full sync moved to the sidebar footer refresh button
   expect(screen.queryByText('Full sync')).not.toBeInTheDocument()
+  // grouped menu
+  expect(screen.getByText('Service')).toBeInTheDocument()
+  expect(screen.getByText('Classification')).toBeInTheDocument()
+  expect(screen.getByText('Data')).toBeInTheDocument()
+  expect(screen.getByText('Preferences')).toBeInTheDocument()
   expect(screen.getByText('Shared access')).toBeInTheDocument()
   expect(screen.getByText('Accounts and Folders')).toBeInTheDocument()
   expect(screen.getByText('Payees (senders, recipients)')).toBeInTheDocument()

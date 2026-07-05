@@ -153,6 +153,9 @@ export default {
         'logout': 'Logout',
         'groups': {
           'service': 'Service',
+          'classification': 'Classification',
+          'data': 'Data',
+          'preferences': 'Preferences',
           'user_interface': 'User Interface'
         }
       },

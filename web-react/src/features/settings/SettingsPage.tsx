@@ -16,6 +16,15 @@ import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 
+function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <>
+      <p className="px-1 pt-2 text-xs uppercase text-muted-foreground">{label}</p>
+      <nav className="flex flex-col gap-2">{children}</nav>
+    </>
+  )
+}
+
 // Vue renders the hub as light-gray card rows in a narrow column
 function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string; onClick?: () => void; trailing?: React.ReactNode }) {
   const inner = (
@@ -75,16 +84,24 @@ export function SettingsPage() {
             </Link>
           ) : null}
 
-          <p className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t('pages.settings.settings.groups.service')}</p>
-          <nav className="flex flex-col gap-2">
+          <MenuGroup label={t('pages.settings.settings.groups.service')}>
             <MenuRow label={t('modules.connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
             <MenuRow label={t('modules.budget.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
             <MenuRow label={t('pages.settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
+          </MenuGroup>
+
+          <MenuGroup label={t('pages.settings.settings.groups.classification')}>
             <MenuRow label={t('modules.classifications.categories.pages.settings.menu_item')} to={RouterPage.SETTINGS_CATEGORIES} />
             <MenuRow label={t('modules.classifications.payees.pages.settings.menu_item')} to={RouterPage.SETTINGS_PAYEES} />
             <MenuRow label={t('modules.classifications.tags.pages.settings.menu_item')} to={RouterPage.SETTINGS_TAGS} />
+          </MenuGroup>
+
+          <MenuGroup label={t('pages.settings.settings.groups.data')}>
             <MenuRow label={t('pages.settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
             <MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
+          </MenuGroup>
+
+          <MenuGroup label={t('pages.settings.settings.groups.preferences')}>
             <div className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-2">
               <span className="flex flex-col">
                 <span className="text-[11px] text-muted-foreground">{t('pages.settings.currency.menu_item')}</span>
@@ -102,17 +119,9 @@ export function SettingsPage() {
                 />
               </div>
             </div>
-          </nav>
+            {getLocaleOptions().length > 1 ? <MenuRow label={t('pages.settings.language.menu_item')} onClick={() => {}} /> : null}
+          </MenuGroup>
         </div>
-
-        {getLocaleOptions().length > 1 ? (
-          <>
-            <p className="px-3 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-              {t('pages.settings.settings.groups.user_interface')}
-            </p>
-            <MenuRow label={t('pages.settings.language.menu_item')} onClick={() => {}} />
-          </>
-        ) : null}
       </div>
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
