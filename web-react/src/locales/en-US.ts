@@ -24,6 +24,11 @@ export default {
   // elements
   'elements': {
     'econumo': { 'label': 'Econumo' },
+    'select': {
+      'search_placeholder': 'Search',
+      'create_placeholder': 'Search or enter a new name',
+      'create_hint': 'Type a name to add a new one'
+    },
     'folders': { 'default_folder': 'All accounts' },
     'account': { 'name_hidden': '[Hidden Account]' },
     'switch_to_account': 'Switch to',
@@ -236,6 +241,7 @@ export default {
           'header': 'Tag name is required',
           'name': {
             'label': 'Tag',
+            'placeholder': 'Enter tag name',
             'validation': { 'required_field': 'Required field' }
           }
         }

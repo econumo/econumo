@@ -109,7 +109,7 @@ it('edit opens the transaction dialog prefilled', async () => {
   await screen.findByTestId('tx-t1')
   await user.click(screen.getByRole('button', { name: 'actions t1' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
-  expect(await screen.findByText('Update transaction')).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Update transaction' })).toBeInTheDocument()
   expect(screen.getByLabelText('Enter amount')).toHaveValue('9.99')
 })
 

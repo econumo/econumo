@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { ComponentProps, KeyboardEvent } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useIsMobile } from '@/hooks/useIsMobile'
 import { evaluateFormula, sanitizeInput, validateFormula } from '@/lib/calculator'
 
 interface CalculatorInputProps extends Omit<ComponentProps<typeof Input>, 'value' | 'onChange'> {
@@ -19,7 +18,6 @@ const KEYPAD: { label: string; op: string }[] = [
 ]
 
 export function CalculatorInput({ value, onChange, ...inputProps }: CalculatorInputProps) {
-  const isMobile = useIsMobile()
   const [focused, setFocused] = useState(false)
 
   const handleChange = (raw: string) => {
@@ -78,7 +76,7 @@ export function CalculatorInput({ value, onChange, ...inputProps }: CalculatorIn
           inputProps.onBlur?.(e)
         }}
       />
-      {isMobile && focused ? (
+      {focused ? (
         <div data-calculator-keypad className="flex gap-1">
           {KEYPAD.map((key) => (
             <Button

@@ -42,6 +42,24 @@ beforeEach(() => {
   useUiStore.setState({ transactionModal: null, switchAccountPrompt: null })
 })
 
+it('Escape closes the dialog (outside clicks stay blocked via onInteractOutside)', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+})
+
+it('clicking anywhere on a select card (label/padding) opens the picker', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.click(screen.getByText('Category'))
+  expect(await screen.findByPlaceholderText('Search or enter a new name')).toBeInTheDocument()
+})
+
 it('creates an expense with the exact payload shape', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
@@ -54,7 +72,7 @@ it('creates an expense with the exact payload shape', async () => {
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
 
-  await screen.findByText('Add transaction')
+  await screen.findByRole('heading', { name: 'Add transaction' })
   await user.type(await screen.findByLabelText('Enter amount'), '5+4.99=')
   expect(screen.getByLabelText('Enter amount')).toHaveValue('9.99')
 
@@ -77,7 +95,7 @@ it('requires a category for non-transfers with the exact message', async () => {
   const user = userEvent.setup()
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
-  await screen.findByText('Add transaction')
+  await screen.findByRole('heading', { name: 'Add transaction' })
   await user.type(await screen.findByLabelText('Enter amount'), '5')
   await user.click(screen.getByRole('button', { name: 'Add' }))
   expect(await screen.findByText('Category is required')).toBeInTheDocument()
@@ -87,7 +105,7 @@ it('tags show on expense but not income; income payee label is Sender', async ()
   const user = userEvent.setup()
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
-  await screen.findByText('Add transaction')
+  await screen.findByRole('heading', { name: 'Add transaction' })
   expect(await screen.findByRole('checkbox', { name: 'vacation' })).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Recipient' })).toBeInTheDocument()
 
@@ -111,7 +129,7 @@ it('cross-currency transfer prefills the converted recipient amount and prompts 
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a1' })
 
-  await screen.findByText('Add transaction')
+  await screen.findByRole('heading', { name: 'Add transaction' })
   await user.type(await screen.findByLabelText('Enter amount'), '100')
   // recipient: a3 is the EUR account (rate 0.9) -> 100 USD = 90 EUR
   await user.click(screen.getByRole('combobox', { name: 'to account' }))
@@ -142,9 +160,11 @@ it('creates a category on the fly and selects it', async () => {
   const user = userEvent.setup()
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
-  await screen.findByText('Add transaction')
+  await screen.findByRole('heading', { name: 'Add transaction' })
   await user.click(screen.getByRole('combobox', { name: 'Category' }))
-  await user.type(screen.getByRole('combobox', { name: 'Category' }).ownerDocument.activeElement as HTMLElement, 'Books')
+  // the modal popover hides the rest of the dialog from the a11y tree while
+  // open; the search input autofocuses, so type into the focused element
+  await user.keyboard('Books')
   await user.click(await screen.findByText(/Add «Books»/))
   await waitFor(() => expect(created).toBeDefined())
   expect(created!.name).toBe('Books')

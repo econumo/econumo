@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { isValidTagName } from '@/lib/validation'
 
@@ -32,7 +32,7 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modals.transaction.dialog.new_tag.header')}>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modals.transaction.dialog.new_tag.header')} hideHeader>
       <form
         className="flex flex-col gap-4"
         noValidate
@@ -41,11 +41,16 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
           submit()
         }}
       >
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="new-tag-name">{t('modals.transaction.dialog.new_tag.name.label')}</Label>
-          <Input id="new-tag-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        </div>
+        <CardField label={t('modals.transaction.dialog.new_tag.name.label')} htmlFor="new-tag-name" error={error}>
+          <Input
+            id="new-tag-name"
+            className={cardFieldControlClass}
+            placeholder={t('modals.transaction.dialog.new_tag.name.placeholder')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+          />
+        </CardField>
         <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}

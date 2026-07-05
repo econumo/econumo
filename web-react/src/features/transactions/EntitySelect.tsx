@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { ChevronsUpDown } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { ChevronsUpDown, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { EntityIcon } from '@/components/EntityIcon'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 export interface EntityOption {
   value: string
@@ -41,8 +42,16 @@ export function EntitySelect({
   createValidator,
 }: EntitySelectProps) {
   const { t } = useTranslation()
+  const isMobile = useIsMobile()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  // inside the vaul drawer the popover must portal INTO the sheet: vaul's touch
+  // lock swallows touchmove on anything portaled to body, so the list would not
+  // scroll on mobile otherwise
+  const portalContainer = isMobile
+    ? (triggerRef.current?.closest('[data-slot="drawer-content"], [data-slot="dialog-content"]') as HTMLElement | null) ?? undefined
+    : undefined
 
   const selected = options.find((o) => o.value === value)
   const filtered = options.filter((o) => !search || o.label.toLowerCase().includes(search.toLowerCase()))
@@ -50,9 +59,13 @@ export function EntitySelect({
   const canCreate = !!onCreate && search !== '' && !exactMatch && (createValidator ? createValidator(search) : true)
 
   return (
-    <Popover open={open} onOpenChange={(next) => { setOpen(next); setSearch('') }}>
+    // modal on desktop only: the dialog's scroll lock otherwise swallows wheel
+    // events over the portaled popover, making the list unscrollable; inside
+    // the vaul drawer a modal popover dismisses itself immediately
+    <Popover modal={!isMobile} open={open} onOpenChange={(next) => { setOpen(next); setSearch('') }}>
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           id={id}
           type="button"
           variant="outline"
@@ -69,10 +82,21 @@ export function EntitySelect({
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput value={search} onValueChange={setSearch} />
-          <CommandList>
+      <PopoverContent
+        className="flex max-h-[min(20rem,var(--radix-popover-content-available-height))] w-[max(var(--radix-popover-trigger-width),14rem)] flex-col p-0"
+        align="start"
+        container={portalContainer}
+        // on mobile, focusing the search pops the keyboard and shoves the whole
+        // sheet up — let people scroll the list first and tap the field if needed
+        onOpenAutoFocus={isMobile ? (e) => e.preventDefault() : undefined}
+      >
+        <Command shouldFilter={false} className="min-h-0">
+          <CommandInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder={onCreate ? t('elements.select.create_placeholder') : t('elements.select.search_placeholder')}
+          />
+          <CommandList className="mt-1 max-h-none min-h-0 flex-1 overflow-y-auto">
             <CommandEmpty />
             {clearable && value ? (
               <CommandItem
@@ -101,15 +125,24 @@ export function EntitySelect({
             {canCreate ? (
               <CommandItem
                 value={`__create__${search}`}
+                className="text-econumo-magenta data-[selected=true]:text-econumo-magenta"
                 onSelect={() => {
                   onCreate?.(search)
                   setOpen(false)
                 }}
               >
+                <Plus className="size-4 text-econumo-magenta" />
                 {t('elements.button.add.label')} «{search}»
               </CommandItem>
             ) : null}
           </CommandList>
+          {/* creation happens by typing a new name — say so instead of hiding it */}
+          {onCreate && !canCreate ? (
+            <div className="mt-1 flex items-center gap-1.5 border-t px-3 py-2 text-xs text-muted-foreground">
+              <Plus className="size-3.5" />
+              {t('elements.select.create_hint')}
+            </div>
+          ) : null}
         </Command>
       </PopoverContent>
     </Popover>

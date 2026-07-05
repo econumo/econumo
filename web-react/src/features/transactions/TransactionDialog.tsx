@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { ArrowUpDown, ChevronLeft } from 'lucide-react'
+import { useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
@@ -27,6 +29,37 @@ import { AddTagDialog } from './AddTagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
+
+// strips the EntitySelect trigger button down so the CardField carries the chrome
+const cardSelectClass =
+  '[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:font-normal [&_button]:shadow-none'
+
+// CardField around an EntitySelect where the WHOLE card is the tap target —
+// clicks on the label/padding forward to the trigger inside
+function SelectCard({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
+  // if the popover was open at pointerdown, that press already dismissed it —
+  // forwarding the click would immediately reopen
+  const wasOpen = useRef(false)
+  const trigger = (root: HTMLElement) => root.querySelector<HTMLButtonElement>('button[role="combobox"]')
+  return (
+    <div
+      className="cursor-pointer"
+      onPointerDownCapture={(e) => {
+        wasOpen.current = trigger(e.currentTarget)?.getAttribute('aria-expanded') === 'true'
+      }}
+      onClick={(e) => {
+        if (wasOpen.current || (e.target as HTMLElement).closest('button')) {
+          return
+        }
+        trigger(e.currentTarget)?.click()
+      }}
+    >
+      <CardField label={label} error={error}>
+        <div className={cardSelectClass}>{children}</div>
+      </CardField>
+    </div>
+  )
+}
 
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
   const { t } = useTranslation()
@@ -53,6 +86,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [addTagOpen, setAddTagOpen] = useState(false)
+  const [dateOpen, setDateOpen] = useState(false)
 
   const isTransfer = form.type === 'transfer'
   const isExpense = form.type === 'expense'
@@ -148,6 +182,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
   const dateOnly = dayKey(form.date)
   const pending = createTransaction.isPending || updateTransaction.isPending
+  const title = form.isNew ? t('modals.transaction.create_form.header') : t('modals.transaction.update_form.header')
 
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,
@@ -156,7 +191,27 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   })
 
   return (
+    <ResponsiveDialog
+      open
+      caps
+      fullScreen
+      hideHeader
+      dismissible={false}
+      onOpenChange={(o) => !o && onDone()}
+      title={title}
+      footer={
+        <div className="grid grid-cols-2 gap-3">
+          <Button type="button" variant="secondary" onClick={onDone}>
+            {t('elements.button.cancel.label')}
+          </Button>
+          <Button type="submit" form="transaction-dialog-form" disabled={pending}>
+            {form.isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
+          </Button>
+        </div>
+      }
+    >
     <form
+      id="transaction-dialog-form"
       className="flex flex-col gap-4"
       noValidate
       onSubmit={(e) => {
@@ -164,41 +219,46 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         void submit()
       }}
     >
-      {/* Vue header row: back-a-day arrow + date chip, right-aligned */}
-      <div className="-mt-9 flex items-center justify-end gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          aria-label="previous day"
-          onClick={() => {
-            const d = parseDateTime(form.date)
-            d.setHours(d.getHours() - 24)
-            patch({ date: formatDateTime(d) })
-          }}
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="secondary" className="h-7 rounded bg-econumo-card px-2 text-xs font-normal" aria-label="date">
-              {dateOnly}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <Calendar
-              mode="single"
-              weekStartsOn={1}
-              selected={parseDateTime(dateOnly)}
-              onSelect={(day) => {
-                if (day) {
-                  patch({ date: `${formatDate(day)} 00:00:00` })
-                }
-              }}
-            />
-          </PopoverContent>
-        </Popover>
+      {/* the dialog header is visually hidden — the title shares one row with
+          the back-a-day arrow + date chip (Vue header row) */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-lg font-semibold uppercase tracking-wide">{title}</span>
+        <span className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            aria-label="previous day"
+            onClick={() => {
+              const d = parseDateTime(form.date)
+              d.setHours(d.getHours() - 24)
+              patch({ date: formatDateTime(d) })
+            }}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Popover open={dateOpen} onOpenChange={setDateOpen}>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="secondary" className="h-7 rounded bg-econumo-card px-2 text-xs font-normal" aria-label="date">
+                {dateOnly}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                weekStartsOn={1}
+                selected={parseDateTime(dateOnly)}
+                onSelect={(day) => {
+                  if (day) {
+                    patch({ date: `${formatDate(day)} 00:00:00` })
+                    setDateOpen(false)
+                  }
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        </span>
       </div>
 
       <div className="flex rounded-lg bg-econumo-card p-1" role="radiogroup" aria-label="type">
@@ -241,138 +301,145 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
       {isTransfer ? (
         <>
-          <div className="flex flex-col gap-2">
-            <Label>{t('modals.transaction.form.from.label')}</Label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <EntitySelect
-                  aria-label="from account"
-                  value={form.accountId}
-                  onChange={(id) => patch({ accountId: id })}
-                  options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
-                  disabled={!form.isNew}
-                />
-              </div>
-              <Button type="button" variant="outline" size="icon" aria-label="swap accounts" onClick={swapAccounts} disabled={!form.isNew}>
-                <ArrowUpDown className="size-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label>{t('modals.transaction.form.to.label')}</Label>
-            <EntitySelect
-              aria-label="to account"
-              value={form.accountRecipientId}
-              onChange={setRecipientAccount}
-              options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
-            />
-          </div>
+          {/* Vue order: the exchanged amount lives right under the main amount, ABOVE the accounts */}
           {crossCurrency ? (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="tx-amount-recipient">{t('modals.transaction.form.amount_recipient.label')}</Label>
+            <CardField
+              label={t('modals.transaction.form.amount_recipient.label')}
+              htmlFor="tx-amount-recipient"
+              error={errors.amountRecipient}
+            >
               <Input
                 id="tx-amount-recipient"
+                className={cardFieldControlClass}
                 inputMode="decimal"
                 value={form.amountRecipient}
                 onChange={(e) => patch({ amountRecipient: e.target.value })}
               />
-              {errors.amountRecipient ? <p className="text-sm text-destructive">{errors.amountRecipient}</p> : null}
-            </div>
+            </CardField>
           ) : null}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1">
+              <div className="min-w-0 flex-1">
+                <SelectCard label={t('modals.transaction.form.from.label')}>
+                  <EntitySelect
+                    aria-label="from account"
+                    value={form.accountId}
+                    onChange={(id) => patch({ accountId: id })}
+                    options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
+                    disabled={!form.isNew}
+                  />
+                </SelectCard>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground"
+                aria-label="swap accounts"
+                onClick={swapAccounts}
+                disabled={!form.isNew}
+              >
+                <ArrowUpDown className="size-4" />
+              </Button>
+            </div>
+            <SelectCard label={t('modals.transaction.form.to.label')}>
+              <EntitySelect
+                aria-label="to account"
+                value={form.accountRecipientId}
+                onChange={setRecipientAccount}
+                options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
+              />
+            </SelectCard>
+          </div>
         </>
       ) : (
         <>
-          <div className="flex flex-col gap-2">
-            <Label>{t('modals.transaction.form.category.label')}</Label>
-            <EntitySelect
-              aria-label={t('modals.transaction.form.category.label')}
-              value={form.categoryId}
-              onChange={(id) => patch({ categoryId: id })}
-              options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
-              onCreate={
-                canEditData
-                  ? (name) => {
-                      createCategory.mutate(
-                        { name, type: form.type as 'expense' | 'income', accountId: form.accountId ?? undefined, ownerUserId: ownerId },
-                        { onSuccess: (item) => patch({ categoryId: item.id }) },
-                      )
-                    }
-                  : undefined
-              }
-              createValidator={isValidCategoryName}
-            />
-            {errors.category ? <p className="text-sm text-destructive">{errors.category}</p> : null}
-          </div>
+          <SelectCard label={t('modals.transaction.form.category.label')} error={errors.category}>
+              <EntitySelect
+                aria-label={t('modals.transaction.form.category.label')}
+                value={form.categoryId}
+                onChange={(id) => patch({ categoryId: id })}
+                options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
+                onCreate={
+                  canEditData
+                    ? (name) => {
+                        createCategory.mutate(
+                          { name, type: form.type as 'expense' | 'income', accountId: form.accountId ?? undefined, ownerUserId: ownerId },
+                          { onSuccess: (item) => patch({ categoryId: item.id }) },
+                        )
+                      }
+                    : undefined
+                }
+                createValidator={isValidCategoryName}
+              />
+          </SelectCard>
 
-          <div className="flex flex-col gap-2">
-            <Label>{t(`modals.transaction.form.payee.${form.type}`)}</Label>
-            <EntitySelect
-              aria-label={t(`modals.transaction.form.payee.${form.type}`)}
-              value={form.payeeId}
-              onChange={(id) => patch({ payeeId: id })}
-              options={currentPayees.map((p) => ({ value: p.id, label: p.name }))}
-              clearable
-              onCreate={
-                canEditData
-                  ? (name) => {
-                      createPayee.mutate(
-                        { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
-                        { onSuccess: (item) => patch({ payeeId: item.id }) },
-                      )
-                    }
-                  : undefined
-              }
-              createValidator={isValidPayeeName}
-            />
-          </div>
+          <SelectCard label={t(`modals.transaction.form.payee.${form.type}`)}>
+              <EntitySelect
+                aria-label={t(`modals.transaction.form.payee.${form.type}`)}
+                value={form.payeeId}
+                onChange={(id) => patch({ payeeId: id })}
+                options={currentPayees.map((p) => ({ value: p.id, label: p.name }))}
+                clearable
+                onCreate={
+                  canEditData
+                    ? (name) => {
+                        createPayee.mutate(
+                          { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
+                          { onSuccess: (item) => patch({ payeeId: item.id }) },
+                        )
+                      }
+                    : undefined
+                }
+                createValidator={isValidPayeeName}
+              />
+          </SelectCard>
 
           {isExpense ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {tagRow.map((tag) => (
-                <Badge
-                  key={tag.id}
-                  role="checkbox"
-                  aria-checked={form.tagId === tag.id}
-                  aria-label={tag.name}
-                  variant={form.tagId === tag.id ? 'default' : 'secondary'}
-                  className="cursor-pointer"
-                  onClick={() => patch({ tagId: form.tagId === tag.id ? null : tag.id })}
-                >
-                  {tag.name}
-                </Badge>
-              ))}
-              {canEditData ? (
-                <Badge variant="outline" className="cursor-pointer" role="button" aria-label="add tag" onClick={() => setAddTagOpen(true)}>
-                  +
-                </Badge>
-              ) : null}
-            </div>
+            <CardField label={t('pages.account.preview_transaction_modal.tags.label')}>
+              <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-0.5">
+                  {tagRow.map((tag) => (
+                    <Badge
+                      key={tag.id}
+                      role="checkbox"
+                      aria-checked={form.tagId === tag.id}
+                      aria-label={tag.name}
+                      variant={form.tagId === tag.id ? 'default' : 'secondary'}
+                      className="cursor-pointer"
+                      onClick={() => patch({ tagId: form.tagId === tag.id ? null : tag.id })}
+                    >
+                      {tag.name}
+                    </Badge>
+                  ))}
+                </div>
+                {canEditData ? (
+                  <button
+                    type="button"
+                    aria-label="add tag"
+                    title={t('elements.button.add.label')}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setAddTagOpen(true)}
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+            </CardField>
           ) : null}
         </>
       )}
 
-      <div className="flex flex-col gap-2">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('modals.transaction.form.options.header')}</p>
-        <Label htmlFor="tx-description" className="sr-only">
-          {t('modals.transaction.form.description.label')}
-        </Label>
+      <CardField label={t('modals.transaction.form.description.label')} htmlFor="tx-description">
         <Textarea
           id="tx-description"
-          className="bg-econumo-card border-0 shadow-none"
+          className={`${cardFieldControlClass} min-h-16 resize-none`}
           placeholder={t('modals.transaction.form.description.placeholder')}
           value={form.description}
           onChange={(e) => patch({ description: e.target.value })}
         />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button type="button" size="lg" variant="secondary" onClick={onDone}>
-          {t('elements.button.cancel.label')}
-        </Button>
-        <Button type="submit" size="lg" disabled={pending}>
-          {form.isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
-        </Button>
-      </div>
+      </CardField>
+    </form>
 
       <AddTagDialog
         open={addTagOpen}
@@ -389,12 +456,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           )
         }}
       />
-    </form>
+    </ResponsiveDialog>
   )
 }
 
 export function TransactionDialog() {
-  const { t } = useTranslation()
   const params = useUiStore((s) => s.transactionModal)
   const close = useUiStore((s) => s.closeTransactionModal)
 
@@ -402,15 +468,5 @@ export function TransactionDialog() {
     return null
   }
 
-  return (
-    <ResponsiveDialog
-      open
-      caps
-      onOpenChange={(o) => !o && close()}
-      title={params.transaction ? t('modals.transaction.update_form.header') : t('modals.transaction.create_form.header')}
-      dismissible={false}
-    >
-      <TransactionForm params={params} onDone={close} />
-    </ResponsiveDialog>
-  )
+  return <TransactionForm params={params} onDone={close} />
 }
