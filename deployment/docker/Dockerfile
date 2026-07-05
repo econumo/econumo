@@ -29,7 +29,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-COPY pkg/ ./pkg/
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/econumo ./cmd/econumo
 # Pre-create runtime dirs owned by the non-root user (distroless can't mkdir on boot).
 RUN mkdir -p /out/var/db /out/var/jwt

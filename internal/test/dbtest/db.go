@@ -12,6 +12,8 @@ package dbtest
 import (
 	"context"
 	"database/sql"
+	"strconv"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite" // register the pure-Go sqlite driver for tests
@@ -30,6 +32,28 @@ type DB struct {
 	Engine string // "sqlite" or "postgresql"
 }
 
+// Rebind converts a query written with sqlite-style '?' placeholders to the
+// engine's dialect, so raw verification SQL in a test runs on either engine
+// ('?' -> '$1','$2',... on PostgreSQL; unchanged on sqlite). Use it whenever a
+// test issues raw SQL through DB.Raw/DB.TX instead of a repository method.
+func (d *DB) Rebind(query string) string {
+	if d.Engine != "postgresql" {
+		return query
+	}
+	var b strings.Builder
+	n := 0
+	for i := 0; i < len(query); i++ {
+		if query[i] == '?' {
+			n++
+			b.WriteByte('$')
+			b.WriteString(strconv.Itoa(n))
+			continue
+		}
+		b.WriteByte(query[i])
+	}
+	return b.String()
+}
+
 // NewSQLite opens a fresh in-memory SQLite database, runs every migration, and
 // returns it pinned to a single connection (SQLite's shared-cache in-memory DB
 // needs MaxOpenConns(1) so all statements see the same data and the single
@@ -45,6 +69,13 @@ func NewSQLite(t testing.TB) *DB {
 	}
 	raw.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = raw.Close() })
+
+	// Tests must run with the same pragmas as production: sqlite.Backend.Open
+	// enables FK enforcement right after opening, and the schema relies on FK
+	// cascade/SET NULL semantics.
+	if _, err := raw.ExecContext(context.Background(), "PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("dbtest: sqlite pragma foreign_keys: %v", err)
+	}
 
 	if err := migrate.Run(context.Background(), raw, toMigrations(migrations.SQLite())); err != nil {
 		t.Fatalf("dbtest: migrate sqlite: %v", err)

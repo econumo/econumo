@@ -154,7 +154,8 @@ v0.x migrations, so it won't try to re-create the schema.
 | `CORS_ALLOW_ORIGIN` | `ECONUMO_CORS_ALLOW_ORIGIN` | Empty now means same-domain only. |
 | `ECONUMO_SQLITE_BUSY_TIMEOUT` | `SQLITE_BUSY_TIMEOUT` | Renamed. |
 | `ECONUMO_FROM_EMAIL` / `ECONUMO_REPLY_TO_EMAIL` + mail transport | `MAILER_DSN` | Consolidated — see the gotcha below. |
-| `ECONUMO_CURRENCY_BASE`, `ECONUMO_ALLOW_REGISTRATION`, `OPEN_EXCHANGE_RATES_TOKEN`, `ECONUMO_DATA_SALT` | _unchanged_ | |
+| `ECONUMO_CURRENCY_BASE`, `ECONUMO_ALLOW_REGISTRATION`, `OPEN_EXCHANGE_RATES_TOKEN` | _unchanged_ | |
+| `ECONUMO_DATA_SALT` | _deprecated_ | Same name, but v1.x runs salt-free — migrate once if it was set (see below). |
 | `APP_SECRET`, `ECONUMO_BASE_URL`, `ECONUMO_SYSTEM_API_KEY`, `ECONUMO_CONNECT_USERS`, `MESSENGER_TRANSPORT_DSN`, `LOCK_DSN`, New Relic / Qase vars | _removed_ | Symfony-only; drop them. |
 
 **Watch out for these:**
@@ -163,10 +164,26 @@ v0.x migrations, so it won't try to re-create the schema.
   (`null://null`, `mailjet+api://…`). In v1.x the scheme is `console://` (the
   default — prints to stdout) or `resend://<api_key>?from=…&reply_to=…`. A
   leftover v0.x value will **fail at boot**, so clear it or set the new form.
-- **`ECONUMO_DATA_SALT`** is deprecated. If your v0.x instance set it, leave it
-  set so v1.x can read your encrypted emails; optionally run
-  `data:remove-salt` (decrypts to plaintext, idempotent) and then unset it. If it
-  was already empty, do nothing.
+- **`ECONUMO_DATA_SALT`** is deprecated, and v1.x runs **salt-free** — it no
+  longer decrypts salted data. If your v0.x instance never set it (or set it
+  empty), do nothing. **If it was set, you must migrate the data once**, or those
+  users can't log in (their emails are unreadable and identifiers no longer match).
+  Back up your database first, then:
+
+    1. In `.env`, set `ECONUMO_DATA_SALT` to your **old** salt (so the migration
+       can decrypt), and start v1.x: `docker compose up -d`.
+    2. Run the one-off migration (the distroless image has no shell, so call the
+       binary directly — decryption is one-way, hence the backup):
+
+        ```console
+        $ docker compose exec econumo /app/econumo data:remove-salt
+        ```
+
+       It decrypts every email to plaintext, re-derives identifiers without the
+       salt, refuses to run on an empty salt, and is idempotent (safe to re-run).
+    3. Remove/comment `ECONUMO_DATA_SALT` in `.env` and restart:
+       `docker compose up -d`. The boot-time `ECONUMO_DATA_SALT is set` warning
+       clearing confirms you're done.
 
 **4. Replace your `docker-compose.yml`** with the v1.x single-service stack from
 this repo (one `econumo` service, the `db` + `jwt` volumes, port `8181:80`). Then:

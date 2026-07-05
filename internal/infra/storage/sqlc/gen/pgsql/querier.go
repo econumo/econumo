@@ -138,7 +138,8 @@ type Querier interface {
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// Available accounts: own OR shared via accounts_access, not deleted (see the
-	// sqlite variant). $1 is reused for both sides so the param stays single.
+	// sqlite variant, incl. the ORDER BY rationale). $1 is reused for both sides
+	// so the param stays single.
 	ListAvailableAccounts(ctx context.Context, userID string) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)

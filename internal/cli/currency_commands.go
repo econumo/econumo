@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/econumo/econumo/internal/domain/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/datetime"
 )
 
 // currencyCommands returns the currency-management subcommands.

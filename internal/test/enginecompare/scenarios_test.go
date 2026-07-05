@@ -9,12 +9,11 @@ import (
 	"testing"
 	"time"
 
-	appcategory "github.com/econumo/econumo/internal/app/category"
-	domconnection "github.com/econumo/econumo/internal/domain/connection"
-	"github.com/econumo/econumo/internal/domain/shared/vo"
-	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
-	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
-	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -56,7 +55,7 @@ func TestEngines_CategoryOwnAndShared(t *testing.T) {
 	})
 }
 
-func snapshotCategories(rows []appcategory.CategoryViewRow) string {
+func snapshotCategories(rows []model.CategoryViewRow) string {
 	out := make([]string, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, fmt.Sprintf("%s|%s|%s|pos=%d|type=%d|arch=%t|%s|%s",
@@ -106,15 +105,15 @@ func TestEngines_ConnectionInviteByCode(t *testing.T) {
 		fixture.New(t, db).User(fixture.User{ID: userA, Email: "a@test"})
 		repo := connectionrepo.NewInviteRepo(db.Engine, db.TX)
 
-		inv := domconnection.NewConnectionInvite(mustID(t, userA))
+		inv := model.NewConnectionInvite(mustID(t, userA))
 		inv.GenerateNewCode(fixedTime) // expiry = fixedTime + 5min
 		if err := repo.Save(ctx, inv); err != nil {
 			t.Fatalf("Save invite: %v", err)
 		}
-		code := inv.Code()
+		code := inv.Code
 
 		got, err := repo.GetByCode(ctx, code, fixedTime.Add(1*time.Minute))
-		foundBefore := err == nil && got != nil && got.UserId().Equal(mustID(t, userA))
+		foundBefore := err == nil && got != nil && got.UserID.Equal(mustID(t, userA))
 
 		_, errAfter := repo.GetByCode(ctx, code, fixedTime.Add(10*time.Minute))
 		foundAfter := errAfter == nil

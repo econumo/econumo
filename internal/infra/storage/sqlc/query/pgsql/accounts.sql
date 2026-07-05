@@ -8,11 +8,13 @@ WHERE id = $1;
 
 -- name: ListAvailableAccounts :many
 -- Available accounts: own OR shared via accounts_access, not deleted (see the
--- sqlite variant). $1 is reused for both sides so the param stays single.
+-- sqlite variant, incl. the ORDER BY rationale). $1 is reused for both sides
+-- so the param stays single.
 SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
-WHERE a.is_deleted = false AND (a.user_id = $1 OR aa.user_id = $1);
+WHERE a.is_deleted = false AND (a.user_id = $1 OR aa.user_id = $1)
+ORDER BY a.created_at, a.id;
 
 -- name: CountAvailableAccounts :one
 SELECT COUNT(*) FROM (

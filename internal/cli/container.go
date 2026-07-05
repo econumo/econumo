@@ -7,18 +7,16 @@ import (
 	"log/slog"
 	"strings"
 
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
-	appuser "github.com/econumo/econumo/internal/app/user"
 	"github.com/econumo/econumo/internal/config"
+	appcurrency "github.com/econumo/econumo/internal/currency"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
-	"github.com/econumo/econumo/internal/infra/openexchangerates"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	passwordrequestrepo "github.com/econumo/econumo/internal/infra/repo/passwordrequest"
-	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
-	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/server"
+	appuser "github.com/econumo/econumo/internal/user"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 // container is the CLI composition root: an opened DB plus the services the
@@ -31,7 +29,7 @@ type container struct {
 	clk      clock.Real
 	user     *appuser.Service
 	currency *appcurrency.WriteService
-	loader   *openexchangerates.Loader
+	loader   *currencyrepo.Loader
 }
 
 // newContainer loads config, opens the database, and wires the user + currency
@@ -46,6 +44,9 @@ func newContainer(ctx context.Context) (*container, error) {
 	if !ok {
 		return nil, errors.New("no database backend registered for engine " + cfg.DatabaseDriver +
 			" (registered: [" + strings.Join(backend.Registered(), ", ") + "])")
+	}
+	if c, ok := be.(backend.BusyTimeoutConfigurer); ok {
+		c.SetBusyTimeout(cfg.SQLiteBusyTimeout)
 	}
 	db, err := be.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
@@ -67,8 +68,8 @@ func newContainer(ctx context.Context) (*container, error) {
 	// are only exercised by the read/profile paths, not the admin mutators.
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
-	passwordReqRepo := passwordrequestrepo.New(cfg.DatabaseDriver, txm)
+	budgetExistence := server.NewUserBudgetExistence(cfg.DatabaseDriver, txm)
+	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, nil, currencyLookup, budgetExistence,
@@ -77,7 +78,7 @@ func newContainer(ctx context.Context) (*container, error) {
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
 	currencySvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
-	loader := openexchangerates.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
+	loader := currencyrepo.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
 
 	return &container{
 		db:       db,

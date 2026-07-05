@@ -2,7 +2,7 @@
 // real JWT signer/verifier (jwt.New takes key FILE paths).
 //
 // The keypair is the repo dev keypair, embedded here so it has a SINGLE home and
-// is reachable from any package without fragile "../../../pkg/jwt/testdata"
+// is reachable from any package without fragile "../../../shared/jwt/testdata"
 // relative paths (which broke the moment a test moved directories). Tests call
 // Paths(t) to get on-disk paths to the keys, valid for the duration of the test.
 //

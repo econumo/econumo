@@ -27,6 +27,12 @@ func New() *Backend { return &Backend{} }
 
 func (b *Backend) Name() string { return Name }
 
+// SetBusyTimeout configures the busy_timeout (in milliseconds) applied to the
+// connection in Open. Zero (the default) leaves the driver default, so no PRAGMA
+// is issued. Boot calls this with cfg.SQLiteBusyTimeout before Open; it satisfies
+// backend.BusyTimeoutConfigurer.
+func (b *Backend) SetBusyTimeout(ms int) { b.busyTimeoutMS = ms }
+
 // Open opens the SQLite database. The DSN may be the existing
 // "sqlite:///abs/path.sqlite" form or a plain file path; both are normalized to
 // a path modernc.org/sqlite accepts. SQLite allows a single writer, so the pool
@@ -43,6 +49,15 @@ func (b *Backend) Open(ctx context.Context, dsn string) (*sql.DB, error) {
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("sqlite pragma foreign_keys: %w", err)
+	}
+	// Apply the configured busy_timeout so a writer waits (rather than failing
+	// immediately with "database is locked") when the single connection is busy.
+	// Like foreign_keys above, this rides the single pinned connection.
+	if b.busyTimeoutMS > 0 {
+		if _, err := db.ExecContext(ctx, fmt.Sprintf("PRAGMA busy_timeout = %d;", b.busyTimeoutMS)); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("sqlite pragma busy_timeout: %w", err)
+		}
 	}
 	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()

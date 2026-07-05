@@ -65,6 +65,14 @@ type Backend interface {
 	Migrations() []Migration
 }
 
+// BusyTimeoutConfigurer is an optional Backend capability for engines with a
+// busy-timeout knob (SQLite). Boot applies cfg.SQLiteBusyTimeout via this
+// interface before Open when the selected backend implements it; engines
+// without the knob (PostgreSQL) simply do not implement it.
+type BusyTimeoutConfigurer interface {
+	SetBusyTimeout(ms int)
+}
+
 var (
 	registryMu sync.RWMutex
 	registry   = make(map[string]Backend)

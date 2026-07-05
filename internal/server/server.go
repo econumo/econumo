@@ -10,46 +10,43 @@ import (
 	"context"
 	"database/sql"
 	"net/http"
-	"time"
 
-	appaccount "github.com/econumo/econumo/internal/app/account"
-	appbudget "github.com/econumo/econumo/internal/app/budget"
-	appcategory "github.com/econumo/econumo/internal/app/category"
-	appconnection "github.com/econumo/econumo/internal/app/connection"
-	appcurrency "github.com/econumo/econumo/internal/app/currency"
-	apppayee "github.com/econumo/econumo/internal/app/payee"
-	apptag "github.com/econumo/econumo/internal/app/tag"
-	apptransaction "github.com/econumo/econumo/internal/app/transaction"
-	appuser "github.com/econumo/econumo/internal/app/user"
+	appaccount "github.com/econumo/econumo/internal/account"
+	handleraccount "github.com/econumo/econumo/internal/account/api"
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appbudget "github.com/econumo/econumo/internal/budget"
+	handlerbudget "github.com/econumo/econumo/internal/budget/api"
+	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	appcategory "github.com/econumo/econumo/internal/category"
+	handlercategory "github.com/econumo/econumo/internal/category/api"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
-	domcurrency "github.com/econumo/econumo/internal/domain/currency"
+	appconnection "github.com/econumo/econumo/internal/connection"
+	handlerconnection "github.com/econumo/econumo/internal/connection/api"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	appcurrency "github.com/econumo/econumo/internal/currency"
+	handlercurrency "github.com/econumo/econumo/internal/currency/api"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/mailer"
-	accountrepo "github.com/econumo/econumo/internal/infra/repo/account"
-	budgetrepo "github.com/econumo/econumo/internal/infra/repo/budget"
-	categoryrepo "github.com/econumo/econumo/internal/infra/repo/category"
-	connectionrepo "github.com/econumo/econumo/internal/infra/repo/connection"
-	currencyrepo "github.com/econumo/econumo/internal/infra/repo/currency"
-	operationrepo "github.com/econumo/econumo/internal/infra/repo/operation"
-	passwordrequestrepo "github.com/econumo/econumo/internal/infra/repo/passwordrequest"
-	payeerepo "github.com/econumo/econumo/internal/infra/repo/payee"
-	tagrepo "github.com/econumo/econumo/internal/infra/repo/tag"
-	transactionrepo "github.com/econumo/econumo/internal/infra/repo/transaction"
-	userrepo "github.com/econumo/econumo/internal/infra/repo/user"
-	userbudgetrepo "github.com/econumo/econumo/internal/infra/repo/userbudget"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/ui/apidoc"
-	handleraccount "github.com/econumo/econumo/internal/ui/handler/account"
-	handlerbudget "github.com/econumo/econumo/internal/ui/handler/budget"
-	handlercategory "github.com/econumo/econumo/internal/ui/handler/category"
-	handlerconnection "github.com/econumo/econumo/internal/ui/handler/connection"
-	handlercurrency "github.com/econumo/econumo/internal/ui/handler/currency"
-	handlerpayee "github.com/econumo/econumo/internal/ui/handler/payee"
-	handlertag "github.com/econumo/econumo/internal/ui/handler/tag"
-	handlertransaction "github.com/econumo/econumo/internal/ui/handler/transaction"
-	handleruser "github.com/econumo/econumo/internal/ui/handler/user"
-	"github.com/econumo/econumo/internal/ui/router"
-	"github.com/econumo/econumo/pkg/jwt"
+	apppayee "github.com/econumo/econumo/internal/payee"
+	handlerpayee "github.com/econumo/econumo/internal/payee/api"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
+	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/port"
+	apptag "github.com/econumo/econumo/internal/tag"
+	handlertag "github.com/econumo/econumo/internal/tag/api"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
+	apptransaction "github.com/econumo/econumo/internal/transaction"
+	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
+	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
+	appuser "github.com/econumo/econumo/internal/user"
+	handleruser "github.com/econumo/econumo/internal/user/api"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
+	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/router"
 )
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -57,7 +54,7 @@ import (
 // clk so tests can inject deterministic ones and point at either engine; the
 // engine is read from cfg.DatabaseDriver, which selects the per-engine sqlc query
 // adapters in every repository constructor.
-func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Handler {
+func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) http.Handler {
 	txm := backend.NewTxManager(db)
 
 	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
@@ -69,9 +66,9 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := userbudgetrepo.New(cfg.DatabaseDriver, txm)
+	budgetExistence := NewUserBudgetExistence(cfg.DatabaseDriver, txm)
 
-	passwordReqRepo := passwordrequestrepo.New(cfg.DatabaseDriver, txm)
+	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
@@ -112,38 +109,38 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	// and delete-account revokes the caller's own access.
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
-	accountCurrencyLookup := accountrepo.NewCurrencyLookup(currencyLookup)
-	accountUserLookup := accountrepo.NewUserLookup(userRepo)
+	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
+	userOwnerLookup := NewUserOwnerLookup(userRepo)
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
-	connectionFolderPort := connectionrepo.NewFolderPort(folderRepo)
-	connectionOptionPort := connectionrepo.NewOptionPort(accountRepo)
-	connectionUserLookup := connectionrepo.NewUserLookup(userRepo)
+	connectionFolderPort := NewConnectionFolderPort(folderRepo)
+
 	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionBudgetRevoker := connectionrepo.NewBudgetAccessRevoker(connectionBudgetRepo)
+	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
 	connectionSvc := appconnection.NewService(
-		connectionRepo, connectionInviteRepo, connectionFolderPort, connectionOptionPort,
-		connectionUserLookup, connectionBudgetRevoker, txm, clk,
+		connectionRepo, connectionInviteRepo, connectionFolderPort, accountRepo,
+		userOwnerLookup, connectionBudgetRevoker, txm, clk,
 	)
-	accountSharedLookup := connectionrepo.NewSharedAccessLookup(connectionRepo)
-	accountRevoker := connectionrepo.NewAccessRevoker(connectionRepo, connectionSvc)
+	accountSharedLookup := NewConnectionSharedAccessLookup(connectionRepo)
+	accountRevoker := NewConnectionAccessRevoker(connectionRepo, connectionSvc)
 	accountSvc := appaccount.NewService(
-		accountRepo, folderRepo, accountCurrencyLookup, accountUserLookup, accountSharedLookup, accountRevoker, txm, opGuard, clk,
+		accountRepo, folderRepo, accountCurrencyLookup, userOwnerLookup, accountSharedLookup, accountRevoker, txm, opGuard, clk,
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
-	txAccountResolver := transactionrepo.NewAccountResolver(accountSvc)
-	txAccountGrants := transactionrepo.NewAccountGrants(connectionRepo)
-	txVisible := transactionrepo.NewVisibleAccounts(accountSvc)
-	txUserLookup := transactionrepo.NewUserLookup(userRepo)
-	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, categoryRepo, tagRepo, payeeRepo)
+
+	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))
+	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
+	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)
+	txImportTags := NewTransactionImportTags(tagSvc, tagRepo)
+	txImportPayees := NewTransactionImportPayees(payeeSvc, payeeRepo)
 	txImportLookup := transactionrepo.NewImportLookup(
-		accountSvc, accountAccessResolver, accountRepo, folderRepo, categorySvc, payeeSvc, tagSvc,
-		categoryRepo, tagRepo, payeeRepo, currencyLookup, transactionRepo, cfg.CurrencyBase,
+		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags,
+		transactionRepo,
 	)
 	transactionSvc := apptransaction.NewService(
-		transactionRepo, txAccountResolver, txAccountGrants, txVisible, txUserLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
+		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 
@@ -152,13 +149,13 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
-	convertor := domcurrency.NewConvertor(rateProvider)
+	convertor := appcurrency.NewConvertor(rateProvider)
 	budgetSvc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
-		budgetrepo.NewUserLookup(userRepo, clk),
-		budgetrepo.NewAccountLookup(accountRepo),
+		NewBudgetUserLookup(userRepo, clk),
+		NewBudgetAccountLookup(accountRepo),
 		currencyLookup,
-		budgetrepo.NewMetadataLookup(categoryRepo, tagRepo, payeeRepo),
+		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
 		txm, clk,
 	)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
@@ -181,12 +178,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk Clock) http.Ha
 		DB:          pinger{db},
 		RegisterAPI: registerAPI,
 	})
-}
-
-// Clock is the time seam BuildAPI threads into every module: the real clock in
-// production, a fixed clock in tests for deterministic timestamps and JWT iat.
-type Clock interface {
-	Now() time.Time
 }
 
 type pinger struct{ db *sql.DB }
