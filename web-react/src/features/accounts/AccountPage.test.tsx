@@ -147,15 +147,105 @@ it('windows long lists: first chunk renders, scroll sentinel loads more', async 
   vi.unstubAllGlobals()
 })
 
+it('desktop: clicking anywhere on the row opens the context menu', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByTestId('tx-t1'))
+  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+})
+
+it('shared account: rows overlay the author avatar on the category icon', async () => {
+  mockViewport(false)
+  const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+  server.use(
+    ...coreHandlers({
+      accounts: [{ ...fixtureAccounts[0], sharedAccess: [{ user: partner, role: 'user' }] }],
+    }),
+  )
+  renderPage()
+  const row = await screen.findByTestId('tx-t1')
+  const avatar = within(row).getByRole('img', { name: 'Ada' })
+  expect(avatar).toHaveAttribute('src', 'https://avatars.test/ada?s=30')
+})
+
+it('private account: rows show no author avatar', async () => {
+  mockViewport(false)
+  renderPage()
+  const row = await screen.findByTestId('tx-t1')
+  expect(within(row).queryByRole('img')).not.toBeInTheDocument()
+})
+
+it('compact viewport: add-transaction lives in the footer, header keeps only settings', async () => {
+  mockViewport(true)
+  renderPage()
+  await screen.findByTestId('tx-t1')
+  const header = screen.getByRole('banner')
+  expect(within(header).queryByRole('button', { name: 'Add transaction' })).not.toBeInTheDocument()
+  expect(within(header).getByRole('button', { name: 'Configure account' })).toBeInTheDocument()
+  const footer = screen.getByRole('contentinfo')
+  expect(within(footer).getByRole('button', { name: 'Add transaction' })).toBeInTheDocument()
+})
+
+it('preview labels the payee by money direction (expense pays TO a recipient)', async () => {
+  mockViewport(true)
+  server.use(
+    ...coreHandlers({
+      transactions: [{
+        id: 't-payee', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+        amount: '5', amountRecipient: '5', categoryId: 'cat-food', description: '', payeeId: 'p1', tagId: null,
+        date: '2026-07-02 09:30:00',
+      }],
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByTestId('tx-t-payee'))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Recipient')).toBeInTheDocument()
+  expect(within(dialog).getByText('Grocer')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Payee')).not.toBeInTheDocument()
+})
+
+it('compact + shared account: preview hero overlays the author avatar', async () => {
+  mockViewport(true)
+  const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+  server.use(
+    ...coreHandlers({
+      accounts: [{ ...fixtureAccounts[0], sharedAccess: [{ user: partner, role: 'user' }] }],
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByTestId('tx-t1'))
+  const dialog = await screen.findByRole('dialog')
+  // the hero avatar (with the author name as alt/title) replaces a separate author row
+  expect(within(dialog).getByRole('img', { name: 'Ada' })).toHaveAttribute('src', 'https://avatars.test/ada?s=30')
+  expect(within(dialog).queryByText('Author')).not.toBeInTheDocument()
+})
+
 it('compact viewport: row click opens the preview dialog with details', async () => {
   mockViewport(true)
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('tx-t1')
   await user.click(screen.getByTestId('tx-t1'))
-  const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByText('Details')).toBeInTheDocument()
+  // header is visually hidden; the title still names the dialog for a11y
+  const dialog = await screen.findByRole('dialog', { name: 'Details' })
   expect(within(dialog).getByText('Expense')).toBeInTheDocument()
   expect(within(dialog).getByText('coffee beans')).toBeInTheDocument()
   expect(within(dialog).getByText('2026-07-02 09:30:00')).toBeInTheDocument()
+  // hero: category name with its icon and the signed amount
+  expect(within(dialog).getByText('Food')).toBeInTheDocument()
+  expect(within(dialog).getByText('restaurant')).toBeInTheDocument()
+  expect(within(dialog).getByText(/-9\.99\s*\$/)).toBeInTheDocument()
+  // private account: no author avatar anywhere in the preview
+  expect(within(dialog).queryByRole('img')).not.toBeInTheDocument()
+  // footer is one row: delete icon, wide Edit, collapse icon (no full Cancel button)
+  expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })

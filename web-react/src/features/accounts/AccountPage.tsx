@@ -76,6 +76,7 @@ export function AccountPage() {
   const [search, setSearch] = useState('')
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const entries = useAccountTransactions(id, search)
 
   const account = accounts?.find((a) => a.id === id)
@@ -126,11 +127,13 @@ export function AccountPage() {
               <h1 className="truncate text-lg uppercase" title={account.name}>
                 {account.name}
               </h1>
-              <p className="text-sm text-muted-foreground" data-testid="account-balance">
-                {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
-              </p>
+              <span className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground" data-testid="account-balance">
+                  {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
+                </p>
+                {sharedAvatars}
+              </span>
             </div>
-            {sharedAvatars}
             {canUpdateSettings ? (
               <Button
                 type="button"
@@ -141,17 +144,6 @@ export function AccountPage() {
                 onClick={() => openAccountModal({ account })}
               >
                 <Settings2 className="size-5" />
-              </Button>
-            ) : null}
-            {canChangeTransaction ? (
-              <Button
-                type="button"
-                size="icon"
-                aria-label={t('pages.account.transaction_list.action.add_transaction')}
-                title={t('pages.account.transaction_list.action.add_transaction')}
-                onClick={() => openTransactionModal({ type: 'expense' })}
-              >
-                <Plus className="size-4" />
               </Button>
             ) : null}
           </header>
@@ -223,22 +215,41 @@ export function AccountPage() {
               {separatorText(entry, t)}
             </div>
           ) : (
-            <div key={entry.transaction.id} className="group flex items-center">
+            // The whole row is one hover/tap surface (like the settings lists):
+            // click opens the kebab menu on desktop, the preview sheet on mobile.
+            <div
+              key={entry.transaction.id}
+              className={`flex items-start rounded-md ${
+                isCompact ? 'active:bg-accent' : `hover:bg-accent ${canTouchRow(entry.transaction) ? 'cursor-pointer' : ''}`
+              }`}
+              onClick={() =>
+                isCompact
+                  ? setPreview(entry.transaction)
+                  : canTouchRow(entry.transaction) && setOpenMenuId(entry.transaction.id)
+              }
+            >
               <div className="min-w-0 flex-1">
-                <TransactionRow
-                  transaction={entry.transaction}
-                  pageAccount={account}
-                  onClick={() => (isCompact ? setPreview(entry.transaction) : undefined)}
-                />
+                <TransactionRow transaction={entry.transaction} pageAccount={account} />
               </div>
               {!isCompact && canTouchRow(entry.transaction) ? (
-                <DropdownMenu>
+                <DropdownMenu
+                  open={openMenuId === entry.transaction.id}
+                  onOpenChange={(open) => setOpenMenuId(open ? entry.transaction.id : null)}
+                >
                   <DropdownMenuTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" aria-label={`actions ${entry.transaction.id}`}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="mt-0.5"
+                      aria-label={`actions ${entry.transaction.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <MoreVertical className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenuItem onSelect={() => editTransaction(entry.transaction)}>
                       {t('elements.button.edit.label')}
                     </DropdownMenuItem>
@@ -254,6 +265,20 @@ export function AccountPage() {
         </WindowedEntries>
       </div>
 
+      {isCompact && canChangeTransaction ? (
+        <footer className="shrink-0">
+          <Button
+            type="button"
+            className="h-11 w-full"
+            title={t('pages.account.transaction_list.action.add_transaction')}
+            onClick={() => openTransactionModal({ type: 'expense' })}
+          >
+            <Plus className="size-4" />
+            {t('pages.account.transaction_list.action.add_transaction')}
+          </Button>
+        </footer>
+      ) : null}
+
       {preview ? (
         <ViewTransactionDialog
           transaction={preview}
@@ -264,6 +289,7 @@ export function AccountPage() {
             setPreview(null)
           }}
           canChange={canTouchRow(preview)}
+          isShared={account.sharedAccess.length > 0}
         />
       ) : null}
 

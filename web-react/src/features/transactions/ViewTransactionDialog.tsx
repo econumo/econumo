@@ -1,6 +1,8 @@
+import { ChevronDown, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { CardField } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
@@ -12,23 +14,32 @@ interface ViewTransactionDialogProps {
   onEdit: () => void
   onDelete: () => void
   canChange: boolean
+  /** whether the PAGE account is shared — the author avatar only makes sense then (same gate as the list rows) */
+  isShared: boolean
 }
 
-export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange }: ViewTransactionDialogProps) {
+export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
-  const rows: { label: string; content: React.ReactNode }[] = []
+  const isTransfer = tx.type === 'transfer'
+  const typeLabel = t(`pages.account.preview_transaction_modal.type.${tx.type}`)
+
+  const heroIcon = isTransfer ? 'sync_alt' : tx.category?.icon || 'question_mark'
+  const heroName = isTransfer ? typeLabel : (tx.category?.name ?? typeLabel)
+  const sign = tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''
+  const amountClass = tx.type === 'expense' ? 'text-expense' : tx.type === 'income' ? 'text-income' : ''
 
   const accountRow = (account: ViewTransaction['account'], amount: number | null) => (
-    <span className="flex items-center gap-2">
+    <span className="flex items-center gap-2 text-sm">
       <EntityIcon name={account?.icon} className="text-base text-muted-foreground" />
       <span className="flex-1 truncate">{account?.name ?? t('elements.account.name_hidden')}</span>
-      <span>{amount !== null ? moneyFormat(amount, account?.currency, { useNativePrecision: false }) : ''}</span>
+      <span className="tabular-nums">{amount !== null ? moneyFormat(amount, account?.currency, { useNativePrecision: false }) : ''}</span>
     </span>
   )
 
-  if (tx.type === 'transfer') {
-    rows.push({ label: t('pages.account.preview_transaction_modal.sender.label'), content: accountRow(tx.account, tx.amount) })
-    rows.push({
+  const cards: { label: string; content: React.ReactNode }[] = []
+  if (isTransfer) {
+    cards.push({ label: t('pages.account.preview_transaction_modal.sender.label'), content: accountRow(tx.account, tx.amount) })
+    cards.push({
       label: t('pages.account.preview_transaction_modal.recipient.label'),
       content: accountRow(tx.accountRecipient, tx.amountRecipient),
     })
@@ -37,58 +48,103 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       tx.type === 'expense'
         ? t('pages.account.preview_transaction_modal.sender.label')
         : t('pages.account.preview_transaction_modal.recipient.label')
-    rows.push({ label, content: accountRow(tx.account, tx.amount) })
-  }
-  if (tx.category) {
-    rows.push({ label: t('pages.account.preview_transaction_modal.category.label'), content: tx.category.name })
+    cards.push({ label, content: accountRow(tx.account, tx.amount) })
   }
   if (tx.description) {
-    rows.push({ label: t('pages.account.preview_transaction_modal.description.label'), content: tx.description })
+    cards.push({
+      label: t('pages.account.preview_transaction_modal.description.label'),
+      content: <span className="break-words text-sm">{tx.description}</span>,
+    })
   }
   if (tx.payee) {
-    rows.push({ label: t('pages.account.preview_transaction_modal.payee.label'), content: tx.payee.name })
+    // the payee sits on the opposite side of the money flow from the account:
+    // an expense pays TO the payee, an income comes FROM it
+    const payeeLabel =
+      tx.type === 'expense'
+        ? t('pages.account.preview_transaction_modal.recipient.label')
+        : t('pages.account.preview_transaction_modal.sender.label')
+    cards.push({ label: payeeLabel, content: <span className="text-sm">{tx.payee.name}</span> })
   }
   if (tx.tag) {
-    rows.push({ label: t('pages.account.preview_transaction_modal.tags.label'), content: <Badge variant="secondary">{tx.tag.name}</Badge> })
-  }
-  if (tx.author) {
-    rows.push({
-      label: t('pages.account.preview_transaction_modal.author.label'),
+    cards.push({
+      label: t('pages.account.preview_transaction_modal.tags.label'),
       content: (
-        <span className="flex items-center gap-2">
-          <img src={`${tx.author.avatar}?s=30`} alt="" className="size-4 rounded-full" />
-          {tx.author.name}
+        <span className="flex">
+          <Badge variant="secondary">{tx.tag.name}</Badge>
         </span>
       ),
     })
   }
-  rows.push({ label: t('pages.account.preview_transaction_modal.created_at.label'), content: tx.date })
 
   return (
     <ResponsiveDialog
       open
       onOpenChange={(o) => !o && onClose()}
       title={t('pages.account.preview_transaction_modal.header')}
-      description={t(`pages.account.preview_transaction_modal.type.${tx.type}`)}
+      hideHeader
+      footer={
+        /* Vue footer layout: delete icon | wide Edit | collapse icon */
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            disabled={!canChange}
+            aria-label={t('elements.button.delete.label')}
+            title={t('elements.button.delete.label')}
+            onClick={onDelete}
+          >
+            <Trash2 className="size-4 text-destructive" />
+          </Button>
+          <Button type="button" className="flex-1" disabled={!canChange} onClick={onEdit}>
+            {t('elements.button.edit.label')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            aria-label={t('elements.button.cancel.label')}
+            title={t('elements.button.cancel.label')}
+            onClick={onClose}
+          >
+            <ChevronDown className="size-4" />
+          </Button>
+        </div>
+      }
     >
-      <dl className="flex flex-col gap-3">
-        {rows.map((row) => (
-          <div key={row.label} className="flex flex-col gap-0.5">
-            <dt className="text-xs text-muted-foreground">{row.label}</dt>
-            <dd className="text-sm">{row.content}</dd>
-          </div>
+      {/* hero: the category identity + the money, everything else is detail */}
+      <div className="flex flex-col items-center gap-1 pb-4 pt-1 text-center">
+        <span className="relative grid size-14 place-items-center rounded-full bg-econumo-card">
+          <EntityIcon name={heroIcon} className="text-3xl text-[#666666]" />
+          {isShared && tx.author ? (
+            <img
+              src={`${tx.author.avatar}?s=30`}
+              alt={tx.author.name}
+              title={tx.author.name}
+              className="absolute -bottom-1 -right-1.5 size-6 rounded-full border-2 border-background"
+            />
+          ) : null}
+        </span>
+        <span className="mt-1 max-w-full truncate text-base font-medium" title={heroName}>
+          {heroName}
+        </span>
+        <span className={`text-2xl font-semibold tabular-nums ${amountClass}`}>
+          {sign}
+          {moneyFormat(tx.amount, tx.account?.currency, { useNativePrecision: false })}
+        </span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>{typeLabel}</span>
+          <span aria-hidden="true">·</span>
+          <span>{tx.date}</span>
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {cards.map((card) => (
+          <CardField key={card.label} label={card.label}>
+            {card.content}
+          </CardField>
         ))}
-      </dl>
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Button type="button" variant="secondary" onClick={onClose}>
-          {t('elements.button.cancel.label')}
-        </Button>
-        <Button type="button" variant="destructive" disabled={!canChange} onClick={onDelete}>
-          {t('elements.button.delete.label')}
-        </Button>
-        <Button type="button" disabled={!canChange} onClick={onEdit}>
-          {t('elements.button.edit.label')}
-        </Button>
       </div>
     </ResponsiveDialog>
   )
