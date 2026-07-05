@@ -113,7 +113,9 @@ GO_COVER_MIN ?= 78
 # not), so counting it here measured the codegen, not our code, and diluted the
 # gate by ~5 points. Excluding generated code from coverage is standard; the
 # gen packages are still built and exercised — just not scored here.
-COVERPKG := $(shell go list ./internal/... | grep -v '/sqlc/gen/' | paste -sd,)
+# tr+sed instead of `paste -sd,`: BSD paste (macOS) rejects the GNU-style
+# combined flags and a missing file operand, silently emptying the list.
+COVERPKG := $(shell go list ./internal/... | grep -v '/sqlc/gen/' | tr '\n' ',' | sed 's/,$$//')
 
 # Fast suite WITH a coverage gate: measures true cross-package coverage of all
 # non-generated internal packages and fails if it drops below GO_COVER_MIN.
