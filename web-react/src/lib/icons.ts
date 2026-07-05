@@ -232,7 +232,9 @@ export const icons = [
 
 const unique = Array.from(new Set(icons))
 
-export const availableIcons = unique.slice(0, 45)
+// The Vue app capped the picker at 45 icons to keep its paginator small; the
+// carousel picker shows the whole catalogue.
+export const availableIcons = unique
 
 export const defaultAccountIcon = availableIcons[0]
 

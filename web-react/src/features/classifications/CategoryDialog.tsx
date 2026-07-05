@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { EntityIcon } from '@/components/EntityIcon'
+import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { availableIcons, defaultCategoryIcon } from '@/lib/icons'
+import { defaultCategoryIcon } from '@/lib/icons'
 import { isNotEmpty, isValidCategoryName } from '@/lib/validation'
 import type { CategoryDto, CategoryType } from '@/api/dto/category'
 
@@ -89,21 +89,7 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
 
         <div className="flex flex-col gap-2">
           <Label>{t('modules.classifications.categories.forms.category.icon.label')}</Label>
-          <div className="grid max-h-40 grid-cols-9 gap-1 overflow-y-auto" role="listbox" aria-label={t('modules.classifications.categories.forms.category.icon.label')}>
-            {availableIcons.map((iconName) => (
-              <button
-                key={iconName}
-                type="button"
-                role="option"
-                aria-selected={icon === iconName}
-                aria-label={iconName}
-                className={`flex items-center justify-center rounded-md p-1.5 hover:bg-accent ${icon === iconName ? 'bg-accent ring-1 ring-ring' : ''}`}
-                onClick={() => setIcon(iconName)}
-              >
-                <EntityIcon name={iconName} className="text-xl" />
-              </button>
-            ))}
-          </div>
+          <IconPicker value={icon} onChange={setIcon} aria-label={t('modules.classifications.categories.forms.category.icon.label')} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">

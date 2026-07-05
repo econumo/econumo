@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { CurrencySelect } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
+import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { formatDateTime } from '@/lib/datetime'
-import { availableIcons, defaultAccountIcon } from '@/lib/icons'
+import { defaultAccountIcon } from '@/lib/icons'
 import { moneyFormat } from '@/lib/money'
 import { evaluateFormula, sanitizeInput } from '@/lib/calculator'
 import { isNotEmpty, isValidAccountName, isValidDecimalNumber, isValidFormula, isValidNumber } from '@/lib/validation'
@@ -164,21 +165,7 @@ export function AccountDialog() {
 
         <div className="flex flex-col gap-2">
           <Label>{t('modals.account.form.icon.label')}</Label>
-          <div className="grid max-h-40 grid-cols-9 gap-1 overflow-y-auto" role="listbox" aria-label={t('modals.account.form.icon.label')}>
-            {availableIcons.map((name) => (
-              <button
-                key={name}
-                type="button"
-                role="option"
-                aria-selected={icon === name}
-                aria-label={name}
-                className={`flex items-center justify-center rounded-md p-1.5 hover:bg-accent ${icon === name ? 'bg-accent ring-1 ring-ring' : ''}`}
-                onClick={() => setIcon(name)}
-              >
-                <EntityIcon name={name} className="text-xl" />
-              </button>
-            ))}
-          </div>
+          <IconPicker value={icon} onChange={setIcon} aria-label={t('modals.account.form.icon.label')} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">

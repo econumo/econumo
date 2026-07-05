@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CurrencySelect } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
+import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { availableIcons, defaultEnvelopeIcon } from '@/lib/icons'
+import { defaultEnvelopeIcon } from '@/lib/icons'
 import { isNotEmpty } from '@/lib/validation'
 import type { BudgetElementDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
@@ -147,21 +148,7 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
 
         <div className="flex flex-col gap-2">
           <Label>{t('modules.budget.form.budget_envelope.icon.label')}</Label>
-          <div className="grid max-h-32 grid-cols-9 gap-1 overflow-y-auto" role="listbox" aria-label={t('modules.budget.form.budget_envelope.icon.label')}>
-            {availableIcons.map((iconName) => (
-              <button
-                key={iconName}
-                type="button"
-                role="option"
-                aria-selected={icon === iconName}
-                aria-label={iconName}
-                className={`flex items-center justify-center rounded-md p-1.5 hover:bg-accent ${icon === iconName ? 'bg-accent ring-1 ring-ring' : ''}`}
-                onClick={() => setIcon(iconName)}
-              >
-                <EntityIcon name={iconName} className="text-xl" />
-              </button>
-            ))}
-          </div>
+          <IconPicker value={icon} onChange={setIcon} aria-label={t('modules.budget.form.budget_envelope.icon.label')} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
