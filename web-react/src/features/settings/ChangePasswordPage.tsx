@@ -120,7 +120,7 @@ export function ChangePasswordPage() {
           />
           {errors.newPasswordRetry ? <p className="text-sm text-destructive">{errors.newPasswordRetry}</p> : null}
         </div>
-        <Button type="submit" disabled={updatePassword.isPending}>
+        <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={updatePassword.isPending}>
           {t('modules.user.form.change_password.submit.label')}
         </Button>
       </form>
