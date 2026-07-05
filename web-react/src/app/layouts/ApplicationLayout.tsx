@@ -4,7 +4,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import logo from '@/assets/econumo.svg'
-import grayLogo from '@/assets/econumo-gray.svg'
+// ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
+// so without it the footer logo ships as a separate asset and can 404 where
+// the header logo (under the cutoff, auto-inlined) still shows.
+import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { getWebsiteUrl } from '@/lib/config'
 import { econumoPackage } from '@/lib/package'
@@ -96,9 +99,9 @@ export function ApplicationLayout() {
           )}
 
           <footer className="flex flex-col gap-2 border-t px-4 py-3">
-            <div className="flex items-center gap-2">
-              <img src={grayLogo} width={100} height={10} alt="" />
-              <span className="text-[10px] text-muted-foreground">{econumoPackage().label}</span>
+            <div className="flex items-center gap-0.5">
+              <img src={grayLogo} width={125} height={20} alt="" />
+              <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
               <button
                 type="button"
                 aria-label="sync"
@@ -108,7 +111,7 @@ export function ApplicationLayout() {
                 <RefreshCw className="size-4" />
               </button>
             </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               <Link to={RouterPage.SETTINGS} className="hover:text-foreground">
                 {t('pages.settings.settings.menu_item')}
               </Link>
