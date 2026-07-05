@@ -4,13 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { getLocaleOptions } from '@/lib/config'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
-import { useCurrencies } from '@/features/currencies/queries'
-import { useUserData, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
+import { useUserData } from '@/features/user/queries'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
@@ -48,14 +46,9 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
-  const { data: currencies } = useCurrencies()
-  const updateCurrency = useUpdateCurrency()
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
-
-  const currentCurrencyId = userCurrencyId(user)
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -102,34 +95,14 @@ export function SettingsPage() {
             <MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
           </MenuGroup>
 
-          <MenuGroup label={t('pages.settings.settings.groups.preferences')}>
-            <MenuRow
-              label={t('pages.settings.currency.menu_item')}
-              onClick={() => setCurrencyOpen(true)}
-              trailing={
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {currencies?.find((c) => c.id === currentCurrencyId)?.code ?? ''}
-                  <ChevronRight className="size-4" />
-                </span>
-              }
-            />
-            {getLocaleOptions().length > 1 ? <MenuRow label={t('pages.settings.language.menu_item')} onClick={() => {}} /> : null}
-          </MenuGroup>
+          {getLocaleOptions().length > 1 ? (
+            <MenuGroup label={t('pages.settings.settings.groups.preferences')}>
+              <MenuRow label={t('pages.settings.language.menu_item')} onClick={() => {}} />
+            </MenuGroup>
+          ) : null}
         </div>
       </div>
 
-      <CurrencyPickerDialog
-        open={currencyOpen}
-        title={t('pages.settings.currency.menu_item')}
-        value={currentCurrencyId}
-        onClose={() => setCurrencyOpen(false)}
-        onPick={(id) => {
-          const currency = currencies?.find((c) => c.id === id)
-          if (currency) {
-            updateCurrency.mutate({ currency: currency.code })
-          }
-        }}
-      />
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
       <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
       <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />

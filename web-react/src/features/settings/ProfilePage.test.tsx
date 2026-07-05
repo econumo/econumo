@@ -129,6 +129,31 @@ it('surfaces server field errors under the name input', async () => {
   expect(await screen.findByText('This value is too long.')).toBeInTheDocument()
 })
 
+it('changing the default currency posts the code and updates the cache', async () => {
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/user/update-currency', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'currency_id' ? { ...o, value: 'cur-eur' } : o)) } },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderPage()
+  await screen.findByText('Currency')
+  // the row shows the current code; clicking it opens the search dialog
+  await waitFor(() => expect(screen.getByText('USD')).toBeInTheDocument())
+  await user.click(screen.getByText('Currency'))
+  await user.click(await screen.findByText('EUR, €, Euro'))
+  await waitFor(() => expect(body).toEqual({ currency: 'EUR' }))
+  await waitFor(() => {
+    const cached = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)!
+    expect(cached.options.find((o) => o.name === 'currency_id')!.value).toBe('cur-eur')
+  })
+})
+
 it('email is readonly; logout confirm has the exact copy and navigates', async () => {
   const user = userEvent.setup()
   renderPage()

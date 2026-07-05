@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight } from 'lucide-react'
+import { Check, ChevronRight, Lock } from 'lucide-react'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
-import { useUserData, useUpdateName } from '@/features/user/queries'
+import { useCurrencies } from '@/features/currencies/queries'
+import { useUserData, useUpdateName, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
 import { SettingsShell } from './SettingsShell'
 
 export function ProfilePage() {
@@ -18,9 +20,14 @@ export function ProfilePage() {
   const { data: user } = useUserData()
   const updateName = useUpdateName()
 
+  const { data: currencies } = useCurrencies()
+  const updateCurrency = useUpdateCurrency()
+  const currentCurrencyId = userCurrencyId(user)
+
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
   const savedTimer = useRef<number | null>(null)
 
@@ -85,6 +92,9 @@ export function ProfilePage() {
         </div>
       ) : null}
 
+      <p className="px-1 pb-1 pt-2 text-xs font-medium uppercase text-muted-foreground">
+        {t('modules.user.page.settings.profile.groups.personal_details')}
+      </p>
       <form
         className="flex max-w-md flex-col gap-4 py-2"
         noValidate
@@ -93,38 +103,73 @@ export function ProfilePage() {
           saveName()
         }}
       >
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="profile-name">{t('modules.user.form.user.name.label')}</Label>
-          <div className="relative">
-            <Input
-              id="profile-name"
-              className="pr-9"
-              placeholder={t('modules.user.form.user.name.placeholder')}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value)
-                setSavedVisible(false)
-              }}
-              onBlur={saveName}
-            />
-            {/* unobtrusive save confirmation: fades in on success, fades out on its own */}
-            <span
-              data-testid="name-saved"
-              aria-hidden={!savedVisible}
-              className={`pointer-events-none absolute inset-y-0 right-3 flex items-center text-income transition-opacity duration-500 ${
-                savedVisible ? 'opacity-100' : 'opacity-0'
-              }`}
-            >
-              <Check className="size-4" />
-            </span>
+        {/* card-style fields matching the group rows: tiny muted label inside
+            a gray card, borderless input, focus ring on the whole card */}
+        <div className="flex flex-col gap-1">
+          <div className="flex w-full flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring">
+            <Label htmlFor="profile-name" className="text-[11px] font-normal text-muted-foreground">
+              {t('modules.user.form.user.name.label')}
+            </Label>
+            <div className="relative">
+              <Input
+                id="profile-name"
+                className="h-auto rounded-none border-0 bg-transparent p-0 pr-9 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
+                placeholder={t('modules.user.form.user.name.placeholder')}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  setSavedVisible(false)
+                }}
+                onBlur={saveName}
+              />
+              {/* unobtrusive save confirmation: fades in on success, fades out on its own */}
+              <span
+                data-testid="name-saved"
+                aria-hidden={!savedVisible}
+                className={`pointer-events-none absolute inset-y-0 right-3 flex items-center text-income transition-opacity duration-500 ${
+                  savedVisible ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <Check className="size-4" />
+              </span>
+            </div>
           </div>
-          {nameError ? <p className="text-sm text-destructive">{nameError}</p> : null}
+          {nameError ? <p className="px-1 text-sm text-destructive">{nameError}</p> : null}
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="profile-email">{t('modules.user.form.user.email.label')}</Label>
-          <Input id="profile-email" type="email" disabled readOnly placeholder={t('modules.user.form.user.email.placeholder')} value={user?.email ?? ''} />
+        {/* read-only: dashed border instead of a fill, muted value, lock mark */}
+        <div className="flex w-full items-center gap-3 rounded-lg border border-dashed px-4 py-2.5" title={t('modules.user.form.user.email.label')}>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <Label htmlFor="profile-email" className="text-[11px] font-normal text-muted-foreground">
+              {t('modules.user.form.user.email.label')}
+            </Label>
+            <Input
+              id="profile-email"
+              type="email"
+              disabled
+              readOnly
+              className="h-auto rounded-none border-0 bg-transparent p-0 text-sm text-muted-foreground shadow-none disabled:bg-transparent disabled:opacity-100 dark:bg-transparent dark:disabled:bg-transparent"
+              placeholder={t('modules.user.form.user.email.placeholder')}
+              value={user?.email ?? ''}
+            />
+          </div>
+          <Lock className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
         </div>
       </form>
+
+      <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
+        {t('modules.user.page.settings.profile.groups.preferences')}
+      </p>
+      <button
+        type="button"
+        className="flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        onClick={() => setCurrencyOpen(true)}
+      >
+        {t('modules.user.page.settings.profile.currency.label')}
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {currencies?.find((c) => c.id === currentCurrencyId)?.code ?? ''}
+          <ChevronRight className="size-4" />
+        </span>
+      </button>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('modules.user.page.settings.profile.groups.security')}
@@ -136,6 +181,19 @@ export function ProfilePage() {
         {t('modules.user.page.settings.profile.change_password.menu_item')}
         <ChevronRight className="size-4 text-muted-foreground" />
       </Link>
+
+      <CurrencyPickerDialog
+        open={currencyOpen}
+        title={t('modules.user.page.settings.profile.currency.label')}
+        value={currentCurrencyId}
+        onClose={() => setCurrencyOpen(false)}
+        onPick={(id) => {
+          const currency = currencies?.find((c) => c.id === id)
+          if (currency) {
+            updateCurrency.mutate({ currency: currency.code })
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={logoutOpen}

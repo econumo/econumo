@@ -461,7 +461,12 @@ export default {
           'profile': {
             'menu_item': 'Profile',
             'header': 'User profile',
-            'groups': { 'security': 'Security' },
+            'groups': {
+              'personal_details': 'Personal details',
+              'preferences': 'Preferences',
+              'security': 'Security'
+            },
+            'currency': { 'label': 'Currency' },
             'change_password': {
               'menu_item': 'Change password',
               'header': 'Change password'

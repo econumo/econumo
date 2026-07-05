@@ -47,15 +47,16 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('Service settings')).toBeInTheDocument()
   // Full sync moved to the sidebar footer refresh button
   expect(screen.queryByText('Full sync')).not.toBeInTheDocument()
-  // grouped menu
+  // grouped menu; currency moved to the profile page, so with a single locale
+  // there is no Preferences group at all
   expect(screen.getByText('Service')).toBeInTheDocument()
   expect(screen.getByText('Classification')).toBeInTheDocument()
   expect(screen.getByText('Data')).toBeInTheDocument()
-  expect(screen.getByText('Preferences')).toBeInTheDocument()
+  expect(screen.queryByText('Preferences')).not.toBeInTheDocument()
+  expect(screen.queryByText('Default currency')).not.toBeInTheDocument()
   expect(screen.getByText('Shared access')).toBeInTheDocument()
   expect(screen.getByText('Accounts and Folders')).toBeInTheDocument()
   expect(screen.getByText('Payees (senders, recipients)')).toBeInTheDocument()
-  expect(screen.getByText('Default currency')).toBeInTheDocument()
   // language group hidden with a single locale
   expect(screen.queryByText('User Interface')).not.toBeInTheDocument()
   expect(screen.queryByText('Language')).not.toBeInTheDocument()
@@ -64,31 +65,6 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
 })
 
-it('changing the default currency posts the code and updates the cache', async () => {
-  mockViewport(false)
-  let body: unknown
-  server.use(
-    http.post('*/api/v1/user/update-currency', async ({ request }) => {
-      body = await request.json()
-      return HttpResponse.json({
-        success: true, message: '',
-        data: { user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'currency_id' ? { ...o, value: 'cur-eur' } : o)) } },
-      })
-    }),
-  )
-  const user = userEvent.setup()
-  const queryClient = renderPage()
-  await screen.findByText('Default currency')
-  // the row shows the current code; clicking it opens the search dialog
-  await waitFor(() => expect(screen.getByText('USD')).toBeInTheDocument())
-  await user.click(screen.getByText('Default currency'))
-  await user.click(await screen.findByText('EUR, €, Euro'))
-  await waitFor(() => expect(body).toEqual({ currency: 'EUR' }))
-  await waitFor(() => {
-    const cached = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)!
-    expect(cached.options.find((o) => o.name === 'currency_id')!.value).toBe('cur-eur')
-  })
-})
 
 it('Import CSV and Export CSV rows open their dialogs', async () => {
   server.use(...coreHandlers())
