@@ -12,9 +12,13 @@ interface ResponsiveDialogProps {
   dismissible?: boolean
   /** Quasar-parity headers (ADD TRANSACTION, …); confirmation questions stay sentence case */
   caps?: boolean
+  /** mobile only: stretch the sheet to the full viewport (long forms; avoids a scrolling half-sheet) */
+  fullScreen?: boolean
+  /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
+  footer?: ReactNode
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, fullScreen = false, footer }: ResponsiveDialogProps) {
   const isMobile = useIsMobile()
   const titleClass = caps ? 'uppercase tracking-wide' : undefined
   const handleOpenChange = (next: boolean) => {
@@ -26,12 +30,22 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={handleOpenChange} dismissible={dismissible}>
-        <DrawerContent>
+        <DrawerContent
+          className={
+            fullScreen
+              ? 'data-[vaul-drawer-direction=bottom]:mt-0 data-[vaul-drawer-direction=bottom]:h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh data-[vaul-drawer-direction=bottom]:rounded-none'
+              : undefined
+          }
+        >
           <DrawerHeader>
             <DrawerTitle className={titleClass}>{title}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
           </DrawerHeader>
-          <div className="overflow-y-auto px-4 pb-4">{children}</div>
+          {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
+          <div className="flex-1 overflow-y-auto px-4 pt-1 pb-4">{children}</div>
+          {footer ? (
+            <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">{footer}</div>
+          ) : null}
         </DrawerContent>
       </Drawer>
     )
@@ -47,6 +61,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
           {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         {children}
+        {footer}
       </DialogContent>
     </Dialog>
   )

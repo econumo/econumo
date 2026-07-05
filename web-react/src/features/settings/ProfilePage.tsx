@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { UserCard } from '@/components/UserCard'
@@ -103,39 +104,31 @@ export function ProfilePage() {
           saveName()
         }}
       >
-        {/* card-style fields matching the group rows: tiny muted label inside
-            a gray card, borderless input, focus ring on the whole card */}
-        <div className="flex flex-col gap-1">
-          <div className="flex w-full flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5 focus-within:ring-1 focus-within:ring-ring">
-            <Label htmlFor="profile-name" className="text-[11px] font-normal text-muted-foreground">
-              {t('modules.user.form.user.name.label')}
-            </Label>
-            <div className="relative">
-              <Input
-                id="profile-name"
-                className="h-auto rounded-none border-0 bg-transparent p-0 pr-9 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
-                placeholder={t('modules.user.form.user.name.placeholder')}
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value)
-                  setSavedVisible(false)
-                }}
-                onBlur={saveName}
-              />
-              {/* unobtrusive save confirmation: fades in on success, fades out on its own */}
-              <span
-                data-testid="name-saved"
-                aria-hidden={!savedVisible}
-                className={`pointer-events-none absolute inset-y-0 right-3 flex items-center text-income transition-opacity duration-500 ${
-                  savedVisible ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                <Check className="size-4" />
-              </span>
-            </div>
+        <CardField label={t('modules.user.form.user.name.label')} htmlFor="profile-name" error={nameError}>
+          <div className="relative">
+            <Input
+              id="profile-name"
+              className={`${cardFieldControlClass} pr-9`}
+              placeholder={t('modules.user.form.user.name.placeholder')}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                setSavedVisible(false)
+              }}
+              onBlur={saveName}
+            />
+            {/* unobtrusive save confirmation: fades in on success, fades out on its own */}
+            <span
+              data-testid="name-saved"
+              aria-hidden={!savedVisible}
+              className={`pointer-events-none absolute inset-y-0 right-3 flex items-center text-income transition-opacity duration-500 ${
+                savedVisible ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <Check className="size-4" />
+            </span>
           </div>
-          {nameError ? <p className="px-1 text-sm text-destructive">{nameError}</p> : null}
-        </div>
+        </CardField>
         {/* read-only: dashed border instead of a fill, muted value, lock mark */}
         <div className="flex w-full items-center gap-3 rounded-lg border border-dashed px-4 py-2.5" title={t('modules.user.form.user.email.label')}>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">

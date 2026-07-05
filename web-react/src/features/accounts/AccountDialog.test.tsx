@@ -87,6 +87,29 @@ it('shows the exact validation messages', async () => {
   expect(await screen.findByText('The account name must be between 3 and 64 characters')).toBeInTheDocument()
 })
 
+it('currency row opens the search picker; the picked currency is posted', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/account/update-account', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureAccounts[0], transaction: null } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
+
+  await screen.findByText('Update account')
+  const currencyRow = await screen.findByRole('button', { name: /Currency/ })
+  expect(currencyRow).toHaveTextContent('USD')
+  await user.click(currencyRow)
+  await user.click(await screen.findByText('EUR, €, Euro'))
+  expect(screen.getByRole('button', { name: /Currency/ })).toHaveTextContent('EUR')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.currencyId).toBe('cur-eur')
+})
+
 it('edit mode seeds the raw balance and posts updatedAt in Y-m-d H:i:s', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
