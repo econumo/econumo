@@ -30,7 +30,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/pkg/jwt"
+	"github.com/econumo/econumo/internal/shared/jwt"
 
 	"github.com/joho/godotenv"
 
@@ -182,6 +182,12 @@ func run(serveArgs []string) error {
 			cfg.DatabaseDriver + " (from DATABASE_URL); registered backends: [" +
 			strings.Join(backend.Registered(), ", ") +
 			"] (is the backend package blank-imported in cmd/econumo?)")
+	}
+
+	// Apply the SQLite busy_timeout from config (no-op for engines without the
+	// knob) before opening the connection.
+	if c, ok := be.(backend.BusyTimeoutConfigurer); ok {
+		c.SetBusyTimeout(cfg.SQLiteBusyTimeout)
 	}
 
 	// Open the database.

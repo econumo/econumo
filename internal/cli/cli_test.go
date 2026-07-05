@@ -85,6 +85,29 @@ func TestRunUsagePaths(t *testing.T) {
 	}
 }
 
+// TestFirstPositional covers the flag-skipping positional-arg extraction used
+// by currency:update-rates' optional date argument.
+func TestFirstPositional(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"no args", []string{}, ""},
+		{"only flags", []string{"-v", "-vv", "-q"}, ""},
+		{"flags before positional", []string{"-v", "-vvv", "2024-01-02"}, "2024-01-02"},
+		{"positional first", []string{"2024-01-02", "-v"}, "2024-01-02"},
+		{"blank args skipped", []string{"  ", "2024-01-02"}, "2024-01-02"},
+		{"trims whitespace", []string{"  2024-01-02  "}, "2024-01-02"},
+		{"all blank", []string{"", "   "}, ""},
+	}
+	for _, c := range cases {
+		if got := firstPositional(c.args); got != c.want {
+			t.Errorf("%s: firstPositional(%q) = %q, want %q", c.name, c.args, got, c.want)
+		}
+	}
+}
+
 // TestIndexPanicsOnDuplicate guards the duplicate-name invariant.
 func TestIndexPanicsOnDuplicate(t *testing.T) {
 	defer func() {

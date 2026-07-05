@@ -9,7 +9,6 @@ on:
         paths:
             - "cmd/**"
             - "internal/**"
-            - "pkg/**"
             - "go.mod"
             - "go.sum"
             - "Makefile"
@@ -18,7 +17,6 @@ on:
         paths:
             - "cmd/**"
             - "internal/**"
-            - "pkg/**"
             - "go.mod"
             - "go.sum"
             - "Makefile"
@@ -51,7 +49,7 @@ jobs:
             - name: Coverage summary
               if: always()
               env:
-                  GO_COVER_MIN: "64"
+                  GO_COVER_MIN: "78"
               run: |
                   if [ ! -f coverage.out ]; then
                     echo "No coverage profile was produced." >> "$GITHUB_STEP_SUMMARY"
@@ -119,6 +117,11 @@ jobs:
                   go-version-file: go.mod
                   cache-dependency-path: go.sum
             # The Postgres service container already provisions econumo_test, so call
-            # the engine suite directly (skip pg-ensure, which expects compose).
+            # the engine suites directly (skip pg-ensure, which expects compose).
             - name: Engine-comparison suite
               run: make test-engines
+            # Run the whole repo/unit suite a second time against PostgreSQL so the
+            # pgsql adapters + generated pgsql queries are exercised, not just the
+            # sqlite-vs-pgsql parity catalogue.
+            - name: Repo suite on PostgreSQL
+              run: make test-repo-pgsql

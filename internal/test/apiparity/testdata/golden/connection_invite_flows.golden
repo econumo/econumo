@@ -1,0 +1,15 @@
+== generate-invite POST /api/v1/connection/generate-invite [owner] -> 200
+{"success":true,"message":"","data":{"item":{"code":"<invite-code>","expiredAt":"<datetime>"}}}
+
+== err:accept-invite-bad-code POST /api/v1/connection/accept-invite [guest] -> 400
+{"success":false,"message":"ConnectionCode is incorrect","code":400,"errors":{}}
+
+== delete-invite POST /api/v1/connection/delete-invite [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== delete-connection POST /api/v1/connection/delete-connection [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== get-connection-list-after-delete GET /api/v1/connection/get-connection-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[]}}
+

@@ -1,0 +1,9 @@
+== err:create-category-shared POST /api/v1/category/create-category [owner] -> 403
+{"success":false,"message":"Access is not allowed","code":0,"errors":[]}
+
+== err:create-tag-shared POST /api/v1/tag/create-tag [owner] -> 403
+{"success":false,"message":"Access is not allowed","code":0,"errors":[]}
+
+== err:create-payee-shared POST /api/v1/payee/create-payee [owner] -> 403
+{"success":false,"message":"Access is not allowed","code":0,"errors":[]}
+

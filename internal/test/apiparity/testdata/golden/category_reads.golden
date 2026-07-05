@@ -1,0 +1,6 @@
+== get-category-list GET /api/v1/category/get-category-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"c0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Food","position":0,"type":"expense","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"c0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Salary","position":1,"type":"income","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== get-category-list-guest GET /api/v1/category/get-category-list [guest] -> 200
+{"success":true,"message":"","data":{"items":[]}}
+

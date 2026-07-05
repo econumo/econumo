@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish publish-buildx-ensure swagger swagger-check
+.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish-dev publish-buildx-ensure swagger swagger-check
 
 # Default target
 .DEFAULT_GOAL := help
@@ -11,10 +11,10 @@ help:
 	@echo "  make test         - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
 	@echo "  make go-lint      - build + vet + gofmt + OpenAPI-docs-fresh check"
-	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/ui/apidoc/docs)"
+	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/web/apidoc/docs)"
 	@echo "  make up           - Start the stack (compose, builds from source)"
 	@echo "  make down         - Stop the stack"
-	@echo "  make publish      - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
+	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
 	@echo ""
 	@echo "Frontend (web/):"
 	@echo "  make web-install  - Install web dependencies"
@@ -76,10 +76,18 @@ test: go-lint test-cover
 
 # Coverage threshold for test-cover (true cross-package %). Override on the
 # command line: make test-cover GO_COVER_MIN=70
-GO_COVER_MIN ?= 64
+GO_COVER_MIN ?= 78
+
+# Coverage denominator: all internal packages EXCEPT the sqlc-generated code
+# (internal/infra/storage/sqlc/gen/**). That code is machine-generated and its
+# PostgreSQL half runs only under `make regression` (which the smoke gate does
+# not), so counting it here measured the codegen, not our code, and diluted the
+# gate by ~5 points. Excluding generated code from coverage is standard; the
+# gen packages are still built and exercised — just not scored here.
+COVERPKG := $(shell go list ./internal/... | grep -v '/sqlc/gen/' | paste -sd,)
 
 # Fast suite WITH a coverage gate: measures true cross-package coverage of all
-# internal + pkg packages and fails if it drops below GO_COVER_MIN.
+# non-generated internal packages and fails if it drops below GO_COVER_MIN.
 #
 # -count=1 forces every package's tests to actually run. Without it, `go test`
 # replays cached results — and a cached package's coverage is printed but NOT
@@ -88,7 +96,7 @@ GO_COVER_MIN ?= 64
 # gate nondeterministic: the same commit scored ~66% cold and ~63% warm. Forcing
 # a fresh run keeps the merged profile complete and the gate reproducible.
 test-cover:
-	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=./internal/...,./pkg/... -coverprofile=coverage.out
+	CGO_ENABLED=0 go test -count=1 ./... -coverpkg=$(COVERPKG) -coverprofile=coverage.out
 	go tool cover -func=coverage.out | tail -1
 	@pct=$$(go tool cover -func=coverage.out | tail -1 | grep -oE '[0-9]+\.[0-9]+' | tail -1); \
 		echo "total coverage: $$pct% (min $(GO_COVER_MIN)%)"; \
@@ -108,27 +116,27 @@ go-lint: swagger-check
 # ---- OpenAPI docs (swaggo/swag) -------------------------------------------
 
 # swag is pinned to the version in go.mod so generation is reproducible (the
-# go:generate directive in internal/ui/apidoc/doc.go uses @latest for ad-hoc
+# go:generate directive in internal/web/apidoc/doc.go uses @latest for ad-hoc
 # runs; the build pipeline uses this pinned version). `go run <pkg>@<ver>` needs
 # the module cache (network on first use).
 SWAG_VERSION := $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag 2>/dev/null || echo v1.16.6)
-SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../handler,../../app --parseInternal --parseDependency
+SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../../user,../../currency,../../account,../../category,../../tag,../../payee,../../transaction,../../connection,../../budget,../../model --parseInternal --parseDependency
 
 # Regenerate the committed OpenAPI docs from the handler/DTO annotations. This is
-# a prerequisite of go-build / go-run / publish / up so a built artifact never
+# a prerequisite of go-build / go-run / publish-dev / up so a built artifact never
 # embeds stale docs.
 swagger:
 	@echo "Regenerating OpenAPI docs (swag $(SWAG_VERSION))..."
-	cd internal/ui/apidoc && $(SWAG_INIT) -o ./docs
+	cd internal/web/apidoc && $(SWAG_INIT) -o ./docs
 
 # Fail if the committed docs differ from a fresh generation (stale annotations
 # not regenerated + committed). Generates into a temp dir and diffs, so it never
 # mutates the working tree. Wired into go-lint (and thus `make test` / CI).
 swagger-check:
 	@tmp=$$(mktemp -d); \
-		( cd internal/ui/apidoc && $(SWAG_INIT) -o "$$tmp" >/dev/null 2>&1 ) || \
+		( cd internal/web/apidoc && $(SWAG_INIT) -o "$$tmp" >/dev/null 2>&1 ) || \
 			{ echo "FAIL: could not run swag (need network/module cache for swag $(SWAG_VERSION))"; rm -rf "$$tmp"; exit 1; }; \
-		if ! diff -q "$$tmp/swagger.json" internal/ui/apidoc/docs/swagger.json >/dev/null 2>&1; then \
+		if ! diff -q "$$tmp/swagger.json" internal/web/apidoc/docs/swagger.json >/dev/null 2>&1; then \
 			echo "FAIL: OpenAPI docs are stale — run 'make swagger' and commit the result"; rm -rf "$$tmp"; exit 1; fi; \
 		rm -rf "$$tmp"; echo "swagger: docs up to date"
 
@@ -143,8 +151,8 @@ DATABASE_TEST_PGSQL_URL ?= postgres://econumo:econumo@localhost:5432/econumo_tes
 # real PostgreSQL. If no Postgres is reachable it auto-creates a throwaway test
 # DB in the compose `postgres` service (start it with `make up` or
 # `docker compose up -d postgres` first).
-regression: test pg-ensure test-engines
-	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison)."
+regression: test pg-ensure test-engines test-repo-pgsql
+	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL)."
 
 # Ensure the throwaway test database exists in the compose postgres service.
 # No-op if it already exists; harmless if you point DATABASE_TEST_PGSQL_URL at
@@ -162,11 +170,20 @@ test-engines:
 	CGO_ENABLED=0 DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare ./...
 
+# Run the SAME repo/unit test suite that the smoke gate runs against sqlite, but
+# against PostgreSQL: DBTEST_ENGINE=pgsql makes dbtest.New open Postgres (each
+# test in its own schema), so every repository/integration test exercises the
+# real pgsql adapters + generated pgsql queries — the code the sqlite-only smoke
+# gate can't reach. Skips per-test when DATABASE_TEST_PGSQL_URL is unreachable.
+test-repo-pgsql:
+	CGO_ENABLED=0 DBTEST_ENGINE=pgsql DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
+		go test -tags enginecompare -count=1 $(shell go list ./internal/... | grep -vE '/sqlc/gen/|/test/enginecompare')
+
 # --- Publishing (GitHub Container Registry only) ---------------------------
-# `make publish` builds the multi-arch image locally and pushes the "dev" tag to
+# `make publish-dev` builds the multi-arch image locally and pushes the "dev" tag to
 # ghcr.io/econumo/econumo. Releases ("latest" + vX.Y.Z) are published by the
 # GitHub release workflow, NOT here. Requires `docker login ghcr.io` first.
-# Override any of these on the command line, e.g. `make publish PUBLISH_TAG=foo`.
+# Override any of these on the command line, e.g. `make publish-dev PUBLISH_TAG=foo`.
 GHCR_IMAGE        ?= ghcr.io/econumo/econumo
 PUBLISH_TAG       ?= dev
 PUBLISH_PLATFORMS ?= linux/amd64,linux/arm64
@@ -180,7 +197,7 @@ publish-buildx-ensure:
 
 # Regenerates the OpenAPI docs (swagger) first so the image built from source
 # embeds the current spec.
-publish: swagger publish-buildx-ensure
+publish-dev: swagger publish-buildx-ensure
 	@echo "Publishing $(GHCR_IMAGE):$(PUBLISH_TAG) ($(PUBLISH_PLATFORMS))..."
 	docker buildx build \
 		--builder $(BUILDX_BUILDER) \

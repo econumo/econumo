@@ -54,7 +54,7 @@ make web-lint      # cd web && npm run lint
 ### Publishing
 
 ```bash
-make publish   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
+make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
@@ -63,33 +63,79 @@ Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 
 ## Architecture
 
-### Layered architecture (Hexagonal + DDD)
+### Feature packages (vertical slices)
 
-The backend follows a strict layered architecture with dependency inversion. The
-dependency rule points inward: **ui → app → domain**; `infra` implements domain
-interfaces. The app layer never imports `ui` or `infra`.
+The backend is organized as vertical feature packages rather than horizontal
+layers. Each of the nine features (`account`, `budget`, `category`, `connection`,
+`currency`, `payee`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+tree holding its own use cases, persistence, and HTTP edge; the entities and
+DTOs those use cases operate on live in the shared `internal/model` package
+(below), so a feature package is behavior-only:
 
 ```
-. (repo root = the Go module; web/, pkg/ and deployment/ live alongside)
+. (repo root = the Go module; web/ and deployment/ live alongside)
 ├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / resource:action commands
-├── pkg/
-│   └── jwt/ ...................... RS256 JWT issue/verify + keypair generation (EnsureKeypair); self-contained, no internal deps
 ├── internal/
-│   ├── domain/ .................... entities, value objects, repository INTERFACES, domain services (pure)
-│   ├── app/ ...................... use-case services + request/result DTOs (depends on domain only)
-│   │   └── reqctx/ .............. request-scoped values carried via context (e.g. caller timezone)
-│   ├── infra/ ................... implementations: sqlc repos, auth, mailer, storage
-│   │   ├── repo/<feature>/ ...... repository implementations (engine-adapter pattern, see below)
-│   │   ├── storage/sqlc/ ........ sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
-│   │   ├── storage/migrations/ .. SQL migrations per engine ({sqlite,pgsql}); run on boot
-│   │   ├── auth/ ............... password hashing + AES email encryption + user-identifier hashing
-│   │   └── mailer/ ............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
-│   ├── ui/ ..................... HTTP edge: handlers, middleware, router, response envelope (httpx), SPA + apidoc
-│   ├── server/ ................. composition root: server.BuildAPI wires every module (used by the binary AND tests)
-│   ├── cli/ ................... the resource:action management commands (stdlib dispatch; no cobra)
-│   ├── config/ ............... environment configuration loading
-│   └── test/ ................. shared test support: dbtest, fixture, testkeys, enginecompare
+│   ├── shared/ .................... dependency-free kernel: vo (value objects), errs (domain error taxonomy),
+│   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen),
+│   │                                port (Clock/TxRunner/OperationGuard seams), reqctx (request-scoped
+│   │                                context values, e.g. caller timezone + log attrs)
+│   ├── model/ ...................... the shared type universe: every feature's entities (with their
+│   │                                invariant-preserving mutators), value objects, and request/result DTOs,
+│   │                                one file per feature (account.go, account_dto.go, ...); imports only
+│   │                                the shared kernel; part of the archtest kernel alongside `shared`
+│   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
+│   │   │                            currency, payee, tag, transaction, user); root package holds only
+│   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
+│   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
+│   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
+│   │   │                             (or `ReadService`/`WriteService`) method per use case
+│   │   │   repository.go .........   the repository INTERFACE(s), in `model` types; account and budget
+│   │   │                             split theirs into role interfaces + a composite for wiring
+│   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
+│   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
+│   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
+│   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
+│   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
+│   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
+│   │   │                          client-supplied operation ids on create endpoints
+│   │   ├── auth/ ................ password hashing + AES email encryption + user-identifier hashing
+│   │   ├── clock/ ................ time source abstraction
+│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
+│   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
+│   │                              distinct from the repo-root web/, the Vue SPA): middleware, router,
+│   │                              response envelope (httpx), SPA server, apidoc — no feature logic
+│   ├── server/ .................. composition root: server.BuildAPI wires every feature (used by the
+│   │                              binary AND tests); glue_*.go files hold the cross-feature adapters
+│   │                              (see below)
+│   ├── cli/ ..................... the resource:action management commands (stdlib dispatch; no cobra)
+│   ├── config/ .................. environment configuration loading
+│   └── test/ .................... shared test support: dbtest, fixture, testkeys, enginecompare, archtest
 ```
+
+Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
+per-user persistence shape (it's rates + conversion + admin lookups), so it
+keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`.
+
+### Dependency rule
+
+Features never import features. When one feature needs another's data (e.g.
+account needs a currency lookup, or budget needs to resolve a user), the
+*consuming* feature declares a small interface in its own package (typed in
+`model`), and `internal/server` wires a concrete adapter — usually a thin one
+implemented in a `glue_<feature>_<purpose>.go` file (e.g.
+`glue_account_currencylookup.go`, `glue_budget_userlookup.go`) — over the
+*providing* feature's public API at composition time. This keeps every
+feature package independently buildable and testable without pulling in its
+siblings.
+
+Shared leaves (`shared`, `model`, `web`, `infra`) never import a feature; the
+kernel (`internal/shared` + `internal/model`) imports nothing internal outside
+itself — `model` may only depend on `shared`. This is enforced by
+`internal/test/archtest`, which auto-detects feature packages (any
+`internal/<top>` not in its infrastructure set) so newly moved features come
+under enforcement without edits to the test.
 
 ### The engine-adapter (sqlc) pattern
 
@@ -103,17 +149,25 @@ NUMERIC aggregates, date formats). A repo therefore:
 - writes every method ONCE against the interface, so method bodies carry no
   per-driver branching.
 
-Reference repos: `internal/infra/repo/{tag,user,currency,passwordrequest}`. The one
-exception is `internal/infra/repo/budget/read.go`, which is hand-built dynamic SQL
-(variadic `IN` lists, real per-engine value/date handling) and branches explicitly
-by design.
+Reference repos: `internal/{tag,user,currency}/repo` (the `user` repo also
+covers password-reset requests, in `passwordrequest*.go` alongside the user
+queries). The one exception is `internal/budget/repo/read.go`, which is
+hand-built dynamic SQL (variadic `IN` lists, real per-engine value/date
+handling) and branches explicitly by design.
 
 ### API handler pattern
 
-HTTP handlers are thin adapters under `internal/ui/handler/<resource>/`: decode +
-tier-1 `Validate()`, pull the user id from the JWT context, call the app service,
-and emit the frozen response envelope via `httpx`. Routes are registered per module
-in `routes.go` (`RegisterAPI`). Request/result DTOs live in `internal/app/<feature>/dto.go`.
+HTTP handlers are thin named methods under `internal/<feature>/api/` (the
+name carries the swag `@` annotation block); the body is one call into the
+generic combinators in `internal/web/endpoint`: `endpoint.Handle` (auth + JSON
+body), `endpoint.HandleNoBody` (auth, no body), `endpoint.HandlePublic`
+(no auth) — each doing require-user/decode/`Validate()`/call/envelope in the
+frozen order. Per-endpoint extras (e.g. `reqctx.AddLogAttr`) live in a small
+closure. A handful of endpoints stay hand-written because their shape is
+special: CSV export, multipart import, query-param reads, and login's raw
+`{token,user}` response. Routes are registered in
+`internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
+in `internal/model/<feature>_dto.go`.
 
 ### Frontend architecture (Vue 3 + Quasar)
 
@@ -126,14 +180,33 @@ that overrides it per build).
 ## Testing
 
 Tests live alongside the Go code:
-- `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`).
-- `internal/test/enginecompare/` — the strongest contract: runs the REAL production
-  handler (`server.BuildAPI`) on BOTH SQLite and PostgreSQL and asserts byte-identical
+- `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`;
+  dbtest applies production pragmas, e.g. `foreign_keys = ON`).
+- `internal/test/apiparity/` — the shared API scenario catalogue: every registered
+  route is replayed against the REAL production handler (`server.BuildAPI`).
+  Two consumers: the untagged **smoke suite** (every `make test`) diffs each
+  scenario's responses against committed golden files in `testdata/golden/`
+  (normalized: generated UUIDs, datetimes, JWTs redacted), and the build-tagged
+  parity suite below. Guard tests enforce that every route has a scenario, the
+  scenario count and scanned-route count never shrink, and no golden is orphaned.
+  Regenerate goldens with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`,
+  then INSPECT the diff — a golden change means observable behavior changed;
+  never hand-edit a golden. If route-registration files move, update
+  `handlerGlobs` in `guard_test.go`.
+- `dbtest.New(t)` selects the engine by `DBTEST_ENGINE` (default sqlite; `pgsql`
+  under `-tags enginecompare` → Postgres, each test in its own schema). `make
+  test-repo-pgsql` reruns the whole repo/unit suite against PostgreSQL so the
+  pgsql adapters + generated queries are exercised, not just the parity
+  catalogue; it is part of `make regression` and the CI regression job. Raw SQL
+  in a test must use `db.Rebind(query)` for `?`→`$N`, and decimal assertions
+  compare normalized `vo.Decimal` values (sqlite text vs pgsql NUMERIC differ).
+- `internal/test/enginecompare/` — the strongest contract: replays the same
+  catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
   responses (build tag `enginecompare`).
 - `internal/test/{fixture,testkeys}` — shared fixture builder + embedded JWT keypair.
 
 Coverage gate: `make test` enforces a cross-package minimum (`GO_COVER_MIN`,
-default 64). CI surfaces the coverage % in the Actions job summary plus an HTML
+default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
@@ -195,7 +268,7 @@ fields (custom dimensions) — UUIDs only, never PII (no emails, bodies, or quer
   `duration_ms`.
 
 `request_id` is a UUIDv7 minted in the `RequestID` middleware and echoed on `X-Request-Id`.
-The `AccessLog` middleware (`internal/ui/middleware/accesslog.go`) installs a request-scoped
+The `AccessLog` middleware (`internal/web/middleware/accesslog.go`) installs a request-scoped
 accumulator (`reqctx.WithLogAttrs`) and emits both lines; any layer enriches the operation
 line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.g.
 `category_id`). `/health` logs the transport line only; `OPTIONS` preflight is skipped.
@@ -218,7 +291,7 @@ user:create <name> <email> <password>
 user:change-email <old> <new>
 user:change-password <email> <password>
 user:activate <email>
-user:deactivate --before=YYYY-MM-DD
+user:deactivate <email>
 currency:update-rates [date]
 currency:add <code> [name] [fraction-digits]
 jwt:generate
@@ -254,10 +327,10 @@ In the distroless image these run via the binary directly, e.g.
 
 ## Authentication
 
-- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `pkg/jwt` (a
+- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/shared/jwt` (a
   self-contained package: token issue/verify, keypair generation, and the shared
   `EnsureKeypair` boot/CLI entry point; no `internal/*` dependency).
-- Login lives under `internal/ui/handler/user` (`/api/v1/user/login-user`).
+- Login lives under `internal/user/api` (`/api/v1/user/login-user`).
 - Token refresh is not implemented (clients re-authenticate).
 
 ## Wire & data contract (frozen)
@@ -267,7 +340,7 @@ and the production database holds data written in these formats. Don't "clean
 them up" — changing one breaks live clients, locks users out, or makes stored
 data unreadable. Most are also asserted by the test suite.
 
-### Response envelope (`internal/ui/httpx/envelope.go`)
+### Response envelope (`internal/web/httpx/envelope.go`)
 - Success (200): `{"success": true, "message": "", "data": <payload>}`
 - Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
 - Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `ECONUMO_DEBUG=true`.
@@ -280,7 +353,7 @@ data unreadable. Most are also asserted by the test suite.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
 
-### JWT (`pkg/jwt/jwt.go`)
+### JWT (`internal/shared/jwt/jwt.go`)
 - RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
 - Claims: `iat`; `exp = iat + 2592000` (30-day TTL); `roles = ["ROLE_USER"]`; `username` = plaintext email; `id` = user UUID. No `nbf`/`iss`/`sub`/`aud`.
 
@@ -306,7 +379,7 @@ data unreadable. Most are also asserted by the test suite.
 ## Deployment
 
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
-  - `:dev` — published locally via `make publish`.
+  - `:dev` — published locally via `make publish-dev`.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.

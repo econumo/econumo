@@ -1,0 +1,4516 @@
+basePath: /
+definitions:
+  apidoc.JsonResponseError:
+    properties:
+      code:
+        example: 0
+        type: integer
+      errors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      message:
+        example: Validation failed
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  apidoc.JsonResponseException:
+    properties:
+      code:
+        example: 0
+        type: integer
+      exceptionType:
+        type: string
+      message:
+        example: Internal Server Error
+        type: string
+      stackTrace: {}
+      success:
+        example: false
+        type: boolean
+    type: object
+  apidoc.JsonResponseOk:
+    properties:
+      data: {}
+      message:
+        example: ""
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  apidoc.JsonResponseUnauthorized:
+    properties:
+      code:
+        example: 0
+        type: integer
+      errors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      message:
+        example: JWT Token not found
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  model.AcceptAccessRequest:
+    properties:
+      budgetId:
+        type: string
+    type: object
+  model.AcceptAccessResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.MetaResult'
+        type: array
+    type: object
+  model.AcceptInviteRequest:
+    properties:
+      code:
+        type: string
+    type: object
+  model.AcceptInviteResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ConnectionResult'
+        type: array
+    type: object
+  model.AccessResult:
+    properties:
+      isAccepted:
+        type: integer
+      role:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResult'
+    type: object
+  model.AccountAccessResult:
+    properties:
+      id:
+        type: string
+      ownerUserId:
+        type: string
+      role:
+        type: string
+    type: object
+  model.AccountFolderResult:
+    properties:
+      id:
+        type: string
+      isVisible:
+        type: integer
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.AccountPositionChange:
+    properties:
+      folderId:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.AccountResult:
+    properties:
+      balance:
+        type: string
+      currency:
+        $ref: '#/definitions/model.CurrencyResult'
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner:
+        $ref: '#/definitions/model.UserResult'
+      position:
+        type: integer
+      sharedAccess:
+        items:
+          $ref: '#/definitions/model.SharedAccess'
+        type: array
+      type:
+        type: integer
+    type: object
+  model.ArchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveCategoryResult:
+    type: object
+  model.ArchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchivePayeeResult:
+    type: object
+  model.ArchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveTagResult:
+    type: object
+  model.AverageCurrencyRateResult:
+    properties:
+      baseCurrencyId:
+        type: string
+      currencyId:
+        type: string
+      periodEnd:
+        type: string
+      periodStart:
+        type: string
+      rate:
+        type: string
+    type: object
+  model.BudgetFolderResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.BudgetResult:
+    properties:
+      balances:
+        items:
+          $ref: '#/definitions/model.CurrencyBalanceResult'
+        type: array
+      currencyRates:
+        items:
+          $ref: '#/definitions/model.AverageCurrencyRateResult'
+        type: array
+      filters:
+        $ref: '#/definitions/model.FiltersResult'
+      meta:
+        $ref: '#/definitions/model.MetaResult'
+      structure:
+        $ref: '#/definitions/model.StructureResult'
+    type: object
+  model.BudgetTransactionResult:
+    properties:
+      amount:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      category:
+        $ref: '#/definitions/model.TxCategoryResult'
+      currencyId:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payee:
+        $ref: '#/definitions/model.TxPayeeResult'
+      spentAt:
+        type: string
+      tag:
+        $ref: '#/definitions/model.TxTagResult'
+    type: object
+  model.CategoryResult:
+    properties:
+      createdAt:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.ChangeElementCurrencyRequest:
+    properties:
+      budgetId:
+        type: string
+      currencyId:
+        type: string
+      elementId:
+        type: string
+    type: object
+  model.ChangeElementCurrencyResult:
+    type: object
+  model.ChildElementResult:
+    properties:
+      budgetSpent:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      spent:
+        type: string
+      type:
+        type: integer
+    type: object
+  model.CompleteOnboardingResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.ConnectionInviteResult:
+    properties:
+      code:
+        type: string
+      expiredAt:
+        type: string
+    type: object
+  model.ConnectionResult:
+    properties:
+      sharedAccounts:
+        items:
+          $ref: '#/definitions/model.AccountAccessResult'
+        type: array
+      user:
+        $ref: '#/definitions/model.UserResult'
+    type: object
+  model.CorrectionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountResult'
+      transaction:
+        $ref: '#/definitions/model.CorrectionResult'
+    type: object
+  model.CreateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetFolderResult'
+    type: object
+  model.CreateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      startDate:
+        type: string
+    type: object
+  model.CreateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
+    type: object
+  model.CreateCategoryRequest:
+    properties:
+      accountId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateCategoryResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.CategoryResult'
+    type: object
+  model.CreateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ParentElementResult'
+    type: object
+  model.CreateFolderRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  model.CreateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountFolderResult'
+    type: object
+  model.CreatePayeeRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreatePayeeResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.PayeeResult'
+    type: object
+  model.CreateTagRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.TagResult'
+    type: object
+  model.CreateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
+  model.CurrencyBalanceResult:
+    properties:
+      currencyId:
+        type: string
+      endBalance:
+        type: string
+      exchanges:
+        type: string
+      expenses:
+        type: string
+      holdings:
+        type: string
+      income:
+        type: string
+      startBalance:
+        type: string
+    type: object
+  model.CurrencyRateResult:
+    properties:
+      baseCurrencyId:
+        type: string
+      currencyId:
+        type: string
+      rate:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.CurrencyResult:
+    properties:
+      code:
+        type: string
+      fractionDigits:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      symbol:
+        type: string
+    type: object
+  model.CurrentUserResult:
+    properties:
+      avatar:
+        type: string
+      currency:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/model.OptionResult'
+        type: array
+      reportPeriod:
+        type: string
+    type: object
+  model.DeclineAccessRequest:
+    properties:
+      budgetId:
+        type: string
+    type: object
+  model.DeclineAccessResult:
+    type: object
+  model.DeleteAccountRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteAccountResult:
+    type: object
+  model.DeleteBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteBudgetResult:
+    type: object
+  model.DeleteCategoryRequest:
+    properties:
+      id:
+        type: string
+      mode:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  model.DeleteCategoryResult:
+    type: object
+  model.DeleteConnectionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteConnectionResult:
+    type: object
+  model.DeleteEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.DeleteEnvelopeResult:
+    type: object
+  model.DeleteFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.DeleteFolderResult:
+    type: object
+  model.DeleteInviteRequest:
+    type: object
+  model.DeleteInviteResult:
+    type: object
+  model.DeletePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeletePayeeResult:
+    type: object
+  model.DeleteTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteTagResult:
+    type: object
+  model.DeleteTransactionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
+  model.ExcludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.ExcludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
+  model.FiltersResult:
+    properties:
+      excludedAccountsIds:
+        items:
+          type: string
+        type: array
+      periodEnd:
+        type: string
+      periodStart:
+        type: string
+    type: object
+  model.FolderPositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.GenerateInviteRequest:
+    type: object
+  model.GenerateInviteResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ConnectionInviteResult'
+    type: object
+  model.GetAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+    type: object
+  model.GetBudgetListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.MetaResult'
+        type: array
+    type: object
+  model.GetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
+    type: object
+  model.GetBudgetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.BudgetTransactionResult'
+        type: array
+    type: object
+  model.GetCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.GetConnectionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ConnectionResult'
+        type: array
+    type: object
+  model.GetCurrencyListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CurrencyResult'
+        type: array
+    type: object
+  model.GetCurrencyRateListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CurrencyRateResult'
+        type: array
+    type: object
+  model.GetFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.GetOptionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.OptionResult'
+        type: array
+    type: object
+  model.GetPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.GetTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
+  model.GetTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TransactionResult'
+        type: array
+    type: object
+  model.GetUserDataResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.GrantAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.GrantAccessResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.MetaResult'
+        type: array
+    type: object
+  model.HideFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.HideFolderResult:
+    type: object
+  model.ImportResult:
+    properties:
+      errors:
+        additionalProperties:
+          items:
+            type: integer
+          type: array
+        type: object
+      imported:
+        type: integer
+      skipped:
+        type: integer
+    type: object
+  model.IncludeAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.IncludeAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
+  model.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.LoginResult:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.LogoutResult:
+    properties:
+      result:
+        type: string
+    type: object
+  model.MetaResult:
+    properties:
+      access:
+        items:
+          $ref: '#/definitions/model.AccessResult'
+        type: array
+      currencyId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  model.MoveElementListItem:
+    properties:
+      folderId:
+        type: string
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.MoveElementListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.MoveElementListItem'
+        type: array
+    type: object
+  model.MoveElementListResult:
+    type: object
+  model.OptionResult:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+  model.OrderAccountListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.AccountPositionChange'
+        type: array
+    type: object
+  model.OrderAccountListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+    type: object
+  model.OrderBudgetFolderListRequest:
+    properties:
+      budgetId:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/model.OrderFolderListItem'
+        type: array
+    type: object
+  model.OrderBudgetFolderListResult:
+    type: object
+  model.OrderCategoryListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.OrderFolderListItem:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.OrderFolderListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.FolderPositionChange'
+        type: array
+    type: object
+  model.OrderFolderListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.OrderPayeeListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.OrderTagListRequest:
+    properties:
+      changes:
+        items:
+          $ref: '#/definitions/model.PositionChange'
+        type: array
+    type: object
+  model.OrderTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
+  model.ParentElementResult:
+    properties:
+      available:
+        type: string
+      budgetSpent:
+        type: string
+      budgeted:
+        type: string
+      children:
+        items:
+          $ref: '#/definitions/model.ChildElementResult'
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      spent:
+        type: string
+      type:
+        type: integer
+    type: object
+  model.PayeeResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  model.PositionChange:
+    properties:
+      id:
+        type: string
+      position:
+        type: integer
+    type: object
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+  model.RemindPasswordRequest:
+    properties:
+      username:
+        type: string
+    type: object
+  model.RemindPasswordResult:
+    type: object
+  model.ReplaceFolderRequest:
+    properties:
+      id:
+        type: string
+      replaceId:
+        type: string
+    type: object
+  model.ReplaceFolderResult:
+    type: object
+  model.ResetBudgetRequest:
+    properties:
+      id:
+        type: string
+      startedAt:
+        type: string
+    type: object
+  model.ResetBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
+  model.ResetPasswordRequest:
+    properties:
+      code:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.ResetPasswordResult:
+    type: object
+  model.RevokeAccessRequest:
+    properties:
+      budgetId:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.RevokeAccessResult:
+    type: object
+  model.RevokeAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.RevokeAccountAccessResult:
+    type: object
+  model.SetAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.SetAccountAccessResult:
+    type: object
+  model.SetLimitRequest:
+    properties:
+      amount:
+        type: string
+      budgetId:
+        type: string
+      elementId:
+        type: string
+      period:
+        type: string
+    type: object
+  model.SetLimitResult:
+    type: object
+  model.SharedAccess:
+    properties:
+      role:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResult'
+    type: object
+  model.ShowFolderRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ShowFolderResult:
+    type: object
+  model.StructureResult:
+    properties:
+      elements:
+        items:
+          $ref: '#/definitions/model.ParentElementResult'
+        type: array
+      folders:
+        items:
+          $ref: '#/definitions/model.BudgetFolderResult'
+        type: array
+    type: object
+  model.TagResult:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  model.TransactionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      author:
+        $ref: '#/definitions/model.UserResult'
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.TxCategoryResult:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.TxPayeeResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.TxTagResult:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UnarchiveCategoryRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveCategoryResult:
+    type: object
+  model.UnarchivePayeeRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchivePayeeResult:
+    type: object
+  model.UnarchiveTagRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveTagResult:
+    type: object
+  model.UpdateAccountRequest:
+    properties:
+      balance:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.UpdateAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountResult'
+      transaction:
+        $ref: '#/definitions/model.CorrectionResult'
+    type: object
+  model.UpdateActiveBudgetRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  model.UpdateActiveBudgetResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateBudgetFolderRequest:
+    properties:
+      budgetId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateBudgetFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetFolderResult'
+    type: object
+  model.UpdateBudgetRequest:
+    properties:
+      currencyId:
+        type: string
+      excludedAccounts:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
+  model.UpdateCategoryRequest:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateCategoryResult:
+    type: object
+  model.UpdateCurrencyRequest:
+    properties:
+      currency:
+        type: string
+    type: object
+  model.UpdateCurrencyResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateEnvelopeRequest:
+    properties:
+      budgetId:
+        type: string
+      categories:
+        items:
+          type: string
+        type: array
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+    type: object
+  model.UpdateEnvelopeResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ParentElementResult'
+    type: object
+  model.UpdateFolderRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateFolderResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.AccountFolderResult'
+    type: object
+  model.UpdateNameRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  model.UpdateNameResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdatePasswordRequest:
+    properties:
+      newPassword:
+        type: string
+      oldPassword:
+        type: string
+    type: object
+  model.UpdatePasswordResult:
+    type: object
+  model.UpdatePayeeRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdatePayeeResult:
+    type: object
+  model.UpdateReportPeriodRequest:
+    properties:
+      value:
+        type: string
+    type: object
+  model.UpdateReportPeriodResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateTagRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateTagResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.TagResult'
+    type: object
+  model.UpdateTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.UpdateTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+    type: object
+  model.UserResult:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Self-hosted personal finance and budgeting API (Go port).
+  title: Econumo API
+  version: 1.0.0
+paths:
+  /api/v1/account/create-account:
+    post:
+      consumes:
+      - application/json
+      description: Creates an account (idempotent on the request id), optionally seeding
+        its balance, in the given folder.
+      parameters:
+      - description: Create account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create an account
+      tags:
+      - Account
+  /api/v1/account/create-folder:
+    post:
+      consumes:
+      - application/json
+      description: Creates an account folder for the user (name unique among the user's
+        folders).
+      parameters:
+      - description: Create folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a folder
+      tags:
+      - Account
+  /api/v1/account/delete-account:
+    post:
+      consumes:
+      - application/json
+      description: Soft-deletes an account. Requires ownership.
+      parameters:
+      - description: Delete account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete an account
+      tags:
+      - Account
+  /api/v1/account/get-account-list:
+    get:
+      description: Returns all the user's available accounts (each with owner, currency,
+        folder, position, balance) in reverse order.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetAccountListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the account list
+      tags:
+      - Account
+  /api/v1/account/get-folder-list:
+    get:
+      description: Returns the user's account folders ordered by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetFolderListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the folder list
+      tags:
+      - Account
+  /api/v1/account/hide-folder:
+    post:
+      consumes:
+      - application/json
+      description: Marks a folder (and its accounts) hidden. Requires ownership.
+      parameters:
+      - description: Hide folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.HideFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.HideFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Hide a folder
+      tags:
+      - Account
+  /api/v1/account/order-account-list:
+    post:
+      consumes:
+      - application/json
+      description: Repositions accounts and moves them between folders, returning
+        the full list.
+      parameters:
+      - description: Order account list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderAccountListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OrderAccountListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the account list
+      tags:
+      - Account
+  /api/v1/account/order-folder-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's folders and returns the
+        full ordered list.
+      parameters:
+      - description: Order folder list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderFolderListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OrderFolderListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the folder list
+      tags:
+      - Account
+  /api/v1/account/replace-folder:
+    post:
+      consumes:
+      - application/json
+      description: Moves a folder's accounts into another folder and deletes it. Requires
+        ownership of both.
+      parameters:
+      - description: Replace folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ReplaceFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ReplaceFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Replace a folder
+      tags:
+      - Account
+  /api/v1/account/show-folder:
+    post:
+      consumes:
+      - application/json
+      description: Clears a folder's hidden flag. Requires ownership.
+      parameters:
+      - description: Show folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ShowFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ShowFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Show a folder
+      tags:
+      - Account
+  /api/v1/account/update-account:
+    post:
+      consumes:
+      - application/json
+      description: Updates an account's name/icon/currency and reconciles its balance
+        via a correction transaction. Requires ownership.
+      parameters:
+      - description: Update account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update an account
+      tags:
+      - Account
+  /api/v1/account/update-folder:
+    post:
+      consumes:
+      - application/json
+      description: Renames a folder the user owns (name unique among the user's folders).
+      parameters:
+      - description: Update folder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateFolderResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a folder
+      tags:
+      - Account
+  /api/v1/budget/accept-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Accept access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AcceptAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AcceptAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Accept budget access
+      tags:
+      - Budget
+  /api/v1/budget/change-element-currency:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Change element currency
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ChangeElementCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ChangeElementCurrencyResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Change a budget element's currency
+      tags:
+      - Budget
+  /api/v1/budget/create-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a budget
+      tags:
+      - Budget
+  /api/v1/budget/create-envelope:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create envelope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateEnvelopeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateEnvelopeResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Create an envelope
+      tags:
+      - Budget
+  /api/v1/budget/create-folder:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateBudgetFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateBudgetFolderResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Create a budget folder
+      tags:
+      - Budget
+  /api/v1/budget/decline-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Decline access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeclineAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeclineAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Decline budget access
+      tags:
+      - Budget
+  /api/v1/budget/delete-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteBudgetResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Delete a budget
+      tags:
+      - Budget
+  /api/v1/budget/delete-envelope:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete envelope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteEnvelopeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteEnvelopeResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Delete an envelope
+      tags:
+      - Budget
+  /api/v1/budget/delete-folder:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteFolderResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Delete a budget folder
+      tags:
+      - Budget
+  /api/v1/budget/exclude-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Exclude account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ExcludeAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ExcludeAccountResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Exclude an account from a budget
+      tags:
+      - Budget
+  /api/v1/budget/get-budget:
+    get:
+      parameters:
+      - description: Budget id
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Period date (Y-m-d)
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetBudgetResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Get a budget
+      tags:
+      - Budget
+  /api/v1/budget/get-budget-list:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetBudgetListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: List budgets
+      tags:
+      - Budget
+  /api/v1/budget/get-transaction-list:
+    get:
+      parameters:
+      - description: Budget id
+        in: query
+        name: budgetId
+        required: true
+        type: string
+      - description: Period start (Y-m-d)
+        in: query
+        name: periodStart
+        required: true
+        type: string
+      - description: Category id
+        in: query
+        name: categoryId
+        type: string
+      - description: Tag id
+        in: query
+        name: tagId
+        type: string
+      - description: Envelope id
+        in: query
+        name: envelopeId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetBudgetTransactionListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Budget transaction list
+      tags:
+      - Budget
+  /api/v1/budget/grant-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Grant access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.GrantAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GrantAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Grant budget access
+      tags:
+      - Budget
+  /api/v1/budget/include-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Include account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.IncludeAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.IncludeAccountResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Include an account in a budget
+      tags:
+      - Budget
+  /api/v1/budget/move-element-list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Move elements
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MoveElementListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MoveElementListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Move/reorder budget elements
+      tags:
+      - Budget
+  /api/v1/budget/order-folder-list:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order folders
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderBudgetFolderListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OrderBudgetFolderListResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Reorder budget folders
+      tags:
+      - Budget
+  /api/v1/budget/reset-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Reset budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResetBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ResetBudgetResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Reset a budget
+      tags:
+      - Budget
+  /api/v1/budget/revoke-access:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Revoke access
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokeAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeAccessResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Revoke budget access
+      tags:
+      - Budget
+  /api/v1/budget/set-limit:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Set limit
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SetLimitRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SetLimitResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Set a budget element limit
+      tags:
+      - Budget
+  /api/v1/budget/update-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+      security:
+      - Bearer: []
+      summary: Update a budget
+      tags:
+      - Budget
+  /api/v1/budget/update-envelope:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update envelope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateEnvelopeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateEnvelopeResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Update an envelope
+      tags:
+      - Budget
+  /api/v1/budget/update-folder:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateBudgetFolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateBudgetFolderResult'
+              type: object
+      security:
+      - Bearer: []
+      summary: Update a budget folder
+      tags:
+      - Budget
+  /api/v1/category/archive-category:
+    post:
+      consumes:
+      - application/json
+      description: Marks a category archived. Requires ownership.
+      parameters:
+      - description: Archive category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ArchiveCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ArchiveCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a category
+      tags:
+      - Category
+  /api/v1/category/create-category:
+    post:
+      consumes:
+      - application/json
+      description: Creates a category for the authenticated user. Idempotent on the
+        request id.
+      parameters:
+      - description: Create category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a category
+      tags:
+      - Category
+  /api/v1/category/delete-category:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a category (mode=delete) or reassigns its transactions
+        to a replacement then deletes it (mode=replace). Requires ownership.
+      parameters:
+      - description: Delete category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a category
+      tags:
+      - Category
+  /api/v1/category/get-category-list:
+    get:
+      description: Returns all the authenticated user's categories (archived and not)
+        ordered by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetCategoryListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the category list
+      tags:
+      - Category
+  /api/v1/category/order-category-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's categories and returns the
+        full ordered list.
+      parameters:
+      - description: Order category list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderCategoryListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OrderCategoryListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the category list
+      tags:
+      - Category
+  /api/v1/category/unarchive-category:
+    post:
+      consumes:
+      - application/json
+      description: Clears a category's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnarchiveCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnarchiveCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a category
+      tags:
+      - Category
+  /api/v1/category/update-category:
+    post:
+      consumes:
+      - application/json
+      description: Updates a category's name and icon. Requires ownership.
+      parameters:
+      - description: Update category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a category
+      tags:
+      - Category
+  /api/v1/connection/accept-invite:
+    post:
+      consumes:
+      - application/json
+      description: Redeems an invite code, connecting the user with the invite's owner.
+      parameters:
+      - description: Accept invite request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AcceptInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AcceptInviteResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Accept an invite
+      tags:
+      - Connection
+  /api/v1/connection/delete-connection:
+    post:
+      consumes:
+      - application/json
+      description: Disconnects the user from a connected user, revoking shared access.
+      parameters:
+      - description: Delete connection request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteConnectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteConnectionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a connection
+      tags:
+      - Connection
+  /api/v1/connection/delete-invite:
+    post:
+      consumes:
+      - application/json
+      description: Clears the user's outstanding connection invite (no-op if none).
+      parameters:
+      - description: Delete invite request
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/model.DeleteInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteInviteResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete an invite
+      tags:
+      - Connection
+  /api/v1/connection/generate-invite:
+    post:
+      consumes:
+      - application/json
+      description: Generates (or refreshes) the user's connection invite code.
+      parameters:
+      - description: Generate invite request
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/model.GenerateInviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GenerateInviteResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Generate an invite
+      tags:
+      - Connection
+  /api/v1/connection/get-connection-list:
+    get:
+      description: Returns the user's connected users, each with the accounts shared
+        between them.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetConnectionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List connections
+      tags:
+      - Connection
+  /api/v1/connection/revoke-account-access:
+    post:
+      consumes:
+      - application/json
+      description: Removes a connected user's grant on an account you own or administer.
+      parameters:
+      - description: Revoke account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokeAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke account access
+      tags:
+      - Connection
+  /api/v1/connection/set-account-access:
+    post:
+      consumes:
+      - application/json
+      description: Grants or updates a connected user's role on an account you own
+        or administer.
+      parameters:
+      - description: Set account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SetAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SetAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Set account access
+      tags:
+      - Connection
+  /api/v1/currency/get-currency-list:
+    get:
+      description: Returns all currencies ordered by ISO code. The name is the English
+        display name.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetCurrencyListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the currency list
+      tags:
+      - Currency
+  /api/v1/currency/get-currency-rate-list:
+    get:
+      description: Returns all currency rates published on the most-recent available
+        date.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetCurrencyRateListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the latest currency rates
+      tags:
+      - Currency
+  /api/v1/payee/archive-payee:
+    post:
+      consumes:
+      - application/json
+      description: Marks a payee archived. Requires ownership.
+      parameters:
+      - description: Archive payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ArchivePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ArchivePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a payee
+      tags:
+      - Payee
+  /api/v1/payee/create-payee:
+    post:
+      consumes:
+      - application/json
+      description: Creates a payee for the authenticated user. Idempotent on the request
+        id; the name must be unique among the user's payees.
+      parameters:
+      - description: Create payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreatePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreatePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a payee
+      tags:
+      - Payee
+  /api/v1/payee/delete-payee:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a payee. Transactions referencing it have their payee cleared.
+        Requires ownership.
+      parameters:
+      - description: Delete payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeletePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeletePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a payee
+      tags:
+      - Payee
+  /api/v1/payee/get-payee-list:
+    get:
+      description: Returns all the authenticated user's payees (archived and not)
+        ordered by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetPayeeListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the payee list
+      tags:
+      - Payee
+  /api/v1/payee/order-payee-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's payees and returns the full
+        ordered list.
+      parameters:
+      - description: Order payee list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderPayeeListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OrderPayeeListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the payee list
+      tags:
+      - Payee
+  /api/v1/payee/unarchive-payee:
+    post:
+      consumes:
+      - application/json
+      description: Clears a payee's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnarchivePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnarchivePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a payee
+      tags:
+      - Payee
+  /api/v1/payee/update-payee:
+    post:
+      consumes:
+      - application/json
+      description: Updates a payee's name. Requires ownership; the new name must be
+        unique among the user's payees.
+      parameters:
+      - description: Update payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdatePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdatePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a payee
+      tags:
+      - Payee
+  /api/v1/tag/archive-tag:
+    post:
+      consumes:
+      - application/json
+      description: Marks a tag archived. Requires ownership.
+      parameters:
+      - description: Archive tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ArchiveTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ArchiveTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a tag
+      tags:
+      - Tag
+  /api/v1/tag/create-tag:
+    post:
+      consumes:
+      - application/json
+      description: Creates a tag for the authenticated user. Idempotent on the request
+        id; the name must be unique among the user's tags.
+      parameters:
+      - description: Create tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a tag
+      tags:
+      - Tag
+  /api/v1/tag/delete-tag:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a tag. Transactions referencing it have their tag cleared.
+        Requires ownership.
+      parameters:
+      - description: Delete tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a tag
+      tags:
+      - Tag
+  /api/v1/tag/get-tag-list:
+    get:
+      description: Returns all the authenticated user's tags (archived and not) ordered
+        by position.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetTagListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the tag list
+      tags:
+      - Tag
+  /api/v1/tag/order-tag-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies position changes to the user's tags and returns the full
+        ordered list.
+      parameters:
+      - description: Order tag list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.OrderTagListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OrderTagListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Reorder the tag list
+      tags:
+      - Tag
+  /api/v1/tag/unarchive-tag:
+    post:
+      consumes:
+      - application/json
+      description: Clears a tag's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnarchiveTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnarchiveTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a tag
+      tags:
+      - Tag
+  /api/v1/tag/update-tag:
+    post:
+      consumes:
+      - application/json
+      description: Updates a tag's name. Requires ownership; the new name must be
+        unique among the user's tags.
+      parameters:
+      - description: Update tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a tag
+      tags:
+      - Tag
+  /api/v1/transaction/create-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Creates a transaction (idempotent on the request id) and returns
+        it plus the refreshed account list.
+      parameters:
+      - description: Create transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a transaction
+      tags:
+      - Transaction
+  /api/v1/transaction/delete-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a transaction and returns it plus the refreshed account
+        list.
+      parameters:
+      - description: Delete transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a transaction
+      tags:
+      - Transaction
+  /api/v1/transaction/export-transaction-list:
+    get:
+      description: Returns a CSV (text/csv) of transactions on the selected accounts
+        (comma-separated accountId), or all accessible accounts when omitted.
+      parameters:
+      - description: Comma-separated account ids
+        in: query
+        name: accountId
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Export the transaction list as CSV
+      tags:
+      - Transaction
+  /api/v1/transaction/get-transaction-list:
+    get:
+      description: Returns transactions for an account, or a date window across visible
+        accounts, or all visible-account transactions.
+      parameters:
+      - description: Account id filter
+        in: query
+        name: accountId
+        type: string
+      - description: Period start (Y-m-d H:i:s or Y-m-d)
+        in: query
+        name: periodStart
+        type: string
+      - description: Period end (Y-m-d H:i:s or Y-m-d)
+        in: query
+        name: periodEnd
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetTransactionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the transaction list
+      tags:
+      - Transaction
+  /api/v1/transaction/import-transaction-list:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Imports transactions from an uploaded CSV using a field mapping
+        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Field mapping JSON
+        in: formData
+        name: mapping
+        required: true
+        type: string
+      - description: Override account id
+        in: formData
+        name: accountId
+        type: string
+      - description: Override date (Y-m-d)
+        in: formData
+        name: date
+        type: string
+      - description: Override category id
+        in: formData
+        name: categoryId
+        type: string
+      - description: Override description
+        in: formData
+        name: description
+        type: string
+      - description: Override payee id
+        in: formData
+        name: payeeId
+        type: string
+      - description: Override tag id
+        in: formData
+        name: tagId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ImportResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Import a transaction list from CSV
+      tags:
+      - Transaction
+  /api/v1/transaction/update-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Updates a transaction and returns it plus the refreshed account
+        list.
+      parameters:
+      - description: Update transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a transaction
+      tags:
+      - Transaction
+  /api/v1/user/complete-onboarding:
+    post:
+      description: Marks the authenticated user's onboarding complete and returns
+        the refreshed user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CompleteOnboardingResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Complete onboarding
+      tags:
+      - User
+  /api/v1/user/get-option-list:
+    get:
+      description: 'Returns the authenticated user''s raw persisted options ({items:
+        [...]}).'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetOptionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get option list
+      tags:
+      - User
+  /api/v1/user/get-user-data:
+    get:
+      description: 'Returns the authenticated user''s profile ({user: CurrentUserResult}).'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetUserDataResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get user data
+      tags:
+      - User
+  /api/v1/user/login-user:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user by username/password and returns a JWT plus
+        the current user.
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Raw {token,user} body — NOT wrapped in the standard envelope
+            (matches PHP login).
+          schema:
+            $ref: '#/definitions/model.LoginResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Log in
+      tags:
+      - User
+  /api/v1/user/logout-user:
+    post:
+      description: Stateless logout; returns an empty success envelope (JWT is not
+        invalidated server-side).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.LogoutResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Log out
+      tags:
+      - User
+  /api/v1/user/register-user:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user (when registration is enabled) and returns the
+        current user without a token.
+      parameters:
+      - description: Register request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CurrentUserResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Register a user
+      tags:
+      - User
+  /api/v1/user/remind-password:
+    post:
+      consumes:
+      - application/json
+      description: Triggers a password reminder email. Always returns success (anti-enumeration).
+      parameters:
+      - description: Remind password request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RemindPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RemindPasswordResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Remind password
+      tags:
+      - User
+  /api/v1/user/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets a user's password using a reminder code. Returns an empty
+        success envelope.
+      parameters:
+      - description: Reset password request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ResetPasswordResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Reset password
+      tags:
+      - User
+  /api/v1/user/update-budget:
+    post:
+      consumes:
+      - application/json
+      description: Sets the authenticated user's default budget and returns the refreshed
+        user.
+      parameters:
+      - description: Update budget request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateActiveBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateActiveBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update budget
+      tags:
+      - User
+  /api/v1/user/update-currency:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's base currency and returns the
+        refreshed user.
+      parameters:
+      - description: Update currency request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateCurrencyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update currency
+      tags:
+      - User
+  /api/v1/user/update-name:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's display name (length 3..20) and
+        returns the refreshed user.
+      parameters:
+      - description: Update name request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateNameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateNameResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update name
+      tags:
+      - User
+  /api/v1/user/update-password:
+    post:
+      consumes:
+      - application/json
+      description: Changes the authenticated user's password after verifying the old
+        one. Returns an empty success envelope.
+      parameters:
+      - description: Update password request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdatePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdatePasswordResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update password
+      tags:
+      - User
+  /api/v1/user/update-report-period:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's reporting period option and returns
+        the refreshed user.
+      parameters:
+      - description: Update report period request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateReportPeriodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateReportPeriodResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update report period
+      tags:
+      - User
+securityDefinitions:
+  Bearer:
+    description: 'JWT bearer token. Format: "Bearer <token>".'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
