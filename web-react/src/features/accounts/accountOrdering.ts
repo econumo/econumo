@@ -19,8 +19,9 @@ export function bucketsFromAccounts(accounts: AccountDto[], folderIds: string[])
   return buckets
 }
 
-// Move an account within/between folder buckets. `overId` is either another
-// account id or a folder container id of the form `folder:<id>` (empty-folder drop).
+// Move an account within/between folder buckets. `overId` is another account id,
+// a folder container id of the form `folder:<id>` (empty-folder drop), or a bare
+// folder id (the folder's own sortable registers a droppable too).
 export function moveAccount(buckets: FolderBucket[], activeId: string, overId: string): FolderBucket[] {
   const next = buckets.map((b) => ({ ...b, accountIds: [...b.accountIds] }))
   const source = next.find((b) => b.accountIds.includes(activeId))
@@ -29,10 +30,11 @@ export function moveAccount(buckets: FolderBucket[], activeId: string, overId: s
   }
   let target: FolderBucket | undefined
   let insertAt: number
-  if (overId.startsWith('folder:')) {
-    const folderId = overId.slice('folder:'.length)
-    target = next.find((b) => b.folderId === folderId)
-    insertAt = target ? target.accountIds.length : 0
+  const containerId = overId.startsWith('folder:') ? overId.slice('folder:'.length) : overId
+  const container = next.find((b) => b.folderId === containerId)
+  if (container) {
+    target = container
+    insertAt = container.accountIds.length
   } else {
     target = next.find((b) => b.accountIds.includes(overId))
     insertAt = target ? target.accountIds.indexOf(overId) : 0

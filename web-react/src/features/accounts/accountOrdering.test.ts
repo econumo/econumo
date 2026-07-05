@@ -46,6 +46,13 @@ it('drops into an empty folder via the container id', () => {
   expect(buildAccountChanges(accounts, moved)).toEqual([{ id: 'a3', folderId: 'f3', position: 2 }])
 })
 
+it('drops onto a bare folder id (the folder sortable is a droppable too)', () => {
+  const buckets = bucketsFromAccounts(accounts, ['f1', 'f2'])
+  const moved = moveAccount(buckets, 'a1', 'f2')
+  expect(moved[0].accountIds).toEqual(['a2'])
+  expect(moved[1].accountIds).toEqual(['a3', 'a1'])
+})
+
 it('no-op move reports no changes', () => {
   const buckets = bucketsFromAccounts(accounts, ['f1', 'f2'])
   expect(buildAccountChanges(accounts, buckets)).toEqual([])

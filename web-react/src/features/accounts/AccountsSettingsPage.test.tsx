@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts as fixtureAccountsForAccess, fixtureFolders } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
@@ -194,6 +194,102 @@ it('access control: shared avatars, grant and revoke through the dialogs', async
   await user.click(await screen.findByRole('button', { name: /Partner/ }))
   await user.click(await screen.findByRole('button', { name: 'Revoke access' }))
   await waitFor(() => expect(revoked).toEqual({ accountId: 'a1', userId: 'u2' }))
+})
+
+it('clicking an account row opens its context menu (desktop)', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByText('Cash'))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+  expect(useUiStore.getState().accountModal?.account?.id).toBe('a1')
+  // the click on the portaled menu item must not bubble back to the row and reopen the menu
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+})
+
+it('clicking a folder header opens the folder menu (desktop)', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-Savings')
+  await user.click(screen.getByText('Savings'))
+  expect(await screen.findByRole('menuitem', { name: 'Move up' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Hide' })).toBeInTheDocument()
+})
+
+it('hidden folders are visually distinct', async () => {
+  renderPage()
+  const hidden = await screen.findByTestId('folder-Hidden')
+  expect(hidden).toHaveClass('border-dashed')
+  expect(screen.getByTestId('folder-General')).not.toHaveClass('border-dashed')
+})
+
+it('folder reorder applies optimistically before the server responds', async () => {
+  server.use(
+    http.post('*/api/v1/account/order-folder-list', async () => {
+      await delay('infinite')
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByRole('button', { name: 'folder actions General' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Move down' }))
+  await waitFor(() => {
+    const order = screen.getAllByTestId(/^folder-/).map((el) => el.dataset.testid)
+    expect(order).toEqual(['folder-Savings', 'folder-General', 'folder-Hidden'])
+  })
+  await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+})
+
+it('hiding a folder marks it immediately, before the server responds', async () => {
+  server.use(
+    http.post('*/api/v1/account/hide-folder', async () => {
+      await delay('infinite')
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByRole('button', { name: 'folder actions General' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Hide' }))
+  await waitFor(() => {
+    const general = screen.getByTestId('folder-General')
+    expect(within(general).getByLabelText('hidden')).toBeInTheDocument()
+    expect(general).toHaveClass('border-dashed')
+  })
+})
+
+it('shows the folders info box', async () => {
+  renderPage()
+  await screen.findByTestId('folder-General')
+  expect(screen.getByText(/Accounts are organized into folders/)).toBeInTheDocument()
+})
+
+it('collapses and expands a folder, persisting the choice', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle folder General' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  // collapsed header shows the account count instead of the list
+  expect(screen.getByTestId('folder-count-General')).toHaveTextContent('1')
+  expect(JSON.parse(localStorage.getItem('settings.accounts.collapsedFolders') ?? '[]')).toEqual(['f1'])
+
+  await user.click(screen.getByRole('button', { name: 'toggle folder General' }))
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+  expect(JSON.parse(localStorage.getItem('settings.accounts.collapsedFolders') ?? '[]')).toEqual([])
+})
+
+it('starts collapsed for folders remembered in localStorage', async () => {
+  localStorage.setItem('settings.accounts.collapsedFolders', JSON.stringify(['f2']))
+  renderPage()
+  await screen.findByTestId('folder-Savings')
+  expect(screen.queryByText('Bank')).not.toBeInTheDocument()
+  expect(screen.getByText('Cash')).toBeInTheDocument()
 })
 
 it('each folder header offers an add-account button preset to that folder', async () => {

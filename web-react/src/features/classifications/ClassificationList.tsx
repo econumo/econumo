@@ -224,7 +224,8 @@ export function ClassificationList<T extends ClassificationItem>({
                             <MoreVertical className="size-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenuItem onSelect={() => onEdit(item)}>{t('elements.button.edit.label')}</DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(item)}>
                             {t('elements.button.delete.label')}

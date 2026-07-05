@@ -92,6 +92,24 @@ export function useOrderAccounts() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: accountApi.orderAccountList,
+    // optimistic: the new arrangement lands instantly, the echo just confirms it
+    onMutate: async (changes) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.accounts })
+      const previous = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)
+      const byId = new Map(changes.map((c) => [c.id, c]))
+      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) =>
+        (prev ?? []).map((a) => {
+          const change = byId.get(a.id)
+          return change ? { ...a, folderId: change.folderId, position: change.position } : a
+        }),
+      )
+      return { previous }
+    },
+    onError: (_err, _changes, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.accounts, context.previous)
+      }
+    },
     onSuccess: (items) => queryClient.setQueryData(queryKeys.accounts, items),
   })
 }
@@ -116,6 +134,23 @@ export function useOrderFolders() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: accountApi.orderFolderList,
+    onMutate: async (changes) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.folders })
+      const previous = queryClient.getQueryData<FolderDto[]>(queryKeys.folders)
+      const positions = new Map(changes.map((c) => [c.id, c.position]))
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) =>
+        (prev ?? []).map((f) => {
+          const position = positions.get(f.id)
+          return position === undefined ? f : { ...f, position }
+        }),
+      )
+      return { previous }
+    },
+    onError: (_err, _changes, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.folders, context.previous)
+      }
+    },
     onSuccess: (items) => queryClient.setQueryData(queryKeys.folders, items),
   })
 }
@@ -131,10 +166,23 @@ export function useReplaceFolder() {
   })
 }
 
-export function useHideFolder() {
+function useSetFolderVisibility(mutationFn: (id: string) => Promise<void>, isVisible: 0 | 1) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: accountApi.hideFolder,
+    mutationFn,
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.folders })
+      const previous = queryClient.getQueryData<FolderDto[]>(queryKeys.folders)
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) =>
+        (prev ?? []).map((f) => (f.id === id ? { ...f, isVisible } : f)),
+      )
+      return { previous }
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.folders, context.previous)
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
@@ -142,13 +190,10 @@ export function useHideFolder() {
   })
 }
 
+export function useHideFolder() {
+  return useSetFolderVisibility(accountApi.hideFolder, 0)
+}
+
 export function useShowFolder() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: accountApi.showFolder,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
-    },
-  })
+  return useSetFolderVisibility(accountApi.showFolder, 1)
 }

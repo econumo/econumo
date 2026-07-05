@@ -55,7 +55,7 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(screen.queryByText('Preferences')).not.toBeInTheDocument()
   expect(screen.queryByText('Default currency')).not.toBeInTheDocument()
   expect(screen.getByText('Shared access')).toBeInTheDocument()
-  expect(screen.getByText('Accounts and Folders')).toBeInTheDocument()
+  expect(screen.getByText('Accounts')).toBeInTheDocument()
   expect(screen.getByText('Payees (senders, recipients)')).toBeInTheDocument()
   // language group hidden with a single locale
   expect(screen.queryByText('User Interface')).not.toBeInTheDocument()

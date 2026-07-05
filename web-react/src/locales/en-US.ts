@@ -161,8 +161,10 @@ export default {
       },
       'sync': { 'menu_item': 'Full sync' },
       'accounts': {
-        'menu_item': 'Accounts and Folders',
-        'header': 'Accounts and Folders',
+        'menu_item': 'Accounts',
+        'header': 'Accounts',
+        'info': 'Accounts are organized into folders. If you want to tuck away accounts you don\'t currently need, hide their folder.',
+        'folder_toggle': 'Collapse folder',
         'list_empty_create': 'Add',
         'list_empty_new_account': 'new account',
         'list_actions': { 'access': 'Access control' },
