@@ -79,8 +79,9 @@ it('changing the default currency posts the code and updates the cache', async (
   const user = userEvent.setup()
   const queryClient = renderPage()
   await screen.findByText('Default currency')
-  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Default currency' })).toHaveTextContent('USD'))
-  await user.click(screen.getByRole('combobox', { name: 'Default currency' }))
+  // the row shows the current code; clicking it opens the search dialog
+  await waitFor(() => expect(screen.getByText('USD')).toBeInTheDocument())
+  await user.click(screen.getByText('Default currency'))
   await user.click(await screen.findByText('EUR, €, Euro'))
   await waitFor(() => expect(body).toEqual({ currency: 'EUR' }))
   await waitFor(() => {
