@@ -59,7 +59,7 @@ function AccountRow({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`flex items-center gap-2 rounded-md px-1 py-1.5 ${isDragging ? 'opacity-60' : ''}`}
     >
-      <button type="button" aria-label={`drag ${account.name}`} className="cursor-grab text-muted-foreground" {...attributes} {...(listeners ?? {})}>
+      <button type="button" aria-label={`drag ${account.name}`} className="cursor-grab touch-none text-muted-foreground" {...attributes} {...(listeners ?? {})}>
         <GripVertical className="size-4" />
       </button>
       <button

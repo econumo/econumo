@@ -68,14 +68,18 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
             ))}
           </nav>
           <h1 className="truncate text-[26px] font-normal leading-snug">{heading ?? title}</h1>
-          {actions ? <div className="mt-2 flex items-center gap-2 [&_button]:min-w-44">{actions}</div> : null}
+          {actions ? (
+            <div className="mt-2 flex items-center gap-2 lg:max-w-xl [&_button:not([data-slot=switch])]:min-w-44">{actions}</div>
+          ) : null}
         </header>
       )}
       {/* -mx/px pair: 4px of in-scroller breathing room so focus rings at the
           content edge aren't clipped (overflow-y:auto also clips the x axis).
           On desktop the content column is capped like the settings hub, so
           row actions don't drift to the far right of the screen. */}
-      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+      {/* overflow-x-hidden: invisible tap-target halos (e.g. the Switch ::after)
+          must not turn into a few px of horizontal scroll on mobile. */}
+      <div className="-mx-1 min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-1">
         <div className="lg:max-w-xl">{children}</div>
       </div>
     </div>

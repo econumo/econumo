@@ -59,10 +59,14 @@ export function SortableList<T extends { id: string }>({ items, onReorder, rende
 
   // Keep the dropped order on screen until the parent hands us fresh items
   // (the order mutation echoes the list), so the row never snaps back.
+  // Reset on the actual id order, NOT the array identity — parents rebuild
+  // the array every render (filter/map), which used to clear the preview
+  // immediately and bounce the row to its old slot until the server echoed.
   const [previewIds, setPreviewIds] = useState<string[] | null>(null)
+  const idsKey = items.map((i) => i.id).join('|')
   useEffect(() => {
     setPreviewIds(null)
-  }, [items])
+  }, [idsKey])
 
   const shown = orderByPreview(items, previewIds)
 

@@ -10,7 +10,8 @@ export default {
     },
     'list': {
       'list_empty': 'List is empty',
-      'order_list': 'Reorder list'
+      'order_list': 'Reorder list',
+      'active_only': 'Active only'
     },
     'main': {
       'budget': 'Budget',

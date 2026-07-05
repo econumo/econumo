@@ -38,6 +38,7 @@ export function TagsPage() {
         createLabel={t('modules.classifications.tags.pages.settings.create_tag')}
         deleteTitle={t('modules.classifications.tags.modals.delete.title')}
         items={own}
+        storageKey="settings.tags.activeOnly"
         onCreate={() => setDialog({ open: true, tag: null })}
         onEdit={(tag) => setDialog({ open: true, tag })}
         onDelete={(id) => deleteTag.mutate(id)}

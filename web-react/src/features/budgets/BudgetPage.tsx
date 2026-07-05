@@ -66,7 +66,7 @@ function DraggableElement({ id, children }: { id: string; children: ReactNode })
           type="button"
           ref={setNodeRef}
           aria-label={`move ${id}`}
-          className="cursor-grab text-muted-foreground"
+          className="cursor-grab touch-none text-muted-foreground"
           {...attributes}
           {...listeners}
         >

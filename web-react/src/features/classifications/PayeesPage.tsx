@@ -39,6 +39,7 @@ export function PayeesPage() {
         createLabel={t('modules.classifications.payees.pages.settings.create_payee')}
         deleteTitle={t('modules.classifications.payees.modals.delete.title')}
         items={own}
+        storageKey="settings.payees.activeOnly"
         onCreate={() => setDialog({ open: true, payee: null })}
         onEdit={(payee) => setDialog({ open: true, payee })}
         onDelete={(id) => deletePayee.mutate(id)}

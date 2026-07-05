@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -10,9 +10,9 @@ import { CategoriesPage } from './CategoriesPage'
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
-function mockViewport() {
+function mockViewport(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023') ? compact : false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 
@@ -36,12 +36,70 @@ beforeEach(() => {
   mockViewport()
 })
 
-it('lists own categories flat with the archived sublabel inline', async () => {
+it('hides archived items by default; the filter reveals them and persists', async () => {
+  const user = userEvent.setup()
   renderPage()
   expect(await screen.findByText('Food')).toBeInTheDocument()
   expect(screen.getByText('Salary')).toBeInTheDocument()
+  // archived hidden while the default active-only filter is on
+  expect(screen.queryByText('Old')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('switch', { name: 'Active only' }))
   expect(screen.getByText('Old')).toBeInTheDocument()
   expect(screen.getByText('Archived (inactive)')).toBeInTheDocument()
+  expect(localStorage.getItem('settings.categories.activeOnly')).toBe('false')
+})
+
+it('groups categories under expense/income headers', async () => {
+  renderPage()
+  expect(await screen.findByText('Food')).toBeInTheDocument()
+  expect(screen.getByText('Expense')).toBeInTheDocument()
+  expect(screen.getByText('Income')).toBeInTheDocument()
+})
+
+it('archiving under the active-only filter keeps the row on screen until the next visit', async () => {
+  server.use(
+    http.post('*/api/v1/category/archive-category', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Food')
+  await user.click(screen.getByRole('switch', { name: 'archive Food' }))
+  // still visible, now greyed with the archived sublabel and the switch off
+  expect(await screen.findByText('Archived (inactive)')).toBeInTheDocument()
+  expect(screen.getByText('Food')).toBeInTheDocument()
+  expect(screen.getByRole('switch', { name: 'archive Food' })).not.toBeChecked()
+})
+
+it('compact header keeps only the create icon; reorder and filter sit on the next row', async () => {
+  mockViewport(true)
+  renderPage()
+  expect(await screen.findByText('Food')).toBeInTheDocument()
+  // header: back / title / create icon
+  expect(screen.getByRole('button', { name: 'back' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Create category' })).toBeInTheDocument()
+  // second row: reorder + active-only filter
+  expect(screen.getByRole('button', { name: /Reorder list/ })).toBeInTheDocument()
+  expect(screen.getByRole('switch', { name: 'Active only' })).toBeInTheDocument()
+})
+
+it('compact row tap opens the bottom-sheet actions menu (no kebab button)', async () => {
+  mockViewport(true)
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Food')
+  expect(screen.queryByRole('button', { name: 'actions Food' })).not.toBeInTheDocument()
+  await user.click(screen.getByText('Food'))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+})
+
+it('desktop row click opens the actions menu', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Food')
+  await user.click(screen.getByText('Food'))
+  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
 })
 
 it('creates a category with type and icon (no accountId)', async () => {
@@ -84,8 +142,7 @@ it('edit posts id/name/icon without type and the type toggle is frozen', async (
   await screen.findByText('Food')
   await user.click(screen.getByRole('button', { name: 'actions Food' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
-  await screen.findByText('Edit')
-  expect(screen.getByRole('radio', { name: 'Expense' })).toBeDisabled()
+  await waitFor(() => expect(screen.getByRole('radio', { name: 'Expense' })).toBeDisabled())
   const nameInput = screen.getByLabelText('Name')
   await user.clear(nameInput)
   await user.type(nameInput, 'Groceries')
@@ -110,6 +167,8 @@ it('archive toggle hits archive/unarchive endpoints', async () => {
   await screen.findByText('Food')
   await user.click(screen.getByRole('switch', { name: 'archive Food' }))
   await waitFor(() => expect(calls).toEqual(['archive']))
+  // reveal archived items to reach 'Old'
+  await user.click(screen.getByRole('switch', { name: 'Active only' }))
   await user.click(screen.getByRole('switch', { name: 'archive Old' }))
   await waitFor(() => expect(calls).toEqual(['archive', 'unarchive']))
 })
