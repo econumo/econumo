@@ -1,19 +1,14 @@
 import { useState } from 'react'
-import { ChevronRight, RefreshCw } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
+import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CurrencySelect } from '@/components/CurrencySelect'
-import { formatDateTime } from '@/lib/datetime'
 import { getLocaleOptions } from '@/lib/config'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
-import { useAccounts, useFolders } from '@/features/accounts/queries'
-import { useTransactions } from '@/features/transactions/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
@@ -43,19 +38,12 @@ export function SettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
-  const queryClient = useQueryClient()
   const { data: user } = useUserData()
   const { data: currencies } = useCurrencies()
   const updateCurrency = useUpdateCurrency()
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
-
-  // lastSyncAt = the oldest fetch among the core lists (Vue takes the min of the *LoadedAt stamps)
-  const updatedAts = [useAccounts(), useFolders(), useCategories(), usePayees(), useTags(), useTransactions(), useCurrencies()]
-    .map((q) => q.dataUpdatedAt)
-    .filter((ts) => ts > 0)
-  const lastSyncAt = updatedAts.length ? formatDateTime(new Date(Math.min(...updatedAts))) : '-'
 
   const currentCurrencyId = userCurrencyId(user)
 
@@ -89,16 +77,6 @@ export function SettingsPage() {
 
           <p className="px-1 pt-2 text-xs uppercase text-muted-foreground">{t('pages.settings.settings.groups.service')}</p>
           <nav className="flex flex-col gap-2">
-            <MenuRow
-              label={t('pages.settings.sync.menu_item')}
-              onClick={() => void queryClient.invalidateQueries()}
-              trailing={
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {lastSyncAt}
-                  <RefreshCw className="size-4" />
-                </span>
-              }
-            />
             <MenuRow label={t('modules.connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
             <MenuRow label={t('modules.budget.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
             <MenuRow label={t('pages.settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />

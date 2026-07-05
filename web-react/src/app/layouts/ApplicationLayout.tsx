@@ -10,6 +10,7 @@ import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UserCard } from '@/components/UserCard'
 import { econumoPackage } from '@/lib/package'
+import { formatDateTime } from '@/lib/datetime'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
@@ -40,6 +41,15 @@ function useIsFullyLoaded() {
   return queries.every((q) => q.data !== undefined)
 }
 
+// lastSyncAt = the oldest fetch among the core lists (Vue takes the min of the
+// *LoadedAt stamps); shown in the sync button's tooltip.
+function useLastSyncAt(): string {
+  const stamps = [useAccounts(), useFolders(), useCategories(), usePayees(), useTags(), useTransactions(), useCurrencies()]
+    .map((q) => q.dataUpdatedAt)
+    .filter((ts) => ts > 0)
+  return stamps.length ? formatDateTime(new Date(Math.min(...stamps))) : '-'
+}
+
 export function ApplicationLayout() {
   const { t } = useTranslation()
   const location = useLocation()
@@ -59,6 +69,7 @@ export function ApplicationLayout() {
   const showSidebar = !isCompact || location.pathname === '/'
   const showWorkspace = !isCompact || location.pathname !== '/'
   const isFetching = useIsFetching() > 0
+  const lastSyncAt = useLastSyncAt()
   const { collapsed, toggleCollapsed } = useSidebarStore()
   // Icon-rail mode is desktop-only; compact keeps the full-width home sidebar.
   const rail = collapsed && !isCompact
@@ -137,7 +148,7 @@ export function ApplicationLayout() {
               <button
                 type="button"
                 aria-label="sync"
-                title={t('pages.settings.sync.menu_item')}
+                title={`${t('pages.settings.sync.menu_item')} — ${lastSyncAt}`}
                 className="text-muted-foreground hover:text-foreground"
                 onClick={() => void queryClient.invalidateQueries()}
               >
@@ -158,7 +169,7 @@ export function ApplicationLayout() {
               <button
                 type="button"
                 aria-label="sync"
-                title={t('pages.settings.sync.menu_item')}
+                title={`${t('pages.settings.sync.menu_item')} — ${lastSyncAt}`}
                 className="text-muted-foreground hover:text-foreground"
                 onClick={() => void queryClient.invalidateQueries()}
               >

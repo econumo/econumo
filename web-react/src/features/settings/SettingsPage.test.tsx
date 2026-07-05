@@ -45,7 +45,8 @@ it('renders the menu rows with exact labels and navigates', async () => {
   const user = userEvent.setup()
   renderPage()
   expect(await screen.findByText('Service settings')).toBeInTheDocument()
-  expect(screen.getByText('Full sync')).toBeInTheDocument()
+  // Full sync moved to the sidebar footer refresh button
+  expect(screen.queryByText('Full sync')).not.toBeInTheDocument()
   expect(screen.getByText('Shared access')).toBeInTheDocument()
   expect(screen.getByText('Accounts and Folders')).toBeInTheDocument()
   expect(screen.getByText('Payees (senders, recipients)')).toBeInTheDocument()
