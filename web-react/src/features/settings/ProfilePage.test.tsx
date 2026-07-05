@@ -91,6 +91,25 @@ it('saves the name on blur and updates the cache', async () => {
   await waitFor(() => expect(queryClient.getQueryData<{ name: string }>(queryKeys.user)!.name).toBe('Grace'))
 })
 
+it('shows a transient checkmark after the name is saved, hidden again on edit', async () => {
+  server.use(
+    http.post('*/api/v1/user/update-name', () =>
+      HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, name: 'Grace' } } }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const nameInput = await screen.findByLabelText('Name')
+  await waitFor(() => expect(nameInput).toHaveValue('Ada'))
+  expect(screen.getByTestId('name-saved')).toHaveClass('opacity-0')
+  await user.clear(nameInput)
+  await user.type(nameInput, 'Grace')
+  await user.tab()
+  await waitFor(() => expect(screen.getByTestId('name-saved')).toHaveClass('opacity-100'))
+  await user.type(nameInput, '!')
+  expect(screen.getByTestId('name-saved')).toHaveClass('opacity-0')
+})
+
 it('surfaces server field errors under the name input', async () => {
   server.use(
     http.post('*/api/v1/user/update-name', () =>

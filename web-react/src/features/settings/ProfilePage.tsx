@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronRight } from 'lucide-react'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
@@ -21,12 +21,28 @@ export function ProfilePage() {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const [savedVisible, setSavedVisible] = useState(false)
+  const savedTimer = useRef<number | null>(null)
 
   useEffect(() => {
     if (user) {
       setName(user.name)
     }
   }, [user])
+
+  useEffect(() => () => {
+    if (savedTimer.current !== null) {
+      window.clearTimeout(savedTimer.current)
+    }
+  }, [])
+
+  const flashSaved = () => {
+    setSavedVisible(true)
+    if (savedTimer.current !== null) {
+      window.clearTimeout(savedTimer.current)
+    }
+    savedTimer.current = window.setTimeout(() => setSavedVisible(false), 2500)
+  }
 
   const saveName = () => {
     if (!user || name === user.name) {
@@ -42,6 +58,7 @@ export function ProfilePage() {
     }
     setNameError(null)
     updateName.mutate(name, {
+      onSuccess: flashSaved,
       onError: (error) => {
         // surface the envelope's field errors (Vue silently swallows these)
         if (isAxiosError(error)) {
@@ -78,13 +95,29 @@ export function ProfilePage() {
       >
         <div className="flex flex-col gap-2">
           <Label htmlFor="profile-name">{t('modules.user.form.user.name.label')}</Label>
-          <Input
-            id="profile-name"
-            placeholder={t('modules.user.form.user.name.placeholder')}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={saveName}
-          />
+          <div className="relative">
+            <Input
+              id="profile-name"
+              className="pr-9"
+              placeholder={t('modules.user.form.user.name.placeholder')}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                setSavedVisible(false)
+              }}
+              onBlur={saveName}
+            />
+            {/* unobtrusive save confirmation: fades in on success, fades out on its own */}
+            <span
+              data-testid="name-saved"
+              aria-hidden={!savedVisible}
+              className={`pointer-events-none absolute inset-y-0 right-3 flex items-center text-income transition-opacity duration-500 ${
+                savedVisible ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <Check className="size-4" />
+            </span>
+          </div>
           {nameError ? <p className="text-sm text-destructive">{nameError}</p> : null}
         </div>
         <div className="flex flex-col gap-2">
