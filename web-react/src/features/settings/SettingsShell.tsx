@@ -1,5 +1,6 @@
+import { Fragment } from 'react'
 import type { ReactNode } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -53,15 +54,17 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
       ) : (
         // Vue anatomy: breadcrumb chip, large light title, wide action button UNDER the title
         <header className="flex flex-col gap-1">
-          <nav className="flex gap-1">
-            {(crumbs ?? [{ label: t('pages.settings.settings.header_desktop'), to: '/settings' }]).map((crumb) => (
-              <Link
-                key={crumb.to}
-                to={crumb.to}
-                className="rounded bg-econumo-card px-2 py-0.5 text-xs text-muted-foreground hover:bg-econumo-hover"
-              >
-                {crumb.label}
-              </Link>
+          <nav className="flex items-center gap-1">
+            {(crumbs ?? [{ label: t('pages.settings.settings.header_desktop'), to: '/settings' }]).map((crumb, i) => (
+              <Fragment key={crumb.to}>
+                {i > 0 ? <ChevronRight className="size-3 text-muted-foreground" aria-hidden="true" /> : null}
+                <Link
+                  to={crumb.to}
+                  className="rounded bg-econumo-card px-2 py-0.5 text-xs text-muted-foreground hover:bg-econumo-hover"
+                >
+                  {crumb.label}
+                </Link>
+              </Fragment>
             ))}
           </nav>
           <h1 className="truncate text-[26px] font-normal leading-snug">{heading ?? title}</h1>
