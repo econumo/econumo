@@ -72,8 +72,12 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
         </header>
       )}
       {/* -mx/px pair: 4px of in-scroller breathing room so focus rings at the
-          content edge aren't clipped (overflow-y:auto also clips the x axis). */}
-      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">{children}</div>
+          content edge aren't clipped (overflow-y:auto also clips the x axis).
+          On desktop the content column is capped like the settings hub, so
+          row actions don't drift to the far right of the screen. */}
+      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+        <div className="lg:max-w-xl">{children}</div>
+      </div>
     </div>
   )
 }
