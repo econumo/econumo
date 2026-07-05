@@ -60,7 +60,7 @@ export function ProfilePage() {
     <SettingsShell title={t('modules.user.page.settings.profile.header')} backTo={RouterPage.SETTINGS}>
       {user ? (
         <div className="px-1 py-3">
-          <UserCard user={user}>
+          <UserCard user={user} size="lg">
             <button type="button" className="self-start text-sm text-econumo-magenta underline hover:text-econumo-magenta-dark" onClick={() => setLogoutOpen(true)}>
               {t('pages.settings.settings.logout')}
             </button>
@@ -98,7 +98,7 @@ export function ProfilePage() {
       </p>
       <Link
         to={RouterPage.SETTINGS_CHANGE_PASSWORD}
-        className="flex items-center justify-between gap-2 rounded-md px-1 py-2.5 text-sm hover:bg-accent"
+        className="flex max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
       >
         {t('modules.user.page.settings.profile.change_password.menu_item')}
         <ChevronRight className="size-4 text-muted-foreground" />
