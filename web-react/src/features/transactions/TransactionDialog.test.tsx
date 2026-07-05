@@ -114,6 +114,20 @@ it('tags show on expense but not income; income payee label is Sender', async ()
   expect(screen.getByRole('combobox', { name: 'Sender' })).toBeInTheDocument()
 })
 
+it('swap recomputes the recipient prefill for the new direction', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Enter amount'), '100')
+  await user.click(screen.getByRole('combobox', { name: 'to account' }))
+  await user.click(await screen.findByText(/Euro Stash/))
+  expect(await screen.findByLabelText('Will be exchanged')).toHaveValue('90')
+  // EUR -> USD: 100 / 0.9
+  await user.click(screen.getByRole('button', { name: 'swap accounts' }))
+  expect(await screen.findByLabelText('Will be exchanged')).toHaveValue('111.11')
+})
+
 it('cross-currency transfer prefills the converted recipient amount and prompts to switch', async () => {
   let body: Record<string, unknown> | undefined
   server.use(

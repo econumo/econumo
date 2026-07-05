@@ -138,8 +138,17 @@ export function useTransactionForm(params: OpenTransactionParams, accounts: Acco
     return String(exchangeFn(from.currency.id, to.currency.id, Number(amount)))
   }
 
-  const swapAccounts = () => {
-    patch({ accountId: form.accountRecipientId, accountRecipientId: form.accountId })
+  const swapAccounts = (exchangeFn: (fromId: string, toId: string, amount: number) => number) => {
+    patch({
+      accountId: form.accountRecipientId,
+      accountRecipientId: form.accountId,
+      // the entered amount now belongs to the other side — re-derive the
+      // recipient prefill for the new direction (new transfers only, matching
+      // setAmount/setRecipientAccount)
+      amountRecipient: form.isNew
+        ? recomputeRecipientAmount(form.amount, accountRecipient, account, exchangeFn)
+        : form.amountRecipient,
+    })
   }
 
   return { form, patch, setType, account, accountRecipient, recomputeRecipientAmount, swapAccounts }

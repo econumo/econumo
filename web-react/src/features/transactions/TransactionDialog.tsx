@@ -336,7 +336,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 size="icon"
                 className="text-muted-foreground"
                 aria-label="swap accounts"
-                onClick={swapAccounts}
+                onClick={() => swapAccounts(exchangeFn)}
                 disabled={!form.isNew}
               >
                 <ArrowUpDown className="size-4" />
