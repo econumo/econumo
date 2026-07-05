@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -111,6 +111,40 @@ it('edit opens the transaction dialog prefilled', async () => {
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
   expect(await screen.findByText('Update transaction')).toBeInTheDocument()
   expect(screen.getByLabelText('Enter amount')).toHaveValue('9.99')
+})
+
+it('windows long lists: first chunk renders, scroll sentinel loads more', async () => {
+  mockViewport(false)
+  const ioCallbacks: IntersectionObserverCallback[] = []
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      constructor(cb: IntersectionObserverCallback) {
+        ioCallbacks.push(cb)
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+  const many = Array.from({ length: 250 }, (_, i) => ({
+    id: `bulk-${i}`, author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '1', amountRecipient: '1', categoryId: 'cat-food', description: `bulk ${i}`,
+    payeeId: null, tagId: null, date: '2026-07-02 09:30:00',
+  }))
+  server.use(...coreHandlers({ transactions: many }))
+  renderPage()
+  await screen.findByTestId('tx-bulk-0')
+  const rendered = () => document.querySelectorAll('[data-testid^="tx-"]').length
+  expect(rendered()).toBeLessThanOrEqual(100)
+  const before = rendered()
+  act(() => {
+    for (const cb of ioCallbacks) {
+      cb([{ isIntersecting: true }] as IntersectionObserverEntry[], {} as IntersectionObserver)
+    }
+  })
+  await waitFor(() => expect(rendered()).toBeGreaterThan(before))
+  vi.unstubAllGlobals()
 })
 
 it('compact viewport: row click opens the preview dialog with details', async () => {

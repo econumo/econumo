@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { ChevronLeft, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
@@ -16,8 +17,47 @@ import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction } from '@/features/transactions/queries'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
+import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+
+// Accounts hold thousands of transactions; mounting them all at once makes
+// switching accounts visibly slow. Render a chunk and grow it as the scroll
+// sentinel comes into range — search still matches the full dataset because
+// filtering happens on the data, not the DOM.
+const LIST_CHUNK = 100
+
+function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; children: (entry: DailyListEntry) => ReactNode }) {
+  const [visibleCount, setVisibleCount] = useState(LIST_CHUNK)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const hasMore = visibleCount < entries.length
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) {
+      return
+    }
+    const observer = new IntersectionObserver(
+      (hits) => {
+        if (hits.some((hit) => hit.isIntersecting)) {
+          setVisibleCount((count) => count + LIST_CHUNK)
+        }
+      },
+      { rootMargin: '600px' },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+    // re-observe after each growth: the sentinel may still be in range and the
+    // observer only fires on intersection *changes*
+  }, [hasMore, visibleCount])
+
+  return (
+    <>
+      {entries.slice(0, visibleCount).map(children)}
+      {hasMore ? <div ref={sentinelRef} aria-hidden="true" /> : null}
+    </>
+  )
+}
 
 export function AccountPage() {
   const { t } = useTranslation()
@@ -171,8 +211,9 @@ export function AccountPage() {
       )}
 
       <div className="flex-1 overflow-y-auto">
-        {entries.map((entry) =>
-          entry.kind === 'separator' ? (
+        <WindowedEntries key={account.id} entries={entries}>
+          {(entry) =>
+            entry.kind === 'separator' ? (
             <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
               {separatorText(entry, t)}
             </div>
@@ -203,8 +244,9 @@ export function AccountPage() {
                 </DropdownMenu>
               ) : null}
             </div>
-          ),
-        )}
+          )
+          }
+        </WindowedEntries>
       </div>
 
       {preview ? (
