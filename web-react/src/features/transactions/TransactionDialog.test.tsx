@@ -128,6 +128,36 @@ it('swap recomputes the recipient prefill for the new direction', async () => {
   expect(await screen.findByLabelText('Will be exchanged')).toHaveValue('111.11')
 })
 
+it('editing a transfer allows changing the sender account', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ type: 'transfer', accountId: 'a2', accountRecipientId: 'a3' }), accounts: fixtureAccounts },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: {
+      ...wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a3', amountRecipient: '9' }),
+      isInFuture: false,
+    },
+  })
+  await screen.findByRole('heading', { name: 'Update transaction' })
+  const fromSelect = screen.getByRole('combobox', { name: 'from account' })
+  expect(fromSelect).toBeEnabled()
+  await user.click(fromSelect)
+  await user.click(await screen.findByText(/Bank/))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.accountId).toBe('a2')
+  expect(body!.accountRecipientId).toBe('a3')
+})
+
 it('cross-currency transfer prefills the converted recipient amount and prompts to switch', async () => {
   let body: Record<string, unknown> | undefined
   server.use(

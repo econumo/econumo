@@ -142,12 +142,9 @@ export function useTransactionForm(params: OpenTransactionParams, accounts: Acco
     patch({
       accountId: form.accountRecipientId,
       accountRecipientId: form.accountId,
-      // the entered amount now belongs to the other side — re-derive the
-      // recipient prefill for the new direction (new transfers only, matching
-      // setAmount/setRecipientAccount)
-      amountRecipient: form.isNew
-        ? recomputeRecipientAmount(form.amount, accountRecipient, account, exchangeFn)
-        : form.amountRecipient,
+      // the entered amount now belongs to the other side — the saved recipient
+      // amount is for the OLD direction, so re-derive it even when editing
+      amountRecipient: recomputeRecipientAmount(form.amount, accountRecipient, account, exchangeFn),
     })
   }
 

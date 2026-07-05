@@ -326,7 +326,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                     value={form.accountId}
                     onChange={(id) => patch({ accountId: id })}
                     options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
-                    disabled={!form.isNew}
                   />
                 </SelectCard>
               </div>
@@ -337,7 +336,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 className="text-muted-foreground"
                 aria-label="swap accounts"
                 onClick={() => swapAccounts(exchangeFn)}
-                disabled={!form.isNew}
               >
                 <ArrowUpDown className="size-4" />
               </Button>
