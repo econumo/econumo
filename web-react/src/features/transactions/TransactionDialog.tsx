@@ -304,7 +304,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           {/* Vue order: the exchanged amount lives right under the main amount, ABOVE the accounts */}
           {crossCurrency ? (
             <CardField
-              label={t('modals.transaction.form.amount_recipient.label')}
+              label={t('modals.transaction.form.amount_recipient.label', { currency: accountRecipient?.currency.code ?? '' })}
               htmlFor="tx-amount-recipient"
               error={errors.amountRecipient}
             >

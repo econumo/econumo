@@ -217,7 +217,7 @@ export default {
           'validation': { 'required_field': 'Amount is required' }
         },
         'amount_recipient': {
-          'label': 'Will be exchanged',
+          'label': 'Amount in {currency}',
           'validation': { 'required_field': 'Recipient amount is required' }
         },
         'category': {

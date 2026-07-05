@@ -122,10 +122,10 @@ it('swap recomputes the recipient prefill for the new direction', async () => {
   await user.type(await screen.findByLabelText('Enter amount'), '100')
   await user.click(screen.getByRole('combobox', { name: 'to account' }))
   await user.click(await screen.findByText(/Euro Stash/))
-  expect(await screen.findByLabelText('Will be exchanged')).toHaveValue('90')
+  expect(await screen.findByLabelText('Amount in EUR')).toHaveValue('90')
   // EUR -> USD: 100 / 0.9
   await user.click(screen.getByRole('button', { name: 'swap accounts' }))
-  expect(await screen.findByLabelText('Will be exchanged')).toHaveValue('111.11')
+  expect(await screen.findByLabelText('Amount in USD')).toHaveValue('111.11')
 })
 
 it('editing a transfer allows changing the sender account', async () => {
@@ -178,7 +178,7 @@ it('cross-currency transfer prefills the converted recipient amount and prompts 
   // recipient: a3 is the EUR account (rate 0.9) -> 100 USD = 90 EUR
   await user.click(screen.getByRole('combobox', { name: 'to account' }))
   await user.click(await screen.findByText(/Euro Stash/))
-  const recipientAmount = await screen.findByLabelText('Will be exchanged')
+  const recipientAmount = await screen.findByLabelText('Amount in EUR')
   expect(recipientAmount).toHaveValue('90')
 
   await user.click(screen.getByRole('button', { name: 'Add' }))
