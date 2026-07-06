@@ -13,7 +13,7 @@
 ### Prerequisites
 
 - **[Docker](https://docs.docker.com/engine/install/)** and **[Docker Compose](https://docs.docker.com/compose/install/)** must be installed on your machine.
-- At least **256 MB of RAM** is recommended.
+- At least **32 MB of RAM** is recommended.
 
 ### Quick start
 
