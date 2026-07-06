@@ -363,7 +363,7 @@ export function BudgetPage() {
     ) : null
 
   return (
-    <div className="flex h-full flex-col gap-3 p-4">
+    <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
       <header className="flex items-center gap-2">
         {isCompact ? (
           <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
@@ -494,6 +494,7 @@ export function BudgetPage() {
                     : undefined
                 }
                 onSpentClick={editMode ? undefined : setTransactionsTarget}
+                onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
               />
             </DndContext>
           </div>

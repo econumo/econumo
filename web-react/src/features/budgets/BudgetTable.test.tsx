@@ -132,6 +132,21 @@ it('children hide the owner badge in a single-user budget', async () => {
   expect(within(child).queryByText('Ada')).not.toBeInTheDocument()
 })
 
+it('tapping the available pill reports the element when onAvailableClick is wired (compact set-limit path)', async () => {
+  const user = userEvent.setup()
+  const onAvailableClick = vi.fn()
+  renderTable(undefined, { onAvailableClick })
+  const food = await screen.findByTestId('element-cat-food')
+  await user.click(within(food).getByRole('button', { name: 'limit Food' }))
+  expect(onAvailableClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-food' }))
+})
+
+it('the available pill is not a button without onAvailableClick', async () => {
+  renderTable()
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).queryByRole('button', { name: 'limit Food' })).not.toBeInTheDocument()
+})
+
 it('totals row sums all buckets in the budget currency', async () => {
   renderTable()
   const totals = await screen.findByTestId('budget-totals')

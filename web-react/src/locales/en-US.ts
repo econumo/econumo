@@ -524,7 +524,7 @@ export default {
           'header': 'Delete the envelope?',
           'question': 'Are you sure you want to delete this envelope?'
         },
-        'set_limit_form': { 'header': 'Set limit' },
+        'set_limit_form': { 'header': 'Set a budget' },
         'generic_error': {
           'header': 'Error Occurred',
           'description': 'Please try again. If the error persists, report the issue.'
@@ -589,7 +589,7 @@ export default {
         },
         'budget_limit': {
           'limit': {
-            'label': 'Limit',
+            'label': 'Budget',
             'validation': {
               'invalid_number': 'Invalid number',
               'required_field': 'Required field',

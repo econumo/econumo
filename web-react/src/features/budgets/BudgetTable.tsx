@@ -20,6 +20,8 @@ export interface ElementRowExtras {
   renderActions?: (element: BudgetElementDto, bucket: FolderBucket) => ReactNode
   renderRowWrapper?: (element: BudgetElementDto, bucket: FolderBucket, row: ReactNode) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
+  /** compact screens hide the budget column — tapping Available opens the set-limit dialog instead */
+  onAvailableClick?: (element: BudgetElementDto) => void
 }
 
 interface BudgetTableProps extends ElementRowExtras {
@@ -59,7 +61,7 @@ function StatCells({ stats, currency }: { stats: BucketStats; currency: Currency
       <span className={`w-20 text-center tabular-nums sm:w-24 ${available >= 0 ? 'text-income' : 'text-expense'}`}>
         {moneyFormat(available, currency, opts)}
       </span>
-      <span className="w-6 text-center">{currency?.symbol}</span>
+      <span className="hidden w-6 text-center sm:block">{currency?.symbol}</span>
     </span>
   )
 }
@@ -108,14 +110,27 @@ function ElementRow({
       </span>
     )
 
+  // mobile has no room for a chevron column: the chevron replaces the entity
+  // icon on expandable rows, childless rows drop the alignment spacer
+  const Chevron = unfolded ? ChevronDown : ChevronRight
   const name = (
     <>
       {expandable ? (
-        unfolded ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+        <Chevron className="hidden size-3.5 shrink-0 text-muted-foreground sm:block" />
       ) : (
-        <span className="w-3.5 shrink-0" />
+        <span className="hidden w-3.5 shrink-0 sm:block" />
       )}
-      <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />
+      {expandable ? (
+        <>
+          <Chevron className="size-4.5 shrink-0 text-muted-foreground sm:hidden" />
+          {/* wrapper span: .material-icon's own display beats the `hidden` utility */}
+          <span className="hidden sm:block">
+            <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />
+          </span>
+        </>
+      ) : (
+        <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />
+      )}
       <span className="truncate text-[15px]" title={element.name}>
         {element.name}
       </span>
@@ -124,7 +139,7 @@ function ElementRow({
 
   const row = (
     <div className="flex flex-col" data-testid={`element-${element.id}`}>
-      <div className="flex items-center gap-2 rounded-md px-2 py-2.5 hover:bg-accent/50">
+      <div className="flex items-center gap-1.5 rounded-md px-1.5 py-2.5 hover:bg-accent/50 sm:gap-2 sm:px-2">
         {expandable ? (
           <button
             type="button"
@@ -148,9 +163,20 @@ function ElementRow({
           )}
         </span>
         <span className="flex w-20 justify-center sm:w-24">
-          <AvailablePill available={available} currency={currency} testId="cell-available" />
+          {extras.onAvailableClick ? (
+            <button
+              type="button"
+              title={t('modules.budget.modal.set_limit_form.header')}
+              aria-label={`limit ${element.name}`}
+              onClick={() => extras.onAvailableClick!(element)}
+            >
+              <AvailablePill available={available} currency={currency} testId="cell-available" />
+            </button>
+          ) : (
+            <AvailablePill available={available} currency={currency} testId="cell-available" />
+          )}
         </span>
-        <span className="w-6 text-center text-xs text-muted-foreground">{currency?.symbol}</span>
+        <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
         {extras.renderActions?.(element, bucket)}
       </div>
       {expandable && unfolded ? (
@@ -160,10 +186,10 @@ function ElementRow({
             return (
               <li
                 key={child.id}
-                className="group flex items-center gap-2 rounded-md py-1.5 pl-12 pr-2 text-sm text-muted-foreground hover:bg-accent/50"
+                className="group flex items-center gap-1.5 rounded-md py-1.5 pl-8 pr-1.5 text-sm text-muted-foreground hover:bg-accent/50 sm:gap-2 sm:pl-12 sm:pr-2"
                 data-testid={`child-${child.id}`}
               >
-                <EntityIcon name={child.icon} className="text-sm" />
+                <EntityIcon name={child.icon} className="text-lg" />
                 <span className="min-w-0 flex-1 truncate" title={child.name}>
                   {child.name}
                 </span>
@@ -175,7 +201,7 @@ function ElementRow({
                   {spentCell({ id: child.id, type: child.type, name: child.name, icon: child.icon, currencyId: element.currencyId }, child.spent)}
                 </span>
                 <span className="w-20 sm:w-24" />
-                <span className="w-6" />
+                <span className="hidden w-6 sm:block" />
               </li>
             )
           })}
@@ -204,12 +230,12 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
 
   return (
     <div className="flex flex-col gap-3" data-testid="budget-table">
-      <div className="flex items-center gap-2 px-4 text-[11px] uppercase tracking-wide text-muted-foreground" data-testid="column-headers">
+      <div className="flex items-center gap-1.5 px-3 text-[11px] uppercase tracking-wide text-muted-foreground sm:gap-2 sm:px-4" data-testid="column-headers">
         <span className="min-w-0 flex-1" />
         <span className="hidden w-24 text-right sm:block">{t('modules.budget.page.budget.structure.tab.budgeted')}</span>
         <span className="w-20 text-center sm:w-24">{t('modules.budget.page.budget.structure.tab.spent')}</span>
         <span className="w-20 text-center sm:w-24">{t('modules.budget.page.budget.structure.tab.available')}</span>
-        <span className="w-6" />
+        <span className="hidden w-6 sm:block" />
       </div>
 
       {sections.map((section) => {
@@ -222,8 +248,8 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
         }
         const isArchiveSection = section.key === '__archive__'
         const sectionNode = (
-          <section key={section.key} className="rounded-md border p-2" data-testid={`budget-folder-${section.name}`}>
-            <header className="flex items-center gap-2 px-2 pb-1">
+          <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
+            <header className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
               <span className="min-w-0 flex-1 truncate text-sm font-medium" title={section.name}>
                 {section.name}
               </span>
@@ -256,7 +282,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
         )
       })}
 
-      <div className="flex items-center gap-2 rounded-md border px-4 py-2 font-medium" data-testid="budget-totals">
+      <div className="flex items-center gap-1.5 rounded-md border px-3 py-2 font-medium sm:gap-2 sm:px-4" data-testid="budget-totals">
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('modules.budget.page.budget.structure.total.name')}</span>
         <span className="hidden w-24 text-right text-[15px] tabular-nums sm:block">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
         <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">
@@ -265,7 +291,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
         <span className="flex w-20 justify-center sm:w-24">
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
-        <span className="w-6 text-center text-xs text-muted-foreground">{budgetCurrency?.symbol}</span>
+        <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{budgetCurrency?.symbol}</span>
       </div>
     </div>
   )

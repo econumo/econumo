@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { CalculatorInput } from '@/components/CalculatorInput'
+import { CardField } from '@/components/CardField'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { normalizeNumber } from '@/lib/money'
 import type { BudgetElementDto } from '@/api/dto/budget'
@@ -14,7 +14,7 @@ interface SetLimitDialogProps {
   onCommit: (elementId: string, amount: string | null) => void
 }
 
-// Mobile long-press path (Vue's BudgetSetLimitModal), same unified amount rule.
+// Mobile tap/long-press path (Vue's BudgetSetLimitModal), same unified amount rule.
 export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
@@ -51,11 +51,12 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
           submit()
         }}
       >
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="set-limit-amount">{t('modules.budget.form.budget_limit.limit.label')}</Label>
-          <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        </div>
+        {/* the transaction dialog's amount card: label inside, borderless oversized input */}
+        <CardField label={t('modules.budget.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
+          <div className="[&_input]:h-12 [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:text-[28px] [&_input]:font-light [&_input]:shadow-none [&_input]:focus-visible:ring-0 [&_input]:placeholder:text-muted-foreground/50">
+            <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
+          </div>
+        </CardField>
         <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}

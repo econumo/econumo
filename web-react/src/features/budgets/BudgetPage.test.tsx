@@ -114,7 +114,7 @@ it('inline limit editor commits a formula as a normalized string', async () => {
   renderPage()
   const food = await screen.findByTestId('element-cat-food')
   await user.click(within(food).getByRole('button', { name: 'limit Food' }))
-  const input = await screen.findByLabelText('Limit')
+  const input = await screen.findByLabelText('Budget')
   await user.clear(input)
   await user.type(input, '100+50')
   await user.click(screen.getByRole('button', { name: 'Save' }))
