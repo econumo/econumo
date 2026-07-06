@@ -67,14 +67,20 @@ it('move-element-list and exclude-account post the exact wire shapes', async () 
   expect(excludeBody).toEqual({ id: 'b1', accountId: 'a1' })
 })
 
-it('budget transactions pass the element param and coerce amounts', async () => {
+it('budget transactions pass the element param and coerce amounts (own wire shape: spentAt + embedded refs)', async () => {
   let url = ''
   server.use(
     http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
       url = request.url
       return HttpResponse.json({
         success: true, message: '',
-        data: { items: [{ id: 't1', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: '', payeeId: null, tagId: null, date: '2026-07-02 09:30:00' }] },
+        data: {
+          items: [{
+            id: 't1', author: fixtureOwner, currencyId: 'cur-usd', amount: '9.99', description: 'Pizza night',
+            category: { id: 'cat-food', name: 'Food', icon: 'restaurant' }, payee: null, tag: null,
+            spentAt: '2026-07-02 09:30:00',
+          }],
+        },
       })
     }),
   )
@@ -82,4 +88,6 @@ it('budget transactions pass the element param and coerce amounts', async () => 
   expect(url).toContain('categoryId=cat-food')
   expect(url).not.toContain('tagId')
   expect(items[0].amount).toBe(9.99)
+  expect(items[0].spentAt).toBe('2026-07-02 09:30:00')
+  expect(items[0].category?.name).toBe('Food')
 })

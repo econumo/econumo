@@ -25,7 +25,7 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
   const rate = currencyId !== budget.meta.currencyId ? exchangeFn(budget.meta.currencyId, currencyId, 1) : null
 
   return (
-    <section className="flex flex-col gap-2 rounded-md border p-3" data-testid="expense-widget">
+    <section className="flex w-full max-w-sm flex-col gap-2 rounded-md border p-3" data-testid="expense-widget">
       <header className="flex items-baseline justify-between text-sm font-medium">
         {t('modules.budget.modal.expense_widget.header')}
         <span className="text-xs font-normal text-muted-foreground">{period}</span>

@@ -6,6 +6,7 @@ import { CardField } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
+import type { CurrencyLike } from '@/lib/money'
 import type { ViewTransaction } from './useAccountTransactions'
 
 interface ViewTransactionDialogProps {
@@ -16,9 +17,13 @@ interface ViewTransactionDialogProps {
   canChange: boolean
   /** whether the PAGE account is shared — the author avatar only makes sense then (same gate as the list rows) */
   isShared: boolean
+  /** shield against dismissal while a stacked dialog (delete confirm) is open */
+  dismissible?: boolean
+  /** amount currency when the account isn't visible to the caller (budget rows) */
+  fallbackCurrency?: CurrencyLike | null
 }
 
-export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared }: ViewTransactionDialogProps) {
+export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
   const isTransfer = tx.type === 'transfer'
   const typeLabel = t(`pages.account.preview_transaction_modal.type.${tx.type}`)
@@ -32,7 +37,9 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
     <span className="flex items-center gap-2 text-sm">
       <EntityIcon name={account?.icon} className="text-base text-muted-foreground" />
       <span className="flex-1 truncate">{account?.name ?? t('elements.account.name_hidden')}</span>
-      <span className="tabular-nums">{amount !== null ? moneyFormat(amount, account?.currency, { useNativePrecision: false }) : ''}</span>
+      <span className="tabular-nums">
+        {amount !== null ? moneyFormat(amount, account?.currency ?? fallbackCurrency, { useNativePrecision: false }) : ''}
+      </span>
     </span>
   )
 
@@ -82,6 +89,8 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       onOpenChange={(o) => !o && onClose()}
       title={t('pages.account.preview_transaction_modal.header')}
       hideHeader
+      showClose
+      dismissible={dismissible}
       footer={
         /* Vue footer layout: delete icon | wide Edit | collapse icon */
         <div className="flex gap-3">
@@ -130,7 +139,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         </span>
         <span className={`text-2xl font-semibold tabular-nums ${amountClass}`}>
           {sign}
-          {moneyFormat(tx.amount, tx.account?.currency, { useNativePrecision: false })}
+          {moneyFormat(tx.amount, tx.account?.currency ?? fallbackCurrency, { useNativePrecision: false })}
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span>{typeLabel}</span>

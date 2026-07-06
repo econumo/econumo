@@ -1,8 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto } from './dto/budget'
-import type { TransactionDto } from './dto/transaction'
-import { coerceTransaction } from './account'
+import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetTransactionDto } from './dto/budget'
 
 interface Envelope<T> {
   data: T
@@ -153,15 +151,15 @@ export interface BudgetTransactionsParams {
   envelopeId?: Id
 }
 
-export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<TransactionDto[]> {
+export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
   const query = new URLSearchParams({ budgetId: params.budgetId, periodStart: params.periodStart })
   if (params.categoryId) query.set('categoryId', params.categoryId)
   if (params.tagId) query.set('tagId', params.tagId)
   if (params.envelopeId) query.set('envelopeId', params.envelopeId)
-  const response = await api.get<Envelope<{ items: TransactionDto[] }>>(
+  const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )
-  return response.data.data.items.map(coerceTransaction)
+  return response.data.data.items.map((tx) => ({ ...tx, amount: num(tx.amount) }))
 }
 
 // Access + account inclusion functions for Plan 5 (no UI yet).

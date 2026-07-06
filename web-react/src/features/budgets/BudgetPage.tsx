@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { DndContext, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
@@ -50,11 +50,13 @@ import { SetLimitDialog } from './SetLimitDialog'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
+import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { BudgetDialog } from './BudgetDialog'
 import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
 import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement } from './elementMove'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { CoinLoader } from '@/components/CoinLoader'
 
 function DraggableElement({ id, children }: { id: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id })
@@ -97,7 +99,10 @@ export function BudgetPage() {
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
-  const { data: budget, isLoading } = useBudget()
+  // isPending covers the whole cold boot (incl. the disabled phase while the
+  // user record loads); month switches show the previous period as placeholder
+  // data (isPlaceholderData) while the new one loads
+  const { data: budget, isPending, isPlaceholderData, isFetching } = useBudget()
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
@@ -126,9 +131,30 @@ export function BudgetPage() {
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<BudgetElementDto | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [limitTarget, setLimitTarget] = useState<BudgetElementDto | null>(null)
-  const [transactionsTarget, setTransactionsTarget] = useState<BudgetElementDto | null>(null)
+  const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  // Every month switch surfaces the loader for a beat: cache hits (persisted
+  // months, local fetches) resolve in a frame or two, which reads as "nothing
+  // happened" — a short guaranteed hold makes the reload perceivable, and a
+  // slow fetch keeps it up until the period actually lands. Mutations refetch
+  // the SAME period, so they never trip this.
+  const PERIOD_LOADER_HOLD_MS = 400
+  const [periodSwitching, setPeriodSwitching] = useState(false)
+  const shownPeriod = useRef(selectedDate)
+  useEffect(() => {
+    if (shownPeriod.current !== selectedDate) {
+      shownPeriod.current = selectedDate
+      setPeriodSwitching(true)
+    }
+  }, [selectedDate])
+  useEffect(() => {
+    if (periodSwitching && !isFetching && !isPending) {
+      const id = setTimeout(() => setPeriodSwitching(false), PERIOD_LOADER_HOLD_MS)
+      return () => clearTimeout(id)
+    }
+  }, [periodSwitching, isFetching, isPending])
 
   // Live drag preview: while an element drag is in flight (and until the
   // refetched budget lands) the table renders this arrangement, so the row
@@ -168,7 +194,7 @@ export function BudgetPage() {
     return null
   }
 
-  if (!isLoading && !budget) {
+  if (!isPending && !budget) {
     // no default budget — the onboarding empty state (Vue's BudgetOnboarding)
     const hasAccounts = accounts.length > 0
     const hasCategories = categories.length > 0
@@ -206,7 +232,12 @@ export function BudgetPage() {
   }
 
   if (!budget || !buckets) {
-    return null
+    // cold load only — month switches keep the previous period via keepPreviousData
+    return isPending ? (
+      <div className="flex h-full items-center justify-center" data-testid="budget-loading">
+        <CoinLoader label={t('modules.app.modal.loading.data_loading')} />
+      </div>
+    ) : null
   }
 
   const budgetCurrencyIds = budget.balances.map((b) => b.currencyId)
@@ -339,10 +370,10 @@ export function BudgetPage() {
             <ChevronLeft className="size-5" />
           </Button>
         ) : null}
-        <h1 className="min-w-0 flex-1 truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
+        <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
-        <span className="flex items-center gap-1">
+        <span className="flex shrink-0 items-center gap-1">
           {budgetCurrencyIds.map((currencyId) => {
             const currency = currencies.find((c) => c.id === currencyId)
             const active = selectedCurrencyId === currencyId
@@ -361,6 +392,7 @@ export function BudgetPage() {
             )
           })}
         </span>
+        <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
             <Check className="size-4" />
@@ -406,57 +438,67 @@ export function BudgetPage() {
         </div>
       ) : null}
 
-      {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
+      {isPlaceholderData || periodSwitching ? (
+        // month switch in flight — the strip stays put, the stale table is
+        // replaced by the loader until the new period lands
+        <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
+          <CoinLoader label={t('modules.app.modal.loading.data_loading')} />
+        </div>
+      ) : (
+        <>
+          {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={() => setDragArrangement(null)}
-        >
-          <BudgetTable
-            budget={budget}
-            buckets={buckets}
-            renderFolderActions={folderActions}
-            renderActions={elementActions}
-            renderBudgetCell={
-              limitsEditable && !editMode && !isCompact
-                ? (element) => (
-                    <LimitEditor
-                      element={element}
-                      currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
-                      onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, amount })}
-                    />
-                  )
-                : undefined
-            }
-            renderRowWrapper={
-              editMode
-                ? (element, _bucket, row) => (
-                    <DraggableElement key={element.id} id={element.id}>
-                      {row}
-                    </DraggableElement>
-                  )
-                : isCompact && limitsEditable
-                  ? (element, _bucket, row) => (
-                      <ElementLongPress key={element.id} element={element} onLongPress={setLimitTarget}>
-                        {row}
-                      </ElementLongPress>
-                    )
-                  : undefined
-            }
-            sectionWrapper={
-              editMode
-                ? (bucket, _key, node) => <DroppableSection id={`bfolder:${bucket.folder ? bucket.folder.id : 'null'}`}>{node}</DroppableSection>
-                : undefined
-            }
-            onElementClick={editMode ? undefined : (element) => setTransactionsTarget(element)}
-          />
-        </DndContext>
-      </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+              onDragCancel={() => setDragArrangement(null)}
+            >
+              <BudgetTable
+                budget={budget}
+                buckets={buckets}
+                renderFolderActions={folderActions}
+                renderActions={elementActions}
+                renderBudgetCell={
+                  limitsEditable && !editMode && !isCompact
+                    ? (element) => (
+                        <LimitEditor
+                          element={element}
+                          currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
+                          onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, amount })}
+                        />
+                      )
+                    : undefined
+                }
+                renderRowWrapper={
+                  editMode
+                    ? (element, _bucket, row) => (
+                        <DraggableElement key={element.id} id={element.id}>
+                          {row}
+                        </DraggableElement>
+                      )
+                    : isCompact && limitsEditable
+                      ? (element, _bucket, row) => (
+                          <ElementLongPress key={element.id} element={element} onLongPress={setLimitTarget}>
+                            {row}
+                          </ElementLongPress>
+                        )
+                      : undefined
+                }
+                sectionWrapper={
+                  editMode
+                    ? (bucket, _key, node) => <DroppableSection id={`bfolder:${bucket.folder ? bucket.folder.id : 'null'}`}>{node}</DroppableSection>
+                    : undefined
+                }
+                onSpentClick={editMode ? undefined : setTransactionsTarget}
+              />
+            </DndContext>
+          </div>
+        </>
+      )}
 
       <PromptDialog
         open={createFolderOpen}

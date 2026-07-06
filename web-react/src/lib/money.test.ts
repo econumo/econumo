@@ -66,4 +66,11 @@ describe('moneyFormat', () => {
     expect(moneyFormat('-42.1', usd)).toBe('-42.10 $')
     expect(moneyFormat('0', btc)).toBe('0.00000000 ₿')
   })
+
+  it('maxPrecision rounds away float noise from computed sums', () => {
+    expect(moneyFormat(354.4999999934, usd, { showCurrency: false, useNativePrecision: false, maxPrecision: 2 })).toBe('354.50')
+    expect(moneyFormat(-45.0000000001, usd, { showCurrency: false, useNativePrecision: false, maxPrecision: 2 })).toBe('-45.00')
+    expect(moneyFormat(200, usd, { showCurrency: false, useNativePrecision: false, maxPrecision: 2 })).toBe('200.00')
+    expect(moneyFormat(0.00000001, btc, { showCurrency: false, useNativePrecision: false, maxPrecision: 8 })).toBe('0.00000001')
+  })
 })

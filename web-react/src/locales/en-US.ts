@@ -635,6 +635,7 @@ export default {
             'element': {
               'action': {
                 'change_currency': 'Change currency',
+                'show_transactions': 'Show transactions',
               }
             },
             'total': {

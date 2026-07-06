@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as budgetApi from '@/api/budget'
 import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
@@ -90,6 +90,8 @@ export function useBudget() {
     queryFn: () => (budgetId ? budgetApi.getBudget(budgetId, selectedDate) : Promise.resolve(null)),
     enabled: user !== undefined,
     staleTime: TEN_MINUTES,
+    // month switches keep showing the previous period instead of a blank page
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -252,7 +254,7 @@ export function useUpdateBudgetDetail() {
 
 export function useBudgetTransactions(params: budgetApi.BudgetTransactionsParams | null) {
   return useQuery({
-    queryKey: ['budgetTransactions', params],
+    queryKey: [...queryKeys.budgetTransactions, params],
     queryFn: () => budgetApi.getBudgetTransactions(params as budgetApi.BudgetTransactionsParams),
     enabled: params !== null,
   })

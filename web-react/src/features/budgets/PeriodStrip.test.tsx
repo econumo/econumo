@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
@@ -22,6 +22,35 @@ it('strip renders 47 chips, marks active and dims pre-start months; click sets t
   expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('July')
   await user.click(screen.getByRole('tab', { name: 'Dec 2025' }))
   expect(useBudgetPeriodStore.getState().selectedDate).toBe('2025-12-01')
+})
+
+it('strip extends the window when scrolled near either edge', () => {
+  render(<PeriodStrip startedAt="2026-01-01 00:00:00" />)
+  const strip = screen.getByRole('tablist')
+  Object.defineProperty(strip, 'clientWidth', { value: 800, configurable: true })
+  Object.defineProperty(strip, 'scrollWidth', { value: 4000, configurable: true })
+
+  strip.scrollLeft = 100
+  fireEvent.scroll(strip)
+  expect(screen.getAllByRole('tab')).toHaveLength(47 + 12)
+
+  strip.scrollLeft = 3500
+  fireEvent.scroll(strip)
+  expect(screen.getAllByRole('tab')).toHaveLength(47 + 24)
+  // the selected month is unchanged — only the rendered window grew
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
+})
+
+it('mouse wheel scrolls the strip horizontally (the scrollbar is hidden)', () => {
+  render(<PeriodStrip startedAt="2026-01-01 00:00:00" />)
+  const strip = screen.getByRole('tablist')
+  Object.defineProperty(strip, 'clientWidth', { value: 800, configurable: true })
+  Object.defineProperty(strip, 'scrollWidth', { value: 4000, configurable: true })
+  strip.scrollLeft = 1000
+  fireEvent.wheel(strip, { deltaY: 240 })
+  expect(strip.scrollLeft).toBe(1240)
+  fireEvent.wheel(strip, { deltaX: -100, deltaY: 0 })
+  expect(strip.scrollLeft).toBe(1140)
 })
 
 it('widget renders spent/total, progress and the conversion hint', async () => {

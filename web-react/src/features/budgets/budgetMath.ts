@@ -87,14 +87,19 @@ export interface PeriodItem {
   outsideBudget: boolean
 }
 
-const MONTHS_AROUND = 23
+export const MONTHS_AROUND = 23
 
-export function periodRange(selectedDate: string, startedAt: string | null): PeriodItem[] {
+export function periodRange(
+  selectedDate: string,
+  startedAt: string | null,
+  monthsBefore = MONTHS_AROUND,
+  monthsAfter = MONTHS_AROUND,
+): PeriodItem[] {
   const [y, m] = selectedDate.split('-').map(Number)
   const currentYear = new Date().getFullYear()
   const startMonth = startedAt ? startedAt.slice(0, 7) : null
   const items: PeriodItem[] = []
-  for (let offset = -MONTHS_AROUND; offset <= MONTHS_AROUND; offset++) {
+  for (let offset = -monthsBefore; offset <= monthsAfter; offset++) {
     const d = new Date(y, m - 1 + offset, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
     const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(d)

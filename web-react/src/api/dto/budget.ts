@@ -71,6 +71,22 @@ export interface BudgetRateDto {
   periodEnd: string
 }
 
+// budget/get-transaction-list has its own wire shape: spentAt (not date),
+// embedded category/payee/tag refs and a per-transaction currencyId
+export interface BudgetTransactionDto {
+  id: Id
+  author: UserDto
+  currencyId: Id
+  /** wire: decimal string, coerced */
+  amount: number
+  description: string
+  category: { id: Id; name: string; icon: string } | null
+  payee: { id: Id; name: string } | null
+  tag: { id: Id; name: string } | null
+  /** full datetime Y-m-d H:i:s */
+  spentAt: string
+}
+
 export interface BudgetDto {
   meta: BudgetMetaDto
   filters: { periodStart: string; periodEnd: string; excludedAccountsIds: Id[] }

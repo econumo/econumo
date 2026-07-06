@@ -51,6 +51,8 @@ export interface MoneyFormatOptions {
   showCurrency?: boolean
   useNativePrecision?: boolean
   useThousandSeparator?: boolean
+  /** round to at most this many decimals (computed sums carry float noise) */
+  maxPrecision?: number
 }
 
 export function moneyFormat(
@@ -58,8 +60,11 @@ export function moneyFormat(
   currency?: CurrencyLike | null,
   opts: MoneyFormatOptions = {},
 ): string {
-  const { showCurrency = true, useNativePrecision = true, useThousandSeparator = true } = opts
-  const normalizedAmount = normalizeNumber(amount)
+  const { showCurrency = true, useNativePrecision = true, useThousandSeparator = true, maxPrecision } = opts
+  let normalizedAmount = normalizeNumber(amount)
+  if (maxPrecision !== undefined) {
+    normalizedAmount = normalizeNumber(Number(Number(normalizedAmount).toFixed(maxPrecision)))
+  }
   const digits = useNativePrecision
     ? (currency?.fractionDigits ?? 8)
     : Number.isInteger(Number(normalizedAmount))

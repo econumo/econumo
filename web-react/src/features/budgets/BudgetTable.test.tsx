@@ -5,18 +5,21 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { BudgetTable } from './BudgetTable'
+import type { ElementRowExtras } from './BudgetTable'
 import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
+import type { BudgetDto } from '@/api/dto/budget'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
-function renderTable() {
+function renderTable(mutate?: (budget: BudgetDto) => void, extras: ElementRowExtras = {}) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
+  mutate?.(budget)
   const buckets = bucketElements(budget, makeBudgetExchange(budget, [usd, eur]))
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <BudgetTable budget={budget} buckets={buckets} />
+      <BudgetTable budget={budget} buckets={buckets} {...extras} />
     </QueryClientProvider>,
   )
   return budget
@@ -29,23 +32,41 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
 })
 
-it('renders folder, default and archived sections with rows and stat lines', async () => {
+it('renders column headers, folder, default and archived sections with aligned stat cells', async () => {
   renderTable()
+  const headers = screen.getByTestId('column-headers')
+  expect(headers).toHaveTextContent('Budget')
+  expect(headers).toHaveTextContent('Spent')
+  expect(headers).toHaveTextContent('Available')
   const essentials = await screen.findByTestId('budget-folder-Essentials')
   expect(within(essentials).getByText('Food')).toBeInTheDocument()
-  expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('Budget 200')
+  await waitFor(() => expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('200.00'))
+  expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('45.50')
+  expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('354.50')
   const noFolder = screen.getByTestId('budget-folder-Default folder')
   expect(within(noFolder).getByText('Living')).toBeInTheDocument()
   const archive = screen.getByTestId('budget-folder-Archived')
   expect(within(archive).getByText('zzz-archived')).toBeInTheDocument()
 })
 
-it('shows -spent and available+budgeted with sign colors', async () => {
+it('shows -spent and available+budgeted as a sign-colored pill', async () => {
   renderTable()
   const food = await screen.findByTestId('element-cat-food')
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent('45.50'))
   expect(within(food).getByTestId('cell-available')).toHaveTextContent('354.50')
   expect(within(food).getByTestId('cell-available').className).toContain('text-income')
+  expect(within(food).getByTestId('cell-available').className).toContain('rounded-full')
+})
+
+it('rounds float noise in cells to the currency precision', async () => {
+  renderTable((budget) => {
+    const food = budget.structure.elements[0]
+    food.spent = -45.4999999934
+    food.budgetSpent = -45.4999999934
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent('45.50'))
+  expect(within(food).getByTestId('cell-spent')).not.toHaveTextContent('45.4999')
 })
 
 it('fold toggle expands children and persists in the store', async () => {
@@ -56,6 +77,59 @@ it('fold toggle expands children and persists in the store', async () => {
   await user.click(within(living).getByText('Living'))
   expect(await screen.findByTestId('child-cat-rent')).toBeInTheDocument()
   expect(useBudgetPeriodStore.getState().unfoldedElements['env-1']).toBe(true)
+})
+
+it('clicking the name of a childless element does nothing', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(undefined, { onSpentClick })
+  const food = await screen.findByTestId('element-cat-food')
+  await user.click(within(food).getByText('Food'))
+  expect(onSpentClick).not.toHaveBeenCalled()
+  expect(useBudgetPeriodStore.getState().unfoldedElements['cat-food']).toBeUndefined()
+})
+
+it('clicking the spent amount reports the element as a transactions target', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(undefined, { onSpentClick })
+  const food = await screen.findByTestId('element-cat-food')
+  await user.click(within(food).getByRole('button', { name: 'transactions Food' }))
+  expect(onSpentClick).toHaveBeenCalledWith({ id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: null })
+})
+
+it('clicking a child spent amount reports the child category with the parent currency', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(undefined, { onSpentClick })
+  const living = await screen.findByTestId('element-env-1')
+  await user.click(within(living).getByText('Living'))
+  await user.click(await screen.findByRole('button', { name: 'transactions Rent' }))
+  expect(onSpentClick).toHaveBeenCalledWith({ id: 'cat-rent', type: 1, name: 'Rent', icon: 'house', currencyId: 'cur-eur' })
+})
+
+it('children show spent and the owner badge only in a multi-user budget', async () => {
+  const user = userEvent.setup()
+  renderTable((budget) => {
+    budget.meta.access.push({ user: { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }, role: 'user', isAccepted: 1 })
+    budget.structure.elements[1].children[0].spent = -12.5
+    budget.structure.elements[1].children[0].ownerUserId = 'u2'
+  })
+  const living = await screen.findByTestId('element-env-1')
+  await user.click(within(living).getByText('Living'))
+  const child = await screen.findByTestId('child-cat-rent')
+  await waitFor(() => expect(within(child).getByTestId('child-spent')).toHaveTextContent('12.50'))
+  // the owner name is rendered (revealed on row hover via CSS)
+  expect(within(child).getByText('Partner')).toBeInTheDocument()
+})
+
+it('children hide the owner badge in a single-user budget', async () => {
+  const user = userEvent.setup()
+  renderTable()
+  const living = await screen.findByTestId('element-env-1')
+  await user.click(within(living).getByText('Living'))
+  const child = await screen.findByTestId('child-cat-rent')
+  expect(within(child).queryByText('Ada')).not.toBeInTheDocument()
 })
 
 it('totals row sums all buckets in the budget currency', async () => {

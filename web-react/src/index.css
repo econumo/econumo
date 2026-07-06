@@ -25,6 +25,12 @@
   }
 }
 
+/* Slim unobtrusive scrollbar for in-dialog lists. */
+@utility scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
 /* Entity icons (account.icon / category.icon) are Material icon ligature
    names stored in the production DB — rendered with the same web font the
    Vue app ships. Lucide is used for UI chrome only. */
