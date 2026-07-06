@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { DndContext, PointerSensor, closestCenter, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core'
+import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { snapRowToPointer } from '@/lib/dnd'
 import { Check, ChevronLeft, FolderPlus, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { useTranslation } from 'react-i18next'
@@ -59,16 +62,22 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { CoinLoader } from '@/components/CoinLoader'
 
 function DraggableElement({ id, children }: { id: string; children: ReactNode }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id })
-  const { setNodeRef: setDropRef } = useDroppable({ id })
+  // sortable row (accounts-settings pattern): the whole row moves with the
+  // drag transform, the grip is just the activation handle
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
-    <div ref={setDropRef} className={isDragging ? 'opacity-50' : undefined}>
-      <div className="flex items-center gap-1">
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? 'opacity-60' : undefined}
+    >
+      {/* items-start + fixed grip offset: an unfolded element grows downwards,
+          the grip must stay centered on the ROOT row, not the whole block */}
+      <div className="flex items-start gap-1">
         <button
           type="button"
-          ref={setNodeRef}
           aria-label={`move ${id}`}
-          className="cursor-grab touch-none text-muted-foreground"
+          className="mt-[18px] cursor-grab touch-none text-muted-foreground"
           {...attributes}
           {...listeners}
         >
@@ -80,14 +89,28 @@ function DraggableElement({ id, children }: { id: string; children: ReactNode })
   )
 }
 
-function DroppableSection({ id, children }: { id: string; children: ReactNode }) {
+// Rows are nested inside their section droppable, and the dragged row itself
+// travels under the pointer (its own rect always wins a pointer test) — so:
+// ignore the active row, prefer whatever OTHER row the pointer is inside, and
+// fall back to sections (empty folders, gaps between rows).
+const preferRowCollisions: CollisionDetection = (args) => {
+  const collisions = pointerWithin(args)
+  const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
+  const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
+  return row ? [row] : candidates
+}
+
+function SortableSection({ bucket, id, highlighted, children }: { bucket: FolderBucket; id: string; highlighted: boolean; children: ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
-    <div ref={setNodeRef} className={isOver ? 'rounded-md ring-2 ring-ring' : undefined}>
-      {children}
+    <div ref={setNodeRef} className={isOver || highlighted ? 'rounded-md ring-2 ring-ring' : undefined}>
+      <SortableContext items={bucket.elements.map((el) => el.id)} strategy={verticalListSortingStrategy}>
+        {children}
+      </SortableContext>
     </div>
   )
 }
+
 
 function ElementLongPress({ element, onLongPress, children }: { element: BudgetElementDto; onLongPress: (el: BudgetElementDto) => void; children: ReactNode }) {
   const handlers = useLongPress(() => onLongPress(element))
@@ -160,6 +183,10 @@ export function BudgetPage() {
   // refetched budget lands) the table renders this arrangement, so the row
   // moves across folders during the drag and never snaps back on drop.
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
+  // true only for the drag gesture itself — children collapse for its duration
+  const [dragInProgress, setDragInProgress] = useState(false)
+  // folder key ('null' for the default bucket) the drag currently targets across folders
+  const [dropFolderKey, setDropFolderKey] = useState<string | null>(null)
   useEffect(() => {
     setDragArrangement(null)
   }, [budget])
@@ -243,24 +270,42 @@ export function BudgetPage() {
   const budgetCurrencyIds = budget.balances.map((b) => b.currencyId)
 
   const handleDragStart = () => {
-    setDragArrangement(arrangementFromBuckets(buckets))
+    setDragInProgress(true)
   }
 
+  // container key of the folder the pointer is over (cross-folder move pending)
+  const folderKeyOf = (arrangement: ElementContainer[], id: string): string | null => {
+    if (id.startsWith('bfolder:')) {
+      return id.slice('bfolder:'.length)
+    }
+    const container = arrangement.find((c) => c.ids.includes(id))
+    return container ? String(container.folderId) : null
+  }
+
+  // No DOM re-ordering happens DURING the drag: within a folder the sortable
+  // strategy previews the move with pure transforms, a cross-folder target is
+  // only highlighted. Everything applies once, on drop — mutating the row
+  // order mid-drag shifts layout under the pointer and feedback-loops the
+  // drag-over → re-measure cycle.
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) {
+      setDropFolderKey(null)
       return
     }
-    setDragArrangement((prev) => moveElementInArrangement(prev ?? arrangementFromBuckets(buckets), String(active.id), String(over.id)))
+    const base = arrangementFromBuckets(buckets)
+    const sourceKey = folderKeyOf(base, String(active.id))
+    const targetKey = folderKeyOf(base, String(over.id))
+    setDropFolderKey(targetKey !== sourceKey ? targetKey : null)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
+    setDragInProgress(false)
+    setDropFolderKey(null)
     const { active, over } = event
     const base = arrangementFromBuckets(serverBuckets ?? buckets)
     const final =
-      over && active.id !== over.id
-        ? moveElementInArrangement(dragArrangement ?? base, String(active.id), String(over.id))
-        : dragArrangement ?? base
+      over && active.id !== over.id ? moveElementInArrangement(base, String(active.id), String(over.id)) : base
     const item = arrangementItem(final, String(active.id))
     const before = arrangementItem(base, String(active.id))
     if (!item || (before && before.folderId === item.folderId && before.position === item.position)) {
@@ -451,15 +496,24 @@ export function BudgetPage() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             <DndContext
               sensors={sensors}
-              collisionDetection={closestCenter}
+              collisionDetection={preferRowCollisions}
+              // rows collapse on drag start, so drop-zone rects must re-measure
+              // mid-drag and the grabbed node re-anchors to the pointer
+              measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+              modifiers={[snapRowToPointer]}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
-              onDragCancel={() => setDragArrangement(null)}
+              onDragCancel={() => {
+                setDragInProgress(false)
+                setDropFolderKey(null)
+                setDragArrangement(null)
+              }}
             >
               <BudgetTable
                 budget={budget}
                 buckets={buckets}
+                hideChildren={dragInProgress}
                 renderFolderActions={folderActions}
                 renderActions={elementActions}
                 renderBudgetCell={
@@ -490,7 +544,14 @@ export function BudgetPage() {
                 }
                 sectionWrapper={
                   editMode
-                    ? (bucket, _key, node) => <DroppableSection id={`bfolder:${bucket.folder ? bucket.folder.id : 'null'}`}>{node}</DroppableSection>
+                    ? (bucket, _key, node) => {
+                        const folderKey = bucket.folder ? String(bucket.folder.id) : 'null'
+                        return (
+                          <SortableSection bucket={bucket} id={`bfolder:${folderKey}`} highlighted={dropFolderKey === folderKey}>
+                            {node}
+                          </SortableSection>
+                        )
+                      }
                     : undefined
                 }
                 onSpentClick={editMode ? undefined : setTransactionsTarget}

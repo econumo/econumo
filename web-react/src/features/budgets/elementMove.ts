@@ -81,7 +81,12 @@ export function moveElementInArrangement(arrangement: ElementContainer[], active
     insertAt = Math.min(insertAt, target.ids.length)
   }
   target.ids.splice(insertAt, 0, activeId)
-  return next
+  // a no-op move returns the SAME reference so state setters bail out — the
+  // drag-over → reorder → re-measure → drag-over feedback loop never spins up
+  const unchanged = next.every(
+    (c, i) => c.ids.length === arrangement[i].ids.length && c.ids.every((id, j) => id === arrangement[i].ids[j]),
+  )
+  return unchanged ? arrangement : next
 }
 
 export function arrangementItem(arrangement: ElementContainer[], activeId: string): ElementMoveItem | null {

@@ -30,6 +30,8 @@ interface BudgetTableProps extends ElementRowExtras {
   renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
   /** wraps folder/no-folder sections (dnd droppables in edit mode) */
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
+  /** an element drag is in progress: unfolded rows render collapsed */
+  hideChildren?: boolean
 }
 
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
@@ -74,6 +76,7 @@ function ElementRow({
   currencies,
   accessById,
   extras,
+  hideChildren = false,
 }: {
   element: BudgetElementDto
   bucket: FolderBucket
@@ -81,9 +84,10 @@ function ElementRow({
   currencies: CurrencyDto[]
   accessById: Map<string, UserDto>
   extras: ElementRowExtras
+  hideChildren?: boolean
 }) {
   const { t } = useTranslation()
-  const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[element.id])
+  const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[element.id]) && !hideChildren
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
 
   const currencyId = element.currencyId ?? budget.meta.currencyId
@@ -213,7 +217,7 @@ function ElementRow({
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
 
-export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapper, ...extras }: BudgetTableProps) {
+export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapper, hideChildren, ...extras }: BudgetTableProps) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
@@ -270,6 +274,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
                   currencies={currencies}
                   accessById={accessById}
                   extras={isArchiveSection ? { onSpentClick: extras.onSpentClick } : extras}
+                  hideChildren={hideChildren}
                 />
               ))
             )}

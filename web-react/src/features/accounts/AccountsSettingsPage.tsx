@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { DndContext, DragOverlay, KeyboardSensor, MeasuringStrategy, PointerSensor, closestCenter, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
-import type { DragEndEvent, DragOverEvent, DragStartEvent, Modifier } from '@dnd-kit/core'
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ChevronDown, EyeOff, FolderPlus, GripVertical, MoreVertical, PlusCircle } from 'lucide-react'
@@ -42,25 +42,10 @@ import {
 } from './queries'
 import type { FolderBucket } from './accountOrdering'
 import { bucketsFromAccounts, moveAccount, buildAccountChanges } from './accountOrdering'
+import { snapRowToPointer } from '@/lib/dnd'
 
 const COLLAPSED_FOLDERS_KEY = 'settings.accounts.collapsedFolders'
 
-// Grabbing a folder collapses every section, so the grabbed node's measured rect
-// jumps up by the height of the hidden rows and no longer sits under the cursor.
-// Re-anchor the drag to the pointer (row centered on the cursor) so both the
-// overlay and the collision rect follow the mouse, not the stale rect; x stays
-// pinned to the list column — folders only ever move vertically.
-const snapFolderToPointer: Modifier = ({ activatorEvent, draggingNodeRect, transform }) => {
-  if (!draggingNodeRect || !activatorEvent || !('clientY' in activatorEvent)) {
-    return transform
-  }
-  const activator = activatorEvent as PointerEvent
-  return {
-    ...transform,
-    x: 0,
-    y: transform.y + activator.clientY - draggingNodeRect.top - draggingNodeRect.height / 2,
-  }
-}
 
 function AccountRow({
   account,
@@ -449,7 +434,7 @@ export function AccountsSettingsPage() {
         // collapsing the folders on drag start reshuffles the layout, so the
         // droppable rects must be re-measured mid-drag, not cached from before
         measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-        modifiers={draggingFolderId ? [snapFolderToPointer] : undefined}
+        modifiers={draggingFolderId ? [snapRowToPointer] : undefined}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}

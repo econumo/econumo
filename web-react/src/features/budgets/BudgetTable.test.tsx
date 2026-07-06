@@ -13,7 +13,7 @@ import type { BudgetDto } from '@/api/dto/budget'
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
-function renderTable(mutate?: (budget: BudgetDto) => void, extras: ElementRowExtras = {}) {
+function renderTable(mutate?: (budget: BudgetDto) => void, extras: ElementRowExtras & { hideChildren?: boolean } = {}) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
   mutate?.(budget)
   const buckets = bucketElements(budget, makeBudgetExchange(budget, [usd, eur]))
@@ -77,6 +77,13 @@ it('fold toggle expands children and persists in the store', async () => {
   await user.click(within(living).getByText('Living'))
   expect(await screen.findByTestId('child-cat-rent')).toBeInTheDocument()
   expect(useBudgetPeriodStore.getState().unfoldedElements['env-1']).toBe(true)
+})
+
+it('hideChildren renders unfolded elements collapsed (element drag in progress)', async () => {
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: null })
+  renderTable(undefined, { hideChildren: true })
+  await screen.findByTestId('element-env-1')
+  expect(screen.queryByTestId('child-cat-rent')).not.toBeInTheDocument()
 })
 
 it('clicking the name of a childless element does nothing', async () => {
