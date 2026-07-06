@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget as wireBudget } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { useBudget, useSetLimit, canUpdateLimits } from './queries'
+import { useBudget, useSetLimit, useOrderBudgetFolders, canUpdateLimits } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
 
@@ -85,6 +85,32 @@ it('set-limit patches budgeted optimistically and rolls back on error', async ()
   // rolled back
   const cached = queryClient.getQueryData<BudgetDto>(key)!
   expect(cached.structure.elements[0].budgeted).toBe('200' as unknown as number)
+})
+
+it('order-folders patches folder positions optimistically and rolls back on error', async () => {
+  server.use(
+    http.post('*/api/v1/budget/order-folder-list', () =>
+      HttpResponse.json({ success: false, message: 'nope', code: 400, errors: {} }, { status: 400 }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  const key = [...queryKeys.budget, 'b1', '2026-07-01']
+  const twoFolders = {
+    ...wireBudget,
+    structure: { ...wireBudget.structure, folders: [{ id: 'bf1', name: 'Essentials', position: 0 }, { id: 'bf2', name: 'Fun', position: 1 }] },
+  } as unknown as BudgetDto
+  queryClient.setQueryData(key, twoFolders)
+
+  const { result } = renderHook(() => useOrderBudgetFolders(), { wrapper })
+  result.current.mutate({ budgetId: 'b1', items: [{ id: 'bf1', position: 1 }, { id: 'bf2', position: 0 }] })
+  await waitFor(() => {
+    const cached = queryClient.getQueryData<BudgetDto>(key)!
+    expect(cached.structure.folders.find((f) => f.id === 'bf1')?.position === 1 || result.current.isError).toBe(true)
+  })
+  await waitFor(() => expect(result.current.isError).toBe(true))
+  // rolled back
+  const cached = queryClient.getQueryData<BudgetDto>(key)!
+  expect(cached.structure.folders.find((f) => f.id === 'bf1')?.position).toBe(0)
 })
 
 it('canUpdateLimits requires an accepted editing role and the period at/after start', () => {

@@ -79,6 +79,13 @@ it('fold toggle expands children and persists in the store', async () => {
   expect(useBudgetPeriodStore.getState().unfoldedElements['env-1']).toBe(true)
 })
 
+it('hideContents renders sections header-only (folder drag in progress)', async () => {
+  renderTable(undefined, { hideContents: true } as never)
+  const essentials = await screen.findByTestId('budget-folder-Essentials')
+  expect(within(essentials).queryByText('Food')).not.toBeInTheDocument()
+  expect(within(essentials).getByText('Essentials')).toBeInTheDocument()
+})
+
 it('hideChildren renders unfolded elements collapsed (element drag in progress)', async () => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: { 'env-1': true }, foldBudgetId: null })
   renderTable(undefined, { hideChildren: true })

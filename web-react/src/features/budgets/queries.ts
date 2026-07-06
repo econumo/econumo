@@ -203,10 +203,38 @@ export function useDeleteBudgetFolder() {
 }
 
 export function useOrderBudgetFolders() {
+  const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
+  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   return useMutation({
     mutationFn: ({ budgetId, items }: { budgetId: Id; items: { id: Id; position: number }[] }) =>
       budgetApi.orderBudgetFolders(budgetId, items),
+    // optimistic folder positions with rollback — a dropped folder must land
+    // instantly, not after the server round-trip
+    onMutate: async ({ budgetId, items }) => {
+      const key = [...queryKeys.budget, budgetId, selectedDate]
+      await queryClient.cancelQueries({ queryKey: key })
+      const previous = queryClient.getQueryData<BudgetDto | null>(key)
+      const positions = new Map(items.map((i) => [i.id, i.position]))
+      queryClient.setQueryData<BudgetDto | null>(key, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        return {
+          ...prev,
+          structure: {
+            ...prev.structure,
+            folders: prev.structure.folders.map((f) => (positions.has(f.id) ? { ...f, position: positions.get(f.id)! } : f)),
+          },
+        }
+      })
+      return { previous, key }
+    },
+    onError: (_err, _form, context) => {
+      if (context) {
+        queryClient.setQueryData(context.key, context.previous)
+      }
+    },
     onSuccess: () => {
       invalidate()
       trackEvent(METRICS.BUDGET_FOLDER_CHANGE_ORDER)

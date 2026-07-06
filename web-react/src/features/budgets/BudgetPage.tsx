@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { snapRowToPointer } from '@/lib/dnd'
+import { getChangedPositions } from '@/lib/ordering'
+import type { SortableHandleProps } from '@/components/SortableList'
 import { Check, ChevronLeft, FolderPlus, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { useTranslation } from 'react-i18next'
@@ -100,13 +102,60 @@ const preferRowCollisions: CollisionDetection = (args) => {
   return row ? [row] : candidates
 }
 
-function SortableSection({ bucket, id, highlighted, children }: { bucket: FolderBucket; id: string; highlighted: boolean; children: ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id })
+// The section is a sortable item itself (folder reorder); the grip lives in
+// the header rendered by BudgetTable, so the handle props travel via context.
+const FolderHandleContext = createContext<SortableHandleProps | null>(null)
+
+function FolderGrip({ name }: { name: string }) {
+  const handle = useContext(FolderHandleContext)
+  if (!handle) {
+    return null
+  }
   return (
-    <div ref={setNodeRef} className={isOver || highlighted ? 'rounded-md ring-2 ring-ring' : undefined}>
-      <SortableContext items={bucket.elements.map((el) => el.id)} strategy={verticalListSortingStrategy}>
-        {children}
-      </SortableContext>
+    <button
+      type="button"
+      aria-label={`move folder ${name}`}
+      // cancel the header's inner padding so folder grips line up with row grips
+      className="-ml-1.5 cursor-grab touch-none text-muted-foreground sm:-ml-2"
+      {...handle.attributes}
+      {...(handle.listeners ?? {})}
+    >
+      <GripVertical className="size-4" />
+    </button>
+  )
+}
+
+function SortableSection({
+  bucket,
+  id,
+  highlighted,
+  folderDragging,
+  children,
+}: {
+  bucket: FolderBucket
+  id: string
+  highlighted: boolean
+  /** a folder drag is in flight: element drop zones pause */
+  folderDragging: boolean
+  children: ReactNode
+}) {
+  // real folders are sortable; the default bucket only receives elements
+  const sortable = useSortable({ id: bucket.folder?.id ?? '__no_folder__', disabled: !bucket.folder })
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id, disabled: folderDragging })
+  return (
+    <div
+      ref={(el) => {
+        sortable.setNodeRef(el)
+        setDroppableRef(el)
+      }}
+      style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
+      className={`${isOver || highlighted ? 'rounded-md ring-2 ring-ring' : ''} ${sortable.isDragging ? 'opacity-60' : ''}`}
+    >
+      <FolderHandleContext.Provider value={bucket.folder ? { attributes: sortable.attributes, listeners: sortable.listeners } : null}>
+        <SortableContext items={bucket.elements.map((el) => el.id)} strategy={verticalListSortingStrategy}>
+          {children}
+        </SortableContext>
+      </FolderHandleContext.Provider>
     </div>
   )
 }
@@ -187,6 +236,8 @@ export function BudgetPage() {
   const [dragInProgress, setDragInProgress] = useState(false)
   // folder key ('null' for the default bucket) the drag currently targets across folders
   const [dropFolderKey, setDropFolderKey] = useState<string | null>(null)
+  // a FOLDER is being dragged: every section renders header-only
+  const [draggingFolderId, setDraggingFolderId] = useState<Id | null>(null)
   useEffect(() => {
     setDragArrangement(null)
   }, [budget])
@@ -269,7 +320,12 @@ export function BudgetPage() {
 
   const budgetCurrencyIds = budget.balances.map((b) => b.currencyId)
 
-  const handleDragStart = () => {
+  const handleDragStart = (event: { active: { id: string | number } }) => {
+    const activeId = String(event.active.id)
+    if (budget.structure.folders.some((f) => f.id === activeId)) {
+      setDraggingFolderId(activeId)
+      return
+    }
     setDragInProgress(true)
   }
 
@@ -286,11 +342,11 @@ export function BudgetPage() {
   // strategy previews the move with pure transforms, a cross-folder target is
   // only highlighted. Everything applies once, on drop — mutating the row
   // order mid-drag shifts layout under the pointer and feedback-loops the
-  // drag-over → re-measure cycle.
+  // drag-over → re-measure cycle. Folder drags preview the same way (sortable
+  // sections) while every section renders collapsed.
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event
-    if (!over || active.id === over.id) {
-      setDropFolderKey(null)
+    if (draggingFolderId || !over || active.id === over.id) {
       return
     }
     const base = arrangementFromBuckets(buckets)
@@ -303,6 +359,22 @@ export function BudgetPage() {
     setDragInProgress(false)
     setDropFolderKey(null)
     const { active, over } = event
+    if (draggingFolderId) {
+      setDraggingFolderId(null)
+      const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
+      const folderIds = folders.map((f) => f.id)
+      const overId = over ? String(over.id).replace(/^bfolder:/, '') : null
+      const from = folderIds.indexOf(draggingFolderId)
+      const to = overId ? folderIds.indexOf(overId) : -1
+      if (from === -1 || to === -1 || from === to) {
+        return
+      }
+      const changes = getChangedPositions(folders, arrayMove(folderIds, from, to))
+      if (changes.length > 0) {
+        orderFolders.mutate({ budgetId: budget.meta.id, items: changes })
+      }
+      return
+    }
     const base = arrangementFromBuckets(serverBuckets ?? buckets)
     const final =
       over && active.id !== over.id ? moveElementInArrangement(base, String(active.id), String(over.id)) : base
@@ -317,18 +389,38 @@ export function BudgetPage() {
     moveElements.mutate({ budgetId: budget.meta.id, items: [item] })
   }
 
-  const folderActions = (bucket: FolderBucket, index: number, total: number) =>
-    editMode && bucket.folder ? (
-      <span className="flex items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`create envelope ${bucket.folder.name}`}
-          onClick={() => setEnvelopeDialog({ open: true, envelope: null, folderId: bucket.folder!.id })}
-        >
-          <Plus className="size-4" />
-        </Button>
+  // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
+  // columns line up with the element rows; folder ordering moved to dragging.
+  const folderActions = (bucket: FolderBucket, _index: number, _total: number) => {
+    if (!editMode) {
+      return null
+    }
+    const name = bucket.folder?.name ?? t('modules.budget.page.budget.structure.no_folder')
+    const plus = (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-6"
+        aria-label={`create envelope ${name}`}
+        title={t('modules.budget.modal.create_envelope_form.header')}
+        onClick={() => setEnvelopeDialog({ open: true, envelope: null, folderId: bucket.folder?.id ?? null })}
+      >
+        <Plus className="size-4" />
+      </Button>
+    )
+    if (!bucket.folder) {
+      // the default bucket has no menu — pad to keep its numbers aligned
+      return (
+        <span className="flex items-center gap-1.5 sm:gap-2">
+          {plus}
+          <span className="size-9" />
+        </span>
+      )
+    }
+    return (
+      <span className="flex items-center gap-1.5 sm:gap-2">
+        {plus}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="ghost" size="icon" aria-label={`budget folder actions ${bucket.folder.name}`}>
@@ -339,32 +431,6 @@ export function BudgetPage() {
             <DropdownMenuItem onSelect={() => setRenameFolder({ id: bucket.folder!.id, name: bucket.folder!.name })}>
               {t('elements.button.edit.label')}
             </DropdownMenuItem>
-            {index > 0 ? (
-              <DropdownMenuItem
-                onSelect={() => {
-                  const items = [
-                    { id: bucket.folder!.id, position: index - 1 },
-                    { id: buckets.withFolder[index - 1].folder!.id, position: index },
-                  ]
-                  orderFolders.mutate({ budgetId: budget.meta.id, items })
-                }}
-              >
-                {t('elements.button.up.label')}
-              </DropdownMenuItem>
-            ) : null}
-            {index < total - 1 ? (
-              <DropdownMenuItem
-                onSelect={() => {
-                  const items = [
-                    { id: bucket.folder!.id, position: index + 1 },
-                    { id: buckets.withFolder[index + 1].folder!.id, position: index },
-                  ]
-                  orderFolders.mutate({ budgetId: budget.meta.id, items })
-                }}
-              >
-                {t('elements.button.down.label')}
-              </DropdownMenuItem>
-            ) : null}
             {bucket.elements.length === 0 ? (
               <DropdownMenuItem
                 variant="destructive"
@@ -376,7 +442,8 @@ export function BudgetPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       </span>
-    ) : null
+    )
+  }
 
   const elementActions = (element: BudgetElementDto) =>
     editMode ? (
@@ -506,15 +573,23 @@ export function BudgetPage() {
               onDragEnd={handleDragEnd}
               onDragCancel={() => {
                 setDragInProgress(false)
+                setDraggingFolderId(null)
                 setDropFolderKey(null)
                 setDragArrangement(null)
               }}
             >
+              <SortableContext
+                items={buckets.withFolder.map((b) => b.folder!.id)}
+                strategy={verticalListSortingStrategy}
+              >
               <BudgetTable
                 budget={budget}
                 buckets={buckets}
                 hideChildren={dragInProgress}
-                renderFolderActions={folderActions}
+                hideContents={draggingFolderId !== null}
+                renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
+                // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
+                renderFolderActions={editMode ? folderActions : undefined}
                 renderActions={elementActions}
                 renderBudgetCell={
                   limitsEditable && !editMode && !isCompact
@@ -547,7 +622,12 @@ export function BudgetPage() {
                     ? (bucket, _key, node) => {
                         const folderKey = bucket.folder ? String(bucket.folder.id) : 'null'
                         return (
-                          <SortableSection bucket={bucket} id={`bfolder:${folderKey}`} highlighted={dropFolderKey === folderKey}>
+                          <SortableSection
+                            bucket={bucket}
+                            id={`bfolder:${folderKey}`}
+                            highlighted={dropFolderKey === folderKey}
+                            folderDragging={draggingFolderId !== null}
+                          >
                             {node}
                           </SortableSection>
                         )
@@ -557,6 +637,7 @@ export function BudgetPage() {
                 onSpentClick={editMode ? undefined : setTransactionsTarget}
                 onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
               />
+              </SortableContext>
             </DndContext>
           </div>
         </>

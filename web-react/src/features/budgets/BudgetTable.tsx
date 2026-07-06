@@ -32,6 +32,10 @@ interface BudgetTableProps extends ElementRowExtras {
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
   /** an element drag is in progress: unfolded rows render collapsed */
   hideChildren?: boolean
+  /** a FOLDER drag is in progress: sections render header-only */
+  hideContents?: boolean
+  /** folder drag handle, rendered before the folder name (edit mode) */
+  renderFolderHandle?: (bucket: FolderBucket) => ReactNode
 }
 
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
@@ -53,7 +57,7 @@ function AvailablePill({ available, currency, testId }: { available: number; cur
   )
 }
 
-function StatCells({ stats, currency }: { stats: BucketStats; currency: CurrencyDto | undefined }) {
+function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats; currency: CurrencyDto | undefined; hideSymbol?: boolean }) {
   const opts = cellOpts(currency)
   const available = stats.available
   return (
@@ -63,7 +67,7 @@ function StatCells({ stats, currency }: { stats: BucketStats; currency: Currency
       <span className={`w-20 text-center tabular-nums sm:w-24 ${available >= 0 ? 'text-income' : 'text-expense'}`}>
         {moneyFormat(available, currency, opts)}
       </span>
-      <span className="hidden w-6 text-center sm:block">{currency?.symbol}</span>
+      {hideSymbol ? null : <span className="hidden w-6 text-center sm:block">{currency?.symbol}</span>}
     </span>
   )
 }
@@ -217,7 +221,7 @@ function ElementRow({
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
 
-export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapper, hideChildren, ...extras }: BudgetTableProps) {
+export function BudgetTable({ budget, buckets, renderFolderActions, renderFolderHandle, sectionWrapper, hideChildren, hideContents, ...extras }: BudgetTableProps) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
@@ -254,15 +258,21 @@ export function BudgetTable({ budget, buckets, renderFolderActions, sectionWrapp
         const sectionNode = (
           <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
             <header className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
+              {!isArchiveSection ? renderFolderHandle?.(section.bucket) : null}
               <span className="min-w-0 flex-1 truncate text-sm font-medium" title={section.name}>
                 {section.name}
               </span>
-              {section.bucket.elements.length > 0 ? <StatCells stats={section.bucket.stats} currency={budgetCurrency} /> : null}
-              {!isArchiveSection && section.folderIndex !== null
-                ? renderFolderActions?.(section.bucket, section.folderIndex, realFolders.length)
-                : null}
+              {section.bucket.elements.length > 0 ? (
+                <StatCells
+                  stats={section.bucket.stats}
+                  currency={budgetCurrency}
+                  // edit mode: the plus button takes the symbol slot instead
+                  hideSymbol={!isArchiveSection && !!renderFolderActions}
+                />
+              ) : null}
+              {!isArchiveSection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
             </header>
-            {section.bucket.elements.length === 0 ? (
+            {hideContents ? null : section.bucket.elements.length === 0 ? (
               <p className="px-2 py-1 text-xs text-muted-foreground">{t('modules.budget.page.budget.structure.empty_folder.note')}</p>
             ) : (
               section.bucket.elements.map((element) => (
