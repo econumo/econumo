@@ -10,12 +10,7 @@
           <h4 class="settings-toolbar-mobile-title">{{ $t('modules.connections.pages.settings.header') }}</h4>
         </div>
         <div class="settings-toolbar-mobile-container">
-          <template v-if="econumoPackage.includesConnections">
-            <q-btn class="settings-toolbar-mobile-button" flat icon="add_circle_outline" @click="openAcceptInviteModal()" />
-          </template>
-          <template v-else>
-            &nbsp;
-          </template>
+          <q-btn class="settings-toolbar-mobile-button" flat icon="add_circle_outline" @click="openAcceptInviteModal()" />
         </div>
       </div>
 
@@ -30,7 +25,7 @@
 
       <!-- main block -->
       <h4 class="settings-label-header settings-connections-header">{{ $t('modules.connections.pages.settings.header') }}</h4>
-      <div class="settings-connections-controls" v-if="econumoPackage.includesConnections">
+      <div class="settings-connections-controls">
         <q-btn class="econumo-btn -small -magenta settings-connections-controls-btn" flat :label="$t('modules.connections.pages.settings.generate_invite')" @click="generateInvite()"/>
         <q-btn class="econumo-btn -small -grey settings-connections-controls-btn" flat :label="$t('modules.connections.pages.settings.accept_invite')" @click="openAcceptInviteModal()"/>
       </div>
@@ -55,7 +50,7 @@
                     <q-item clickable @click="openPreviewConnectionModal(connection.user.id)" class="account-transactions-item-check-button-item">
                       <q-item-section class="account-transactions-item-check-button-section">{{ $t('elements.button.view.label') }}</q-item-section>
                     </q-item>
-                    <q-item clickable @click="openDeleteConnectionModal(connection.user.id)" class="account-transactions-item-check-button-item" v-if="econumoPackage.includesConnections">
+                    <q-item clickable @click="openDeleteConnectionModal(connection.user.id)" class="account-transactions-item-check-button-item">
                       <q-item-section class="account-transactions-item-check-button-section -delete">{{ $t('elements.button.delete.label') }}</q-item-section>
                     </q-item>
                   </q-list>
@@ -68,18 +63,8 @@
           </q-item>
         </q-list>
       </div>
-      <div class="settings-connections-generate" v-if="econumoPackage.includesConnections">
+      <div class="settings-connections-generate">
         <q-btn class="econumo-btn -medium -magenta settings-connections-generate-btn" flat :label="$t('modules.connections.pages.settings.generate_invite')" @click="generateInvite()"/>
-      </div>
-      <div v-if="!econumoPackage.includesConnections">
-        <div class="settings-connections-info">
-          <div v-html="$t('modules.connections.pages.settings.info.header')"></div>
-          <ol>
-            <li><b>{{ $t('modules.connections.pages.settings.info.list.all_users_connected') }}</b>: {{ $t('modules.connections.pages.settings.info.list.all_users_connected_description') }}</li>
-            <li><b>{{ $t('modules.connections.pages.settings.info.list.no_connections') }}</b>: {{ $t('modules.connections.pages.settings.info.list.no_connections_description') }}</li>
-          </ol>
-          <a :href="$t('modules.connections.pages.settings.info.link_url')" target="_blank">{{ $t('modules.connections.pages.settings.info.link') }}</a>.
-        </div>
       </div>
 
       <teleport to="body">
@@ -108,7 +93,7 @@
           v-if="previewConnectionModal.data.value"
           v-model:isOpened="previewConnectionModal.isOpened.value"
           :connection="previewConnectionModal.data.value"
-          :allow-changes="econumoPackage.includesConnections"
+          :allow-changes="true"
           @hide="closeModal"
           @delete="openDeleteConnectionModal"
           @decline-account="declineAccountAccess"
@@ -146,7 +131,6 @@ import { usePreviewConnectionModalState } from '../../composables/connections/us
 import { useDeleteConnectionModalState } from '../../composables/connections/useDeleteConnectionModalState';
 import { Id } from '@shared/types';
 import { RouterPage } from '../../router/constants';
-import { econumoPackage } from '../../modules/package';
 import config from '../../modules/config';
 
 defineOptions({
@@ -163,7 +147,6 @@ const activeAreaStore = useActiveAreaStore();
 
 const { isConnectionsLoaded, connections } = storeToRefs(connectionsStore);
 
-// const econumoPackage = econumoPackage;
 const generateInviteModal = useGenerateInviteModalState();
 const acceptInviteModal = useAcceptInviteModalState();
 const previewConnectionModal = usePreviewConnectionModalState();

@@ -1,33 +1,60 @@
 name: Publish Release
 
+# Publishes the Go backend image to ghcr.io/econumo/econumo ONLY.
+# - Always pushes the version tag (e.g. v1.2.3).
+# - Also pushes/moves "latest" only when push_latest is checked AND the workflow
+#   is dispatched from the main branch.
+# The local "dev" tag is published separately via `make publish`.
+
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Tag to publish (e.g., v1.2.3 or beta)"
+        description: "Version tag to publish (e.g., v1.2.3)"
         required: true
+      push_latest:
+        description: "Also move the 'latest' tag to this build (main only)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: "docker-publish-release"
   cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/econumo/econumo
 
 jobs:
   create-tag:
     name: Create Git Tag
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.set-version.outputs.version }}
+      version: ${{ steps.set.outputs.version }}
+      tags: ${{ steps.set.outputs.tags }}
     steps:
+      - name: Guard "latest" to the main branch
+        if: ${{ github.event.inputs.push_latest == 'true' && github.ref_name != 'main' }}
+        run: |
+          echo "::error::'latest' can only be published from the main branch (dispatched from '${{ github.ref_name }}')."
+          exit 1
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set version
-        id: set-version
+      - name: Compute image tags
+        id: set
         run: |
-          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          echo "Creating tag: ${{ github.event.inputs.version }}"
+          VERSION="${{ github.event.inputs.version }}"
+          TAGS="${IMAGE}:${VERSION}"
+          if [ "${{ github.event.inputs.push_latest }}" = "true" ]; then
+            TAGS="${TAGS},${IMAGE}:latest"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${VERSION} -> [${TAGS}]"
 
       - name: Configure git
         run: |
@@ -37,55 +64,57 @@ jobs:
       - name: Create and push tag
         run: |
           TAG="${{ github.event.inputs.version }}"
-
-          # Check if tag already exists
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists"
+            echo "::error::Tag $TAG already exists"
             exit 1
           fi
-
-          # Create and push the tag
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
-          echo "Tag $TAG created and pushed successfully"
 
-  publish-release-ce:
-    name: Build and Publish Docker Image
+  publish:
+    name: Build and Publish Go Image
     needs: create-tag
-    uses: ./.github/workflows/embedded-build-package.yml
-    with:
-      REGISTRY: "docker.io"
-      IMAGE_NAME: "econumo/econumo-ce"
-      IMAGE_TAGS: "${{ needs.create-tag.outputs.version }},latest,beta"
-      RUNS_ON: "blacksmith-4vcpu-ubuntu-2404"
-      PLATFORMS: "linux/amd64,linux/arm64"
-      VERSION: "${{ needs.create-tag.outputs.version }}"
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      BUILD_USER_TOKEN: ${{ secrets.BUILD_USER_TOKEN }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout tagged ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-tag.outputs.version }}
 
-  publish-release-cloud:
-    name: Build and Publish Cloud Docker Image
-    needs: create-tag
-    uses: ./.github/workflows/embedded-build-package.yml
-    with:
-      REGISTRY: "ghcr.io"
-      IMAGE_NAME: "econumo/econumo-cloud"
-      IMAGE_TAGS: "${{ needs.create-tag.outputs.version }},latest,beta"
-      ECONUMO_EDITION: "cloud"
-      RUNS_ON: "blacksmith-4vcpu-ubuntu-2404"
-      PLATFORMS: "linux/arm64"
-      VERSION: "${{ needs.create-tag.outputs.version }}"
-    secrets:
-      DOCKER_USERNAME: ${{ github.actor }}
-      DOCKER_PASSWORD: ${{ secrets.BUILD_USER_TOKEN }}
-      BUILD_USER_TOKEN: ${{ secrets.BUILD_USER_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/docker/Dockerfile
+          target: prod
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ needs.create-tag.outputs.tags }}
+          build-args: |
+            ECONUMO_VERSION=${{ needs.create-tag.outputs.version }}
 
   create-github-release:
     name: Create GitHub Release
-    needs: create-tag
+    needs: [create-tag, publish]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout tagged ref
         uses: actions/checkout@v4

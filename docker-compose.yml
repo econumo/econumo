@@ -1,37 +1,61 @@
-# Docker Compose for development
-
+# Econumo self-hosted stack.
+#
+#   End users (published image):  docker compose pull && docker compose up -d
+#   Developers (build from src):  docker compose up -d --build   (or `make up`)
+#
+# Config lives in .env (copy .env.example). Two named volumes hold everything
+# mutable — `db` for the sqlite database (/app/var/db) and `jwt` for the
+# auto-generated JWT keypair + passphrase (/app/var/jwt) — so data and logins
+# survive recreation.
 services:
-  app:
+  econumo:
+    image: ghcr.io/econumo/econumo:latest
+    # `build` is only used with `--build`; a plain `up` uses the image above.
     build:
       context: .
-      dockerfile: ./deployment/docker/app/Dockerfile
-      target: dev
-    working_dir: /var/www
-    volumes:
-      - .:/var/www:cached
-      - ./var/:/var/www/var:delegated
+      dockerfile: deployment/docker/Dockerfile
+      target: prod
+    env_file:
+      - .env
     ports:
-      - "8082:80"
-    environment:
-      - APP_ENV=${APP_ENV}
-      - COMPOSER_MEMORY_LIMIT=-1
-      - PHP_DISPLAY_ERRORS=1
-      - PHP_ERROR_REPORTING=32767
-      - PHP_IDE_CONFIG=serverName=econumo
-      - PHP_XDEBUG_REMOTE_HOST=docker.for.mac.localhost
-    depends_on:
-      - postgres
+      - "8181:80"
+    volumes:
+      - db:/app/var/db
+      - jwt:/app/var/jwt
+      # Override the SPA runtime config by mounting your own file:
+      #- ./econumo-config.js:/app/spa/econumo-config.js:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/econumo", "healthcheck"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
 
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-econumo}
-      POSTGRES_USER: ${POSTGRES_USER:-econumo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-econumo}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # Optional PostgreSQL. Off by default — the app runs on SQLite (the `db` volume
+  # above). Uncomment this service (and the `pgdata` volume below) to either:
+  #   - run `make regression`: its pgsql tier + `pg-ensure` auto-create the
+  #     throwaway `econumo_test` database in here, or
+  #   - run the app itself on Postgres: set DATABASE_URL in .env to
+  #     postgres://econumo:econumo@postgres:5432/econumo?sslmode=disable
+  # postgres:
+  #   image: postgres:17-alpine
+  #   environment:
+  #     POSTGRES_USER: econumo
+  #     POSTGRES_PASSWORD: econumo
+  #     POSTGRES_DB: econumo
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U econumo"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
 
 volumes:
-  postgres_data:
+  db:
+  jwt:
+  # pgdata:   # uncomment together with the postgres service above

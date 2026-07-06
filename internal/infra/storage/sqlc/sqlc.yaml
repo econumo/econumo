@@ -1,0 +1,124 @@
+# sqlc configuration — generates ONE typed query package per database engine.
+#
+# Both packages are produced from the same hand-written .sql query files under
+# ./query (with per-engine variants only where SQL genuinely diverges, e.g. UUID
+# storage or upsert syntax). Each engine reads its own schema from the embedded
+# migrations directory, so schema and queries cannot drift: a query referencing a
+# dropped or renamed column fails `sqlc generate` (run via `go generate`).
+#
+# emit_interface: true makes each package emit a Querier interface that the
+# concrete *Queries implements. The repo layer depends on that shared Querier
+# shape; the selected Backend supplies the right engine's *Queries at startup,
+# constructed over the DBTX returned by TxManager.Querier(ctx).
+#
+# Type overrides keep the generated Go primitive-friendly: UUID / CHAR(36)
+# columns surface as plain string, and NUMERIC(19,8) money columns surface as
+# string. The repo layer adapts string <-> domain value objects (Id, Identifier)
+# and string <-> shopspring/decimal at scale 8, matching PHP bcmath exactly.
+version: "2"
+sql:
+  # ---- SQLite engine (modernc.org/sqlite, pure Go, CGO off) -----------------
+  - engine: "sqlite"
+    schema: "../migrations/sqlite"
+    queries: "./query/sqlite"
+    gen:
+      go:
+        package: "sqlitegen"
+        out: "gen/sqlite"
+        emit_interface: true
+        emit_json_tags: false
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        overrides:
+          # After migration 20260101000000 converts every CHAR(n) column to TEXT,
+          # sqlc's sqlite engine maps them to Go string natively -- so NO CHAR
+          # overrides are needed. Only the money columns need adapting: NUMERIC(19,8)
+          # -> string (the repo layer parses to shopspring/decimal at scale 8).
+          # ANTLR concatenates type tokens with no separator, so "NUMERIC(19, 8)"
+          # in the DDL is stored as "NUMERIC(19,8)" -- match that form. Nullable
+          # variants use *string so a SQL NULL is distinguishable from "" (e.g.
+          # amount_recipient on non-transfer transactions).
+          - db_type: "NUMERIC(19,8)"
+            go_type: "string"
+          - db_type: "NUMERIC(19,8)"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+          # SMALLINT family -> int16 to MATCH the pgsql engine (which already
+          # emits int16). sqlite otherwise widens SMALLINT to int64 and leaves
+          # "SMALLINT UNSIGNED" as interface{}. Unifying here means the generated
+          # row types are identical across engines, so the repo layer needs no
+          # per-engine numeric adapter.
+          - db_type: "SMALLINT"
+            go_type: "int16"
+          # ANTLR concatenates the two type tokens with no separator, so
+          # "SMALLINT UNSIGNED" in the DDL is stored as "SMALLINTUNSIGNED".
+          - db_type: "SMALLINTUNSIGNED"
+            go_type: "int16"
+          - db_type: "SMALLINT UNSIGNED"
+            go_type: "int16"
+          # Nullable timestamps -> *time.Time (not sql.NullTime) so both engines
+          # match. (expired_at, delivered_at.)
+          - db_type: "DATETIME"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true
+
+  # ---- PostgreSQL engine (lib/pq, pure Go) ----------------------------------
+  - engine: "postgresql"
+    schema: "../migrations/pgsql"
+    queries: "./query/pgsql"
+    gen:
+      go:
+        package: "pgsqlgen"
+        out: "gen/pgsql"
+        emit_interface: true
+        emit_json_tags: false
+        emit_empty_slices: true
+        emit_pointers_for_null_types: true
+        overrides:
+          # Native uuid -> string; nullable uuid -> *string (NULL vs empty).
+          - db_type: "uuid"
+            go_type: "string"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+          - db_type: "char(36)"
+            go_type: "string"
+          # Money NUMERIC(19,8) -> string (adapted to shopspring/decimal in repo)
+          - db_type: "pg_catalog.numeric"
+            go_type: "string"
+          - db_type: "pg_catalog.numeric"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+          # Nullable text/varchar -> *string (NOT sql.NullString) so the pgsql
+          # generated row types are IDENTICAL to the sqlite ones. This lets the
+          # repo layer share one engine-agnostic mapping with no per-engine
+          # adapter for nullable strings.
+          - db_type: "pg_catalog.varchar"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+          - db_type: "text"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+          # Nullable timestamps -> *time.Time (not sql.NullTime) to match sqlite.
+          - db_type: "pg_catalog.timestamp"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true
+          - db_type: "timestamp"
+            nullable: true
+            go_type:
+              type: "time.Time"
+              pointer: true

@@ -1,0 +1,221 @@
+// The BudgetBuilder: the heaviest read in the module. It assembles the full
+// get-budget model.BudgetResult from the budget aggregate + the financial reports +
+// per-element limits & spending, converting multi-currency amounts through the
+// budget/element currency via the currency convertor. The work splits into six
+// sub-builders: meta, filters, financial summary, element limits, element
+// spending, and structure.
+package budget
+
+import (
+	"context"
+	"sort"
+	"time"
+
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/vo"
+)
+
+// filters is the internal filter set the builder derives.
+type filters struct {
+	periodStart, periodEnd time.Time
+	userIDs                []vo.Id
+	excludedAccountIDs     []vo.Id
+	includedAccountIDs     []vo.Id
+	currencyIDs            []vo.Id
+	categories             map[string]model.CategoryMeta // expense-only, keyed by id
+	tags                   map[string]model.TagMeta
+}
+
+// BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
+// (which the caller has already snapped to first-of-month). now is the clock
+// time (controls nullable balance fields).
+func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, now time.Time) (model.BudgetResult, error) {
+	periodEnd := periodStart.AddDate(0, 1, 0)
+
+	meta, err := s.buildMeta(ctx, b)
+	if err != nil {
+		return model.BudgetResult{}, err
+	}
+	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
+	if err != nil {
+		return model.BudgetResult{}, err
+	}
+	balances, rates, err := s.buildFinancialSummary(ctx, b.budget.CurrencyID, f, now)
+	if err != nil {
+		return model.BudgetResult{}, err
+	}
+	limits, err := s.buildElementsLimits(ctx, b, f)
+	if err != nil {
+		return model.BudgetResult{}, err
+	}
+	spending, err := s.buildElementsSpending(ctx, b, f)
+	if err != nil {
+		return model.BudgetResult{}, err
+	}
+	structure, err := s.buildStructure(ctx, b, f, limits, spending)
+	if err != nil {
+		return model.BudgetResult{}, err
+	}
+
+	return model.BudgetResult{
+		Meta: meta,
+		Filters: model.FiltersResult{
+			PeriodStart:         f.periodStart.Format(datetime.Layout),
+			PeriodEnd:           f.periodEnd.Format(datetime.Layout),
+			ExcludedAccountsIds: idStrings(f.excludedAccountIDs),
+		},
+		Balances:      balances,
+		CurrencyRates: rates,
+		Structure:     structure,
+	}, nil
+}
+
+// buildMeta builds the access list plus a synthetic owner entry.
+func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.MetaResult, error) {
+	access := make([]model.AccessResult, 0, len(b.access)+1)
+	for _, a := range b.access {
+		owner, err := s.users.GetOwner(ctx, a.UserID.String())
+		if err != nil {
+			return model.MetaResult{}, err
+		}
+		access = append(access, model.AccessResult{
+			User:       model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
+			Role:       a.Role.Alias(),
+			IsAccepted: boolToInt(a.IsAccepted),
+		})
+	}
+	owner, err := s.users.GetOwner(ctx, b.budget.UserID.String())
+	if err != nil {
+		return model.MetaResult{}, err
+	}
+	access = append(access, model.AccessResult{
+		User:       model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
+		Role:       "owner",
+		IsAccepted: 1,
+	})
+	return model.MetaResult{
+		Id:          b.budget.ID.String(),
+		OwnerUserId: b.budget.UserID.String(),
+		Name:        b.budget.Name,
+		StartedAt:   b.budget.StartedAt.Format(datetime.Layout),
+		CurrencyId:  b.budget.CurrencyID.String(),
+		Access:      access,
+	}, nil
+}
+
+func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggregate, periodStart, periodEnd time.Time) (filters, error) {
+	// userIds = owner + accepted non-reader access users (reader == guest).
+	userIDs := []vo.Id{b.budget.UserID}
+	for _, a := range b.access {
+		if a.IsAccepted && a.Role != roleGuest() {
+			userIDs = append(userIDs, a.UserID)
+		}
+	}
+
+	// excludedAccountIds for THIS user (meta filter shows the requester's set).
+	excludedForUser := make([]vo.Id, 0)
+	for _, aid := range b.excludedAccountIDs {
+		ownerID, ok := s.accountOwners[aid.String()]
+		if !ok {
+			o, err := s.accounts.AccountOwner(ctx, aid)
+			if err == nil {
+				ownerID = o.String()
+				s.accountOwners[aid.String()] = ownerID
+			}
+		}
+		if ownerID == userID.String() {
+			excludedForUser = append(excludedForUser, aid)
+		}
+	}
+
+	// included = all participant accounts minus ALL excluded.
+	excludedSet := map[string]bool{}
+	for _, aid := range b.excludedAccountIDs {
+		excludedSet[aid.String()] = true
+	}
+	var included []vo.Id
+	currencySet := map[string]vo.Id{}
+	var currencyIDs []vo.Id
+	accounts, err := s.accounts.AccountsForOwners(ctx, userIDs)
+	if err != nil {
+		return filters{}, err
+	}
+	for _, a := range accounts {
+		if excludedSet[a.ID] {
+			continue
+		}
+		aid, perr := vo.ParseId(a.ID)
+		if perr != nil {
+			return filters{}, perr
+		}
+		included = append(included, aid)
+		if _, seen := currencySet[a.CurrencyID]; !seen {
+			cid, cerr := vo.ParseId(a.CurrencyID)
+			if cerr != nil {
+				return filters{}, cerr
+			}
+			currencySet[a.CurrencyID] = cid
+			currencyIDs = append(currencyIDs, cid)
+		}
+	}
+
+	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
+	if err != nil {
+		return filters{}, err
+	}
+	catMap := map[string]model.CategoryMeta{}
+	for _, c := range cats {
+		if !c.IsIncome { // expense categories only
+			catMap[c.ID] = c
+		}
+	}
+	tags, err := s.metadata.TagsByOwners(ctx, userIDs)
+	if err != nil {
+		return filters{}, err
+	}
+	tagMap := map[string]model.TagMeta{}
+	for _, t := range tags {
+		tagMap[t.ID] = t
+	}
+
+	return filters{
+		periodStart: periodStart, periodEnd: periodEnd,
+		userIDs: userIDs, excludedAccountIDs: excludedForUser,
+		includedAccountIDs: included, currencyIDs: currencyIDs,
+		categories: catMap, tags: tagMap,
+	}, nil
+}
+
+func idStrings(ids []vo.Id) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func sortByPosition[T any](items []T, pos func(T) int) {
+	sort.SliceStable(items, func(i, j int) bool { return pos(items[i]) < pos(items[j]) })
+}
+
+// sortByPositionThenID orders by position ascending, breaking ties by id
+// ascending. Elements accumulate from Go map iteration (randomized order) and
+// many share a position, so a position-only sort leaves ties in random order
+// and the response varies run-to-run. The id tiebreak makes it deterministic;
+// the frontend reorders when it needs a different presentation order.
+func sortByPositionThenID[T any](items []T, pos func(T) int, id func(T) string) {
+	sort.Slice(items, func(i, j int) bool {
+		if pi, pj := pos(items[i]), pos(items[j]); pi != pj {
+			return pi < pj
+		}
+		return id(items[i]) < id(items[j])
+	})
+}

@@ -5,363 +5,402 @@ This file provides guidance to AI agents when working with code in this reposito
 ## Project Overview
 
 Econumo is a self-hosted personal finance and budgeting application. It consists of:
-- **Backend**: Symfony 5.4 (PHP 8.2+) API with hexagonal architecture
-- **Frontend**: Vue 3 + Quasar 2 SPA with TypeScript
-- **Database**: SQLite (default) or PostgreSQL
+- **Backend**: Go (HTTP API + static SPA server) with hexagonal architecture (the Go module is the repo root).
+- **Frontend**: Vue 3 + Quasar 2 SPA with TypeScript, in `web/`.
+- **Database**: SQLite (default) or PostgreSQL — selected at runtime by `DATABASE_URL`.
+
+> History: the backend was originally a Symfony 5.4 (PHP) app. It has been fully
+> replaced by the Go backend and the PHP code has been removed. A single "cloud"
+> edition is shipped (there is no separate "ce" edition).
+
+The production artifact is a single self-contained Go binary in a distroless image
+(`ghcr.io/econumo/econumo`) that serves both the JSON API and the built SPA, and
+runs database migrations on boot.
 
 ## Development Commands
 
-### Backend (PHP/Symfony)
+### Go backend
 
-All backend commands run inside Docker containers via `docker-compose`:
-
-```bash
-# Start application (includes migrations)
-make up
-
-# Stop application
-make down
-
-# Open shell in app container
-make sh
-
-# Run tests (recreates test DB and loads fixtures)
-make test                    # All tests
-make test ARGS='unit'       # Unit tests only
-make test ARGS='functional' # Functional tests only
-
-# Inside container shell (docker-compose exec -uwww-data app sh):
-bin/console doctrine:migrations:migrate           # Run migrations
-bin/console doctrine:fixtures:load                # Load fixtures
-bin/console doctrine:database:create              # Create database
-bin/console cache:clear                           # Clear cache
-vendor/bin/codecept run unit --steps -v          # Run unit tests with verbose output
-```
-
-### Frontend (Vue/Quasar)
-
-Frontend commands run on the host machine in the `web/` directory:
+The Go module is the repo root. Tests run with the standard toolchain — no Docker
+required for the smoke tier.
 
 ```bash
-# Install dependencies (uses pnpm)
-make install
-# or: cd web && pnpm install
+make test            # SMOKE: build + vet + gofmt + OpenAPI-docs-fresh + sqlite unit/integration + coverage gate
+make regression      # REGRESSION: test + the sqlite-vs-PostgreSQL engine-comparison suite
+make go-build        # Compile the binary to ./econumo (regenerates OpenAPI docs first)
+make go-run          # Run the server locally (reads .env; regenerates OpenAPI docs first)
+make go-lint         # build + vet + gofmt + OpenAPI-docs-fresh check
+make swagger         # Regenerate the committed OpenAPI docs (swag, pinned to go.mod)
 
-# Start development server (SPA mode)
-make dev
-# or: cd web && npm run dev
-
-# Build for production
-make bundle
-# or: cd web && npm run build
-
-# Run linter
-make lint
-# or: cd web && npm run lint
-
-# Format code
-cd web && npm run format
+# Or directly with the go toolchain (run from the repo root):
+go test ./...                        # all tests
+go build ./...                        # build everything
+go run ./cmd/econumo serve            # run the server (reads .env)
+go run ./cmd/econumo user:create "Name" user@example.test secret
 ```
+
+The regression suite needs a PostgreSQL; `make regression` auto-provisions one
+via the compose stack, or set `DATABASE_TEST_PGSQL_URL` to an existing database.
+
+### Frontend (Vue/Quasar) — in `web/`
+
+```bash
+make web-install   # cd web && pnpm install
+make web-dev       # cd web && npm run dev      (dev server)
+make web-bundle    # cd web && npm run build    (production SPA build)
+make web-lint      # cd web && npm run lint
+```
+
+### Publishing
+
+```bash
+make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
+```
+
+Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
+(`.github/workflows/publish-release.yml`), not locally. Everything publishes to
+`ghcr.io/econumo/econumo` only.
 
 ## Architecture
 
-### Bundle Structure
+### Feature packages (vertical slices)
 
-The backend is organized into three Symfony bundles:
-
-1. **EconumoBundle** (`src/EconumoBundle/`)
-   - Core application logic
-   - Contains all layers: Domain, Application, Infrastructure, UI
-   - Handles accounts, transactions, budgets, categories, currencies, payees, tags
-
-2. **EconumoToolsBundle** (`src/EconumoToolsBundle/`)
-   - Utility commands and maintenance tools
-   - Currency rate updates (OpenExchangeRates API)
-   - Database migration tools (SQLite ↔ PostgreSQL)
-
-### Layered Architecture (Hexagonal + DDD)
-
-The codebase follows a strict layered architecture with dependency inversion:
+The backend is organized as vertical feature packages rather than horizontal
+layers. Each of the nine features (`account`, `budget`, `category`, `connection`,
+`currency`, `payee`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+tree holding its own use cases, persistence, and HTTP edge; the entities and
+DTOs those use cases operate on live in the shared `internal/model` package
+(below), so a feature package is behavior-only:
 
 ```
-Domain (Core Business Logic)
-    ↓ depends on nothing
-Application (Use Cases & Orchestration)
-    ↓ depends on Domain
-Infrastructure (Symfony/Doctrine Implementation)
-    ↓ implements Domain interfaces
-UI (HTTP Controllers & API)
-    ↓ uses Application services
+. (repo root = the Go module; web/ and deployment/ live alongside)
+├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / resource:action commands
+├── internal/
+│   ├── shared/ .................... dependency-free kernel: vo (value objects), errs (domain error taxonomy),
+│   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen),
+│   │                                port (Clock/TxRunner/OperationGuard seams), reqctx (request-scoped
+│   │                                context values, e.g. caller timezone + log attrs)
+│   ├── model/ ...................... the shared type universe: every feature's entities (with their
+│   │                                invariant-preserving mutators), value objects, and request/result DTOs,
+│   │                                one file per feature (account.go, account_dto.go, ...); imports only
+│   │                                the shared kernel; part of the archtest kernel alongside `shared`
+│   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
+│   │   │                            currency, payee, tag, transaction, user); root package holds only
+│   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
+│   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
+│   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
+│   │   │                             (or `ReadService`/`WriteService`) method per use case
+│   │   │   repository.go .........   the repository INTERFACE(s), in `model` types; account and budget
+│   │   │                             split theirs into role interfaces + a composite for wiring
+│   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
+│   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
+│   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
+│   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
+│   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
+│   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
+│   │   │                          client-supplied operation ids on create endpoints
+│   │   ├── auth/ ................ password hashing + AES email encryption + user-identifier hashing
+│   │   ├── clock/ ................ time source abstraction
+│   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
+│   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
+│   │                              distinct from the repo-root web/, the Vue SPA): middleware, router,
+│   │                              response envelope (httpx), SPA server, apidoc — no feature logic
+│   ├── server/ .................. composition root: server.BuildAPI wires every feature (used by the
+│   │                              binary AND tests); glue_*.go files hold the cross-feature adapters
+│   │                              (see below)
+│   ├── cli/ ..................... the resource:action management commands (stdlib dispatch; no cobra)
+│   ├── config/ .................. environment configuration loading
+│   └── test/ .................... shared test support: dbtest, fixture, testkeys, enginecompare, archtest
 ```
 
-**Key Layer Responsibilities:**
+Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
+per-user persistence shape (it's rates + conversion + admin lookups), so it
+keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`.
 
-- **Domain** (`src/EconumoBundle/Domain/`)
-  - Entity models with business logic
-  - Value objects (Id, DecimalNumber, AccountName, etc.)
-  - Repository interfaces (no implementation)
-  - Domain services (complex business rules)
-  - Domain events
+### Dependency rule
 
-- **Application** (`src/EconumoBundle/Application/`)
-  - Feature-organized services (AccountService, BudgetService, etc.)
-  - Request/Result DTOs with V1 suffix
-  - Assemblers (convert Domain ↔ DTOs)
-  - Use case handlers
+Features never import features. When one feature needs another's data (e.g.
+account needs a currency lookup, or budget needs to resolve a user), the
+*consuming* feature declares a small interface in its own package (typed in
+`model`), and `internal/server` wires a concrete adapter — usually a thin one
+implemented in a `glue_<feature>_<purpose>.go` file (e.g.
+`glue_account_currencylookup.go`, `glue_budget_userlookup.go`) — over the
+*providing* feature's public API at composition time. This keeps every
+feature package independently buildable and testable without pulling in its
+siblings.
 
-- **Infrastructure** (`src/EconumoBundle/Infrastructure/`)
-  - `Doctrine/`: Repository implementations, ORM mappings, migrations, custom types
-  - `Symfony/`: Forms, Messenger handlers, Mailer, Translation
-  - `Auth/`: JWT authentication
-  - `Datetime/`: DateTime services
+Shared leaves (`shared`, `model`, `web`, `infra`) never import a feature; the
+kernel (`internal/shared` + `internal/model`) imports nothing internal outside
+itself — `model` may only depend on `shared`. This is enforced by
+`internal/test/archtest`, which auto-detects feature packages (any
+`internal/<top>` not in its infrastructure set) so newly moved features come
+under enforcement without edits to the test.
 
-- **UI** (`src/EconumoBundle/UI/`)
-  - `Controller/Api/`: API controllers (one action per class)
-  - `Middleware/`: Exception handling, language detection, API protection
-  - `Service/`: Validators, response factories
+### The engine-adapter (sqlc) pattern
 
-### API Controller Pattern
+sqlc generates a SEPARATE package per engine (`gen/sqlite`, `gen/pgsql`) with
+distinct Go types, and the two dialects differ (`?` vs `$N` placeholders, float vs
+NUMERIC aggregates, date formats). A repo therefore:
 
-Controllers follow a resource-based, single-action pattern:
+- declares a small `querier` interface in the **canonical (sqlite-generated) types**,
+- has two thin adapters — `sqlite.go` (native passthrough) and `pgsql.go` (whole-struct
+  conversion shim) — selected ONCE in the constructor by `cfg.DatabaseDriver`,
+- writes every method ONCE against the interface, so method bodies carry no
+  per-driver branching.
 
-```php
-// Pattern: {Resource}/{SubResource?}/{Action}V1Controller
-// Route: /api/v1/{resource}/{action}
+Reference repos: `internal/{tag,user,currency}/repo` (the `user` repo also
+covers password-reset requests, in `passwordrequest*.go` alongside the user
+queries). The one exception is `internal/budget/repo/read.go`, which is
+hand-built dynamic SQL (variadic `IN` lists, real per-engine value/date
+handling) and branches explicitly by design.
 
-class CreateAccountV1Controller extends AbstractController {
-    #[Route(path: '/api/v1/account/create-account', methods: ['POST'])]
-    public function __invoke(Request $request): Response {
-        // 1. Validate via Form classes
-        $this->validator->validate(CreateAccountV1Form::class, ...);
-        // 2. Call Application service
-        $result = $this->accountService->createAccount($dto, $userId);
-        // 3. Return standardized response
-        return ResponseFactory::createOkResponse($request, $result);
-    }
-}
-```
+### API handler pattern
 
-**Validation**: Each controller has a corresponding Form class in `Validation/` subdirectory with declarative constraints.
+HTTP handlers are thin named methods under `internal/<feature>/api/` (the
+name carries the swag `@` annotation block); the body is one call into the
+generic combinators in `internal/web/endpoint`: `endpoint.Handle` (auth + JSON
+body), `endpoint.HandleNoBody` (auth, no body), `endpoint.HandlePublic`
+(no auth) — each doing require-user/decode/`Validate()`/call/envelope in the
+frozen order. Per-endpoint extras (e.g. `reqctx.AddLogAttr`) live in a small
+closure. A handful of endpoints stay hand-written because their shape is
+special: CSV export, multipart import, query-param reads, and login's raw
+`{token,user}` response. Routes are registered in
+`internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
+in `internal/model/<feature>_dto.go`.
 
-### Frontend Architecture (Vue 3 + Quasar)
+### Frontend architecture (Vue 3 + Quasar)
 
-Directory structure in `web/src/`:
-
-- **pages/**: Route pages (file-based routing)
-- **components/**: Reusable Vue components
-- **composables/**: Vue 3 Composition API hooks (e.g., `useApi`)
-- **modules/api/v1/**: API client services (account.ts, budget.ts, etc.)
-- **stores/**: Pinia state management (accounts, budgets, transactions, etc.)
-- **router/**: Vue Router configuration
-- **i18n/**: Internationalization (vue-i18n)
-
-**State Management**: Pinia stores per feature with reactive state, getters, actions.
-
-**API Integration**: `modules/api/v1/` contains typed API clients matching backend endpoints.
-
-## Important Patterns
-
-### Value Objects
-- All IDs are wrapped in typed value objects (`AccountId`, `UserId`, etc.)
-- Numbers use `DecimalNumber` for precision
-- Names/strings often have dedicated value objects with validation
-- Value objects are immutable
-
-### Repository Pattern
-- Domain layer defines `*RepositoryInterface`
-- Infrastructure layer implements in `Infrastructure/Doctrine/Repository/`
-- Never use Doctrine directly in Domain or Application layers
-
-### Assemblers
-- Convert between Domain entities and DTOs
-- Located in `Application/[Feature]/Assembler/`
-- Example: `CreateAccountV1ResultAssembler` converts Account → API response
-
-### Domain Events
-- Domain publishes events (e.g., `UserRegisteredEvent`)
-- Handled via Symfony Messenger
-- Event handlers in `Application/UseCase/` or `Infrastructure/Symfony/Messenger/`
-
-### Custom Doctrine Types
-- Value objects have custom Doctrine types in `Infrastructure/Doctrine/Type/`
-- Examples: `UuidType`, `DecimalNumberType`, `AccountTypeType`
-- Allows using value objects directly in entities
+Directory structure in `web/src/`: `pages/` (routes), `components/`, `composables/`,
+`modules/api/v1/` (typed API clients), `stores/` (Pinia), `router/`, `i18n/`.
+Build-time config comes from `web/.env.dist` (copied to `.env` at image build); the
+version label shown in the UI is `ECONUMO_VERSION` (same name as the Docker build arg
+that overrides it per build).
 
 ## Testing
 
-**Framework**: Codeception with PHPUnit wrapper
+Tests live alongside the Go code:
+- `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`;
+  dbtest applies production pragmas, e.g. `foreign_keys = ON`).
+- `internal/test/apiparity/` — the shared API scenario catalogue: every registered
+  route is replayed against the REAL production handler (`server.BuildAPI`).
+  Two consumers: the untagged **smoke suite** (every `make test`) diffs each
+  scenario's responses against committed golden files in `testdata/golden/`
+  (normalized: generated UUIDs, datetimes, JWTs redacted), and the build-tagged
+  parity suite below. Guard tests enforce that every route has a scenario, the
+  scenario count and scanned-route count never shrink, and no golden is orphaned.
+  Regenerate goldens with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`,
+  then INSPECT the diff — a golden change means observable behavior changed;
+  never hand-edit a golden. If route-registration files move, update
+  `handlerGlobs` in `guard_test.go`.
+- `dbtest.New(t)` selects the engine by `DBTEST_ENGINE` (default sqlite; `pgsql`
+  under `-tags enginecompare` → Postgres, each test in its own schema). `make
+  test-repo-pgsql` reruns the whole repo/unit suite against PostgreSQL so the
+  pgsql adapters + generated queries are exercised, not just the parity
+  catalogue; it is part of `make regression` and the CI regression job. Raw SQL
+  in a test must use `db.Rebind(query)` for `?`→`$N`, and decimal assertions
+  compare normalized `vo.Decimal` values (sqlite text vs pgsql NUMERIC differ).
+- `internal/test/enginecompare/` — the strongest contract: replays the same
+  catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
+  responses (build tag `enginecompare`).
+- `internal/test/{fixture,testkeys}` — shared fixture builder + embedded JWT keypair.
 
-**Test organization** (`tests/`):
-- `unit/`: Domain entity and value object tests
-- `functional/api/v1/`: Functional API tests
-- `integrational/`: Integration tests
-- `Helper/`: Test utilities
-- `_data/fixtures/`: Test data
-
-**Running tests**:
-```bash
-make test                                    # Full test suite (recreates DB)
-make test ARGS='unit'                       # Unit tests only
-docker-compose exec -uwww-data app vendor/bin/codecept run --steps -v
-```
-
-**Test environment**:
-- Uses separate test database (configured via `APP_ENV=test`)
-- Fixtures loaded before each test run
-- Configuration in `codeception.yml`
+Coverage gate: `make test` enforces a cross-package minimum (`GO_COVER_MIN`,
+default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
+artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
 
-### Environment Variables
+The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 
-Key configuration files:
-- `.env.dist`: Template with all available options
-- `.env`: Local environment (not committed)
-- `.env.local`: Local overrides (not committed)
-- `.env.test`: Test-specific settings
+- `DATABASE_URL` — `sqlite:///abs/path/db.sqlite` or `postgres://…`. Selects the engine.
+  Required, and sourced from `.env` only — it is NOT baked into the image.
+- `PORT` — HTTP listen port (required by the server), from `.env`. The image keeps a
+  fallback `PORT=80` (compose maps `8181:80`); for a host `go run`, set a non-privileged
+  port (e.g. `8181`) in `.env`.
+- `ECONUMO_JWT_PRIVATE_KEY_PATH` / `ECONUMO_JWT_PUBLIC_KEY_PATH` / `ECONUMO_JWT_PASSPHRASE` —
+  RS256 keypair (paths may use the Symfony-style `%kernel.project_dir%` placeholder, which is
+  expanded to the cwd). Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first
+  boot if missing (no keys are committed or baked into the image). `jwt:generate`
+  generates one explicitly. In the image these resolve under `/app/var/jwt`; persist
+  the `/app/var` volume (db + keys) to keep data and tokens valid.
+- `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
+  salt-free (plaintext emails, `md5(lower(email))` identifiers). It is consumed by exactly one
+  code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
+  Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
+  database has unreadable emails / mismatched identifiers, so those users cannot log in (the
+  intended push to migrate); `serve` logs a WARN at boot while it is set.
+- `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
+- `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
+  only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
+  just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
+- `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
+- `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
+- `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
+  as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
+  each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
+  From / Reply-To fold in as query params: `resend://<key>?from=…&reply_to=…` (also accepted by
+  `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
+  `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
+- `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
+- `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
+- `ECONUMO_WEB_DIST` — path to the built SPA the binary serves.
+- `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
+  (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
+  and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.
 
-**Critical settings**:
-- `DATABASE_DRIVER`: `sqlite` or `postgresql`
-- `DATABASE_URL`: Automatically set based on driver
-- `ECONUMO_ALLOW_REGISTRATION`: Enable/disable user registration
-- `ECONUMO_CONNECT_USERS`: Auto-connect new users
-- `JWT_SECRET_KEY`/`JWT_PUBLIC_KEY`: JWT authentication keys
-- `CORS_ALLOW_ORIGIN`: CORS configuration
+  > **Env naming convention:** app-owned config is prefixed `ECONUMO_`; bare names are reserved for
+  > ecosystem standards (`PORT`, `DATABASE_URL`, `MAILER_DSN`) and names the engine/vendor owns
+  > (`SQLITE_BUSY_TIMEOUT`, `OPEN_EXCHANGE_RATES_TOKEN`).
+- `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
+  (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
 
-### Database Support
+### Logging
 
-**SQLite** (default for development):
-- Database file: `var/db/db.sqlite`
-- No external dependencies
+Two tiers of structured `log/slog` output, both with **static messages** and details as
+fields (custom dimensions) — UUIDs only, never PII (no emails, bodies, or query strings):
 
-**PostgreSQL** (not recommended for use, it is in beta):
-- Configure via `POSTGRES_*` variables in `.env`
-- Better for multi-user scenarios
-- Migration tool available: `MigrateSqliteToPostgresCommand`
+- **Operation result** — one line per request, message = the static operation name (e.g.
+  `create-category`), at INFO (2xx) / WARN (4xx) / ERROR (5xx & recovered panics). Always
+  carries `request_id`, `status`, `route`, the user dimensions `user_id` + `timezone`, and
+  `err`/`err_type` on failure.
+- **Edge/transport** — a DEBUG `"http request"` line with `method`, `route`, `status`,
+  `duration_ms`.
 
-## Common Development Workflows
+`request_id` is a UUIDv7 minted in the `RequestID` middleware and echoed on `X-Request-Id`.
+The `AccessLog` middleware (`internal/web/middleware/accesslog.go`) installs a request-scoped
+accumulator (`reqctx.WithLogAttrs`) and emits both lines; any layer enriches the operation
+line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.g.
+`category_id`). `/health` logs the transport line only; `OPTIONS` preflight is skipped.
 
-### Adding a New API Endpoint
+## Database
 
-1. Create Request/Result DTOs in `Application/{Feature}/Dto/`
-2. Add method to Application Service (e.g., `AccountService`)
-3. Create Assembler if needed in `Application/{Feature}/Assembler/`
-4. Create Controller in `UI/Controller/Api/{Resource}/{Action}/`
-5. Create Form validation class in `{Controller}/Validation/`
-6. Add route annotation to controller
-7. Write tests in `tests/functional/api/v1/`
+- **SQLite** (default): pure-Go `modernc.org/sqlite` driver (CGO off).
+- **PostgreSQL**: `jackc/pgx/v5` (stdlib), simple protocol (PgBouncer-safe).
+- Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
+- After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
+  `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 
-### Adding a New Domain Entity
+## CLI / management commands
 
-1. Create entity in `Domain/Entity/` with business logic
-2. Define value objects in `Domain/Entity/ValueObject/`
-3. Create repository interface in `Domain/Repository/`
-4. Create custom Doctrine types for value objects in `Infrastructure/Doctrine/Type/`
-5. Implement repository in `Infrastructure/Doctrine/Repository/`
-6. Create ORM mapping in `Infrastructure/Doctrine/Entity/mapping/`
-7. Generate migration: `bin/console doctrine:migrations:diff`
-8. Write unit tests in `tests/unit/App/EconumoBundle/Domain/Entity/`
+The binary is subcommand-driven (`cmd/econumo/main.go`): `serve` runs the server,
+`healthcheck` probes a running one, and everything else routes to `internal/cli`:
 
-### Working with Migrations
-
-```bash
-# Generate migration from entity changes
-bin/console doctrine:migrations:diff
-
-# View migration status
-bin/console doctrine:migrations:status
-
-# Execute migrations
-bin/console doctrine:migrations:migrate
-
-# Rollback migration
-bin/console doctrine:migrations:migrate prev
+```
+user:create <name> <email> <password>
+user:change-email <old> <new>
+user:change-password <email> <password>
+user:activate <email>
+user:deactivate <email>
+currency:update-rates [date]
+currency:add <code> [name] [fraction-digits]
+jwt:generate
+data:remove-salt
 ```
 
-## Key Symfony Console Commands
+`data:remove-salt` is a one-off migration that decrypts every user's email
+back to plaintext and re-derives the identifier as `md5(lower(email))` (no salt),
+so `ECONUMO_DATA_SALT` can be removed. Run it **while the old salt is still set**
+(it needs it to decrypt), then unset `ECONUMO_DATA_SALT` and restart. It refuses
+to run with an empty salt, and is idempotent (already-plaintext rows are skipped).
+Back up the DB first — the decryption is one-way in practice.
 
-```bash
-# Cache management
-bin/console cache:clear
-bin/console cache:warmup
+In the distroless image these run via the binary directly, e.g.
+`docker exec <container> /app/econumo user:create …`.
 
-# Database
-bin/console doctrine:database:create
-bin/console doctrine:database:drop --force
-bin/console doctrine:schema:update --dump-sql
-bin/console doctrine:fixtures:load
+## API conventions
 
-# JWT keys
-bin/console lexik:jwt:generate-keypair
-
-# Currency updates
-bin/console econumo:update-currency-rates
-
-# User management (EconumoCloudBundle)
-bin/console econumo:activate-user {user-id}
-bin/console econumo:deactivate-users
-```
-
-## Code Quality Tools
-
-- **Psalm**: Static analysis (`vendor/bin/psalm`)
-- **PHPStan**: Static analysis (`vendor/bin/phpstan`)
-- **Rector**: Automated refactoring (`vendor/bin/rector`)
-- **Codeception**: Testing framework
-- **ESLint**: Frontend linting (in `web/`)
+- **Methods — only two.** `GET` for reads; `POST` for every write — create, update,
+  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs.
+- **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
+  verb leading. List endpoints end in `-list`. Examples from the source:
+  - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
+    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`.
+  - Writes (`POST`): `/api/v1/category/create-category`, `/api/v1/account/update-account`,
+    `/api/v1/category/delete-category`, `/api/v1/connection/generate-invite`,
+    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`.
+- **Authentication is header-based:** send `Authorization: Bearer <token>` (RS256 JWT;
+  the scheme is case-insensitive). The JWT middleware verifies the signature, rejects
+  expired/invalid tokens with the 401 envelope, and puts the `id` claim (user UUID)
+  into the request context for handlers. Public routes (login, register, remind-password,
+  reset-password, `/api/doc`, `/api/doc.json`) need no header; everything else does.
 
 ## Authentication
 
-- **Method**: JWT tokens via Lexik JWT Authentication Bundle
-- **Keys**: RSA keypair in `config/jwt/` (generate with `lexik:jwt:generate-keypair`)
-- **Endpoints**:
-  - Login: `/api/v1/auth/login`
-  - Register: `/api/v1/auth/register` (if `ECONUMO_ALLOW_REGISTRATION=true`)
-- **Token refresh**: Not implemented (clients must re-authenticate)
+- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/shared/jwt` (a
+  self-contained package: token issue/verify, keypair generation, and the shared
+  `EnsureKeypair` boot/CLI entry point; no `internal/*` dependency).
+- Login lives under `internal/user/api` (`/api/v1/user/login-user`).
+- Token refresh is not implemented (clients re-authenticate).
+
+## Wire & data contract (frozen)
+
+These behaviours are **frozen**: the web SPA and other clients parse exact JSON,
+and the production database holds data written in these formats. Don't "clean
+them up" — changing one breaks live clients, locks users out, or makes stored
+data unreadable. Most are also asserted by the test suite.
+
+### Response envelope (`internal/web/httpx/envelope.go`)
+- Success (200): `{"success": true, "message": "", "data": <payload>}`
+- Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
+- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `ECONUMO_DEBUG=true`.
+- Not implemented (501): `{"success": false, "message": <string>, "code": 0, "errors": []}` — here `errors` is an array `[]` (the lone exception to the object rule).
+- JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
+
+### Auth crypto (`internal/infra/auth/`)
+- **Password hash**: sha512, 500 iterations, base64 (88 chars). Salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`. Verify rejects len≠88 or a `$`, constant-time.
+- **User identifier**: `hex(md5(lower(email)))` — 32-char hex; the primary user lookup key. (`EncodeService` still supports a salted form `hex(md5(lower(email) || salt))`, but only the `data:remove-salt` migration uses it — see below.)
+- **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
+- **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
+
+### JWT (`internal/shared/jwt/jwt.go`)
+- RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
+- Claims: `iat`; `exp = iat + 2592000` (30-day TTL); `roles = ["ROLE_USER"]`; `username` = plaintext email; `id` = user UUID. No `nbf`/`iss`/`sub`/`aud`.
+
+### Encodings, messages, routes
+- Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
+- `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
+- Validation strings are exact and asserted by clients/tests, e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `IS_BLANK_ERROR`).
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid JWT.
+- Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're JWT claims, FK targets, and held by clients).
+
+## Key design decisions
+
+- **One binary, two engines, runtime-selected** — both DB backends are linked in and chosen by `DATABASE_URL`; no Go plugins.
+- **sqlc for compile-checked SQL** — a wrong column/arg fails `go build`; per-engine query variants only where the dialects diverge (see the engine-adapter pattern).
+- **stdlib-first** — `net/http.ServeMux` routing, `func(http.Handler) http.Handler` middleware, hand-written `Validate()` (no tag DSL), stdlib CLI. Third-party deps only where stdlib can't deliver (decimal, JWT, DB drivers, uuid, sqlc, Resend).
+- **No assembler layer** — app services build and return the result DTOs directly.
+- **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
+
+### Notable behaviours
+- **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
+- **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
 
 ## Deployment
 
-Production deployment uses Docker Compose. See `deployment/docker-compose/` for:
-- `docker-compose.yml`: Production stack definition
-- `.env.example`: Production environment template
+- Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
+  - `:dev` — published locally via `make publish-dev`.
+  - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
+- Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
+  and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
 
-**Build process**:
-1. Backend Dockerfile in separate repository: `econumo/build-configuration`
-2. Frontend built via `quasar build` (generates static files)
-3. Static files served by nginx
-4. PHP-FPM handles backend API
+## Code Quality Tools
 
-**Docker setup**:
-- Multi-stage build
-- nginx + PHP-FPM in single container
-- Entrypoint script handles migrations and initialization
-- Initial startup takes ~90 seconds
+- `gofmt` (formatting), `go vet` (static analysis), the coverage gate (`make test`).
+- Frontend: ESLint (`make web-lint`).
 
-## Currency Support
+## Comments — write sparingly
 
-**Default**: USD only
-**Multi-currency**: Requires currency rate updates
+Comment only **exceptional scenarios** and **non-obvious business logic / frozen-contract
+rationale** — the *why*, not the *what*. Do NOT add:
 
-```bash
-# Set Open Exchange Rates API token in .env
-OPEN_EXCHANGE_RATES_TOKEN=your_token
+- godoc or inline comments that merely restate a symbol's name or signature
+  (`// Id returns the id`, `// CreateCategory creates a category`), accessor docs;
+- section-divider / scaffolding comments, or anything that paraphrases the next line;
+- references to the former PHP/Symfony implementation. The backend was ported from a
+  now-removed Symfony 5.4 (PHP) app; state the behavior or constraint directly in Go
+  terms rather than naming the old code (e.g. "timestamps are bare `Y-m-d H:i:s` with no
+  zone, so the clock must be UTC" — not "to match the PHP DatetimeService").
 
-# Update rates
-bin/console econumo:update-currency-rates
-```
-
-**Base currency**: Set via `ECONUMO_CURRENCY_BASE` (default: USD)
-
-## Debugging
-
-- **Symfony Profiler**: Available in dev mode at `/_profiler`
-- **Logs**: `var/log/dev.log` and `var/log/test.log`
-- **Xdebug**: Configure via `XDEBUG_MODE` environment variable
-- **NewRelic**: Optional APM integration via `ekino/newrelic-bundle`
-
-## API Documentation
-
-**Nelmio API Doc Bundle** provides OpenAPI/Swagger documentation:
-- Development: `http://localhost:8181/api/doc`
-- Controllers use OpenAPI annotations for documentation
-- Auto-generated from controller annotations
+**Exempt:** Swagger `// @…` annotation blocks on handlers (they generate the OpenAPI
+spec) and `// Code generated … DO NOT EDIT.` markers — leave both intact.

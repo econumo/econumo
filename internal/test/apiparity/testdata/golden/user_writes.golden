@@ -1,0 +1,21 @@
+== register-user POST /api/v1/user/register-user [] -> 200
+{"success":true,"message":"","data":{"user":{"id":"<generated-uuid>","name":"Newbie","email":"newuser@example.test","avatar":"https://www.gravatar.com/avatar/626ae10601bc8f2549bcfbf32e5c1e11","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"budget","value":null},{"name":"onboarding","value":"started"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+
+== complete-onboarding POST /api/v1/user/complete-onboarding [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+
+== update-currency POST /api/v1/user/update-currency [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+
+== update-budget POST /api/v1/user/update-budget [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":"b0000000-0000-0000-0000-000000000001"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+
+== update-password POST /api/v1/user/update-password [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== logout-user POST /api/v1/user/logout-user [owner] -> 200
+{"success":true,"message":"","data":{"result":"test"}}
+
+== get-user-data-after GET /api/v1/user/get-user-data [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":"b0000000-0000-0000-0000-000000000001"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+

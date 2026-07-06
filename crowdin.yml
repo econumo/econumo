@@ -1,6 +1,3 @@
 files:
   - source: /web/src/i18n/en-US/index.ts
     translation: /web/src/i18n/%locale%/%original_file_name%
-
-  - source: /translations/messages.en.yaml
-    translation: /translations/messages.%locale%.yaml

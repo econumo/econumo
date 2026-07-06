@@ -1,33 +1,18 @@
-###> econumo ###
 .secret*
 .idea
 .DS_Store
-src/*Bundle/
-!src/EconumoBundle/
-!src/EconumoToolsBundle/
-!src/EconumoDemoBundle/
-src/*Bundle/.disabled*
-###< econumo ###
 
-
-###> symfony/framework-bundle ###
+# Local env (holds secrets like JWT_PASSPHRASE; committed template is .env.example).
+# Used by both `go run` and docker compose (env_file).
+.env
 /.env.local*
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
+
+# Runtime data (local sqlite db, JWT keypair, logs, cache)
 /var/
-/vendor/
-###< symfony/framework-bundle ###
 
-###> lexik/jwt-authentication-bundle ###
-#/config/jwt/*.pem
-###< lexik/jwt-authentication-bundle ###
+# Go build/test artifacts
+/econumo
+coverage.out
 
-###> phpunit/phpunit ###
-/phpunit.xml
-.phpunit.result.cache
-###< phpunit/phpunit ###
-###> phpstan/phpstan ###
-phpstan.neon
-###< phpstan/phpstan ###
+# Local dev-machine -> homelab transfer script (contains the homelab host/path).
+/sync-to-homelab.sh

@@ -1,4 +1,0 @@
-framework:
-    lock:
-        local_lock: 'flock'
-        remote_lock: '%env(DATABASE_URL)%'

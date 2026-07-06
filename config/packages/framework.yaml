@@ -1,9 +1,0 @@
----
-framework:
-    secret: '%env(APP_SECRET)%'
-    csrf_protection: false
-
-    php_errors:
-        log: true
-
-    validation: {enable_annotations: true}

@@ -1,8 +1,0 @@
-framework:
-  http_client:
-    scoped_clients:
-      open_exchange_rates:
-        scope: 'https://openexchangerates\.org/'
-        headers:
-          Authorization: 'Token %env(OPEN_EXCHANGE_RATES_TOKEN)%'
-        timeout: 5

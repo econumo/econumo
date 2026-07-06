@@ -8,6 +8,7 @@ import { useActiveAreaStore } from './active-area';
 import { useUsersStore } from './users';
 import { useTransactionsStore } from './transactions';
 import { useBudgetsStore } from './budgets';
+import { useAccountFoldersStore } from './account-folders';
 import { AccountListDto, AccountDto, AccountItemDto, AccountUpdateDto, AccountCreateDto } from 'modules/api/v1/dto/account.dto';
 import { useLocalStorage } from '@vueuse/core';
 import { RemovableRef } from '@vueuse/shared';
@@ -68,10 +69,21 @@ export const useAccountsStore = defineStore('accounts', () => {
   function createAccount(form: AccountCreateDto) {
     trackEvent(METRICS.ACCOUNT_CREATE);
     const budgetsStore = useBudgetsStore();
+    const transactionsStore = useTransactionsStore();
     return AccountsAPIv1.create(form, (response: AccountItemDto) => {
       addAccount(response.item);
-      if (response.item.balance > 0) {
+      // A non-zero opening balance writes a correction transaction; add it so it
+      // shows immediately instead of waiting for the next full sync.
+      if (response.transaction) {
+        transactionsStore.TRANSACTION_ADDED(response.transaction);
         budgetsStore.resetCachedBudget();
+      }
+      // A user's very first account makes the backend auto-create a default
+      // folder. When the user had no folders, refetch so that folder appears
+      // now instead of waiting for the next periodic sync.
+      const foldersStore = useAccountFoldersStore();
+      if (foldersStore.accountFolders.length === 0) {
+        foldersStore.fetchAccountFolders();
       }
     }, (error: any) => {
       console.log('Accounts error', error);

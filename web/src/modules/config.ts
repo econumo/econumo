@@ -11,6 +11,8 @@ interface EconumoConfig {
   API_URL?: string
   ALLOW_REGISTRATION?: boolean | string
   PAYWALL_ENABLED?: boolean | string
+  ALLOW_CUSTOM_API?: boolean | string
+  VERSION?: string
 }
 
 declare global {
@@ -83,8 +85,16 @@ export function getWebsiteUrl(): string {
   return process.env.WEBSITE_URL ?? 'https://econumo.com'
 }
 
+export function getVersion(): string {
+  return window.econumoConfig?.VERSION || String(process.env.ECONUMO_VERSION)
+}
+
 export function isCustomApiAllowed(): boolean {
-  return process.env.ALLOW_CUSTOM_API === 'true'
+  const allowCustomApi = window.econumoConfig?.ALLOW_CUSTOM_API
+  if (typeof allowCustomApi === 'boolean') {
+    return allowCustomApi
+  }
+  return allowCustomApi === 'true'
 }
 
 export function isRegistrationAllowed(): boolean {
@@ -116,6 +126,7 @@ export default {
   locale,
   getLocaleOptions,
   getWebsiteUrl,
+  getVersion,
   isCustomApiAllowed,
   isRegistrationAllowed,
   isPaywallEnabled

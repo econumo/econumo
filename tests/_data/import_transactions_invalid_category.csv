@@ -1,4 +1,0 @@
-Account,Date,Amount,Category,Description
-Cash,2024-01-01,10,Food,Valid category
-Cash,2024-01-02,5,A,Invalid category
-Cash,2024-01-03,7,B,Invalid category

@@ -1,0 +1,127 @@
+name: Go tests
+
+# Guards the Go backend on every push + PR with two tiers:
+#   - smoke:      unit + sqlite + lint + coverage gate (fast, no dependencies)
+#   - regression: the sqlite-vs-PostgreSQL engine comparison against a real
+#                 Postgres service container
+on:
+    push:
+        paths:
+            - "cmd/**"
+            - "internal/**"
+            - "go.mod"
+            - "go.sum"
+            - "Makefile"
+            - ".github/workflows/go-tests.yml"
+    pull_request:
+        paths:
+            - "cmd/**"
+            - "internal/**"
+            - "go.mod"
+            - "go.sum"
+            - "Makefile"
+            - ".github/workflows/go-tests.yml"
+
+permissions:
+    contents: read
+
+jobs:
+    # SMOKE: build, vet, gofmt, and the fast sqlite-only suite with a coverage gate.
+    # CGO stays off (both DB drivers are pure Go), matching production builds.
+    smoke:
+        name: Smoke (unit + sqlite)
+        runs-on: ubuntu-latest
+        env:
+            CGO_ENABLED: "0"
+            # Lock the go driver and its tools to the single SDK setup-go installs
+            # (from go.mod). With 'auto', the runner's newer default Go can leak in
+            # via toolchain re-exec, mixing a 1.25 driver with 1.26-compiled objects
+            # ("compile: version ... does not match go tool version ...").
+            GOTOOLCHAIN: local
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-go@v5
+              with:
+                  go-version-file: go.mod
+                  cache-dependency-path: go.sum
+            - name: Smoke suite (lint + sqlite tests + coverage gate)
+              run: make test
+            - name: Coverage summary
+              if: always()
+              env:
+                  GO_COVER_MIN: "78"
+              run: |
+                  if [ ! -f coverage.out ]; then
+                    echo "No coverage profile was produced." >> "$GITHUB_STEP_SUMMARY"
+                    exit 0
+                  fi
+                  total=$(go tool cover -func=coverage.out | tail -1 | awk '{print $NF}')
+                  {
+                    echo "## Go test coverage"
+                    echo ""
+                    echo "**Total: ${total}** (gate: ${GO_COVER_MIN}%)"
+                    echo ""
+                    echo "<details><summary>Per-function coverage</summary>"
+                    echo ""
+                    echo '```'
+                    go tool cover -func=coverage.out
+                    echo '```'
+                    echo ""
+                    echo "</details>"
+                  } >> "$GITHUB_STEP_SUMMARY"
+                  go tool cover -html=coverage.out -o coverage.html
+            - name: Upload coverage profile
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage
+                  path: coverage.out
+                  if-no-files-found: ignore
+            - name: Upload HTML coverage report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-html
+                  path: coverage.html
+                  if-no-files-found: ignore
+
+    # REGRESSION: the sqlite-vs-PostgreSQL engine comparison against a real
+    # Postgres. Runs after smoke passes (smoke is the cheaper gate).
+    regression:
+        name: Regression (sqlite vs PostgreSQL)
+        runs-on: ubuntu-latest
+        needs: smoke
+        env:
+            CGO_ENABLED: "0"
+            # See smoke job: keep the toolchain locked to the SDK setup-go installs.
+            GOTOOLCHAIN: local
+            DATABASE_TEST_PGSQL_URL: postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
+        services:
+            postgres:
+                image: postgres:17-alpine
+                env:
+                    POSTGRES_USER: econumo
+                    POSTGRES_PASSWORD: econumo
+                    POSTGRES_DB: econumo_test
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U econumo"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-go@v5
+              with:
+                  go-version-file: go.mod
+                  cache-dependency-path: go.sum
+            # The Postgres service container already provisions econumo_test, so call
+            # the engine suites directly (skip pg-ensure, which expects compose).
+            - name: Engine-comparison suite
+              run: make test-engines
+            # Run the whole repo/unit suite a second time against PostgreSQL so the
+            # pgsql adapters + generated pgsql queries are exercised, not just the
+            # sqlite-vs-pgsql parity catalogue.
+            - name: Repo suite on PostgreSQL
+              run: make test-repo-pgsql

@@ -15,14 +15,14 @@ updates:
 
   # Enable version updates for Docker
   - package-ecosystem: "docker"
-    directory: "/deployment/docker/app/"
+    directory: "/deployment/docker/"
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "chore: "
- 
-  # Enable version updates for Composer
-  - package-ecosystem: "composer"
+
+  # Enable version updates for Go modules
+  - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
