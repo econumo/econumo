@@ -27,7 +27,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData } from '@/features/user/queries'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories } from '@/features/classifications/queries'
-import { CurrencySelect } from '@/components/CurrencySelect'
+import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import {
   useBudget,
   useSetLimit,
@@ -60,7 +60,6 @@ import { BudgetDialog } from './BudgetDialog'
 import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
 import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement } from './elementMove'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { CoinLoader } from '@/components/CoinLoader'
 
 function DraggableElement({ id, children }: { id: string; children: ReactNode }) {
@@ -705,18 +704,17 @@ export function BudgetPage() {
         cancelLabel={t('elements.button.cancel.label')}
       />
 
+      {/* the same search-first currency picker the account form uses */}
       {currencyTarget ? (
-        <ResponsiveDialog open onOpenChange={(o) => !o && setCurrencyTarget(null)} title={t('modules.budget.modal.change_element_currency_form.header')} description={currencyTarget.name}>
-          <div className="flex flex-col gap-4">
-            <CurrencySelect
-              aria-label={t('modules.budget.form.budget_envelope.currency.label')}
-              value={currencyTarget.currencyId ?? budget.meta.currencyId}
-              onChange={(currencyId) => {
-                changeCurrency.mutate({ budgetId: budget.meta.id, elementId: currencyTarget.id, currencyId }, { onSuccess: () => setCurrencyTarget(null) })
-              }}
-            />
-          </div>
-        </ResponsiveDialog>
+        <CurrencyPickerDialog
+          open
+          title={t('modules.budget.modal.change_element_currency_form.header')}
+          value={currencyTarget.currencyId ?? budget.meta.currencyId}
+          onClose={() => setCurrencyTarget(null)}
+          onPick={(currencyId) => {
+            changeCurrency.mutate({ budgetId: budget.meta.id, elementId: currencyTarget.id, currencyId }, { onSuccess: () => setCurrencyTarget(null) })
+          }}
+        />
       ) : null}
 
       <SetLimitDialog
