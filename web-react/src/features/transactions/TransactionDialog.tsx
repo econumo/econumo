@@ -222,7 +222,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       {/* the dialog header is visually hidden — the title shares one row with
           the back-a-day arrow + date chip (Vue header row) */}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-lg font-semibold uppercase tracking-wide">{title}</span>
+        <span className="text-lg font-normal uppercase tracking-wide">{title}</span>
         <span className="flex items-center gap-1">
           <Button
             type="button"
