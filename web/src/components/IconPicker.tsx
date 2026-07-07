@@ -1,28 +1,65 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 import type { CarouselApi } from '@/components/ui/carousel'
 import { EntityIcon } from '@/components/EntityIcon'
 import { availableIcons } from '@/lib/icons'
 
-// 9 columns × 4 rows per slide
-const PAGE_SIZE = 36
-
-const pages: string[][] = []
-for (let i = 0; i < availableIcons.length; i += PAGE_SIZE) {
-  pages.push(availableIcons.slice(i, i + PAGE_SIZE))
-}
+const COLS = 9
+const BASE_ROWS = 4
+// cell = 20px glyph + 2×6px padding; rows are gap-1 (4px) apart; the dot strip
+// below the carousel is pt-2 (8px) + 8px dots
+const CELL_H = 32
+const GAP = 4
+const DOTS_H = 16
 
 interface IconPickerProps {
   value: string
   onChange: (icon: string) => void
   'aria-label': string
+  /** grow into the height the parent allocates (full-screen mobile forms):
+      free space becomes more icon rows per page instead of dead space */
+  fill?: boolean
 }
 
 // Swipeable icon pages with dot navigation — no scrollbar in the dialog.
 // Opens on the page holding the current icon.
-export function IconPicker({ value, onChange, 'aria-label': ariaLabel }: IconPickerProps) {
+export function IconPicker({ value, onChange, 'aria-label': ariaLabel, fill = false }: IconPickerProps) {
   const [api, setApi] = useState<CarouselApi>()
-  const [startPage] = useState(() => Math.max(0, pages.findIndex((page) => page.includes(value))))
+  const measureRef = useRef<HTMLDivElement>(null)
+  const [rows, setRows] = useState(BASE_ROWS)
+
+  useEffect(() => {
+    if (!fill) {
+      return
+    }
+    const el = measureRef.current
+    if (!el) {
+      return
+    }
+    const measure = () => {
+      const avail = el.clientHeight - DOTS_H
+      setRows(Math.max(BASE_ROWS, Math.floor((avail + GAP) / (CELL_H + GAP))))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [fill])
+
+  const pages = useMemo(() => {
+    const pageSize = COLS * rows
+    const result: string[][] = []
+    for (let i = 0; i < availableIcons.length; i += pageSize) {
+      result.push(availableIcons.slice(i, i + pageSize))
+    }
+    return result
+  }, [rows])
+  // the page holding the current icon — embla only reads startIndex on init,
+  // so a rows-change remount (key) re-anchors there too
+  const startPage = Math.max(
+    0,
+    pages.findIndex((page) => page.includes(value)),
+  )
   const [page, setPage] = useState(startPage)
 
   useEffect(() => {
@@ -37,13 +74,13 @@ export function IconPicker({ value, onChange, 'aria-label': ariaLabel }: IconPic
     }
   }, [api])
 
-  return (
-    <div role="listbox" aria-label={ariaLabel}>
-      <Carousel setApi={setApi} opts={{ startIndex: startPage }}>
+  const picker = (
+    <>
+      <Carousel key={rows} setApi={setApi} opts={{ startIndex: startPage }} className={fill ? 'min-h-0 flex-1' : undefined}>
         <CarouselContent>
           {pages.map((pageIcons, i) => (
             <CarouselItem key={i}>
-              <div className="grid min-h-38 grid-cols-9 content-start gap-1">
+              <div className={`grid grid-cols-9 content-start gap-1 ${fill ? '' : 'min-h-38'}`}>
                 {pageIcons.map((iconName) => (
                   <button
                     key={iconName}
@@ -79,6 +116,24 @@ export function IconPicker({ value, onChange, 'aria-label': ariaLabel }: IconPic
           />
         ))}
       </div>
+    </>
+  )
+
+  if (fill) {
+    // The measured layer is absolute so its height is the flex allocation, never
+    // its own content height — measuring in-flow would feed the ResizeObserver
+    // its own row growth. min-h-40 keeps the BASE_ROWS fallback usable.
+    return (
+      <div className="relative min-h-40 flex-1">
+        <div ref={measureRef} role="listbox" aria-label={ariaLabel} className="absolute inset-0 flex flex-col">
+          {picker}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div role="listbox" aria-label={ariaLabel}>
+      {picker}
     </div>
   )
 }

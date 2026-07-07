@@ -33,6 +33,9 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
   // keep the (possibly long, title-less-confirm) heading clear of the corner X
   const headerClass = hideHeader ? 'sr-only' : showCloseButton ? 'pr-8' : undefined
   const contentRef = useRef<HTMLDivElement>(null)
+  // edge-to-edge viewport: content that reaches the screen bottom must clear
+  // the home indicator itself; a pinned footer carries its own inset instead
+  const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
 
   // An interaction that BEGAN inside a dialog stacked on top of this one must
   // never dismiss this one. Radix defers its outside-check to the click phase,
@@ -67,16 +70,17 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           ref={contentRef}
-          className="top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100"
+          className="top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
           showCloseButton={showCloseButton}
         >
-          <DialogHeader className={`${headerClass ?? ''} px-4 pt-4`}>
+          {/* the full-viewport page sits under the status bar — keep the header (and the corner X above) clear of it */}
+          <DialogHeader className={`${headerClass ?? ''} px-4 pt-[max(env(safe-area-inset-top),1rem)]`}>
             <DialogTitle className={titleClass}>{title}</DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}
           </DialogHeader>
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
-          <div className="flex-1 overflow-y-auto px-4 pt-1 pb-4">{children}</div>
+          <div className={bodyClass}>{children}</div>
           {footer ? (
             <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">{footer}</div>
           ) : null}
@@ -94,7 +98,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
           </DrawerHeader>
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
-          <div className="flex-1 overflow-y-auto px-4 pt-1 pb-4">{children}</div>
+          <div className={bodyClass}>{children}</div>
           {footer ? (
             <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">{footer}</div>
           ) : null}

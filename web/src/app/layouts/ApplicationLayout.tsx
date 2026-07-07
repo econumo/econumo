@@ -92,7 +92,10 @@ export function ApplicationLayout() {
   return (
     // Fixed-height shell: the sidebar and the workspace scroll independently
     // (the window itself never scrolls), matching the Vue layout.
-    <div className="flex h-svh overflow-hidden">
+    // The PWA viewport is edge-to-edge (viewport-fit=cover), so the shell keeps
+    // itself clear of the status bar / rounded corners; the bottom inset is
+    // handled per bottom bar so their backgrounds still reach the screen edge.
+    <div className="flex h-svh overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       {showSidebar ? (
         <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
           {/* On desktop the user block stays pinned above the scrolling tree;
@@ -140,7 +143,7 @@ export function ApplicationLayout() {
           )}
 
           {rail ? (
-            <footer className="flex flex-col items-center gap-4 border-t px-2 py-3">
+            <footer className="flex flex-col items-center gap-4 border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
               <Link
                 to={RouterPage.SETTINGS}
                 title={t('pages.settings.settings.menu_item')}
@@ -159,7 +162,7 @@ export function ApplicationLayout() {
               </button>
             </footer>
           ) : (
-            <footer className="flex items-center justify-between border-t px-4 py-3">
+            <footer className="flex items-center justify-between border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-0.5">
                   <img src={grayLogo} width={125} height={20} alt="" />

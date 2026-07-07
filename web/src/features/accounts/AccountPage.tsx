@@ -266,7 +266,7 @@ export function AccountPage() {
       </div>
 
       {isCompact && canChangeTransaction ? (
-        <footer className="shrink-0">
+        <footer className="shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button
             type="button"
             className="h-11 w-full"

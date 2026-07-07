@@ -144,7 +144,9 @@ export function AccountDialog() {
     >
       <form
         id="account-dialog-form"
-        className="flex flex-col gap-4"
+        // min-h-full: on the full-screen mobile page the last (icon) block grows
+        // into the leftover height; desktop's auto-height dialog ignores it
+        className="flex min-h-full flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
@@ -186,9 +188,9 @@ export function AccountDialog() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
           <Label>{t('modals.account.form.icon.label')}</Label>
-          <IconPicker value={icon} onChange={setIcon} aria-label={t('modals.account.form.icon.label')} />
+          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modals.account.form.icon.label')} />
         </div>
       </form>
 

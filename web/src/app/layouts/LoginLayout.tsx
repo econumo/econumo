@@ -11,7 +11,7 @@ export function LoginLayout() {
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     `flex-1 border-b-2 pb-2 text-center text-sm font-medium ${isActive ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground'}`
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-4">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex justify-center">
           <img src={logo} width={194} height={20} alt={t('elements.econumo.label')} />

@@ -48,11 +48,26 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
   return (
     <ResponsiveDialog
       open={open}
+      caps
+      fullScreen
       onOpenChange={(o) => !o && onClose()}
       title={isNew ? t('modules.classifications.categories.modals.create.header') : t('modules.classifications.categories.modals.edit.header')}
+      footer={
+        <div className="grid grid-cols-2 gap-3">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t('elements.button.cancel.label')}
+          </Button>
+          <Button type="submit" form="category-dialog-form">
+            {isNew ? t('elements.button.create.label') : t('elements.button.update.label')}
+          </Button>
+        </div>
+      }
     >
       <form
-        className="flex flex-col gap-4"
+        id="category-dialog-form"
+        // min-h-full: on the full-screen mobile page the last (icon) block grows
+        // into the leftover height; desktop's auto-height dialog ignores it
+        className="flex min-h-full flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
@@ -87,16 +102,9 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
           <Label>{t('modules.classifications.categories.forms.category.icon.label')}</Label>
-          <IconPicker value={icon} onChange={setIcon} aria-label={t('modules.classifications.categories.forms.category.icon.label')} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
-          </Button>
-          <Button type="submit">{isNew ? t('elements.button.create.label') : t('elements.button.update.label')}</Button>
+          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modules.classifications.categories.forms.category.icon.label')} />
         </div>
       </form>
     </ResponsiveDialog>

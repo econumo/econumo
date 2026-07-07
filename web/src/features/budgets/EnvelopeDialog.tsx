@@ -98,7 +98,9 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
     >
       <form
         id="envelope-dialog-form"
-        className="flex flex-col gap-4"
+        // min-h-full: on the full-screen mobile page the last (icon) block grows
+        // into the leftover height; desktop's auto-height dialog ignores it
+        className="flex min-h-full flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
@@ -197,9 +199,9 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
           </ul>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
           <Label>{t('modules.budget.form.budget_envelope.icon.label')}</Label>
-          <IconPicker value={icon} onChange={setIcon} aria-label={t('modules.budget.form.budget_envelope.icon.label')} />
+          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modules.budget.form.budget_envelope.icon.label')} />
         </div>
       </form>
 

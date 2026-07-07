@@ -22,7 +22,7 @@ export function SwitchAccountPrompt() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-2 border-t bg-background p-3 shadow-lg">
+    <div className="fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-2 border-t bg-background p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg">
       <button
         type="button"
         className="flex items-center gap-1 text-sm"
