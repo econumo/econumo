@@ -296,6 +296,8 @@ export default {
           'header': 'Reset password',
           'information': 'Enter the email address you registered with and we\'ll send you a security code.',
           'instruction': 'We\'ve sent a security code to your email. Enter it below and choose a new password.',
+          'send_failed': 'Couldn\'t send the code. Check the email address and try again.',
+          'reset_failed': 'The password wasn\'t reset. Check the code and try again.',
         },
         'sign_up_failed': {
           'header': 'Registration failed',

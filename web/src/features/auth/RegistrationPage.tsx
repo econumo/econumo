@@ -89,6 +89,7 @@ export function RegistrationPage() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-name">{t('modules.user.form.user.name.label')}</Label>
           <Input
+            className="h-11"
             id="reg-name"
             placeholder={t('modules.user.form.user.name.placeholder')}
             {...register('name', {
@@ -104,6 +105,7 @@ export function RegistrationPage() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-email">{t('modules.user.form.user.email.label')}</Label>
           <Input
+            className="h-11"
             id="reg-email"
             type="email"
             placeholder={t('modules.user.form.user.email.placeholder')}
@@ -120,6 +122,7 @@ export function RegistrationPage() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-password">{t('modules.user.form.user.password.label')}</Label>
           <Input
+            className="h-11"
             id="reg-password"
             type="password"
             placeholder={t('modules.user.form.user.password.placeholder')}
@@ -136,6 +139,7 @@ export function RegistrationPage() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-password-retry">{t('modules.user.form.user.password_retry.label')}</Label>
           <Input
+            className="h-11"
             id="reg-password-retry"
             type="password"
             placeholder={t('modules.user.form.user.password_retry.placeholder')}
@@ -173,6 +177,7 @@ export function RegistrationPage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="reg-host">{t('modules.user.form.user.server_host.label')}</Label>
                 <Input
+                  className="h-11"
                   id="reg-host"
                   type="url"
                   placeholder={t('modules.user.form.user.server_host.placeholder')}
@@ -189,7 +194,7 @@ export function RegistrationPage() {
           </div>
         ) : null}
 
-        <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85" disabled={registerMutation.isPending}>
+        <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={registerMutation.isPending}>
           {t('modules.user.form.sign_up.action.sign_up')}
         </Button>
 

@@ -81,6 +81,7 @@ export function LoginPage() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="login-email">{t('modules.user.form.user.email.label')}</Label>
           <Input
+            className="h-11"
             id="login-email"
             type="email"
             placeholder={t('modules.user.form.user.email.placeholder')}
@@ -98,6 +99,7 @@ export function LoginPage() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="login-password">{t('modules.user.form.user.password.label')}</Label>
           <Input
+            className="h-11"
             id="login-password"
             type="password"
             placeholder={t('modules.user.form.user.password.placeholder')}
@@ -135,6 +137,7 @@ export function LoginPage() {
               <div className="flex flex-col gap-2">
                 <Label htmlFor="login-host">{t('modules.user.form.user.server_host.label')}</Label>
                 <Input
+                  className="h-11"
                   id="login-host"
                   type="url"
                   placeholder={t('modules.user.form.user.server_host.placeholder')}
@@ -151,10 +154,10 @@ export function LoginPage() {
           </div>
         ) : null}
 
-        <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85" disabled={login.isPending}>
+        <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={login.isPending}>
           {t('modules.user.form.sign_in.action.sign_in')}
         </Button>
-        <Button type="button" variant="secondary" className="w-full" onClick={() => setRecoveryOpen(true)}>
+        <Button type="button" variant="secondary" className="w-full h-11" onClick={() => setRecoveryOpen(true)}>
           {t('modules.user.form.sign_in.action.forget_password')}
         </Button>
       </form>

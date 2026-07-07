@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidEmail, isValidPassword, isValidRecoveryCode } from '@/lib/validation'
 import { useRemindPassword, useResetPassword } from './queries'
 
@@ -23,13 +23,21 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
   const { register, handleSubmit, formState: { errors } } = form
 
   const sendCode = handleSubmit(async ({ email }) => {
-    await remind.mutateAsync({ username: email })
-    setIsCodeSent(true)
+    try {
+      await remind.mutateAsync({ username: email })
+      setIsCodeSent(true)
+    } catch {
+      // stay on the step — the inline error below explains
+    }
   })
 
   const changePassword = handleSubmit(async ({ email, code, password }) => {
-    await reset.mutateAsync({ username: email, code, password })
-    onClose()
+    try {
+      await reset.mutateAsync({ username: email, code, password })
+      onClose()
+    } catch {
+      // stay on the step — the inline error below explains
+    }
   })
 
   return (
@@ -38,12 +46,12 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
       onOpenChange={(o) => !o && onClose()}
       title={t('modules.user.modal.access_recovery.header')}
       description={t('modules.user.modal.access_recovery.information')}
-      dismissible={false}
     >
       <form onSubmit={isCodeSent ? changePassword : sendCode} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-2">
           <Label htmlFor="recovery-email">{t('modules.user.form.user.email.placeholder')}</Label>
           <Input
+            className="h-11"
             id="recovery-email"
             type="email"
             disabled={isCodeSent}
@@ -64,6 +72,7 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
             <div className="flex flex-col gap-2">
               <Label htmlFor="recovery-code">{t('modules.user.form.user.code.placeholder')}</Label>
               <Input
+                className="h-11"
                 id="recovery-code"
                 autoFocus
                 {...register('code', {
@@ -78,6 +87,7 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
             <div className="flex flex-col gap-2">
               <Label htmlFor="recovery-password">{t('modules.user.form.user.password.placeholder')}</Label>
               <Input
+                className="h-11"
                 id="recovery-password"
                 type="password"
                 {...register('password', {
@@ -89,14 +99,32 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
               />
               {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
             </div>
-            <Button type="submit" className="w-full max-md:h-11" disabled={reset.isPending}>
-              {t('modules.user.form.access_recovery.action.change_password.label')}
-            </Button>
+            {reset.isError ? (
+              <p className="text-sm text-destructive">{t('modules.user.modal.access_recovery.reset_failed')}</p>
+            ) : null}
+            <div className={dialogActionsClass}>
+              <Button type="button" variant="secondary" onClick={onClose}>
+                {t('elements.button.cancel.label')}
+              </Button>
+              <Button type="submit" disabled={reset.isPending}>
+                {t('modules.user.form.access_recovery.action.change_password.label')}
+              </Button>
+            </div>
           </>
         ) : (
-          <Button type="submit" className="w-full max-md:h-11" disabled={remind.isPending}>
-            {t('modules.user.form.access_recovery.action.recover.label')}
-          </Button>
+          <>
+            {remind.isError ? (
+              <p className="text-sm text-destructive">{t('modules.user.modal.access_recovery.send_failed')}</p>
+            ) : null}
+            <div className={dialogActionsClass}>
+              <Button type="button" variant="secondary" onClick={onClose}>
+                {t('elements.button.cancel.label')}
+              </Button>
+              <Button type="submit" disabled={remind.isPending}>
+                {t('modules.user.form.access_recovery.action.recover.label')}
+              </Button>
+            </div>
+          </>
         )}
       </form>
     </ResponsiveDialog>
