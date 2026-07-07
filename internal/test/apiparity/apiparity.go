@@ -1,8 +1,8 @@
 // Package apiparity holds the shared API scenario catalogue: an ordered set of
 // HTTP call sequences replayed against the REAL production handler
 // (server.BuildAPI). Two consumers: the untagged sqlite smoke suite in this
-// package (golden files, every `make test`) and the build-tagged enginecompare
-// parity suite (sqlite-vs-pgsql byte equality, `make regression`).
+// package (golden files, every `make go-test`) and the build-tagged enginecompare
+// parity suite (sqlite-vs-pgsql byte equality, `make test`).
 package apiparity
 
 // Call is one request in a scenario plus a label for diff messages.

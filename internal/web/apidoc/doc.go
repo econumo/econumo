@@ -3,7 +3,7 @@
 // the four response-envelope schemas the handler annotations reference. The
 // generated docs.go is committed; regenerate it with `make swagger` (the
 // canonical, version-pinned path — also run automatically before
-// build/run/publish/up and verified by `make go-lint`/`make test`). For an
+// build/run/publish/docker-up and verified by `make go-lint`/`make go-test`). For an
 // ad-hoc run use `go generate ./internal/web/apidoc`.
 //
 // Serving: ui/router wires Swagger UI at /api/doc and the raw spec at

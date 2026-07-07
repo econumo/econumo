@@ -1,46 +1,10 @@
 {
-  "extends": "@quasar/app-webpack/tsconfig-preset",
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-//      "src/*": [
-//        "src/*"
-//      ],
-//      "app/*": [
-//        "*"
-//      ],
-      "components/*": [
-        "src/components/*"
-      ],
-      "layouts/*": [
-        "src/layouts/*"
-      ],
-      "pages/*": [
-        "src/pages/*"
-      ],
-      "mixins/*": [
-        "src/mixins/*"
-      ],
-      "modules/*": [
-        "src/modules/*"
-      ],
-      "stores/*": [
-        "src/stores/*"
-      ],
-      "vue$": [
-        "node_modules/vue/dist/vue.runtime.esm-bundler.js"
-      ],
-      "@shared/*": [
-        "src/shared/*"
-      ]
-    }
+    "paths": { "@/*": ["./src/*"] }
   },
-  "exclude": [
-    "./dist",
-    "./.quasar",
-    "./node_modules",
-    "./src-capacitor",
-    "./src-cordova",
-    "./quasar.config.*.temporary.compiled*"
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
   ]
 }

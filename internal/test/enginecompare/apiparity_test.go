@@ -8,7 +8,7 @@ package enginecompare
 // the reference (target) engine. The catalogue itself — Call/Scenario
 // definitions, the harness, and the fixture seed — lives in the untagged
 // apiparity package so the same scenarios also back the sqlite-only smoke
-// suite (golden files, every `make test`).
+// suite (golden files, every `make go-test`).
 //
 // PostgreSQL SKIPs when DATABASE_TEST_PGSQL_URL is unset; the SQLite half still
 // runs, so every scenario is always exercised.

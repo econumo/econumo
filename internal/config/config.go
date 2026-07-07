@@ -48,7 +48,7 @@ type Config struct {
 	OpenExchangeRatesToken string
 
 	// SPA
-	SPADir string // path to web/dist/spa (served directly by the Go binary)
+	SPADir string // path to web/dist (served directly by the Go binary)
 }
 
 // IsDev reports whether stack traces should be exposed in the 500 envelope.
@@ -71,7 +71,7 @@ func Load() (Config, error) {
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
-		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist/spa"),
+		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist"),
 	}
 
 	// Some legacy .env files carry the "%kernel.project_dir%" placeholder in their

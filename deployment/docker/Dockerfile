@@ -9,17 +9,13 @@
 FROM node:25-alpine AS frontend
 WORKDIR /build/web
 RUN npm install -g pnpm@10
-COPY web/package.json web/pnpm-lock.yaml* ./
-RUN pnpm install --shamefully-hoist
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY web/ ./
-# web/.env is gitignored, so copy the committed template for a deterministic build.
-# Pass --build-arg ECONUMO_VERSION=v1.2.3 to set the UI version label.
+# Vite inlines ECONUMO_VERSION (envPrefix in vite.config.ts) as the UI version label.
+# Pass --build-arg ECONUMO_VERSION=v1.2.3 to set it; defaults to "dev".
 ARG ECONUMO_VERSION=""
-RUN cp .env.dist .env && \
-    if [ -n "$ECONUMO_VERSION" ]; then \
-        sed -i "s/^ECONUMO_VERSION=.*/ECONUMO_VERSION=\"${ECONUMO_VERSION}\"/" .env; \
-    fi
-RUN pnpm run build
+RUN ECONUMO_VERSION="${ECONUMO_VERSION:-dev}" pnpm run build
 
 # --- 2. Go build (CGO off -> fully static binary) ---
 FROM golang:1.26-alpine AS gobuild
@@ -36,7 +32,7 @@ RUN mkdir -p /out/var/db /out/var/jwt
 # --- 3. Runtime (distroless: no shell, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
 COPY --from=gobuild /app/econumo /app/econumo
-COPY --from=frontend /build/web/dist/spa /app/web
+COPY --from=frontend /build/web/dist /app/web
 # Runtime data dir (sqlite db + auto-generated JWT keypair); mount a volume here to persist.
 COPY --from=gobuild --chown=nonroot:nonroot /out/var /app/var
 
