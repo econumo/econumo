@@ -169,3 +169,15 @@ it('totals row sums all buckets in the budget currency', async () => {
   expect(totals).toHaveTextContent('45.50')
   expect(totals).toHaveTextContent('554.50')
 })
+
+it('phone totals unfold into labeled budget/spent/available lines', async () => {
+  renderTable()
+  const totals = await screen.findByTestId('budget-totals-mobile')
+  expect(totals).toHaveTextContent('Total')
+  await waitFor(() => expect(totals).toHaveTextContent('300.00'))
+  expect(totals).toHaveTextContent('Budget')
+  expect(totals).toHaveTextContent('Spent')
+  expect(totals).toHaveTextContent('Available')
+  expect(totals).toHaveTextContent('45.50')
+  expect(totals).toHaveTextContent('554.50')
+})

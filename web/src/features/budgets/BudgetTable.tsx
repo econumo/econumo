@@ -297,16 +297,37 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         )
       })}
 
-      <div className="flex items-center gap-1.5 rounded-md border px-3 py-2 font-medium sm:gap-2 sm:px-4" data-testid="budget-totals">
+      <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('modules.budget.page.budget.structure.total.name')}</span>
-        <span className="hidden w-24 text-right text-[15px] tabular-nums sm:block">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
-        <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">
+        <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
+        <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
           {moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}
         </span>
-        <span className="flex w-20 justify-center sm:w-24">
+        <span className="flex w-24 justify-center">
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
-        <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{budgetCurrency?.symbol}</span>
+        <span className="w-6 text-center text-xs text-muted-foreground">{budgetCurrency?.symbol}</span>
+      </div>
+
+      {/* the phone table hides the budget column, so the totals unfold into
+          labeled lines; the margin keeps the card off the very screen edge */}
+      <div
+        className="mb-[max(env(safe-area-inset-bottom),0.75rem)] flex flex-col gap-2 rounded-md border px-3 py-2.5 sm:hidden"
+        data-testid="budget-totals-mobile"
+      >
+        <span className="text-[15px] font-medium">{t('modules.budget.page.budget.structure.total.name')}</span>
+        <span className="flex items-baseline justify-between">
+          <span className="text-[13px] text-muted-foreground">{t('modules.budget.page.budget.structure.tab.budgeted')}</span>
+          <span className="text-[15px] font-medium tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
+        </span>
+        <span className="flex items-baseline justify-between">
+          <span className="text-[13px] text-muted-foreground">{t('modules.budget.page.budget.structure.tab.spent')}</span>
+          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}</span>
+        </span>
+        <span className="flex items-center justify-between">
+          <span className="text-[13px] text-muted-foreground">{t('modules.budget.page.budget.structure.tab.available')}</span>
+          <AvailablePill available={totals.available} currency={budgetCurrency} />
+        </span>
       </div>
     </div>
   )

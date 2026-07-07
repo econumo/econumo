@@ -89,12 +89,12 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
               />
               {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
             </div>
-            <Button type="submit" className="w-full" disabled={reset.isPending}>
+            <Button type="submit" className="w-full max-md:h-11" disabled={reset.isPending}>
               {t('modules.user.form.access_recovery.action.change_password.label')}
             </Button>
           </>
         ) : (
-          <Button type="submit" className="w-full" disabled={remind.isPending}>
+          <Button type="submit" className="w-full max-md:h-11" disabled={remind.isPending}>
             {t('modules.user.form.access_recovery.action.recover.label')}
           </Button>
         )}

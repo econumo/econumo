@@ -11,7 +11,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { InfoBox } from '@/components/InfoBox'
 import { PromptDialog } from '@/components/PromptDialog'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
 import { getChangedPositions } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
@@ -616,7 +616,7 @@ export function AccountsSettingsPage() {
               </span>
             </span>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className={`mt-4 ${dialogActionsClass}`}>
             <Button
               type="button"
               variant="destructive"

@@ -7,6 +7,10 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
 const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overlay"], [data-slot="alert-dialog-overlay"]'
 
+/** the standard dialog action row (Cancel | Confirm); phones get finger-height
+    buttons matching the Add-transaction bar (h-11) */
+export const dialogActionsClass = 'grid grid-cols-2 gap-3 max-md:[&_button]:h-11'
+
 interface ResponsiveDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -82,7 +86,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div className={bodyClass}>{children}</div>
           {footer ? (
-            <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">{footer}</div>
+            <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] [&_button]:h-11">{footer}</div>
           ) : null}
         </DialogContent>
       </Dialog>
@@ -100,7 +104,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
           {/* pt-1 keeps the first field's focus ring from being clipped by the scroll container */}
           <div className={bodyClass}>{children}</div>
           {footer ? (
-            <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">{footer}</div>
+            <div className="border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] [&_button]:h-11">{footer}</div>
           ) : null}
         </DrawerContent>
       </Drawer>

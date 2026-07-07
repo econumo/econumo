@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { importTransactionList } from '@/api/transaction'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
@@ -337,7 +337,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
           <Progress value={(progress.done / progress.total) * 100} aria-label="import progress" />
         ) : null}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" disabled={submitting} onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

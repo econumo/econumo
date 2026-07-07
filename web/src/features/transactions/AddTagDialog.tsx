@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { isValidTagName } from '@/lib/validation'
 
 interface AddTagDialogProps {
@@ -51,7 +51,7 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
             autoFocus
           />
         </CardField>
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { EntityIcon } from '@/components/EntityIcon'
 import { FailDialog } from '@/components/FailDialog'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
 import { downloadBlob, localDateStamp } from '@/lib/download'
 import { exportTransactionList } from '@/api/transaction'
@@ -85,7 +85,7 @@ export function ExportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
               </li>
             ))}
           </ul>
-          <div className="grid grid-cols-2 gap-3">
+          <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onClose}>
               {t('elements.button.cancel.label')}
             </Button>

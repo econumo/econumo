@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 
 interface PromptDialogProps {
   open: boolean
@@ -56,7 +56,7 @@ export function PromptDialog({ open, onClose, onSubmit, title, inputLabel, initi
             onChange={(e) => setValue(e.target.value)}
           />
         </CardField>
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {cancelLabel}
           </Button>

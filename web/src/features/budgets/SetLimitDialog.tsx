@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField } from '@/components/CardField'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { normalizeNumber } from '@/lib/money'
 import type { BudgetElementDto } from '@/api/dto/budget'
 import { limitAmountFromInput } from './limitAmount'
@@ -57,7 +57,7 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

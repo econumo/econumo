@@ -3,7 +3,7 @@ import { BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import type { ConnectionDto } from '@/api/dto/connection'
 import type { AccountRole } from '@/api/dto/account'
 import type { Id } from '@/api/types'
@@ -107,7 +107,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
         <div className="flex flex-col gap-4">
           {section('budgets', sharedBudgets)}
           {section('accounts', sharedAccounts)}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onClose}>
               {t('elements.button.ok.label')}
             </Button>

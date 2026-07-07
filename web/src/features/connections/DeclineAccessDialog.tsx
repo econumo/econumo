@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import type { UserDto } from '@/api/dto/user'
 
 interface DeclineAccessDialogProps {
@@ -25,7 +25,7 @@ export function DeclineAccessDialog({ open, owner, itemName, onDecline, onClose 
             </span>
           </div>
         ) : null}
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>
