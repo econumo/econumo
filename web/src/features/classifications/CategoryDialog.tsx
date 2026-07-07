@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { IconPicker } from '@/components/IconPicker'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { defaultCategoryIcon } from '@/lib/icons'
 import { isNotEmpty, isValidCategoryName } from '@/lib/validation'
 import type { CategoryDto, CategoryType } from '@/api/dto/category'
@@ -53,7 +53,7 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
       onOpenChange={(o) => !o && onClose()}
       title={isNew ? t('modules.classifications.categories.modals.create.header') : t('modules.classifications.categories.modals.edit.header')}
       footer={
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

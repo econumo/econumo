@@ -9,7 +9,7 @@ import { CalculatorInput } from '@/components/CalculatorInput'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { IconPicker } from '@/components/IconPicker'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { formatDateTime } from '@/lib/datetime'
 import { defaultAccountIcon } from '@/lib/icons'
 import { moneyFormat } from '@/lib/money'
@@ -132,7 +132,7 @@ export function AccountDialog() {
       onOpenChange={(o) => !o && close()}
       title={isNew ? t('modals.account.create_form.header') : t('modals.account.update_form.header')}
       footer={
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={close}>
             {t('elements.button.cancel.label')}
           </Button>

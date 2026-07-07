@@ -239,7 +239,7 @@ export function BudgetsPage() {
         title={t('modules.budget.modal.generic_error.header')}
         description={t('modules.budget.modal.generic_error.description')}
       >
-        <Button type="button" className="w-full" onClick={() => setErrorOpen(false)}>
+        <Button type="button" className="w-full h-11" onClick={() => setErrorOpen(false)}>
           {t('elements.button.close.label')}
         </Button>
       </ResponsiveDialog>

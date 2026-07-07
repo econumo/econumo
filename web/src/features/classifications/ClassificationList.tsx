@@ -243,7 +243,7 @@ export function ClassificationList<T extends ClassificationItem>({
 
       {/* compact tap-on-row action sheet */}
       <ResponsiveDialog open={sheetItem !== null} onOpenChange={(open) => !open && setSheetItem(null)} title={sheetItem?.name ?? ''}>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 [&_button]:h-11">
           <Button
             type="button"
             variant="outline"

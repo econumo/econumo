@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
@@ -200,7 +200,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       onOpenChange={(o) => !o && onDone()}
       title={title}
       footer={
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>
             {t('elements.button.cancel.label')}
           </Button>

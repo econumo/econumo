@@ -11,7 +11,7 @@ import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { fuzzyMatch } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { defaultEnvelopeIcon } from '@/lib/icons'
 import { isNotEmpty } from '@/lib/validation'
 import type { BudgetElementDto } from '@/api/dto/budget'
@@ -86,7 +86,7 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
       onOpenChange={(o) => !o && onClose()}
       title={isNew ? t('modules.budget.modal.create_envelope_form.header') : t('modules.budget.modal.update_envelope_form.header')}
       footer={
-        <div className="grid grid-cols-2 gap-3">
+        <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>

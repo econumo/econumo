@@ -132,7 +132,7 @@ export function ChangePasswordPage() {
         onOpenChange={(o) => !o && setOutcome(null)}
         title={t('modules.user.modal.change_password_success.text')}
       >
-        <Button type="button" className="w-full" onClick={() => setOutcome(null)}>
+        <Button type="button" className="w-full h-11" onClick={() => setOutcome(null)}>
           {t('elements.button.close.label')}
         </Button>
       </ResponsiveDialog>
@@ -143,7 +143,7 @@ export function ChangePasswordPage() {
         title={t('modules.user.modal.change_password_error.header')}
         description={errorMessage}
       >
-        <Button type="button" className="w-full" onClick={() => setOutcome(null)}>
+        <Button type="button" className="w-full h-11" onClick={() => setOutcome(null)}>
           {t('elements.button.close.label')}
         </Button>
       </ResponsiveDialog>
