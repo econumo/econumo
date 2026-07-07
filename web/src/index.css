@@ -201,13 +201,24 @@
   letter-spacing: 0.03em;
 }
 
-/* Loading dialog: three "e"-stamped gold coins juggling while we wait.
-   All shades derive from the frozen brand gold (econumo-yellow). */
+/* Loader: the live wordmark — the logo's dark "econum" letters with its gold
+   trailing "ooo" bouncing. Each "o" is a flat gold ring exactly like the
+   logo's; letters and o's share the logo's equal height, and the letter
+   baseline sits on the o's ground line, so the shadow strip (gap + ellipse)
+   hangs below it. */
 .coin-loader {
   display: flex;
   align-items: flex-end;
-  gap: 0.875rem;
+  gap: 0.25rem;
   padding-top: 1.5rem; /* headroom for the hop */
+  color: #333333; /* the frozen letter color of assets/econumo.svg */
+}
+
+.coin-loader-letters {
+  height: 1.5rem;
+  width: auto;
+  margin-bottom: 0.625rem; /* = unit gap (0.3125rem) + shadow height (0.3125rem) */
+  margin-right: 0.125rem;
 }
 
 .coin-loader-unit {
@@ -218,34 +229,18 @@
 }
 
 .coin-loader-coin {
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
   border-radius: 50%;
-  background: radial-gradient(
-    circle at 35% 28%,
-    color-mix(in srgb, var(--color-econumo-yellow), white 45%),
-    var(--color-econumo-yellow) 55%,
-    color-mix(in srgb, var(--color-econumo-yellow), black 12%) 100%
-  );
-  border: 2px solid color-mix(in srgb, var(--color-econumo-yellow), black 22%);
-  /* embossed rim: a light lip on top, a milled inner ring below it */
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.55),
-    inset 0 0 0 3px color-mix(in srgb, var(--color-econumo-yellow), black 8%);
-  color: var(--color-econumo-yellow-text);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  line-height: 1;
-  user-select: none;
+  /* stroke weight of the logo's letter "o": (Ø20.1 − Ø11.4) / 2 ≈ 4.35 of 20 units */
+  border: 0.3125rem solid var(--color-econumo-yellow);
   transform-origin: 50% 100%;
   animation: coin-bounce 1.5s ease-in-out infinite;
   animation-delay: var(--coin-delay, 0s);
 }
 
 .coin-loader-shadow {
-  width: 1.375rem;
+  width: 1.1875rem;
   height: 0.3125rem;
   border-radius: 50%;
   background: color-mix(in srgb, var(--color-econumo-yellow-text), transparent 65%);
