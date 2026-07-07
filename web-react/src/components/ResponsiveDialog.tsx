@@ -29,7 +29,9 @@ interface ResponsiveDialogProps {
 export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer }: ResponsiveDialogProps) {
   const isMobile = useIsMobile()
   const titleClass = caps ? 'uppercase tracking-wide' : undefined
-  const headerClass = hideHeader ? 'sr-only' : undefined
+  const showCloseButton = dismissible && (!hideHeader || showClose)
+  // keep the (possibly long, title-less-confirm) heading clear of the corner X
+  const headerClass = hideHeader ? 'sr-only' : showCloseButton ? 'pr-8' : undefined
   const contentRef = useRef<HTMLDivElement>(null)
 
   // An interaction that BEGAN inside a dialog stacked on top of this one must
@@ -67,7 +69,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
           ref={contentRef}
           className="top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100"
           onInteractOutside={onInteractOutside}
-          showCloseButton={dismissible && (!hideHeader || showClose)}
+          showCloseButton={showCloseButton}
         >
           <DialogHeader className={`${headerClass ?? ''} px-4 pt-4`}>
             <DialogTitle className={titleClass}>{title}</DialogTitle>
@@ -86,7 +88,8 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
     return (
       <Drawer open={open} onOpenChange={onOpenChange} dismissible={dismissible}>
         <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside}>
-          <DrawerHeader className={headerClass}>
+          {/* the drawer has no corner X, so it never needs the pr-8 clearance */}
+          <DrawerHeader className={hideHeader ? 'sr-only' : undefined}>
             <DrawerTitle className={titleClass}>{title}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
           </DrawerHeader>
@@ -105,7 +108,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
         ref={contentRef}
         onInteractOutside={onInteractOutside}
         // a floating X with no header row to anchor it looks stray — unless asked for
-        showCloseButton={dismissible && (!hideHeader || showClose)}
+        showCloseButton={showCloseButton}
       >
         <DialogHeader className={headerClass}>
           <DialogTitle className={titleClass}>{title}</DialogTitle>

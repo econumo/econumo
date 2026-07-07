@@ -147,13 +147,25 @@ it('windows long lists: first chunk renders, scroll sentinel loads more', async 
   vi.unstubAllGlobals()
 })
 
-it('desktop: clicking anywhere on the row opens the context menu', async () => {
+it('desktop: clicking anywhere on the row opens the transaction preview', async () => {
   mockViewport(false)
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByTestId('tx-t1'))
+  const dialog = await screen.findByRole('dialog', { name: 'Transaction details' })
+  expect(within(dialog).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+})
+
+it('desktop: the kebab menu still offers edit/delete without opening the preview', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('tx-t1')
+  await user.click(screen.getByRole('button', { name: 'actions t1' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  expect(screen.queryByRole('dialog', { name: 'Transaction details' })).not.toBeInTheDocument()
 })
 
 it('shared account: rows overlay the author avatar on the category icon', async () => {

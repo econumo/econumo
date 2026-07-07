@@ -221,17 +221,12 @@ export function AccountPage() {
             </div>
           ) : (
             // The whole row is one hover/tap surface (like the settings lists):
-            // click opens the kebab menu on desktop, the preview sheet on mobile.
+            // click opens the transaction preview; desktop keeps the kebab menu
+            // as an edit/delete shortcut.
             <div
               key={entry.transaction.id}
-              className={`flex items-start rounded-md ${
-                isCompact ? 'active:bg-accent' : `hover:bg-accent ${canTouchRow(entry.transaction) ? 'cursor-pointer' : ''}`
-              }`}
-              onClick={() =>
-                isCompact
-                  ? setPreview(entry.transaction)
-                  : canTouchRow(entry.transaction) && setOpenMenuId(entry.transaction.id)
-              }
+              className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'}`}
+              onClick={() => setPreview(entry.transaction)}
             >
               <div className="min-w-0 flex-1">
                 <TransactionRow transaction={entry.transaction} pageAccount={account} />
