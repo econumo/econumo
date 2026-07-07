@@ -52,8 +52,10 @@ export function IconPicker({ value, onChange, 'aria-label': ariaLabel }: IconPic
                     aria-selected={value === iconName}
                     aria-label={iconName}
                     title={iconName}
+                    // ring-inset: an outer ring gets clipped by the carousel's
+                    // overflow on the first column/row (reads as cut corners)
                     className={`flex items-center justify-center rounded-md p-1.5 hover:bg-accent ${
-                      value === iconName ? 'bg-accent ring-1 ring-ring' : ''
+                      value === iconName ? 'bg-accent ring-1 ring-ring ring-inset' : ''
                     }`}
                     onClick={() => onChange(iconName)}
                   >

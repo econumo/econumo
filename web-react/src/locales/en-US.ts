@@ -512,7 +512,11 @@ export default {
     },
     'budget': {
       'modal': {
-        'budget_form': { 'accounts': 'Accounts' },
+        'budget_form': {
+          'accounts': 'Accounts',
+          'accounts_included': '{count} of {total} included',
+          'accounts_hidden': 'In hidden folders',
+        },
         'create_budget_form': { 'header': 'Create a budget' },
         'update_budget_form': { 'header': 'Update the budget' },
         'create_folder_form': { 'header': 'Create a folder' },

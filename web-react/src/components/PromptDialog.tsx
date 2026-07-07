@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 
 interface PromptDialogProps {
@@ -46,11 +46,16 @@ export function PromptDialog({ open, onClose, onSubmit, title, inputLabel, initi
           submit()
         }}
       >
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="prompt-input">{inputLabel}</Label>
-          <Input id="prompt-input" autoFocus maxLength={64} value={value} onChange={(e) => setValue(e.target.value)} />
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        </div>
+        <CardField label={inputLabel} htmlFor="prompt-input" error={error}>
+          <Input
+            id="prompt-input"
+            className={cardFieldControlClass}
+            autoFocus
+            maxLength={64}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+        </CardField>
         <div className="grid grid-cols-2 gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
             {cancelLabel}

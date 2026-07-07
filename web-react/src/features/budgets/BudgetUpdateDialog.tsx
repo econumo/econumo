@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { CurrencySelect } from '@/components/CurrencySelect'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetName } from '@/lib/validation'
 import type { BudgetDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
+import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData } from '@/features/user/queries'
 import { useUpdateBudgetDetail, canConfigureBudget } from './queries'
+import { BudgetAccountsField } from './BudgetAccountsField'
 
 interface BudgetUpdateDialogProps {
   open: boolean
@@ -23,10 +25,12 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
+  const { data: currencies } = useCurrencies()
   const updateBudget = useUpdateBudgetDetail()
 
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
+  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [excluded, setExcluded] = useState<Set<Id>>(new Set())
   const [error, setError] = useState<string | null>(null)
 
@@ -42,6 +46,18 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   }, [open, budget])
 
   const ownAccounts = accounts.filter((a) => !user || a.owner.id === user.id)
+
+  const toggleAccount = (id: Id, included: boolean) => {
+    setExcluded((prev) => {
+      const next = new Set(prev)
+      if (included) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   const submit = () => {
     if (!isNotEmpty(name)) {
@@ -62,8 +78,25 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modules.budget.modal.update_budget_form.header')}>
+    <ResponsiveDialog
+      open={open}
+      caps
+      fullScreen
+      onOpenChange={(o) => !o && onClose()}
+      title={t('modules.budget.modal.update_budget_form.header')}
+      footer={
+        <div className="grid grid-cols-2 gap-3">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t('elements.button.cancel.label')}
+          </Button>
+          <Button type="submit" form="budget-update-form" disabled={updateBudget.isPending}>
+            {t('elements.button.update.label')}
+          </Button>
+        </div>
+      }
+    >
       <form
+        id="budget-update-form"
         className="flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
@@ -71,57 +104,42 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           submit()
         }}
       >
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="budget-upd-name">{t('modules.budget.form.budget.name.label')}</Label>
-          <Input id="budget-upd-name" maxLength={64} disabled={!canConfigure} value={name} onChange={(e) => setName(e.target.value)} />
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="budget-upd-currency">{t('modules.budget.form.budget_envelope.currency.label')}</Label>
-          <CurrencySelect
-            id="budget-upd-currency"
-            aria-label={t('modules.budget.form.budget_envelope.currency.label')}
-            value={currencyId}
-            onChange={setCurrencyId}
+        <CardField label={t('modules.budget.form.budget.name.label')} htmlFor="budget-upd-name" error={error}>
+          <Input
+            id="budget-upd-name"
+            className={cardFieldControlClass}
+            maxLength={64}
             disabled={!canConfigure}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
-        </div>
-        {ownAccounts.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            <Label>{t('modules.budget.modal.budget_form.accounts')}</Label>
-            <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-              {ownAccounts.map((account) => (
-                <li key={account.id} className="flex items-center justify-between gap-2 px-1">
-                  <span className="truncate text-sm">{account.name}</span>
-                  <Switch
-                    aria-label={`include ${account.name}`}
-                    checked={!excluded.has(account.id)}
-                    onCheckedChange={(checked) => {
-                      setExcluded((prev) => {
-                        const next = new Set(prev)
-                        if (checked) {
-                          next.delete(account.id)
-                        } else {
-                          next.add(account.id)
-                        }
-                        return next
-                      })
-                    }}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        <div className="grid grid-cols-2 gap-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
-          </Button>
-          <Button type="submit" disabled={updateBudget.isPending}>
-            {t('elements.button.update.label')}
-          </Button>
-        </div>
+        </CardField>
+
+        {/* same card shape, but a picker row: tap opens the currency search dialog */}
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover disabled:opacity-60 disabled:hover:bg-econumo-card"
+          title={t('modules.budget.form.budget_envelope.currency.label')}
+          disabled={!canConfigure}
+          onClick={() => setCurrencyOpen(true)}
+        >
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[11px] text-muted-foreground">{t('modules.budget.form.budget_envelope.currency.label')}</span>
+            <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+
+        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} excluded={excluded} onToggle={toggleAccount} /> : null}
       </form>
+
+      <CurrencyPickerDialog
+        open={currencyOpen}
+        title={t('modules.budget.form.budget_envelope.currency.label')}
+        value={currencyId}
+        onClose={() => setCurrencyOpen(false)}
+        onPick={setCurrencyId}
+      />
     </ResponsiveDialog>
   )
 }

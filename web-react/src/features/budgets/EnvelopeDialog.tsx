@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { fuzzyMatch } from '@/components/CurrencySelect'
 import { EntityIcon } from '@/components/EntityIcon'
 import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -43,6 +44,7 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
   const [selected, setSelected] = useState<Set<Id>>(new Set())
   const [isArchived, setIsArchived] = useState<0 | 1>(0)
   const [error, setError] = useState<string | null>(null)
+  const [categorySearch, setCategorySearch] = useState('')
 
   useEffect(() => {
     if (open) {
@@ -52,11 +54,13 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
       setSelected(new Set(envelope?.children.map((c) => c.id) ?? []))
       setIsArchived(envelope?.isArchived ?? 0)
       setError(null)
+      setCategorySearch('')
     }
   }, [open, envelope, budgetCurrencyId, user])
 
   // the Vue envelope form offers non-archived EXPENSE categories only
   const options = categories.filter((c) => c.isArchived === 0 && c.type === 'expense')
+  const shownOptions = options.filter((c) => !categorySearch || fuzzyMatch(c.name, categorySearch))
 
   const submit = () => {
     if (!isNotEmpty(name)) {
@@ -150,8 +154,20 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
               {t('modules.budget.form.budget_envelope.categories.selected', { count: String(selected.size) })}
             </span>
           </span>
+          {options.length >= 6 ? (
+            <span className="mt-1 flex items-center gap-2 rounded-md bg-background px-2.5 py-1.5">
+              <Search className="size-4 shrink-0 text-muted-foreground" />
+              <input
+                aria-label={t('pages.account.toolbar.search')}
+                placeholder={t('pages.account.toolbar.search')}
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+              />
+            </span>
+          ) : null}
           <ul className="flex max-h-44 flex-col overflow-x-hidden overflow-y-auto scrollbar-slim">
-            {options.map((category) => (
+            {shownOptions.map((category) => (
               <li key={category.id}>
                 <Label
                   htmlFor={`env-cat-${category.id}`}

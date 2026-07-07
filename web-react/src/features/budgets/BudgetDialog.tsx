@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { CurrencySelect } from '@/components/CurrencySelect'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetName } from '@/lib/validation'
 import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
+import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { BudgetAccountsField } from './BudgetAccountsField'
 
 interface BudgetDialogProps {
   open: boolean
@@ -21,9 +23,11 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
+  const { data: currencies } = useCurrencies()
 
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
+  const [currencyOpen, setCurrencyOpen] = useState(false)
   const [excluded, setExcluded] = useState<Set<Id>>(new Set())
   const [errors, setErrors] = useState<{ name?: string; currency?: string }>({})
 
@@ -37,6 +41,18 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   }, [open, user])
 
   const ownAccounts = accounts.filter((a) => !user || a.owner.id === user.id)
+
+  const toggleAccount = (id: Id, included: boolean) => {
+    setExcluded((prev) => {
+      const next = new Set(prev)
+      if (included) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   const submit = () => {
     const next: { name?: string; currency?: string } = {}
@@ -56,8 +72,23 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modules.budget.page.settings.create_modal.header')}>
+    <ResponsiveDialog
+      open={open}
+      caps
+      fullScreen
+      onOpenChange={(o) => !o && onClose()}
+      title={t('modules.budget.page.settings.create_modal.header')}
+      footer={
+        <div className="grid grid-cols-2 gap-3">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t('elements.button.cancel.label')}
+          </Button>
+          <Button type="submit" form="budget-create-form">{t('elements.button.create.label')}</Button>
+        </div>
+      }
+    >
       <form
+        id="budget-create-form"
         className="flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
@@ -65,64 +96,42 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
           submit()
         }}
       >
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="budget-name">{t('modules.budget.form.budget.name.label')}</Label>
+        <CardField label={t('modules.budget.form.budget.name.label')} htmlFor="budget-name" error={errors.name}>
           <Input
             id="budget-name"
+            className={cardFieldControlClass}
             maxLength={64}
             placeholder={t('modules.budget.form.budget.name.placeholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
-          {errors.name ? <p className="text-sm text-destructive">{errors.name}</p> : null}
-        </div>
+        </CardField>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="budget-currency">{t('modules.budget.form.budget_envelope.currency.label')}</Label>
-          <CurrencySelect
-            id="budget-currency"
-            aria-label={t('modules.budget.form.budget_envelope.currency.label')}
-            value={currencyId}
-            onChange={setCurrencyId}
-          />
-          {errors.currency ? <p className="text-sm text-destructive">{errors.currency}</p> : null}
-        </div>
+        {/* same card shape, but a picker row: tap opens the currency search dialog */}
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
+          title={t('modules.budget.form.budget_envelope.currency.label')}
+          onClick={() => setCurrencyOpen(true)}
+        >
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-[11px] text-muted-foreground">{t('modules.budget.form.budget_envelope.currency.label')}</span>
+            <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+        {errors.currency ? <p className="text-sm text-destructive">{errors.currency}</p> : null}
 
-        {ownAccounts.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            <Label>{t('modules.budget.modal.budget_form.accounts')}</Label>
-            <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-              {ownAccounts.map((account) => (
-                <li key={account.id} className="flex items-center justify-between gap-2 px-1">
-                  <span className="truncate text-sm">{account.name}</span>
-                  <Switch
-                    aria-label={`include ${account.name}`}
-                    checked={!excluded.has(account.id)}
-                    onCheckedChange={(checked) => {
-                      setExcluded((prev) => {
-                        const next = new Set(prev)
-                        if (checked) {
-                          next.delete(account.id)
-                        } else {
-                          next.add(account.id)
-                        }
-                        return next
-                      })
-                    }}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-2 gap-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
-          </Button>
-          <Button type="submit">{t('elements.button.create.label')}</Button>
-        </div>
+        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} excluded={excluded} onToggle={toggleAccount} /> : null}
       </form>
+
+      <CurrencyPickerDialog
+        open={currencyOpen}
+        title={t('modules.budget.form.budget_envelope.currency.label')}
+        value={currencyId}
+        onClose={() => setCurrencyOpen(false)}
+        onPick={setCurrencyId}
+      />
     </ResponsiveDialog>
   )
 }

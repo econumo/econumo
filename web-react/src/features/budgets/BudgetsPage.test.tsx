@@ -93,7 +93,8 @@ it('creates a budget with excluded accounts and appends the row', async () => {
   await user.click(screen.getByRole('button', { name: /Create a new budget/ }))
   await screen.findByRole('dialog')
   await user.type(screen.getByLabelText('Name'), 'Vacation')
-  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveTextContent('USD'))
+  // the currency picker row seeds from the user's default currency
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
   await user.click(screen.getByRole('switch', { name: 'include Bank' }))
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(body).toBeDefined())
