@@ -23,6 +23,8 @@ it('shows three coins with staggered delays and a screen-reader-only label', () 
   // boot loader spells the wordmark: "econum" letters, the coins are its "ooo"
   expect(document.querySelector('.coin-loader-letters')).toBeInTheDocument()
   Array.from(coins).forEach((coin) => expect(coin.textContent).toBe(''))
+  // a faint "loading" caption sits under the wordmark
+  expect(screen.getByText('loading')).toBeInTheDocument()
 })
 
 it('renders nothing when closed', () => {

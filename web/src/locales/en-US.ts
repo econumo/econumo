@@ -21,6 +21,7 @@ export default {
   // elements
   'elements': {
     'econumo': { 'label': 'Econumo' },
+    'loader': { 'label': 'loading' },
     'select': {
       'search_placeholder': 'Search',
       'create_placeholder': 'Search or enter a new name',
