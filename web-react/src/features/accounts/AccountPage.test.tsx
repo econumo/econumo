@@ -183,7 +183,7 @@ it('compact viewport: add-transaction lives in the footer, header keeps only set
   await screen.findByTestId('tx-t1')
   const header = screen.getByRole('banner')
   expect(within(header).queryByRole('button', { name: 'Add transaction' })).not.toBeInTheDocument()
-  expect(within(header).getByRole('button', { name: 'Configure account' })).toBeInTheDocument()
+  expect(within(header).getByRole('button', { name: 'Configure' })).toBeInTheDocument()
   const footer = screen.getByRole('contentinfo')
   expect(within(footer).getByRole('button', { name: 'Add transaction' })).toBeInTheDocument()
 })

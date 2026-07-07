@@ -173,14 +173,19 @@ export function AccountPage() {
                 {moneyFormat(account.balance, account.currency, { useNativePrecision: false })}
               </p>
               {canUpdateSettings ? (
-                <button
+                // the budget page's Configure button, minus the dropdown
+                <Button
                   type="button"
-                  className="text-sm text-muted-foreground normal-case hover:text-foreground"
+                  variant="ghost"
+                  size="sm"
+                  className="uppercase tracking-wide text-muted-foreground"
                   aria-label={t('pages.account.toolbar.settings')}
+                  title={t('pages.account.toolbar.settings')}
                   onClick={() => openAccountModal({ account })}
                 >
-                  {t('pages.account.toolbar.settings')}
-                </button>
+                  <Settings2 className="size-4" />
+                  <span className="hidden sm:inline">{t('pages.account.toolbar.settings')}</span>
+                </Button>
               ) : null}
             </div>
           </header>

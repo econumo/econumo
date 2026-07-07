@@ -118,7 +118,7 @@ export default {
   'pages': {
     'account': {
       'toolbar': {
-        'settings': 'Configure account',
+        'settings': 'Configure',
         'search': 'Search',
         'shared_with': 'Shared account'
       },
