@@ -41,7 +41,7 @@ it('shows the exact validation messages', async () => {
   await user.type(screen.getByLabelText('Current password'), 'samepass')
   await user.type(screen.getByLabelText('New password'), 'samepass')
   await user.click(screen.getByRole('button', { name: 'Change password' }))
-  expect(await screen.findByText('New password must differ from the old password')).toBeInTheDocument()
+  expect(await screen.findByText('New password must be different from the current one')).toBeInTheDocument()
 
   await user.clear(screen.getByLabelText('New password'))
   await user.type(screen.getByLabelText('New password'), 'newpass1')
@@ -65,7 +65,7 @@ it('success posts only old/new, clears the form and shows the success dialog', a
   await user.type(screen.getByLabelText('Confirm new password'), 'newpass1')
   await user.click(screen.getByRole('button', { name: 'Change password' }))
   await waitFor(() => expect(body).toEqual({ oldPassword: 'oldpass1', newPassword: 'newpass1' }))
-  expect(await screen.findByText('You have successfully changed your password.')).toBeInTheDocument()
+  expect(await screen.findByText('Password changed')).toBeInTheDocument()
   await user.click(screen.getAllByRole('button', { name: 'Close' })[0])
   expect(screen.getByLabelText('Current password')).toHaveValue('')
 })
@@ -82,8 +82,8 @@ it('a 400 (wrong old password) shows the error dialog', async () => {
   await user.type(screen.getByLabelText('New password'), 'newpass1')
   await user.type(screen.getByLabelText('Confirm new password'), 'newpass1')
   await user.click(screen.getByRole('button', { name: 'Change password' }))
-  expect(await screen.findByText('Change password error')).toBeInTheDocument()
+  expect(await screen.findByText("Couldn't change password")).toBeInTheDocument()
   expect(
-    screen.getByText('An error occurred while changing the password; please check the information or try again later.'),
+    screen.getByText('Something went wrong while changing your password. Check your current password and try again.'),
   ).toBeInTheDocument()
 })

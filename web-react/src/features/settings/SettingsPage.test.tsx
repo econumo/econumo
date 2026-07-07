@@ -44,19 +44,19 @@ it('renders the menu rows with exact labels and navigates', async () => {
   mockViewport(false)
   const user = userEvent.setup()
   renderPage()
-  expect(await screen.findByText('Service settings')).toBeInTheDocument()
+  expect(await screen.findByText('Settings')).toBeInTheDocument()
   // Full sync moved to the sidebar footer refresh button
   expect(screen.queryByText('Full sync')).not.toBeInTheDocument()
   // grouped menu; currency moved to the profile page, so with a single locale
   // there is no Preferences group at all
-  expect(screen.getByText('Service')).toBeInTheDocument()
+  expect(screen.getByText('Finances')).toBeInTheDocument()
   expect(screen.getByText('Classification')).toBeInTheDocument()
   expect(screen.getByText('Data')).toBeInTheDocument()
   expect(screen.queryByText('Preferences')).not.toBeInTheDocument()
   expect(screen.queryByText('Default currency')).not.toBeInTheDocument()
   expect(screen.getByText('Shared access')).toBeInTheDocument()
   expect(screen.getByText('Accounts')).toBeInTheDocument()
-  expect(screen.getByText('Payees (senders, recipients)')).toBeInTheDocument()
+  expect(screen.getByText('Payees')).toBeInTheDocument()
   // language group hidden with a single locale
   expect(screen.queryByText('User Interface')).not.toBeInTheDocument()
   expect(screen.queryByText('Language')).not.toBeInTheDocument()

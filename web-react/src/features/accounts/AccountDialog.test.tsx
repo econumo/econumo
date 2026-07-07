@@ -84,7 +84,7 @@ it('shows the exact validation messages', async () => {
   await user.type(screen.getByLabelText('Name'), 'ab')
   await user.type(balanceField, '10')
   await user.click(screen.getByRole('button', { name: 'Add' }))
-  expect(await screen.findByText('The account name must be between 3 and 64 characters')).toBeInTheDocument()
+  expect(await screen.findByText('Account name must be 3-64 characters')).toBeInTheDocument()
 })
 
 it('currency row opens the search picker; the picked currency is posted', async () => {
@@ -99,7 +99,7 @@ it('currency row opens the search picker; the picked currency is posted', async 
   renderDialog()
   useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
 
-  await screen.findByText('Update account')
+  await screen.findByText('Edit account')
   const currencyRow = await screen.findByRole('button', { name: /Currency/ })
   expect(currencyRow).toHaveTextContent('USD')
   await user.click(currencyRow)
@@ -123,7 +123,7 @@ it('edit mode seeds the raw balance and posts updatedAt in Y-m-d H:i:s', async (
   const account = { ...fixtureAccounts[0], balance: 1234.5 } as unknown as AccountDto
   useUiStore.getState().openAccountModal({ account })
 
-  await screen.findByText('Update account')
+  await screen.findByText('Edit account')
   expect(screen.getByLabelText('Balance')).toHaveValue('1234.50')
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())

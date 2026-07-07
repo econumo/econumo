@@ -109,8 +109,8 @@ it('edit opens the transaction dialog prefilled', async () => {
   await screen.findByTestId('tx-t1')
   await user.click(screen.getByRole('button', { name: 'actions t1' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
-  expect(await screen.findByRole('heading', { name: 'Update transaction' })).toBeInTheDocument()
-  expect(screen.getByLabelText('Enter amount')).toHaveValue('9.99')
+  expect(await screen.findByRole('heading', { name: 'Edit transaction' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Amount')).toHaveValue('9.99')
 })
 
 it('windows long lists: first chunk renders, scroll sentinel loads more', async () => {
@@ -232,7 +232,7 @@ it('compact viewport: row click opens the preview dialog with details', async ()
   await screen.findByTestId('tx-t1')
   await user.click(screen.getByTestId('tx-t1'))
   // header is visually hidden; the title still names the dialog for a11y
-  const dialog = await screen.findByRole('dialog', { name: 'Details' })
+  const dialog = await screen.findByRole('dialog', { name: 'Transaction details' })
   expect(within(dialog).getByText('Expense')).toBeInTheDocument()
   expect(within(dialog).getByText('coffee beans')).toBeInTheDocument()
   expect(within(dialog).getByText('2026-07-02 09:30:00')).toBeInTheDocument()

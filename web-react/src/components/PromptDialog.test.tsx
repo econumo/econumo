@@ -21,14 +21,14 @@ it('prompt blocks submit on validation and submits a valid value', async () => {
       onSubmit={onSubmit}
       title="Create new folder"
       inputLabel="Name"
-      validate={(v) => (v.length < 3 ? 'The folder name must be between 3 and 64 characters' : null)}
+      validate={(v) => (v.length < 3 ? 'Folder name must be 3-64 characters' : null)}
       submitLabel="Create"
       cancelLabel="Cancel"
     />,
   )
   await user.type(screen.getByLabelText('Name'), 'ab')
   await user.click(screen.getByRole('button', { name: 'Create' }))
-  expect(await screen.findByText('The folder name must be between 3 and 64 characters')).toBeInTheDocument()
+  expect(await screen.findByText('Folder name must be 3-64 characters')).toBeInTheDocument()
   expect(onSubmit).not.toHaveBeenCalled()
 
   await user.type(screen.getByLabelText('Name'), 'c')
@@ -47,7 +47,7 @@ it('sort dialog picks a direction', async () => {
   const user = userEvent.setup()
   const onPick = vi.fn()
   render(<SortDialog open onClose={() => {}} onPick={onPick} />)
-  expect(screen.getByText('Sorting')).toBeInTheDocument()
+  expect(screen.getByText('Sort')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Alphabetically (Z-A)' }))
   expect(onPick).toHaveBeenCalledWith('desc')
 })

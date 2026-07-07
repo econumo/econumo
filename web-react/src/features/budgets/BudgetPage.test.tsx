@@ -89,9 +89,9 @@ it('configure menu enters edit mode; folder create posts with a v7 id', async ()
   renderPage()
   await user.click(await screen.findByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-  expect(screen.getByRole('button', { name: /Done Editing/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Done editing/ })).toBeInTheDocument()
 
-  await user.click(screen.getByRole('button', { name: 'Create a folder' }))
+  await user.click(screen.getByRole('button', { name: 'Create folder' }))
   await user.type(await screen.findByLabelText('Folder name'), 'Fun')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(body).toBeDefined())
@@ -133,7 +133,7 @@ it('empty state: no accounts shows the initial-setup prompt', async () => {
   server.use(...coreHandlers({ accounts: [] }))
   renderPage()
   expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Create an account' })).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add account' })).toBeInTheDocument())
 })
 
 it('/ renders the budget for an onboarded user with a default budget', async () => {

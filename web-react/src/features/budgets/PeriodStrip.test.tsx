@@ -62,7 +62,7 @@ it('widget renders spent/total, progress and the conversion hint', async () => {
       <ExpenseWidget budget={budget} currencyId="cur-usd" />
     </QueryClientProvider>,
   )
-  expect(screen.getByText('Outflow vs. Total')).toBeInTheDocument()
+  expect(screen.getByText('Spending progress')).toBeInTheDocument()
   expect(await screen.findByText('475.00 $')).toBeInTheDocument()
   expect(screen.getByText('530.00 $')).toBeInTheDocument()
   // budget currency = usd, selected = usd -> no conversion hint
@@ -78,5 +78,5 @@ it('widget shows the conversion hint for a non-base currency', async () => {
       <ExpenseWidget budget={budget} currencyId="cur-eur" />
     </QueryClientProvider>,
   )
-  expect(await screen.findByText(/The average rate for Jul 2026 is 1 USD = 0.9/)).toBeInTheDocument()
+  expect(await screen.findByText(/Average rate for Jul 2026: 1 USD = 0.9/)).toBeInTheDocument()
 })

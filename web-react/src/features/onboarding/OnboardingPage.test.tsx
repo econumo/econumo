@@ -62,15 +62,15 @@ it('renders the welcome heading and all six steps with completion marks', async 
   )
 })
 
-it('"Add an account" opens the account modal with the first folder', async () => {
+it('"Add account" opens the account modal with the first folder', async () => {
   server.use(...coreHandlers({ user: pendingUser }))
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('button', { name: 'Add an account' }))
+  await user.click(await screen.findByRole('button', { name: 'Add account' }))
   await waitFor(() => expect(useUiStore.getState().accountModal?.folderId).toBe('f1'))
 })
 
-it('"Complete onboarding" posts, updates the user cache, and navigates to the budget', async () => {
+it('"Finish setup" posts, updates the user cache, and navigates to the budget', async () => {
   let posts = 0
   server.use(
     ...coreHandlers({ user: pendingUser }),
@@ -81,7 +81,7 @@ it('"Complete onboarding" posts, updates the user cache, and navigates to the bu
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('button', { name: 'Complete onboarding' }))
+  await user.click(await screen.findByRole('button', { name: 'Finish setup' }))
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
   expect(posts).toBe(1)
 })

@@ -45,7 +45,7 @@ it('hides archived items by default; the filter reveals them and persists', asyn
   expect(screen.queryByText('Old')).not.toBeInTheDocument()
   await user.click(screen.getByRole('switch', { name: 'Active only' }))
   expect(screen.getByText('Old')).toBeInTheDocument()
-  expect(screen.getByText('Archived (inactive)')).toBeInTheDocument()
+  expect(screen.getByText('Archived')).toBeInTheDocument()
   expect(localStorage.getItem('settings.categories.activeOnly')).toBe('false')
 })
 
@@ -65,7 +65,7 @@ it('archiving under the active-only filter keeps the row on screen until the nex
   await screen.findByText('Food')
   await user.click(screen.getByRole('switch', { name: 'archive Food' }))
   // still visible, now greyed with the archived sublabel and the switch off
-  expect(await screen.findByText('Archived (inactive)')).toBeInTheDocument()
+  expect(await screen.findByText('Archived')).toBeInTheDocument()
   expect(screen.getByText('Food')).toBeInTheDocument()
   expect(screen.getByRole('switch', { name: 'archive Food' })).not.toBeChecked()
 })

@@ -51,7 +51,7 @@ it('lists shared items with ownership badges and roles', async () => {
   expect(screen.getByText(/Manage transactions/)).toBeInTheDocument()
   expect(await screen.findByText('Partner plan')).toBeInTheDocument()
   expect(screen.getByText(/Shared with you/)).toBeInTheDocument()
-  expect(screen.getAllByText('Click to manage access').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('Select an item to manage access').length).toBeGreaterThan(0)
 })
 
 it('shows empty states without shared items', async () => {

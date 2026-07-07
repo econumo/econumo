@@ -5,9 +5,6 @@ export default {
       'label': '© econumo.com',
       'url': 'https://econumo.com/'
     },
-    'website': {
-      'label': 'Econumo',
-    },
     'list': {
       'list_empty': 'List is empty',
       'order_list': 'Reorder list',
@@ -15,10 +12,10 @@ export default {
     },
     'main': {
       'budget': 'Budget',
-      'onboarding': 'Onboarding',
-      'create_account': 'Add an account',
-      'collapse_menu': 'Collapse the menu',
-      'expand_menu': 'Expand the menu'
+      'onboarding': 'Getting started',
+      'create_account': 'Add account',
+      'collapse_menu': 'Collapse menu',
+      'expand_menu': 'Expand menu'
     },
   },
   // elements
@@ -27,10 +24,10 @@ export default {
     'select': {
       'search_placeholder': 'Search',
       'create_placeholder': 'Search or enter a new name',
-      'create_hint': 'Type a name to add a new one'
+      'create_hint': 'Type a name to create it'
     },
     'folders': { 'default_folder': 'All accounts' },
-    'account': { 'name_hidden': '[Hidden Account]' },
+    'account': { 'name_hidden': '[Hidden account]' },
     'switch_to_account': 'Switch to',
     'form': {
       'account': {
@@ -38,54 +35,43 @@ export default {
           'label': 'Name',
           'validation': {
             'empty_name': 'Enter folder name',
-            'error_name_length': 'The folder name must be between 3 and 64 characters'
+            'error_name_length': 'Folder name must be 3-64 characters'
           }
         },
         'name': {
           'label': 'Name',
           'placeholder': 'Enter name',
           'validation': {
-            'required_field': 'Required field',
-            'invalid_name': 'The account name must be between 3 and 64 characters'
+            'invalid_name': 'Account name must be 3-64 characters'
           }
         },
         'balance': {
           'label': 'Balance',
-          'placeholder': 'Enter balance',
-          'validation': {
-            'required_field': 'Required field',
-            'invalid_number': 'Enter a valid number'
-          }
+          'placeholder': 'Enter balance'
         },
         'currency': { 'label': 'Currency' }
       },
     },
     'button': {
-      'ok': { 'label': 'Ok' },
+      'ok': { 'label': 'OK' },
       'close': { 'label': 'Close' },
       'cancel': { 'label': 'Cancel' },
       'create': { 'label': 'Create' },
       'add': { 'label': 'Add' },
       'edit': { 'label': 'Edit' },
-      'set_as_default': { 'label': 'Set as default' },
       'update': { 'label': 'Update' },
       'save': { 'label': 'Save' },
-      'replace': { 'label': 'Replace' },
       'delete': { 'label': 'Delete' },
-      'reset': { 'label': 'Reset' },
-      'copy': { 'label': 'Copy' },
       'view': { 'label': 'View' },
       'up': { 'label': 'Move up' },
       'down': { 'label': 'Move down' },
       'hide': { 'label': 'Hide' },
       'show': { 'label': 'Show' },
       'accept': { 'label': 'Accept' },
-      'transfer': { 'label': 'Transfer' },
       'expand': { 'label': 'Expand' },
       'collapse': { 'label': 'Collapse' },
       'decline': { 'label': 'Decline' },
       'back': { 'label': 'Back' },
-      'next': { 'label': 'Next' },
       'import': { 'label': 'Import' },
       'export': { 'label': 'Export' },
       'change': { 'label': 'Change' }
@@ -110,8 +96,7 @@ export default {
       'required_field': 'Required field',
       'invalid_number': 'Enter a valid number',
       'invalid_decimal_number': 'Enter a valid decimal number (max 8 decimal places)',
-      'invalid_formula': 'Only numbers and operators (+, -, *, /, . and =) are allowed',
-      'invalid_date': 'Invalid date format (YYYY-MM-DD)'
+      'invalid_formula': 'Only numbers and operators (+, -, *, /, . and =) are allowed'
     }
   },
   // pages
@@ -133,7 +118,7 @@ export default {
         'action': { 'add_transaction': 'Add transaction' }
       },
       'preview_transaction_modal': {
-        'header': 'Details',
+        'header': 'Transaction details',
         'type': {
           'expense': 'Expense',
           'income': 'Income',
@@ -153,46 +138,37 @@ export default {
     'settings': {
       'settings': {
         'header': 'Settings',
-        'header_desktop': 'Service settings',
+        'header_desktop': 'Settings',
         'menu_item': 'Settings',
-        'logout': 'Logout',
+        'logout': 'Log out',
         'groups': {
-          'service': 'Service',
+          'service': 'Finances',
           'classification': 'Classification',
           'data': 'Data',
-          'preferences': 'Preferences',
-          'user_interface': 'User Interface'
+          'preferences': 'Preferences'
         }
       },
       'sync': { 'menu_item': 'Full sync' },
       'accounts': {
         'menu_item': 'Accounts',
         'header': 'Accounts',
-        'info': 'Accounts are organized into folders. If you want to tuck away accounts you don\'t currently need, hide their folder.',
+        'info': 'Accounts are organized into folders. Hide a folder to keep accounts you rarely use out of the way.',
         'folder_toggle': 'Collapse folder',
         'list_empty_create': 'Add',
         'list_empty_new_account': 'new account',
         'list_actions': { 'access': 'Access control' },
         'create_folder': 'Create folder',
-        'create_folder_modal': { 'header': 'Create new folder' },
-        'update_folder_modal': { 'header': 'Change name' },
+        'create_folder_modal': { 'header': 'New folder' },
+        'update_folder_modal': { 'header': 'Rename folder' },
         'delete_folder_modal': {
           'title': 'Delete folder?',
-          'question': 'Do you want to delete the folder «{folder}»?'
+          'question': 'Are you sure you want to delete the folder “{folder}”?'
         },
-        'delete_account_modal': { 'question': 'Are you sure you want to remove the account «{account}»?' },
+        'delete_account_modal': { 'question': 'Are you sure you want to delete the account “{account}”?' },
         'preview_account_modal': {
-          'header': 'Account details',
-          'shared_access': 'Shared',
-          'access': {
-            'label': 'Access',
-            'no_shared_access': 'No access to this account'
-          },
-          'action': { 'shared_access': 'Access control' }
+          'header': 'Account details'
         }
       },
-      'currency': { 'menu_item': 'Default currency' },
-      'themes': { 'menu_item': 'Color scheme' },
       'language': { 'menu_item': 'Language' },
       'import_csv': { 'menu_item': 'Import CSV' },
       'export_csv': {
@@ -210,10 +186,10 @@ export default {
         'income': 'Income'
       },
       'create_form': { 'header': 'Add transaction' },
-      'update_form': { 'header': 'Update transaction' },
+      'update_form': { 'header': 'Edit transaction' },
       'form': {
         'amount': {
-          'label': 'Enter amount',
+          'label': 'Amount',
           'validation': { 'required_field': 'Amount is required' }
         },
         'amount_recipient': {
@@ -228,7 +204,6 @@ export default {
           'expense': 'Recipient',
           'income': 'Sender'
         },
-        'options': { 'header': 'Advanced' },
         'description': {
           'label': 'Notes',
           'placeholder': 'Enter notes'
@@ -238,9 +213,9 @@ export default {
       },
       'dialog': {
         'new_tag': {
-          'header': 'Tag name is required',
+          'header': 'New tag',
           'name': {
-            'label': 'Tag',
+            'label': 'New tag',
             'placeholder': 'Enter tag name',
             'validation': { 'required_field': 'Required field' }
           }
@@ -249,11 +224,8 @@ export default {
     },
     'account': {
       'create_form': { 'header': 'New account' },
-      'update_form': { 'header': 'Update account' },
+      'update_form': { 'header': 'Edit account' },
       'form': { 'icon': { 'label': 'Icon' } }
-    },
-    'export_csv': {
-      'header': 'Export CSV'
     },
     'import_csv': {
       'header': 'Import CSV',
@@ -266,59 +238,42 @@ export default {
         'description': 'Map the columns from your CSV file to the transaction fields. Required fields are marked with an asterisk (*).'
       },
       'amount_mode': {
-        'label': 'Amount Format',
-        'single': 'Single amount column',
-        'dual': 'Separate inflow/outflow columns',
-        'switch_to_single': 'Switch to single amount',
-        'switch_to_dual': 'Split into inflow/outflow'
+        'switch_to_single': 'Switch to a single amount column',
+        'switch_to_dual': 'Split into inflow/outflow columns'
       },
-      'switch_to_manual': 'Pick manually',
-      'switch_to_csv': 'Pick CSV column',
+      'switch_to_manual': 'Enter a value manually',
+      'switch_to_csv': 'Use a CSV column',
       'fields': {
         'account': 'Account',
         'date': 'Date',
         'amount': 'Amount',
-        'amount_hint': 'Use if your CSV has one column with positive/negative values',
         'amount_inflow': 'Amount (Inflow)',
-        'amount_inflow_hint': 'Income, deposits, credits',
         'amount_outflow': 'Amount (Outflow)',
-        'amount_outflow_hint': 'Expenses, withdrawals, debits',
         'category': 'Category',
         'description': 'Description',
         'description_placeholder': 'Enter description for all transactions',
         'payee': 'Payee',
         'tag': 'Tag'
-      },
-      'success': 'Transactions imported successfully',
-      'success_count': '{count} transaction(s) imported successfully | {count} transactions imported successfully',
-      'partial_success': 'Imported {imported} transaction(s), {failed} failed',
-      'error': 'Failed to import transactions. Please check your file and try again.',
-      'errors_detail': 'Errors',
-      'row': 'Row',
-      'and_more': 'and {count} more error(s)'
+      }
     },
     'import_result': {
-      'success_title': 'Import Successful',
-      'partial_success_title': 'Import Partially Successful',
-      'error_title': 'Import Failed',
+      'success_title': 'Import complete',
+      'partial_success_title': 'Import completed with errors',
+      'error_title': 'Import failed',
       'imported': '{count} transaction(s) imported | {count} transactions imported',
       'failed': '{count} transaction(s) failed | {count} transactions failed',
-      'errors_detail': 'Error Details',
+      'errors_detail': 'Error details',
       'row': 'Row',
       'rows': 'Rows',
       'more': 'more',
       'and_more': 'and {count} more error(s)'
     },
     'sort': {
-      'header': 'Sorting',
+      'header': 'Sort',
       'mode': {
         'alphabet': {
           'asc': 'Alphabetically (A-Z)',
           'desc': 'Alphabetically (Z-A)'
-        },
-        'count': {
-          'desc': 'By usage frequency (1..0)',
-          'asc': 'By usage frequency (0..1)'
         }
       }
     }
@@ -326,42 +281,39 @@ export default {
   'modules': {
     'app': {
       'modal': {
-        'change_language': { 'header': 'Language' },
-        'self_hosted': { 'information': 'You can use the service on your hosting. Just enter the server address.' },
-        'loading': { 'data_loading': 'Loading details' },
+        'self_hosted': { 'information': 'Econumo can run on your own server. Enter your server address to connect.' },
+        'loading': { 'data_loading': 'Loading your data' },
       },
     },
     'user': {
       'modal': {
-        'sign_in': { 'label': 'Authentication...' },
         'sign_in_failed': {
-          'header': 'Login failed',
-          'information': 'Check that the email and password are entered correctly. If errors persist, contact support.'
+          'header': 'Sign-in failed',
+          'information': 'Check your email and password and try again. If the problem persists, contact support.'
         },
         'access_recovery': {
-          'header': 'Restore access',
-          'information': 'To restore access to your account, enter the email address used during registration.',
-          'instruction': 'A security code has been sent to the email address. Enter the code in the field below and provide a new password.',
+          'header': 'Reset password',
+          'information': 'Enter the email address you registered with and we\'ll send you a security code.',
+          'instruction': 'We\'ve sent a security code to your email. Enter it below and choose a new password.',
         },
-        'sign_up': { 'label': 'Registration...' },
         'sign_up_failed': {
-          'header': 'Registration error',
-          'information': 'Ensure that the information is entered correctly. If errors persist, contact support.'
+          'header': 'Registration failed',
+          'information': 'Check the entered details and try again. If the problem persists, contact support.'
         },
         'sign_out': {
-          'title': 'Logout',
+          'title': 'Log out',
           'question': 'Are you sure you want to log out?',
           'action': {
-            'logout': 'Logout',
+            'logout': 'Log out',
             'cancel': 'Stay'
           }
         },
-        'change_password_success': { 'text': 'You have successfully changed your password.' },
+        'change_password_success': { 'text': 'Password changed' },
         'change_password_error': {
-          'header': 'Change password error',
-          'text': 'An error occurred while changing the password; please check the information or try again later.'
+          'header': 'Couldn\'t change password',
+          'text': 'Something went wrong while changing your password. Check your current password and try again.'
         },
-        'change_password_loading': { 'label': 'Please wait' }
+        'change_password_loading': { 'label': 'Changing password…' }
       },
       'form': {
         'user': {
@@ -374,7 +326,7 @@ export default {
             }
           },
           'email': {
-            'label': 'E-mail',
+            'label': 'Email',
             'placeholder': 'Your email',
             'validation': {
               'required_field': 'Required field',
@@ -382,7 +334,6 @@ export default {
             }
           },
           'code': {
-            'label': 'Code',
             'placeholder': 'Confirmation code',
             'validation': {
               'required_field': 'Required field',
@@ -422,11 +373,11 @@ export default {
             'forget_password': 'Forgot password?'
           }
         },
-        'sign_up': { 'action': { 'sign_up': 'Sign Up' } },
+        'sign_up': { 'action': { 'sign_up': 'Sign up' } },
         'access_recovery': {
           'action': {
-            'recover': { 'label': 'Restore' },
-            'change_password': { 'label': 'Change password' }
+            'recover': { 'label': 'Send code' },
+            'change_password': { 'label': 'Reset password' }
           }
         },
         'change_password': {
@@ -438,7 +389,7 @@ export default {
           'new_password': {
             'label': 'New password',
             'placeholder': 'Enter a new password',
-            'validation': { 'not_equals': 'New password must differ from the old password' }
+            'validation': { 'not_equals': 'New password must be different from the current one' }
           },
           'new_password_retry': {
             'label': 'Confirm new password',
@@ -450,7 +401,7 @@ export default {
       },
       'page': {
         'sign_in': {
-          'header': 'Login',
+          'header': 'Sign in',
           'session_expired': 'Your session has expired. Please sign in again.',
         },
         'sign_up': {
@@ -462,13 +413,13 @@ export default {
             'header': 'Ready to start using Econumo?',
             'text': 'Make a one-time payment by clicking the button below to get started.',
             'next_steps': 'As soon as we receive your payment, we will send your login credentials to the provided email address.',
-            'action': 'Sign Up'
+            'action': 'Sign up'
           }
         },
         'settings': {
           'profile': {
             'menu_item': 'Profile',
-            'header': 'User profile',
+            'header': 'Profile',
             'groups': {
               'personal_details': 'Personal details',
               'preferences': 'Preferences',
@@ -484,11 +435,11 @@ export default {
       },
       'pages': {
         'onboarding': {
-          'header': 'Onboarding',
+          'header': 'Getting started',
           'title': 'Welcome to Econumo!',
-          'complete': 'Complete onboarding',
-          'add_account': 'Add an account',
-          'import_transactions': 'Import Transactions',
+          'complete': 'Finish setup',
+          'add_account': 'Add account',
+          'import_transactions': 'Import transactions',
           'user_guide': {
             'accounts': 'User guide: accounts',
             'transactions': 'User guide: transactions',
@@ -504,9 +455,9 @@ export default {
       'modal': {
         'export_csv_form': {
           'header': 'Export CSV',
-          'accounts': 'Select Accounts',
-          'select_all': 'Select All',
-          'deselect_all': 'Deselect All'
+          'accounts': 'Select accounts',
+          'select_all': 'Select all',
+          'deselect_all': 'Deselect all'
         }
       }
     },
@@ -517,29 +468,29 @@ export default {
           'accounts_included': '{count} of {total} included',
           'accounts_hidden': 'In hidden folders',
         },
-        'create_budget_form': { 'header': 'Create a budget' },
-        'update_budget_form': { 'header': 'Update the budget' },
-        'create_folder_form': { 'header': 'Create a folder' },
-        'update_folder_form': { 'header': 'Rename the folder' },
-        'create_envelope_form': { 'header': 'Create an envelope' },
-        'update_envelope_form': { 'header': 'Update the envelope' },
+        'create_budget_form': { 'header': 'New budget' },
+        'update_budget_form': { 'header': 'Edit budget' },
+        'create_folder_form': { 'header': 'New folder' },
+        'update_folder_form': { 'header': 'Rename folder' },
+        'create_envelope_form': { 'header': 'New envelope' },
+        'update_envelope_form': { 'header': 'Edit envelope' },
         'change_element_currency_form': { 'header': 'Change currency' },
         'delete_envelope': {
-          'header': 'Delete the envelope?',
+          'header': 'Delete envelope?',
           'question': 'Are you sure you want to delete this envelope?'
         },
-        'set_limit_form': { 'header': 'Set a budget' },
+        'set_limit_form': { 'header': 'Set budget' },
         'generic_error': {
-          'header': 'Error Occurred',
+          'header': 'Something went wrong',
           'description': 'Please try again. If the error persists, report the issue.'
         },
         'access_error': {
-          'header': 'Access Denied',
+          'header': 'Access denied',
           'description': 'You need to accept the invitation before accessing this budget.'
         },
         'expense_widget': {
-          'header': 'Outflow vs. Total',
-          'conversion_rate': 'The average rate for {period} is 1 {defaultCurrency} = {rate}'
+          'header': 'Spending progress',
+          'conversion_rate': 'Average rate for {period}: 1 {defaultCurrency} = {rate}'
         }
       },
       'form': {
@@ -549,15 +500,15 @@ export default {
             'placeholder': 'My budget',
             'validation': {
               'required_field': 'Required field',
-              'invalid_name': 'Budget name must be between 3 and 64 characters'
+              'invalid_name': 'Budget name must be 3-64 characters'
             }
           },
           'folder_name': {
             'label': 'Folder name',
-            'placeholder': 'Provide a folder name',
+            'placeholder': 'Enter folder name',
             'validation': {
               'required_field': 'Required field',
-              'invalid_name': 'Folder name must be between 3 and 64 characters'
+              'invalid_name': 'Folder name must be 3-64 characters'
             }
           }
         },
@@ -567,7 +518,7 @@ export default {
             'placeholder': '',
             'validation': {
               'required_field': 'Required field',
-              'invalid_name': 'Envelope name must be between 3 and 64 characters'
+              'invalid_name': 'Envelope name must be 3-64 characters'
             }
           },
           'currency': {
@@ -607,17 +558,17 @@ export default {
           'empty': {
             'header': 'Budget',
             'no_budget': 'You haven’t created a budget yet.',
-            'description': 'Create or accept an invitation to a budget to start managing your finances.',
+            'description': 'Create a budget or accept an invitation to start planning your finances.',
             'create_budget': 'Create a budget',
-            'initial_setup': 'To create a budget, you need to create an account and add at least one category.',
-            'create_account': 'Create an account',
+            'initial_setup': 'To create a budget, first add an account and at least one category.',
+            'create_account': 'Add account',
           },
           'settings': {
             'button': 'Configure',
             'menu': {
               'edit': 'Budget details',
               'edit_structure': 'Edit structure',
-              'edit_structure_done': 'Done Editing',
+              'edit_structure_done': 'Done editing',
               'budget_list': 'Open budget list',
             }
           },
@@ -630,11 +581,11 @@ export default {
               'available': 'Available'
             },
             'action': {
-              'create_folder': 'Create a folder',
-              'delete_folder': 'Delete a folder',
+              'create_folder': 'Create folder',
+              'delete_folder': 'Delete folder',
             },
             'empty_folder': {
-              'note': 'Folder is empty. Move a category/tag/envelope or create a new envelope.'
+              'note': 'This folder is empty. Move a category, tag, or envelope here, or create a new envelope.'
             },
             'element': {
               'action': {
@@ -651,27 +602,26 @@ export default {
         'settings': {
           'menu_item': 'Budgets',
           'header': 'Budgets',
-          'create_budget': 'Create a new budget',
-          'edit_modal': { 'header': 'Update the budget' },
-          'create_modal': { 'header': 'Create a new budget' },
+          'create_budget': 'Create budget',
+          'edit_modal': { 'header': 'Edit budget' },
+          'create_modal': { 'header': 'New budget' },
           'delete_modal': {
-            'title': 'Delete the budget?',
-            'question': 'Are you sure you want to delete {name}?'
+            'title': 'Delete budget?',
+            'question': 'Are you sure you want to delete “{name}”?'
           },
           'decline_access_modal': {
             'title': 'Decline access to the budget?',
-            'question': 'Are you sure you want to decline access to the budget {name}?'
+            'question': 'Are you sure you want to decline access to the budget “{name}”?'
           },
-          'not_accepted': 'not accepted',
+          'not_accepted': 'invitation pending',
           'level': {
             'guest': 'View only',
-            'user': 'Regular access',
+            'user': 'Manage budget',
             'admin': 'Full control',
           },
           'list_actions': {
             'access': 'Access control',
-            'go_to': 'Go to the budget',
-            'select': 'Select the budget'
+            'go_to': 'Open budget'
           }
         }
       }
@@ -682,7 +632,7 @@ export default {
           'settings': {
             'menu_item': 'Categories',
             'header': 'Categories',
-            'archived_item': 'Archived (inactive)',
+            'archived_item': 'Archived',
             'create_category': 'Create category',
           }
         },
@@ -694,9 +644,9 @@ export default {
           },
           'delete': {
             'title': 'Delete category?',
-            'question': 'Delete category {name}?'
+            'question': 'Are you sure you want to delete “{name}”?'
           },
-          'edit': { 'header': 'Edit' },
+          'edit': { 'header': 'Edit category' },
           'create': { 'header': 'New category' }
         },
         'forms': {
@@ -710,7 +660,7 @@ export default {
               'placeholder': 'Enter name',
               'validation': {
                 'required_field': 'Required field',
-                'invalid_name': 'The category name must be between 3 and 64 characters'
+                'invalid_name': 'Category name must be 3-64 characters'
               }
             },
             'icon': { 'label': 'Icon' }
@@ -722,17 +672,17 @@ export default {
           'settings': {
             'menu_item': 'Tags',
             'header': 'Tags',
-            'create_tag': 'Create a new tag',
-            'archived_item': 'Archived (inactive)',
+            'create_tag': 'Create tag',
+            'archived_item': 'Archived',
           }
         },
         'elements': {},
         'modals': {
           'edit': { 'header': 'Edit tag' },
-          'create': { 'header': 'Create a new tag' },
+          'create': { 'header': 'New tag' },
           'delete': {
             'title': 'Delete tag?',
-            'question': 'Are you sure you want to delete the tag {name}?'
+            'question': 'Are you sure you want to delete “{name}”?'
           }
         },
         'forms': {
@@ -741,7 +691,7 @@ export default {
               'label': 'Name',
               'validation': {
                 'required_field': 'Required field',
-                'invalid_name': 'The tag name must be between 3 and 64 characters'
+                'invalid_name': 'Tag name must be 3-64 characters'
               }
             }
           },
@@ -750,19 +700,19 @@ export default {
       'payees': {
         'pages': {
           'settings': {
-            'menu_item': 'Payees (senders, recipients)',
+            'menu_item': 'Payees',
             'header': 'Payees',
-            'create_payee': 'Create a new payee',
-            'archived_item': 'Archived (inactive)',
+            'create_payee': 'Create payee',
+            'archived_item': 'Archived',
           }
         },
         'elements': {},
         'modals': {
-          'edit': { 'header': 'Update payee' },
-          'create': { 'header': 'Create a new payee' },
+          'edit': { 'header': 'Edit payee' },
+          'create': { 'header': 'New payee' },
           'delete': {
             'title': 'Delete payee?',
-            'question': 'Are you sure you want to delete {name}?'
+            'question': 'Are you sure you want to delete “{name}”?'
           }
         },
         'forms': {
@@ -771,7 +721,7 @@ export default {
               'label': 'Name',
               'validation': {
                 'required_field': 'Required field',
-                'invalid_name': 'Payee name must be between 3 and 64 characters'
+                'invalid_name': 'Payee name must be 3-64 characters'
               }
             }
           }
@@ -783,8 +733,8 @@ export default {
         'settings': {
           'menu_item': 'Shared access',
           'header': 'Shared access',
-          'generate_invite': 'Create an invitation',
-          'accept_invite': 'Accept an invitation'
+          'generate_invite': 'Create invitation',
+          'accept_invite': 'Accept invitation'
         }
       },
       'accounts': {
@@ -806,15 +756,15 @@ export default {
         }
       },
       'modals': {
-        'delete_connection': { 'question': 'Are you sure you want to delete shared access from {name}?' },
+        'delete_connection': { 'question': 'Are you sure you want to remove the connection with {name}?' },
         'generate_invite': {
-          'instruction': 'To connect with another user, share this code with your partner. The code is valid for 5 minutes.',
+          'instruction': 'Share this code with the person you want to connect with. The code is valid for 5 minutes.',
           'code': { 'label': 'Invitation code' }
         },
         'accept_invite': {
-          'label': 'Accept an invitation',
-          'instruction': 'Ask your partner for the invitation code and enter it below. The code is valid for 5 minutes.',
-          'code': { 'label': 'Enter the code' }
+          'label': 'Accept invitation',
+          'instruction': 'Ask the other person for their invitation code and enter it below. The code is valid for 5 minutes.',
+          'code': { 'label': 'Invitation code' }
         },
         'preview_connection': {
           'accounts': 'Shared accounts',
@@ -824,24 +774,17 @@ export default {
           'shared_with_you': 'Shared with you',
           'your_account': 'Your account',
           'your_budget': 'Your budget',
-          'tap_to_manage': 'Click to manage access',
+          'tap_to_manage': 'Select an item to manage access',
         },
         'decline_access': {
           'decline_access': 'Decline access',
         },
         'share_access': {
-          'level': {
-            'guest': 'View only',
-            'user': 'Regular access',
-            'admin': 'Full control',
-            'owner': 'Owner',
-            'no_access': 'No access'
-          },
-          'not_accepted': 'not accepted',
+          'not_accepted': 'invitation pending',
           'revoke_access': 'Revoke access',
           'list_empty': 'No connections found',
-          'tap_to_share': 'Click on a user to share access',
-          'choose_access_level': 'Choose what access level to grant',
+          'tap_to_share': 'Select a user to share access with',
+          'choose_access_level': 'Choose an access level to grant',
           'select_user': 'Select user {name}'
         },
       },

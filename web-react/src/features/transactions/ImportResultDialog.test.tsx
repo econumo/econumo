@@ -14,9 +14,9 @@ const renderResult = (result: AggregatedImportResult) =>
 
 it('full success: title + pluralized imported count', () => {
   renderResult({ imported: 3, failed: 0, errors: [] })
-  expect(screen.getByText('Import Successful')).toBeInTheDocument()
+  expect(screen.getByText('Import complete')).toBeInTheDocument()
   expect(screen.getByText('3 transactions imported')).toBeInTheDocument()
-  expect(screen.queryByText('Error Details')).not.toBeInTheDocument()
+  expect(screen.queryByText('Error details')).not.toBeInTheDocument()
 })
 
 it('partial success: both counts and error rows formatting', () => {
@@ -28,10 +28,10 @@ it('partial success: both counts and error rows formatting', () => {
       { message: "Invalid date format 'x'", rows: [2, 3] },
     ],
   })
-  expect(screen.getByText('Import Partially Successful')).toBeInTheDocument()
+  expect(screen.getByText('Import completed with errors')).toBeInTheDocument()
   expect(screen.getByText('1 transaction(s) imported')).toBeInTheDocument()
   expect(screen.getByText('3 transactions failed')).toBeInTheDocument()
-  expect(screen.getByText('Error Details')).toBeInTheDocument()
+  expect(screen.getByText('Error details')).toBeInTheDocument()
   expect(screen.getByText(/Row 4/)).toBeInTheDocument()
   expect(screen.getByText(/Rows 2, 3/)).toBeInTheDocument()
 })
@@ -48,7 +48,7 @@ it('total failure: error title, long row lists truncated, extra error groups cou
     { message: 'e7', rows: [7] },
   ]
   renderResult({ imported: 0, failed: 20, errors })
-  expect(screen.getByText('Import Failed')).toBeInTheDocument()
+  expect(screen.getByText('Import failed')).toBeInTheDocument()
   // first 10 rows + "+4 more"
   expect(screen.getByText(/Rows 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 \+4 more/)).toBeInTheDocument()
   // only 5 error groups shown, remainder summarized

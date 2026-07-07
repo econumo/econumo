@@ -73,8 +73,8 @@ it('creates an expense with the exact payload shape', async () => {
   useUiStore.getState().openTransactionModal({ type: 'expense' })
 
   await screen.findByRole('heading', { name: 'Add transaction' })
-  await user.type(await screen.findByLabelText('Enter amount'), '5+4.99=')
-  expect(screen.getByLabelText('Enter amount')).toHaveValue('9.99')
+  await user.type(await screen.findByLabelText('Amount'), '5+4.99=')
+  expect(screen.getByLabelText('Amount')).toHaveValue('9.99')
 
   await user.click(screen.getByRole('combobox', { name: 'Category' }))
   await user.click(await screen.findByText('Food'))
@@ -96,7 +96,7 @@ it('requires a category for non-transfers with the exact message', async () => {
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
-  await user.type(await screen.findByLabelText('Enter amount'), '5')
+  await user.type(await screen.findByLabelText('Amount'), '5')
   await user.click(screen.getByRole('button', { name: 'Add' }))
   expect(await screen.findByText('Category is required')).toBeInTheDocument()
 })
@@ -119,7 +119,7 @@ it('swap recomputes the recipient prefill for the new direction', async () => {
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a1' })
   await screen.findByRole('heading', { name: 'Add transaction' })
-  await user.type(await screen.findByLabelText('Enter amount'), '100')
+  await user.type(await screen.findByLabelText('Amount'), '100')
   await user.click(screen.getByRole('combobox', { name: 'to account' }))
   await user.click(await screen.findByText(/Euro Stash/))
   expect(await screen.findByLabelText('Amount in EUR')).toHaveValue('90')
@@ -147,7 +147,7 @@ it('editing a transfer allows changing the sender account', async () => {
       isInFuture: false,
     },
   })
-  await screen.findByRole('heading', { name: 'Update transaction' })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
   const fromSelect = screen.getByRole('combobox', { name: 'from account' })
   expect(fromSelect).toBeEnabled()
   await user.click(fromSelect)
@@ -174,7 +174,7 @@ it('cross-currency transfer prefills the converted recipient amount and prompts 
   useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a1' })
 
   await screen.findByRole('heading', { name: 'Add transaction' })
-  await user.type(await screen.findByLabelText('Enter amount'), '100')
+  await user.type(await screen.findByLabelText('Amount'), '100')
   // recipient: a3 is the EUR account (rate 0.9) -> 100 USD = 90 EUR
   await user.click(screen.getByRole('combobox', { name: 'to account' }))
   await user.click(await screen.findByText(/Euro Stash/))

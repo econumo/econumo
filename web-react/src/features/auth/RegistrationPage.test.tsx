@@ -40,7 +40,7 @@ it('registers and navigates to the login page', async () => {
   const user = userEvent.setup()
   renderPage()
   await user.type(screen.getByLabelText('Name'), 'Ada')
-  await user.type(screen.getByLabelText('E-mail'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
   await user.type(screen.getByLabelText('Password'), 'secret1')
   await user.type(screen.getByLabelText('Confirm password'), 'secret1')
   await user.click(screen.getByRole('button', { name: /sign up/i }))

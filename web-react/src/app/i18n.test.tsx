@@ -19,5 +19,5 @@ it('resolves dotted keys and single-brace interpolation', () => {
     </I18nextProvider>,
   )
   expect(screen.getByText('Required field')).toBeInTheDocument()
-  expect(screen.getByText('Are you sure you want to remove the account «Cash»?')).toBeInTheDocument()
+  expect(screen.getByText('Are you sure you want to delete the account “Cash”?')).toBeInTheDocument()
 })

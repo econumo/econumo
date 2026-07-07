@@ -10,10 +10,10 @@ function mockMatchMedia() {
 beforeEach(mockMatchMedia)
 
 it('shows three coins with staggered delays and a screen-reader-only label', () => {
-  render(<LoadingDialog open label="Loading details" />)
-  expect(screen.getByRole('status', { name: 'Loading details' })).toBeInTheDocument()
+  render(<LoadingDialog open label="Loading your data" />)
+  expect(screen.getByRole('status', { name: 'Loading your data' })).toBeInTheDocument()
   // the header is hidden visually but the title stays in the a11y tree
-  expect(screen.getByText('Loading details').closest('[data-slot="dialog-header"]')).toHaveClass('sr-only')
+  expect(screen.getByText('Loading your data').closest('[data-slot="dialog-header"]')).toHaveClass('sr-only')
   const coins = document.querySelectorAll('.coin-loader-coin')
   expect(coins).toHaveLength(3)
   const delays = Array.from(document.querySelectorAll('.coin-loader-unit')).map(
@@ -23,6 +23,6 @@ it('shows three coins with staggered delays and a screen-reader-only label', () 
 })
 
 it('renders nothing when closed', () => {
-  render(<LoadingDialog open={false} label="Loading details" />)
+  render(<LoadingDialog open={false} label="Loading your data" />)
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })

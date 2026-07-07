@@ -16,7 +16,7 @@ it('accounts kind renders the role options and hint, no revoke without a role', 
   render(
     <AccessLevelDialog open kind="accounts" user={partner} role={null} onSelect={() => {}} onRevoke={() => {}} onClose={() => {}} />,
   )
-  expect(screen.getByText('Choose what access level to grant')).toBeInTheDocument()
+  expect(screen.getByText('Choose an access level to grant')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'View only' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Manage transactions' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Full control' })).toBeInTheDocument()

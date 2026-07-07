@@ -68,7 +68,7 @@ beforeEach(() => {
 it('shows the loading gate, then the sidebar tree with folder totals', async () => {
   mockViewport(false)
   renderShell('/')
-  expect(screen.getByText('Loading details')).toBeInTheDocument()
+  expect(screen.getByText('Loading your data')).toBeInTheDocument()
 
   expect(await screen.findByText('Cash')).toBeInTheDocument()
   expect(screen.getByText('General')).toBeInTheDocument()
@@ -106,9 +106,9 @@ it('a reload with a persisted cache skips the boot loader and refreshes in the b
   // data on screen at once, no blocking gate, and a background refetch fires
   // even though staleTime still considers the restored data fresh
   renderShellPersisted()
-  expect(screen.queryByText('Loading details')).not.toBeInTheDocument()
+  expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  expect(screen.queryByText('Loading details')).not.toBeInTheDocument()
+  expect(screen.queryByText('Loading your data')).not.toBeInTheDocument()
   await waitFor(() => expect(accountFetches).toBeGreaterThan(coldBootFetches))
 })
 

@@ -46,8 +46,8 @@ it('renders role labels, no-access rows, and the budgets not-accepted suffix', (
       onClose={() => {}}
     />,
   )
-  expect(screen.getByText('Click on a user to share access')).toBeInTheDocument()
-  expect(screen.getByText(/Manage budget – not accepted/)).toBeInTheDocument()
+  expect(screen.getByText('Select a user to share access with')).toBeInTheDocument()
+  expect(screen.getByText(/Manage budget – invitation pending/)).toBeInTheDocument()
   expect(screen.getByText('No access')).toBeInTheDocument()
 })
 

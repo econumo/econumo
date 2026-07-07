@@ -157,10 +157,10 @@ it('changing the default currency posts the code and updates the cache', async (
 it('email is readonly; logout confirm has the exact copy and navigates', async () => {
   const user = userEvent.setup()
   renderPage()
-  expect(await screen.findByLabelText('E-mail')).toBeDisabled()
-  await user.click(await screen.findByText('Logout'))
+  expect(await screen.findByLabelText('Email')).toBeDisabled()
+  await user.click(await screen.findByText('Log out'))
   expect(await screen.findByText('Are you sure you want to log out?')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Stay' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Logout' }))
+  await user.click(screen.getByRole('button', { name: 'Log out' }))
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
 })
