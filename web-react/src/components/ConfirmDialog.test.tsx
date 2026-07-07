@@ -29,3 +29,24 @@ it('renders the question and fires confirm/cancel', async () => {
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
   expect(onClose).toHaveBeenCalled()
 })
+
+it('cancel sits left of the confirm action; destructive colors the confirm button', () => {
+  mockMatchMedia()
+  render(
+    <ConfirmDialog
+      open
+      onClose={() => {}}
+      onConfirm={() => {}}
+      question="Delete it?"
+      confirmLabel="Delete"
+      cancelLabel="Cancel"
+      destructive
+    />,
+  )
+  const cancel = screen.getByRole('button', { name: 'Cancel' })
+  const confirm = screen.getByRole('button', { name: 'Delete' })
+  // DOM order inside the two-column grid: cancel first (left), action second (right)
+  expect(cancel.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(confirm).toHaveAttribute('data-variant', 'destructive')
+  expect(cancel).toHaveAttribute('data-variant', 'secondary')
+})

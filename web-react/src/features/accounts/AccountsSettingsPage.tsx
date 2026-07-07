@@ -584,6 +584,7 @@ export function AccountsSettingsPage() {
         question={t('pages.settings.accounts.delete_folder_modal.question', { folder: deleteFolderTarget?.name ?? '' })}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
 
       <ConfirmDialog
@@ -597,6 +598,7 @@ export function AccountsSettingsPage() {
         question={t('pages.settings.accounts.delete_account_modal.question', { account: deleteAccountTarget?.name ?? '' })}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
 
       {previewAccount ? (

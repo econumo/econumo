@@ -92,22 +92,8 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       showClose
       dismissible={dismissible}
       footer={
-        /* Vue footer layout: delete icon | wide Edit | collapse icon */
+        /* dismiss on the left, actions on the right: collapse icon | wide Edit | delete icon */
         <div className="flex gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            disabled={!canChange}
-            aria-label={t('elements.button.delete.label')}
-            title={t('elements.button.delete.label')}
-            onClick={onDelete}
-          >
-            <Trash2 className="size-4 text-destructive" />
-          </Button>
-          <Button type="button" className="flex-1" disabled={!canChange} onClick={onEdit}>
-            {t('elements.button.edit.label')}
-          </Button>
           <Button
             type="button"
             variant="secondary"
@@ -117,6 +103,20 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             onClick={onClose}
           >
             <ChevronDown className="size-4" />
+          </Button>
+          <Button type="button" className="flex-1" disabled={!canChange} onClick={onEdit}>
+            {t('elements.button.edit.label')}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            disabled={!canChange}
+            aria-label={t('elements.button.delete.label')}
+            title={t('elements.button.delete.label')}
+            onClick={onDelete}
+          >
+            <Trash2 className="size-4" />
           </Button>
         </div>
       }

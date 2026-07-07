@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AccessLevelDialog } from './AccessLevelDialog'
 import { DeclineAccessDialog } from './DeclineAccessDialog'
@@ -34,6 +34,10 @@ it('existing role highlights, revoke row fires onRevoke, options fire onSelect',
   await user.click(screen.getByRole('button', { name: 'Full control' }))
   expect(onSelect).toHaveBeenCalledWith('admin')
   await user.click(screen.getByRole('button', { name: 'Revoke access' }))
+  // revoking asks for confirmation first
+  expect(onRevoke).not.toHaveBeenCalled()
+  const confirm = await screen.findByRole('dialog', { name: 'Revoke access?' })
+  await user.click(within(confirm).getByRole('button', { name: 'Revoke access' }))
   expect(onRevoke).toHaveBeenCalled()
 })
 

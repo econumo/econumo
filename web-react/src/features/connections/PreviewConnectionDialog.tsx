@@ -108,11 +108,11 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
           {section('budgets', sharedBudgets)}
           {section('accounts', sharedAccounts)}
           <div className="grid grid-cols-2 gap-3">
-            <Button type="button" variant="destructive" onClick={() => onDelete(other.id)}>
-              {t('elements.button.delete.label')}
-            </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
               {t('elements.button.ok.label')}
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => onDelete(other.id)}>
+              {t('elements.button.delete.label')}
             </Button>
           </div>
         </div>

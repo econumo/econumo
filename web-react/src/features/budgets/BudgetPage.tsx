@@ -200,6 +200,7 @@ export function BudgetPage() {
   const [renameFolder, setRenameFolder] = useState<{ id: Id; name: string } | null>(null)
   const [envelopeDialog, setEnvelopeDialog] = useState<{ open: boolean; envelope: BudgetElementDto | null; folderId: Id | null }>({ open: false, envelope: null, folderId: null })
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<BudgetElementDto | null>(null)
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [limitTarget, setLimitTarget] = useState<BudgetElementDto | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
@@ -433,7 +434,7 @@ export function BudgetPage() {
             {bucket.elements.length === 0 ? (
               <DropdownMenuItem
                 variant="destructive"
-                onSelect={() => deleteFolder.mutate({ budgetId: budget.meta.id, id: bucket.folder!.id })}
+                onSelect={() => setDeleteFolderTarget({ id: bucket.folder!.id, name: bucket.folder!.name })}
               >
                 {t('modules.budget.page.budget.structure.action.delete_folder')}
               </DropdownMenuItem>
@@ -702,6 +703,22 @@ export function BudgetPage() {
         question={t('modules.budget.modal.delete_envelope.question')}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
+      />
+
+      <ConfirmDialog
+        open={deleteFolderTarget !== null}
+        onClose={() => setDeleteFolderTarget(null)}
+        onConfirm={() => {
+          if (deleteFolderTarget) {
+            deleteFolder.mutate({ budgetId: budget.meta.id, id: deleteFolderTarget.id }, { onSettled: () => setDeleteFolderTarget(null) })
+          }
+        }}
+        title={t('modules.budget.modal.delete_folder.header')}
+        question={t('modules.budget.modal.delete_folder.question', { name: deleteFolderTarget?.name ?? '' })}
+        confirmLabel={t('elements.button.delete.label')}
+        cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
 
       {/* the same search-first currency picker the account form uses */}

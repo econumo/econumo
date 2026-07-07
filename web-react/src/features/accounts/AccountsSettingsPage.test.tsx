@@ -193,6 +193,8 @@ it('access control: shared avatars, grant and revoke through the dialogs', async
   // the optimistic cache update relabels the row; revoke through the same path
   await user.click(await screen.findByRole('button', { name: /Partner/ }))
   await user.click(await screen.findByRole('button', { name: 'Revoke access' }))
+  const revokeConfirm = await screen.findByRole('dialog', { name: 'Revoke access?' })
+  await user.click(within(revokeConfirm).getByRole('button', { name: 'Revoke access' }))
   await waitFor(() => expect(revoked).toEqual({ accountId: 'a1', userId: 'u2' }))
 })
 

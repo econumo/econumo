@@ -100,6 +100,37 @@ it('configure menu enters edit mode; folder create posts with a v7 id', async ()
   expect(String(body!.id)).toMatch(/^[0-9a-f-]{36}$/)
 })
 
+it('deleting an empty folder asks for confirmation before posting', async () => {
+  let body: Record<string, unknown> | undefined
+  const budgetWithEmptyFolder = {
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      folders: [...fixtureWireBudget.structure.folders, { id: 'bf-empty', name: 'Fun', position: 1 }],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budgetWithEmptyFolder } })),
+    http.post('*/api/v1/budget/delete-folder', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'budget folder actions Fun' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
+  // nothing posted until the confirmation is accepted
+  expect(body).toBeUndefined()
+  const confirm = await screen.findByRole('dialog', { name: 'Delete folder?' })
+  expect(within(confirm).getByText('Are you sure you want to delete the folder “Fun”?')).toBeInTheDocument()
+  await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'bf-empty' }))
+})
+
 it('inline limit editor commits a formula as a normalized string', async () => {
   let body: unknown
   server.use(

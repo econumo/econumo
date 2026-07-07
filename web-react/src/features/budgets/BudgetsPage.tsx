@@ -215,6 +215,7 @@ export function BudgetsPage() {
         question={t('modules.budget.page.settings.decline_access_modal.question', { name: declineTarget?.name ?? '' })}
         confirmLabel={t('elements.button.decline.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
 
       <ConfirmDialog
@@ -229,6 +230,7 @@ export function BudgetsPage() {
         question={t('modules.budget.page.settings.delete_modal.question', { name: deleteTarget?.name ?? '' })}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
 
       <ResponsiveDialog

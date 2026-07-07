@@ -25,12 +25,12 @@ export function DeclineAccessDialog({ open, owner, itemName, onDecline, onClose 
             </span>
           </div>
         ) : null}
-        <div className="flex flex-col gap-2">
-          <Button type="button" variant="destructive" className="w-full" onClick={onDecline}>
-            {t('modules.connections.modals.decline_access.decline_access')}
-          </Button>
-          <Button type="button" variant="secondary" className="w-full" onClick={onClose}>
+        <div className="grid grid-cols-2 gap-3">
+          <Button type="button" variant="secondary" onClick={onClose}>
             {t('elements.button.cancel.label')}
+          </Button>
+          <Button type="button" variant="destructive" onClick={onDecline}>
+            {t('modules.connections.modals.decline_access.decline_access')}
           </Button>
         </div>
       </div>

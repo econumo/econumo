@@ -293,6 +293,7 @@ export function ClassificationList<T extends ClassificationItem>({
         question={deleteTarget?.name ?? ''}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
     </SettingsShell>
   )

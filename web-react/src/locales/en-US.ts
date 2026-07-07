@@ -479,6 +479,10 @@ export default {
           'header': 'Delete envelope?',
           'question': 'Are you sure you want to delete this envelope?'
         },
+        'delete_folder': {
+          'header': 'Delete folder?',
+          'question': 'Are you sure you want to delete the folder “{name}”?'
+        },
         'set_limit_form': { 'header': 'Set budget' },
         'generic_error': {
           'header': 'Something went wrong',
@@ -782,6 +786,10 @@ export default {
         'share_access': {
           'not_accepted': 'invitation pending',
           'revoke_access': 'Revoke access',
+          'revoke_confirm': {
+            'title': 'Revoke access?',
+            'question': 'Are you sure you want to revoke access from {name}?'
+          },
           'list_empty': 'No connections found',
           'tap_to_share': 'Select a user to share access with',
           'choose_access_level': 'Choose an access level to grant',

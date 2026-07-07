@@ -9,17 +9,17 @@ interface ConfirmDialogProps {
   question: string
   confirmLabel: string
   cancelLabel: string
+  destructive?: boolean
 }
 
-export function ConfirmDialog({ open, onClose, onConfirm, title, question, confirmLabel, cancelLabel }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onClose, onConfirm, title, question, confirmLabel, cancelLabel, destructive = false }: ConfirmDialogProps) {
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title ?? question} description={title ? question : undefined}>
-      {/* Vue pairs full-width grey + magenta actions, even for deletions */}
       <div className="grid grid-cols-2 gap-3">
         <Button type="button" variant="secondary" onClick={onClose}>
           {cancelLabel}
         </Button>
-        <Button type="button" onClick={onConfirm}>
+        <Button type="button" variant={destructive ? 'destructive' : 'default'} onClick={onConfirm}>
           {confirmLabel}
         </Button>
       </div>

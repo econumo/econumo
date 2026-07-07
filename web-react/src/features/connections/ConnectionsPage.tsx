@@ -45,7 +45,13 @@ export function ConnectionsPage() {
       backTo={RouterPage.SETTINGS}
       actions={
         <div className="flex gap-2">
-          <Button type="button" size="sm" onClick={() => generateInvite.mutate(undefined, { onSuccess: setInvite })}>
+          <Button
+            type="button"
+            size="sm"
+            aria-label={t('modules.connections.pages.settings.generate_invite')}
+            title={t('modules.connections.pages.settings.generate_invite')}
+            onClick={() => generateInvite.mutate(undefined, { onSuccess: setInvite })}
+          >
             <UserPlus className="size-4" />
             <span className="hidden sm:inline">{t('modules.connections.pages.settings.generate_invite')}</span>
           </Button>
@@ -129,6 +135,7 @@ export function ConnectionsPage() {
         question={t('modules.connections.modals.delete_connection.question', { name: deleteTarget?.user.name ?? '' })}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
     </SettingsShell>
   )

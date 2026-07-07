@@ -223,6 +223,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
         question={t('pages.account.delete_transaction_modal.question')}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
+        destructive
       />
     </>
   )
