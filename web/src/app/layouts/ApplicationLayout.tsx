@@ -125,13 +125,14 @@ export function ApplicationLayout() {
                   </Link>
                 </div>
               ) : (
-                <div className="flex flex-col px-3 py-1">
+                // compact matches the folder headers below (size and left edge)
+                <div className={`flex flex-col py-1 ${isCompact ? 'px-4' : 'px-3'}`}>
                   {!isOnboardingCompleted(user) ? (
-                    <Link to={RouterPage.ONBOARDING} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
+                    <Link to={RouterPage.ONBOARDING} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('blocks.main.onboarding')}
                     </Link>
                   ) : null}
-                  <Link to={RouterPage.BUDGET} className="rounded-md px-2 py-2 text-[15px] hover:bg-accent">
+                  <Link to={RouterPage.BUDGET} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                     {t('blocks.main.budget')}
                   </Link>
                 </div>
