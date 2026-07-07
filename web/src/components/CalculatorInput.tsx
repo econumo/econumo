@@ -71,7 +71,7 @@ export function CalculatorInput({ value, onChange, ...inputProps }: CalculatorIn
             type="button"
             variant="secondary"
             size="sm"
-            className="flex-1 max-md:h-10"
+            className="flex-1 h-10"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => pressKey(key.op)}
           >

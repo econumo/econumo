@@ -93,12 +93,12 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       dismissible={dismissible}
       footer={
         /* dismiss on the left, actions on the right: collapse icon | wide Edit | delete icon */
-        <div className="flex gap-3">
+        <div className="flex gap-3 [&_button]:h-11">
           <Button
             type="button"
             variant="secondary"
             size="icon"
-            className="max-md:size-11"
+            className="size-11"
             aria-label={t('elements.button.cancel.label')}
             title={t('elements.button.cancel.label')}
             onClick={onClose}
@@ -112,7 +112,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             type="button"
             variant="destructive"
             size="icon"
-            className="max-md:size-11"
+            className="size-11"
             disabled={!canChange}
             aria-label={t('elements.button.delete.label')}
             title={t('elements.button.delete.label')}

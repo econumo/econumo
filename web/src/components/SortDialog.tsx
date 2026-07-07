@@ -14,7 +14,7 @@ export function SortDialog({ open, onClose, onPick }: SortDialogProps) {
   const { t } = useTranslation()
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modals.sort.header')}>
-      <div className="flex flex-col gap-2 max-md:[&_button]:h-11">
+      <div className="flex flex-col gap-2 [&_button]:h-11">
         <Button type="button" variant="secondary" onClick={() => onPick('asc')}>
           {t('modals.sort.mode.alphabet.asc')}
         </Button>

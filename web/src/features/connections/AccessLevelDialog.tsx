@@ -55,7 +55,7 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
               </button>
             ) : null}
           </div>
-          <Button type="button" variant="secondary" className="w-full max-md:h-11" onClick={onClose}>
+          <Button type="button" variant="secondary" className="w-full h-11" onClick={onClose}>
             {t('elements.button.cancel.label')}
           </Button>
         </div>

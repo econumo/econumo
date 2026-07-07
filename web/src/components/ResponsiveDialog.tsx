@@ -7,9 +7,10 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
 const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overlay"], [data-slot="alert-dialog-overlay"]'
 
-/** the standard dialog action row (Cancel | Confirm); phones get finger-height
-    buttons matching the Add-transaction bar (h-11) */
-export const dialogActionsClass = 'grid grid-cols-2 gap-3 max-md:[&_button]:h-11'
+/** the standard dialog action row (Cancel | Confirm). Action buttons are h-11
+    (the Add-transaction bar height) on EVERY screen size — desktop is not a
+    smaller-target platform, heights stay identical to mobile by design */
+export const dialogActionsClass = 'grid grid-cols-2 gap-3 [&_button]:h-11'
 
 interface ResponsiveDialogProps {
   open: boolean

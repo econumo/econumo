@@ -13,7 +13,7 @@ export function FailDialog({ open, onClose, title, description }: FailDialogProp
   const { t } = useTranslation()
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title} description={description}>
-      <Button className="w-full max-md:h-11" onClick={onClose}>
+      <Button className="w-full h-11" onClick={onClose}>
         {t('elements.button.ok.label')}
       </Button>
     </ResponsiveDialog>

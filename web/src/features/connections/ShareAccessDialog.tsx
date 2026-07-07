@@ -53,7 +53,7 @@ export function ShareAccessDialog({ open, title, kind, entries, onPick, onClose 
             </ul>
           </>
         )}
-        <Button type="button" className="w-full max-md:h-11" onClick={onClose}>
+        <Button type="button" className="w-full h-11" onClick={onClose}>
           {t('elements.button.ok.label')}
         </Button>
       </div>
