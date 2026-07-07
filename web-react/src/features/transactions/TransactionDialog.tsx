@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
-import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
@@ -290,7 +290,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             />
           </div>
         ) : null}
-        <div className="[&_input]:h-12 [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:text-[28px] [&_input]:font-light [&_input]:shadow-none [&_input]:focus-visible:ring-0 [&_input]:placeholder:text-muted-foreground/50">
+        <div className={amountCardInputClass}>
           <Label htmlFor="tx-amount" className="sr-only">
             {t('modals.transaction.form.amount.label')}
           </Label>

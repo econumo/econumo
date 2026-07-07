@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/CalculatorInput'
-import { CardField } from '@/components/CardField'
+import { amountCardInputClass, CardField } from '@/components/CardField'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { normalizeNumber } from '@/lib/money'
 import type { BudgetElementDto } from '@/api/dto/budget'
@@ -53,7 +53,7 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
       >
         {/* the transaction dialog's amount card: label inside, borderless oversized input */}
         <CardField label={t('modules.budget.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
-          <div className="[&_input]:h-12 [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:text-[28px] [&_input]:font-light [&_input]:shadow-none [&_input]:focus-visible:ring-0 [&_input]:placeholder:text-muted-foreground/50">
+          <div className={amountCardInputClass}>
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>

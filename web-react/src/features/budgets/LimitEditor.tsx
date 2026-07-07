@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CalculatorInput } from '@/components/CalculatorInput'
+import { amountCardInputClass, CardField } from '@/components/CardField'
 import { Button } from '@/components/ui/button'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
 import type { BudgetElementDto } from '@/api/dto/budget'
@@ -47,7 +48,7 @@ export function LimitEditor({ element, currency, onCommit }: LimitEditorProps) {
           {moneyFormat(element.budgeted, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="end">
+      <PopoverContent className="w-64 p-2" align="end">
         <form
           className="flex flex-col gap-2"
           noValidate
@@ -56,8 +57,12 @@ export function LimitEditor({ element, currency, onCommit }: LimitEditorProps) {
             commit()
           }}
         >
-          <CalculatorInput aria-label={t('modules.budget.form.budget_limit.limit.label')} autoFocus value={value} onChange={setValue} />
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {/* the transaction dialog's amount card: label inside, borderless oversized input */}
+          <CardField label={t('modules.budget.form.budget_limit.limit.label')} htmlFor={`limit-${element.id}`} error={error}>
+            <div className={amountCardInputClass}>
+              <CalculatorInput id={`limit-${element.id}`} autoFocus value={value} onChange={setValue} />
+            </div>
+          </CardField>
           <Button type="submit" size="sm">
             {t('elements.button.save.label')}
           </Button>

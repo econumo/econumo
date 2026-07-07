@@ -30,3 +30,9 @@ export function CardField({
 
 export const cardFieldControlClass =
   'h-auto rounded-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent'
+
+// The oversized borderless money input (the transaction dialog's amount field).
+// Wrap the Input/CalculatorInput in a div with this class so the calculator
+// keypad stays inside the same card as the input.
+export const amountCardInputClass =
+  '[&_input]:h-12 [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:text-[28px] [&_input]:font-light [&_input]:shadow-none [&_input]:focus-visible:ring-0 [&_input]:placeholder:text-muted-foreground/50'
