@@ -62,6 +62,12 @@ it('leaves an invalid trailing-operator value as typed', async () => {
   expect(screen.getByLabelText('Amount')).toHaveValue('5+')
 })
 
+it('keypad is always mounted — hiding it on blur shifted the layout and ate the first tap below', () => {
+  render(<Harness />)
+  // no focus at all: the operator row must still be there
+  expect(screen.getByRole('button', { name: '×' })).toBeInTheDocument()
+})
+
 it('mobile keypad appends operators and = evaluates', async () => {
   mockViewport(true)
   const user = userEvent.setup()

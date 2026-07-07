@@ -83,12 +83,12 @@ export function EntitySelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="flex max-h-[min(20rem,var(--radix-popover-content-available-height))] w-[max(var(--radix-popover-trigger-width),14rem)] flex-col p-0"
+        // default open-autofocus lands on the search input everywhere — on
+        // mobile that pops the keyboard immediately, which is the point:
+        // pick-by-typing without a second tap
+        className="flex max-h-[min(20rem,var(--radix-popover-content-available-height))] w-[max(var(--radix-popover-trigger-width),14rem)] flex-col p-0 max-md:max-h-[min(26rem,var(--radix-popover-content-available-height))]"
         align="start"
         container={portalContainer}
-        // on mobile, focusing the search pops the keyboard and shoves the whole
-        // sheet up — let people scroll the list first and tap the field if needed
-        onOpenAutoFocus={isMobile ? (e) => e.preventDefault() : undefined}
       >
         <Command shouldFilter={false} className="min-h-0">
           <CommandInput

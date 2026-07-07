@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { ComponentProps, KeyboardEvent } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -18,8 +17,6 @@ const KEYPAD: { label: string; op: string }[] = [
 ]
 
 export function CalculatorInput({ value, onChange, ...inputProps }: CalculatorInputProps) {
-  const [focused, setFocused] = useState(false)
-
   const handleChange = (raw: string) => {
     if (raw.endsWith('=')) {
       const sanitized = sanitizeInput(raw.slice(0, -1))
@@ -64,35 +61,24 @@ export function CalculatorInput({ value, onChange, ...inputProps }: CalculatorIn
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        onFocus={(e) => {
-          setFocused(true)
-          inputProps.onFocus?.(e)
-        }}
-        onBlur={(e) => {
-          // keep the keypad usable: only hide when focus leaves the widget
-          if (!(e.relatedTarget instanceof HTMLElement) || !e.relatedTarget.closest('[data-calculator-keypad]')) {
-            setFocused(false)
-          }
-          inputProps.onBlur?.(e)
-        }}
       />
-      {focused ? (
-        <div data-calculator-keypad className="flex gap-1">
-          {KEYPAD.map((key) => (
-            <Button
-              key={key.op}
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="flex-1"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => pressKey(key.op)}
-            >
-              {key.label}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+      {/* always mounted: showing it on focus shifted the layout mid-tap, so the
+          first tap on any control below landed on moved ground and was lost */}
+      <div data-calculator-keypad className="flex gap-1">
+        {KEYPAD.map((key) => (
+          <Button
+            key={key.op}
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="flex-1 max-md:h-10"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => pressKey(key.op)}
+          >
+            {key.label}
+          </Button>
+        ))}
+      </div>
     </div>
   )
 }
