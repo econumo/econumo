@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
-import { useIsMobile } from '@/hooks/useIsMobile'
+import { useIsPhone } from '@/hooks/useIsPhone'
 
 const STACKED_CONTENT = '[data-slot="dialog-content"], [data-slot="drawer-content"], [data-slot="alert-dialog-content"]'
 const STACKED_OVERLAY = '[data-slot="dialog-overlay"], [data-slot="drawer-overlay"], [data-slot="alert-dialog-overlay"]'
@@ -32,7 +32,9 @@ interface ResponsiveDialogProps {
 }
 
 export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer }: ResponsiveDialogProps) {
-  const isMobile = useIsMobile()
+  // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
+  // and up dialogs stay centred like on desktop
+  const isMobile = useIsPhone()
   const titleClass = caps ? 'uppercase tracking-wide' : undefined
   const showCloseButton = dismissible && (!hideHeader || showClose)
   // keep the (possibly long, title-less-confirm) heading clear of the corner X
