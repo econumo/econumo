@@ -6,7 +6,7 @@
 # and the sqlite db. Migrations run inside the binary on boot.
 
 # --- 1. Frontend build ---
-FROM node:25-alpine AS frontend
+FROM node:26-alpine AS frontend
 WORKDIR /build/web
 RUN npm install -g pnpm@10
 COPY web/package.json web/pnpm-lock.yaml ./
