@@ -9,7 +9,7 @@ beforeEach(() => {
   window.econumoConfig = {}
 })
 
-it('get-budget coerces every decimal-string field, null-preserving for balances', async () => {
+it('get-budget passes every decimal-string field through verbatim, null-preserving for balances', async () => {
   let url = ''
   server.use(
     http.get('*/api/v1/budget/get-budget', ({ request }) => {
@@ -20,17 +20,17 @@ it('get-budget coerces every decimal-string field, null-preserving for balances'
   const budget = await budgetApi.getBudget('b1', '2026-07-01')
   expect(url).toContain('id=b1')
   expect(url).toContain('date=2026-07-01')
-  expect(budget.balances[0].startBalance).toBe(100.5)
+  expect(budget.balances[0].startBalance).toBe('100.5')
   expect(budget.balances[0].endBalance).toBeNull()
   expect(budget.balances[1].income).toBeNull()
-  expect(budget.balances[1].holdings).toBe(10)
-  expect(budget.currencyRates[1].rate).toBe(0.9)
+  expect(budget.balances[1].holdings).toBe('10')
+  expect(budget.currencyRates[1].rate).toBe('0.9')
   const food = budget.structure.elements[0]
-  expect(food.budgeted).toBe(200)
-  expect(food.available).toBe(154.5)
-  expect(food.spent).toBe(-45.5)
-  expect(food.budgetSpent).toBe(-45.5)
-  expect(budget.structure.elements[1].children[0].spent).toBe(0)
+  expect(food.budgeted).toBe('200')
+  expect(food.available).toBe('154.5')
+  expect(food.spent).toBe('-45.5')
+  expect(food.budgetSpent).toBe('-45.5')
+  expect(budget.structure.elements[1].children[0].spent).toBe('0')
 })
 
 it('set-limit posts amount null verbatim (clear) and strings otherwise', async () => {
@@ -67,7 +67,7 @@ it('move-element-list and exclude-account post the exact wire shapes', async () 
   expect(excludeBody).toEqual({ id: 'b1', accountId: 'a1' })
 })
 
-it('budget transactions pass the element param and coerce amounts (own wire shape: spentAt + embedded refs)', async () => {
+it('budget transactions pass the element param and amounts through (own wire shape: spentAt + embedded refs)', async () => {
   let url = ''
   server.use(
     http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
@@ -87,7 +87,7 @@ it('budget transactions pass the element param and coerce amounts (own wire shap
   const items = await budgetApi.getBudgetTransactions({ budgetId: 'b1', periodStart: '2026-07-01', categoryId: 'cat-food' })
   expect(url).toContain('categoryId=cat-food')
   expect(url).not.toContain('tagId')
-  expect(items[0].amount).toBe(9.99)
+  expect(items[0].amount).toBe('9.99')
   expect(items[0].spentAt).toBe('2026-07-02 09:30:00')
   expect(items[0].category?.name).toBe('Food')
 })

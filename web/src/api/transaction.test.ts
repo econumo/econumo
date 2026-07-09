@@ -30,18 +30,18 @@ beforeEach(() => {
   window.econumoConfig = {}
 })
 
-it('getTransactionList coerces amount strings', async () => {
+it('getTransactionList passes amount strings through', async () => {
   server.use(
     http.get('*/api/v1/transaction/get-transaction-list', () =>
       HttpResponse.json({ success: true, message: '', data: { items: [wireTx] } }),
     ),
   )
   const items = await transactionApi.getTransactionList()
-  expect(items[0].amount).toBe(9.99)
-  expect(items[0].amountRecipient).toBe(9.99)
+  expect(items[0].amount).toBe('9.99')
+  expect(items[0].amountRecipient).toBe('9.99')
 })
 
-it('createTransaction returns {item, accounts} both coerced', async () => {
+it('createTransaction returns {item, accounts} with decimal strings passed through', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
     http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
@@ -51,13 +51,13 @@ it('createTransaction returns {item, accounts} both coerced', async () => {
   )
   const form = {
     id: 'op-tx-1', type: 'expense' as const, accountId: 'a1', accountRecipientId: null,
-    amount: 9.99, amountRecipient: null, categoryId: 'cat1', description: '', payeeId: null, tagId: null,
+    amount: '9.99', amountRecipient: null, categoryId: 'cat1', description: '', payeeId: null, tagId: null,
     date: '2026-07-01 09:30:00',
   }
   const result = await transactionApi.createTransaction(form)
   expect(body).toEqual(form)
-  expect(result.item.amount).toBe(9.99)
-  expect(result.accounts[0].balance).toBe(90.01)
+  expect(result.item.amount).toBe('9.99')
+  expect(result.accounts[0].balance).toBe('90.01')
 })
 
 it('deleteTransaction posts the id and returns the refreshed accounts', async () => {
@@ -67,10 +67,10 @@ it('deleteTransaction posts the id and returns the refreshed accounts', async ()
     ),
   )
   const result = await transactionApi.deleteTransaction('t1')
-  expect(result.accounts[0].balance).toBe(90.01)
+  expect(result.accounts[0].balance).toBe('90.01')
 })
 
-it('category list and currency rates smoke (envelope + rate coercion)', async () => {
+it('category list and currency rates smoke (envelope + rate pass-through)', async () => {
   server.use(
     http.get('*/api/v1/category/get-category-list', () =>
       HttpResponse.json({
@@ -88,7 +88,7 @@ it('category list and currency rates smoke (envelope + rate coercion)', async ()
   const categories = await getCategoryList()
   expect(categories[0].isArchived).toBe(0)
   const rates = await getCurrencyRateList()
-  expect(rates[0].rate).toBe(1.08)
+  expect(rates[0].rate).toBe('1.08')
 })
 
 it('exportTransactionList sends the comma-joined accountId param and resolves a Blob', async () => {

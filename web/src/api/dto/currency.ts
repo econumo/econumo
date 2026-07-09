@@ -11,7 +11,7 @@ export interface CurrencyDto {
 export interface CurrencyRateDto {
   currencyId: Id
   baseCurrencyId: Id
-  /** wire: decimal string, coerced */
-  rate: number
+  /** decimal string (wire format, kept verbatim) */
+  rate: string
   updatedAt: string
 }

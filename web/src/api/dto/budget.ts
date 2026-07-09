@@ -28,9 +28,9 @@ export interface BudgetChildElementDto {
   name: string
   icon: string
   isArchived: 0 | 1
-  /** wire: decimal strings, coerced */
-  spent: number
-  budgetSpent: number
+  /** decimal string (wire format, kept verbatim) */
+  spent: string
+  budgetSpent: string
   ownerUserId: Id
 }
 
@@ -39,8 +39,8 @@ export interface BudgetElementDto extends Omit<BudgetChildElementDto, 'ownerUser
   currencyId: Id | null
   folderId: Id | null
   position: number
-  budgeted: number
-  available: number
+  budgeted: string
+  available: string
   ownerUserId: Id | null
   children: BudgetChildElementDto[]
 }
@@ -54,18 +54,18 @@ export interface BudgetFolderDto {
 // nullable by period phase: future month = all null except holdings; current month = endBalance null
 export interface BudgetBalanceDto {
   currencyId: Id
-  startBalance: number | null
-  endBalance: number | null
-  income: number | null
-  expenses: number | null
-  exchanges: number | null
-  holdings: number | null
+  startBalance: string | null
+  endBalance: string | null
+  income: string | null
+  expenses: string | null
+  exchanges: string | null
+  holdings: string | null
 }
 
 export interface BudgetRateDto {
   currencyId: Id
   baseCurrencyId: Id
-  rate: number
+  rate: string
   /** date-only Y-m-d */
   periodStart: string
   periodEnd: string
@@ -77,8 +77,8 @@ export interface BudgetTransactionDto {
   id: Id
   author: UserDto
   currencyId: Id
-  /** wire: decimal string, coerced */
-  amount: number
+  /** decimal string (wire format, kept verbatim) */
+  amount: string
   description: string
   category: { id: Id; name: string; icon: string } | null
   payee: { id: Id; name: string } | null
