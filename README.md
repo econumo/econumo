@@ -43,21 +43,12 @@ Then visit `http://localhost:8181` and create the first user.
 
 ### Configuration
 
-Everything is configured through `.env` (see [`.env.example`](.env.example) for
-the full, commented template). The essentials:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `DATABASE_URL` | `sqlite:///app/var/db/db.sqlite` | Database DSN; the scheme selects the engine (`sqlite://…` or `postgres://…`). **Required.** |
-| `PORT` | `80` (in Docker) | HTTP listen port; compose maps it to `8181` on the host. **Required.** |
-| `ECONUMO_ALLOW_REGISTRATION` | `true` | Enable/disable new-user registration. |
-| `MAILER_DSN` | _(empty — print to stdout)_ | Password-recovery mail transport: empty for console output, or `resend://<api_key>?from=…&reply_to=…`. |
-| `ECONUMO_CURRENCY_BASE` | `USD` | Base currency for [multi-currency support](https://econumo.com/docs/self-hosting/multi-currency/). |
-| `OPEN_EXCHANGE_RATES_TOKEN` | _(empty)_ | Token for currency-rate updates. |
-| `ECONUMO_CORS_ALLOW_ORIGIN` | _(empty — same-domain only)_ | Comma-separated cross-origin allowlist; the bundled web app needs no config. |
-| `ECONUMO_JWT_PRIVATE_KEY_PATH` / `ECONUMO_JWT_PUBLIC_KEY_PATH` / `ECONUMO_JWT_PASSPHRASE` | auto-generated | RS256 keypair for login tokens, created on first boot under `/app/var/jwt`. |
-| `ECONUMO_LOG_LEVEL` | `info` | Log level: `debug` \| `info` \| `warn` \| `error`. |
-| `ECONUMO_DEBUG` | `false` | `true` exposes stack traces in 500 responses. |
+Everything is configured through environment variables in `.env` —
+[`.env.example`](.env.example) is the full, commented reference for every
+setting (database, mail, currencies, CORS, JWT keys, logging). The defaults
+work out of the box: SQLite storage and registration enabled; the only
+variables most setups ever touch are `DATABASE_URL` (to switch to PostgreSQL)
+and `MAILER_DSN` (to send password-recovery email).
 
 All mutable state lives in two Docker volumes — `db` (the SQLite database) and
 `jwt` (the keypair) — so your data and logins survive container recreation.
