@@ -1,0 +1,271 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource/roboto/300.css";
+@import "@fontsource/roboto/400.css";
+@import "@fontsource/roboto/500.css";
+@import "@fontsource/roboto/700.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tailwind v4 preflight sets `button { cursor: default }`; every enabled
+   interactive control in this app must read as clickable. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
+
+/* Scrollable but with the scrollbar itself hidden (sidebar account tree). */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Slim unobtrusive scrollbar for in-dialog lists. */
+@utility scrollbar-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Entity icons (account.icon / category.icon) are Material icon ligature
+   names stored in the production DB — rendered with the same web font the
+   Vue app ships. Lucide is used for UI chrome only. */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/material-icons.woff2') format('woff2');
+}
+
+.material-icon {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+}
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    /* econumo brand palette (web/src/css/quasar.variables.scss — frozen brand) */
+    --color-econumo-yellow: #FFC71F;
+    --color-econumo-yellow-text: #765910;
+    --color-econumo-magenta: #BD51CF;
+    --color-econumo-magenta-dark: #93489F;
+    --color-econumo-magenta-light: #F4CFFF;
+    --color-econumo-purple: #9C27B0;
+    --color-econumo-card: #F5F5F5;
+    --color-econumo-hover: #EBEBEB;
+    --color-income: #4E8F26;
+    --color-expense: #D34949;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: #333333;
+    --card: oklch(1 0 0);
+    --card-foreground: #333333;
+    --popover: oklch(1 0 0);
+    --popover-foreground: #333333;
+    --primary: #BD51CF;
+    --primary-foreground: oklch(1 0 0);
+    --secondary: #F5F5F5;
+    --secondary-foreground: #333333;
+    --muted: #F5F5F5;
+    --muted-foreground: #808080;
+    --accent: #F5F5F5;
+    --accent-foreground: #333333;
+    --destructive: #D34949;
+    --border: #E6E6E6;
+    --input: #E6E6E6;
+    --ring: #D988F3;
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    }
+}
+
+/* Quasar parity: action buttons speak uppercase. Value-bearing triggers
+   (selects, comboboxes, menus showing data) keep their own casing. */
+[data-slot="button"]:not([aria-haspopup]):not([role="combobox"]) {
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Loader: the live wordmark — the logo's dark "econum" letters with its gold
+   trailing "ooo" bouncing. Each "o" is a flat gold ring exactly like the
+   logo's; letters and o's share the logo's equal height, and the letter
+   baseline sits on the o's ground line, so the shadow strip (gap + ellipse)
+   hangs below it. */
+.coin-loader {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding-top: 1.5rem; /* headroom for the hop */
+  color: #333333; /* the frozen letter color of assets/econumo.svg */
+}
+
+.coin-loader-letters {
+  height: 1.5rem;
+  width: auto;
+  margin-bottom: 0.625rem; /* = unit gap (0.3125rem) + shadow height (0.3125rem) */
+  margin-right: 0.125rem;
+}
+
+.coin-loader-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3125rem;
+}
+
+.coin-loader-coin {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  /* stroke weight of the logo's letter "o": (Ø20.1 − Ø11.4) / 2 ≈ 4.35 of 20 units */
+  border: 0.3125rem solid var(--color-econumo-yellow);
+  transform-origin: 50% 100%;
+  animation: coin-bounce 1.5s ease-in-out infinite;
+  animation-delay: var(--coin-delay, 0s);
+}
+
+.coin-loader-shadow {
+  width: 1.1875rem;
+  height: 0.3125rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-econumo-yellow-text), transparent 65%);
+  animation: coin-shadow 1.5s ease-in-out infinite;
+  animation-delay: var(--coin-delay, 0s);
+}
+
+/* rest → crouch → apex → landing squash → rest */
+@keyframes coin-bounce {
+  0%, 55%, 100% { transform: translateY(0) scale(1, 1); }
+  8%   { transform: translateY(0) scale(1.18, 0.78); }
+  30%  { transform: translateY(-1.25rem) scale(0.94, 1.08); }
+  46%  { transform: translateY(0) scale(1.12, 0.84); }
+}
+
+@keyframes coin-shadow {
+  0%, 55%, 100% { transform: scaleX(1); opacity: 0.5; }
+  8%   { transform: scaleX(1.2); opacity: 0.6; }
+  30%  { transform: scaleX(0.5); opacity: 0.2; }
+  46%  { transform: scaleX(1.15); opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coin-loader-coin,
+  .coin-loader-shadow {
+    animation: none;
+  }
+}

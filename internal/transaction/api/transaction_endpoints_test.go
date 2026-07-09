@@ -67,7 +67,7 @@ func TestCreateTransaction_Success_EmbedsAuthorAndAccounts(t *testing.T) {
 	}
 }
 
-// The Quasar frontend sends amount/amountRecipient as JSON numbers (it does
+// Existing web clients send amount/amountRecipient as JSON numbers (they do
 // Number(...) before posting), while the API contract treats them as decimal
 // strings. Both must be accepted. Regression for
 // "json: cannot unmarshal number into Go struct field ...amount of type string".

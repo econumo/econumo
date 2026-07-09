@@ -7,7 +7,7 @@ import (
 
 // FlexString is a string that decodes from JSON as either a string OR a number.
 //
-// The Quasar frontend sends money fields (amount, amountRecipient, balance, the
+// Existing web clients send money fields (amount, amountRecipient, balance, the
 // budget limit) as JSON numbers — it runs Number(...) over them before posting —
 // while the API contract treats those fields as normalized decimal strings. The
 // frozen contract was set when scalars deserialized leniently, so a numeric body

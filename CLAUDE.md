@@ -6,7 +6,7 @@ This file provides guidance to AI agents when working with code in this reposito
 
 Econumo is a self-hosted personal finance and budgeting application. It consists of:
 - **Backend**: Go (HTTP API + static SPA server) with hexagonal architecture (the Go module is the repo root).
-- **Frontend**: Vue 3 + Quasar 2 SPA with TypeScript, in `web/`.
+- **Frontend**: React 19 + Vite SPA with TypeScript (Tailwind 4 / shadcn, TanStack Query, Zustand), in `web/`.
 - **Database**: SQLite (default) or PostgreSQL — selected at runtime by `DATABASE_URL`.
 
 > History: the backend was originally a Symfony 5.4 (PHP) app. It has been fully
@@ -25,8 +25,8 @@ The Go module is the repo root. Tests run with the standard toolchain — no Doc
 required for the smoke tier.
 
 ```bash
-make test            # SMOKE: build + vet + gofmt + OpenAPI-docs-fresh + sqlite unit/integration + coverage gate
-make regression      # REGRESSION: test + the sqlite-vs-PostgreSQL engine-comparison suite
+make go-test         # SMOKE: build + vet + gofmt + OpenAPI-docs-fresh + sqlite unit/integration + coverage gate
+make test            # FULL: go-test + the sqlite-vs-PostgreSQL engine-comparison suite + the frontend suite
 make go-build        # Compile the binary to ./econumo (regenerates OpenAPI docs first)
 make go-run          # Run the server locally (reads .env; regenerates OpenAPI docs first)
 make go-lint         # build + vet + gofmt + OpenAPI-docs-fresh check
@@ -39,16 +39,17 @@ go run ./cmd/econumo serve            # run the server (reads .env)
 go run ./cmd/econumo user:create "Name" user@example.test secret
 ```
 
-The regression suite needs a PostgreSQL; `make regression` auto-provisions one
-via the compose stack, or set `DATABASE_TEST_PGSQL_URL` to an existing database.
+The full suite needs a PostgreSQL; `make test` auto-provisions one via the
+compose stack, or set `DATABASE_TEST_PGSQL_URL` to an existing database.
 
-### Frontend (Vue/Quasar) — in `web/`
+### Frontend (React/Vite) — in `web/`
 
 ```bash
 make web-install   # cd web && pnpm install
-make web-dev       # cd web && npm run dev      (dev server)
-make web-bundle    # cd web && npm run build    (production SPA build)
-make web-lint      # cd web && npm run lint
+make web-run       # cd web && pnpm dev       (dev server, port 9000, proxies /api to :8181)
+make web-test      # cd web && pnpm test      (vitest)
+make web-lint      # cd web && pnpm lint      (oxlint)
+make web-bundle    # cd web && pnpm build     (production SPA build -> web/dist)
 ```
 
 ### Publishing
@@ -104,7 +105,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   ├── clock/ ................ time source abstraction
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
-│   │                              distinct from the repo-root web/, the Vue SPA): middleware, router,
+│   │                              distinct from the repo-root web/, the React SPA): middleware, router,
 │   │                              response envelope (httpx), SPA server, apidoc — no feature logic
 │   ├── server/ .................. composition root: server.BuildAPI wires every feature (used by the
 │   │                              binary AND tests); glue_*.go files hold the cross-feature adapters
@@ -169,13 +170,15 @@ special: CSV export, multipart import, query-param reads, and login's raw
 `internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
 in `internal/model/<feature>_dto.go`.
 
-### Frontend architecture (Vue 3 + Quasar)
+### Frontend architecture (React 19 + Vite)
 
-Directory structure in `web/src/`: `pages/` (routes), `components/`, `composables/`,
-`modules/api/v1/` (typed API clients), `stores/` (Pinia), `router/`, `i18n/`.
-Build-time config comes from `web/.env.dist` (copied to `.env` at image build); the
-version label shown in the UI is `ECONUMO_VERSION` (same name as the Docker build arg
-that overrides it per build).
+Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
+(shadcn-style UI), `api/` (typed API clients), `hooks/`, `app/` (providers,
+router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config is read from
+`public/econumo-config.js` (`window.econumoConfig`); the UI version label is
+`ECONUMO_VERSION`, inlined by Vite at build time (the Docker build arg of the
+same name sets it per image build, default `dev`). Lint is oxlint, tests are
+vitest (`pnpm test`).
 
 ## Testing
 
@@ -184,7 +187,7 @@ Tests live alongside the Go code:
   dbtest applies production pragmas, e.g. `foreign_keys = ON`).
 - `internal/test/apiparity/` — the shared API scenario catalogue: every registered
   route is replayed against the REAL production handler (`server.BuildAPI`).
-  Two consumers: the untagged **smoke suite** (every `make test`) diffs each
+  Two consumers: the untagged **smoke suite** (every `make go-test`) diffs each
   scenario's responses against committed golden files in `testdata/golden/`
   (normalized: generated UUIDs, datetimes, JWTs redacted), and the build-tagged
   parity suite below. Guard tests enforce that every route has a scenario, the
@@ -197,7 +200,7 @@ Tests live alongside the Go code:
   under `-tags enginecompare` → Postgres, each test in its own schema). `make
   test-repo-pgsql` reruns the whole repo/unit suite against PostgreSQL so the
   pgsql adapters + generated queries are exercised, not just the parity
-  catalogue; it is part of `make regression` and the CI regression job. Raw SQL
+  catalogue; it is part of `make test` and the CI regression job. Raw SQL
   in a test must use `db.Rebind(query)` for `?`→`$N`, and decimal assertions
   compare normalized `vo.Decimal` values (sqlite text vs pgsql NUMERIC differ).
 - `internal/test/enginecompare/` — the strongest contract: replays the same
@@ -205,7 +208,7 @@ Tests live alongside the Go code:
   responses (build tag `enginecompare`).
 - `internal/test/{fixture,testkeys}` — shared fixture builder + embedded JWT keypair.
 
-Coverage gate: `make test` enforces a cross-package minimum (`GO_COVER_MIN`,
+Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
 default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
 
@@ -386,8 +389,8 @@ data unreadable. Most are also asserted by the test suite.
 
 ## Code Quality Tools
 
-- `gofmt` (formatting), `go vet` (static analysis), the coverage gate (`make test`).
-- Frontend: ESLint (`make web-lint`).
+- `gofmt` (formatting), `go vet` (static analysis), the coverage gate (`make go-test`).
+- Frontend: oxlint (`make web-lint`) + vitest (`make web-test`).
 
 ## Comments — write sparingly
 

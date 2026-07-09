@@ -16,3 +16,6 @@ coverage.out
 
 # Local dev-machine -> homelab transfer script (contains the homelab host/path).
 /sync-to-homelab.sh
+
+# Playwright MCP browser-session artifacts (screenshots/snapshots from agent runs)
+.playwright-mcp/

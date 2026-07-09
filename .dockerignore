@@ -4,5 +4,5 @@ var/log
 .git
 .github
 web/node_modules
-web/.quasar
-web/dist-dev
+web/dist
+web/.vite

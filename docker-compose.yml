@@ -1,7 +1,7 @@
 # Econumo self-hosted stack.
 #
 #   End users (published image):  docker compose pull && docker compose up -d
-#   Developers (build from src):  docker compose up -d --build   (or `make up`)
+#   Developers (build from src):  docker compose up -d --build   (or `make docker-up`)
 #
 # Config lives in .env (copy .env.example). Two named volumes hold everything
 # mutable — `db` for the sqlite database (/app/var/db) and `jwt` for the
@@ -34,7 +34,7 @@ services:
 
   # Optional PostgreSQL. Off by default — the app runs on SQLite (the `db` volume
   # above). Uncomment this service (and the `pgdata` volume below) to either:
-  #   - run `make regression`: its pgsql tier + `pg-ensure` auto-create the
+  #   - run `make test`: its pgsql tier + `pg-ensure` auto-create the
   #     throwaway `econumo_test` database in here, or
   #   - run the app itself on Postgres: set DATABASE_URL in .env to
   #     postgres://econumo:econumo@postgres:5432/econumo?sslmode=disable

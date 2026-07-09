@@ -1,0 +1,33 @@
+import { render, screen } from '@testing-library/react'
+import { LoadingDialog } from './LoadingDialog'
+
+function mockMatchMedia() {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+}
+
+beforeEach(mockMatchMedia)
+
+it('shows three coins with staggered delays and a screen-reader-only label', () => {
+  render(<LoadingDialog open label="Loading your data" />)
+  expect(screen.getByRole('status', { name: 'Loading your data' })).toBeInTheDocument()
+  // the header is hidden visually but the title stays in the a11y tree
+  expect(screen.getByText('Loading your data').closest('[data-slot="dialog-header"]')).toHaveClass('sr-only')
+  const coins = document.querySelectorAll('.coin-loader-coin')
+  expect(coins).toHaveLength(3)
+  const delays = Array.from(document.querySelectorAll('.coin-loader-unit')).map(
+    (el) => (el as HTMLElement).style.getPropertyValue('--coin-delay'),
+  )
+  expect(delays).toEqual(['0s', '0.16s', '0.32s'])
+  // boot loader spells the wordmark: "econum" letters, the coins are its "ooo"
+  expect(document.querySelector('.coin-loader-letters')).toBeInTheDocument()
+  Array.from(coins).forEach((coin) => expect(coin.textContent).toBe(''))
+  // a faint "loading" caption sits under the wordmark
+  expect(screen.getByText('loading')).toBeInTheDocument()
+})
+
+it('renders nothing when closed', () => {
+  render(<LoadingDialog open={false} label="Loading your data" />)
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})

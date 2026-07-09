@@ -1,5 +1,5 @@
-// Package spa serves the built Vue 3 / Quasar single-page application from a
-// directory on disk (web/dist/spa) with SPA history-mode fallback: any request
+// Package spa serves the built single-page application from a directory on
+// disk (web/dist) with SPA history-mode fallback: any request
 // that does not map to an existing file and is not an API or internal route is
 // served index.html so the client-side router can take over.
 package spa

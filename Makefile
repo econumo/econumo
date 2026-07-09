@@ -1,4 +1,4 @@
-.PHONY: help web-install web-dev web-bundle web-lint go-build go-run test test-cover go-lint regression test-engines pg-ensure up down publish-dev publish-buildx-ensure swagger swagger-check
+.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check
 
 # Default target
 .DEFAULT_GOAL := help
@@ -8,19 +8,22 @@ help:
 	@echo "Backend (Go):"
 	@echo "  make go-build     - Compile the binary to ./econumo (CGO off)"
 	@echo "  make go-run       - Run the server locally (go run ./cmd/econumo serve, reads .env)"
-	@echo "  make test         - SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
-	@echo "  make regression   - REGRESSION suite: test + sqlite-vs-pgsql comparison"
+	@echo "  make go-test      - Go SMOKE suite: unit + sqlite + lint + coverage gate (no deps)"
 	@echo "  make go-lint      - build + vet + gofmt + OpenAPI-docs-fresh check"
 	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/web/apidoc/docs)"
-	@echo "  make up           - Start the stack (compose, builds from source)"
-	@echo "  make down         - Stop the stack"
-	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
 	@echo ""
 	@echo "Frontend (web/):"
 	@echo "  make web-install  - Install web dependencies"
-	@echo "  make web-dev      - Start web development server"
-	@echo "  make web-bundle   - Bundle web for production"
+	@echo "  make web-run      - Start web development server"
+	@echo "  make web-test     - Run web tests"
 	@echo "  make web-lint     - Run web linter"
+	@echo "  make web-bundle   - Bundle web for production"
+	@echo ""
+	@echo "Suite & stack:"
+	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + frontend"
+	@echo "  make docker-up    - Start the stack (compose, builds from source)"
+	@echo "  make docker-down  - Stop the stack"
+	@echo "  make publish-dev  - Build + push the multi-arch 'dev' image to $(GHCR_IMAGE)"
 
 # --- Frontend (web/) ---
 
@@ -28,17 +31,21 @@ web-install:
 	@echo "Installing web dependencies..."
 	cd web && pnpm install
 
-web-dev:
+web-run:
 	@echo "Starting web development server..."
-	cd web && npm run dev
+	cd web && pnpm dev
 
-web-bundle:
-	@echo "Bundling web for production..."
-	cd web && npm run build
+web-test:
+	@echo "Running web tests..."
+	cd web && pnpm test
 
 web-lint:
 	@echo "Running web linter..."
-	cd web && npm run lint
+	cd web && pnpm lint
+
+web-bundle:
+	@echo "Bundling web for production..."
+	cd web && pnpm build
 
 # --- Backend (Go) ---
 
@@ -56,13 +63,13 @@ go-build: swagger
 go-run: swagger
 	go run ./cmd/econumo serve
 
-# The Go suite is split into two tiers:
+# The test suite is split into two tiers:
 #
-#   make test        SMOKE: unit + sqlite + lint + coverage gate. Fast, zero
+#   make go-test     SMOKE: unit + sqlite + lint + coverage gate. Fast, zero
 #                    external dependencies. Run this constantly / before commit.
-#   make regression  REGRESSION: everything in test PLUS the sqlite-vs-pgsql
-#                    engine comparison against a real PostgreSQL. Run before
-#                    merging / releasing.
+#   make test        FULL: everything in go-test PLUS the sqlite-vs-pgsql
+#                    engine comparison against a real PostgreSQL PLUS the
+#                    frontend suite. Run before merging / releasing.
 #
 # The granular targets below (test-cover, test-engines, go-lint) remain as the
 # building blocks the two tiers compose.
@@ -71,7 +78,7 @@ go-run: swagger
 
 # Smoke suite: lint + the sqlite-only tests with a coverage gate. The everyday
 # command; no external dependencies.
-test: go-lint test-cover
+go-test: go-lint test-cover
 	@echo "SMOKE suite passed (unit + sqlite, no external deps)."
 
 # Coverage threshold for test-cover (true cross-package %). Override on the
@@ -80,7 +87,7 @@ GO_COVER_MIN ?= 78
 
 # Coverage denominator: all internal packages EXCEPT the sqlc-generated code
 # (internal/infra/storage/sqlc/gen/**). That code is machine-generated and its
-# PostgreSQL half runs only under `make regression` (which the smoke gate does
+# PostgreSQL half runs only under `make test` (which the smoke gate does
 # not), so counting it here measured the codegen, not our code, and diluted the
 # gate by ~5 points. Excluding generated code from coverage is standard; the
 # gen packages are still built and exercised — just not scored here.
@@ -142,19 +149,12 @@ swagger-check:
 			echo "FAIL: OpenAPI docs are stale — run 'make swagger' and commit the result"; rm -rf "$$tmp"; exit 1; fi; \
 		rm -rf "$$tmp"; echo "swagger: docs up to date"
 
-# ---- REGRESSION (smoke + sqlite-vs-pgsql comparison) ----------------------
+# ---- REGRESSION building blocks (sqlite-vs-pgsql comparison) --------------
 
-# Where the regression suite finds PostgreSQL. If DATABASE_TEST_PGSQL_URL is set
+# Where the pgsql tiers find PostgreSQL. If DATABASE_TEST_PGSQL_URL is set
 # in the environment it is used as-is; otherwise it points at the compose
 # `postgres` service (which ships commented out — see pg-ensure / docker-compose.yml).
 DATABASE_TEST_PGSQL_URL ?= postgres://econumo:econumo@localhost:5432/econumo_test?sslmode=disable
-
-# Regression suite: the full smoke suite + the engine-comparison suite against a
-# real PostgreSQL. Provide Postgres one of two ways: uncomment the `postgres`
-# service in docker-compose.yml (pg-ensure then starts it and creates the test
-# DB), or set DATABASE_TEST_PGSQL_URL to any reachable Postgres.
-regression: test pg-ensure test-engines test-repo-pgsql
-	@echo "REGRESSION suite passed (smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL)."
 
 # Ensure the throwaway `econumo_test` database exists in the compose `postgres`
 # service. That service ships commented out (the app defaults to SQLite), so this
@@ -189,10 +189,28 @@ test-repo-pgsql:
 	CGO_ENABLED=0 DBTEST_ENGINE=pgsql DATABASE_TEST_PGSQL_URL='$(DATABASE_TEST_PGSQL_URL)' \
 		go test -tags enginecompare -count=1 $(shell go list ./internal/... | grep -vE '/sqlc/gen/|/test/enginecompare')
 
-# --- Publishing (GitHub Container Registry only) ---------------------------
+# --- Suite & stack (full tests, docker, publishing) ------------------------
+
+# Full suite: the Go smoke suite + the engine-comparison suite against a real
+# PostgreSQL + the frontend suite. Provide Postgres one of two ways: uncomment
+# the `postgres` service in docker-compose.yml (pg-ensure then starts it and
+# creates the test DB), or set DATABASE_TEST_PGSQL_URL to any reachable Postgres.
+test: go-test pg-ensure test-engines test-repo-pgsql web-test
+	@echo "FULL suite passed (Go smoke + sqlite-vs-pgsql comparison + repo suite on PostgreSQL + frontend)."
+
+# Start the stack locally, building the image from source (host port 8181).
+# Regenerates the OpenAPI docs first so the built image embeds the current spec.
+docker-up: swagger
+	docker compose up -d --build
+
+# Stop the stack.
+docker-down:
+	docker compose down --remove-orphans
+
 # `make publish-dev` builds the multi-arch image locally and pushes the "dev" tag to
-# ghcr.io/econumo/econumo. Releases ("latest" + vX.Y.Z) are published by the
-# GitHub release workflow, NOT here. Requires `docker login ghcr.io` first.
+# ghcr.io/econumo/econumo (GitHub Container Registry only). Releases ("latest" +
+# vX.Y.Z) are published by the GitHub release workflow, NOT here. Requires
+# `docker login ghcr.io` first.
 # Override any of these on the command line, e.g. `make publish-dev PUBLISH_TAG=foo`.
 GHCR_IMAGE        ?= ghcr.io/econumo/econumo
 PUBLISH_TAG       ?= dev
@@ -218,12 +236,3 @@ publish-dev: swagger publish-buildx-ensure
 		--tag $(GHCR_IMAGE):$(PUBLISH_TAG) \
 		--push \
 		.
-
-# Start the stack locally, building the image from source (host port 8181).
-# Regenerates the OpenAPI docs first so the built image embeds the current spec.
-up: swagger
-	docker compose up -d --build
-
-# Stop the stack.
-down:
-	docker compose down --remove-orphans
