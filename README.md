@@ -63,8 +63,9 @@ $ docker compose exec econumo /app/econumo user:create "Name" user@example.com p
 
 ### Upgrading from v0.x (PHP)
 
-v1.x replaces the PHP backend with the Go binary but reuses your database in
-place — accounts, passwords, and data keep working. See the
+v1.x is a full rewrite — the PHP backend became the Go binary and the Vue.js
+frontend became a React app — but it reuses your database in place: accounts,
+passwords, and data keep working. See the
 **[migration guide](docs/migration-v0-to-v1.md)** for the step-by-step
 walkthrough (backup, new image, `.env` mapping, and the gotchas).
 
