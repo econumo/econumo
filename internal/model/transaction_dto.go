@@ -36,8 +36,8 @@ type TransactionResult struct {
 type CreateTransactionRequest struct {
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`
-	Amount             vo.FlexString  `json:"amount"`
-	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	Amount             vo.FlexString  `json:"amount" swaggertype:"string"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient" swaggertype:"string"`
 	AccountId          string         `json:"accountId"`
 	AccountRecipientId *string        `json:"accountRecipientId"`
 	CategoryId         *string        `json:"categoryId"`
@@ -77,8 +77,8 @@ type CreateTransactionResult struct {
 type UpdateTransactionRequest struct {
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`
-	Amount             vo.FlexString  `json:"amount"`
-	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	Amount             vo.FlexString  `json:"amount" swaggertype:"string"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient" swaggertype:"string"`
 	AccountId          string         `json:"accountId"`
 	AccountRecipientId *string        `json:"accountRecipientId"`
 	CategoryId         *string        `json:"categoryId"`

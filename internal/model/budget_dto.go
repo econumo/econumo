@@ -412,7 +412,7 @@ type SetLimitRequest struct {
 	BudgetId  string         `json:"budgetId"`
 	ElementId string         `json:"elementId"`
 	Period    string         `json:"period"`
-	Amount    *vo.FlexString `json:"amount"`
+	Amount    *vo.FlexString `json:"amount" swaggertype:"string"`
 }
 
 func (r SetLimitRequest) Validate() error {
