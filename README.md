@@ -14,6 +14,25 @@ Econumo ships as a single, self-contained Go binary in a distroless Docker image
 It serves both the API and the web app, runs database migrations automatically on
 boot, and works with SQLite (default) or PostgreSQL.
 
+<p align="center">
+    <img src="docs/screenshots/budget.png" alt="Econumo budget — envelope budgeting with folders, limits, and available amounts" width="800">
+</p>
+
+<details>
+<summary><b>More screenshots</b> — transactions, adding a transaction, sharing with family</summary>
+<br>
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/transactions.png" alt="Transaction list of an account"><br><sub>Transactions</sub></td>
+    <td align="center"><img src="docs/screenshots/add-transaction.png" alt="Add-transaction dialog with built-in calculator and tags"><br><sub>Adding a transaction</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/shared-access.png" alt="Sharing budgets and accounts with family members"><br><sub>Manage money together</sub></td>
+    <td align="center"><img src="docs/screenshots/mobile.png" alt="Mobile view of accounts" height="420"><br><sub>Works great on mobile</sub></td>
+  </tr>
+</table>
+</details>
+
 > [!IMPORTANT]
 > The Docker image is now published to the **GitHub Container Registry**:
 > `ghcr.io/econumo/econumo`. The old Docker Hub image (`econumo/econumo-ce`)
