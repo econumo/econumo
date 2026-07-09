@@ -1,4 +1,4 @@
-import { initialFormState, buildPayload, accountOptions, categoryOptions, canChangeAccountData } from './useTransactionForm'
+import { initialFormState, buildPayload, evaluatedAmount, accountOptions, categoryOptions, canChangeAccountData } from './useTransactionForm'
 import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 
@@ -62,6 +62,22 @@ it('posts large plain amounts verbatim', () => {
   const base = initialFormState({}, [account({})], 'a1')
   const form = { ...base, amount: '12345678901234567.89', type: 'expense' as const }
   expect(buildPayload(form).amount).toBe('12345678901234567.89')
+})
+
+it('posts large negative plain amounts verbatim', () => {
+  expect(evaluatedAmount('-12345678901234567.89')).toBe('-12345678901234567.89')
+})
+
+it('sanitizes comma-decimal recipient amounts before normalizing', () => {
+  const base = initialFormState({}, [account({})], 'a1')
+  const transfer = buildPayload({ ...base, type: 'transfer', amount: '10', accountRecipientId: 'a2', amountRecipient: '9,99' })
+  expect(transfer.amountRecipient).toBe('9.99')
+})
+
+it('falls back to the primary amount when the recipient amount is unparseable', () => {
+  const base = initialFormState({}, [account({})], 'a1')
+  const transfer = buildPayload({ ...base, type: 'transfer', amount: '10', accountRecipientId: 'a2', amountRecipient: 'garbage' })
+  expect(transfer.amountRecipient).toBe('10')
 })
 
 it('creation offers only accounts in visible folders; edit offers all', () => {

@@ -15,6 +15,9 @@ var flexStringType = reflect.TypeOf(vo.FlexString{})
 // warnNumericAmounts emits one WARN when a decoded request carried any money
 // field as a JSON number — the deprecated lenient form the contract still
 // accepts. Field names only, never values (amounts are user financial data).
+// Only walks top-level struct fields, by design: every FlexString request
+// field in the contract is top-level today; a nested one would need this
+// extended to recurse.
 func warnNumericAmounts(r *http.Request, req any) {
 	v := reflect.ValueOf(req)
 	if v.Kind() == reflect.Pointer {

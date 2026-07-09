@@ -73,7 +73,7 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
 // every digit; only actual formulas ("5+5") go through evaluation.
 export const evaluatedAmount = (raw: string): string => {
   const sanitized = sanitizeInput(raw)
-  if (/^\d+(\.\d+)?$/.test(sanitized)) {
+  if (/^-?\d+(\.\d+)?$/.test(sanitized)) {
     return normalize(sanitized)
   }
   return normalize(evaluateFormula(sanitized + '='))
@@ -88,7 +88,11 @@ export function buildPayload(form: TransactionFormState): CreateTransactionDto {
     accountId: form.accountId as Id,
     accountRecipientId: isTransfer ? form.accountRecipientId : null,
     amount,
-    amountRecipient: isTransfer ? (form.amountRecipient === '' ? amount : normalize(form.amountRecipient)) : null,
+    amountRecipient: isTransfer
+      ? form.amountRecipient === ''
+        ? amount
+        : (tryNormalize(sanitizeInput(form.amountRecipient)) ?? amount)
+      : null,
     categoryId: isTransfer ? null : form.categoryId,
     description: form.description || '',
     payeeId: isTransfer ? null : form.payeeId,

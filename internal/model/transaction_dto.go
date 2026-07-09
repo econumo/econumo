@@ -31,8 +31,9 @@ type TransactionResult struct {
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
-// are vo.FlexString: the frontend posts them as JSON numbers, the contract treats
-// them as decimal strings, and FlexString accepts either (see its doc).
+// are vo.FlexString: the contract treats these as decimal strings, but FlexString
+// keeps accepting the deprecated JSON-number form from third-party clients (see
+// vo.FlexString's doc).
 type CreateTransactionRequest struct {
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`

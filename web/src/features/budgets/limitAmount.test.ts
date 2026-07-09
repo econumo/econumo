@@ -24,3 +24,8 @@ it('still clears on zero and rejects garbage', () => {
   expect(limitAmountFromInput('0.00')).toEqual({ ok: true, amount: null })
   expect(limitAmountFromInput('abc')).toEqual({ ok: false })
 })
+
+it('accepts plain negative amounts without float mangling', () => {
+  expect(limitAmountFromInput('-5')).toEqual({ ok: true, amount: '-5' })
+  expect(limitAmountFromInput('-12345678901234567.89')).toEqual({ ok: true, amount: '-12345678901234567.89' })
+})

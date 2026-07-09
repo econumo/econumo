@@ -13,7 +13,7 @@ export function limitAmountFromInput(raw: string): { ok: true; amount: string | 
   if (!validateFormula(sanitized)) {
     return { ok: false }
   }
-  const evaluated = /^\d+(\.\d+)?$/.test(sanitized) ? tryNormalize(sanitized) : tryNormalize(evaluateFormula(sanitized + '='))
+  const evaluated = /^-?\d+(\.\d+)?$/.test(sanitized) ? tryNormalize(sanitized) : tryNormalize(evaluateFormula(sanitized + '='))
   if (evaluated === null) {
     return { ok: false }
   }
