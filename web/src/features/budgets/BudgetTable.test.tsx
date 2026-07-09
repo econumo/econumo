@@ -61,8 +61,8 @@ it('shows -spent and available+budgeted as a sign-colored pill', async () => {
 it('rounds float noise in cells to the currency precision', async () => {
   renderTable((budget) => {
     const food = budget.structure.elements[0]
-    food.spent = -45.4999999934
-    food.budgetSpent = -45.4999999934
+    food.spent = '-45.4999999934'
+    food.budgetSpent = '-45.4999999934'
   })
   const food = await screen.findByTestId('element-cat-food')
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent('45.50'))
@@ -126,7 +126,7 @@ it('children show spent and the owner badge only in a multi-user budget', async 
   const user = userEvent.setup()
   renderTable((budget) => {
     budget.meta.access.push({ user: { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }, role: 'user', isAccepted: 1 })
-    budget.structure.elements[1].children[0].spent = -12.5
+    budget.structure.elements[1].children[0].spent = '-12.5'
     budget.structure.elements[1].children[0].ownerUserId = 'u2'
   })
   const living = await screen.findByTestId('element-env-1')

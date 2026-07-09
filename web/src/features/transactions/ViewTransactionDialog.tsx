@@ -33,7 +33,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   const sign = tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''
   const amountClass = tx.type === 'expense' ? 'text-expense' : tx.type === 'income' ? 'text-income' : ''
 
-  const accountRow = (account: ViewTransaction['account'], amount: number | null) => (
+  const accountRow = (account: ViewTransaction['account'], amount: string | null) => (
     <span className="flex items-center gap-2 text-sm">
       <EntityIcon name={account?.icon} className="text-base text-muted-foreground" />
       <span className="flex-1 truncate">{account?.name ?? t('elements.account.name_hidden')}</span>

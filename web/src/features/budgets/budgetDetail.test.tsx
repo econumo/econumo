@@ -79,12 +79,12 @@ it('set-limit patches budgeted optimistically and rolls back on error', async ()
   result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', amount: '999' })
   await waitFor(() => {
     const cached = queryClient.getQueryData<BudgetDto>(key)!
-    expect(cached.structure.elements[0].budgeted === 999 || result.current.isError).toBe(true)
+    expect(cached.structure.elements[0].budgeted === '999' || result.current.isError).toBe(true)
   })
   await waitFor(() => expect(result.current.isError).toBe(true))
   // rolled back
   const cached = queryClient.getQueryData<BudgetDto>(key)!
-  expect(cached.structure.elements[0].budgeted).toBe('200' as unknown as number)
+  expect(cached.structure.elements[0].budgeted).toBe('200')
 })
 
 it('order-folders patches folder positions optimistically and rolls back on error', async () => {

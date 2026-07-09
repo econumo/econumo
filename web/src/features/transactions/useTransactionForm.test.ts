@@ -10,7 +10,7 @@ const other = { id: 'u2', avatar: '', name: 'Bob' }
 
 const account = (over: Partial<AccountDto>): AccountDto => ({
   id: 'a1', owner, folderId: 'f1', name: 'Cash', position: 0, currency: usd,
-  balance: 0, type: 1, icon: 'wallet', sharedAccess: [], ...over,
+  balance: '0', type: 1, icon: 'wallet', sharedAccess: [], ...over,
 })
 
 afterEach(() => vi.useRealTimers())
