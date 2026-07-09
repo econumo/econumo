@@ -23,7 +23,8 @@ boot, and works with SQLite (default) or PostgreSQL.
 ### Quick start
 
 You'll need [Docker](https://docs.docker.com/engine/install/) with
-[Compose](https://docs.docker.com/compose/install/); 32 MB of RAM is enough.
+[Compose](https://docs.docker.com/compose/install/). The app itself is
+lightweight — it consumes up to 32 MB of RAM.
 
 ```console
 $ git clone --single-branch https://github.com/econumo/econumo
