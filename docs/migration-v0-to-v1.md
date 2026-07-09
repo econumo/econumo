@@ -2,7 +2,9 @@
 
 v1.x is a full rewrite: the PHP/Symfony backend is replaced by a single Go
 binary, and the Vue.js frontend by a React app (both served from the same
-image). Your data, however, is reused **in place** — there is no export/import. v0.x already ran on
+image). The rewrite cut memory consumption from ~200 MB to ~10 MB, made the
+app much faster, and brought a better UI/UX. Your data, however, is reused
+**in place** — there is no export/import. v0.x already ran on
 SQLite or PostgreSQL (the same two engines v1.x supports), the schema is carried
 forward unchanged, and the Go binary detects your old Doctrine migrations on boot
 and applies only the genuinely new ones. Your accounts, passwords, and data all

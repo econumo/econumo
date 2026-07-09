@@ -64,8 +64,10 @@ $ docker compose exec econumo /app/econumo user:create "Name" user@example.com p
 ### Upgrading from v0.x (PHP)
 
 v1.x is a full rewrite — the PHP backend became the Go binary and the Vue.js
-frontend became a React app — but it reuses your database in place: accounts,
-passwords, and data keep working. See the
+frontend became a React app. The result: memory consumption dropped from
+~200 MB to ~10 MB, the app is much faster, and the new UI is a big step up.
+Your database is reused in place — accounts, passwords, and data keep
+working. See the
 **[migration guide](docs/migration-v0-to-v1.md)** for the step-by-step
 walkthrough (backup, new image, `.env` mapping, and the gotchas).
 
