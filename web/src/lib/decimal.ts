@@ -14,12 +14,16 @@ BigD.RM = BigD.roundDown
 
 export type Numeric = string | number | null | undefined
 
+// Truncate to scale 8 (toward zero), mirroring backend vo.NewDecimal.
+const truncate8 = (b: Big): Big => b.round(SCALE, BigD.roundDown)
+
+// Constructor: truncate every operand at construction (vo.NewDecimal parity).
 const big = (v: Numeric): Big => {
   if (v === null || v === undefined) return new BigD(0)
   const s = String(v).trim()
   if (s === '') return new BigD(0)
   try {
-    return new BigD(s)
+    return truncate8(new BigD(s))
   } catch {
     return new BigD(0)
   }
@@ -32,8 +36,6 @@ const toPlain = (b: Big): string => {
   return s.replace(/0+$/, '').replace(/\.$/, '')
 }
 
-const truncate8 = (b: Big): Big => b.round(SCALE, BigD.roundDown)
-
 export function tryNormalize(raw: string): string | null {
   const s = raw.trim()
   if (s === '') return null
@@ -45,7 +47,10 @@ export function tryNormalize(raw: string): string | null {
 }
 
 export function normalize(v: Numeric): string {
-  return toPlain(truncate8(big(v)))
+  // big(v) already truncates at scale 8; no need to truncate again.
+  // Note: -0 collapses to 0 during truncation (deliberate divergence from backend's
+  // wire contract preservation, since the UI never renders -0 to users).
+  return toPlain(big(v))
 }
 
 export const add = (a: Numeric, b: Numeric): string => toPlain(big(a).plus(big(b)))

@@ -70,3 +70,22 @@ describe('comparisons and helpers', () => {
     expect(toFixedString('10.565', 2)).toBe('10.57')
   })
 })
+
+describe('operands are truncated to scale 8 at construction (vo parity)', () => {
+  it('add/sub/cmp see truncated operands', () => {
+    expect(add('1.123456789', '0')).toBe('1.12345678')
+    expect(sub('1.123456789', '0')).toBe('1.12345678')
+    expect(cmp('1.123456781', '1.123456789')).toBe(0)
+  })
+
+  it('round at precision >= 8 returns the truncated value unchanged', () => {
+    expect(round('1.234567895', 8)).toBe('1.23456789')
+  })
+})
+
+describe('deliberate divergences', () => {
+  it('collapses -0 to 0 (deliberate divergence: the backend preserves -0 for its wire contract; the UI never renders it)', () => {
+    expect(normalize('-0')).toBe('0')
+    expect(normalize('-0.00000000')).toBe('0')
+  })
+})
