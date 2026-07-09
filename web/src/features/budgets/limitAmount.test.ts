@@ -15,3 +15,12 @@ it('evaluates formulas and normalizes the amount string', () => {
 it('rejects garbage', () => {
   expect(limitAmountFromInput('5+')).toEqual({ ok: false })
 })
+
+it('preserves large plain amounts without float mangling', () => {
+  expect(limitAmountFromInput('12345678901234567.89')).toEqual({ ok: true, amount: '12345678901234567.89' })
+})
+
+it('still clears on zero and rejects garbage', () => {
+  expect(limitAmountFromInput('0.00')).toEqual({ ok: true, amount: null })
+  expect(limitAmountFromInput('abc')).toEqual({ ok: false })
+})

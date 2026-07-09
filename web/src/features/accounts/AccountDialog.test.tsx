@@ -64,7 +64,7 @@ it('creates an account with a UUIDv7 op id and numeric balance; correction lands
 
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.id).toMatch(UUID_V7)
-  expect(body!.balance).toBe(25)
+  expect(body!.balance).toBe('25')
   expect(body!.folderId).toBe('f1')
   expect(body!.name).toBe('New Wallet')
   await waitFor(() =>

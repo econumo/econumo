@@ -16,6 +16,7 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
+import { tryNormalize } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenTransactionParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
@@ -23,7 +24,7 @@ import { useCategories, usePayees, useTags, useCreateCategory, useCreatePayee, u
 import { useExchange } from '@/features/currencies/useExchange'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
-import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedNumber } from './useTransactionForm'
+import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedAmount } from './useTransactionForm'
 import { EntitySelect } from './EntitySelect'
 import { AddTagDialog } from './AddTagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
@@ -126,8 +127,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       if (!isValidFormula(raw)) {
         return t('elements.validation.invalid_formula')
       }
-      const evaluated = evaluatedNumber(raw)
-      if (Number.isNaN(evaluated)) {
+      const evaluated = evaluatedAmount(raw)
+      if (tryNormalize(evaluated) === null) {
         return t('elements.validation.invalid_number')
       }
       return null

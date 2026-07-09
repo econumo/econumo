@@ -115,7 +115,7 @@ export function useSetLimit() {
           structure: {
             ...prev.structure,
             elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId ? { ...el, budgeted: form.amount === null ? 0 : Number(form.amount) } : el,
+              el.id === form.elementId ? { ...el, budgeted: form.amount === null ? '0' : form.amount } : el,
             ),
           },
         }

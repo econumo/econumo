@@ -18,6 +18,7 @@ import { isNotEmpty, isValidAccountName, isValidDecimalNumber, isValidFormula, i
 import { useUiStore } from '@/app/uiStore'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { evaluatedAmount } from '../transactions/useTransactionForm'
 import { useCreateAccount, useUpdateAccount } from './queries'
 
 export function AccountDialog() {
@@ -95,14 +96,14 @@ export function AccountDialog() {
     if (!validate() || !currencyId) {
       return
     }
-    const numericBalance = Number(evaluateFormula(sanitizeInput(balance) + '='))
+    const balanceAmount = evaluatedAmount(balance)
     try {
       if (isNew) {
         await createAccount.mutateAsync({
           id: uuidv7(),
           name,
           currencyId,
-          balance: numericBalance,
+          balance: balanceAmount,
           icon,
           folderId: params.folderId ?? null,
         })
@@ -110,7 +111,7 @@ export function AccountDialog() {
         await updateAccount.mutateAsync({
           id: account.id,
           name,
-          balance: numericBalance,
+          balance: balanceAmount,
           icon,
           currencyId,
           updatedAt: formatDateTime(new Date()),
