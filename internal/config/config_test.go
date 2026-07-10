@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 func TestDriverFromURL(t *testing.T) {
@@ -124,6 +125,61 @@ func TestGetStringList(t *testing.T) {
 				if got[i] != tc.want[i] {
 					t.Fatalf("getStringList(%q) = %v, want %v", tc.val, got, tc.want)
 				}
+			}
+		})
+	}
+}
+
+func TestLoad_RateLimitDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RateLimitLogin != 5 || c.RateLimitReset != 5 || c.RateLimitRemind != 3 || c.RateLimitRegister != 5 {
+		t.Fatalf("per-endpoint defaults = %d/%d/%d/%d, want 5/5/3/5",
+			c.RateLimitLogin, c.RateLimitReset, c.RateLimitRemind, c.RateLimitRegister)
+	}
+	if c.RateLimitWindow != 15*time.Minute {
+		t.Fatalf("window = %v, want 15m", c.RateLimitWindow)
+	}
+	if c.RateLimitGlobal != 60 {
+		t.Fatalf("global = %d, want 60", c.RateLimitGlobal)
+	}
+}
+
+func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_RATE_LIMIT_LOGIN", "10")
+	t.Setenv("ECONUMO_RATE_LIMIT_RESET", "0") // 0 = disabled
+	t.Setenv("ECONUMO_RATE_LIMIT_REMIND", "7")
+	t.Setenv("ECONUMO_RATE_LIMIT_REGISTER", "8")
+	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
+	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RateLimitLogin != 10 || c.RateLimitReset != 0 || c.RateLimitRemind != 7 || c.RateLimitRegister != 8 {
+		t.Fatalf("overrides not applied: %+v", c)
+	}
+	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 {
+		t.Fatalf("window/global overrides not applied: %v / %d", c.RateLimitWindow, c.RateLimitGlobal)
+	}
+}
+
+func TestLoad_RateLimitBadValuesFailBoot(t *testing.T) {
+	cases := map[string]string{
+		"ECONUMO_RATE_LIMIT_LOGIN":  "five",
+		"ECONUMO_RATE_LIMIT_GLOBAL": "-1",
+		"ECONUMO_RATE_LIMIT_WINDOW": "15minutes",
+	}
+	for key, bad := range cases {
+		t.Run(key, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv(key, bad)
+			if _, err := Load(); err == nil {
+				t.Fatalf("Load() with %s=%q succeeded, want boot error", key, bad)
 			}
 		})
 	}
