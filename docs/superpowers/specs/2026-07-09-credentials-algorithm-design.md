@@ -85,7 +85,11 @@ the sha512 code and gains the dispatch. Dependency: `golang.org/x/crypto/argon2`
 No API response exposes password, salt, or algorithm, so the response envelope
 and apiparity goldens are expected to be byte-identical (verified, not assumed).
 Login/401 behavior, validation messages, and routes are unchanged. Existing
-stored hashes remain valid; ids and other columns untouched.
+stored hashes remain valid; ids and other columns untouched. Rollback caveat: if
+the binary is downgraded after this migration, a reset-password on the old
+binary writes a sha512 hash while the row's `algorithm` marker stays
+`'argon2id'`, locking that account out until another reset on the new binary;
+other old-binary writes are safe.
 
 ## Error handling
 

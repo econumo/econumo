@@ -46,7 +46,7 @@ func mergePasswordAndSalt(password, salt string) string {
 }
 
 // HashSHA512 hashes a password with the legacy sha512 scheme. Only fixtures
-// and the salt-removal migration call this directly; new passwords use Hash.
+// call this directly; new passwords use Hash.
 func (h *PasswordHasher) HashSHA512(plainPassword, salt string) string {
 	salted := []byte(mergePasswordAndSalt(plainPassword, salt))
 
@@ -72,7 +72,7 @@ func (h *PasswordHasher) verifySHA512(hashedPassword, plainPassword, salt string
 
 // Hash hashes a NEW plaintext password — always with the current algorithm
 // (argon2id). Legacy sha512 hashes are only ever verified, never produced,
-// except through HashSHA512 (fixtures and the salt-removal migration).
+// except through HashSHA512 (fixtures).
 func (h *PasswordHasher) Hash(plainPassword string) (string, error) {
 	return hashArgon2id(plainPassword)
 }

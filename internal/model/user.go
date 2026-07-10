@@ -96,7 +96,7 @@ type User struct {
 	Email      string // AES-encrypted ciphertext (opaque here)
 	Name       string
 	AvatarURL  string
-	Password   string // sha512, 500 iterations, base64-encoded (see CLAUDE.md)
+	Password   string // hash produced by the scheme in Algorithm (see CLAUDE.md)
 	Salt       string // sha1(random) hex, 40 chars (unused by argon2id hashes)
 	Algorithm  string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
 	IsActive   bool
