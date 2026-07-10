@@ -15,15 +15,21 @@ import (
 // token + current user. A bad username or password yields an UnauthorizedError
 // (HTTP 401, "Invalid credentials.").
 func (s *Service) Login(ctx context.Context, req model.LoginRequest, now time.Time) (*model.LoginResult, error) {
+	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
+	if err := s.allowAttempt(RateScopeLogin, limitKey); err != nil {
+		return nil, err
+	}
 	identifier := s.encode.Hash(strings.ToLower(req.Username))
 	u, err := s.repo.GetByIdentifier(ctx, identifier)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
+			s.failAttempt(RateScopeLogin, limitKey)
 			return nil, errs.NewUnauthorized("Invalid credentials.")
 		}
 		return nil, err
 	}
 	if !u.IsActive || !s.hasher.Verify(u.Password, req.Password, u.Salt) {
+		s.failAttempt(RateScopeLogin, limitKey)
 		return nil, errs.NewUnauthorized("Invalid credentials.")
 	}
 
@@ -39,5 +45,6 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, now time.Ti
 	if cerr != nil {
 		return nil, cerr
 	}
+	s.clearAttempt(RateScopeLogin, limitKey)
 	return &model.LoginResult{Token: token, User: cur}, nil
 }
