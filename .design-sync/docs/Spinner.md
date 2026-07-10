@@ -1,0 +1,5 @@
+---
+category: Feedback
+---
+
+Indeterminate spinner.

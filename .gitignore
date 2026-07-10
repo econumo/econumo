@@ -19,3 +19,10 @@ coverage.out
 
 # Playwright MCP browser-session artifacts (screenshots/snapshots from agent runs)
 .playwright-mcp/
+
+# design-sync machine state (staged scripts, build output, caches)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
