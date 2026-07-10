@@ -40,7 +40,7 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.Up
 		if !s.hasher.Verify(u.Password, req.OldPassword, u.Salt) {
 			return errs.NewValidation("Password is not correct")
 		}
-		u.UpdatePassword(s.hasher.Hash(req.NewPassword, u.Salt), now)
+		u.UpdatePassword(s.hasher.Hash(req.NewPassword, u.Salt), model.AlgorithmSHA512, now)
 		return nil
 	})
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	}
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(req.Password, u.Salt), s.clock.Now())
+		u.UpdatePassword(s.hasher.Hash(req.Password, u.Salt), model.AlgorithmSHA512, s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}

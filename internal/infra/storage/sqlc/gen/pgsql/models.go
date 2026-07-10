@@ -214,6 +214,7 @@ type User struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	IsActive   bool
+	Algorithm  string
 }
 
 type UsersConnection struct {
