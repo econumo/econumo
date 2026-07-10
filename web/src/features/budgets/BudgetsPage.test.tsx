@@ -124,7 +124,7 @@ it('delete confirm removes the budget; go-to navigates', async () => {
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
 })
 
-const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
 const ownedShared = {
   id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
   access: [

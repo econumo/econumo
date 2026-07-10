@@ -6,7 +6,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
 import { ExportCsvDialog } from './ExportCsvDialog'
 
-const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
 
 function renderDialog() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })

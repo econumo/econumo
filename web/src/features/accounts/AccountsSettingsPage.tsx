@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
+import { UserAvatar } from '@/components/UserAvatar'
 import { InfoBox } from '@/components/InfoBox'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -88,9 +89,9 @@ function AccountRow({
         </span>
         {account.sharedAccess.length > 0 ? (
           <span className="flex items-center -space-x-2" data-testid={`shared-avatars-${account.name}`}>
-            <img src={`${account.owner.avatar}?s=50`} alt={account.owner.name} className="size-7 rounded-full ring-2 ring-background" />
+            <UserAvatar avatar={account.owner.avatar} size="sm" className="size-7 ring-2 ring-background" />
             {account.sharedAccess.map((entry) => (
-              <img key={entry.user.id} src={`${entry.user.avatar}?s=50`} alt={entry.user.name} className="size-7 rounded-full ring-2 ring-background" />
+              <UserAvatar key={entry.user.id} avatar={entry.user.avatar} size="sm" className="size-7 ring-2 ring-background" />
             ))}
           </span>
         ) : null}

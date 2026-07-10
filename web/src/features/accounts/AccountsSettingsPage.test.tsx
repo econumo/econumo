@@ -158,7 +158,7 @@ it('account delete confirm posts and removes; edit opens the account modal', asy
 })
 
 it('access control: shared avatars, grant and revoke through the dialogs', async () => {
-  const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   const sharedAccounts = [
     { ...fixtureAccountsForAccess[0], sharedAccess: [{ user: partner, role: 'user' }] },
     ...fixtureAccountsForAccess.slice(1),

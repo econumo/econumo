@@ -125,7 +125,7 @@ it('clicking a child spent amount reports the child category with the parent cur
 it('children show spent and the owner badge only in a multi-user budget', async () => {
   const user = userEvent.setup()
   renderTable((budget) => {
-    budget.meta.access.push({ user: { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }, role: 'user', isAccepted: 1 })
+    budget.meta.access.push({ user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, role: 'user', isAccepted: 1 })
     budget.structure.elements[1].children[0].spent = -12.5
     budget.structure.elements[1].children[0].ownerUserId = 'u2'
   })

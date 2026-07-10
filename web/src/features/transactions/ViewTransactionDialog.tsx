@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { CardField } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import { moneyFormat } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import type { ViewTransaction } from './useAccountTransactions'
@@ -128,12 +129,10 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         <span className="relative grid size-14 place-items-center rounded-full bg-econumo-card">
           <EntityIcon name={heroIcon} className="text-3xl text-[#666666]" />
           {isShared && tx.author ? (
-            <img
-              src={`${tx.author.avatar}?s=30`}
-              alt={tx.author.name}
-              title={tx.author.name}
-              className="absolute -bottom-1 -right-1.5 size-6 rounded-full border-2 border-background"
-            />
+            // the tooltip is the only place the preview names the author (no Author row)
+            <span title={tx.author.name} className="absolute -bottom-1 -right-1.5">
+              <UserAvatar avatar={tx.author.avatar} size="xs" className="size-6 border-2 border-background" />
+            </span>
           ) : null}
         </span>
         <span className="mt-1 max-w-full truncate text-base font-medium" title={heroName}>
