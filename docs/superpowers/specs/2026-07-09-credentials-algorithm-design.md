@@ -78,7 +78,7 @@ the sha512 code and gains the dispatch. Dependency: `golang.org/x/crypto/argon2`
 | `password.go` ResetPassword | new hash written as argon2id |
 | `admin.go` AdminChangePassword | new hash written as argon2id |
 | `register.go` createUser | hash with `Hash(plain)`; salt still generated |
-| `internal/test/fixture` | seeds argon2id users (they log in through the real endpoint) |
+| `internal/test/fixture` | unchanged hashing: seeds legacy `sha512` users (explicit `algorithm` column) — keeps suites fast and continuously exercises the legacy login path |
 
 ## Wire & data contract
 
