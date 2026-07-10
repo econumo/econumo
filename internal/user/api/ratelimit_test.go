@@ -123,3 +123,86 @@ func TestLogin_NilLimiterUnlimited(t *testing.T) {
 		}
 	}
 }
+
+func remind(h *harness, t *testing.T, username string) (int, envelope) {
+	return h.do(t, "POST", "/api/v1/user/remind-password", "", map[string]any{"username": username})
+}
+
+func reset(h *harness, t *testing.T, username, code, password string) (int, envelope) {
+	return h.do(t, "POST", "/api/v1/user/reset-password", "", map[string]any{
+		"username": username, "code": code, "password": password,
+	})
+}
+
+// Remind counts EVERY request (each one sends an email), success included.
+func TestRemindPassword_RateLimited(t *testing.T) {
+	h := newLimitedHarness(t)
+	for i := 0; i < 2; i++ {
+		if status, _ := remind(h, t, seedEmail); status != http.StatusOK {
+			t.Fatalf("attempt %d: expected 200", i+1)
+		}
+	}
+	status, env := remind(h, t, seedEmail)
+	assert429(t, status, env)
+}
+
+// Anti-enumeration holds under limiting: unknown users return the same 200s
+// then the same 429.
+func TestRemindPassword_UnknownUserSameShape(t *testing.T) {
+	h := newLimitedHarness(t)
+	for i := 0; i < 2; i++ {
+		if status, _ := remind(h, t, "ghost@example.test"); status != http.StatusOK {
+			t.Fatalf("attempt %d: expected 200 (anti-enumeration)", i+1)
+		}
+	}
+	status, env := remind(h, t, "ghost@example.test")
+	assert429(t, status, env)
+}
+
+func TestResetPassword_RateLimitedOnBadCodes(t *testing.T) {
+	h := newLimitedHarness(t)
+	for i := 0; i < 2; i++ {
+		if status, _ := reset(h, t, seedEmail, "000000000000", "new-pw-123"); status != http.StatusBadRequest {
+			t.Fatalf("attempt %d: expected 400", i+1)
+		}
+	}
+	status, env := reset(h, t, seedEmail, "000000000000", "new-pw-123")
+	assert429(t, status, env)
+}
+
+// A successful reset clears the counter; look up the real code in the DB the
+// same way internal/user/api/reset_password_test.go does (read that file and
+// reuse its query helper/pattern verbatim).
+func TestResetPassword_SuccessClearsCounter(t *testing.T) {
+	h := newLimitedHarness(t)
+	if status, _ := reset(h, t, seedEmail, "000000000000", "new-pw-123"); status != http.StatusBadRequest {
+		t.Fatal("expected 400")
+	}
+	if status, _ := remind(h, t, seedEmail); status != http.StatusOK {
+		t.Fatal("expected 200 remind")
+	}
+	code := fetchResetCode(t, h)
+	if status, _ := reset(h, t, seedEmail, code, "new-pw-123"); status != http.StatusOK {
+		t.Fatal("expected 200 reset")
+	}
+	// Counter cleared: two more bad attempts before a block.
+	if status, _ := reset(h, t, seedEmail, "000000000000", "x-pw-123"); status != http.StatusBadRequest {
+		t.Fatal("expected 400")
+	}
+	if status, _ := reset(h, t, seedEmail, "000000000000", "x-pw-123"); status != http.StatusBadRequest {
+		t.Fatal("expected 400")
+	}
+	status, env := reset(h, t, seedEmail, "000000000000", "x-pw-123")
+	assert429(t, status, env)
+}
+
+// fetchResetCode reads the emailed reset code for the seed user straight from
+// the DB (the test mailer is a no-op).
+func fetchResetCode(t *testing.T, h *harness) string {
+	t.Helper()
+	var code string
+	if err := h.db.QueryRow(`SELECT code FROM users_password_requests WHERE user_id = ?`, seedUserID).Scan(&code); err != nil {
+		t.Fatalf("read reset code: %v", err)
+	}
+	return code
+}
