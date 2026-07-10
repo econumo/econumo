@@ -206,3 +206,35 @@ func fetchResetCode(t *testing.T, h *harness) string {
 	}
 	return code
 }
+
+func registerUser(h *harness, t *testing.T, email string) (int, envelope) {
+	return h.do(t, "POST", "/api/v1/user/register-user", "", map[string]any{
+		"email": email, "password": "brand-new-pw", "name": "New User",
+	})
+}
+
+// Register counts EVERY attempt (mass-creation protection), success included.
+func TestRegister_RateLimited(t *testing.T) {
+	h := newLimitedHarness(t)
+	if status, _ := registerUser(h, t, "fresh@example.test"); status != http.StatusOK {
+		t.Fatal("expected 200 first register")
+	}
+	if status, _ := registerUser(h, t, "fresh@example.test"); status != http.StatusBadRequest {
+		t.Fatal("expected 400 duplicate")
+	}
+	status, env := registerUser(h, t, "fresh@example.test")
+	assert429(t, status, env)
+}
+
+func TestRegister_KeysIndependent(t *testing.T) {
+	h := newLimitedHarness(t)
+	for i := 0; i < 2; i++ {
+		registerUser(h, t, "a@example.test")
+	}
+	if status, env := registerUser(h, t, "a@example.test"); status != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for exhausted key, got %d: %s", status, env.raw)
+	}
+	if status, _ := registerUser(h, t, "b@example.test"); status != http.StatusOK {
+		t.Fatal("expected 200 for a different email")
+	}
+}
