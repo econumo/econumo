@@ -40,7 +40,11 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.Up
 		if !s.hasher.Verify(u.Algorithm, u.Password, req.OldPassword, u.Salt) {
 			return errs.NewValidation("Password is not correct")
 		}
-		u.UpdatePassword(s.hasher.HashSHA512(req.NewPassword, u.Salt), model.AlgorithmSHA512, now)
+		newHash, herr := s.hasher.Hash(req.NewPassword)
+		if herr != nil {
+			return herr
+		}
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
 		return nil
 	})
 	if err != nil {

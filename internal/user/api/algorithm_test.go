@@ -60,3 +60,60 @@ func TestCredentialsAlgorithm(t *testing.T) {
 		t.Fatalf("argon2id login with wrong password = %d, want 401", st)
 	}
 }
+
+// TestUpdatePasswordTransitionsAlgorithm: a legacy user who changes their
+// password moves to argon2id; a wrong old password leaves the row untouched.
+func TestUpdatePasswordTransitionsAlgorithm(t *testing.T) {
+	h := newHarness(t)
+
+	st, env := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+		"username": seedEmail, "password": seedPassword,
+	})
+	if st != http.StatusOK {
+		t.Fatalf("login = %d; body: %s", st, env.raw)
+	}
+	token := mustUnmarshal[loginResult](t, env.raw).Token
+
+	// Wrong old password: 400, row stays sha512.
+	if st, _ := h.do(t, http.MethodPost, "/api/v1/user/update-password", token, map[string]string{
+		"oldPassword": "not-the-password", "newPassword": "upgraded-pw-1",
+	}); st != http.StatusBadRequest {
+		t.Fatalf("update with wrong old password = %d, want 400", st)
+	}
+	var alg string
+	if err := h.db.QueryRow(`SELECT algorithm FROM users WHERE id = ?`, seedUserID).Scan(&alg); err != nil {
+		t.Fatalf("read algorithm: %v", err)
+	}
+	if alg != "sha512" {
+		t.Fatalf("algorithm after failed update = %q, want sha512", alg)
+	}
+
+	// Correct old password: transition.
+	if st, env := h.do(t, http.MethodPost, "/api/v1/user/update-password", token, map[string]string{
+		"oldPassword": seedPassword, "newPassword": "upgraded-pw-1",
+	}); st != http.StatusOK {
+		t.Fatalf("update-password = %d; body: %s", st, env.raw)
+	}
+	var hash string
+	if err := h.db.QueryRow(`SELECT algorithm, password FROM users WHERE id = ?`, seedUserID).Scan(&alg, &hash); err != nil {
+		t.Fatalf("read row: %v", err)
+	}
+	if alg != "argon2id" {
+		t.Errorf("algorithm after update = %q, want argon2id", alg)
+	}
+	if len(hash) == 0 || hash[0] != '$' {
+		t.Errorf("hash is not a PHC string: %q", hash)
+	}
+
+	// New password logs in (through the argon2id path); old one doesn't.
+	if st, _ := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+		"username": seedEmail, "password": "upgraded-pw-1",
+	}); st != http.StatusOK {
+		t.Fatalf("login with new password = %d, want 200", st)
+	}
+	if st, _ := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+		"username": seedEmail, "password": seedPassword,
+	}); st != http.StatusUnauthorized {
+		t.Fatalf("login with old password = %d, want 401", st)
+	}
+}
