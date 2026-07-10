@@ -75,8 +75,8 @@ func TestNewUser_Getters(t *testing.T) {
 	if u.Salt != "salt-hex" {
 		t.Errorf("Salt()=%q", u.Salt)
 	}
-	if u.Algorithm != AlgorithmSHA512 {
-		t.Errorf("Algorithm()=%q, want %q", u.Algorithm, AlgorithmSHA512)
+	if u.Algorithm != AlgorithmArgon2id {
+		t.Errorf("Algorithm()=%q, want %q", u.Algorithm, AlgorithmArgon2id)
 	}
 	if !u.IsActive {
 		t.Error("new user must be active")

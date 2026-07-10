@@ -5,6 +5,8 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"strings"
+
+	"github.com/econumo/econumo/internal/model"
 )
 
 // PasswordHasher computes stored-password hashes: sha512, 500 iterations,
@@ -43,7 +45,9 @@ func mergePasswordAndSalt(password, salt string) string {
 	return password + "{" + salt + "}"
 }
 
-func (h *PasswordHasher) Hash(plainPassword, salt string) string {
+// HashSHA512 hashes a password with the legacy sha512 scheme. Only fixtures
+// and the salt-removal migration call this directly; new passwords use Hash.
+func (h *PasswordHasher) HashSHA512(plainPassword, salt string) string {
 	salted := []byte(mergePasswordAndSalt(plainPassword, salt))
 
 	d := sha512.Sum512(salted)
@@ -55,12 +59,33 @@ func (h *PasswordHasher) Hash(plainPassword, salt string) string {
 	return base64.StdEncoding.EncodeToString(digest)
 }
 
-// Verify reports whether plainPassword (with salt) matches hashedPassword,
-// including the length / '$' guard and a constant-time comparison.
-func (h *PasswordHasher) Verify(hashedPassword, plainPassword, salt string) bool {
+// verifySHA512 reports whether plainPassword (with salt) matches
+// hashedPassword, including the length / '$' guard and a constant-time
+// comparison.
+func (h *PasswordHasher) verifySHA512(hashedPassword, plainPassword, salt string) bool {
 	if len(hashedPassword) != expectedHashLen || strings.Contains(hashedPassword, "$") {
 		return false
 	}
-	computed := h.Hash(plainPassword, salt)
+	computed := h.HashSHA512(plainPassword, salt)
 	return subtle.ConstantTimeCompare([]byte(hashedPassword), []byte(computed)) == 1
+}
+
+// Hash hashes a NEW plaintext password — always with the current algorithm
+// (argon2id). Legacy sha512 hashes are only ever verified, never produced,
+// except through HashSHA512 (fixtures and the salt-removal migration).
+func (h *PasswordHasher) Hash(plainPassword string) (string, error) {
+	return hashArgon2id(plainPassword)
+}
+
+// Verify dispatches on the algorithm recorded next to the stored hash.
+// Unknown algorithm values fail closed.
+func (h *PasswordHasher) Verify(algorithm, hashedPassword, plainPassword, salt string) bool {
+	switch algorithm {
+	case model.AlgorithmSHA512:
+		return h.verifySHA512(hashedPassword, plainPassword, salt)
+	case model.AlgorithmArgon2id:
+		return verifyArgon2id(hashedPassword, plainPassword)
+	default:
+		return false
+	}
 }

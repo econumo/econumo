@@ -57,7 +57,7 @@ func TestAdminCreateUser(t *testing.T) {
 	if !u.IsActive {
 		t.Error("new user should be active")
 	}
-	if !hasher.Verify(u.Password, "secretpass", u.Salt) {
+	if !hasher.Verify(u.Algorithm, u.Password, "secretpass", u.Salt) {
 		t.Error("stored password does not verify")
 	}
 	email, err := enc.Decode(u.Email)
@@ -132,10 +132,10 @@ func TestAdminChangePassword(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasher.Verify(u.Password, "brandnew", u.Salt) {
+	if !hasher.Verify(u.Algorithm, u.Password, "brandnew", u.Salt) {
 		t.Error("new password does not verify")
 	}
-	if hasher.Verify(u.Password, "oldpw", u.Salt) {
+	if hasher.Verify(u.Algorithm, u.Password, "oldpw", u.Salt) {
 		t.Error("old password still verifies")
 	}
 

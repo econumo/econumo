@@ -55,7 +55,7 @@ func (b *Builder) User(u User) string {
 			b.t.Fatalf("fixture: encode email: %v", err)
 		}
 		email = enc
-		password = b.hasher.Hash(u.Password, u.Salt)
+		password = b.hasher.HashSHA512(u.Password, u.Salt)
 	} else {
 		// Keep identifier unique without crypto (the column is UNIQUE).
 		identifier = "ident-" + id[:8]

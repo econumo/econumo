@@ -3,6 +3,8 @@ package auth
 import (
 	"strings"
 	"testing"
+
+	"github.com/econumo/econumo/internal/model"
 )
 
 func TestArgon2id_HashAndVerify(t *testing.T) {
@@ -75,5 +77,29 @@ func TestArgon2id_GoldenVector(t *testing.T) {
 	}
 	if !verifyArgon2id(golden, "s3cret-password") {
 		t.Error("golden vector does not verify")
+	}
+}
+
+func TestPasswordHasher_VerifyDispatch(t *testing.T) {
+	h := NewPasswordHasher()
+	legacy := h.HashSHA512("pw", "somesalt")
+	modern, err := h.Hash("pw")
+	if err != nil {
+		t.Fatalf("Hash: %v", err)
+	}
+	if !h.Verify(model.AlgorithmSHA512, legacy, "pw", "somesalt") {
+		t.Error("sha512 dispatch failed")
+	}
+	if !h.Verify(model.AlgorithmArgon2id, modern, "pw", "") {
+		t.Error("argon2id dispatch failed")
+	}
+	if h.Verify(model.AlgorithmArgon2id, legacy, "pw", "somesalt") {
+		t.Error("argon2id verifier accepted a sha512 hash")
+	}
+	if h.Verify(model.AlgorithmSHA512, modern, "pw", "") {
+		t.Error("sha512 verifier accepted an argon2id hash")
+	}
+	if h.Verify("", legacy, "pw", "somesalt") || h.Verify("md5", legacy, "pw", "somesalt") {
+		t.Error("unknown algorithm must fail closed")
 	}
 }

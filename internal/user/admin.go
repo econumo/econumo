@@ -64,7 +64,7 @@ func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword st
 		return err
 	}
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(newPassword, u.Salt), model.AlgorithmSHA512, s.clock.Now())
+		u.UpdatePassword(s.hasher.HashSHA512(newPassword, u.Salt), model.AlgorithmSHA512, s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }

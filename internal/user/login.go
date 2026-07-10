@@ -23,7 +23,7 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, now time.Ti
 		}
 		return nil, err
 	}
-	if !u.IsActive || !s.hasher.Verify(u.Password, req.Password, u.Salt) {
+	if !u.IsActive || !s.hasher.Verify(u.Algorithm, u.Password, req.Password, u.Salt) {
 		return nil, errs.NewUnauthorized("Invalid credentials.")
 	}
 

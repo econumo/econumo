@@ -117,7 +117,7 @@ func NewUser(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash
 		AvatarURL:  avatarURL,
 		Password:   passwordHash,
 		Salt:       salt,
-		Algorithm:  AlgorithmSHA512,
+		Algorithm:  AlgorithmArgon2id,
 		IsActive:   true,
 		CreatedAt:  now,
 		UpdatedAt:  now,
