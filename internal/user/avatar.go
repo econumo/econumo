@@ -1,5 +1,6 @@
 // Avatar helpers: the "<icon>:<color>" avatar value format, the color
 // allowlist, and the random default picker used at registration.
+
 package user
 
 import (

@@ -8,6 +8,9 @@ import (
 	"github.com/econumo/econumo/internal/web/endpoint"
 )
 
+// _ keeps the apidoc/model import aliases visible to swag's annotation
+// parser (this file's handler body no longer references model types
+// directly, since it delegates to a method value).
 var _ = apidoc.JsonResponseError{}
 var _ = model.UpdateAvatarResult{}
 
