@@ -281,6 +281,7 @@ export default {
     'avatar_picker': {
       'title': 'Choose your avatar',
       'icons': 'Avatar icons',
+      'colors': 'Avatar colors',
       'change': 'Change avatar'
     }
   },

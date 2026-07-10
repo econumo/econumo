@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -21,8 +21,17 @@ export function AvatarPickerDialog({ open, onClose }: AvatarPickerDialogProps) {
   const [icon, setIcon] = useState(() => splitAvatar(user?.avatar ?? '').icon)
   const [color, setColor] = useState(() => splitAvatar(user?.avatar ?? '').color)
 
+  // Seed from the saved avatar once per open (first render with user data
+  // present), NOT on every user-cache rewrite — a background refetch while the
+  // dialog is open must not discard the in-progress selection.
+  const seeded = useRef(false)
   useEffect(() => {
-    if (open && user) {
+    if (!open) {
+      seeded.current = false
+      return
+    }
+    if (user && !seeded.current) {
+      seeded.current = true
       const v = splitAvatar(user.avatar)
       setIcon(v.icon)
       setColor(v.color)
@@ -44,7 +53,7 @@ export function AvatarPickerDialog({ open, onClose }: AvatarPickerDialogProps) {
         <div className="flex justify-center">
           <UserAvatar avatar={joinAvatar(icon, color)} size="xl" />
         </div>
-        <div role="radiogroup" aria-label={t('modals.avatar_picker.title')} className="flex flex-wrap justify-center gap-2">
+        <div role="radiogroup" aria-label={t('modals.avatar_picker.colors')} className="flex flex-wrap justify-center gap-2">
           {avatarColors.map((c) => (
             <button
               key={c}
