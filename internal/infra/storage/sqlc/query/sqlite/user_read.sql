@@ -5,7 +5,7 @@
 
 -- name: GetUserView :one
 -- The user's display fields for get-user-data / the login response user object.
-SELECT id, email, name, avatar_url
+SELECT id, email, name, avatar
 FROM users
 WHERE id = ?;
 

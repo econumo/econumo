@@ -50,7 +50,7 @@ func (r *ReadRepo) UserView(ctx context.Context, id string) (model.UserViewRow, 
 		}
 		return model.UserViewRow{}, err
 	}
-	return model.UserViewRow{ID: row.ID, Email: row.Email, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
+	return model.UserViewRow{ID: row.ID, Email: row.Email, Name: row.Name, Avatar: row.Avatar}, nil
 }
 
 func (r *ReadRepo) OptionViews(ctx context.Context, userID string) ([]model.OptionViewRow, error) {

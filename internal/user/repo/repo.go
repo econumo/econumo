@@ -86,7 +86,7 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 		}
 		return model.Header{}, err
 	}
-	return model.Header{ID: row.ID, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
+	return model.Header{ID: row.ID, Name: row.Name, Avatar: row.Avatar}, nil
 }
 
 func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*model.User, error) {
@@ -137,7 +137,7 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 		Identifier: u.Identifier,
 		Email:      u.Email,
 		Name:       u.Name,
-		AvatarUrl:  u.AvatarURL,
+		Avatar:     u.Avatar,
 		Password:   u.Password,
 		Salt:       u.Salt,
 		CreatedAt:  u.CreatedAt,
@@ -175,7 +175,7 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 		return nil, err
 	}
 	return &model.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
-		AvatarURL: row.AvatarUrl, Password: row.Password, Salt: row.Salt, IsActive: row.IsActive,
+		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, IsActive: row.IsActive,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 

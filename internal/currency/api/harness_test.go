@@ -27,11 +27,11 @@ import (
 const (
 	testDataSalt = "0123456789abcdef"
 
-	seedUserID    = "11111111-1111-1111-1111-111111111111"
-	seedEmail     = "user@example.test"
-	seedName      = "Seed User"
-	seedSalt      = "0000000000000000000000000000000000000001"
-	seedAvatarURL = "https://avatar.test/x"
+	seedUserID = "11111111-1111-1111-1111-111111111111"
+	seedEmail  = "user@example.test"
+	seedName   = "Seed User"
+	seedSalt   = "0000000000000000000000000000000000000001"
+	seedAvatar = "https://avatar.test/x"
 
 	usdID = "cccccccc-0000-0000-0000-0000000000us"
 	eurID = "cccccccc-0000-0000-0000-0000000000eu"
@@ -64,7 +64,7 @@ func newHarness(t *testing.T) *harness {
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
 	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
-	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatarURL, Password: "pw", Salt: seedSalt})
+	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 
 	readRepo := currencyrepo.NewReadRepo("sqlite", tdb.TX)
 

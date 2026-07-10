@@ -48,10 +48,10 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 	if err != nil {
 		return err
 	}
-	avatarURL := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredNew))
+	avatar := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredNew))
 
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdateEmail(newIdentifier, encryptedEmail, avatarURL, s.clock.Now())
+		u.UpdateEmail(newIdentifier, encryptedEmail, avatar, s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }

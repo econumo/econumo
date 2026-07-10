@@ -2,7 +2,7 @@
 -- variant for rationale. Postgres uses $N placeholders.
 
 -- name: GetUserView :one
-SELECT id, email, name, avatar_url
+SELECT id, email, name, avatar
 FROM users
 WHERE id = $1;
 

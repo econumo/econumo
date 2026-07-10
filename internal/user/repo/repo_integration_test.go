@@ -32,9 +32,9 @@ func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *dbtest.DB) {
 	return userrepo.NewRepo(db.Engine, db.TX), userrepo.NewReadRepo(db.Engine, db.TX), db
 }
 
-func newTestUser(id vo.Id, identifier, email, name, avatarURL, password, salt string, isActive bool,
+func newTestUser(id vo.Id, identifier, email, name, avatar, password, salt string, isActive bool,
 	createdAt, updatedAt time.Time, opts []model.UserOption) *model.User {
-	return &model.User{ID: id, Identifier: identifier, Email: email, Name: name, AvatarURL: avatarURL,
+	return &model.User{ID: id, Identifier: identifier, Email: email, Name: name, Avatar: avatar,
 		Password: password, Salt: salt, IsActive: isActive, CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
 }
 
@@ -59,7 +59,7 @@ func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
 	if got.Identifier != identA || got.Email != "enc-email" || got.Name != "Alice" {
 		t.Errorf("fields mismatch: %q %q %q", got.Identifier, got.Email, got.Name)
 	}
-	if got.AvatarURL != "https://av/a" || got.Password != "hash" || got.Salt != "salt-a" || !got.IsActive {
+	if got.Avatar != "https://av/a" || got.Password != "hash" || got.Salt != "salt-a" || !got.IsActive {
 		t.Errorf("auth/avatar mismatch: %+v", got)
 	}
 	if !got.CreatedAt.Equal(fixedTime) {
@@ -99,7 +99,7 @@ func TestUserRepo_GetHeaderByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetHeaderByID: %v", err)
 	}
-	if h.ID != userA || h.Name != "Alice" || h.AvatarURL != "https://av/a" {
+	if h.ID != userA || h.Name != "Alice" || h.Avatar != "https://av/a" {
 		t.Errorf("header mismatch: %+v", h)
 	}
 
@@ -198,7 +198,7 @@ func TestUserReadRepo_Views(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UserView: %v", err)
 	}
-	if uv.ID != userA || uv.Email != "enc" || uv.Name != "Alice" || uv.AvatarURL != "https://av" {
+	if uv.ID != userA || uv.Email != "enc" || uv.Name != "Alice" || uv.Avatar != "https://av" {
 		t.Errorf("UserView mismatch: %+v", uv)
 	}
 

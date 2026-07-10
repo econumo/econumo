@@ -59,9 +59,9 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 	}
 	now := s.clock.Now()
 	passwordHash := s.hasher.Hash(password, salt)
-	avatarURL := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredEmail))
+	avatar := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredEmail))
 
-	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatarURL, passwordHash, salt, now)
+	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {

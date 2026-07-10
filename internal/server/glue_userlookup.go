@@ -47,5 +47,5 @@ func (l *UserOwnerLookup) GetOwner(ctx context.Context, userID string) (model.Ow
 	if err != nil {
 		return model.OwnerView{}, err
 	}
-	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.Avatar}, nil
 }
