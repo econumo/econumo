@@ -147,6 +147,11 @@ func (u *User) UpdateName(name string, now time.Time) {
 	u.UpdatedAt = now
 }
 
+func (u *User) UpdateAvatar(avatar string, now time.Time) {
+	u.Avatar = avatar
+	u.UpdatedAt = now
+}
+
 // Activate marks the account active, bumping UpdatedAt only when the state
 // actually changes so a no-op activate leaves the row untouched.
 func (u *User) Activate(now time.Time) {
