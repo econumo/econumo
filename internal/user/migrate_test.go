@@ -34,7 +34,7 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	if err != nil {
 		t.Fatalf("NewJWT: %v", err)
 	}
-	svc := appuser.NewService(repo, db.TX, enc, hasher, jwtSvc, lookup, budgets, nil, nil, clock.New(), false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, jwtSvc, lookup, budgets, nil, nil, clock.New(), nil, false)
 	return svc, hasher
 }
 
