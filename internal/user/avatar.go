@@ -1,0 +1,66 @@
+// Avatar helpers: the "<icon>:<color>" avatar value format, the color
+// allowlist, and the random default picker used at registration.
+package user
+
+import (
+	"math/rand/v2"
+	"regexp"
+)
+
+// DefaultAvatar is the standard value existing rows were backfilled to by the
+// 20260709000000 migration; test harnesses also pin it as the deterministic
+// registration default.
+const DefaultAvatar = "face:fuchsia"
+
+// AvatarColors is the canonical background-color allowlist. The frontend
+// mirrors it (web/src/lib/avatars.ts) and a sync test asserts exact equality,
+// so order and spelling are contract.
+var AvatarColors = []string{
+	"red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal",
+	"cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink",
+}
+
+// RandomAvatarIcons is the curated subset random registration defaults draw
+// from. Every name must exist in the frontend's availableIcons (asserted by a
+// frontend sync test); update-avatar itself accepts any well-formed name.
+var RandomAvatarIcons = []string{
+	"face", "account_circle", "pets", "stars", "celebration", "lightbulb",
+	"extension", "support", "savings", "wallet", "home", "alarm",
+	"fingerprint", "shopping_basket", "credit_card", "store",
+}
+
+var avatarIconRe = regexp.MustCompile(`^[a-z0-9_]{1,64}$`)
+
+// IsValidAvatarIcon checks the Material-ligature name format only; the icon
+// universe is owned by the frontend (same precedent as category icons).
+func IsValidAvatarIcon(icon string) bool { return avatarIconRe.MatchString(icon) }
+
+func IsValidAvatarColor(color string) bool {
+	for _, c := range AvatarColors {
+		if c == color {
+			return true
+		}
+	}
+	return false
+}
+
+func JoinAvatar(icon, color string) string { return icon + ":" + color }
+
+// RandomAvatarPicker is the production AvatarPicker: a uniform random
+// icon+color for each new user.
+type RandomAvatarPicker struct{}
+
+func NewRandomAvatarPicker() RandomAvatarPicker { return RandomAvatarPicker{} }
+
+func (RandomAvatarPicker) Pick() string {
+	return JoinAvatar(
+		RandomAvatarIcons[rand.IntN(len(RandomAvatarIcons))],
+		AvatarColors[rand.IntN(len(AvatarColors))],
+	)
+}
+
+// FixedAvatarPicker always returns its literal value; test harnesses use it so
+// golden responses stay deterministic.
+type FixedAvatarPicker string
+
+func (p FixedAvatarPicker) Pick() string { return string(p) }
