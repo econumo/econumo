@@ -92,7 +92,9 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
                       {t(`modules.connections.${kind}.roles.${item.role}`)}
                     </span>
                   </span>
-                  <UserAvatar avatar={item.owner.avatar} size="xs" />
+                  <span title={item.owner.name}>
+                    <UserAvatar avatar={item.owner.avatar} size="xs" />
+                  </span>
                 </button>
               </li>
             ))}

@@ -108,9 +108,13 @@ export function AccountPage() {
   const sharedAvatars =
     account.sharedAccess.length > 0 ? (
       <span className="flex items-center gap-0.5">
-        <UserAvatar avatar={account.owner.avatar} size="xs" />
+        <span title={account.owner.name}>
+          <UserAvatar avatar={account.owner.avatar} size="xs" />
+        </span>
         {account.sharedAccess.map((access) => (
-          <UserAvatar key={access.user.id} avatar={access.user.avatar} size="xs" />
+          <span key={access.user.id} title={access.user.name}>
+            <UserAvatar avatar={access.user.avatar} size="xs" />
+          </span>
         ))}
       </span>
     ) : null

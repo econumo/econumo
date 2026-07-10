@@ -89,9 +89,13 @@ function AccountRow({
         </span>
         {account.sharedAccess.length > 0 ? (
           <span className="flex items-center -space-x-2" data-testid={`shared-avatars-${account.name}`}>
-            <UserAvatar avatar={account.owner.avatar} size="sm" className="size-7 ring-2 ring-background" />
+            <span title={account.owner.name}>
+              <UserAvatar avatar={account.owner.avatar} size="sm" className="size-7 ring-2 ring-background" />
+            </span>
             {account.sharedAccess.map((entry) => (
-              <UserAvatar key={entry.user.id} avatar={entry.user.avatar} size="sm" className="size-7 ring-2 ring-background" />
+              <span key={entry.user.id} title={entry.user.name}>
+                <UserAvatar avatar={entry.user.avatar} size="sm" className="size-7 ring-2 ring-background" />
+              </span>
             ))}
           </span>
         ) : null}

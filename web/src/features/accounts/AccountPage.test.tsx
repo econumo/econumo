@@ -182,6 +182,8 @@ it('shared account: rows overlay the author avatar on the category icon', async 
   expect(avatar).toHaveAttribute('data-avatar', fixtureOwner.avatar)
   // the avatar is decorative; the wrapping tooltip still names the author
   expect(avatar.parentElement).toHaveAttribute('title', 'Ada')
+  // the header avatar cluster also names each member (Partner appears only there)
+  expect(screen.getByTitle('Partner')).toBeInTheDocument()
 })
 
 it('private account: rows show no author avatar', async () => {

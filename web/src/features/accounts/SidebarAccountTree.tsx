@@ -30,14 +30,13 @@ function SharedAvatars({ account }: { account: AccountDto }) {
   }
   return (
     <span className="absolute right-4 top-2.5 flex" aria-label="shared">
-      <UserAvatar avatar={account.owner.avatar} size="sm" className="-mr-2 size-7 border-2 border-econumo-card" />
+      <span title={account.owner.name} className="-mr-2">
+        <UserAvatar avatar={account.owner.avatar} size="sm" className="size-7 border-2 border-econumo-card" />
+      </span>
       {account.sharedAccess.map((access) => (
-        <UserAvatar
-          key={access.user.id}
-          avatar={access.user.avatar}
-          size="sm"
-          className="-mr-2 size-7 border-2 border-econumo-card"
-        />
+        <span key={access.user.id} title={access.user.name} className="-mr-2">
+          <UserAvatar avatar={access.user.avatar} size="sm" className="size-7 border-2 border-econumo-card" />
+        </span>
       ))}
     </span>
   )

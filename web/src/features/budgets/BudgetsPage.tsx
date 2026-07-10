@@ -108,7 +108,9 @@ export function BudgetsPage() {
                 {budget.access.length > 1 ? (
                   <span className="flex items-center -space-x-2">
                     {budget.access.map((entry) => (
-                      <UserAvatar key={entry.user.id} avatar={entry.user.avatar} size="sm" className="size-7 ring-2 ring-background" />
+                      <span key={entry.user.id} title={entry.user.name}>
+                        <UserAvatar avatar={entry.user.avatar} size="sm" className="size-7 ring-2 ring-background" />
+                      </span>
                     ))}
                   </span>
                 ) : null}

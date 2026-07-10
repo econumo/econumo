@@ -182,7 +182,10 @@ it('access control: shared avatars, grant and revoke through the dialogs', async
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('folder-General')
-  expect(screen.getByTestId('shared-avatars-Cash')).toBeInTheDocument()
+  const cluster = screen.getByTestId('shared-avatars-Cash')
+  // each avatar in the cluster still names its user (title on the wrapper)
+  expect(within(cluster).getByTitle('Ada')).toBeInTheDocument()
+  expect(within(cluster).getByTitle('Partner')).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'account actions Cash' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Access control' }))
