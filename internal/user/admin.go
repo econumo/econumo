@@ -63,8 +63,12 @@ func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword st
 	if err != nil {
 		return err
 	}
+	newHash, herr := s.hasher.Hash(newPassword)
+	if herr != nil {
+		return herr
+	}
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.HashSHA512(newPassword, u.Salt), model.AlgorithmSHA512, s.clock.Now())
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }

@@ -10,6 +10,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -124,11 +125,22 @@ func TestAdminChangePassword(t *testing.T) {
 	if _, err := svc.AdminCreateUser(ctx, "A", "pw@econumo.test", "oldpw"); err != nil {
 		t.Fatal(err)
 	}
+
+	// Force the account to the legacy scheme so the test proves the transition.
+	u, err := repo.GetByIdentifier(ctx, enc.Hash("pw@econumo.test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyHash := hasher.HashSHA512("oldpw", u.Salt)
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET password = ?, algorithm = 'sha512' WHERE id = ?`), legacyHash, u.ID.String()); err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+
 	if err := svc.AdminChangePassword(ctx, "pw@econumo.test", "brandnew"); err != nil {
 		t.Fatalf("AdminChangePassword: %v", err)
 	}
 
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("pw@econumo.test"))
+	u, err = repo.GetByIdentifier(ctx, enc.Hash("pw@econumo.test"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,6 +149,9 @@ func TestAdminChangePassword(t *testing.T) {
 	}
 	if hasher.Verify(u.Algorithm, u.Password, "oldpw", u.Salt) {
 		t.Error("old password still verifies")
+	}
+	if u.Algorithm != model.AlgorithmArgon2id {
+		t.Errorf("algorithm after admin change-password = %q, want %q", u.Algorithm, model.AlgorithmArgon2id)
 	}
 
 	if err := svc.AdminChangePassword(ctx, "ghost@econumo.test", "x"); !isNotFound(err) {

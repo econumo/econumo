@@ -113,8 +113,12 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		return nil, errs.NewValidation("The code is expired")
 	}
 
+	newHash, herr := s.hasher.Hash(req.Password)
+	if herr != nil {
+		return nil, herr
+	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.HashSHA512(req.Password, u.Salt), model.AlgorithmSHA512, s.clock.Now())
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
