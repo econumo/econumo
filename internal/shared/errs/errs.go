@@ -125,3 +125,27 @@ func AsUnauthorized(err error) (*UnauthorizedError, bool) {
 	}
 	return nil, false
 }
+
+// TooManyRequestsError maps to HTTP 429 (a rate-limited auth attempt).
+type TooManyRequestsError struct {
+	Msg string
+}
+
+func (e *TooManyRequestsError) Error() string {
+	if e.Msg != "" {
+		return e.Msg
+	}
+	return "too many requests"
+}
+
+// NewTooManyRequests builds a TooManyRequestsError.
+func NewTooManyRequests(msg string) *TooManyRequestsError { return &TooManyRequestsError{Msg: msg} }
+
+// AsTooManyRequests reports whether err is (or wraps) a *TooManyRequestsError.
+func AsTooManyRequests(err error) (*TooManyRequestsError, bool) {
+	var v *TooManyRequestsError
+	if errors.As(err, &v) {
+		return v, true
+	}
+	return nil, false
+}
