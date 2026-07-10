@@ -253,7 +253,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   only FAILED attempts and clear on success, remind and register count every request).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
-  `0` disables a check. Over-limit requests get HTTP 429 with the standard error envelope
+  `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
 - `ECONUMO_WEB_DIST` — path to the built SPA the binary serves.

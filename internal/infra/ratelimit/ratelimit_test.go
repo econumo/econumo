@@ -1,6 +1,7 @@
 package ratelimit_test
 
 import (
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -194,6 +195,30 @@ func TestEviction_PrefersExpiredEntries(t *testing.T) {
 	l.Fail("login", "new@example.test")
 	mustBlocked(t, l, "login", "fresh@example.test")
 	mustAllowed(t, l, "login", "new@example.test")
+}
+
+// A key longer than the internal hashing threshold must be limited exactly
+// like a short one, proving Allow/Fail/Clear agree on the hashed form.
+func TestAllow_HugeKeyIsLimitedLikeShortKey(t *testing.T) {
+	l, _ := newLimiter(cfgLogin(3))
+	huge := strings.Repeat("a", 5*1024*1024) + "@example.test"
+	for i := 0; i < 3; i++ {
+		mustAllowed(t, l, "login", huge)
+		l.Fail("login", huge)
+	}
+	mustBlocked(t, l, "login", huge)
+	l.Clear("login", huge)
+	mustAllowed(t, l, "login", huge)
+}
+
+// Two distinct huge keys must not collapse into the same bucket after hashing.
+func TestAllow_TwoHugeKeysAreIndependent(t *testing.T) {
+	l, _ := newLimiter(cfgLogin(1))
+	hugeA := strings.Repeat("a", 300*1024)
+	hugeB := strings.Repeat("b", 300*1024)
+	l.Fail("login", hugeA)
+	mustBlocked(t, l, "login", hugeA)
+	mustAllowed(t, l, "login", hugeB)
 }
 
 // go test -race exercises the mutex.

@@ -5,6 +5,8 @@
 package ratelimit
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 	"sync"
 	"time"
@@ -53,8 +55,20 @@ func New(cfg Config, clk port.Clock) *Limiter {
 // Key layouts: per-key entries are "k\x00<scope>\x00<key>", global counters are
 // "g\x00<scope>". The prefixes keep a caller-supplied key from ever colliding
 // with a global counter.
-func attemptKey(scope, key string) string { return "k\x00" + scope + "\x00" + key }
-func globalKey(scope string) string       { return "g\x00" + scope }
+//
+// maxKeyLen bounds the bytes retained per attempt key: an attacker submitting
+// unique multi-megabyte usernames must not turn the failure map into a memory
+// sink. Longer keys are replaced by their sha256 so bucketing is preserved.
+const maxKeyLen = 128
+
+func attemptKey(scope, key string) string {
+	if len(key) > maxKeyLen {
+		sum := sha256.Sum256([]byte(key))
+		key = hex.EncodeToString(sum[:])
+	}
+	return "k\x00" + scope + "\x00" + key
+}
+func globalKey(scope string) string { return "g\x00" + scope }
 
 // Allow reports whether another attempt may proceed. The per-key check runs
 // first and rejects without consuming the global budget, so an attack on one

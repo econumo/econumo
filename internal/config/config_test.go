@@ -169,17 +169,23 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 }
 
 func TestLoad_RateLimitBadValuesFailBoot(t *testing.T) {
-	cases := map[string]string{
-		"ECONUMO_RATE_LIMIT_LOGIN":  "five",
-		"ECONUMO_RATE_LIMIT_GLOBAL": "-1",
-		"ECONUMO_RATE_LIMIT_WINDOW": "15minutes",
+	cases := []struct {
+		name string
+		key  string
+		bad  string
+	}{
+		{"LOGIN_non-numeric", "ECONUMO_RATE_LIMIT_LOGIN", "five"},
+		{"GLOBAL_negative", "ECONUMO_RATE_LIMIT_GLOBAL", "-1"},
+		{"WINDOW_unparseable", "ECONUMO_RATE_LIMIT_WINDOW", "15minutes"},
+		{"WINDOW_zero", "ECONUMO_RATE_LIMIT_WINDOW", "0"},
+		{"WINDOW_negative", "ECONUMO_RATE_LIMIT_WINDOW", "-5m"},
 	}
-	for key, bad := range cases {
-		t.Run(key, func(t *testing.T) {
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
-			t.Setenv(key, bad)
+			t.Setenv(tc.key, tc.bad)
 			if _, err := Load(); err == nil {
-				t.Fatalf("Load() with %s=%q succeeded, want boot error", key, bad)
+				t.Fatalf("Load() with %s=%q succeeded, want boot error", tc.key, tc.bad)
 			}
 		})
 	}

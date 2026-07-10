@@ -122,3 +122,9 @@ never logs keys (usernames/emails are PII).
   per-username + global proves insufficient.
 - Persistent lockout state across restarts.
 - Retry-After header (can be added later without breaking anything).
+- Accepted tradeoff: 5 cheap bad logins lock a targeted victim's username out
+  for the window (sustainable by repetition) — an accepted consequence of
+  keying on username without IP data, revisit under the same clause above.
+- Accepted tradeoff: a 60-req/min flood trips the global backstop and 429s
+  the endpoint for everyone — accepted backstop behavior, also revisit if
+  per-username + global proves insufficient.
