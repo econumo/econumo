@@ -27,3 +27,10 @@ type BudgetExistence interface {
 	// Exists reports whether a budget with the given id exists.
 	Exists(ctx context.Context, budgetID string) (bool, error)
 }
+
+// AvatarPicker supplies the avatar value for newly created users. Production
+// wiring picks randomly (RandomAvatarPicker); test harnesses pin a fixed value
+// (FixedAvatarPicker) so golden responses stay deterministic.
+type AvatarPicker interface {
+	Pick() string
+}

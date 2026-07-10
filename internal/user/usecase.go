@@ -5,7 +5,6 @@ package user
 
 import (
 	"context"
-	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
@@ -34,6 +33,7 @@ type Service struct {
 	budgets           BudgetExistence
 	passwordRequests  PasswordRequests
 	mailer            *mailer.ResetSender
+	avatars           AvatarPicker
 	clock             port.Clock
 	allowRegistration bool
 }
@@ -48,6 +48,7 @@ func NewService(
 	budgets BudgetExistence,
 	passwordRequests PasswordRequests,
 	mailer *mailer.ResetSender,
+	avatars AvatarPicker,
 	clock port.Clock,
 	allowRegistration bool,
 ) *Service {
@@ -61,6 +62,7 @@ func NewService(
 		budgets:           budgets,
 		passwordRequests:  passwordRequests,
 		mailer:            mailer,
+		avatars:           avatars,
 		clock:             clock,
 		allowRegistration: allowRegistration,
 	}
@@ -170,11 +172,4 @@ func newSalt() (string, error) {
 	}
 	sum := sha1.Sum(b)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-// md5Hex returns hex(md5(v)) — the gravatar hash: the plain md5 of the
-// lowercased email. See CLAUDE.md.
-func md5Hex(v string) string {
-	sum := md5.Sum([]byte(v))
-	return hex.EncodeToString(sum[:])
 }

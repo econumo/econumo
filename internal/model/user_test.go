@@ -182,9 +182,13 @@ func TestUser_UpdatePassword(t *testing.T) {
 
 func TestUser_UpdateEmail(t *testing.T) {
 	u := newUser(t)
-	u.UpdateEmail("new-ident", "new-cipher", "new-avatar", tu1)
-	if u.Identifier != "new-ident" || u.Email != "new-cipher" || u.Avatar != "new-avatar" {
-		t.Fatalf("UpdateEmail fields: %q / %q / %q", u.Identifier, u.Email, u.Avatar)
+	avatarBefore := u.Avatar
+	u.UpdateEmail("new-ident", "new-cipher", tu1)
+	if u.Identifier != "new-ident" || u.Email != "new-cipher" {
+		t.Fatalf("UpdateEmail fields: %q / %q", u.Identifier, u.Email)
+	}
+	if u.Avatar != avatarBefore {
+		t.Errorf("UpdateEmail must not change Avatar: got %q want %q", u.Avatar, avatarBefore)
 	}
 	if !u.UpdatedAt.Equal(tu1) {
 		t.Errorf("UpdateEmail updatedAt=%v want %v", u.UpdatedAt, tu1)

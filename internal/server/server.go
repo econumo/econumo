@@ -54,7 +54,7 @@ import (
 // clk so tests can inject deterministic ones and point at either engine; the
 // engine is read from cfg.DatabaseDriver, which selects the per-engine sqlc query
 // adapters in every repository constructor.
-func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) http.Handler {
+func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock, avatars appuser.AvatarPicker) http.Handler {
 	txm := backend.NewTxManager(db)
 
 	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
@@ -72,7 +72,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
-		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration,
+		passwordReqRepo, resetMailer, avatars, clk, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)

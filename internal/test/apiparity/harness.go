@@ -27,6 +27,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/testkeys"
+	appuser "github.com/econumo/econumo/internal/user"
 )
 
 // ignoredDataSalt is set on cfg.DataSalt but the seeded fixture is plaintext
@@ -79,7 +80,7 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 
 	Seed(t, db)
 
-	handler := server.BuildAPI(cfg, db.Raw, jwtSvc, clk)
+	handler := server.BuildAPI(cfg, db.Raw, jwtSvc, clk, appuser.FixedAvatarPicker(appuser.DefaultAvatar))
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 

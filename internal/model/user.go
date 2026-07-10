@@ -174,12 +174,11 @@ func (u *User) UpdatePassword(passwordHash string, now time.Time) {
 	u.UpdatedAt = now
 }
 
-// UpdateEmail replaces the encrypted email, identifier and avatar together,
-// all derived by the service.
-func (u *User) UpdateEmail(identifier, encryptedEmail, avatar string, now time.Time) {
+// UpdateEmail replaces the encrypted email and identifier together, both
+// derived by the service.
+func (u *User) UpdateEmail(identifier, encryptedEmail string, now time.Time) {
 	u.Identifier = identifier
 	u.Email = encryptedEmail
-	u.Avatar = avatar
 	u.UpdatedAt = now
 }
 
