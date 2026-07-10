@@ -10,6 +10,15 @@
 == update-budget POST /api/v1/user/update-budget [owner] -> 200
 {"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"face:fuchsia","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":"b0000000-0000-0000-0000-000000000001"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
 
+== update-avatar POST /api/v1/user/update-avatar [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"pets:teal","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":"b0000000-0000-0000-0000-000000000001"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+
+== err:update-avatar-blank POST /api/v1/user/update-avatar [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"color":["This value should not be blank."],"icon":["This value should not be blank."]}}
+
+== err:update-avatar-bad-values POST /api/v1/user/update-avatar [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"color":["The value you selected is not a valid choice."],"icon":["This value is not valid."]}}
+
 == update-password POST /api/v1/user/update-password [owner] -> 200
 {"success":true,"message":"","data":{}}
 
@@ -17,5 +26,5 @@
 {"success":true,"message":"","data":{"result":"test"}}
 
 == get-user-data-after GET /api/v1/user/get-user-data [owner] -> 200
-{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"face:fuchsia","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":"b0000000-0000-0000-0000-000000000001"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"pets:teal","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":"b0000000-0000-0000-0000-000000000001"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
 

@@ -366,6 +366,11 @@ data unreadable. Most are also asserted by the test suite.
 - Validation strings are exact and asserted by clients/tests, e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `IS_BLANK_ERROR`).
 - Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid JWT.
 - Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're JWT claims, FK targets, and held by clients).
+- `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material
+  icon ligature name plus a color slug from the 16-slug allowlist in
+  `internal/user/avatar.go` (mirrored by `web/src/lib/avatars.ts`). Set via
+  `POST /api/v1/user/update-avatar`; new users get a random default; Gravatar
+  is gone.
 
 ## Key design decisions
 
