@@ -60,6 +60,9 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 		if berr != nil {
 			return berr
 		}
+		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
+			return nerr
+		}
 		t.Update(st, now)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
