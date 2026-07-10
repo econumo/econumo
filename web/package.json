@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "types": "dist/types/index.d.ts",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -51,7 +52,11 @@
     "vaul": "^1.1.2",
     "zustand": "^5.0.14"
   },
+  "pnpm": {
+    "ignoredBuiltDependencies": ["@parcel/watcher"]
+  },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

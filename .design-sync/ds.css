@@ -1,0 +1,9 @@
+/* design-sync stylesheet entry — the app's real index.css plus extra scan
+   sources: authored previews and the generated utility corpus, so the
+   stylesheet shipped to claude.ai/design carries the layout vocabulary the
+   design agent and preview cards use, not only the classes the app happens
+   to reference. Compiled by buildCmd:
+   pnpm exec tailwindcss -i ../.design-sync/ds.css -o dist/econumo.css */
+@import "../web/src/index.css";
+@source "./previews";
+@source "./.cache/utility-corpus.txt";

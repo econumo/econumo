@@ -1,0 +1,10 @@
+/* design-sync extraFonts entry — the app serves this font from public/ at an
+   absolute /fonts/ URL (see web/src/index.css); this twin @font-face carries a
+   URL that resolves on disk so the converter can copy the woff2 into fonts/. */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('../web/public/fonts/material-icons.woff2') format('woff2');
+}
