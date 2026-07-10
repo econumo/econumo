@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto } from '@/api/dto/connection'
 import type { AccountRole } from '@/api/dto/account'
 import type { Id } from '@/api/types'
@@ -91,7 +92,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
                       {t(`modules.connections.${kind}.roles.${item.role}`)}
                     </span>
                   </span>
-                  <img src={`${item.owner.avatar}?s=30`} alt={item.owner.name} className="size-5 rounded-full" />
+                  <UserAvatar avatar={item.owner.avatar} size="xs" />
                 </button>
               </li>
             ))}

@@ -4,6 +4,7 @@ import { Check, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/UserAvatar'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -43,7 +44,7 @@ function Step({
           className={`flex size-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-econumo-purple bg-econumo-purple text-white' : 'text-muted-foreground'}`}
         >
           {avatar ? (
-            <img src={avatar} alt="" className="size-8 rounded-full" />
+            <UserAvatar avatar={avatar} size="sm" />
           ) : done ? (
             <Check className="size-4" />
           ) : (
@@ -188,7 +189,7 @@ export function OnboardingPage() {
           <Step
             id="avatar"
             done={false}
-            avatar={user?.avatar ? `${user.avatar}?s=30` : undefined}
+            avatar={user?.avatar}
             title="Update your avatar"
             guideText={t('modules.user.pages.onboarding.user_guide.user_profile')}
             guideHref="https://econumo.com/docs/user-guide/user-profile"

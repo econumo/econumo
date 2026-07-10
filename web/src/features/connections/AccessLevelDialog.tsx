@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import type { UserDto } from '@/api/dto/user'
 
 export type GrantableRole = 'guest' | 'user' | 'admin'
@@ -29,7 +30,7 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
         <div className="flex flex-col gap-2">
           {user ? (
             <div className="flex items-center gap-3">
-              <img src={`${user.avatar}?s=50`} alt={user.name} className="size-10 rounded-full" />
+              <UserAvatar avatar={user.avatar} size="md" />
               <p className="text-sm text-muted-foreground">{t('modules.connections.modals.share_access.choose_access_level')}</p>
             </div>
           ) : null}

@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UserCard } from '@/components/UserCard'
+import { UserAvatar } from '@/components/UserAvatar'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -80,7 +81,7 @@ export function ApplicationLayout() {
   const userBlock = user ? (
     rail ? (
       <Link to={RouterPage.SETTINGS_PROFILE} className="mt-3 flex justify-center px-2 py-3" title={user.name}>
-        <img src={`${user.avatar}?s=100`} alt={user.name} className="size-10 rounded-xl" />
+        <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
       </Link>
     ) : (
       <Link to={RouterPage.SETTINGS_PROFILE} className={`flex px-4 py-4 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>

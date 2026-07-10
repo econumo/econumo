@@ -179,7 +179,7 @@ it('shared account: rows overlay the author avatar on the category icon', async 
   renderPage()
   const row = await screen.findByTestId('tx-t1')
   const avatar = within(row).getByRole('img', { name: 'Ada' })
-  expect(avatar).toHaveAttribute('src', 'https://avatars.test/ada?s=30')
+  expect(avatar).toHaveAttribute('src', `${fixtureOwner.avatar}?s=30`)
 })
 
 it('private account: rows show no author avatar', async () => {
@@ -233,7 +233,7 @@ it('compact + shared account: preview hero overlays the author avatar', async ()
   await user.click(await screen.findByTestId('tx-t1'))
   const dialog = await screen.findByRole('dialog')
   // the hero avatar (with the author name as alt/title) replaces a separate author row
-  expect(within(dialog).getByRole('img', { name: 'Ada' })).toHaveAttribute('src', 'https://avatars.test/ada?s=30')
+  expect(within(dialog).getByRole('img', { name: 'Ada' })).toHaveAttribute('src', `${fixtureOwner.avatar}?s=30`)
   expect(within(dialog).queryByText('Author')).not.toBeInTheDocument()
 })
 

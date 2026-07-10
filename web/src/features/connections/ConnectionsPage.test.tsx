@@ -36,7 +36,7 @@ it('lists connections; empty override shows the empty state', async () => {
   server.use(...coreHandlers({ connections: fixtureConnections }))
   renderPage()
   expect(await screen.findByText('Partner')).toBeInTheDocument()
-  expect(screen.getByRole('img', { name: 'Partner' })).toBeInTheDocument()
+  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', fixtureConnections[0].user.avatar)
 })
 
 it('shows the empty state without connections', async () => {
