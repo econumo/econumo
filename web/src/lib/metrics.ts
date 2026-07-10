@@ -13,6 +13,7 @@ export const METRICS = {
   USER_LOGOUT: 'appUserLogout',
   USER_REGISTRATION: 'appUserRegistration',
   USER_UPDATE_NAME: 'appUserUpdateName',
+  USER_UPDATE_AVATAR: 'appUserUpdateAvatar',
   USER_UPDATE_PASSWORD: 'appUserUpdatePassword',
   USER_UPDATE_CURRENCY: 'appUserUpdateCurrency',
   USER_COMPLETE_ONBOARDING: 'appUserCompleteOnboarding',
