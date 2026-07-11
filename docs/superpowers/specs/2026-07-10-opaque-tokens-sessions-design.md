@@ -34,7 +34,8 @@ token storage anyway.
 ## Token format & crypto
 
 - Session token: `eco_ses_<base62>`; personal token: `eco_pat_<base62>`.
-  The random part encodes 32 random bytes (~43 base62 chars, 256-bit entropy).
+  The random part encodes 32 random bytes with `base64.RawURLEncoding`
+  (43 chars, alphabet `[A-Za-z0-9_-]`, 256-bit entropy).
   Prefixes make tokens identifiable to humans and secret scanners; the
   authoritative kind still comes from the DB row.
 - The DB stores only `hex(sha256(full token string))` under a unique index.
