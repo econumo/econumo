@@ -401,19 +401,29 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             <CardField label={t('pages.account.preview_transaction_modal.tags.label')}>
               <div className="flex items-center gap-2">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-0.5">
-                  {tagRow.map((tag) => (
-                    <Badge
-                      key={tag.id}
-                      role="checkbox"
-                      aria-checked={form.tagId === tag.id}
-                      aria-label={tag.name}
-                      variant={form.tagId === tag.id ? 'default' : 'secondary'}
-                      className="cursor-pointer"
-                      onClick={() => patch({ tagId: form.tagId === tag.id ? null : tag.id })}
-                    >
-                      {tag.name}
-                    </Badge>
-                  ))}
+                  {tagRow.map((tag) => {
+                    const toggleTag = () => patch({ tagId: form.tagId === tag.id ? null : tag.id })
+                    return (
+                      <Badge
+                        key={tag.id}
+                        role="checkbox"
+                        aria-checked={form.tagId === tag.id}
+                        aria-label={tag.name}
+                        tabIndex={0}
+                        variant={form.tagId === tag.id ? 'default' : 'secondary'}
+                        className="cursor-pointer"
+                        onClick={toggleTag}
+                        onKeyDown={(e) => {
+                          if (!e.repeat && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault()
+                            toggleTag()
+                          }
+                        }}
+                      >
+                        {tag.name}
+                      </Badge>
+                    )
+                  })}
                 </div>
                 {canEditData ? (
                   <button
