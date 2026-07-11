@@ -71,3 +71,21 @@ func init() {
 		}
 	}})
 }
+
+func init() {
+	register(Scenario{Name: "user_personal_tokens", Calls: func() []Call {
+		return []Call{
+			{Label: "create-personal-token", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "CI export", "expiresAt": ""}},
+			{Label: "create-personal-token-expiring", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "Short lived", "expiresAt": "2030-01-01 00:00:00"}},
+			{Label: "get-personal-token-list", Method: "GET", Path: "/api/v1/user/get-personal-token-list", Auth: "owner"},
+			{Label: "err:create-personal-token-past", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "Expired", "expiresAt": "2020-01-01 00:00:00"}},
+			{Label: "err:create-personal-token-blank-name", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "", "expiresAt": ""}},
+			{Label: "err:revoke-personal-token-unknown", Method: "POST", Path: "/api/v1/user/revoke-personal-token", Auth: "owner",
+				Body: map[string]any{"id": "00000000-0000-0000-0000-000000000009"}},
+		}
+	}})
+}
