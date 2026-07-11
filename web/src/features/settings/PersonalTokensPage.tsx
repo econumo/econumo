@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { Check, Copy, KeyRound, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { RouterPage } from '@/app/router-pages'
 import type { CreatedPersonalTokenDto, PersonalTokenDto } from '@/api/dto/user'
-import { formatDate } from '@/lib/datetime'
+import { formatDate, parseDateTime } from '@/lib/datetime'
 import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } from './security'
 import { parseUtcDateTime, relativeTime } from './securityFormat'
 import { SettingsShell } from './SettingsShell'
@@ -41,6 +43,7 @@ export function PersonalTokensPage() {
   const [name, setName] = useState('')
   const [expiry, setExpiry] = useState<ExpiryChoice>('never')
   const [customDate, setCustomDate] = useState('')
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [created, setCreated] = useState<CreatedPersonalTokenDto | null>(null)
   const [copied, setCopied] = useState(false)
@@ -175,27 +178,47 @@ export function PersonalTokensPage() {
               {t('modules.user.page.settings.profile.tokens.form.expiry.label')}
             </legend>
             <div className="flex flex-wrap gap-2">
-              {expiryOptions.map((option) => (
-                <Button
-                  key={option}
-                  type="button"
-                  size="sm"
-                  variant={expiry === option ? 'default' : 'secondary'}
-                  onClick={() => setExpiry(option)}
-                >
-                  {t(`modules.user.page.settings.profile.tokens.form.expiry.options.${option}`)}
-                </Button>
-              ))}
+              {expiryOptions.map((option) =>
+                option === 'custom' ? (
+                  <Popover key={option} open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={expiry === 'custom' ? 'default' : 'secondary'}
+                        onClick={() => setExpiry('custom')}
+                      >
+                        {customDate || t('modules.user.page.settings.profile.tokens.form.expiry.options.custom')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        weekStartsOn={1}
+                        selected={customDate ? parseDateTime(customDate) : undefined}
+                        onSelect={(day) => {
+                          if (day) {
+                            setCustomDate(formatDate(day))
+                            setExpiry('custom')
+                            setCalendarOpen(false)
+                          }
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Button
+                    key={option}
+                    type="button"
+                    size="sm"
+                    variant={expiry === option ? 'default' : 'secondary'}
+                    onClick={() => setExpiry(option)}
+                  >
+                    {t(`modules.user.page.settings.profile.tokens.form.expiry.options.${option}`)}
+                  </Button>
+                ),
+              )}
             </div>
-            {expiry === 'custom' ? (
-              <Input
-                aria-label={t('modules.user.page.settings.profile.tokens.form.expiry.label')}
-                type="date"
-                className={cardFieldControlClass}
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
-              />
-            ) : null}
           </fieldset>
           <div className={dialogActionsClass}>
             <Button

@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { formatDate } from '@/lib/datetime'
 import { expiresAtFrom, PersonalTokensPage } from './PersonalTokensPage'
 
 const pat = {
@@ -99,6 +100,42 @@ it('cancels the create dialog without creating anything', async () => {
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
   await waitFor(() => expect(screen.queryByLabelText('Name')).not.toBeInTheDocument())
   expect(called).toBe(false)
+})
+
+it('picks a custom expiry from the calendar and shows it on the chip', async () => {
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/user/create-personal-token', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true,
+        message: '',
+        data: { id: 'new-id', name: 'CI', token: 'eco_pat_x', createdAt: '2026-07-10 12:00:00', expiresAt: null },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: /Create token/ }))
+  await user.type(await screen.findByLabelText('Name'), 'CI')
+
+  await user.click(screen.getByRole('button', { name: 'Custom date' }))
+  const grid = await screen.findByRole('grid')
+
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const dayButton = within(grid)
+    .getAllByText(String(tomorrow.getDate()))
+    .map((el) => el.closest('button'))
+    .find((b): b is HTMLButtonElement => b !== null && !b.disabled)
+  await user.click(dayButton!)
+
+  // The calendar closes and the picked date replaces the chip label.
+  await waitFor(() => expect(screen.queryByRole('grid')).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: formatDate(tomorrow) })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Create token' }))
+  await waitFor(() => expect(body).toEqual({ name: 'CI', expiresAt: `${formatDate(tomorrow)} 23:59:59` }))
 })
 
 it('requires a name', async () => {
