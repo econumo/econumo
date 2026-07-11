@@ -167,13 +167,29 @@ export function ProfilePage() {
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('modules.user.page.settings.profile.groups.security')}
       </p>
-      <Link
-        to={RouterPage.SETTINGS_CHANGE_PASSWORD}
-        className="flex max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
-      >
-        {t('modules.user.page.settings.profile.change_password.menu_item')}
-        <ChevronRight className="size-4 text-muted-foreground" />
-      </Link>
+      <div className="flex max-w-md flex-col gap-2">
+        <Link
+          to={RouterPage.SETTINGS_CHANGE_PASSWORD}
+          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        >
+          {t('modules.user.page.settings.profile.change_password.menu_item')}
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+        <Link
+          to={RouterPage.SETTINGS_SESSIONS}
+          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        >
+          {t('modules.user.page.settings.profile.sessions.menu_item')}
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+        <Link
+          to={RouterPage.SETTINGS_TOKENS}
+          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        >
+          {t('modules.user.page.settings.profile.tokens.menu_item')}
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+      </div>
 
       <CurrencyPickerDialog
         open={currencyOpen}

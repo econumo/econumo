@@ -11,6 +11,8 @@ import { AccountPage } from '@/features/accounts/AccountPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ProfilePage } from '@/features/settings/ProfilePage'
 import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
+import { SessionsPage } from '@/features/settings/SessionsPage'
+import { PersonalTokensPage } from '@/features/settings/PersonalTokensPage'
 import { AccountsSettingsPage } from '@/features/accounts/AccountsSettingsPage'
 import { CategoriesPage } from '@/features/classifications/CategoriesPage'
 import { PayeesPage } from '@/features/classifications/PayeesPage'
@@ -43,6 +45,8 @@ export function createRouter() {
             { path: '/settings', element: <SettingsPage /> },
             { path: '/settings/profile', element: <ProfilePage /> },
             { path: '/settings/profile/change-password', element: <ChangePasswordPage /> },
+            { path: '/settings/profile/sessions', element: <SessionsPage /> },
+            { path: '/settings/profile/tokens', element: <PersonalTokensPage /> },
             { path: '/settings/accounts', element: <AccountsSettingsPage /> },
             { path: '/settings/categories', element: <CategoriesPage /> },
             { path: '/settings/payees', element: <PayeesPage /> },
