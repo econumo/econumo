@@ -185,3 +185,29 @@ func TestMissingDatabaseURL(t *testing.T) {
 		t.Fatalf("Run with empty DATABASE_URL = %d, want 1", got)
 	}
 }
+
+func TestTokenPurge(t *testing.T) {
+	cliEnv(t)
+	if got := Run([]string{"user:create", "Purge Tester", "purge@example.test", "secretpass"}); got != 0 {
+		t.Fatalf("user:create = %d, want 0", got)
+	}
+	// Fresh DB: nothing dead to purge, but the command must succeed with the
+	// default retention and with an explicit day count.
+	if got := Run([]string{"token:purge"}); got != 0 {
+		t.Fatalf("token:purge = %d, want 0", got)
+	}
+	if got := Run([]string{"token:purge", "0"}); got != 0 {
+		t.Fatalf("token:purge 0 = %d, want 0", got)
+	}
+	// Usage errors (extra args / non-numeric / negative days) exit 1, like
+	// every in-command usage error (2 is reserved for unknown commands).
+	for _, args := range [][]string{
+		{"token:purge", "7", "extra"},
+		{"token:purge", "soon"},
+		{"token:purge", "-1"},
+	} {
+		if got := Run(args); got != 1 {
+			t.Fatalf("Run(%v) = %d, want 1", args, got)
+		}
+	}
+}

@@ -31,6 +31,7 @@ type Querier interface {
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
+	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error

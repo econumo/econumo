@@ -121,6 +121,21 @@ func (s *Service) revokeTokens(ctx context.Context, userID vo.Id, exceptTokenID 
 	return nil
 }
 
+// PurgeDeadTokens deletes EVERY user's dead rows (expired/revoked longer than
+// retention ago) in one indexed DELETE — the token:purge CLI entry point. The
+// per-user purgeDeadTokens below stays on the login path (opportunistic, tiny
+// row counts); this is the bulk variant for operators.
+func (s *Service) PurgeDeadTokens(ctx context.Context, retention time.Duration) (int64, error) {
+	if retention < 0 {
+		return 0, errs.NewValidation("Retention must not be negative")
+	}
+	return s.tokens.DeleteDead(ctx, s.clock.Now().Add(-retention))
+}
+
+// DefaultTokenRetention is the standard dead-row retention window, shared by
+// the login-path purge and the token:purge CLI default.
+const DefaultTokenRetention = deadTokenRetention
+
 // purgeDeadTokens deletes this user's rows that expired/were revoked longer
 // than the retention window ago. Best-effort bookkeeping on the login path;
 // row counts are tiny, so per-row deletes keep the SQL engine-agnostic.

@@ -305,6 +305,7 @@ user:activate <email>
 user:deactivate <email>
 currency:update-rates [date]
 currency:add <code> [name] [fraction-digits]
+token:purge [days]
 data:remove-salt
 ```
 
@@ -350,7 +351,9 @@ In the distroless image these run via the binary directly, e.g.
   one; `reset-password` and CLI `user:change-password` revoke ALL sessions;
   `user:deactivate` revokes sessions AND PATs (which is why per-request auth needs no
   `is_active` join). PATs survive password changes.
-- Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login.
+- Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
+  `token:purge [days]` does the same globally in one indexed DELETE (the
+  revoked_at/expires_at indexes exist for it).
 - Sessions/PAT management endpoints: `get-session-list`, `revoke-session`,
   `revoke-other-sessions`, `get-personal-token-list`, `create-personal-token`,
   `revoke-personal-token` (all under `/api/v1/user/`).

@@ -36,6 +36,7 @@ type Querier interface {
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
+	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.

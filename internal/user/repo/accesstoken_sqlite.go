@@ -34,3 +34,7 @@ func (accessTokenSqliteQuerier) ListAccessTokensByUser(ctx context.Context, db b
 func (accessTokenSqliteQuerier) DeleteAccessToken(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteAccessToken(ctx, id)
 }
+
+func (accessTokenSqliteQuerier) DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error) {
+	return sqlitegen.New(db).DeleteDeadAccessTokens(ctx, p)
+}

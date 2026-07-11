@@ -137,3 +137,32 @@ func TestResetPassword_RevokesAllSessionsKeepsPATs(t *testing.T) {
 		}
 	}
 }
+
+func TestPurgeDeadTokens(t *testing.T) {
+	svc, tokens, clk, uid := newAuthEnv(t)
+	ctx := context.Background()
+
+	liveExp := authT0.Add(appuser.SessionTTL)
+	oldExp := authT0.Add(-40 * 24 * time.Hour)
+	liveID := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_purge-live", &liveExp)
+	deadID := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_purge-dead", &oldExp)
+
+	clk.now = authT0
+	n, err := svc.PurgeDeadTokens(ctx, 30*24*time.Hour)
+	if err != nil {
+		t.Fatalf("PurgeDeadTokens: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("purged = %d, want 1", n)
+	}
+	if _, err := tokens.GetByID(ctx, liveID); err != nil {
+		t.Error("live session must survive the purge")
+	}
+	if _, err := tokens.GetByID(ctx, deadID); err == nil {
+		t.Error("dead session must be purged")
+	}
+
+	if _, err := svc.PurgeDeadTokens(ctx, -time.Hour); err == nil {
+		t.Error("negative retention must be rejected")
+	}
+}

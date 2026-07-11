@@ -19,6 +19,25 @@ func (q *Queries) DeleteAccessToken(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteDeadAccessTokens = `-- name: DeleteDeadAccessTokens :execrows
+DELETE FROM access_tokens
+WHERE (revoked_at IS NOT NULL AND revoked_at < ?)
+   OR (expires_at IS NOT NULL AND expires_at < ?)
+`
+
+type DeleteDeadAccessTokensParams struct {
+	RevokedAt *time.Time
+	ExpiresAt *time.Time
+}
+
+func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteDeadAccessTokens, arg.RevokedAt, arg.ExpiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens

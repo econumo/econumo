@@ -83,7 +83,8 @@ without breaking anything.
 - **Revocation** sets `revoked_at` (UPDATE, not DELETE).
 - **Purge:** on login, the user's dead rows — those whose expiry or revocation
   happened more than 30 days ago — are deleted opportunistically; no cron, no
-  background goroutine.
+  background goroutine. Operators can additionally run `token:purge [days]`
+  (CLI), a single global DELETE backed by indexes on revoked_at/expires_at.
 - Constants (no new env vars): session TTL 30 days, touch throttle 5 minutes.
 
 ## Verification (middleware)

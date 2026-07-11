@@ -28,3 +28,8 @@ ORDER BY created_at, id;
 
 -- name: DeleteAccessToken :exec
 DELETE FROM access_tokens WHERE id = ?;
+
+-- name: DeleteDeadAccessTokens :execrows
+DELETE FROM access_tokens
+WHERE (revoked_at IS NOT NULL AND revoked_at < ?)
+   OR (expires_at IS NOT NULL AND expires_at < ?);

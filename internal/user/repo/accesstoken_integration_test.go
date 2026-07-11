@@ -123,3 +123,59 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 		t.Error("deleted row still found")
 	}
 }
+
+func TestAccessTokenRepo_DeleteDead(t *testing.T) {
+	db := dbtest.New(t)
+	seedTokenUser(t, db, userA)
+	repo := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	now := time.Date(2026, 7, 11, 12, 0, 0, 0, time.UTC)
+	cutoff := now.Add(-30 * 24 * time.Hour)
+
+	futureExp := now.Add(time.Hour)
+	oldExp := cutoff.Add(-time.Hour)
+	recentExp := now.Add(-time.Hour) // expired, but within retention
+	oldRevoked := cutoff.Add(-time.Hour)
+
+	insert := func(hash string, exp, revoked *time.Time) *model.AccessToken {
+		tok := &model.AccessToken{
+			ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
+			TokenHash: hash, CreatedAt: now, LastUsedAt: now, ExpiresAt: exp, RevokedAt: revoked,
+		}
+		if err := repo.Insert(ctx, tok); err != nil {
+			t.Fatalf("Insert %s: %v", hash, err)
+		}
+		return tok
+	}
+
+	live := insert("dead-live", &futureExp, nil)
+	never := insert("dead-never", nil, nil) // PAT-style: no expiry, must survive
+	expiredOld := insert("dead-expired-old", &oldExp, nil)
+	expiredRecent := insert("dead-expired-recent", &recentExp, nil)
+	revokedOld := insert("dead-revoked-old", &futureExp, &oldRevoked)
+
+	n, err := repo.DeleteDead(ctx, cutoff)
+	if err != nil {
+		t.Fatalf("DeleteDead: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("DeleteDead = %d rows, want 2", n)
+	}
+	for _, tc := range []struct {
+		tok  *model.AccessToken
+		gone bool
+		name string
+	}{
+		{live, false, "live"},
+		{never, false, "never-expires"},
+		{expiredRecent, false, "expired-within-retention"},
+		{expiredOld, true, "expired-past-retention"},
+		{revokedOld, true, "revoked-past-retention"},
+	} {
+		_, err := repo.GetByID(ctx, tc.tok.ID)
+		gone := err != nil
+		if gone != tc.gone {
+			t.Errorf("%s: gone=%v, want %v", tc.name, gone, tc.gone)
+		}
+	}
+}

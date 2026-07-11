@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -60,6 +61,11 @@ type AccessTokens interface {
 	ListByUser(ctx context.Context, userID vo.Id, kind string) ([]model.AccessToken, error)
 
 	Delete(ctx context.Context, id vo.Id) error
+
+	// DeleteDead removes every row (all users, both kinds) whose expiry or
+	// revocation happened before cutoff, returning the number deleted. Backed
+	// by the revoked_at/expires_at indexes so it stays cheap on large tables.
+	DeleteDead(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 // PasswordRequests persists password-reset codes (users_password_requests) for

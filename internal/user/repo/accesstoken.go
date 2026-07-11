@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -17,10 +18,11 @@ import (
 )
 
 type (
-	accessTokenRow          = sqlitegen.AccessToken
-	insertAccessTokenParams = sqlitegen.InsertAccessTokenParams
-	updateAccessTokenParams = sqlitegen.UpdateAccessTokenParams
-	listAccessTokensParams  = sqlitegen.ListAccessTokensByUserParams
+	accessTokenRow            = sqlitegen.AccessToken
+	insertAccessTokenParams   = sqlitegen.InsertAccessTokenParams
+	updateAccessTokenParams   = sqlitegen.UpdateAccessTokenParams
+	listAccessTokensParams    = sqlitegen.ListAccessTokensByUserParams
+	deleteDeadAccessTokParams = sqlitegen.DeleteDeadAccessTokensParams
 )
 
 type accessTokenQuerier interface {
@@ -30,6 +32,7 @@ type accessTokenQuerier interface {
 	UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error
 	ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error)
 	DeleteAccessToken(ctx context.Context, db backend.DBTX, id string) error
+	DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error)
 }
 
 type AccessTokenRepo struct {
@@ -106,6 +109,10 @@ func (r *AccessTokenRepo) ListByUser(ctx context.Context, userID vo.Id, kind str
 
 func (r *AccessTokenRepo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteAccessToken(ctx, r.db(ctx), id.String())
+}
+
+func (r *AccessTokenRepo) DeleteDead(ctx context.Context, cutoff time.Time) (int64, error) {
+	return r.q.DeleteDeadAccessTokens(ctx, r.db(ctx), deleteDeadAccessTokParams{RevokedAt: &cutoff, ExpiresAt: &cutoff})
 }
 
 func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
