@@ -35,7 +35,7 @@ export function AccountDialog() {
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
   const { data: accounts } = useAccounts()
-  const { data: connections = [] } = useConnections()
+  const { data: connections = [] } = useConnections({ enabled: !!params?.account })
   const setAccountAccess = useSetAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
 

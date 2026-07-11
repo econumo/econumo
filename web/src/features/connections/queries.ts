@@ -8,12 +8,13 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyAccountAccess, removeAccountAccess } from './shared'
 
 // poll matches Vue's 5s setInterval on the Connections page; other callers read the cache
-export function useConnections(options: { poll?: boolean } = {}) {
+export function useConnections(options: { poll?: boolean; enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.connections,
     queryFn: connectionApi.getConnectionList,
     staleTime: TEN_MINUTES,
     refetchInterval: options.poll ? 5_000 : undefined,
+    enabled: options.enabled ?? true,
   })
 }
 

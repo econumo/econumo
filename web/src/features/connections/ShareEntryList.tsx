@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { ShareEntry } from './shared'
@@ -44,6 +45,7 @@ export function ShareEntryList({ kind, entries, onPick }: ShareEntryListProps) {
               onClick={() => onPick(entry)}
             >
               {row(entry)}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </button>
           ) : (
             <span className="flex w-full items-center gap-3 rounded-md px-2 py-2">{row(entry)}</span>

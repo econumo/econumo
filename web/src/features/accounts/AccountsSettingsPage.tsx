@@ -297,6 +297,8 @@ export function AccountsSettingsPage() {
   const accessAccount = accessAccountId ? accounts.find((a) => a.id === accessAccountId) ?? null : null
   const previewLive = previewAccount ? accounts.find((a) => a.id === previewAccount.id) ?? previewAccount : null
 
+  const previewEntries = user && previewLive ? buildShareEntries(connections, previewLive.sharedAccess, user.id, previewLive.owner.id) : []
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -626,12 +628,12 @@ export function AccountsSettingsPage() {
           {user && hasAccountAdminAccess(previewLive, user.id) ? (
             <div className="mt-4 flex flex-col gap-1">
               <span className="text-[11px] text-muted-foreground">{t('pages.settings.accounts.list_actions.access')}</span>
-              {buildShareEntries(connections, previewLive.sharedAccess, user.id, previewLive.owner.id).length === 0 ? (
+              {previewEntries.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t('modules.connections.modals.share_access.list_empty')}</p>
               ) : (
                 <ShareEntryList
                   kind="accounts"
-                  entries={buildShareEntries(connections, previewLive.sharedAccess, user.id, previewLive.owner.id)}
+                  entries={previewEntries}
                   onPick={(entry) => {
                     if (entry.role !== 'owner') {
                       setLevelTarget({ accountId: previewLive.id, entry })
