@@ -121,10 +121,10 @@ func Load() (Config, error) {
 	}
 	c.RateLimitWindow = window
 
-	// PORT and the JWT public key are required by the HTTP server only and are
-	// validated at server startup; they are intentionally NOT required here because
-	// config.Load is also the CLI's composition entry point, and those commands
-	// neither bind a port nor issue JWTs. Only DATABASE_URL is universally required.
+	// PORT is required by the HTTP server only and is validated at server
+	// startup; it is intentionally NOT required here because config.Load is also
+	// the CLI's composition entry point, and those commands never bind a port.
+	// Only DATABASE_URL is universally required.
 	return c, nil
 }
 
@@ -186,10 +186,6 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 		return "", "", "", "", fmt.Errorf("unsupported MAILER_DSN scheme %q (want resend, console/log, or empty)", u.Scheme)
 	}
 }
-
-// projectDirPlaceholder is the legacy "%kernel.project_dir%" placeholder some
-// .env files still carry in their JWT key paths (e.g.
-// "%kernel.project_dir%/config/jwt/private.pem").
 
 func getEnv(key, def string) string {
 	if v, ok := os.LookupEnv(key); ok && v != "" {

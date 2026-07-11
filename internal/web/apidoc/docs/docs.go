@@ -5607,7 +5607,7 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string",
-                    "example": "JWT Token not found"
+                    "example": "Access token not found"
                 },
                 "success": {
                     "type": "boolean",
@@ -7876,7 +7876,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "Bearer": {
-            "description": "JWT bearer token. Format: \"Bearer \u003ctoken\u003e\".",
+            "description": "Opaque access token. Format: \"Bearer \u003ctoken\u003e\".",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"

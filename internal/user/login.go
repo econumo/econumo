@@ -1,4 +1,4 @@
-// Login use case: authenticate by identifier and issue a JWT.
+// Login use case: authenticate by identifier and mint a session token.
 package user
 
 import (

@@ -59,7 +59,7 @@ func (r LoginRequest) Validate() error {
 	return nil
 }
 
-// LoginResult is the login response: a JWT plus the current user.
+// LoginResult is the login response: an opaque session token plus the current user.
 type LoginResult struct {
 	Token string            `json:"token"`
 	User  CurrentUserResult `json:"user"`

@@ -55,7 +55,7 @@ definitions:
           type: array
         type: object
       message:
-        example: JWT Token not found
+        example: Access token not found
         type: string
       success:
         example: false
@@ -4805,7 +4805,7 @@ paths:
       - User
 securityDefinitions:
   Bearer:
-    description: 'JWT bearer token. Format: "Bearer <token>".'
+    description: 'Opaque access token. Format: "Bearer <token>".'
     in: header
     name: Authorization
     type: apiKey

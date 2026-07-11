@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the 6 transaction endpoints, all JWT-protected.
+// RegisterAPI mounts the 6 transaction endpoints, all auth-protected.
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
 		authMw := middleware.Auth(authn, dev)

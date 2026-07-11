@@ -18,7 +18,7 @@ import (
 
 // RegisterAPI returns a router.RegisterAPI that mounts the Swagger UI at
 // /api/doc and the raw OpenAPI spec at /api/doc.json. Both are public — they are
-// mounted bare (no JWT wrapper), so they are
+// mounted bare (no auth wrapper), so they are
 // reachable without authentication. The router's global chain
 // (requestid/recover/cors/timezone) still applies since they live under /api.
 func RegisterAPI() router.RegisterAPI {

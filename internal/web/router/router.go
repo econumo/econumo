@@ -9,10 +9,10 @@
 //	/api/...          (*)    -> API groups, wrapped in the global chain; the
 //	                            module-supplied RegisterAPI seam attaches the
 //	                            public group (login/register/remind/reset, plus
-//	                            /api/doc) and the authenticated group (JWT) here
+//	                            /api/doc) and the authenticated group here
 //	/                 (*)    -> SPA file server with index.html fallback
 //
-// The JWT auth middleware itself is built in the user module and is applied by
+// The auth middleware itself is built in the user module and is applied by
 // the API registration func to the authenticated sub-group — the router only
 // supplies the global chain (requestid -> recover -> cors -> timezone).
 package router
@@ -28,7 +28,7 @@ import (
 // RegisterAPI is the seam through which resource modules attach their routes.
 // It is called with the API mux (whose patterns are relative to "/api", e.g.
 // "POST /api/v1/category/create-category") so a module can register both its
-// public and authenticated endpoints. The user module supplies the JWT
+// public and authenticated endpoints. The user module supplies the token
 // middleware and decides which handlers are wrapped with it; the router does
 // not impose auth itself.
 //
@@ -73,7 +73,7 @@ func New(deps Deps) http.Handler {
 
 	// Global middleware chain applied to the server-side route groups
 	// (internal + API). Order is outer -> inner: requestid -> accesslog ->
-	// recover -> cors -> timezone. (JWT is added per-group inside RegisterAPI by
+	// recover -> cors -> timezone. (auth is added per-group inside RegisterAPI by
 	// the user module — see package doc.) AccessLog sits inside RequestID (so the
 	// request_id is in context) and outside Recover (so it observes the 500 that
 	// Recover writes for a panic).
@@ -94,7 +94,7 @@ func New(deps Deps) http.Handler {
 	// router wraps the whole subtree in the global chain. Public vs
 	// authenticated grouping happens inside RegisterAPI (the public group:
 	// login/register/remind-password/reset-password + /api/doc + /api/doc.json;
-	// the authenticated group: the rest, behind the JWT middleware supplied by
+	// the authenticated group: the rest, behind the auth middleware supplied by
 	// the user module).
 	apiMux := http.NewServeMux()
 	if deps.RegisterAPI != nil {

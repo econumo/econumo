@@ -16,7 +16,7 @@
 //     replays a broad catalogue of HTTP requests (every read endpoint plus a
 //     write->read sequence per mutating module) and compares the raw response
 //     bytes. This is the strongest parity contract: it exercises middleware,
-//     JWT, the per-engine sqlc adapters, decimal/datetime handling, and envelope
+//     token auth, the per-engine sqlc adapters, decimal/datetime handling, and envelope
 //     serialization end-to-end. Server-generated UUIDv7 ids (which legitimately
 //     differ per run) are redacted before comparison; everything else is strict.
 //

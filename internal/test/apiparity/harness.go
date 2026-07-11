@@ -170,7 +170,7 @@ func (h *Harness) Call(t *testing.T, method, path, token string, body any) (int,
 
 // Replay issues each call against the harness, returning per-call statuses and
 // raw bodies. Owner/guest tokens are minted once per run (engine-independent:
-// the JWT signer + the seeded users are identical across engines).
+// the seeded users and deterministic tokens are identical across engines).
 func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 	t.Helper()
 	ownerTok := h.Token(t, OwnerID, OwnerEmail)
