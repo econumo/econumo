@@ -22,7 +22,7 @@ func (q *Queries) ExistsUserByIdentifier(ctx context.Context, identifier string)
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active, algorithm
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
 FROM users
 WHERE id = $1
 `
@@ -35,7 +35,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.Identifier,
 		&i.Email,
 		&i.Name,
-		&i.AvatarUrl,
+		&i.Avatar,
 		&i.Password,
 		&i.Salt,
 		&i.CreatedAt,
@@ -47,7 +47,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 }
 
 const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active, algorithm
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
 FROM users
 WHERE identifier = $1
 `
@@ -60,7 +60,7 @@ func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (U
 		&i.Identifier,
 		&i.Email,
 		&i.Name,
-		&i.AvatarUrl,
+		&i.Avatar,
 		&i.Password,
 		&i.Salt,
 		&i.CreatedAt,
@@ -72,7 +72,7 @@ func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (U
 }
 
 const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, algorithm, created_at, updated_at, is_active)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
@@ -81,7 +81,7 @@ type InsertUserParams struct {
 	Identifier string
 	Email      string
 	Name       string
-	AvatarUrl  string
+	Avatar     string
 	Password   string
 	Salt       string
 	Algorithm  string
@@ -96,7 +96,7 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 		arg.Identifier,
 		arg.Email,
 		arg.Name,
-		arg.AvatarUrl,
+		arg.Avatar,
 		arg.Password,
 		arg.Salt,
 		arg.Algorithm,
@@ -135,13 +135,13 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 }
 
 const upsertUser = `-- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, algorithm, created_at, updated_at, is_active)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
     name       = excluded.name,
-    avatar_url = excluded.avatar_url,
+    avatar = excluded.avatar,
     password   = excluded.password,
     salt       = excluded.salt,
     algorithm  = excluded.algorithm,
@@ -154,7 +154,7 @@ type UpsertUserParams struct {
 	Identifier string
 	Email      string
 	Name       string
-	AvatarUrl  string
+	Avatar     string
 	Password   string
 	Salt       string
 	Algorithm  string
@@ -169,7 +169,7 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 		arg.Identifier,
 		arg.Email,
 		arg.Name,
-		arg.AvatarUrl,
+		arg.Avatar,
 		arg.Password,
 		arg.Salt,
 		arg.Algorithm,

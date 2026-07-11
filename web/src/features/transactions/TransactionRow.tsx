@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { EntityIcon } from '@/components/EntityIcon'
+import { UserAvatar } from '@/components/UserAvatar'
 import { moneyFormat } from '@/lib/money'
 import type { AccountDto } from '@/api/dto/account'
 import type { Id } from '@/api/types'
@@ -46,12 +47,10 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
       <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-econumo-card">
         <EntityIcon name={icon} className="text-xl text-[#666666]" />
         {pageAccount.sharedAccess.length > 0 && tx.author ? (
-          <img
-            src={`${tx.author.avatar}?s=30`}
-            alt={tx.author.name}
-            title={tx.author.name}
-            className="absolute -bottom-1 -right-2 size-5 rounded-full border-2 border-background"
-          />
+          // the tooltip is the only place the row names the author
+          <span title={tx.author.name} className="absolute -bottom-1 -right-2">
+            <UserAvatar avatar={tx.author.avatar} size="xs" className="border-2 border-background" />
+          </span>
         ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">

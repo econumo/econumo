@@ -158,7 +158,7 @@ it('account delete confirm posts and removes; edit opens the account modal', asy
 })
 
 it('access control: shared avatars, grant and revoke through the dialogs', async () => {
-  const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   const sharedAccounts = [
     { ...fixtureAccountsForAccess[0], sharedAccess: [{ user: partner, role: 'user' }] },
     ...fixtureAccountsForAccess.slice(1),
@@ -182,7 +182,10 @@ it('access control: shared avatars, grant and revoke through the dialogs', async
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('folder-General')
-  expect(screen.getByTestId('shared-avatars-Cash')).toBeInTheDocument()
+  const cluster = screen.getByTestId('shared-avatars-Cash')
+  // each avatar in the cluster still names its user (title on the wrapper)
+  expect(within(cluster).getByTitle('Ada')).toBeInTheDocument()
+  expect(within(cluster).getByTitle('Partner')).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'account actions Cash' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Access control' }))

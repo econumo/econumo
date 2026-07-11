@@ -32,7 +32,7 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetExistence(db.Engine, db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, clock.New(), nil, false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false)
 	return svc, enc, hasher
 }
 
@@ -225,4 +225,43 @@ func isValidation(err error) bool {
 func isNotFound(err error) bool {
 	var nf *errs.NotFoundError
 	return errors.As(err, &nf)
+}
+
+func TestAdminCreateUserAssignsPickedAvatar(t *testing.T) {
+	db := dbtest.New(t)
+	svc, enc, _ := newUserSvc(t, db)
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	ctx := context.Background()
+
+	if _, err := svc.AdminCreateUser(ctx, "Avatar Tester", "avatar@econumo.test", "secretpass"); err != nil {
+		t.Fatalf("AdminCreateUser: %v", err)
+	}
+	u, err := repo.GetByIdentifier(ctx, enc.Hash("avatar@econumo.test"))
+	if err != nil {
+		t.Fatalf("GetByIdentifier: %v", err)
+	}
+	if u.Avatar != appuser.DefaultAvatar {
+		t.Fatalf("Avatar = %q, want the stub picker value %q", u.Avatar, appuser.DefaultAvatar)
+	}
+}
+
+func TestAdminChangeEmailKeepsAvatar(t *testing.T) {
+	db := dbtest.New(t)
+	svc, enc, _ := newUserSvc(t, db)
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	ctx := context.Background()
+
+	if _, err := svc.AdminCreateUser(ctx, "Keep Avatar", "keep@econumo.test", "secretpass"); err != nil {
+		t.Fatalf("AdminCreateUser: %v", err)
+	}
+	if err := svc.AdminChangeEmail(ctx, "keep@econumo.test", "kept@econumo.test"); err != nil {
+		t.Fatalf("AdminChangeEmail: %v", err)
+	}
+	u, err := repo.GetByIdentifier(ctx, enc.Hash("kept@econumo.test"))
+	if err != nil {
+		t.Fatalf("GetByIdentifier: %v", err)
+	}
+	if u.Avatar != appuser.DefaultAvatar {
+		t.Fatalf("Avatar = %q after email change, want unchanged %q", u.Avatar, appuser.DefaultAvatar)
+	}
 }

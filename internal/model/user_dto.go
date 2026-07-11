@@ -247,6 +247,38 @@ type UpdateActiveBudgetResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-avatar
+// ---------------------------------------------------------------------------
+
+// UpdateAvatarRequest is the update-avatar request body. Icon is a Material
+// ligature name; color must be one of the avatar color slugs (tier-2, in the
+// service).
+type UpdateAvatarRequest struct {
+	Icon  string `json:"icon"`
+	Color string `json:"color"`
+}
+
+// Validate enforces NotBlank on both fields; format/choice checks are tier 2.
+func (r UpdateAvatarRequest) Validate() error {
+	var fields []errs.FieldError
+	if strings.TrimSpace(r.Icon) == "" {
+		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	}
+	if strings.TrimSpace(r.Color) == "" {
+		fields = append(fields, errs.FieldError{Key: "color", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// UpdateAvatarResult is the update-avatar response.
+type UpdateAvatarResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // remind-password / reset-password
 // ---------------------------------------------------------------------------
 

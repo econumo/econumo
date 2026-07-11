@@ -170,7 +170,7 @@ it('desktop: the kebab menu still offers edit/delete without opening the preview
 
 it('shared account: rows overlay the author avatar on the category icon', async () => {
   mockViewport(false)
-  const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   server.use(
     ...coreHandlers({
       accounts: [{ ...fixtureAccounts[0], sharedAccess: [{ user: partner, role: 'user' }] }],
@@ -178,15 +178,19 @@ it('shared account: rows overlay the author avatar on the category icon', async 
   )
   renderPage()
   const row = await screen.findByTestId('tx-t1')
-  const avatar = within(row).getByRole('img', { name: 'Ada' })
-  expect(avatar).toHaveAttribute('src', 'https://avatars.test/ada?s=30')
+  const avatar = within(row).getByTestId('user-avatar')
+  expect(avatar).toHaveAttribute('data-avatar', fixtureOwner.avatar)
+  // the avatar is decorative; the wrapping tooltip still names the author
+  expect(avatar.parentElement).toHaveAttribute('title', 'Ada')
+  // the header avatar cluster also names each member (Partner appears only there)
+  expect(screen.getByTitle('Partner')).toBeInTheDocument()
 })
 
 it('private account: rows show no author avatar', async () => {
   mockViewport(false)
   renderPage()
   const row = await screen.findByTestId('tx-t1')
-  expect(within(row).queryByRole('img')).not.toBeInTheDocument()
+  expect(within(row).queryByTestId('user-avatar')).not.toBeInTheDocument()
 })
 
 it('compact viewport: add-transaction lives in the footer, header keeps only settings', async () => {
@@ -222,7 +226,7 @@ it('preview labels the payee by money direction (expense pays TO a recipient)', 
 
 it('compact + shared account: preview hero overlays the author avatar', async () => {
   mockViewport(true)
-  const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   server.use(
     ...coreHandlers({
       accounts: [{ ...fixtureAccounts[0], sharedAccess: [{ user: partner, role: 'user' }] }],
@@ -232,8 +236,10 @@ it('compact + shared account: preview hero overlays the author avatar', async ()
   renderPage()
   await user.click(await screen.findByTestId('tx-t1'))
   const dialog = await screen.findByRole('dialog')
-  // the hero avatar (with the author name as alt/title) replaces a separate author row
-  expect(within(dialog).getByRole('img', { name: 'Ada' })).toHaveAttribute('src', 'https://avatars.test/ada?s=30')
+  // the hero avatar (named by its tooltip) replaces a separate author row
+  const avatar = within(dialog).getByTestId('user-avatar')
+  expect(avatar).toHaveAttribute('data-avatar', fixtureOwner.avatar)
+  expect(avatar.parentElement).toHaveAttribute('title', 'Ada')
   expect(within(dialog).queryByText('Author')).not.toBeInTheDocument()
 })
 
@@ -253,7 +259,7 @@ it('compact viewport: row click opens the preview dialog with details', async ()
   expect(within(dialog).getByText('restaurant')).toBeInTheDocument()
   expect(within(dialog).getByText(/-9\.99\s*\$/)).toBeInTheDocument()
   // private account: no author avatar anywhere in the preview
-  expect(within(dialog).queryByRole('img')).not.toBeInTheDocument()
+  expect(within(dialog).queryByTestId('user-avatar')).not.toBeInTheDocument()
   // footer is one row: delete icon, wide Edit, collapse icon (no full Cancel button)
   expect(within(dialog).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   expect(within(dialog).getByRole('button', { name: 'Edit' })).toBeInTheDocument()

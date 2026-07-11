@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
+import { UserAvatar } from '@/components/UserAvatar'
 import { moneyFormat } from '@/lib/money'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useUiStore } from '@/app/uiStore'
@@ -107,9 +108,13 @@ export function AccountPage() {
   const sharedAvatars =
     account.sharedAccess.length > 0 ? (
       <span className="flex items-center gap-0.5">
-        <img src={`${account.owner.avatar}?s=30`} alt={account.owner.name} className="size-5 rounded-full" />
+        <span title={account.owner.name}>
+          <UserAvatar avatar={account.owner.avatar} size="xs" />
+        </span>
         {account.sharedAccess.map((access) => (
-          <img key={access.user.id} src={`${access.user.avatar}?s=30`} alt={access.user.name} className="size-5 rounded-full" />
+          <span key={access.user.id} title={access.user.name}>
+            <UserAvatar avatar={access.user.avatar} size="xs" />
+          </span>
         ))}
       </span>
     ) : null

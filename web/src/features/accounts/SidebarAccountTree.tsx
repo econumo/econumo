@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EntityIcon } from '@/components/EntityIcon'
+import { UserAvatar } from '@/components/UserAvatar'
 import { moneyFormat } from '@/lib/money'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useSidebarStore, useUiStore } from '@/app/uiStore'
@@ -29,14 +30,13 @@ function SharedAvatars({ account }: { account: AccountDto }) {
   }
   return (
     <span className="absolute right-4 top-2.5 flex" aria-label="shared">
-      <img src={`${account.owner.avatar}?s=30`} alt={account.owner.name} className="-mr-2 size-7 rounded-full border-2 border-econumo-card" />
+      <span title={account.owner.name} className="-mr-2">
+        <UserAvatar avatar={account.owner.avatar} size="sm" className="size-7 border-2 border-econumo-card" />
+      </span>
       {account.sharedAccess.map((access) => (
-        <img
-          key={access.user.id}
-          src={`${access.user.avatar}?s=30`}
-          alt={access.user.name}
-          className="-mr-2 size-7 rounded-full border-2 border-econumo-card"
-        />
+        <span key={access.user.id} title={access.user.name} className="-mr-2">
+          <UserAvatar avatar={access.user.avatar} size="sm" className="size-7 border-2 border-econumo-card" />
+        </span>
       ))}
     </span>
   )

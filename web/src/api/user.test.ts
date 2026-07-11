@@ -71,6 +71,19 @@ it('completeOnboarding returns the refreshed user', async () => {
   expect(result.options).toEqual([{ name: 'onboarding', value: 'completed' }])
 })
 
+it('updateAvatar posts icon/color to update-avatar and returns the refreshed user', async () => {
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/user/update-avatar', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { user: { ...user, avatar: 'pets' } } })
+    }),
+  )
+  const result = await userApi.updateAvatar('pets', 'teal')
+  expect(body).toEqual({ icon: 'pets', color: 'teal' })
+  expect(result.avatar).toBe('pets')
+})
+
 it('remindPassword and resetPassword hit their endpoints', async () => {
   const calls: string[] = []
   server.use(

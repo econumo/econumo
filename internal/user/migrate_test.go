@@ -28,7 +28,7 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	budgets := server.NewUserBudgetExistence("sqlite", db.TX)
 	// Login mints an opaque session token backed by the access_tokens table.
 	tokens := userrepo.NewAccessTokenRepo("sqlite", db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, clock.New(), nil, false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false)
 	return svc, hasher
 }
 

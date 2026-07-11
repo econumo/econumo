@@ -228,6 +228,41 @@ export const icons = [
   'sentiment_satisfied_alt',
   'emoji_events',
   'child_friendly',
+  // Avatar-picker additions (faces, animals, abstract shapes, fun objects).
+  // All verified present in the bundled Material Symbols Rounded font —
+  // check a new name renders there before adding it (a missing ligature
+  // falls back to raw text).
+  'mood',
+  'sentiment_very_satisfied',
+  'sentiment_neutral',
+  'sentiment_dissatisfied',
+  'sentiment_very_dissatisfied',
+  'sick',
+  'psychology',
+  'cruelty_free',
+  'flutter_dash',
+  'emoji_nature',
+  'bug_report',
+  'egg',
+  'auto_awesome',
+  'toys',
+  'gesture',
+  'hive',
+  'blur_on',
+  'rocket_launch',
+  'bolt',
+  'wb_sunny',
+  'nightlight',
+  'ac_unit',
+  'water_drop',
+  'local_fire_department',
+  'star',
+  'diamond',
+  'crown',
+  'chess_knight',
+  'owl',
+  'planet',
+  'swords',
 ]
 
 const unique = Array.from(new Set(icons))

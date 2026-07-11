@@ -5,10 +5,10 @@ package model
 // in infra, so the app layer does not import the infra package (dependency
 // points inward).
 type UserViewRow struct {
-	ID        string
-	Email     string
-	Name      string
-	AvatarURL string
+	ID     string
+	Email  string
+	Name   string
+	Avatar string
 }
 
 type OptionViewRow struct {

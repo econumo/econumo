@@ -107,7 +107,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
-	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer, clk, limiter, cfg.AllowRegistration)
+	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 

@@ -124,7 +124,7 @@ it('delete confirm removes the budget; go-to navigates', async () => {
   expect(await screen.findByText('BUDGET ROUTE')).toBeInTheDocument()
 })
 
-const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
 const ownedShared = {
   id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
   access: [
@@ -195,6 +195,9 @@ it('access control: grant and revoke via the share dialogs', async () => {
   const user = userEvent.setup()
   renderPage()
   await screen.findByText('Main budget')
+  // the access cluster still names each user (title on the wrapper)
+  expect(screen.getByTitle('Ada')).toBeInTheDocument()
+  expect(screen.getByTitle('Partner')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'budget actions Main budget' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Access control' }))
   await user.click(await screen.findByRole('button', { name: /Partner/ }))

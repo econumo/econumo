@@ -80,9 +80,9 @@ func (o *UserOption) setValue(value *string, now time.Time) {
 // (id, name, avatar) — no options, no credentials. Owner/author embeds use it so
 // they need only a single user-row query rather than hydrating the full aggregate.
 type Header struct {
-	ID        string
-	Name      string
-	AvatarURL string
+	ID     string
+	Name   string
+	Avatar string
 }
 
 // User is the user aggregate root. Strings that are encrypted at rest (Email)
@@ -95,7 +95,7 @@ type User struct {
 	Identifier string // md5(lower(email)+salt) — the auth lookup key
 	Email      string // AES-encrypted ciphertext (opaque here)
 	Name       string
-	AvatarURL  string
+	Avatar     string
 	Password   string // hash produced by the scheme in Algorithm (see CLAUDE.md)
 	Salt       string // sha1(random) hex, 40 chars (unused by argon2id hashes)
 	Algorithm  string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
@@ -106,15 +106,15 @@ type User struct {
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
-// already computed identifier, encrypted email, avatar URL, password hash and
+// already computed identifier, encrypted email, avatar value, password hash and
 // salt. Options are seeded separately via SeedDefaultOptions.
-func NewUser(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash, salt string, now time.Time) *User {
+func NewUser(id vo.Id, identifier, encryptedEmail, name, avatar, passwordHash, salt string, now time.Time) *User {
 	return &User{
 		ID:         id,
 		Identifier: identifier,
 		Email:      encryptedEmail,
 		Name:       name,
-		AvatarURL:  avatarURL,
+		Avatar:     avatar,
 		Password:   passwordHash,
 		Salt:       salt,
 		Algorithm:  AlgorithmArgon2id,
@@ -156,6 +156,11 @@ func (u *User) UpdateName(name string, now time.Time) {
 	u.UpdatedAt = now
 }
 
+func (u *User) UpdateAvatar(avatar string, now time.Time) {
+	u.Avatar = avatar
+	u.UpdatedAt = now
+}
+
 // Activate marks the account active, bumping UpdatedAt only when the state
 // actually changes so a no-op activate leaves the row untouched.
 func (u *User) Activate(now time.Time) {
@@ -184,12 +189,11 @@ func (u *User) UpdatePassword(passwordHash, algorithm string, now time.Time) {
 	u.UpdatedAt = now
 }
 
-// UpdateEmail replaces the encrypted email, identifier and avatar URL together,
-// all derived by the service.
-func (u *User) UpdateEmail(identifier, encryptedEmail, avatarURL string, now time.Time) {
+// UpdateEmail replaces the encrypted email and identifier together, both
+// derived by the service.
+func (u *User) UpdateEmail(identifier, encryptedEmail string, now time.Time) {
 	u.Identifier = identifier
 	u.Email = encryptedEmail
-	u.AvatarURL = avatarURL
 	u.UpdatedAt = now
 }
 

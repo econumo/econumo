@@ -28,6 +28,7 @@ import (
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
@@ -49,12 +50,28 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
+// Seams are BuildAPI's injectable sources of nondeterminism. The zero value
+// wires production defaults (real clock, random avatar picker); tests override
+// them so responses stay byte-stable (golden files, engine comparison).
+type Seams struct {
+	Clock   port.Clock
+	Avatars appuser.AvatarPicker
+}
+
 // BuildAPI wires every resource module over the given (already opened+migrated)
-// database and returns the full HTTP handler. The caller owns the DB and clk
-// so tests can inject deterministic ones and point at either engine; the
-// engine is read from cfg.DatabaseDriver, which selects the per-engine sqlc query
-// adapters in every repository constructor.
-func BuildAPI(cfg config.Config, db *sql.DB, clk port.Clock) http.Handler {
+// database and returns the full HTTP handler. The caller owns the DB and the
+// seams (clock, avatar picker) so tests can inject deterministic ones and point
+// at either engine; the engine is read from cfg.DatabaseDriver, which selects
+// the per-engine sqlc query adapters in every repository constructor.
+func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
+	clk := seams.Clock
+	if clk == nil {
+		clk = clock.New()
+	}
+	avatars := seams.Avatars
+	if avatars == nil {
+		avatars = appuser.NewRandomAvatarPicker()
+	}
 	txm := backend.NewTxManager(db)
 
 	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
@@ -83,7 +100,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, clk port.Clock) http.Handler {
 	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
-		passwordReqRepo, resetMailer, clk, authLimiter, cfg.AllowRegistration,
+		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)

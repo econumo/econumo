@@ -28,6 +28,13 @@ type BudgetExistence interface {
 	Exists(ctx context.Context, budgetID string) (bool, error)
 }
 
+// AvatarPicker supplies the avatar value for newly created users. Production
+// wiring picks randomly (RandomAvatarPicker); test harnesses pin a fixed value
+// (FixedAvatarPicker) so golden responses stay deterministic.
+type AvatarPicker interface {
+	Pick() string
+}
+
 // AttemptLimiter is the brute-force-protection seam for the public auth use
 // cases. Keys are the lowercased+trimmed submitted username/email; scopes are
 // the RateScope* constants. A nil limiter disables protection (CLI, tests).

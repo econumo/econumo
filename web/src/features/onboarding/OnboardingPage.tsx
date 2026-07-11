@@ -4,6 +4,8 @@ import { Check, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/UserAvatar'
+import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -43,7 +45,7 @@ function Step({
           className={`flex size-8 shrink-0 items-center justify-center rounded-full border ${done ? 'border-econumo-purple bg-econumo-purple text-white' : 'text-muted-foreground'}`}
         >
           {avatar ? (
-            <img src={avatar} alt="" className="size-8 rounded-full" />
+            <UserAvatar avatar={avatar} size="sm" />
           ) : done ? (
             <Check className="size-4" />
           ) : (
@@ -87,6 +89,7 @@ export function OnboardingPage() {
 
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
+  const [avatarOpen, setAvatarOpen] = useState(false)
 
   const isAccountCreated = accounts.length > 0
   const isTransactionsEntered = accounts.length > 0 && categories.length > 0 && transactions.length > 0
@@ -188,21 +191,16 @@ export function OnboardingPage() {
           <Step
             id="avatar"
             done={false}
-            avatar={user?.avatar ? `${user.avatar}?s=30` : undefined}
+            avatar={user?.avatar}
             title="Update your avatar"
             guideText={t('modules.user.pages.onboarding.user_guide.user_profile')}
             guideHref="https://econumo.com/docs/user-guide/user-profile"
           >
             <p>
-              Econumo pulls your avatar from{' '}
-              <a href="https://gravatar.com" target="_blank" rel="nofollow noreferrer" className="text-econumo-purple underline underline-offset-2">
-                Gravatar
-              </a>
-              , linked to your email address. To change your avatar, please visit{' '}
-              <a href="https://gravatar.com" target="_blank" rel="nofollow noreferrer" className="text-econumo-purple underline underline-offset-2">
-                Gravatar
-              </a>
-              .
+              Pick an icon and a color for your avatar — it represents you in shared accounts.{' '}
+              <button type="button" onClick={() => setAvatarOpen(true)} className="text-econumo-purple underline underline-offset-2">
+                Choose your avatar
+              </button>
             </p>
           </Step>
 
@@ -243,6 +241,7 @@ export function OnboardingPage() {
 
       <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
       <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
+      <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
     </div>
   )
 }

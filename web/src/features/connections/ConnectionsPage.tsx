@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto, InviteDto } from '@/api/dto/connection'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
@@ -72,7 +73,7 @@ export function ConnectionsPage() {
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 onClick={() => setPreview(connection)}
               >
-                <img src={`${connection.user.avatar}?s=50`} alt={connection.user.name} className="size-10 rounded-full" />
+                <UserAvatar avatar={connection.user.avatar} size="md" />
                 <span className="min-w-0 flex-1 truncate text-sm" title={connection.user.name}>
                   {connection.user.name}
                 </span>

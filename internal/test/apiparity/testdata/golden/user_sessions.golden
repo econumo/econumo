@@ -2,7 +2,7 @@
 {"success":true,"message":"","data":[{"id":"55555555-5555-5555-5555-555555555555","userAgent":"apiparity","createdAt":"<datetime>","lastUsedAt":"<datetime>","isCurrent":true}]}
 
 == login-second-session POST /api/v1/user/login-user [] -> 200
-{"token":"<token>","user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}
+{"token":"<token>","user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}
 
 == get-session-list-two GET /api/v1/user/get-session-list [owner] -> 200
 {"success":true,"message":"","data":[{"id":"55555555-5555-5555-5555-555555555555","userAgent":"apiparity","createdAt":"<datetime>","lastUsedAt":"<datetime>","isCurrent":true},{"id":"<generated-uuid>","userAgent":"Go-http-client/1.1","createdAt":"<datetime>","lastUsedAt":"<datetime>","isCurrent":false}]}

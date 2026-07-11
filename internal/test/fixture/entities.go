@@ -23,7 +23,7 @@ type User struct {
 	ID       string
 	Email    string // default "user-<id8>@example.test"
 	Name     string // default "User <id4>"
-	Avatar   string
+	Avatar   string // default "diamond:sky"
 	Password string // default "secret-pw" (only meaningful WithCrypto)
 	Salt     string // default 40-char sha1-shaped salt
 	Inactive bool   // default active
@@ -47,6 +47,9 @@ func (b *Builder) User(u User) string {
 	if u.Password == "" {
 		u.Password = "secret-pw"
 	}
+	if u.Avatar == "" {
+		u.Avatar = "diamond:sky"
+	}
 
 	identifier, email, password := u.Email, u.Email, u.Password
 	if b.encode != nil {
@@ -67,7 +70,7 @@ func (b *Builder) User(u User) string {
 	if u.Inactive {
 		active = "FALSE"
 	}
-	b.insert(`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, algorithm, created_at, updated_at, is_active)
+	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
 		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`)`,
 		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now)
 	return id

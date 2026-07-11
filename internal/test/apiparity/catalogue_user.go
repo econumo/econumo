@@ -12,6 +12,13 @@ func init() {
 			// Field name is "value" (a budget id) — frozen quirk.
 			{Label: "update-budget", Method: "POST", Path: "/api/v1/user/update-budget", Auth: "owner",
 				Body: map[string]any{"value": Budget}},
+			{Label: "update-avatar", Method: "POST", Path: "/api/v1/user/update-avatar", Auth: "owner",
+				Body: map[string]any{"icon": "pets", "color": "teal"}},
+			// Pins the tier-1 blank envelope and the tier-2 format/choice envelope.
+			{Label: "err:update-avatar-blank", Method: "POST", Path: "/api/v1/user/update-avatar", Auth: "owner",
+				Body: map[string]any{"icon": "", "color": ""}},
+			{Label: "err:update-avatar-bad-values", Method: "POST", Path: "/api/v1/user/update-avatar", Auth: "owner",
+				Body: map[string]any{"icon": "Not-Valid", "color": "neon"}},
 			// update-password spares the presenting session (only OTHER sessions are
 			// revoked), so the owner token keeps working here.
 			{Label: "update-password", Method: "POST", Path: "/api/v1/user/update-password", Auth: "owner",

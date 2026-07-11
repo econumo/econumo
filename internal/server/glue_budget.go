@@ -219,7 +219,7 @@ func (l *BudgetUserLookup) GetOwner(ctx context.Context, userID string) (model.O
 	if err != nil {
 		return model.OwnerView{}, err
 	}
-	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.Avatar}, nil
 }
 
 // CurrencyCode returns the user's default currency code (the currency option).

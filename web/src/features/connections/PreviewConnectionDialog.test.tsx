@@ -52,6 +52,9 @@ it('lists shared items with ownership badges and roles', async () => {
   expect(await screen.findByText('Partner plan')).toBeInTheDocument()
   expect(screen.getByText(/Shared with you/)).toBeInTheDocument()
   expect(screen.getAllByText('Select an item to manage access').length).toBeGreaterThan(0)
+  // each row's owner avatar still names the owner (title on the wrapper)
+  expect(screen.getByTitle('Ada')).toBeInTheDocument()
+  expect(screen.getByTitle('Partner')).toBeInTheDocument()
 })
 
 it('shows empty states without shared items', async () => {

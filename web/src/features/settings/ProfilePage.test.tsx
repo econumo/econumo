@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -152,6 +152,14 @@ it('changing the default currency posts the code and updates the cache', async (
     const cached = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)!
     expect(cached.options.find((o) => o.name === 'currency_id')!.value).toBe('cur-eur')
   })
+})
+
+it('clicking the avatar opens the avatar picker dialog', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Change avatar' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Choose your avatar')).toBeInTheDocument()
 })
 
 it('email is readonly; logout confirm has the exact copy and navigates', async () => {

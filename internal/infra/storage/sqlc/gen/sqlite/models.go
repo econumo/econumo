@@ -221,7 +221,7 @@ type User struct {
 	Identifier string
 	Email      string
 	Name       string
-	AvatarUrl  string
+	Avatar     string
 	Password   string
 	Salt       string
 	CreatedAt  time.Time

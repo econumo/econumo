@@ -85,7 +85,10 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 
 	Seed(t, db)
 
-	handler := server.BuildAPI(cfg, db.Raw, clk)
+	handler := server.BuildAPI(cfg, db.Raw, server.Seams{
+		Clock:   clk,
+		Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar),
+	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 

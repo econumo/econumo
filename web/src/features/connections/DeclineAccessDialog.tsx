@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import type { UserDto } from '@/api/dto/user'
 
 interface DeclineAccessDialogProps {
@@ -18,7 +19,7 @@ export function DeclineAccessDialog({ open, owner, itemName, onDecline, onClose 
       <div className="flex flex-col gap-3">
         {owner ? (
           <div className="flex items-center gap-3">
-            <img src={`${owner.avatar}?s=50`} alt={owner.name} className="size-10 rounded-full" />
+            <UserAvatar avatar={owner.avatar} size="md" />
             <span className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-medium">{owner.name}</span>
               <span className="truncate text-xs text-muted-foreground">{itemName}</span>

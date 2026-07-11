@@ -4,7 +4,7 @@ export const fixtureUser = {
   id: 'u1',
   name: 'Ada',
   email: 'ada@example.test',
-  avatar: 'https://avatars.test/ada',
+  avatar: 'face:emerald',
   options: [
     { name: 'currency', value: 'USD' },
     { name: 'currency_id', value: 'cur-usd' },
@@ -16,7 +16,7 @@ export const fixtureUser = {
   reportPeriod: 'monthly',
 }
 
-export const fixtureOwner = { id: 'u1', avatar: 'https://avatars.test/ada', name: 'Ada' }
+export const fixtureOwner = { id: 'u1', avatar: 'face:emerald', name: 'Ada' }
 
 export const fixtureUsd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 export const fixtureEur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -127,7 +127,7 @@ export const fixtureWireBudget = {
 }
 
 export const fixtureConnections = [
-  { user: { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }, sharedAccounts: [] },
+  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, sharedAccounts: [] },
 ]
 
 const envelope = (data: unknown) => HttpResponse.json({ success: true, message: '', data })

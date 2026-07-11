@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -29,6 +30,7 @@ export function ProfilePage() {
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
   const savedTimer = useRef<number | null>(null)
 
@@ -85,7 +87,7 @@ export function ProfilePage() {
     <SettingsShell title={t('modules.user.page.settings.profile.header')} backTo={RouterPage.SETTINGS}>
       {user ? (
         <div className="px-1 py-3">
-          <UserCard user={user} size="lg">
+          <UserCard user={user} size="lg" onAvatarClick={() => setAvatarOpen(true)} avatarLabel={t('modals.avatar_picker.change')}>
             <button type="button" className="self-start text-sm text-econumo-magenta underline hover:text-econumo-magenta-dark" onClick={() => setLogoutOpen(true)}>
               {t('pages.settings.settings.logout')}
             </button>
@@ -203,6 +205,8 @@ export function ProfilePage() {
           }
         }}
       />
+
+      <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 
       <ConfirmDialog
         open={logoutOpen}
