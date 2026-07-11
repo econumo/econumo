@@ -84,11 +84,16 @@ it('revokes another session after confirmation', async () => {
   expect(navigatedToLogout).toBe(false)
 })
 
-it('signing out of the current session navigates to /logout', async () => {
+it('signing out of the current session goes through the logout flow without revoke-session', async () => {
+  // Revoking the presenting token first would make LogoutPage's logout-user
+  // call 401 and surface the "session expired" banner; the logout endpoint
+  // revokes the current session itself.
+  let revokeCalled = false
   server.use(
-    http.post('*/api/v1/user/revoke-session', () =>
-      HttpResponse.json({ success: true, message: '', data: {} }),
-    ),
+    http.post('*/api/v1/user/revoke-session', () => {
+      revokeCalled = true
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
   )
   const user = userEvent.setup()
   renderPage()
@@ -97,6 +102,7 @@ it('signing out of the current session navigates to /logout', async () => {
   const buttons = await screen.findAllByRole('button', { name: 'Sign out' })
   await user.click(buttons[buttons.length - 1])
   await waitFor(() => expect(screen.getByTestId('logout-page')).toBeInTheDocument())
+  expect(revokeCalled).toBe(false)
 })
 
 it('signs out other devices', async () => {
@@ -110,7 +116,9 @@ it('signs out other devices', async () => {
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByRole('button', { name: 'Sign out other devices' }))
-  const confirm = await screen.findAllByRole('button', { name: 'Sign out other devices' })
+  // The dialog confirm button is deliberately short ("Sign out") so it fits its
+  // half-width grid cell; the long label stays on the page-level button only.
+  const confirm = await screen.findAllByRole('button', { name: 'Sign out' })
   await user.click(confirm[confirm.length - 1])
   await waitFor(() => expect(called).toBe(true))
 })

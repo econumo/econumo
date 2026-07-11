@@ -21,14 +21,14 @@ export function SessionsPage() {
   const [confirmOthers, setConfirmOthers] = useState(false)
 
   const revoke = (session: SessionDto) => {
-    revokeSession.mutate(session.id, {
-      onSuccess: () => {
-        if (session.isCurrent) {
-          // Revoking the presenting session IS a logout.
-          void navigate(RouterPage.LOGOUT)
-        }
-      },
-    })
+    if (session.isCurrent) {
+      // Signing out the presenting session IS a logout: the logout flow revokes
+      // it server-side and clears local state. Revoking it here first would make
+      // the logout call 401 and surface the "session expired" banner instead.
+      void navigate(RouterPage.LOGOUT)
+    } else {
+      revokeSession.mutate(session.id)
+    }
     setConfirmTarget(null)
   }
 
@@ -81,7 +81,7 @@ export function SessionsPage() {
 
       {others.length > 0 ? (
         <div className="max-w-md py-2">
-          <Button type="button" variant="secondary" onClick={() => setConfirmOthers(true)}>
+          <Button type="button" onClick={() => setConfirmOthers(true)}>
             {t('modules.user.page.settings.profile.sessions.revoke_others')}
           </Button>
         </div>
@@ -112,7 +112,7 @@ export function SessionsPage() {
           setConfirmOthers(false)
         }}
         question={t('modules.user.page.settings.profile.sessions.confirm_revoke_others')}
-        confirmLabel={t('modules.user.page.settings.profile.sessions.revoke_others')}
+        confirmLabel={t('modules.user.page.settings.profile.sessions.sign_out')}
         cancelLabel={t('elements.button.cancel.label')}
         destructive
       />

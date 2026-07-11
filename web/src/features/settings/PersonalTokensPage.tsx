@@ -96,9 +96,15 @@ export function PersonalTokensPage() {
         { label: t('modules.user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
       ]}
       actions={
-        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setCreateOpen(true)}
+          title={t('modules.user.page.settings.profile.tokens.create.label')}
+          aria-label={t('modules.user.page.settings.profile.tokens.create.label')}
+        >
           <Plus className="size-4" />
-          {t('modules.user.page.settings.profile.tokens.create.label')}
+          <span className="hidden sm:inline">{t('modules.user.page.settings.profile.tokens.create.label')}</span>
         </Button>
       }
     >
@@ -192,6 +198,16 @@ export function PersonalTokensPage() {
             ) : null}
           </fieldset>
           <div className={dialogActionsClass}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setCreateOpen(false)
+                resetForm()
+              }}
+            >
+              {t('elements.button.cancel.label')}
+            </Button>
             <Button type="submit" disabled={createToken.isPending}>
               {t('modules.user.page.settings.profile.tokens.form.submit.label')}
             </Button>

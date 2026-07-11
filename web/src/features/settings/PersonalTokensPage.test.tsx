@@ -84,6 +84,23 @@ it('creates a token and shows it exactly once with a copy button', async () => {
   await waitFor(() => expect(screen.queryByTestId('created-token')).not.toBeInTheDocument())
 })
 
+it('cancels the create dialog without creating anything', async () => {
+  let called = false
+  server.use(
+    http.post('*/api/v1/user/create-personal-token', () => {
+      called = true
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: /Create token/ }))
+  await user.type(await screen.findByLabelText('Name'), 'CI')
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  await waitFor(() => expect(screen.queryByLabelText('Name')).not.toBeInTheDocument())
+  expect(called).toBe(false)
+})
+
 it('requires a name', async () => {
   const user = userEvent.setup()
   renderPage()
