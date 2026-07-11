@@ -140,6 +140,7 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 		Avatar:     u.Avatar,
 		Password:   u.Password,
 		Salt:       u.Salt,
+		Algorithm:  u.Algorithm,
 		CreatedAt:  u.CreatedAt,
 		UpdatedAt:  u.UpdatedAt,
 		IsActive:   u.IsActive,
@@ -175,8 +176,8 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 		return nil, err
 	}
 	return &model.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
-		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, IsActive: row.IsActive,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
+		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, Algorithm: row.Algorithm,
+		IsActive: row.IsActive, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 
 func toDomainOptions(rows []optionRow) ([]model.UserOption, error) {

@@ -4154,6 +4154,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
@@ -4223,6 +4227,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
@@ -4262,6 +4270,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
@@ -4302,6 +4314,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:

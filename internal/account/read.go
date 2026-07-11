@@ -41,6 +41,17 @@ func (s *Service) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, err
 	return acct.UserID, nil
 }
 
+// AccountCurrency returns an account's currency id (for cross-module use, e.g.
+// transaction's transfer amount normalization). Missing -> *errs.NotFoundError
+// (from the repo).
+func (s *Service) AccountCurrency(ctx context.Context, accountID vo.Id) (vo.Id, error) {
+	acct, err := s.accounts.GetByID(ctx, accountID)
+	if err != nil {
+		return vo.Id{}, err
+	}
+	return acct.CurrencyID, nil
+}
+
 // VisibleAccountIDs returns the ids of the user's available (non-deleted)
 // accounts that are NOT in a hidden folder — the set whose transactions the user
 // may list.

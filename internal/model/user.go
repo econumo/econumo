@@ -29,6 +29,13 @@ const (
 	OnboardingCompleted = "completed"
 )
 
+// Password-hash algorithm markers stored in users.algorithm. sha512 is the
+// legacy scheme (see CLAUDE.md); argon2id is written by every new hash.
+const (
+	AlgorithmSHA512   = "sha512"
+	AlgorithmArgon2id = "argon2id"
+)
+
 // persistedOptions are the option names that exist as users_options rows, in
 // the order they are seeded at registration. CurrencyID is intentionally absent
 // (it is computed in the result, never stored).
@@ -89,8 +96,9 @@ type User struct {
 	Email      string // AES-encrypted ciphertext (opaque here)
 	Name       string
 	Avatar     string
-	Password   string // sha512, 500 iterations, base64-encoded (see CLAUDE.md)
-	Salt       string // sha1(random) hex, 40 chars
+	Password   string // hash produced by the scheme in Algorithm (see CLAUDE.md)
+	Salt       string // sha1(random) hex, 40 chars (unused by argon2id hashes)
+	Algorithm  string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
 	IsActive   bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -109,6 +117,7 @@ func NewUser(id vo.Id, identifier, encryptedEmail, name, avatar, passwordHash, s
 		Avatar:     avatar,
 		Password:   passwordHash,
 		Salt:       salt,
+		Algorithm:  AlgorithmArgon2id,
 		IsActive:   true,
 		CreatedAt:  now,
 		UpdatedAt:  now,
@@ -172,10 +181,11 @@ func (u *User) Deactivate(now time.Time) {
 	u.UpdatedAt = now
 }
 
-// UpdatePassword replaces the stored password hash. The caller hashes the
-// plaintext using this user's salt first.
-func (u *User) UpdatePassword(passwordHash string, now time.Time) {
+// UpdatePassword replaces the stored password hash and records which algorithm
+// produced it. The caller hashes the plaintext first.
+func (u *User) UpdatePassword(passwordHash, algorithm string, now time.Time) {
 	u.Password = passwordHash
+	u.Algorithm = algorithm
 	u.UpdatedAt = now
 }
 

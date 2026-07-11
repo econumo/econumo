@@ -63,7 +63,11 @@ type harness struct {
 	clock  fixedClock
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessWithLimiter(t, nil) }
+
+// newHarnessWithLimiter lets rate-limit tests inject a tight limiter; every
+// other test keeps the nil (disabled) default.
+func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harness {
 	t.Helper()
 	ctx := context.Background()
 
@@ -107,7 +111,7 @@ func newHarness(t *testing.T) *harness {
 	resetMailer := mailer.NewResetSender(discardMailer{}, "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, cfg.AllowRegistration)
+	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 

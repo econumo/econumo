@@ -13,6 +13,12 @@ import (
 // gated on ECONUMO_ALLOW_REGISTRATION; the actual creation is shared with the
 // ungated CLI admin path via createUser.
 func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*model.RegisterResult, error) {
+	limitKey := strings.ToLower(strings.TrimSpace(req.Email))
+	if err := s.allowAttempt(RateScopeRegister, limitKey); err != nil {
+		return nil, err
+	}
+	s.failAttempt(RateScopeRegister, limitKey) // every attempt counts toward the cap
+
 	if !s.allowRegistration {
 		return nil, errs.NewValidation("Registration disabled")
 	}
@@ -57,7 +63,10 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 		return nil, serr
 	}
 	now := s.clock.Now()
-	passwordHash := s.hasher.Hash(password, salt)
+	passwordHash, herr := s.hasher.Hash(password)
+	if herr != nil {
+		return nil, herr
+	}
 	avatar := s.avatars.Pick()
 
 	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatar, passwordHash, salt, now)

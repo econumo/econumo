@@ -35,6 +35,7 @@ type Service struct {
 	mailer            *mailer.ResetSender
 	avatars           AvatarPicker
 	clock             port.Clock
+	limiter           AttemptLimiter
 	allowRegistration bool
 }
 
@@ -50,6 +51,7 @@ func NewService(
 	mailer *mailer.ResetSender,
 	avatars AvatarPicker,
 	clock port.Clock,
+	limiter AttemptLimiter,
 	allowRegistration bool,
 ) *Service {
 	return &Service{
@@ -64,6 +66,7 @@ func NewService(
 		mailer:            mailer,
 		avatars:           avatars,
 		clock:             clock,
+		limiter:           limiter,
 		allowRegistration: allowRegistration,
 	}
 }
@@ -172,4 +175,25 @@ func newSalt() (string, error) {
 	}
 	sum := sha1.Sum(b)
 	return hex.EncodeToString(sum[:]), nil
+}
+
+// allowAttempt / failAttempt / clearAttempt guard the optional limiter (nil in
+// the CLI and most tests), mirroring the nil-mailer pattern in RemindPassword.
+func (s *Service) allowAttempt(scope, key string) error {
+	if s.limiter == nil {
+		return nil
+	}
+	return s.limiter.Allow(scope, key)
+}
+
+func (s *Service) failAttempt(scope, key string) {
+	if s.limiter != nil {
+		s.limiter.Fail(scope, key)
+	}
+}
+
+func (s *Service) clearAttempt(scope, key string) {
+	if s.limiter != nil {
+		s.limiter.Clear(scope, key)
+	}
 }

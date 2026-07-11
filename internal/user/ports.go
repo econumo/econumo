@@ -34,3 +34,24 @@ type BudgetExistence interface {
 type AvatarPicker interface {
 	Pick() string
 }
+
+// AttemptLimiter is the brute-force-protection seam for the public auth use
+// cases. Keys are the lowercased+trimmed submitted username/email; scopes are
+// the RateScope* constants. A nil limiter disables protection (CLI, tests).
+type AttemptLimiter interface {
+	// Allow reports whether another attempt may proceed; over-limit yields an
+	// *errs.TooManyRequestsError (HTTP 429).
+	Allow(scope, key string) error
+	// Fail records a failed attempt.
+	Fail(scope, key string)
+	// Clear wipes the key's failure counter after a successful attempt.
+	Clear(scope, key string)
+}
+
+// Rate-limit scopes; the same strings key the limiter config in internal/server.
+const (
+	RateScopeLogin    = "login"
+	RateScopeReset    = "reset"
+	RateScopeRemind   = "remind"
+	RateScopeRegister = "register"
+)

@@ -76,6 +76,16 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		AllowRegistration:  true,
 		DataSalt:           ignoredDataSalt, // set on purpose; the API must ignore it
 		CORSAllowedOrigins: []string{"*"},
+		// Production-default auth rate limits: existing auth scenarios stay far
+		// under them (1 bad login / 1 remind / 1 bad reset per fresh-DB scenario),
+		// and the auth_rate_limit scenario deliberately exceeds them to freeze the
+		// 429 envelope.
+		RateLimitLogin:    5,
+		RateLimitReset:    5,
+		RateLimitRemind:   3,
+		RateLimitRegister: 5,
+		RateLimitWindow:   15 * time.Minute,
+		RateLimitGlobal:   60,
 	}
 
 	Seed(t, db)

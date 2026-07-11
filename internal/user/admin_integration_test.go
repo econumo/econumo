@@ -10,6 +10,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -30,7 +31,7 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetExistence(db.Engine, db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, nil, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, nil, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false)
 	return svc, enc, hasher
 }
 
@@ -57,7 +58,7 @@ func TestAdminCreateUser(t *testing.T) {
 	if !u.IsActive {
 		t.Error("new user should be active")
 	}
-	if !hasher.Verify(u.Password, "secretpass", u.Salt) {
+	if !hasher.Verify(u.Algorithm, u.Password, "secretpass", u.Salt) {
 		t.Error("stored password does not verify")
 	}
 	email, err := enc.Decode(u.Email)
@@ -124,19 +125,33 @@ func TestAdminChangePassword(t *testing.T) {
 	if _, err := svc.AdminCreateUser(ctx, "A", "pw@econumo.test", "oldpw"); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.AdminChangePassword(ctx, "pw@econumo.test", "brandnew"); err != nil {
-		t.Fatalf("AdminChangePassword: %v", err)
-	}
 
+	// Force the account to the legacy scheme so the test proves the transition.
 	u, err := repo.GetByIdentifier(ctx, enc.Hash("pw@econumo.test"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasher.Verify(u.Password, "brandnew", u.Salt) {
+	legacyHash := hasher.HashSHA512("oldpw", u.Salt)
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users SET password = ?, algorithm = 'sha512' WHERE id = ?`), legacyHash, u.ID.String()); err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+
+	if err := svc.AdminChangePassword(ctx, "pw@econumo.test", "brandnew"); err != nil {
+		t.Fatalf("AdminChangePassword: %v", err)
+	}
+
+	u, err = repo.GetByIdentifier(ctx, enc.Hash("pw@econumo.test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasher.Verify(u.Algorithm, u.Password, "brandnew", u.Salt) {
 		t.Error("new password does not verify")
 	}
-	if hasher.Verify(u.Password, "oldpw", u.Salt) {
+	if hasher.Verify(u.Algorithm, u.Password, "oldpw", u.Salt) {
 		t.Error("old password still verifies")
+	}
+	if u.Algorithm != model.AlgorithmArgon2id {
+		t.Errorf("algorithm after admin change-password = %q, want %q", u.Algorithm, model.AlgorithmArgon2id)
 	}
 
 	if err := svc.AdminChangePassword(ctx, "ghost@econumo.test", "x"); !isNotFound(err) {

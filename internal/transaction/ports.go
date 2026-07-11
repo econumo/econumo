@@ -24,6 +24,9 @@ type AccountResolver interface {
 	// AccountOwner returns the owner user id of an account (for the access
 	// check). Missing -> *errs.NotFoundError.
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	// AccountCurrency returns the account's currency id (for transfer
+	// amount-recipient normalization). Missing -> *errs.NotFoundError.
+	AccountCurrency(ctx context.Context, accountID vo.Id) (vo.Id, error)
 	// AccountListForUser returns the user's available accounts in the wire shape
 	// (reverse order), for the create/update/delete result embed.
 	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)

@@ -1,10 +1,10 @@
 -- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
 FROM users
 WHERE id = ?;
 
 -- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
 FROM users
 WHERE identifier = ?;
 
@@ -15,18 +15,19 @@ SELECT EXISTS(SELECT 1 FROM users WHERE identifier = ?);
 SELECT id FROM users;
 
 -- name: InsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
     name       = excluded.name,
-    avatar     = excluded.avatar,
+    avatar = excluded.avatar,
     password   = excluded.password,
     salt       = excluded.salt,
+    algorithm  = excluded.algorithm,
     updated_at = excluded.updated_at,
     is_active  = excluded.is_active;

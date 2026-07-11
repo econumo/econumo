@@ -31,6 +31,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
@@ -87,9 +88,19 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, seams Seams) http.
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
+	authLimiter := ratelimit.New(ratelimit.Config{
+		Limits: map[string]int{
+			appuser.RateScopeLogin:    cfg.RateLimitLogin,
+			appuser.RateScopeReset:    cfg.RateLimitReset,
+			appuser.RateScopeRemind:   cfg.RateLimitRemind,
+			appuser.RateScopeRegister: cfg.RateLimitRegister,
+		},
+		Window: cfg.RateLimitWindow,
+		Global: cfg.RateLimitGlobal,
+	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
-		passwordReqRepo, resetMailer, avatars, clk, cfg.AllowRegistration,
+		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
