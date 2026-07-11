@@ -8,8 +8,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
+import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
-import { getToken, isTokenExpired } from '@/lib/storage'
+import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
 import { RecoveryDialog } from './RecoveryDialog'
 import { SelfHostedInfoDialog } from './SelfHostedInfoDialog'
@@ -44,8 +45,7 @@ export function LoginPage() {
   const selfHostedChecked = watch('selfHosted')
 
   useEffect(() => {
-    const token = getToken()
-    if (token && !isTokenExpired(token)) {
+    if (getToken()) {
       window.location.assign('/')
     }
   }, [])
@@ -98,10 +98,9 @@ export function LoginPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="login-password">{t('modules.user.form.user.password.label')}</Label>
-          <Input
+          <PasswordInput
             className="h-11"
             id="login-password"
-            type="password"
             placeholder={t('modules.user.form.user.password.placeholder')}
             aria-required="true"
             {...register('password', {

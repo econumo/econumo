@@ -28,6 +28,10 @@ export default {
       'create_hint': 'Type a name to create it'
     },
     'folders': { 'default_folder': 'All accounts' },
+    'password': {
+      'show': 'Show password',
+      'hide': 'Hide password'
+    },
     'account': { 'name_hidden': '[Hidden account]' },
     'switch_to_account': 'Switch to',
     'form': {

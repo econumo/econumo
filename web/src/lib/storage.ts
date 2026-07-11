@@ -1,5 +1,3 @@
-import { jwtDecode } from 'jwt-decode'
-
 const TOKEN_KEY = 'token'
 
 export function getToken(): string | null {
@@ -16,18 +14,6 @@ export function setToken(token: string): void {
 
 export function removeToken(): void {
   localStorage.removeItem(TOKEN_KEY)
-}
-
-export function isTokenExpired(token: string): boolean {
-  try {
-    const { exp } = jwtDecode<{ exp?: number }>(token)
-    if (!exp) {
-      return false
-    }
-    return exp * 1000 <= Date.now()
-  } catch {
-    return true
-  }
 }
 
 export function getItem(key: string): unknown {

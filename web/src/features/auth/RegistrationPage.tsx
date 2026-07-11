@@ -7,9 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
+import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { econumoPackage } from '@/lib/package'
-import { getToken, isTokenExpired } from '@/lib/storage'
+import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { SelfHostedInfoDialog } from './SelfHostedInfoDialog'
@@ -47,8 +48,7 @@ export function RegistrationPage() {
   const selfHostedChecked = watch('selfHosted')
 
   useEffect(() => {
-    const token = getToken()
-    if (token && !isTokenExpired(token)) {
+    if (getToken()) {
       window.location.assign('/')
     }
   }, [])
@@ -121,10 +121,9 @@ export function RegistrationPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-password">{t('modules.user.form.user.password.label')}</Label>
-          <Input
+          <PasswordInput
             className="h-11"
             id="reg-password"
-            type="password"
             placeholder={t('modules.user.form.user.password.placeholder')}
             {...register('password', {
               validate: {
@@ -138,10 +137,9 @@ export function RegistrationPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-password-retry">{t('modules.user.form.user.password_retry.label')}</Label>
-          <Input
+          <PasswordInput
             className="h-11"
             id="reg-password-retry"
-            type="password"
             placeholder={t('modules.user.form.user.password_retry.placeholder')}
             {...register('passwordRetry', {
               validate: {
