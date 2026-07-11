@@ -71,6 +71,9 @@ export function CalculatorInput({ value, onChange, ...inputProps }: CalculatorIn
             type="button"
             variant="secondary"
             size="sm"
+            // pointer/tap targets only: keyboard users type the operator directly,
+            // and Tab must reach the next form field, not walk the keypad
+            tabIndex={-1}
             className="flex-1 h-10"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => pressKey(key.op)}

@@ -61,6 +61,37 @@ it('clicking anywhere on a select card (label/padding) opens the picker', async 
   expect(await screen.findByPlaceholderText('Search or enter a new name')).toBeInTheDocument()
 })
 
+it('Tab from the amount goes to the next field, not the calculator keypad', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  const amount = await screen.findByLabelText('Amount')
+  amount.focus()
+  await user.tab()
+  expect(screen.getByRole('combobox', { name: 'Category' })).toHaveFocus()
+  await user.tab({ shift: true })
+  expect(amount).toHaveFocus()
+})
+
+it('tag chips are keyboard-reachable and toggle with Enter and Space', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  const chip = await screen.findByRole('checkbox', { name: 'vacation' })
+  screen.getByRole('combobox', { name: 'Recipient' }).focus()
+  await user.tab()
+  expect(chip).toHaveFocus()
+
+  await user.keyboard('{Enter}')
+  expect(chip).toHaveAttribute('aria-checked', 'true')
+  await user.keyboard(' ')
+  expect(chip).toHaveAttribute('aria-checked', 'false')
+})
+
 it('creates an expense with the exact payload shape', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
