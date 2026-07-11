@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import type { ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useIsCompact } from '@/hooks/useIsCompact'
 
@@ -16,7 +16,7 @@ interface SettingsShellProps {
   title: string
   /** desktop heading (defaults to title) */
   heading?: string
-  /** mobile back-button fallback for deep links; with in-app history it goes back instead */
+  /** where the mobile back button navigates (hierarchical "up", not history back) */
   backTo: string
   /** desktop breadcrumbs shown above the heading */
   crumbs?: Crumb[]
@@ -28,17 +28,14 @@ interface SettingsShellProps {
 export function SettingsShell({ title, heading, backTo, crumbs, actions, children }: SettingsShellProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const location = useLocation()
   const isCompact = useIsCompact()
 
-  // Back returns to wherever the user came from; only a deep link (the initial
-  // document load keeps location.key === 'default') falls back to backTo.
+  // Deterministic "up" navigation: on compact viewports this chevron is the
+  // ONLY exit (no sidebar), so it must not depend on the history stack —
+  // history-back can trap the user when the stack is odd (restored tab,
+  // login/logout redirect chains) with no way back to the account list.
   const goBack = () => {
-    if (location.key === 'default') {
-      void navigate(backTo)
-    } else {
-      void navigate(-1)
-    }
+    void navigate(backTo)
   }
 
   return (

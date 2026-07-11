@@ -56,15 +56,17 @@ beforeEach(() => {
   mockViewport()
 })
 
-it('mobile back returns to the previous url', async () => {
+it('mobile back goes up to the settings hub regardless of history', async () => {
+  // Hierarchical up-navigation: the chevron is the only exit on compact
+  // viewports, so it must not replay a possibly-broken history stack.
   mockViewport(true)
   const user = userEvent.setup()
   renderWithHistory(['/account/a1', '/settings/profile'], 1)
   await user.click(await screen.findByRole('button', { name: 'back' }))
-  expect(await screen.findByText('ACCOUNT ROUTE')).toBeInTheDocument()
+  expect(await screen.findByText('SETTINGS HUB ROUTE')).toBeInTheDocument()
 })
 
-it('mobile back falls back to the settings hub on a deep link', async () => {
+it('mobile back goes up to the settings hub on a deep link', async () => {
   mockViewport(true)
   const user = userEvent.setup()
   renderWithHistory(['/settings/profile'], 0)
