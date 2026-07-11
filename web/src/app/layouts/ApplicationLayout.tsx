@@ -13,6 +13,7 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
@@ -79,6 +80,9 @@ export function ApplicationLayout() {
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
   const { collapsed, toggleCollapsed } = useSidebarStore()
+  // compact unmounts the whole sidebar on navigation — going back must land
+  // on the same spot in the account list
+  const sidebarScrollRef = useScrollMemory('sidebar-accounts')
   // Icon-rail mode is desktop-only; compact keeps the full-width home sidebar.
   const rail = collapsed && !isCompact
 
@@ -108,7 +112,7 @@ export function ApplicationLayout() {
           {user && !isCompact ? userBlock : null}
 
           {isFullyLoaded || hasLoadedOnce.current ? (
-            <div className="flex-1 overflow-y-auto scrollbar-none">
+            <div ref={sidebarScrollRef} className="flex-1 overflow-y-auto scrollbar-none">
               {user && isCompact ? userBlock : null}
               {rail ? (
                 <div className="flex flex-col items-center gap-1 py-1">
