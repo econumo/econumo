@@ -4,8 +4,7 @@
 #   Developers (build from src):  docker compose up -d --build   (or `make docker-up`)
 #
 # Config lives in .env (copy .env.example). The `db` named volume holds the
-# sqlite database (/app/var/db) — auth tokens live in the database, so data
-# and logins survive recreation together.
+# sqlite database (/app/var/db).
 services:
   econumo:
     image: ghcr.io/econumo/econumo:latest
