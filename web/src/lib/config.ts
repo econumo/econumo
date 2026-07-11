@@ -56,6 +56,18 @@ export function clearBackendHost(): void {
   removeItem('backendHost')
 }
 
+export function rememberedEmail(value?: string): string {
+  if (value === undefined) {
+    return (getItem('rememberedEmail') as string | null) ?? ''
+  }
+  setItem('rememberedEmail', value)
+  return value
+}
+
+export function clearRememberedEmail(): void {
+  removeItem('rememberedEmail')
+}
+
 export function isHttps(): boolean {
   return window.location.protocol === 'https:'
 }

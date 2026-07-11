@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -67,13 +67,7 @@ export function RegistrationPage() {
     }
   }, [])
 
-  const onSubmit = handleSubmit(async ({ name, email, password, selfHosted, host }) => {
-    if (customApiAllowed) {
-      config.selfHosted(selfHosted)
-      if (selfHosted && host) {
-        config.backendHost(host)
-      }
-    }
+  const onSubmit = handleSubmit(async ({ name, email, password }) => {
     try {
       await registerMutation.mutateAsync({ email, password, name })
       navigate(RouterPage.LOGIN)
@@ -182,6 +176,7 @@ export function RegistrationPage() {
                   required: (v) => isNotEmpty(v) || t('modules.user.form.user.server_host.validation.required_field'),
                   url: (v) => isValidHttpUrl(v) || t('modules.user.form.user.server_host.validation.invalid_url'),
                 },
+                onChange: (e: ChangeEvent<HTMLInputElement>) => config.backendHost(e.target.value),
               })}
             />
             {errors.host ? <p className="text-sm text-destructive">{errors.host.message}</p> : null}

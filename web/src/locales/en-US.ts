@@ -381,6 +381,7 @@ export default {
           }
         },
         'sign_in': {
+          'remember_me': 'Remember me',
           'action': {
             'sign_in': 'Sign in',
             'forget_password': 'Forgot password?'

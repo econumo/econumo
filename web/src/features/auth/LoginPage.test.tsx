@@ -38,7 +38,7 @@ it('logs in and stores the token', async () => {
   renderLogin()
   // a previous user's persisted finances must not survive a new sign-in
   localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
-  await user.type(screen.getByLabelText(/e-?mail/i), 'ada@example.test')
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
   await user.type(screen.getByLabelText('Password'), 'secret')
   await user.click(screen.getByRole('button', { name: /sign in/i }))
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
@@ -54,15 +54,68 @@ it('shows the failure dialog on invalid credentials', async () => {
   )
   const user = userEvent.setup()
   renderLogin()
-  await user.type(screen.getByLabelText(/e-?mail/i), 'ada@example.test')
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
   await user.type(screen.getByLabelText('Password'), 'wrong')
   await user.click(screen.getByRole('button', { name: /sign in/i }))
   expect(await screen.findByRole('dialog')).toBeInTheDocument()
 })
 
+it('stores the email immediately when the box is checked with an email typed', async () => {
+  const user = userEvent.setup()
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.click(screen.getByLabelText('Remember me'))
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('ada@example.test'))
+})
+
+it('keeps the stored email in sync while typing with the box checked', async () => {
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByLabelText('Remember me'))
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('ada@example.test'))
+  await user.type(screen.getByLabelText('Email'), '.io')
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('ada@example.test.io'))
+})
+
+it('prefills the email and checks the box when an email is remembered', () => {
+  localStorage.setItem('rememberedEmail', JSON.stringify('ada@example.test'))
+  renderLogin()
+  expect(screen.getByLabelText('Email')).toHaveValue('ada@example.test')
+  expect(screen.getByLabelText('Remember me')).toBeChecked()
+})
+
+it('forgets the remembered email as soon as the box is unchecked', async () => {
+  localStorage.setItem('rememberedEmail', JSON.stringify('ada@example.test'))
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByLabelText('Remember me'))
+  expect(localStorage.getItem('rememberedEmail')).toBeNull()
+  await user.type(screen.getByLabelText('Email'), 'x')
+  expect(localStorage.getItem('rememberedEmail')).toBeNull()
+})
+
+it('does not store the email while typing with the box unchecked', async () => {
+  const user = userEvent.setup()
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  expect(localStorage.getItem('rememberedEmail')).toBeNull()
+})
+
 it('shows the session-expired notice when reason=expired', () => {
   renderLogin('/login?reason=expired')
   expect(screen.getByText(/session has expired/i)).toBeInTheDocument()
+})
+
+it('stores the server address as it is typed', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  const host = screen.getByLabelText('Server address')
+  await user.clear(host)
+  await user.type(host, 'https://my.box.test')
+  expect(localStorage.getItem('backendHost')).toBe(JSON.stringify('https://my.box.test'))
 })
 
 it('hides the custom-server option when custom API is not allowed', () => {

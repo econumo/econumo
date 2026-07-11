@@ -75,3 +75,14 @@ it('persists the collapse and clears the server address', async () => {
   expect(localStorage.getItem('selfHosted')).toBe('false')
   expect(localStorage.getItem('backendHost')).toBeNull()
 })
+
+it('stores the server address as it is typed', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  const host = screen.getByLabelText('Server address')
+  await user.clear(host)
+  await user.type(host, 'https://my.box.test')
+  expect(localStorage.getItem('backendHost')).toBe(JSON.stringify('https://my.box.test'))
+})
