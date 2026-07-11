@@ -29,9 +29,10 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 	enc := auth.NewEncodeService(testSalt)
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
+	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetExistence(db.Engine, db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, nil, lookup, budgets, nil, nil, clock.New(), nil, false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, clock.New(), nil, false)
 	return svc, enc, hasher
 }
 

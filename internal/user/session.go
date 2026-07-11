@@ -31,6 +31,32 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent str
 	return raw, nil
 }
 
+// revokeSessions revokes every live session of the user except exceptTokenID
+// (zero id = revoke all). PATs are never touched here: integrations must
+// survive a password change; only user:deactivate kills them (revokeTokens).
+func (s *Service) revokeSessions(ctx context.Context, userID vo.Id, exceptTokenID vo.Id, now time.Time) error {
+	return s.revokeTokens(ctx, userID, exceptTokenID, now, model.TokenKindSession)
+}
+
+func (s *Service) revokeTokens(ctx context.Context, userID vo.Id, exceptTokenID vo.Id, now time.Time, kinds ...string) error {
+	for _, kind := range kinds {
+		rows, err := s.tokens.ListByUser(ctx, userID, kind)
+		if err != nil {
+			return err
+		}
+		for i := range rows {
+			if rows[i].ID.Equal(exceptTokenID) || !rows[i].IsLive(now) {
+				continue
+			}
+			rows[i].Revoke(now)
+			if err := s.tokens.Update(ctx, &rows[i]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // purgeDeadTokens deletes this user's rows that expired/were revoked longer
 // than the retention window ago. Best-effort bookkeeping on the login path;
 // row counts are tiny, so per-row deletes keep the SQL engine-agnostic.

@@ -4443,7 +4443,7 @@ paths:
       consumes:
       - application/json
       description: Changes the authenticated user's password after verifying the old
-        one. Returns an empty success envelope.
+        one; other sessions are signed out. Returns an empty success envelope.
       parameters:
       - description: Update password request
         in: body

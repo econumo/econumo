@@ -35,7 +35,9 @@ func isNotFound(err error) bool {
 
 // UpdatePassword verifies the old password then stores the new hash. A wrong
 // old password yields a ValidationError -> 400 ("Password is not correct").
-func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
+// On success every OTHER session is revoked (the presenting one —
+// currentTokenID — survives); PATs are untouched.
+func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentTokenID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
 	_, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
 		if !s.hasher.Verify(u.Algorithm, u.Password, req.OldPassword, u.Salt) {
 			return errs.NewValidation("Password is not correct")
@@ -48,6 +50,9 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.Up
 		return nil
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := s.revokeSessions(ctx, userID, currentTokenID, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	return &model.UpdatePasswordResult{}, nil
@@ -135,6 +140,11 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		}
 		return s.passwordRequests.Delete(ctx, pr.ID)
 	}); err != nil {
+		return nil, err
+	}
+	// The reset flow has no presenting session, so ALL sessions are revoked —
+	// whoever holds the account's email owns the account now.
+	if err := s.revokeSessions(ctx, u.ID, vo.Id{}, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	s.clearAttempt(RateScopeReset, lowered)

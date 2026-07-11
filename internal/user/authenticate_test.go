@@ -26,8 +26,14 @@ func (c *testClock) Now() time.Time { return c.now }
 var authT0 = time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 
 // newAuthEnv builds the user Service over sqlite with a controllable clock
-// plus direct handles on the token repo for seeding/asserting rows.
+// plus direct handles on the token + password-request repos for
+// seeding/asserting rows.
 func newAuthEnv(t *testing.T) (*appuser.Service, *userrepo.AccessTokenRepo, *testClock, vo.Id) {
+	svc, tokens, clk, uid, _ := newAuthEnvFull(t)
+	return svc, tokens, clk, uid
+}
+
+func newAuthEnvFull(t *testing.T) (*appuser.Service, *userrepo.AccessTokenRepo, *testClock, vo.Id, *userrepo.PasswordRequestRepo) {
 	t.Helper()
 	db := dbtest.New(t)
 	clk := &testClock{now: authT0}
@@ -35,15 +41,16 @@ func newAuthEnv(t *testing.T) (*appuser.Service, *userrepo.AccessTokenRepo, *tes
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	pwreqs := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetExistence(db.Engine, db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, clk, nil, false)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, pwreqs, nil, clk, nil, false)
 
 	uid, err := svc.AdminCreateUser(context.Background(), "Auth Tester", "auth@econumo.test", "secretpass")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	return svc, tokens, clk, uid
+	return svc, tokens, clk, uid, pwreqs
 }
 
 func seedToken(t *testing.T, tokens *userrepo.AccessTokenRepo, userID vo.Id, kind, raw string, exp *time.Time) vo.Id {

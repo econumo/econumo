@@ -5035,7 +5035,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Changes the authenticated user's password after verifying the old one. Returns an empty success envelope.",
+                "description": "Changes the authenticated user's password after verifying the old one; other sessions are signed out. Returns an empty success envelope.",
                 "consumes": [
                     "application/json"
                 ],

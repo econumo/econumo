@@ -57,7 +57,8 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 }
 
 // AdminChangePassword sets a user's password, rehashed with the current
-// algorithm (argon2id), looked up by email.
+// algorithm (argon2id), looked up by email. All the user's sessions are
+// revoked (there is no presenting session on the CLI path); PATs survive.
 func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
@@ -67,10 +68,13 @@ func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword st
 	if herr != nil {
 		return herr
 	}
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		return s.repo.Save(ctx, u)
-	})
+	}); err != nil {
+		return err
+	}
+	return s.revokeSessions(ctx, u.ID, vo.Id{}, s.clock.Now())
 }
 
 // AdminActivate marks the user active, looked up by email.
@@ -85,16 +89,22 @@ func (s *Service) AdminActivate(ctx context.Context, email string) error {
 	})
 }
 
-// AdminDeactivate marks the user inactive, looked up by email.
+// AdminDeactivate marks the user inactive, looked up by email, and revokes
+// EVERY credential (sessions AND personal tokens) — this is why per-request
+// authentication needs no is_active join: a deactivated user simply has no
+// live tokens left.
 func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.Deactivate(s.clock.Now())
 		return s.repo.Save(ctx, u)
-	})
+	}); err != nil {
+		return err
+	}
+	return s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
 }
 
 // userByEmail resolves a user from a plaintext email via the md5 identifier
