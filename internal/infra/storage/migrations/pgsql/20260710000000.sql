@@ -18,3 +18,7 @@ CREATE TABLE access_tokens
 );
 CREATE UNIQUE INDEX UNIQ_access_tokens_token_hash ON access_tokens (token_hash);
 CREATE INDEX IDX_access_tokens_user_id ON access_tokens (user_id);
+-- revoked_at/expires_at back the global dead-token purge (token:purge), whose
+-- DELETE filters on those cutoffs and would otherwise scan the whole table.
+CREATE INDEX IDX_access_tokens_revoked_at ON access_tokens (revoked_at);
+CREATE INDEX IDX_access_tokens_expires_at ON access_tokens (expires_at);
