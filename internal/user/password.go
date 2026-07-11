@@ -37,10 +37,14 @@ func isNotFound(err error) bool {
 // old password yields a ValidationError -> 400 ("Password is not correct").
 func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
 	_, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
-		if !s.hasher.Verify(u.Password, req.OldPassword, u.Salt) {
+		if !s.hasher.Verify(u.Algorithm, u.Password, req.OldPassword, u.Salt) {
 			return errs.NewValidation("Password is not correct")
 		}
-		u.UpdatePassword(s.hasher.Hash(req.NewPassword, u.Salt), now)
+		newHash, herr := s.hasher.Hash(req.NewPassword)
+		if herr != nil {
+			return herr
+		}
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
 		return nil
 	})
 	if err != nil {
@@ -120,8 +124,12 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		return nil, errs.NewValidation("The code is expired")
 	}
 
+	newHash, herr := s.hasher.Hash(req.Password)
+	if herr != nil {
+		return nil, herr
+	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(req.Password, u.Salt), s.clock.Now())
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}

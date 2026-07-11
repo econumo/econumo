@@ -75,6 +75,9 @@ func TestNewUser_Getters(t *testing.T) {
 	if u.Salt != "salt-hex" {
 		t.Errorf("Salt()=%q", u.Salt)
 	}
+	if u.Algorithm != AlgorithmArgon2id {
+		t.Errorf("Algorithm()=%q, want %q", u.Algorithm, AlgorithmArgon2id)
+	}
 	if !u.IsActive {
 		t.Error("new user must be active")
 	}
@@ -174,9 +177,9 @@ func TestUser_UpdateName(t *testing.T) {
 
 func TestUser_UpdatePassword(t *testing.T) {
 	u := newUser(t)
-	u.UpdatePassword("new-hash", tu1)
-	if u.Password != "new-hash" || !u.UpdatedAt.Equal(tu1) {
-		t.Fatalf("UpdatePassword: %q / %v", u.Password, u.UpdatedAt)
+	u.UpdatePassword("new-hash", AlgorithmArgon2id, tu1)
+	if u.Password != "new-hash" || u.Algorithm != AlgorithmArgon2id || !u.UpdatedAt.Equal(tu1) {
+		t.Fatalf("UpdatePassword: %q / %q / %v", u.Password, u.Algorithm, u.UpdatedAt)
 	}
 }
 

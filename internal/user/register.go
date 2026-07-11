@@ -64,7 +64,10 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 		return nil, serr
 	}
 	now := s.clock.Now()
-	passwordHash := s.hasher.Hash(password, salt)
+	passwordHash, herr := s.hasher.Hash(password)
+	if herr != nil {
+		return nil, herr
+	}
 	avatarURL := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredEmail))
 
 	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatarURL, passwordHash, salt, now)

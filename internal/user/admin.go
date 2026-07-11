@@ -56,15 +56,19 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 	})
 }
 
-// AdminChangePassword sets a user's password (hashed with the user's salt),
-// looked up by email.
+// AdminChangePassword sets a user's password, rehashed with the current
+// algorithm (argon2id), looked up by email.
 func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
+	newHash, herr := s.hasher.Hash(newPassword)
+	if herr != nil {
+		return herr
+	}
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(newPassword, u.Salt), s.clock.Now())
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }

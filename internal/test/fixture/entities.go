@@ -55,7 +55,7 @@ func (b *Builder) User(u User) string {
 			b.t.Fatalf("fixture: encode email: %v", err)
 		}
 		email = enc
-		password = b.hasher.Hash(u.Password, u.Salt)
+		password = b.hasher.HashSHA512(u.Password, u.Salt)
 	} else {
 		// Keep identifier unique without crypto (the column is UNIQUE).
 		identifier = "ident-" + id[:8]
@@ -66,8 +66,8 @@ func (b *Builder) User(u User) string {
 	if u.Inactive {
 		active = "FALSE"
 	}
-	b.insert(`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, `+active+`)`,
+	b.insert(`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, algorithm, created_at, updated_at, is_active)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`)`,
 		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now)
 	return id
 }

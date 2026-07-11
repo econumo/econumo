@@ -229,3 +229,40 @@ func TestUserReadRepo_CurrencyIDByCode(t *testing.T) {
 		t.Errorf("want seeded USD id, got %q", id)
 	}
 }
+
+func TestUserRepo_AlgorithmRoundTrip(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	u := newTestUser(
+		vo.MustParseId(userA), identA, "enc-email", "Alice", "https://av/a",
+		"hash", "salt-a", true, fixedTime, fixedTime, nil,
+	)
+	u.Algorithm = model.AlgorithmArgon2id
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, vo.MustParseId(userA))
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Algorithm != model.AlgorithmArgon2id {
+		t.Errorf("Algorithm = %q, want %q", got.Algorithm, model.AlgorithmArgon2id)
+	}
+
+	// A row inserted without an explicit algorithm gets the sha512 default.
+	if _, err := db.Raw.Exec(db.Rebind(
+		`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`),
+		userB, "fedcba9876543210fedcba9876543210", "e2", "Bob", "", "h2", "s2", fixedTime, fixedTime); err != nil {
+		t.Fatalf("raw insert: %v", err)
+	}
+	legacy, err := repo.GetByID(ctx, vo.MustParseId(userB))
+	if err != nil {
+		t.Fatalf("GetByID legacy: %v", err)
+	}
+	if legacy.Algorithm != model.AlgorithmSHA512 {
+		t.Errorf("legacy Algorithm = %q, want %q", legacy.Algorithm, model.AlgorithmSHA512)
+	}
+}

@@ -43,6 +43,15 @@ func TestRemindAndResetPassword(t *testing.T) {
 		t.Fatalf("reset status = %d; body: %s", st, env.raw)
 	}
 
+	// The reset rehashed the account to argon2id (issue #64).
+	var alg string
+	if err := h.db.QueryRow(`SELECT algorithm FROM users WHERE id = ?`, seedUserID).Scan(&alg); err != nil {
+		t.Fatalf("read algorithm: %v", err)
+	}
+	if alg != "argon2id" {
+		t.Errorf("algorithm after reset = %q, want argon2id", alg)
+	}
+
 	// 5. New password works; old one does not.
 	if st, _ := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
 		"username": seedEmail, "password": "newpass123",
