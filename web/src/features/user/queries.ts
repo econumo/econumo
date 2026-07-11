@@ -46,6 +46,10 @@ export function useUpdateAvatar() {
     mutationFn: ({ icon, color }: { icon: string; color: string }) => userApi.updateAvatar(icon, color),
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.user, user)
+      // The avatar is denormalized into other payloads (transaction authors,
+      // connections, account access), so every cached list may hold the old
+      // value — refetch them all; avatar changes are rare enough.
+      void queryClient.invalidateQueries()
       trackEvent(METRICS.USER_UPDATE_AVATAR)
     },
   })

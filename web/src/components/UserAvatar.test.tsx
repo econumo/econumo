@@ -3,19 +3,18 @@ import { describe, expect, it } from 'vitest'
 import { UserAvatar } from './UserAvatar'
 
 describe('UserAvatar', () => {
-  it('renders the colored glyph and border on a white background', () => {
+  it('renders the dark glyph on a pale tint of the same hue', () => {
     render(<UserAvatar avatar="pets:teal" />)
     const el = screen.getByTestId('user-avatar')
     expect(el).toHaveAttribute('data-avatar', 'pets:teal')
-    expect(el.className).toContain('bg-white')
-    expect(el.className).toContain('border-teal-500')
-    expect(el.className).toContain('text-teal-500')
+    expect(el.className).toContain('bg-avatar-teal-tint')
+    expect(el.className).toContain('text-avatar-teal')
     expect(el).toHaveTextContent('pets')
   })
 
-  it('falls back to fuchsia for an unknown color', () => {
+  it('falls back to sky for an unknown color', () => {
     render(<UserAvatar avatar="face:neon" />)
-    expect(screen.getByTestId('user-avatar').className).toContain('border-econumo-magenta')
+    expect(screen.getByTestId('user-avatar').className).toContain('bg-avatar-sky-tint')
   })
 
   it('is decorative (hidden from the accessibility tree)', () => {

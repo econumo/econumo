@@ -9,9 +9,9 @@ import (
 )
 
 // DefaultAvatar is the standard value existing rows were backfilled to by the
-// 20260709000000 migration; test harnesses also pin it as the deterministic
+// 20260710000000 migration; test harnesses also pin it as the deterministic
 // registration default.
-const DefaultAvatar = "face:fuchsia"
+const DefaultAvatar = "diamond:sky"
 
 // AvatarColors is the canonical accent-color allowlist. The frontend
 // mirrors it (web/src/lib/avatars.ts) and a sync test asserts exact equality,
@@ -24,9 +24,10 @@ var AvatarColors = []string{
 // from. Every name must exist in the frontend's availableIcons (asserted by a
 // frontend sync test); update-avatar itself accepts any well-formed name.
 var RandomAvatarIcons = []string{
-	"face", "account_circle", "pets", "stars", "celebration", "lightbulb",
-	"extension", "support", "savings", "wallet", "home", "alarm",
-	"fingerprint", "shopping_basket", "credit_card", "store",
+	"face", "sentiment_very_satisfied", "smart_toy", "owl",
+	"cruelty_free", "flutter_dash", "emoji_nature", "savings",
+	"auto_awesome", "rocket_launch", "planet", "cloud",
+	"wb_sunny", "star", "favorite", "crown",
 }
 
 var avatarIconRe = regexp.MustCompile(`^[a-z0-9_]{1,64}$`)

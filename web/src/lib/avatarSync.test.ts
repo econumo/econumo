@@ -40,8 +40,8 @@ describe('backend avatar constants stay in sync', () => {
     }
   })
 
-  it('the standard default is a backend random icon on fuchsia', () => {
-    expect(goSrc).toContain('DefaultAvatar = "face:fuchsia"')
-    expect(availableIcons).toContain('face')
+  it('the standard default renders on the frontend', () => {
+    expect(goSrc).toContain('DefaultAvatar = "diamond:sky"')
+    expect(avatarIcons).toContain('diamond')
   })
 })

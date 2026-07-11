@@ -31,15 +31,17 @@
   scrollbar-color: var(--border) transparent;
 }
 
-/* Entity icons (account.icon / category.icon) are Material icon ligature
-   names stored in the production DB — rendered with the same web font the
-   Vue app ships. Lucide is used for UI chrome only. */
+/* Entity icons (account.icon / category.icon / user avatars) are Material
+   ligature names stored in the production DB — rendered with the bundled
+   Material Symbols Rounded font (FILL=1 static instance), which covers every
+   classic Material Icons name the DB may hold plus the newer Symbols-only
+   glyphs (crown, chess pieces, owl, …). Lucide is used for UI chrome only. */
 @font-face {
   font-family: 'Material Icons';
   font-style: normal;
   font-weight: 400;
   font-display: block;
-  src: url('/fonts/material-icons.woff2') format('woff2');
+  src: url('/fonts/material-symbols-rounded.woff2') format('woff2');
 }
 
 .material-icon {
@@ -71,6 +73,25 @@
     --color-econumo-purple: #9C27B0;
     --color-econumo-card: #F5F5F5;
     --color-econumo-hover: #EBEBEB;
+    /* avatar palette: muted, brand-harmonized pairs — a deep desaturated hue
+       for the glyph on a pale tint of the same hue. Slugs are the frozen
+       backend allowlist (internal/user/avatar.go); only these rendered
+       values may change. amber = the brand yellow-text on pale brand gold;
+       fuchsia = the brand magenta pair. */
+    --color-avatar-red: #A34F4A;
+    --color-avatar-red-tint: #F6E3E2;
+    --color-avatar-orange: #A2603A;
+    --color-avatar-orange-tint: #F7E7DC;
+    --color-avatar-amber: #765910;
+    --color-avatar-amber-tint: #FAEFD2;
+    --color-avatar-emerald: #567F3A;
+    --color-avatar-emerald-tint: #E9F0E0;
+    --color-avatar-teal: #3E7C72;
+    --color-avatar-teal-tint: #E1EFEC;
+    --color-avatar-sky: #4A7396;
+    --color-avatar-sky-tint: #E4EDF4;
+    --color-avatar-fuchsia: #93489F;
+    --color-avatar-fuchsia-tint: #F5E4F8;
     --color-income: #4E8F26;
     --color-expense: #D34949;
     --color-sidebar-ring: var(--sidebar-ring);

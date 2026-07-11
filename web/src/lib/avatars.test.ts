@@ -5,7 +5,7 @@ describe('avatars', () => {
   it('has 7 colors each with accent and swatch classes', () => {
     expect(avatarColors).toHaveLength(7)
     for (const color of avatarColors) {
-      expect(avatarColorAccents[color], color).toMatch(/^border-.+ text-/)
+      expect(avatarColorAccents[color], color).toMatch(/^bg-.+ text-/)
       expect(avatarColorSwatches[color], color).toMatch(/^bg-/)
     }
   })
@@ -16,8 +16,8 @@ describe('avatars', () => {
   })
 
   it('fuchsia renders the brand magenta', () => {
-    expect(avatarColorAccents.fuchsia).toBe('border-econumo-magenta text-econumo-magenta')
-    expect(avatarColorSwatches.fuchsia).toBe('bg-econumo-magenta')
+    expect(avatarColorAccents.fuchsia).toBe('bg-avatar-fuchsia-tint text-avatar-fuchsia')
+    expect(avatarColorSwatches.fuchsia).toBe('bg-avatar-fuchsia')
   })
 
   it('joins and splits round-trip', () => {
@@ -29,14 +29,14 @@ describe('avatars', () => {
     expect(splitAvatar('weird:name:teal')).toEqual({ icon: 'weird:name', color: 'teal' })
   })
 
-  it('falls back to fuchsia for unknown or missing color', () => {
-    expect(splitAvatar('face:neon').color).toBe('fuchsia')
-    expect(splitAvatar('just_an_icon').color).toBe('fuchsia')
+  it('falls back to sky for unknown or missing color', () => {
+    expect(splitAvatar('face:neon').color).toBe('sky')
+    expect(splitAvatar('just_an_icon').color).toBe('sky')
     expect(splitAvatar('just_an_icon').icon).toBe('just_an_icon')
   })
 
-  it('default avatar is face on fuchsia', () => {
-    expect(defaultAvatar).toBe('face:fuchsia')
-    expect(splitAvatar(defaultAvatar)).toEqual({ icon: 'face', color: 'fuchsia' })
+  it('default avatar is diamond on sky', () => {
+    expect(defaultAvatar).toBe('diamond:sky')
+    expect(splitAvatar(defaultAvatar)).toEqual({ icon: 'diamond', color: 'sky' })
   })
 })

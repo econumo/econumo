@@ -40,8 +40,8 @@ it('picking a color and an icon updates the preview', async () => {
   renderDialog()
   await waitFor(() => expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'face:fuchsia'))
   await user.click(screen.getByRole('radio', { name: 'teal' }))
-  await user.click(screen.getByRole('option', { name: 'pets' }))
-  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'pets:teal')
+  await user.click(screen.getByRole('option', { name: 'owl' }))
+  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'owl:teal')
 })
 
 it('save posts the picked icon/color and closes the dialog', async () => {
@@ -49,16 +49,16 @@ it('save posts the picked icon/color and closes the dialog', async () => {
   server.use(
     http.post('*/api/v1/user/update-avatar', async ({ request }) => {
       body = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, avatar: 'pets:teal' } } })
+      return HttpResponse.json({ success: true, message: '', data: { user: { ...fixtureUser, avatar: 'owl:teal' } } })
     }),
   )
   const user = userEvent.setup()
   const { onClose } = renderDialog()
   await waitFor(() => expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'face:fuchsia'))
   await user.click(screen.getByRole('radio', { name: 'teal' }))
-  await user.click(screen.getByRole('option', { name: 'pets' }))
+  await user.click(screen.getByRole('option', { name: 'owl' }))
   await user.click(screen.getByRole('button', { name: 'Save' }))
-  await waitFor(() => expect(body).toEqual({ icon: 'pets', color: 'teal' }))
+  await waitFor(() => expect(body).toEqual({ icon: 'owl', color: 'teal' }))
   await waitFor(() => expect(onClose).toHaveBeenCalled())
 })
 
@@ -67,8 +67,8 @@ it('a user-cache rewrite while open keeps the in-progress selection', async () =
   const { queryClient } = renderDialog()
   await waitFor(() => expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'face:fuchsia'))
   await user.click(screen.getByRole('radio', { name: 'teal' }))
-  await user.click(screen.getByRole('option', { name: 'pets' }))
-  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'pets:teal')
+  await user.click(screen.getByRole('option', { name: 'owl' }))
+  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'owl:teal')
   // simulate a mutation/refetch rewriting the user cache while the dialog is
   // open (e.g. useUpdateName's onSuccess) — the changed fields defeat structural
   // sharing, so useUserData hands out a new user reference
@@ -80,7 +80,7 @@ it('a user-cache rewrite while open keeps the in-progress selection', async () =
     await new Promise((resolve) => setTimeout(resolve, 0))
   })
   expect(queryClient.getQueryData<{ name: string }>(queryKeys.user)!.name).toBe('Grace')
-  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'pets:teal')
+  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', 'owl:teal')
 })
 
 it('cancel closes the dialog without saving', async () => {

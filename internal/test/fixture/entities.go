@@ -22,7 +22,7 @@ type User struct {
 	ID       string
 	Email    string // default "user-<id8>@example.test"
 	Name     string // default "User <id4>"
-	Avatar   string // default "face:fuchsia"
+	Avatar   string // default "diamond:sky"
 	Password string // default "secret-pw" (only meaningful WithCrypto)
 	Salt     string // default 40-char sha1-shaped salt
 	Inactive bool   // default active
@@ -47,7 +47,7 @@ func (b *Builder) User(u User) string {
 		u.Password = "secret-pw"
 	}
 	if u.Avatar == "" {
-		u.Avatar = "face:fuchsia"
+		u.Avatar = "diamond:sky"
 	}
 
 	identifier, email, password := u.Email, u.Email, u.Password

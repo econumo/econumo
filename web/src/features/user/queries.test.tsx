@@ -37,7 +37,7 @@ it('update-name replaces the user cache with the echoed user', async () => {
   expect(queryClient.getQueryData<{ name: string }>(queryKeys.user)!.name).toBe('Renamed')
 })
 
-it('update-avatar replaces the user cache with the echoed user', async () => {
+it('update-avatar replaces the user cache and invalidates avatar-embedding lists', async () => {
   let body: unknown
   server.use(
     http.post('*/api/v1/user/update-avatar', async ({ request }) => {
@@ -47,11 +47,13 @@ it('update-avatar replaces the user cache with the echoed user', async () => {
   )
   const { queryClient, wrapper } = makeWrapper()
   queryClient.setQueryData(queryKeys.user, fixtureUser)
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
   const { result } = renderHook(() => useUpdateAvatar(), { wrapper })
   result.current.mutate({ icon: 'pets', color: 'teal' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(body).toEqual({ icon: 'pets', color: 'teal' })
   expect(queryClient.getQueryData<{ avatar: string }>(queryKeys.user)!.avatar).toBe('pets')
+  expect(spy).toHaveBeenCalled()
 })
 
 it('update-budget posts {value} and invalidates the budget cache', async () => {

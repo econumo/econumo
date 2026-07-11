@@ -47,7 +47,7 @@
 {"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}
 
 == register-1 POST /api/v1/user/register-user [] -> 200
-{"success":true,"message":"","data":{"user":{"id":"<generated-uuid>","name":"RLU","email":"ratelimit@example.test","avatar":"face:fuchsia","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"budget","value":null},{"name":"onboarding","value":"started"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
+{"success":true,"message":"","data":{"user":{"id":"<generated-uuid>","name":"RLU","email":"ratelimit@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"budget","value":null},{"name":"onboarding","value":"started"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
 
 == err:register-dup-2 POST /api/v1/user/register-user [] -> 400
 {"success":false,"message":"User already exists","code":400,"errors":{}}
