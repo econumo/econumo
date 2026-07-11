@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CurrentUserDto, CurrentUserResponseDto, UserLoginItemDto } from './dto/user'
+import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
 
 // login-user is the one endpoint that responds with a bare {token, user}
 // body instead of the standard {success, message, data} envelope.
@@ -58,4 +58,39 @@ export async function resetPassword(username: string, code: string, password: st
 export async function completeOnboarding(): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/complete-onboarding'))
   return response.data.data.user
+}
+
+interface Envelope<T> {
+  data: T
+}
+
+export async function getSessionList(): Promise<SessionDto[]> {
+  const response = await api.get<Envelope<SessionDto[]>>(apiUrl('/api/v1/user/get-session-list'))
+  return response.data.data
+}
+
+export async function revokeSession(id: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/revoke-session'), { id })
+}
+
+export async function revokeOtherSessions(): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/revoke-other-sessions'))
+}
+
+export async function getPersonalTokenList(): Promise<PersonalTokenDto[]> {
+  const response = await api.get<Envelope<PersonalTokenDto[]>>(apiUrl('/api/v1/user/get-personal-token-list'))
+  return response.data.data
+}
+
+// expiresAt: a "YYYY-MM-DD HH:mm:ss" datetime, or null for a token that never expires.
+export async function createPersonalToken(name: string, expiresAt: string | null): Promise<CreatedPersonalTokenDto> {
+  const response = await api.post<Envelope<CreatedPersonalTokenDto>>(
+    apiUrl('/api/v1/user/create-personal-token'),
+    { name, expiresAt: expiresAt ?? '' },
+  )
+  return response.data.data
+}
+
+export async function revokePersonalToken(id: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/revoke-personal-token'), { id })
 }

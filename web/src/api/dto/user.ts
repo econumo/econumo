@@ -41,3 +41,30 @@ export interface UserLoginItemDto {
 export interface CurrentUserResponseDto {
   data: { user: CurrentUserDto }
 }
+
+// --- Security: sessions + personal access tokens ---
+
+export interface SessionDto {
+  id: Id
+  userAgent: string
+  createdAt: string
+  lastUsedAt: string
+  isCurrent: boolean
+}
+
+export interface PersonalTokenDto {
+  id: Id
+  name: string
+  createdAt: string
+  lastUsedAt: string
+  expiresAt: string | null
+}
+
+// The create response — the ONLY place the raw token ever appears.
+export interface CreatedPersonalTokenDto {
+  id: Id
+  name: string
+  token: string
+  createdAt: string
+  expiresAt: string | null
+}

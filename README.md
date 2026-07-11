@@ -64,14 +64,10 @@ Then visit `http://localhost:8181` and create the first user.
 
 Everything is configured through environment variables in `.env` —
 [`.env.example`](.env.example) is the full, commented reference for every
-setting (database, mail, currencies, CORS, JWT keys, logging). The defaults
+setting (database, mail, currencies, CORS, logging). The defaults
 work out of the box: SQLite storage and registration enabled; the only
 variables most setups ever touch are `DATABASE_URL` (to switch to PostgreSQL)
 and `MAILER_DSN` (to send password-recovery email).
-
-All mutable state lives in two Docker volumes — `db` (the SQLite database) and
-`jwt` (the keypair) — so your data and logins survive container recreation.
-Back both up.
 
 CLI commands (create users, update currency rates, …) run through the binary
 inside the container, e.g.:

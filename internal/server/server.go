@@ -36,7 +36,6 @@ import (
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
@@ -60,11 +59,11 @@ type Seams struct {
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
-// database and returns the full HTTP handler. The caller owns the DB and jwtSvc
-// so tests can inject deterministic ones and point at either engine; the
-// engine is read from cfg.DatabaseDriver, which selects the per-engine sqlc query
-// adapters in every repository constructor.
-func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, seams Seams) http.Handler {
+// database and returns the full HTTP handler. The caller owns the DB and the
+// seams (clock, avatar picker) so tests can inject deterministic ones and point
+// at either engine; the engine is read from cfg.DatabaseDriver, which selects
+// the per-engine sqlc query adapters in every repository constructor.
+func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	clk := seams.Clock
 	if clk == nil {
 		clk = clock.New()
@@ -83,6 +82,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, seams Seams) http.
 
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
 	budgetExistence := NewUserBudgetExistence(cfg.DatabaseDriver, txm)
 
@@ -99,7 +99,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, seams Seams) http.
 		Global: cfg.RateLimitGlobal,
 	}, clk)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
+		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
 		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
@@ -189,15 +189,15 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, seams Seams) http.
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
 
 	registerAPI := router.Compose(
-		handleruser.RegisterAPI(userHandlers, jwtSvc, cfg.IsDev()),
-		handlercategory.RegisterAPI(categoryHandlers, jwtSvc, cfg.IsDev()),
-		handlertag.RegisterAPI(tagHandlers, jwtSvc, cfg.IsDev()),
-		handlerpayee.RegisterAPI(payeeHandlers, jwtSvc, cfg.IsDev()),
-		handlercurrency.RegisterAPI(currencyHandlers, jwtSvc, cfg.IsDev()),
-		handleraccount.RegisterAPI(accountHandlers, jwtSvc, cfg.IsDev()),
-		handlertransaction.RegisterAPI(transactionHandlers, jwtSvc, cfg.IsDev()),
-		handlerconnection.RegisterAPI(connectionHandlers, jwtSvc, cfg.IsDev()),
-		handlerbudget.RegisterAPI(budgetHandlers, jwtSvc, cfg.IsDev()),
+		handleruser.RegisterAPI(userHandlers, userSvc, cfg.IsDev()),
+		handlercategory.RegisterAPI(categoryHandlers, userSvc, cfg.IsDev()),
+		handlertag.RegisterAPI(tagHandlers, userSvc, cfg.IsDev()),
+		handlerpayee.RegisterAPI(payeeHandlers, userSvc, cfg.IsDev()),
+		handlercurrency.RegisterAPI(currencyHandlers, userSvc, cfg.IsDev()),
+		handleraccount.RegisterAPI(accountHandlers, userSvc, cfg.IsDev()),
+		handlertransaction.RegisterAPI(transactionHandlers, userSvc, cfg.IsDev()),
+		handlerconnection.RegisterAPI(connectionHandlers, userSvc, cfg.IsDev()),
+		handlerbudget.RegisterAPI(budgetHandlers, userSvc, cfg.IsDev()),
 		apidoc.RegisterAPI(),
 	)
 

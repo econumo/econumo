@@ -8,9 +8,9 @@ package apiparity
 // replay a catalogue of HTTP requests.
 //
 // Why this is the strongest parity contract available: it exercises the entire
-// stack — middleware, JWT, the per-engine sqlc query adapters, decimal/datetime
-// handling, and the envelope serialization — and compares the actual wire bytes
-// a client would receive. Any divergence between two engine adapters that is
+// stack — middleware, token authentication, the per-engine sqlc query adapters,
+// decimal/datetime handling, and the envelope serialization — and compares the
+// actual wire bytes a client would receive. Any divergence between two engine adapters that is
 // observable through the API surfaces here.
 
 import (
@@ -23,10 +23,10 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
-	"github.com/econumo/econumo/internal/test/testkeys"
+	"github.com/econumo/econumo/internal/test/fixture"
 	appuser "github.com/econumo/econumo/internal/user"
 )
 
@@ -41,9 +41,10 @@ type fixedClock struct{ t time.Time }
 
 func (c fixedClock) Now() time.Time { return c.t }
 
-// ClockTime is the fixed instant used for token issuance + any created rows.
-// Truncated to the second; near "now" so the JWT exp (iat + 30d) is still valid
-// when the verifier checks against the real wall clock during the test run.
+// ClockTime is the fixed instant used for seeded sessions + any created rows.
+// Truncated to the second so datetime columns round-trip identically on both
+// engines; the seeded sessions expire at ClockTime + SessionTTL, checked
+// against the same fixed clock the server runs on.
 var ClockTime = time.Now().UTC().Truncate(time.Second)
 
 // Harness bundles the running production handler over one engine plus the
@@ -51,8 +52,9 @@ var ClockTime = time.Now().UTC().Truncate(time.Second)
 type Harness struct {
 	srv    *httptest.Server
 	engine string
-	jwt    *jwt.JWT
 	clock  fixedClock
+	db     *dbtest.DB
+	minted map[string]string // userID -> raw session token minted by Token()
 }
 
 // NewHarness builds the full production API over the given (already-migrated)
@@ -60,14 +62,7 @@ type Harness struct {
 func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 	t.Helper()
 
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
-	// Near-now issuance so tokens verify against the real wall clock; truncated to
-	// the second to match the integer-timestamp JWT claims. The SAME instant is
-	// used on both engines so created-row timestamps match too.
+	// The SAME instant is used on both engines so created-row timestamps match.
 	clk := fixedClock{t: ClockTime}
 
 	cfg := config.Config{
@@ -90,27 +85,45 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 
 	Seed(t, db)
 
-	handler := server.BuildAPI(cfg, db.Raw, jwtSvc, server.Seams{
+	handler := server.BuildAPI(cfg, db.Raw, server.Seams{
 		Clock:   clk,
 		Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar),
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Harness{srv: srv, engine: db.Engine, jwt: jwtSvc, clock: clk}
+	return &Harness{srv: srv, engine: db.Engine, clock: clk, db: db, minted: map[string]string{}}
 }
 
 // Engine reports which engine ("sqlite" | "postgresql") this harness runs over.
 func (h *Harness) Engine() string { return h.engine }
 
-// Token mints a valid JWT for one of the seeded users via the real signer.
+// Token returns a live session token for a seeded user: the fixed fixture
+// tokens for owner/guest, or (for any other user a test seeds itself) a
+// deterministic session minted on first use. Deterministic raw tokens keep
+// both engines' rows identical; the minted map keeps re-requests from
+// violating the token_hash unique index.
 func (h *Harness) Token(t *testing.T, userID, email string) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(userID, email, h.clock.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
+	switch userID {
+	case OwnerID:
+		return OwnerToken
+	case GuestID:
+		return GuestToken
 	}
-	return tok
+	if raw, ok := h.minted[userID]; ok {
+		return raw
+	}
+	// Payload must be exactly 43 chars to match the production token shape:
+	// "u" + 36-char uuid + 6 zeros.
+	raw := "eco_ses_u" + userID + "000000"
+	exp := ClockTime.Add(appuser.SessionTTL)
+	fixture.New(t, h.db).AccessToken(fixture.AccessToken{
+		UserID: userID, Kind: model.TokenKindSession,
+		TokenHash: appuser.HashAccessToken(raw), UserAgent: "apiparity", ExpiresAt: &exp,
+	})
+	h.minted[userID] = raw
+	return raw
 }
 
 // do issues an HTTP request to the harness server and returns the status code
@@ -160,7 +173,7 @@ func (h *Harness) Call(t *testing.T, method, path, token string, body any) (int,
 
 // Replay issues each call against the harness, returning per-call statuses and
 // raw bodies. Owner/guest tokens are minted once per run (engine-independent:
-// the JWT signer + the seeded users are identical across engines).
+// the seeded users and deterministic tokens are identical across engines).
 func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 	t.Helper()
 	ownerTok := h.Token(t, OwnerID, OwnerEmail)

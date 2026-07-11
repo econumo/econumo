@@ -1,5 +1,5 @@
 == login-user POST /api/v1/user/login-user [] -> 200
-{"token":"<jwt>","user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}
+{"token":"<token>","user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}
 
 == err:login-bad-credentials POST /api/v1/user/login-user [] -> 401
 {"success":false,"message":"Invalid credentials.","code":0,"errors":{}}

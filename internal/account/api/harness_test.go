@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -23,11 +22,10 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/router"
 )
@@ -51,7 +49,6 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
-	jwt *jwt.JWT
 	f   *fixture.Builder
 }
 
@@ -66,12 +63,6 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 
 	tdb := dbtest.NewSQLite(t)
 	db := tdb.Raw
-
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
 
 	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
 	seedUsers(t, f)
@@ -103,12 +94,12 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleraccount.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
+		RegisterAPI: handleraccount.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, jwt: jwtSvc, f: f}
+	return &harness{srv: srv, db: db, f: f}
 }
 
 func seedUsers(t *testing.T, f *fixture.Builder) {
@@ -123,11 +114,8 @@ func seedUsers(t *testing.T, f *fixture.Builder) {
 
 func (h *harness) token(t *testing.T) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(seedUserID, seedEmail, time.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
-	}
-	return tok
+	// authstub: the bearer token IS the user id string.
+	return seedUserID
 }
 
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {

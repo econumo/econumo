@@ -40,7 +40,7 @@ func Location(ctx context.Context) *time.Location {
 
 // logAccumulator is a request-scoped, pointer-backed bag of structured log
 // attributes. A single pointer is placed in the context once (by the access-log
-// middleware); every layer that knows something worth logging — the JWT
+// middleware); every layer that knows something worth logging — the auth
 // middleware, handlers, application services — appends to the SAME instance via
 // AddLogAttr, and the middleware reads them all back with LogAttrs when it emits
 // the operation line. The mutex tolerates a handler that fans work out to

@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -252,31 +252,50 @@ func TestLocationFromCtx_AbsentIsUTC(t *testing.T) {
 	}
 }
 
-// stubVerifier returns fixed claims / error for the JWT middleware tests.
-type stubVerifier struct {
-	claims jwt.Claims
-	err    error
+// stubAuthn returns fixed ids / error for the auth middleware tests.
+type stubAuthn struct {
+	userID  vo.Id
+	tokenID vo.Id
+	err     error
 }
 
-func (s stubVerifier) Verify(token string) (jwt.Claims, error) { return s.claims, s.err }
+func (s stubAuthn) Authenticate(_ context.Context, token string) (vo.Id, vo.Id, error) {
+	return s.userID, s.tokenID, s.err
+}
 
-const jwtTestUserID = "11111111-1111-1111-1111-111111111111"
+var (
+	authTestUserID  = vo.MustParseId("11111111-1111-1111-1111-111111111111")
+	authTestTokenID = vo.MustParseId("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+)
 
-func TestJWT_MissingHeader_401(t *testing.T) {
+func authMessage(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	var env map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+		t.Fatalf("decode body: %v\n%s", err, rec.Body.String())
+	}
+	msg, _ := env["message"].(string)
+	return msg
+}
+
+func TestAuth_MissingHeader_401(t *testing.T) {
 	var ran bool
-	h := JWT(stubVerifier{}, false)(okHandler(&ran))
+	h := Auth(stubAuthn{}, false)(okHandler(&ran))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d want 401", rec.Code)
+	}
+	if got := authMessage(t, rec); got != "Access token not found" {
+		t.Fatalf("message=%q want %q", got, "Access token not found")
 	}
 	if ran {
 		t.Fatal("downstream handler must not run on missing token")
 	}
 }
 
-func TestJWT_NonBearerScheme_401(t *testing.T) {
-	h := JWT(stubVerifier{}, false)(okHandler(nil))
+func TestAuth_NonBearerScheme_401(t *testing.T) {
+	h := Auth(stubAuthn{}, false)(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	req.Header.Set("Authorization", "Basic abc123")
 	rec := httptest.NewRecorder()
@@ -286,40 +305,47 @@ func TestJWT_NonBearerScheme_401(t *testing.T) {
 	}
 }
 
-func TestJWT_VerifyError_401(t *testing.T) {
+func TestAuth_AuthenticateUnauthorized_401(t *testing.T) {
 	var ran bool
-	h := JWT(stubVerifier{err: errors.New("expired")}, false)(okHandler(&ran))
+	h := Auth(stubAuthn{err: errs.NewUnauthorized("Invalid access token")}, false)(okHandler(&ran))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	req.Header.Set("Authorization", "Bearer some.jwt.token")
+	req.Header.Set("Authorization", "Bearer eco_ses_dead")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d want 401 (verify error)", rec.Code)
+		t.Fatalf("status=%d want 401 (authenticate error)", rec.Code)
+	}
+	if got := authMessage(t, rec); got != "Invalid access token" {
+		t.Fatalf("message=%q want %q", got, "Invalid access token")
 	}
 	if ran {
-		t.Fatal("downstream handler must not run when verify fails")
+		t.Fatal("downstream handler must not run when authentication fails")
 	}
 }
 
-func TestJWT_BadClaimID_401(t *testing.T) {
-	h := JWT(stubVerifier{claims: jwt.Claims{ID: "not-a-uuid"}}, false)(okHandler(nil))
+// A non-Unauthorized authenticator error (e.g. the DB being down) must not
+// leak internals: it maps to the generic 401 message.
+func TestAuth_InternalError_Generic401(t *testing.T) {
+	h := Auth(stubAuthn{err: errors.New("db is down: secret dsn")}, false)(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	req.Header.Set("Authorization", "Bearer some.jwt.token")
+	req.Header.Set("Authorization", "Bearer eco_ses_x")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d want 401 (unparsable id claim)", rec.Code)
+		t.Fatalf("status=%d want 401 (internal error)", rec.Code)
+	}
+	if got := authMessage(t, rec); got != "Invalid access token" {
+		t.Fatalf("message=%q want %q (no internals leaked)", got, "Invalid access token")
 	}
 }
 
-func TestJWT_Valid_PutsUserIDInContext(t *testing.T) {
-	var gotID string
-	var present bool
-	h := JWT(stubVerifier{claims: jwt.Claims{ID: jwtTestUserID}}, false)(
+func TestAuth_Valid_PutsIdsInContext(t *testing.T) {
+	var gotUser, gotToken vo.Id
+	var userPresent, tokenPresent bool
+	h := Auth(stubAuthn{userID: authTestUserID, tokenID: authTestTokenID}, false)(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			id, ok := UserIDFromCtx(r.Context())
-			present = ok
-			gotID = id.String()
+			gotUser, userPresent = UserIDFromCtx(r.Context())
+			gotToken, tokenPresent = TokenIDFromCtx(r.Context())
 			w.WriteHeader(http.StatusOK)
 		}))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
@@ -331,22 +357,28 @@ func TestJWT_Valid_PutsUserIDInContext(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200", rec.Code)
 	}
-	if !present {
-		t.Fatal("user id absent from context after valid token")
+	if !userPresent || !gotUser.Equal(authTestUserID) {
+		t.Fatalf("ctx user id=%v present=%v want %v", gotUser, userPresent, authTestUserID)
 	}
-	if gotID != jwtTestUserID {
-		t.Fatalf("ctx user id=%q want %q", gotID, jwtTestUserID)
+	if !tokenPresent || !gotToken.Equal(authTestTokenID) {
+		t.Fatalf("ctx token id=%v present=%v want %v", gotToken, tokenPresent, authTestTokenID)
 	}
 }
 
-func TestJWT_EmptyBearerToken_401(t *testing.T) {
-	h := JWT(stubVerifier{}, false)(okHandler(nil))
+func TestAuth_EmptyBearerToken_401(t *testing.T) {
+	h := Auth(stubAuthn{}, false)(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	req.Header.Set("Authorization", "Bearer    ")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d want 401 (empty bearer token)", rec.Code)
+	}
+}
+
+func TestTokenIDFromCtx_Absent(t *testing.T) {
+	if _, ok := TokenIDFromCtx(context.Background()); ok {
+		t.Fatal("TokenIDFromCtx(empty) reported present")
 	}
 }
 
@@ -378,16 +410,13 @@ func TestRequireUser_NoUserInContext_401(t *testing.T) {
 	if env["success"] != false {
 		t.Fatalf("success=%v want false", env["success"])
 	}
-	if env["message"] != "JWT Token not found" {
-		t.Fatalf("message=%q want %q", env["message"], "JWT Token not found")
+	if env["message"] != "Access token not found" {
+		t.Fatalf("message=%q want %q", env["message"], "Access token not found")
 	}
 }
 
 func TestRequireUser_UserInContext_ReturnsID(t *testing.T) {
-	want, err := vo.ParseId(jwtTestUserID)
-	if err != nil {
-		t.Fatalf("parse test id: %v", err)
-	}
+	want := authTestUserID
 	ctx := context.WithValue(context.Background(), ctxKeyUserID, want)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/x", nil).WithContext(ctx)

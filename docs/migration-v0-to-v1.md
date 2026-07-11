@@ -45,7 +45,7 @@ The image moved from Docker Hub to the GitHub Container Registry:
 
 Replace your `docker-compose.yml` with the v1.x single-service stack from the
 repository root (one `econumo` service pulling `ghcr.io/econumo/econumo:latest`,
-the `db` + `jwt` volumes, port `8181:80`). If you reference the image anywhere
+the `db` volume, port `8181:80`). If you reference the image anywhere
 else (scripts, Kubernetes manifests, watchtower configs), update it there too.
 
 ## 3. Point v1.x at your existing data
@@ -67,9 +67,9 @@ else (scripts, Kubernetes manifests, watchtower configs), update it there too.
     ```
 
     Replace `<project>` with your compose project name (the directory you run
-    `docker compose` from, e.g. `econumo_db`). Do the same for the `jwt` volume
-    if you carried one over. `ls -lan` should then show both the directory (`.`)
-    and `db.sqlite` owned by `65532 65532`.
+    `docker compose` from, e.g. `econumo_db`). `ls -lan` should then show both
+    the directory (`.`) and `db.sqlite` owned by `65532 65532`. (A `jwt` volume
+    from an earlier v1.x is no longer used and can be removed.)
 
     Alternatively, do it manually step by step — list the volumes, resolve the
     host path, then `chown` it directly:
@@ -78,7 +78,6 @@ else (scripts, Kubernetes manifests, watchtower configs), update it there too.
     $ docker volume ls
     DRIVER    VOLUME NAME
     local     econumo_db
-    local     econumo_jwt
 
     $ docker volume inspect econumo_db --format '{{ .Mountpoint }}'
     /var/lib/docker/volumes/econumo_db/_data
@@ -109,7 +108,7 @@ The Symfony variables are gone; start from the new
 |---|---|---|
 | `DATABASE_DRIVER` + `SQLITE_DATABASE_URL` / `POSTGRES_DATABASE_URL` | `DATABASE_URL` | Set the DSN directly; the scheme picks the engine. |
 | `APP_ENV=dev` | `ECONUMO_DEBUG=true` | Only the dev stack-trace behavior carries over. |
-| `JWT_PASSPHRASE` | `ECONUMO_JWT_PASSPHRASE` | Optional; keys auto-generate (see below). |
+| `JWT_PASSPHRASE` | _removed_ | Auth tokens are stored in the database; there are no signing keys. |
 | `CORS_ALLOW_ORIGIN` | `ECONUMO_CORS_ALLOW_ORIGIN` | Empty now means same-domain only. |
 | `ECONUMO_SQLITE_BUSY_TIMEOUT` | `SQLITE_BUSY_TIMEOUT` | Renamed. |
 | `ECONUMO_FROM_EMAIL` / `ECONUMO_REPLY_TO_EMAIL` + mail transport | `MAILER_DSN` | Consolidated — see the gotcha below. |
@@ -151,5 +150,6 @@ $ docker compose pull && docker compose up -d
 ```
 
 > [!NOTE]
-> v1.x generates a fresh JWT keypair on first boot, so existing login tokens are
-> invalidated and everyone signs in again once — passwords are unchanged.
+> v1.x stores auth tokens in the database instead of issuing JWTs, so existing
+> login tokens are invalidated and everyone signs in again once — passwords are
+> unchanged.

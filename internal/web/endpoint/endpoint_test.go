@@ -9,12 +9,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/vo"
-	"github.com/econumo/econumo/internal/test/testkeys"
+	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/web/endpoint"
 	"github.com/econumo/econumo/internal/web/middleware"
 )
@@ -38,21 +36,14 @@ type testRes struct {
 }
 
 // authedRequest builds a GET/POST request already carrying a verified user in
-// its context, the same way the real JWT middleware does. Handle/HandleNoBody
+// its context, the same way the real auth middleware does. Handle/HandleNoBody
 // read the user id via middleware.RequireUser, whose context key is
-// unexported, so routing a real token through middleware.JWT is the only
-// exported way to populate it from outside the middleware package.
+// unexported, so routing a token through middleware.Auth is the only exported
+// way to populate it from outside the middleware package (authstub: the
+// bearer token IS the user id string).
 func authedRequest(t *testing.T, method string, body []byte) (*http.Request, *httptest.ResponseRecorder, func(http.Handler) http.Handler) {
 	t.Helper()
-	priv, pub := testkeys.Paths(t)
-	svc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt.New: %v", err)
-	}
-	token, err := svc.Issue("11111111-1111-1111-1111-111111111111", "user@example.test", time.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
-	}
+	token := "11111111-1111-1111-1111-111111111111"
 
 	var rdr *bytes.Reader
 	if body != nil {
@@ -63,7 +54,7 @@ func authedRequest(t *testing.T, method string, body []byte) (*http.Request, *ht
 	req := httptest.NewRequest(method, "/x", rdr)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
-	return req, rec, middleware.JWT(svc, false)
+	return req, rec, middleware.Auth(authstub.Authenticator{}, false)
 }
 
 func decodeEnvelope(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {

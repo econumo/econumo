@@ -3,17 +3,14 @@ package api_test
 import (
 	"net/http"
 	"testing"
-	"time"
 )
 
-// tokenFor issues a JWT for an arbitrary seeded user (h.token is seedUser-only).
+// tokenFor returns a bearer token for an arbitrary seeded user (authstub:
+// the token IS the user id string).
 func (h *harness) tokenFor(t *testing.T, userID, email string) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(userID, email, time.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
-	}
-	return tok
+	_ = email
+	return userID
 }
 
 // A brand-new user has no folders (registration/onboarding never creates one).

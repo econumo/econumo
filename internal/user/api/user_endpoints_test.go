@@ -1,9 +1,13 @@
 package api_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
+
+	appuser "github.com/econumo/econumo/internal/user"
 )
 
 type loginResult struct {
@@ -33,16 +37,17 @@ func TestLoginUser_Success(t *testing.T) {
 	if res.Token == "" {
 		t.Fatal("expected a non-empty token")
 	}
-	// The token must verify against the real public key and carry the user id.
-	claims, err := h.jwt.Verify(res.Token)
+	// The opaque token must have the session prefix and authenticate against the
+	// access_tokens store as the seeded user.
+	if !strings.HasPrefix(res.Token, "eco_ses_") {
+		t.Fatalf("token %q must start with eco_ses_", res.Token)
+	}
+	row, err := h.tokens.GetByHash(context.Background(), appuser.HashAccessToken(res.Token))
 	if err != nil {
-		t.Fatalf("verify issued token: %v", err)
+		t.Fatalf("session row for issued token: %v", err)
 	}
-	if claims.ID != seedUserID {
-		t.Fatalf("token id = %q, want %q", claims.ID, seedUserID)
-	}
-	if claims.Username != seedEmail {
-		t.Fatalf("token username = %q, want %q", claims.Username, seedEmail)
+	if row.UserID.String() != seedUserID {
+		t.Fatalf("session user = %q, want %q", row.UserID, seedUserID)
 	}
 	// User shape.
 	if res.User.ID != seedUserID {

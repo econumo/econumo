@@ -1,9 +1,8 @@
 # Econumo backend: one static Go binary serving the JSON API + SPA on a single port.
 # Build context is the repo root:
 #   docker build -f deployment/docker/Dockerfile -t ghcr.io/econumo/econumo:latest .
-# DATABASE_URL comes from the environment (.env), not baked in. The JWT keypair is
-# auto-generated on first boot under /app/var; mount a volume there to persist it
-# and the sqlite db. Migrations run inside the binary on boot.
+# DATABASE_URL comes from the environment (.env), not baked in. Mount a volume
+# under /app/var to persist the sqlite db. Migrations run inside the binary on boot.
 
 # --- 1. Frontend build ---
 FROM node:26-alpine AS frontend
@@ -27,13 +26,13 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/econumo ./cmd/econumo
 # Pre-create runtime dirs owned by the non-root user (distroless can't mkdir on boot).
-RUN mkdir -p /out/var/db /out/var/jwt
+RUN mkdir -p /out/var/db
 
 # --- 3. Runtime (distroless: no shell, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
 COPY --from=gobuild /app/econumo /app/econumo
 COPY --from=frontend /build/web/dist /app/web
-# Runtime data dir (sqlite db + auto-generated JWT keypair); mount a volume here to persist.
+# Runtime data dir (sqlite db); mount a volume here to persist.
 COPY --from=gobuild --chown=nonroot:nonroot /out/var /app/var
 
 ENV ECONUMO_WEB_DIST=/app/web \

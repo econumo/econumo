@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -20,10 +19,9 @@ import (
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/router"
 )
@@ -57,7 +55,6 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
-	jwt *jwt.JWT
 }
 
 func newHarness(t *testing.T) *harness {
@@ -65,12 +62,6 @@ func newHarness(t *testing.T) *harness {
 
 	tdb := dbtest.NewSQLite(t)
 	db := tdb.Raw
-
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
 
 	const seedSalt = "0000000000000000000000000000000000000001"
 	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
@@ -103,19 +94,17 @@ func newHarness(t *testing.T) *harness {
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlerconnection.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, jwtSvc, cfg.IsDev())})
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db, jwt: jwtSvc}
+	return &harness{srv: srv, db: db}
 }
 
 func (h *harness) token(t *testing.T, userID, email string) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(userID, email, time.Now())
-	if err != nil {
-		t.Fatalf("token: %v", err)
-	}
-	return tok
+	_ = email
+	// authstub: the bearer token IS the user id string.
+	return userID
 }
 
 // doRaw issues a request and returns the raw body bytes (used for 501 stubs

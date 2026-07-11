@@ -77,22 +77,6 @@ func TestParseMailerDSN(t *testing.T) {
 	}
 }
 
-func TestResolveProjectDir(t *testing.T) {
-	wd, _ := os.Getwd()
-	cases := []struct {
-		in, want string
-	}{
-		{"%kernel.project_dir%/config/jwt/.secret.public.pem", wd + "/config/jwt/.secret.public.pem"},
-		{"/var/www/config/jwt/public.pem", "/var/www/config/jwt/public.pem"}, // no placeholder -> unchanged
-		{"", ""},
-	}
-	for _, c := range cases {
-		if got := ResolveProjectDir(c.in); got != c.want {
-			t.Errorf("ResolveProjectDir(%q) = %q, want %q", c.in, got, c.want)
-		}
-	}
-}
-
 func TestGetStringList(t *testing.T) {
 	const key = "ECONUMO_TEST_STRING_LIST"
 	def := []string{"d"}

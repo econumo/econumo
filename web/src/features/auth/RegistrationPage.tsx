@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
+import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { econumoPackage } from '@/lib/package'
-import { getToken, isTokenExpired } from '@/lib/storage'
+import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
-import { SelfHostedInfoDialog } from './SelfHostedInfoDialog'
+import { CustomServerSection } from './CustomServerSection'
 import { useRegister } from './queries'
 
 interface RegistrationForm {
@@ -29,11 +29,10 @@ export function RegistrationPage() {
   const navigate = useNavigate()
   const registerMutation = useRegister()
   const [failOpen, setFailOpen] = useState(false)
-  const [infoOpen, setInfoOpen] = useState(false)
   const customApiAllowed = config.isCustomApiAllowed()
   const pkg = econumoPackage()
 
-  const { register, handleSubmit, control, watch, formState: { errors } } = useForm<RegistrationForm>({
+  const { register, handleSubmit, setValue, getValues, watch, formState: { errors } } = useForm<RegistrationForm>({
     mode: 'onTouched',
     defaultValues: {
       name: '',
@@ -41,25 +40,34 @@ export function RegistrationPage() {
       password: '',
       passwordRetry: '',
       selfHosted: config.selfHosted(),
-      host: config.backendHost() || '',
+      host: config.selfHosted() ? config.backendHost() : '',
     },
   })
   const selfHostedChecked = watch('selfHosted')
 
+  // The disclosure state persists immediately (not on submit), and collapsing
+  // forgets the previously configured server address.
+  const toggleCustomServer = () => {
+    const next = !selfHostedChecked
+    config.selfHosted(next)
+    if (next) {
+      if (!getValues('host')) {
+        setValue('host', window.location.origin)
+      }
+    } else {
+      config.clearBackendHost()
+      setValue('host', '')
+    }
+    setValue('selfHosted', next)
+  }
+
   useEffect(() => {
-    const token = getToken()
-    if (token && !isTokenExpired(token)) {
+    if (getToken()) {
       window.location.assign('/')
     }
   }, [])
 
-  const onSubmit = handleSubmit(async ({ name, email, password, selfHosted, host }) => {
-    if (customApiAllowed) {
-      config.selfHosted(selfHosted)
-      if (selfHosted && host) {
-        config.backendHost(host)
-      }
-    }
+  const onSubmit = handleSubmit(async ({ name, email, password }) => {
     try {
       await registerMutation.mutateAsync({ email, password, name })
       navigate(RouterPage.LOGIN)
@@ -121,10 +129,9 @@ export function RegistrationPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-password">{t('modules.user.form.user.password.label')}</Label>
-          <Input
+          <PasswordInput
             className="h-11"
             id="reg-password"
-            type="password"
             placeholder={t('modules.user.form.user.password.placeholder')}
             {...register('password', {
               validate: {
@@ -138,10 +145,9 @@ export function RegistrationPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="reg-password-retry">{t('modules.user.form.user.password_retry.label')}</Label>
-          <Input
+          <PasswordInput
             className="h-11"
             id="reg-password-retry"
-            type="password"
             placeholder={t('modules.user.form.user.password_retry.placeholder')}
             {...register('passwordRetry', {
               validate: {
@@ -153,50 +159,29 @@ export function RegistrationPage() {
           {errors.passwordRetry ? <p className="text-sm text-destructive">{errors.passwordRetry.message}</p> : null}
         </div>
 
-        {customApiAllowed ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Controller
-                control={control}
-                name="selfHosted"
-                render={({ field }) => (
-                  <Checkbox id="reg-self-hosted" checked={field.value} onCheckedChange={field.onChange} />
-                )}
-              />
-              <Label htmlFor="reg-self-hosted">{t('modules.user.form.user.server_host.self_hosted')}</Label>
-              <button
-                type="button"
-                className="text-sm text-muted-foreground underline"
-                onClick={() => setInfoOpen(true)}
-                aria-label={t('modules.app.modal.self_hosted.information')}
-              >
-                ?
-              </button>
-            </div>
-            {selfHostedChecked ? (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="reg-host">{t('modules.user.form.user.server_host.label')}</Label>
-                <Input
-                  className="h-11"
-                  id="reg-host"
-                  type="url"
-                  placeholder={t('modules.user.form.user.server_host.placeholder')}
-                  {...register('host', {
-                    validate: {
-                      required: (v) => isNotEmpty(v) || t('modules.user.form.user.server_host.validation.required_field'),
-                      url: (v) => isValidHttpUrl(v) || t('modules.user.form.user.server_host.validation.invalid_url'),
-                    },
-                  })}
-                />
-                {errors.host ? <p className="text-sm text-destructive">{errors.host.message}</p> : null}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
         <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={registerMutation.isPending}>
           {t('modules.user.form.sign_up.action.sign_up')}
         </Button>
+
+        {customApiAllowed ? (
+          <CustomServerSection open={selfHostedChecked} onToggle={toggleCustomServer}>
+            <Label htmlFor="reg-host">{t('modules.user.form.user.server_host.label')}</Label>
+            <Input
+              className="h-11"
+              id="reg-host"
+              type="url"
+              placeholder={t('modules.user.form.user.server_host.placeholder')}
+              {...register('host', {
+                validate: {
+                  required: (v) => isNotEmpty(v) || t('modules.user.form.user.server_host.validation.required_field'),
+                  url: (v) => isValidHttpUrl(v) || t('modules.user.form.user.server_host.validation.invalid_url'),
+                },
+                onChange: (e: ChangeEvent<HTMLInputElement>) => config.backendHost(e.target.value),
+              })}
+            />
+            {errors.host ? <p className="text-sm text-destructive">{errors.host.message}</p> : null}
+          </CustomServerSection>
+        ) : null}
 
         <div className="text-xs text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('modules.user.page.sign_up.privacy.text') }} />
       </form>
@@ -207,7 +192,6 @@ export function RegistrationPage() {
         title={t('modules.user.modal.sign_up_failed.header')}
         description={t('modules.user.modal.sign_up_failed.information')}
       />
-      <SelfHostedInfoDialog open={infoOpen} onClose={() => setInfoOpen(false)} />
     </div>
   )
 }

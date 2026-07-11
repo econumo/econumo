@@ -78,7 +78,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 ├── cmd/econumo/main.go ............ binary entrypoint; dispatches serve / healthcheck / resource:action commands
 ├── internal/
 │   ├── shared/ .................... dependency-free kernel: vo (value objects), errs (domain error taxonomy),
-│   │                                datetime (frozen wire/persistence layouts), jwt (RS256 issue/verify + keypair gen),
+│   │                                datetime (frozen wire/persistence layouts),
 │   │                                port (Clock/TxRunner/OperationGuard seams), reqctx (request-scoped
 │   │                                context values, e.g. caller timezone + log attrs)
 │   ├── model/ ...................... the shared type universe: every feature's entities (with their
@@ -189,7 +189,7 @@ Tests live alongside the Go code:
   route is replayed against the REAL production handler (`server.BuildAPI`).
   Two consumers: the untagged **smoke suite** (every `make go-test`) diffs each
   scenario's responses against committed golden files in `testdata/golden/`
-  (normalized: generated UUIDs, datetimes, JWTs redacted), and the build-tagged
+  (normalized: generated UUIDs, datetimes, bearer tokens redacted), and the build-tagged
   parity suite below. Guard tests enforce that every route has a scenario, the
   scenario count and scanned-route count never shrink, and no golden is orphaned.
   Regenerate goldens with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`,
@@ -206,7 +206,9 @@ Tests live alongside the Go code:
 - `internal/test/enginecompare/` — the strongest contract: replays the same
   catalogue on BOTH SQLite and PostgreSQL and asserts byte-identical
   responses (build tag `enginecompare`).
-- `internal/test/{fixture,testkeys}` — shared fixture builder + embedded JWT keypair.
+- `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
+  `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
+  (the bearer token IS the user id string).
 
 Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
 default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
@@ -221,12 +223,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `PORT` — HTTP listen port (required by the server), from `.env`. The image keeps a
   fallback `PORT=80` (compose maps `8181:80`); for a host `go run`, set a non-privileged
   port (e.g. `8181`) in `.env`.
-- `ECONUMO_JWT_PRIVATE_KEY_PATH` / `ECONUMO_JWT_PUBLIC_KEY_PATH` / `ECONUMO_JWT_PASSPHRASE` —
-  RS256 keypair (paths may use the Symfony-style `%kernel.project_dir%` placeholder, which is
-  expanded to the cwd). Defaults to `var/jwt/{private,public}.pem` and is auto-generated on first
-  boot if missing (no keys are committed or baked into the image). `jwt:generate`
-  generates one explicitly. In the image these resolve under `/app/var/jwt`; persist
-  the `/app/var` volume (db + keys) to keep data and tokens valid.
+- Auth tokens are stored in the database (`access_tokens`) — there are no signing keys and
+  no token-related configuration. Persist the `/app/var` volume (the db) to keep data and
+  logins valid. Leftover `ECONUMO_JWT_*` variables from older builds are ignored.
 - `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
   salt-free (plaintext emails, `md5(lower(email))` identifiers). It is consumed by exactly one
   code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
@@ -306,7 +305,7 @@ user:activate <email>
 user:deactivate <email>
 currency:update-rates [date]
 currency:add <code> [name] [fraction-digits]
-jwt:generate
+token:purge [days]
 data:remove-salt
 ```
 
@@ -331,19 +330,36 @@ In the distroless image these run via the binary directly, e.g.
   - Writes (`POST`): `/api/v1/category/create-category`, `/api/v1/account/update-account`,
     `/api/v1/category/delete-category`, `/api/v1/connection/generate-invite`,
     `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`.
-- **Authentication is header-based:** send `Authorization: Bearer <token>` (RS256 JWT;
-  the scheme is case-insensitive). The JWT middleware verifies the signature, rejects
-  expired/invalid tokens with the 401 envelope, and puts the `id` claim (user UUID)
-  into the request context for handlers. Public routes (login, register, remind-password,
+- **Authentication is header-based:** send `Authorization: Bearer <token>` (an opaque
+  access token, `eco_ses_*`/`eco_pat_*`; the scheme is case-insensitive). The auth
+  middleware resolves the token's sha256 against the `access_tokens` table, rejects
+  unknown/expired/revoked tokens with the 401 envelope, and puts the user id AND the
+  token row id into the request context (the latter is the "current session" for
+  logout/revoke/isCurrent). Public routes (login, register, remind-password,
   reset-password, `/api/doc`, `/api/doc.json`) need no header; everything else does.
 
 ## Authentication
 
-- **Method**: JWT (RS256) via the `golang-jwt/jwt` library, in `internal/shared/jwt` (a
-  self-contained package: token issue/verify, keypair generation, and the shared
-  `EnsureKeypair` boot/CLI entry point; no `internal/*` dependency).
+- **Method**: opaque bearer tokens stored (sha256-hashed) in the `access_tokens` table.
+  Two kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
+  last-used persistence throttled to once per 5 minutes) and `personal` (user-created
+  PATs with an optional fixed expiry, full access, shown exactly once at creation).
+- The `user` feature owns everything: `Authenticate` (the per-request hot path),
+  session/PAT use cases, and the revocation cascades. The middleware seam is
+  `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
+- Revocation cascades: `update-password` revokes all sessions EXCEPT the presenting
+  one; `reset-password` and CLI `user:change-password` revoke ALL sessions;
+  `user:deactivate` revokes sessions AND PATs (which is why per-request auth needs no
+  `is_active` join). PATs survive password changes.
+- Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
+  `token:purge [days]` does the same globally in one indexed DELETE (the
+  revoked_at/expires_at indexes exist for it).
+- Sessions/PAT management endpoints: `get-session-list`, `revoke-session`,
+  `revoke-other-sessions`, `get-personal-token-list`, `create-personal-token`,
+  `revoke-personal-token` (all under `/api/v1/user/`).
 - Login lives under `internal/user/api` (`/api/v1/user/login-user`).
-- Token refresh is not implemented (clients re-authenticate).
+- Token refresh is not implemented (sessions slide instead; clients re-authenticate
+  after 30 days of inactivity).
 
 ## Wire & data contract (frozen)
 
@@ -366,16 +382,21 @@ data unreadable. Most are also asserted by the test suite.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
 - **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
 
-### JWT (`internal/shared/jwt/jwt.go`)
-- RS256 only (issue + verify reject any other alg — defends against `none`/HS256 confusion).
-- Claims: `iat`; `exp = iat + 2592000` (30-day TTL); `roles = ["ROLE_USER"]`; `username` = plaintext email; `id` = user UUID. No `nbf`/`iss`/`sub`/`aud`.
+### Access tokens (`internal/user/token.go`)
+- Format: `eco_ses_` (session) / `eco_pat_` (personal) + `base64.RawURLEncoding` of 32
+  random bytes (43 chars, alphabet `[A-Za-z0-9_-]`). Only `hex(sha256(token))` is stored.
+- 401 messages are exact: `"Access token not found"` (missing/malformed header) and
+  `"Invalid access token"` (unknown/expired/revoked token, and any internal
+  authenticator error — no internals leak).
+- Sessions: sliding `expires_at = last_used_at + 30d`, touched at most every 5 minutes.
+  PAT `expires_at` never moves (NULL = never expires).
 
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
 - `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
 - Validation strings are exact and asserted by clients/tests, e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `IS_BLANK_ERROR`).
-- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid JWT.
-- Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're JWT claims, FK targets, and held by clients).
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
+- Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're FK targets and held by clients).
 - `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material
   icon ligature name plus a color slug from the 7-slug allowlist in
   `internal/user/avatar.go` (mirrored by `web/src/lib/avatars.ts`). Set via
@@ -386,7 +407,7 @@ data unreadable. Most are also asserted by the test suite.
 
 - **One binary, two engines, runtime-selected** — both DB backends are linked in and chosen by `DATABASE_URL`; no Go plugins.
 - **sqlc for compile-checked SQL** — a wrong column/arg fails `go build`; per-engine query variants only where the dialects diverge (see the engine-adapter pattern).
-- **stdlib-first** — `net/http.ServeMux` routing, `func(http.Handler) http.Handler` middleware, hand-written `Validate()` (no tag DSL), stdlib CLI. Third-party deps only where stdlib can't deliver (decimal, JWT, DB drivers, uuid, sqlc, Resend).
+- **stdlib-first** — `net/http.ServeMux` routing, `func(http.Handler) http.Handler` middleware, hand-written `Validate()` (no tag DSL), stdlib CLI. Third-party deps only where stdlib can't deliver (decimal, DB drivers, uuid, sqlc, Resend).
 - **No assembler layer** — app services build and return the result DTOs directly.
 - **SQLite is the reference engine** — it's the default; PostgreSQL must match it byte-for-byte (enforced by the `enginecompare` suite).
 

@@ -22,6 +22,7 @@ type Querier interface {
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	// New-tag position = count of the owner's existing tags.
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
+	DeleteAccessToken(ctx context.Context, id string) error
 	DeleteAccountAccess(ctx context.Context, arg DeleteAccountAccessParams) error
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
 	DeleteBudget(ctx context.Context, id string) error
@@ -35,6 +36,7 @@ type Querier interface {
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
+	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
@@ -51,6 +53,8 @@ type Querier interface {
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByIdentifier(ctx context.Context, identifier string) (int64, error)
+	GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error)
+	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
 	// to connected users; users_connections is the symmetric user link. Roles are
 	// admin=0, user=1, guest=2.
@@ -202,6 +206,11 @@ type Querier interface {
 	// write concerns visibly distinct.
 	// The user's display fields for get-user-data / the login response user object.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
+	// Access-token queries (access_tokens): login sessions + personal access
+	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
+	// time.Time), not in SQL, to avoid engine date-format differences; the
+	// list/get queries return raw rows.
+	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	// Idempotently create one direction of the symmetric users_connections link.
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create
@@ -224,6 +233,7 @@ type Querier interface {
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
+	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to
@@ -306,6 +316,7 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error

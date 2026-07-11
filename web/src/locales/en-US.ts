@@ -28,6 +28,10 @@ export default {
       'create_hint': 'Type a name to create it'
     },
     'folders': { 'default_folder': 'All accounts' },
+    'password': {
+      'show': 'Show password',
+      'hide': 'Hide password'
+    },
     'account': { 'name_hidden': '[Hidden account]' },
     'switch_to_account': 'Switch to',
     'form': {
@@ -367,7 +371,7 @@ export default {
             }
           },
           'server_host': {
-            'self_hosted': 'Custom server',
+            'connect': 'Connect to a custom server',
             'label': 'Server address',
             'placeholder': 'https://',
             'validation': {
@@ -377,6 +381,7 @@ export default {
           }
         },
         'sign_in': {
+          'remember_me': 'Remember me',
           'action': {
             'sign_in': 'Sign in',
             'forget_password': 'Forgot password?'
@@ -438,6 +443,55 @@ export default {
             'change_password': {
               'menu_item': 'Change password',
               'header': 'Change password'
+            },
+            'sessions': {
+              'menu_item': 'Sessions',
+              'header': 'Sessions',
+              'description': 'Devices currently signed in to your account. Revoke a session to sign that device out.',
+              'current': 'Current',
+              'unknown_device': 'Unknown device',
+              'last_active': 'Last active',
+              'sign_out': 'Sign out',
+              'revoke': 'Revoke',
+              'revoke_others': 'Sign out other devices',
+              'confirm_sign_out': 'Sign out of this device?',
+              'confirm_revoke': 'Revoke this session? The device will be signed out.',
+              'confirm_revoke_others': 'Sign out of all other devices? Only this session will stay active.'
+            },
+            'tokens': {
+              'menu_item': 'API tokens',
+              'header': 'API tokens',
+              'description': 'Personal access tokens grant full access to your account over the API. Treat them like passwords.',
+              'empty': 'No API tokens yet.',
+              'created': 'Created',
+              'last_used': 'Last used',
+              'expires': 'Expires',
+              'never_expires': 'Never expires',
+              'create': { 'label': 'Create token' },
+              'form': {
+                'name': { 'label': 'Name', 'placeholder': 'e.g. Home Assistant', 'validation': { 'required_field': 'Enter a token name' } },
+                'expiry': {
+                  'label': 'Expires',
+                  'options': {
+                    'd30': '30 days',
+                    'd90': '90 days',
+                    'd365': '365 days',
+                    'custom': 'Custom date',
+                    'never': 'Never'
+                  },
+                  'validation': { 'invalid_date': 'Pick a future date' }
+                },
+                'submit': { 'label': 'Create token' }
+              },
+              'created_dialog': {
+                'title': 'Token created',
+                'warning': "Copy the token now — you won't be able to see it again.",
+                'copy': 'Copy',
+                'copied': 'Copied',
+                'done': 'Done'
+              },
+              'revoke': 'Revoke',
+              'confirm_revoke': 'Revoke this token? Integrations using it will stop working immediately.'
             },
           },
         }

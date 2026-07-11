@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+type AccessToken struct {
+	ID         string
+	UserID     string
+	Kind       string
+	TokenHash  string
+	Name       *string
+	UserAgent  *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+}
+
 type Account struct {
 	ID         string
 	CurrencyID string

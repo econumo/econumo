@@ -2,6 +2,7 @@ package fixture
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -520,6 +521,32 @@ func (b *Builder) BudgetAccess(budgetID, userID string, role int, accepted bool)
 	now := b.now()
 	b.insert(`INSERT INTO budgets_access (budget_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		budgetID, userID, role, accepted, now, now)
+}
+
+// AccessToken seeds one access_tokens row (a live session or PAT). tokenHash
+// is the sha256 hex of the raw bearer token; expiresAt nil = never expires.
+type AccessToken struct {
+	ID        string
+	UserID    string
+	Kind      string // "session" | "personal"
+	TokenHash string
+	Name      string // PAT label ("" -> NULL)
+	UserAgent string // session UA ("" -> NULL)
+	ExpiresAt *time.Time
+}
+
+func (b *Builder) AccessToken(tk AccessToken) string {
+	b.t.Helper()
+	id := b.orNewID(tk.ID)
+	now := b.now()
+	var exp any
+	if tk.ExpiresAt != nil {
+		exp = *tk.ExpiresAt
+	}
+	b.insert(`INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+		id, tk.UserID, tk.Kind, tk.TokenHash, nullable(tk.Name), nullable(tk.UserAgent), now, now, exp)
+	return id
 }
 
 // nullable returns nil for an empty string (-> SQL NULL), else the string.

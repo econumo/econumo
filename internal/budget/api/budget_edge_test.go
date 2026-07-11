@@ -3,7 +3,6 @@ package api_test
 import (
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -13,16 +12,13 @@ import (
 const secondUserID = "22222222-2222-2222-2222-222222222222"
 
 // seedSecondUser inserts a second active user so grant-access / ownership-403
-// tests have a distinct principal. Returns a JWT for that user.
+// tests have a distinct principal. Returns a bearer token for that user
+// (authstub: the token IS the user id string).
 func (h *harness) seedSecondUser(t *testing.T) string {
 	t.Helper()
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	f.User(fixture.User{ID: secondUserID, Name: "Second User", Avatar: "https://avatar.test/2", Salt: seedSalt})
-	tok, err := h.jwt.Issue(secondUserID, "second@example.test", time.Now())
-	if err != nil {
-		t.Fatalf("issue second token: %v", err)
-	}
-	return tok
+	return secondUserID
 }
 
 // getBudget fetches the full budget result for assertions.

@@ -2,9 +2,9 @@
 // API. Each middleware is a plain func(http.Handler) http.Handler (stdlib only
 // — no router dependency). The chain order (outer -> inner) is:
 //
-//	requestid -> recover -> cors -> timezone -> [jwt]
+//	requestid -> recover -> cors -> timezone -> [auth]
 //
-// The JWT authentication middleware is intentionally NOT implemented here: it
+// The token-authentication middleware is intentionally NOT implemented here: it
 // is security-sensitive and is built as part of the user module (Phase 2),
 // where it will verify the RS256 token and stash the user id into the request
 // context. See the documented placeholder near the bottom of this file.

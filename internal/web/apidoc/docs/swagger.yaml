@@ -55,7 +55,7 @@ definitions:
           type: array
         type: object
       message:
-        example: JWT Token not found
+        example: Access token not found
         type: string
       success:
         example: false
@@ -449,6 +449,26 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/model.PayeeResult'
+    type: object
+  model.CreatePersonalTokenRequest:
+    properties:
+      expiresAt:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreatePersonalTokenResult:
+    properties:
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      token:
+        type: string
     type: object
   model.CreateTagRequest:
     properties:
@@ -1027,6 +1047,20 @@ definitions:
       updatedAt:
         type: string
     type: object
+  model.PersonalTokenItem:
+    properties:
+      createdAt:
+        type: string
+      expiresAt:
+        description: null = never expires
+        type: string
+      id:
+        type: string
+      lastUsedAt:
+        type: string
+      name:
+        type: string
+    type: object
   model.PositionChange:
     properties:
       id:
@@ -1099,6 +1133,36 @@ definitions:
         type: string
     type: object
   model.RevokeAccountAccessResult:
+    type: object
+  model.RevokeOtherSessionsResult:
+    type: object
+  model.RevokePersonalTokenRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.RevokePersonalTokenResult:
+    type: object
+  model.RevokeSessionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.RevokeSessionResult:
+    type: object
+  model.SessionItem:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isCurrent:
+        type: boolean
+      lastUsedAt:
+        type: string
+      userAgent:
+        description: '"" when the login sent no User-Agent'
+        type: string
     type: object
   model.SetAccountAccessRequest:
     properties:
@@ -4068,6 +4132,48 @@ paths:
       summary: Complete onboarding
       tags:
       - User
+  /api/v1/user/create-personal-token:
+    post:
+      consumes:
+      - application/json
+      description: Creates a personal access token. The token value is returned once
+        and never again.
+      parameters:
+      - description: Create personal token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreatePersonalTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreatePersonalTokenResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a personal access token
+      tags:
+      - User
   /api/v1/user/get-option-list:
     get:
       description: 'Returns the authenticated user''s raw persisted options ({items:
@@ -4095,6 +4201,68 @@ paths:
       security:
       - Bearer: []
       summary: Get option list
+      tags:
+      - User
+  /api/v1/user/get-personal-token-list:
+    get:
+      description: Returns the authenticated user's live personal access tokens (without
+        token material).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.PersonalTokenItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List personal access tokens
+      tags:
+      - User
+  /api/v1/user/get-session-list:
+    get:
+      description: Returns the authenticated user's live sessions; isCurrent marks
+        the presenting one.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.SessionItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List sessions
       tags:
       - User
   /api/v1/user/get-user-data:
@@ -4129,8 +4297,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticates a user by username/password and returns a JWT plus
-        the current user.
+      description: Authenticates a user by username/password and returns an opaque
+        access token plus the current user.
       parameters:
       - description: Login request
         in: body
@@ -4167,8 +4335,7 @@ paths:
       - User
   /api/v1/user/logout-user:
     post:
-      description: Stateless logout; returns an empty success envelope (JWT is not
-        invalidated server-side).
+      description: Revokes the presenting session token.
       produces:
       - application/json
       responses:
@@ -4323,6 +4490,119 @@ paths:
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
       summary: Reset password
+      tags:
+      - User
+  /api/v1/user/revoke-other-sessions:
+    post:
+      description: Revokes all the authenticated user's sessions except the presenting
+        one. Returns an empty success envelope.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeOtherSessionsResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke other sessions
+      tags:
+      - User
+  /api/v1/user/revoke-personal-token:
+    post:
+      consumes:
+      - application/json
+      description: Revokes one of the authenticated user's personal access tokens.
+        Returns an empty success envelope.
+      parameters:
+      - description: Revoke personal token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokePersonalTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokePersonalTokenResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke a personal access token
+      tags:
+      - User
+  /api/v1/user/revoke-session:
+    post:
+      consumes:
+      - application/json
+      description: Revokes one of the authenticated user's sessions. Returns an empty
+        success envelope.
+      parameters:
+      - description: Revoke session request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokeSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeSessionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke a session
       tags:
       - User
   /api/v1/user/update-avatar:
@@ -4498,7 +4778,7 @@ paths:
       consumes:
       - application/json
       description: Changes the authenticated user's password after verifying the old
-        one. Returns an empty success envelope.
+        one; other sessions are signed out. Returns an empty success envelope.
       parameters:
       - description: Update password request
         in: body
@@ -4579,7 +4859,7 @@ paths:
       - User
 securityDefinitions:
   Bearer:
-    description: 'JWT bearer token. Format: "Bearer <token>".'
+    description: 'Opaque access token. Format: "Bearer <token>".'
     in: header
     name: Authorization
     type: apiKey

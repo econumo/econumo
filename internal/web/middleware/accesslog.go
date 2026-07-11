@@ -55,7 +55,7 @@ func (w *logResponseWriter) Flush() {
 func (w *logResponseWriter) SetError(err error) { w.err = err }
 
 // AccessLog emits structured logging for each request. It installs a request-
-// scoped log accumulator (so the JWT middleware, handlers, and app services can
+// scoped log accumulator (so the auth middleware, handlers, and app services can
 // attach custom dimensions via reqctx.AddLogAttr) and a status-capturing writer,
 // then on the way out emits two lines:
 //
