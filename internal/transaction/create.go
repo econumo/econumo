@@ -55,6 +55,9 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model
 		if berr != nil {
 			return berr
 		}
+		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
+			return nerr
+		}
 		t := model.New(st)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr

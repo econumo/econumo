@@ -25,6 +25,10 @@ func (s stubAccountResolver) AccountListForUser(ctx context.Context, userID vo.I
 	return nil, nil
 }
 
+func (s stubAccountResolver) AccountCurrency(ctx context.Context, accountID vo.Id) (vo.Id, error) {
+	return vo.Id{}, s.ownerErr
+}
+
 // stubAccountGrants is a minimal AccountGrants whose HasWriteGrant result is
 // controlled per test.
 type stubAccountGrants struct {
