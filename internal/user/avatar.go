@@ -13,12 +13,11 @@ import (
 // registration default.
 const DefaultAvatar = "face:fuchsia"
 
-// AvatarColors is the canonical background-color allowlist. The frontend
+// AvatarColors is the canonical accent-color allowlist. The frontend
 // mirrors it (web/src/lib/avatars.ts) and a sync test asserts exact equality,
 // so order and spelling are contract.
 var AvatarColors = []string{
-	"red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal",
-	"cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink",
+	"red", "orange", "amber", "emerald", "teal", "sky", "fuchsia",
 }
 
 // RandomAvatarIcons is the curated subset random registration defaults draw

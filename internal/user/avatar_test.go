@@ -36,15 +36,15 @@ func TestIsValidAvatarIcon(t *testing.T) {
 }
 
 func TestIsValidAvatarColor(t *testing.T) {
-	if len(appuser.AvatarColors) != 16 {
-		t.Fatalf("AvatarColors len = %d, want 16", len(appuser.AvatarColors))
+	if len(appuser.AvatarColors) != 7 {
+		t.Fatalf("AvatarColors len = %d, want 7", len(appuser.AvatarColors))
 	}
 	for _, c := range appuser.AvatarColors {
 		if !appuser.IsValidAvatarColor(c) {
 			t.Errorf("IsValidAvatarColor(%q) = false, want true", c)
 		}
 	}
-	for _, c := range []string{"", "magenta", "FUCHSIA", "neon"} {
+	for _, c := range []string{"", "magenta", "FUCHSIA", "neon", "purple", "blue"} {
 		if appuser.IsValidAvatarColor(c) {
 			t.Errorf("IsValidAvatarColor(%q) = true, want false", c)
 		}

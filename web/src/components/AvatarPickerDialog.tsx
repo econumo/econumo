@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { IconPicker } from '@/components/IconPicker'
 import { UserAvatar } from '@/components/UserAvatar'
-import { avatarColors, avatarColorClasses, joinAvatar, splitAvatar } from '@/lib/avatars'
+import { avatarColors, avatarColorSwatches, avatarIcons, joinAvatar, splitAvatar } from '@/lib/avatars'
 import { cn } from '@/lib/utils'
 import { useUpdateAvatar, useUserData } from '@/features/user/queries'
 
@@ -64,14 +64,14 @@ export function AvatarPickerDialog({ open, onClose }: AvatarPickerDialogProps) {
               title={c}
               className={cn(
                 'size-7 rounded-full',
-                avatarColorClasses[c],
+                avatarColorSwatches[c],
                 c === color ? 'ring-2 ring-ring ring-offset-2 ring-offset-background' : '',
               )}
               onClick={() => setColor(c)}
             />
           ))}
         </div>
-        <IconPicker value={icon} onChange={setIcon} aria-label={t('modals.avatar_picker.icons')} />
+        <IconPicker value={icon} onChange={setIcon} icons={avatarIcons} aria-label={t('modals.avatar_picker.icons')} />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>
             {t('elements.button.cancel.label')}

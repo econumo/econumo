@@ -1,6 +1,8 @@
 # Avatar icons (replacing Gravatar) — design
 
-**Date:** 2026-07-09 (revised same day: reuse the existing Material icon system)
+**Date:** 2026-07-09 (revised same day: reuse the existing Material icon system;
+revised 2026-07-10: 7 colors, a single curated icon page, and the outline
+avatar style — colored border + colored glyph on white, not a solid fill)
 **Status:** Approved design, pre-implementation
 
 ## Goal
@@ -53,14 +55,14 @@ For the random new-user default, the backend keeps a small curated subset of
 A frontend sync test asserts this subset ⊆ `availableIcons` so a backend
 name can never render as a missing glyph.
 
-### Color allowlist (16 slugs, backend-canonical)
+### Color allowlist (7 slugs, backend-canonical)
 
-`red`, `orange`, `amber`, `yellow`, `lime`, `green`, `emerald`, `teal`,
-`cyan`, `sky`, `blue`, `indigo`, `violet`, `purple`, `fuchsia`, `pink`
+`red`, `orange`, `amber`, `emerald`, `teal`, `sky`, `fuchsia`
 
 Colors ARE allowlisted server-side (unlike icons, the slugs map to a fixed
 set of rendered swatches). Rendered by the frontend as Tailwind 500-level
-tones, except `fuchsia` → the brand magenta `#BD51CF`
+accents (colored border + colored glyph on a white background), except
+`fuchsia` → the brand magenta `#BD51CF`
 (`--color-econumo-magenta`), which makes the migration default brand-colored.
 The frontend mirrors the color list; the sync test asserts exact equality
 (names and order).
@@ -94,7 +96,7 @@ automatically.)
   `internal/user` is removed (the identifier derivation `md5(lower(email))`
   is unrelated and stays).
 - New `User.UpdateAvatar(value string, now time.Time)` mutator.
-- New `internal/user/avatar.go`: the 16-color allowlist, the curated
+- New `internal/user/avatar.go`: the 7-color allowlist, the curated
   16-icon random subset, `IsValidAvatarColor`, the icon format check, and
   `JoinAvatar(icon, color)`.
 
@@ -135,7 +137,7 @@ Validation (exact strings, standard 400 envelope):
   `"This value should not be blank."`, code `IS_BLANK_ERROR`.
 - `icon` not matching `^[a-z0-9_]{1,64}$` → field error
   `"This value is not valid."`, code `INVALID_FORMAT_ERROR`.
-- `color` not in the 16-slug allowlist → field error
+- `color` not in the 7-slug allowlist → field error
   `"The value you selected is not a valid choice."`, code
   `NO_SUCH_CHOICE_ERROR`.
 
@@ -165,7 +167,8 @@ Replaces every `<img src={avatar}>` site: `UserCard` (sidebar + profile),
 the `CurrencyPickerDialog` / `ResponsiveDialog` pattern): opened by clicking
 the avatar on `/settings/profile` (button semantics: focusable,
 `aria-label`). Contents: a live preview, the existing `IconPicker` (all
-`availableIcons`), a 16-swatch color row, save + cancel. Save calls a new
+`avatarIcons`, a curated 36-name single page), a 7-swatch color row, save +
+cancel. Save calls a new
 `updateAvatar(icon, color)` API client fn + TanStack `useUpdateAvatar`
 mutation that updates the user-data query (same pattern as `useUpdateName`)
 and tracks a `USER_UPDATE_AVATAR` metric event.

@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { avatarColors } from './avatars'
+import { avatarColors, avatarIcons } from './avatars'
 import { availableIcons } from './icons'
 
 // Guards the two cross-language contracts in internal/user/avatar.go:
@@ -26,11 +26,17 @@ describe('backend avatar constants stay in sync', () => {
     expect(goStringSlice(goSrc, 'AvatarColors')).toEqual([...avatarColors])
   })
 
-  it('every backend random icon exists in availableIcons', () => {
+  it('every backend random icon exists in the avatar picker page', () => {
     const backendIcons = goStringSlice(goSrc, 'RandomAvatarIcons')
     expect(backendIcons.length).toBeGreaterThan(0)
     for (const icon of backendIcons) {
-      expect(availableIcons, `backend icon "${icon}" missing from availableIcons`).toContain(icon)
+      expect(avatarIcons, `backend icon "${icon}" missing from avatarIcons`).toContain(icon)
+    }
+  })
+
+  it('every avatar picker icon exists in availableIcons', () => {
+    for (const icon of avatarIcons) {
+      expect(availableIcons, `avatar icon "${icon}" missing from availableIcons`).toContain(icon)
     }
   })
 
