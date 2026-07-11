@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PromptDialog } from '@/components/PromptDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLongPress } from '@/hooks/useLongPress'
+import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type { BudgetElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
@@ -206,6 +207,12 @@ export function BudgetPage() {
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  // Per budget AND period: the table remounts on route changes and month
+  // switches; only the same month of the same budget gets its spot back.
+  // Also shields against modal-induced resets (full-screen envelope form /
+  // set-limit drawer on phones).
+  const tableScrollRef = useScrollMemory(`budget:${budget?.meta.id ?? ''}:${selectedDate}`)
 
   // Every month switch surfaces the loader for a beat: cache hits (persisted
   // months, local fetches) resolve in a frame or two, which reads as "nothing
@@ -560,7 +567,7 @@ export function BudgetPage() {
         <>
           {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
             <DndContext
               sensors={sensors}
               collisionDetection={preferRowCollisions}
