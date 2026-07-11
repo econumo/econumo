@@ -46,3 +46,28 @@ func init() {
 		}
 	}})
 }
+
+func init() {
+	register(Scenario{Name: "user_sessions", Calls: func() []Call {
+		return []Call{
+			// The seeded owner session is the only one -> a single isCurrent row.
+			{Label: "get-session-list", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "owner"},
+			// A second login mints a second session (its raw token stays inside the
+			// login response; datetimes + UUIDv7 ids are redacted by the normalizer).
+			{Label: "login-second-session", Method: "POST", Path: "/api/v1/user/login-user", Auth: "",
+				Body: map[string]any{"username": OwnerEmail, "password": SeedPassword}},
+			{Label: "get-session-list-two", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "owner"},
+			{Label: "revoke-other-sessions", Method: "POST", Path: "/api/v1/user/revoke-other-sessions", Auth: "owner"},
+			{Label: "get-session-list-after-revoke", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "owner"},
+			// Foreign session id -> the domain-not-found envelope (400), and the
+			// owner's session survives the attempt.
+			{Label: "err:revoke-session-foreign", Method: "POST", Path: "/api/v1/user/revoke-session", Auth: "guest",
+				Body: map[string]any{"id": OwnerSessionID}},
+			{Label: "err:revoke-session-blank", Method: "POST", Path: "/api/v1/user/revoke-session", Auth: "owner",
+				Body: map[string]any{"id": ""}},
+			{Label: "revoke-session-current", Method: "POST", Path: "/api/v1/user/revoke-session", Auth: "guest",
+				Body: map[string]any{"id": GuestSessionID}},
+			{Label: "err:guest-after-self-revoke", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "guest"},
+		}
+	}})
+}

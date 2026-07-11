@@ -123,12 +123,12 @@ New endpoints, all authenticated, module `user`, standard envelope +
 | Route | Behavior |
 |---|---|
 | `GET  /api/v1/user/get-session-list` | Live sessions only: `id`, `userAgent`, `createdAt`, `lastUsedAt`, `isCurrent` (bool; matched by presented token's hash) |
-| `POST /api/v1/user/revoke-session` `{id}` | Revoke one session; not-yours/unknown → 404; revoking the current one is allowed (= logout) |
+| `POST /api/v1/user/revoke-session` `{id}` | Revoke one session; not-yours/unknown → the project's domain-not-found envelope (HTTP 400, "Session not found"); revoking the current one is allowed (= logout) |
 | `POST /api/v1/user/revoke-other-sessions` | No body; revokes all the user's sessions except the current one |
 | `GET  /api/v1/user/get-personal-token-list` | `id`, `name`, `createdAt`, `lastUsedAt`, `expiresAt` (null = never) |
 | `POST /api/v1/user/create-personal-token` `{name, expiresAt?}` | Name 1–64 chars; `expiresAt` an explicit datetime in the frozen layout (UI computes it from 30/90/365/custom/never), omitted/null = never;
 a provided `expiresAt` must lie in the future. Response includes the full token — the only time it is ever shown. Server generates the id (UUIDv7); no client operation id / idempotency guard |
-| `POST /api/v1/user/revoke-personal-token` `{id}` | Revoke one PAT; not-yours/unknown → 404 |
+| `POST /api/v1/user/revoke-personal-token` `{id}` | Revoke one PAT; not-yours/unknown → the domain-not-found envelope (HTTP 400, "Token not found") |
 
 Sessions and PATs are separate lists — PATs never appear in the sessions list.
 

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -29,6 +31,68 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent str
 		return "", err
 	}
 	return raw, nil
+}
+
+// ListSessions returns the user's LIVE sessions in repo order, marking the one
+// that authenticated this request as current.
+func (s *Service) ListSessions(ctx context.Context, userID, currentTokenID vo.Id) ([]model.SessionItem, error) {
+	rows, err := s.tokens.ListByUser(ctx, userID, model.TokenKindSession)
+	if err != nil {
+		return nil, err
+	}
+	now := s.clock.Now()
+	out := make([]model.SessionItem, 0, len(rows))
+	for i := range rows {
+		if !rows[i].IsLive(now) {
+			continue
+		}
+		ua := ""
+		if rows[i].UserAgent != nil {
+			ua = *rows[i].UserAgent
+		}
+		out = append(out, model.SessionItem{
+			Id:         rows[i].ID.String(),
+			UserAgent:  ua,
+			CreatedAt:  rows[i].CreatedAt.UTC().Format(datetime.Layout),
+			LastUsedAt: rows[i].LastUsedAt.UTC().Format(datetime.Layout),
+			IsCurrent:  rows[i].ID.Equal(currentTokenID),
+		})
+	}
+	return out, nil
+}
+
+// RevokeSession revokes one of the CALLER's sessions. A foreign, unknown, or
+// non-session id is a uniform 404 (no existence oracle); revoking the current
+// session is allowed (it is just a logout).
+func (s *Service) RevokeSession(ctx context.Context, userID vo.Id, req model.RevokeSessionRequest) (*model.RevokeSessionResult, error) {
+	id, err := vo.ParseId(req.Id)
+	if err != nil {
+		return nil, errs.NewNotFound("Session not found")
+	}
+	t, err := s.tokens.GetByID(ctx, id)
+	if err != nil {
+		if _, ok := errs.AsNotFound(err); ok {
+			return nil, errs.NewNotFound("Session not found")
+		}
+		return nil, err
+	}
+	if !t.UserID.Equal(userID) || t.Kind != model.TokenKindSession {
+		return nil, errs.NewNotFound("Session not found")
+	}
+	t.Revoke(s.clock.Now())
+	if err := s.tokens.Update(ctx, t); err != nil {
+		return nil, err
+	}
+	return &model.RevokeSessionResult{}, nil
+}
+
+// RevokeOtherSessions signs the user out everywhere except the presenting
+// session.
+func (s *Service) RevokeOtherSessions(ctx context.Context, userID, currentTokenID vo.Id) (*model.RevokeOtherSessionsResult, error) {
+	if err := s.revokeSessions(ctx, userID, currentTokenID, s.clock.Now()); err != nil {
+		return nil, err
+	}
+	return &model.RevokeOtherSessionsResult{}, nil
 }
 
 // revokeSessions revokes every live session of the user except exceptTokenID
