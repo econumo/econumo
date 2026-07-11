@@ -25,13 +25,11 @@ import (
 
 	"github.com/econumo/econumo/internal/cli"
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/jwt"
-	appuser "github.com/econumo/econumo/internal/user"
 
 	"github.com/joho/godotenv"
 
@@ -220,7 +218,7 @@ func run(serveArgs []string) error {
 		return err
 	}
 
-	handler := server.BuildAPI(cfg, db, jwtSvc, clock.New(), appuser.NewRandomAvatarPicker())
+	handler := server.BuildAPI(cfg, db, jwtSvc, server.Seams{})
 
 	srv := &http.Server{
 		Addr:              addr(cfg.Port),
