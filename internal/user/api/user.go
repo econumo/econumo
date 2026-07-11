@@ -29,6 +29,7 @@ var _ = apidoc.JsonResponseError{}
 // @Success     200     {object} model.LoginResult "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login)."
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/login-user [post]
 func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +66,7 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.CurrentUserResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/register-user [post]
 func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +105,7 @@ func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.RemindPasswordResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/remind-password [post]
 func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +124,7 @@ func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.ResetPasswordResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/reset-password [post]
 func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Config is the fully-resolved application configuration.
@@ -23,6 +24,15 @@ type Config struct {
 	AllowRegistration bool
 	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
+
+	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
+	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
+	RateLimitLogin    int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset    int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind   int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitWindow   time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitGlobal   int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend).
@@ -99,6 +109,31 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
+
+	// Rate-limit values fail at boot on a malformed value (unlike the lenient
+	// getInt), because a typo here would silently disable brute-force protection.
+	for _, p := range []struct {
+		dst *int
+		key string
+		def int
+	}{
+		{&c.RateLimitLogin, "ECONUMO_RATE_LIMIT_LOGIN", 5},
+		{&c.RateLimitReset, "ECONUMO_RATE_LIMIT_RESET", 5},
+		{&c.RateLimitRemind, "ECONUMO_RATE_LIMIT_REMIND", 3},
+		{&c.RateLimitRegister, "ECONUMO_RATE_LIMIT_REGISTER", 5},
+		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
+	} {
+		n, err := getIntStrict(p.key, p.def)
+		if err != nil {
+			return Config{}, err
+		}
+		*p.dst = n
+	}
+	window, werr := getDurationStrict("ECONUMO_RATE_LIMIT_WINDOW", 15*time.Minute)
+	if werr != nil {
+		return Config{}, werr
+	}
+	c.RateLimitWindow = window
 
 	// PORT and the JWT public key are required by the HTTP server only and are
 	// validated at server startup; they are intentionally NOT required here because
@@ -240,4 +275,30 @@ func getInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+// getIntStrict is getInt with a hard failure on malformed or negative input,
+// for settings where a silent fallback would be a security downgrade.
+func getIntStrict(key string, def int) (int, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("%s %q is not a non-negative integer", key, v)
+	}
+	return n, nil
+}
+
+func getDurationStrict(key string, def time.Duration) (time.Duration, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("%s %q is not a positive Go duration (e.g. \"15m\")", key, v)
+	}
+	return d, nil
 }

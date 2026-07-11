@@ -152,12 +152,19 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 		err        error
 		wantStatus int
 		wantMsg    string // "" = don't assert
+		wantBody   string // "" = don't assert; exact envelope match (success/message/code/errors)
 	}{
-		{"validation", errs.NewValidation("ignored", errs.FieldError{Key: "f", Message: "bad"}), http.StatusBadRequest, "Form validation error"},
-		{"access denied", errs.NewAccessDenied("nope"), http.StatusForbidden, "nope"},
-		{"unauthorized", errs.NewUnauthorized("no token"), http.StatusUnauthorized, "no token"},
-		{"not found", errs.NewNotFound("Plan not found"), http.StatusBadRequest, "Plan not found"},
-		{"unknown", errPlain("kaboom"), http.StatusInternalServerError, "Internal Server Error"}, // raw error suppressed in prod (dev=false)
+		{"validation", errs.NewValidation("ignored", errs.FieldError{Key: "f", Message: "bad"}), http.StatusBadRequest, "Form validation error", ""},
+		{"access denied", errs.NewAccessDenied("nope"), http.StatusForbidden, "nope", ""},
+		{"unauthorized", errs.NewUnauthorized("no token"), http.StatusUnauthorized, "no token", ""},
+		{"not found", errs.NewNotFound("Plan not found"), http.StatusBadRequest, "Plan not found", ""},
+		{"unknown", errPlain("kaboom"), http.StatusInternalServerError, "Internal Server Error", ""}, // raw error suppressed in prod (dev=false)
+		{
+			name:       "too many requests -> 429 envelope",
+			err:        errs.NewTooManyRequests("Too many attempts. Try again later."),
+			wantStatus: http.StatusTooManyRequests,
+			wantBody:   `{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}` + "\n",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -174,6 +181,9 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 				if probe.Message != c.wantMsg {
 					t.Fatalf("message=%q want %q", probe.Message, c.wantMsg)
 				}
+			}
+			if c.wantBody != "" && rec.Body.String() != c.wantBody {
+				t.Fatalf("body=%s want %s", rec.Body.String(), c.wantBody)
 			}
 		})
 	}
