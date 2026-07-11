@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import { UserOptions } from '@/api/dto/user'
 import type { BudgetMetaDto } from '@/api/dto/budget'
 import { RouterPage } from '@/app/router-pages'
@@ -107,12 +108,9 @@ export function BudgetsPage() {
                 {budget.access.length > 1 ? (
                   <span className="flex items-center -space-x-2">
                     {budget.access.map((entry) => (
-                      <img
-                        key={entry.user.id}
-                        src={`${entry.user.avatar}?s=50`}
-                        alt={entry.user.name}
-                        className="size-7 rounded-full ring-2 ring-background"
-                      />
+                      <span key={entry.user.id} title={entry.user.name}>
+                        <UserAvatar avatar={entry.user.avatar} size="sm" className="size-7 ring-2 ring-background" />
+                      </span>
                     ))}
                   </span>
                 ) : null}

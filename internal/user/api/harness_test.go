@@ -111,7 +111,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	resetMailer := mailer.NewResetSender(discardMailer{}, "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, clk, limiter, cfg.AllowRegistration)
+	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 

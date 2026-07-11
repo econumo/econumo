@@ -6,7 +6,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
 import { ApplicationLayout } from './ApplicationLayout'
 
@@ -133,7 +133,7 @@ it('desktop divider click collapses the sidebar to an icon rail and back', async
   expect(screen.queryByText('Budget')).not.toBeInTheDocument()
   // the account is still reachable as an icon button, avatar still shown
   expect(screen.getByRole('button', { name: 'Cash' })).toBeInTheDocument()
-  expect(screen.getByAltText('Ada')).toBeInTheDocument()
+  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', fixtureUser.avatar)
 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
   expect(await screen.findByText('Cash')).toBeInTheDocument()

@@ -23,6 +23,11 @@ export async function updateName(name: string): Promise<CurrentUserDto> {
   return response.data.data.user
 }
 
+export async function updateAvatar(icon: string, color: string): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-avatar'), { icon, color })
+  return response.data.data.user
+}
+
 export async function updatePassword(oldPassword: string, newPassword: string): Promise<void> {
   await api.post(apiUrl('/api/v1/user/update-password'), { oldPassword, newPassword })
 }

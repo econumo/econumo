@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -100,4 +101,33 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 		return nil, err
 	}
 	return &model.UpdateActiveBudgetResult{User: cur}, nil
+}
+
+// UpdateAvatar validates the icon format and color choice (tier-2), stores the
+// joined "<icon>:<color>" value, and returns the refreshed current user.
+func (s *Service) UpdateAvatar(ctx context.Context, userID vo.Id, req model.UpdateAvatarRequest) (*model.UpdateAvatarResult, error) {
+	icon := strings.TrimSpace(req.Icon)
+	color := strings.TrimSpace(req.Color)
+	var fields []errs.FieldError
+	if !IsValidAvatarIcon(icon) {
+		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value is not valid.", Code: "INVALID_FORMAT_ERROR"})
+	}
+	if !IsValidAvatarColor(color) {
+		fields = append(fields, errs.FieldError{Key: "color", Message: "The value you selected is not a valid choice.", Code: "NO_SUCH_CHOICE_ERROR"})
+	}
+	if len(fields) > 0 {
+		return nil, errs.NewValidation("Validation failed", fields...)
+	}
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.UpdateAvatar(JoinAvatar(icon, color), now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateAvatarResult{User: cur}, nil
 }

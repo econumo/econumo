@@ -19,11 +19,14 @@ interface IconPickerProps {
   /** grow into the height the parent allocates (full-screen mobile forms):
       free space becomes more icon rows per page instead of dead space */
   fill?: boolean
+  /** restrict the choices (e.g. the avatar picker's curated page); defaults to
+      the full availableIcons set */
+  icons?: readonly string[]
 }
 
 // Swipeable icon pages with dot navigation — no scrollbar in the dialog.
 // Opens on the page holding the current icon.
-export function IconPicker({ value, onChange, 'aria-label': ariaLabel, fill = false }: IconPickerProps) {
+export function IconPicker({ value, onChange, 'aria-label': ariaLabel, fill = false, icons = availableIcons }: IconPickerProps) {
   const [api, setApi] = useState<CarouselApi>()
   const measureRef = useRef<HTMLDivElement>(null)
   const [rows, setRows] = useState(BASE_ROWS)
@@ -49,11 +52,11 @@ export function IconPicker({ value, onChange, 'aria-label': ariaLabel, fill = fa
   const pages = useMemo(() => {
     const pageSize = COLS * rows
     const result: string[][] = []
-    for (let i = 0; i < availableIcons.length; i += pageSize) {
-      result.push(availableIcons.slice(i, i + pageSize))
+    for (let i = 0; i < icons.length; i += pageSize) {
+      result.push(icons.slice(i, i + pageSize))
     }
     return result
-  }, [rows])
+  }, [rows, icons])
   // the page holding the current icon — embla only reads startIndex on init,
   // so a rows-change remount (key) re-anchors there too
   const startPage = Math.max(
@@ -104,7 +107,7 @@ export function IconPicker({ value, onChange, 'aria-label': ariaLabel, fill = fa
           ))}
         </CarouselContent>
       </Carousel>
-      <div className="flex justify-center gap-1.5 pt-2">
+      <div className={`justify-center gap-1.5 pt-2 ${pages.length > 1 ? 'flex' : 'hidden'}`}>
         {pages.map((_, i) => (
           <button
             key={i}

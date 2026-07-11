@@ -277,6 +277,12 @@ export default {
           'desc': 'Alphabetically (Z-A)'
         }
       }
+    },
+    'avatar_picker': {
+      'title': 'Choose your avatar',
+      'icons': 'Avatar icons',
+      'colors': 'Avatar colors',
+      'change': 'Change avatar'
     }
   },
   'modules': {

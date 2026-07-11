@@ -48,16 +48,16 @@ func (q *Queries) GetUserOptionsView(ctx context.Context, userID string) ([]GetU
 
 const getUserView = `-- name: GetUserView :one
 
-SELECT id, email, name, avatar_url
+SELECT id, email, name, avatar
 FROM users
 WHERE id = $1
 `
 
 type GetUserViewRow struct {
-	ID        string
-	Email     string
-	Name      string
-	AvatarUrl string
+	ID     string
+	Email  string
+	Name   string
+	Avatar string
 }
 
 // Read-model queries for the user module (CQRS read side). See the sqlite
@@ -69,7 +69,7 @@ func (q *Queries) GetUserView(ctx context.Context, id string) (GetUserViewRow, e
 		&i.ID,
 		&i.Email,
 		&i.Name,
-		&i.AvatarUrl,
+		&i.Avatar,
 	)
 	return i, err
 }

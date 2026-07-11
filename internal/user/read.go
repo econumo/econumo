@@ -119,7 +119,7 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 		Id:           u.ID,
 		Name:         u.Name,
 		Email:        email,
-		Avatar:       u.AvatarURL,
+		Avatar:       u.Avatar,
 		Options:      options,
 		Currency:     currencyCode,
 		ReportPeriod: reportPeriod,

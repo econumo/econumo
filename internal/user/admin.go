@@ -6,7 +6,6 @@ package user
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/econumo/econumo/internal/model"
@@ -24,8 +23,8 @@ func (s *Service) AdminCreateUser(ctx context.Context, name, email, password str
 	return u.ID, nil
 }
 
-// AdminChangeEmail changes a user's email (identifier, ciphertext, avatar),
-// looked up by the current email.
+// AdminChangeEmail changes a user's email (identifier, ciphertext), looked up
+// by the current email. The avatar is left unchanged.
 func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail string) error {
 	u, err := s.userByEmail(ctx, oldEmail)
 	if err != nil {
@@ -48,10 +47,9 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 	if err != nil {
 		return err
 	}
-	avatarURL := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredNew))
 
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdateEmail(newIdentifier, encryptedEmail, avatarURL, s.clock.Now())
+		u.UpdateEmail(newIdentifier, encryptedEmail, s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }

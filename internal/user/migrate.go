@@ -65,9 +65,7 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 				skipped++
 				continue
 			}
-			// Avatar is the gravatar of the email's md5 — independent of the data
-			// salt — so the stored value is already correct; pass it through.
-			u.UpdateEmail(newIdent, plain, u.AvatarURL, s.clock.Now())
+			u.UpdateEmail(newIdent, plain, s.clock.Now())
 			if serr := s.repo.Save(ctx, u); serr != nil {
 				return serr
 			}

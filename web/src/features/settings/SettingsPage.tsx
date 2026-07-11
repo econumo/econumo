@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/UserAvatar'
 import { getLocaleOptions } from '@/lib/config'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
@@ -70,7 +71,7 @@ export function SettingsPage() {
               to={RouterPage.SETTINGS_PROFILE}
               className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3 hover:bg-econumo-hover"
             >
-              <img src={`${user.avatar}?s=50`} alt={user.name} className="size-10 rounded-full" />
+              <UserAvatar avatar={user.avatar} size="md" />
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-medium">{user.name}</span>
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>

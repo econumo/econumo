@@ -66,8 +66,8 @@ func TestNewUser_Getters(t *testing.T) {
 	if u.Name != "Alice" {
 		t.Errorf("Name()=%q", u.Name)
 	}
-	if u.AvatarURL != "https://avatar/x" {
-		t.Errorf("AvatarURL()=%q", u.AvatarURL)
+	if u.Avatar != "https://avatar/x" {
+		t.Errorf("Avatar()=%q", u.Avatar)
 	}
 	if u.Password != "password-hash" {
 		t.Errorf("Password()=%q", u.Password)
@@ -89,7 +89,7 @@ func TestNewUser_Getters(t *testing.T) {
 func TestUser_StructLiteral_RoundTrip(t *testing.T) {
 	id := mustID(t, "11111111-1111-1111-1111-111111111111")
 	opt := NewUserOption(mustID(t, "aaaaaaaa-0000-0000-0000-000000000001"), OptionBudget, strPtr("b-1"), tu0)
-	u := &User{ID: id, Identifier: "ident", Email: "email", Name: "Bob", AvatarURL: "avatar", Password: "pw",
+	u := &User{ID: id, Identifier: "ident", Email: "email", Name: "Bob", Avatar: "avatar", Password: "pw",
 		Salt: "salt", IsActive: false, CreatedAt: tu0, UpdatedAt: tu1, Options: []UserOption{opt}}
 	if !u.ID.Equal(id) || u.Name != "Bob" || u.IsActive {
 		t.Fatal("scalar fields did not round-trip")
@@ -185,9 +185,13 @@ func TestUser_UpdatePassword(t *testing.T) {
 
 func TestUser_UpdateEmail(t *testing.T) {
 	u := newUser(t)
-	u.UpdateEmail("new-ident", "new-cipher", "new-avatar", tu1)
-	if u.Identifier != "new-ident" || u.Email != "new-cipher" || u.AvatarURL != "new-avatar" {
-		t.Fatalf("UpdateEmail fields: %q / %q / %q", u.Identifier, u.Email, u.AvatarURL)
+	avatarBefore := u.Avatar
+	u.UpdateEmail("new-ident", "new-cipher", tu1)
+	if u.Identifier != "new-ident" || u.Email != "new-cipher" {
+		t.Fatalf("UpdateEmail fields: %q / %q", u.Identifier, u.Email)
+	}
+	if u.Avatar != avatarBefore {
+		t.Errorf("UpdateEmail must not change Avatar: got %q want %q", u.Avatar, avatarBefore)
 	}
 	if !u.UpdatedAt.Equal(tu1) {
 		t.Errorf("UpdateEmail updatedAt=%v want %v", u.UpdatedAt, tu1)

@@ -32,12 +32,12 @@ import (
 const (
 	testDataSalt = "0123456789abcdef" // 16 bytes -> AES-128
 
-	seedUserID    = "11111111-1111-1111-1111-111111111111"
-	otherUserID   = "22222222-2222-2222-2222-222222222222"
-	seedEmail     = "user@example.test"
-	seedName      = "Seed User"
-	seedSalt      = "0000000000000000000000000000000000000001"
-	seedAvatarURL = "https://avatar.test/x"
+	seedUserID  = "11111111-1111-1111-1111-111111111111"
+	otherUserID = "22222222-2222-2222-2222-222222222222"
+	seedEmail   = "user@example.test"
+	seedName    = "Seed User"
+	seedSalt    = "0000000000000000000000000000000000000001"
+	seedAvatar  = "https://avatar.test/x"
 )
 
 // fixedClock pins issuance time so login tokens are deterministic.
@@ -112,7 +112,7 @@ func seedUsers(t *testing.T, tdb *dbtest.DB) {
 			ID:       u.id,
 			Email:    u.email,
 			Name:     seedName,
-			Avatar:   seedAvatarURL,
+			Avatar:   seedAvatar,
 			Password: "pw",
 			Salt:     seedSalt,
 		})
