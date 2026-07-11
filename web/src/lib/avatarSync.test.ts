@@ -1,3 +1,6 @@
+// The app tsconfig deliberately omits node types (browser code); this test
+// alone runs in node to read the Go source, so it pulls them in itself.
+/// <reference types="node" />
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
