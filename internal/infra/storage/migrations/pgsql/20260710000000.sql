@@ -3,8 +3,8 @@
 -- evaluated in Go (not SQL) to avoid engine date-format differences.
 CREATE TABLE access_tokens
 (
-    id           TEXT NOT NULL
-    , user_id      TEXT NOT NULL
+    id           UUID NOT NULL
+    , user_id      UUID NOT NULL
     , kind         TEXT NOT NULL
     , token_hash   TEXT NOT NULL
     , name         TEXT DEFAULT NULL

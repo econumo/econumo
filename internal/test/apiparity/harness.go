@@ -23,8 +23,11 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	appuser "github.com/econumo/econumo/internal/user"
 )
 
 // ignoredDataSalt is set on cfg.DataSalt but the seeded fixture is plaintext
@@ -50,6 +53,8 @@ type Harness struct {
 	srv    *httptest.Server
 	engine string
 	clock  fixedClock
+	db     *dbtest.DB
+	minted map[string]string // userID -> raw session token minted by Token()
 }
 
 // NewHarness builds the full production API over the given (already-migrated)
@@ -84,13 +89,17 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Harness{srv: srv, engine: db.Engine, clock: clk}
+	return &Harness{srv: srv, engine: db.Engine, clock: clk, db: db, minted: map[string]string{}}
 }
 
 // Engine reports which engine ("sqlite" | "postgresql") this harness runs over.
 func (h *Harness) Engine() string { return h.engine }
 
-// Token returns the seeded live session token for one of the fixture users.
+// Token returns a live session token for a seeded user: the fixed fixture
+// tokens for owner/guest, or (for any other user a test seeds itself) a
+// deterministic session minted on first use. Deterministic raw tokens keep
+// both engines' rows identical; the minted map keeps re-requests from
+// violating the token_hash unique index.
 func (h *Harness) Token(t *testing.T, userID, email string) string {
 	t.Helper()
 	switch userID {
@@ -98,10 +107,20 @@ func (h *Harness) Token(t *testing.T, userID, email string) string {
 		return OwnerToken
 	case GuestID:
 		return GuestToken
-	default:
-		t.Fatalf("no seeded token for user %s", userID)
-		return ""
 	}
+	if raw, ok := h.minted[userID]; ok {
+		return raw
+	}
+	// Payload must be exactly 43 chars to match the production token shape:
+	// "u" + 36-char uuid + 6 zeros.
+	raw := "eco_ses_u" + userID + "000000"
+	exp := ClockTime.Add(appuser.SessionTTL)
+	fixture.New(t, h.db).AccessToken(fixture.AccessToken{
+		UserID: userID, Kind: model.TokenKindSession,
+		TokenHash: appuser.HashAccessToken(raw), UserAgent: "apiparity", ExpiresAt: &exp,
+	})
+	h.minted[userID] = raw
+	return raw
 }
 
 // do issues an HTTP request to the harness server and returns the status code

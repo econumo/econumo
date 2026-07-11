@@ -51,8 +51,8 @@ const (
 
 	// Seeded session row ids (fixed, non-v7 so they survive normalization —
 	// scenarios reference them, e.g. err:revoke-session-foreign).
-	OwnerSessionID = "33333333-3333-3333-3333-333333333333"
-	GuestSessionID = "44444444-4444-4444-4444-444444444444"
+	OwnerSessionID = "55555555-5555-5555-5555-555555555555"
+	GuestSessionID = "66666666-6666-6666-6666-666666666666"
 )
 
 // Seed seeds an identical, cross-module fixture into the given engine via the

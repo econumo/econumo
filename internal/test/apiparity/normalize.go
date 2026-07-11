@@ -11,14 +11,15 @@ import "regexp"
 // NOT v7, so they survive normalization and remain strictly compared.
 var uuidV7Re = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
 
-// NormalizeParity redacts server-generated UUIDv7 ids and the generate-invite
-// connection code so the comparison focuses on everything else (names,
-// positions, amounts, timestamps, ordering, envelope shape). The invite code
-// is fresh crypto-random per run — like the generated UUIDv7 ids, it
-// legitimately differs per engine run and is not a parity property. All other
-// bytes are compared strictly.
+// NormalizeParity redacts server-generated UUIDv7 ids, the generate-invite
+// connection code, and freshly minted bearer tokens so the comparison focuses
+// on everything else (names, positions, amounts, timestamps, ordering,
+// envelope shape). Invite codes and tokens are fresh crypto-random per run —
+// like the generated UUIDv7 ids, they legitimately differ per engine run and
+// are not a parity property. All other bytes are compared strictly.
 func NormalizeParity(b []byte) string {
 	s := uuidV7Re.ReplaceAllString(string(b), "<generated-uuid>")
+	s = tokenRe.ReplaceAllString(s, "<token>")
 	return inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
 }
 
@@ -42,7 +43,6 @@ var (
 // messages — is compared byte-for-byte against the golden.
 func NormalizeGolden(b []byte) string {
 	s := NormalizeParity(b)
-	s = tokenRe.ReplaceAllString(s, "<token>")
 	s = datetimeRe.ReplaceAllString(s, "<datetime>")
 	s = dateRe.ReplaceAllString(s, "<date>")
 	return s
