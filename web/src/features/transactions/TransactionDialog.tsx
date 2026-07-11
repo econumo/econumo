@@ -103,7 +103,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const crossCurrency = isTransfer && account && accountRecipient && account.currency.id !== accountRecipient.currency.id
 
   const setAmount = (amount: string) => {
-    if (isTransfer && form.isNew) {
+    if (isTransfer) {
+      // also when editing: a stale recipient amount would silently keep the
+      // recipient account's balance unchanged (Vue recomputed unconditionally)
       patch({ amount, amountRecipient: recomputeRecipientAmount(amount, account, accountRecipient, exchangeFn) })
     } else {
       patch({ amount })
@@ -114,7 +116,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     const recipient = accounts.find((a) => a.id === id)
     patch({
       accountRecipientId: id,
-      amountRecipient: form.isNew ? recomputeRecipientAmount(form.amount, account, recipient, exchangeFn) : form.amountRecipient,
+      // also when editing: the saved recipient amount is for the OLD
+      // destination (and possibly its currency), so re-derive it
+      amountRecipient: recomputeRecipientAmount(form.amount, account, recipient, exchangeFn),
     })
   }
 

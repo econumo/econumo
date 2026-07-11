@@ -201,6 +201,39 @@ func buildState(
 	return st, nil
 }
 
+// normalizeTransferAmounts enforces the transfer amount-recipient invariants
+// before persisting. The recipient account's balance is SUM(amount_recipient)
+// and the reporting queries classify an exchange leg via
+// amount != amount_recipient, so a stale or missing client value silently
+// corrupts both. Same-currency transfers therefore always store
+// amount_recipient = amount; cross-currency transfers must carry an explicit
+// amountRecipient (the received amount is client-authoritative — the user's
+// actual rate, not ours — so defaulting would fabricate it). No-op for
+// non-transfers and for transfers without a recipient account.
+func (s *Service) normalizeTransferAmounts(ctx context.Context, st *model.NewState) error {
+	if !st.Type.IsTransfer() || st.AccountRecipID == nil {
+		return nil
+	}
+	srcCur, err := s.accounts.AccountCurrency(ctx, st.AccountID)
+	if err != nil {
+		return err
+	}
+	dstCur, err := s.accounts.AccountCurrency(ctx, *st.AccountRecipID)
+	if err != nil {
+		return errs.NewValidation("account.account.not_available")
+	}
+	if srcCur.Equal(dstCur) {
+		amount := st.Amount
+		st.AmountRecipient = &amount
+		return nil
+	}
+	if st.AmountRecipient == nil {
+		return errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "amountRecipient", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	}
+	return nil
+}
+
 // parseType maps the wire alias to the domain TransactionType.
 func parseType(alias string) (model.TransactionType, error) {
 	switch alias {
