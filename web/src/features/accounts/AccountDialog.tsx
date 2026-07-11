@@ -18,7 +18,13 @@ import { isNotEmpty, isValidAccountName, isValidDecimalNumber, isValidFormula, i
 import { useUiStore } from '@/app/uiStore'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
-import { useCreateAccount, useUpdateAccount } from './queries'
+import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
+import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
+import type { ShareEntry } from '@/features/connections/shared'
+import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
+import { useConnections, useRevokeAccountAccess, useSetAccountAccess } from '@/features/connections/queries'
+import { UserAvatar } from '@/components/UserAvatar'
+import { useAccounts, useCreateAccount, useUpdateAccount } from './queries'
 
 export function AccountDialog() {
   const { t } = useTranslation()
@@ -28,6 +34,10 @@ export function AccountDialog() {
   const { data: currencies } = useCurrencies()
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
+  const { data: accounts } = useAccounts()
+  const { data: connections = [] } = useConnections()
+  const setAccountAccess = useSetAccountAccess()
+  const revokeAccountAccess = useRevokeAccountAccess()
 
   const account = params?.account
   const isNew = !account
@@ -38,6 +48,8 @@ export function AccountDialog() {
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [icon, setIcon] = useState(defaultAccountIcon)
   const [errors, setErrors] = useState<{ name?: string; balance?: string }>({})
+  const [shareOpen, setShareOpen] = useState(false)
+  const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
 
   useEffect(() => {
     if (!params) {
@@ -60,6 +72,8 @@ export function AccountDialog() {
       setCurrencyId(userCurrencyId(user))
       setIcon(defaultAccountIcon)
     }
+    setShareOpen(false)
+    setLevelEntry(null)
     setErrors({})
     // re-seed whenever the dialog opens with new params
   }, [params, user])
@@ -123,6 +137,10 @@ export function AccountDialog() {
   }
 
   const pending = createAccount.isPending || updateAccount.isPending
+
+  // grant/revoke updates the accounts cache optimistically; read the live copy, not the open-time snapshot
+  const liveAccount = account ? accounts?.find((a) => a.id === account.id) ?? account : undefined
+  const canShare = !isNew && !!user && !!liveAccount && hasAccountAdminAccess(liveAccount, user.id)
 
   return (
     <ResponsiveDialog
@@ -188,6 +206,28 @@ export function AccountDialog() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
+        {canShare && liveAccount ? (
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
+            title={t('pages.settings.accounts.list_actions.access')}
+            onClick={() => setShareOpen(true)}
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[11px] text-muted-foreground">{t('pages.settings.accounts.list_actions.access')}</span>
+              {liveAccount.sharedAccess.length > 0 ? (
+                <span className="flex items-center -space-x-2 pt-0.5">
+                  <UserAvatar avatar={liveAccount.owner.avatar} size="sm" className="size-7" />
+                  {liveAccount.sharedAccess.map((entry) => (
+                    <UserAvatar key={entry.user.id} avatar={entry.user.avatar} size="sm" className="size-7" />
+                  ))}
+                </span>
+              ) : null}
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+        ) : null}
+
         <div className="flex min-h-0 flex-1 flex-col gap-2">
           <Label>{t('modals.account.form.icon.label')}</Label>
           <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modals.account.form.icon.label')} />
@@ -201,6 +241,42 @@ export function AccountDialog() {
         onClose={() => setCurrencyOpen(false)}
         onPick={setCurrencyId}
       />
+
+      {canShare && liveAccount && user ? (
+        <>
+          <ShareAccessDialog
+            open={shareOpen && levelEntry === null}
+            title={liveAccount.name}
+            kind="accounts"
+            entries={buildShareEntries(connections, liveAccount.sharedAccess, user.id, liveAccount.owner.id)}
+            onPick={(entry) => {
+              if (entry.role !== 'owner') {
+                setLevelEntry(entry)
+              }
+            }}
+            onClose={() => setShareOpen(false)}
+          />
+          <AccessLevelDialog
+            open={levelEntry !== null}
+            kind="accounts"
+            user={levelEntry?.user ?? null}
+            role={levelEntry?.role ?? null}
+            onSelect={(role) => {
+              if (levelEntry) {
+                setAccountAccess.mutate({ accountId: liveAccount.id, userId: levelEntry.user.id, role })
+              }
+              setLevelEntry(null)
+            }}
+            onRevoke={() => {
+              if (levelEntry) {
+                revokeAccountAccess.mutate({ accountId: liveAccount.id, userId: levelEntry.user.id })
+              }
+              setLevelEntry(null)
+            }}
+            onClose={() => setLevelEntry(null)}
+          />
+        </>
+      ) : null}
     </ResponsiveDialog>
   )
 }
