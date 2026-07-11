@@ -69,10 +69,6 @@ work out of the box: SQLite storage and registration enabled; the only
 variables most setups ever touch are `DATABASE_URL` (to switch to PostgreSQL)
 and `MAILER_DSN` (to send password-recovery email).
 
-All mutable state lives in one Docker volume — `db` (the SQLite database;
-auth tokens are stored in it too) — so your data and logins survive container
-recreation. Back it up.
-
 CLI commands (create users, update currency rates, …) run through the binary
 inside the container, e.g.:
 
