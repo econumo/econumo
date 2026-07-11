@@ -27,8 +27,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// Fixed test data. The JWT keypair comes from the shared testkeys package
-// (testkeys.Paths + testkeys.Passphrase).
+// Fixed test data.
 const (
 	testDataSalt = "0123456789abcdef" // 16 bytes -> AES-128
 

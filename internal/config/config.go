@@ -42,11 +42,6 @@ type Config struct {
 	MailFrom     string // from query param
 	MailReplyTo  string // reply_to query param
 
-	// Auth / JWT
-	JWTPrivateKeyPath string
-	JWTPublicKeyPath  string
-	JWTPassphrase     string
-
 	// HTTP
 	Port               string   // PORT: HTTP listen port ("8181" or ":8181"); required, no default
 	CORSAllowedOrigins []string // ECONUMO_CORS_ALLOW_ORIGIN: comma-separated allowlist; empty = same-domain only; "*" = allow all
@@ -74,21 +69,12 @@ func Load() (Config, error) {
 		MailerDSN:              os.Getenv("MAILER_DSN"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),
 		SQLiteBusyTimeout:      getInt("SQLITE_BUSY_TIMEOUT", 0),
-		JWTPrivateKeyPath:      getEnv("ECONUMO_JWT_PRIVATE_KEY_PATH", "var/jwt/private.pem"),
-		JWTPublicKeyPath:       getEnv("ECONUMO_JWT_PUBLIC_KEY_PATH", "var/jwt/public.pem"),
-		JWTPassphrase:          os.Getenv("ECONUMO_JWT_PASSPHRASE"),
 		Port:                   os.Getenv("PORT"),
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
 		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist"),
 	}
-
-	// Some legacy .env files carry the "%kernel.project_dir%" placeholder in their
-	// JWT key paths; expand it to the working directory so such a .env works here
-	// unchanged.
-	c.JWTPublicKeyPath = ResolveProjectDir(c.JWTPublicKeyPath)
-	c.JWTPrivateKeyPath = ResolveProjectDir(c.JWTPrivateKeyPath)
 
 	if c.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
@@ -204,22 +190,6 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 // projectDirPlaceholder is the legacy "%kernel.project_dir%" placeholder some
 // .env files still carry in their JWT key paths (e.g.
 // "%kernel.project_dir%/config/jwt/private.pem").
-const projectDirPlaceholder = "%kernel.project_dir%"
-
-// ResolveProjectDir expands the legacy "%kernel.project_dir%" placeholder in a
-// path to the process working directory (the app root — /app in the Docker
-// image), so JWT key paths from such a .env resolve here. A path without the
-// placeholder is returned unchanged.
-func ResolveProjectDir(path string) string {
-	if !strings.Contains(path, projectDirPlaceholder) {
-		return path
-	}
-	wd, err := os.Getwd()
-	if err != nil || wd == "" {
-		wd = "."
-	}
-	return strings.ReplaceAll(path, projectDirPlaceholder, wd)
-}
 
 func getEnv(key, def string) string {
 	if v, ok := os.LookupEnv(key); ok && v != "" {

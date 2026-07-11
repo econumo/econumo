@@ -165,9 +165,9 @@ func run(serveArgs []string) error {
 			"cannot authenticate until you run `econumo data:remove-salt`, then unset ECONUMO_DATA_SALT")
 	}
 
-	// Server-only requirements (the CLI path validated via config.Load does not
-	// need these). PORT is never defaulted so the bound port is never an implicit
-	// surprise; the JWT public key is needed to verify auth tokens.
+	// Server-only requirement (the CLI path validated via config.Load does not
+	// need it). PORT is never defaulted so the bound port is never an implicit
+	// surprise.
 	if cfg.Port == "" {
 		return errors.New("PORT is required")
 	}
