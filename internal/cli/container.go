@@ -62,17 +62,18 @@ func newContainer(ctx context.Context) (*container, error) {
 	hasher := auth.NewPasswordHasher()
 	clk := clock.New()
 
-	// User service. The CLI admin paths never issue JWTs, so the jwt collaborator
-	// is nil (constructing a real one would require mounted RSA keys we don't need
-	// here). currencyLookup + budgetExistence are required by the constructor but
-	// are only exercised by the read/profile paths, not the admin mutators.
+	// User service. currencyLookup + budgetExistence are required by the
+	// constructor but are only exercised by the read/profile paths, not the
+	// admin mutators. The access-token repo IS needed: password changes and
+	// deactivation revoke stored tokens.
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
+	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
 	budgetExistence := server.NewUserBudgetExistence(cfg.DatabaseDriver, txm)
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, nil, currencyLookup, budgetExistence,
+		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
 		passwordReqRepo, resetMailer, clk, nil, cfg.AllowRegistration,
 	)
 

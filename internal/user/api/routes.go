@@ -10,10 +10,10 @@ import (
 // RegisterAPI mounts the 13 user endpoints. The public group (login/register/
 // remind/reset) is mounted bare; JWT is applied per-handler so the public group
 // stays unauthenticated.
-func RegisterAPI(h *Handlers, verifier middleware.TokenVerifier, dev bool) router.RegisterAPI {
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		jwt := middleware.JWT(verifier, dev)
-		auth := func(fn http.HandlerFunc) http.Handler { return jwt(fn) }
+		authMw := middleware.Auth(authn, dev)
+		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		// Public group (no JWT).
 		mux.HandleFunc("POST /api/v1/user/login-user", h.LoginUser)

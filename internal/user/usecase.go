@@ -17,7 +17,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -29,7 +28,7 @@ type Service struct {
 	tx                port.TxRunner
 	encode            *auth.EncodeService
 	hasher            *auth.PasswordHasher
-	jwt               *jwt.JWT
+	tokens            AccessTokens
 	currency          CurrencyLookup
 	budgets           BudgetExistence
 	passwordRequests  PasswordRequests
@@ -44,7 +43,7 @@ func NewService(
 	tx port.TxRunner,
 	encode *auth.EncodeService,
 	hasher *auth.PasswordHasher,
-	jwtSvc *jwt.JWT,
+	tokens AccessTokens,
 	currency CurrencyLookup,
 	budgets BudgetExistence,
 	passwordRequests PasswordRequests,
@@ -58,7 +57,7 @@ func NewService(
 		tx:                tx,
 		encode:            encode,
 		hasher:            hasher,
-		jwt:               jwtSvc,
+		tokens:            tokens,
 		currency:          currency,
 		budgets:           budgets,
 		passwordRequests:  passwordRequests,
@@ -69,10 +68,21 @@ func NewService(
 	}
 }
 
-// Logout is stateless (JWT); nothing to invalidate server-side.
-func (s *Service) Logout(ctx context.Context) (*model.LogoutResult, error) {
-	_ = ctx
-	// The "test" literal is a frozen wire constant clients depend on (see LogoutResult).
+// Logout revokes the presenting session. The "test" literal is a frozen wire
+// constant clients depend on (see LogoutResult).
+func (s *Service) Logout(ctx context.Context, tokenID vo.Id) (*model.LogoutResult, error) {
+	t, err := s.tokens.GetByID(ctx, tokenID)
+	if err != nil {
+		if _, ok := errs.AsNotFound(err); ok {
+			// Already gone: logout is idempotent.
+			return &model.LogoutResult{Result: "test"}, nil
+		}
+		return nil, err
+	}
+	t.Revoke(s.clock.Now())
+	if err := s.tokens.Update(ctx, t); err != nil {
+		return nil, err
+	}
 	return &model.LogoutResult{Result: "test"}, nil
 }
 

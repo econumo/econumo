@@ -8,10 +8,10 @@ import (
 )
 
 // RegisterAPI mounts the 7 tag endpoints, each wrapped in the JWT middleware.
-func RegisterAPI(h *Handlers, verifier middleware.TokenVerifier, dev bool) router.RegisterAPI {
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		jwt := middleware.JWT(verifier, dev)
-		auth := func(fn http.HandlerFunc) http.Handler { return jwt(fn) }
+		authMw := middleware.Auth(authn, dev)
+		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		mux.Handle("POST /api/v1/tag/create-tag", auth(h.CreateTag))
 		mux.Handle("POST /api/v1/tag/update-tag", auth(h.UpdateTag))

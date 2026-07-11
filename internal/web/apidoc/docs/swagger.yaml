@@ -4117,8 +4117,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticates a user by username/password and returns a JWT plus
-        the current user.
+      description: Authenticates a user by username/password and returns an opaque
+        access token plus the current user.
       parameters:
       - description: Login request
         in: body
@@ -4155,8 +4155,7 @@ paths:
       - User
   /api/v1/user/logout-user:
     post:
-      description: Stateless logout; returns an empty success envelope (JWT is not
-        invalidated server-side).
+      description: Revokes the presenting session token.
       produces:
       - application/json
       responses:

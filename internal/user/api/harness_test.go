@@ -20,11 +20,11 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -59,7 +59,7 @@ type harness struct {
 	tdb    *dbtest.DB
 	encode *auth.EncodeService
 	hasher *auth.PasswordHasher
-	jwt    *jwt.JWT
+	tokens *userrepo.AccessTokenRepo
 	clock  fixedClock
 }
 
@@ -86,11 +86,6 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 
 	encode := auth.NewEncodeService(testDataSalt)
 	hasher := auth.NewPasswordHasher()
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
 	// Use a near-now issuance time so tokens verify (the JWT verifier checks exp
 	// against the real wall clock). Truncated to the second to match the
 	// integer-timestamp JWT claims.
@@ -111,19 +106,20 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	resetMailer := mailer.NewResetSender(discardMailer{}, "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, clk, limiter, cfg.AllowRegistration)
+	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
+	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer, clk, limiter, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleruser.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
+		RegisterAPI: handleruser.RegisterAPI(handlers, svc, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, jwt: jwtSvc, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, tokens: tokens, clock: clk}
 }
 
 // discardMailer drops every message; it keeps the reset test silent (the console
@@ -211,13 +207,26 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 	return resp.StatusCode, env
 }
 
+// issueToken seeds a live session row for the seeded user and returns its raw
+// bearer token (unique per call; the hash is what lands in access_tokens).
 func (h *harness) issueToken(t *testing.T) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(seedUserID, seedEmail, h.clock.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
+	return h.issueTokenFor(t, seedUserID)
+}
+
+func (h *harness) issueTokenFor(t *testing.T, userID string) string {
+	t.Helper()
+	raw := "eco_ses_" + vo.NewId().String()
+	now := h.clock.Now()
+	exp := now.Add(appuser.SessionTTL)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
+		TokenHash: appuser.HashAccessToken(raw), CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
-	return tok
+	if err := h.tokens.Insert(context.Background(), tok); err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+	return raw
 }
 
 type envelope struct {

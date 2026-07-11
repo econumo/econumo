@@ -11,10 +11,10 @@ import (
 )
 
 // Login authenticates by identifier (md5 of the lowercased username), verifies
-// the password against the stored hash+salt, issues a JWT, and returns the
-// token + current user. A bad username or password yields an UnauthorizedError
-// (HTTP 401, "Invalid credentials.").
-func (s *Service) Login(ctx context.Context, req model.LoginRequest, now time.Time) (*model.LoginResult, error) {
+// the password against the stored hash+salt, mints a session token, and returns
+// the token + current user. A bad username or password yields an
+// UnauthorizedError (HTTP 401, "Invalid credentials.").
+func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent string, now time.Time) (*model.LoginResult, error) {
 	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeLogin, limitKey); err != nil {
 		return nil, err
@@ -37,7 +37,10 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, now time.Ti
 	if derr != nil {
 		return nil, derr
 	}
-	token, terr := s.jwt.Issue(u.ID.String(), email, now)
+	if err := s.purgeDeadTokens(ctx, u.ID, now); err != nil {
+		return nil, err
+	}
+	token, terr := s.createSession(ctx, u.ID, userAgent, now)
 	if terr != nil {
 		return nil, terr
 	}

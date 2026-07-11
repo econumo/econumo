@@ -21,10 +21,9 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
-	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -51,7 +50,6 @@ type harness struct {
 	srv   *httptest.Server
 	db    *sql.DB
 	tdb   *dbtest.DB
-	jwt   *jwt.JWT
 	clock fixedClock
 }
 
@@ -72,11 +70,6 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
 	txm := backend.NewTxManager(db)
@@ -96,12 +89,12 @@ func newHarness(t *testing.T) *harness {
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handlercategory.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
+		RegisterAPI: handlercategory.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, tdb: tdb, jwt: jwtSvc, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, clock: clk}
 }
 
 // seedUsers inserts the seeded user (the JWT subject) and a second user used to
@@ -188,11 +181,8 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 
 func (h *harness) issueToken(t *testing.T) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(seedUserID, seedEmail, h.clock.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
-	}
-	return tok
+	// authstub: the bearer token IS the user id string.
+	return seedUserID
 }
 
 // envelope is the decoded response envelope (success or error). Errors is raw

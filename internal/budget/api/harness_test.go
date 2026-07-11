@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -27,12 +26,11 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
+	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/router"
 )
@@ -56,7 +54,6 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
-	jwt *jwt.JWT
 }
 
 func newHarness(t *testing.T) *harness {
@@ -77,12 +74,6 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	t.Cleanup(func() { _ = db.Close() })
 	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
 		t.Fatalf("migrate: %v", err)
-	}
-
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
 	}
 
 	txm := backend.NewTxManager(db)
@@ -123,10 +114,10 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlerbudget.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, jwtSvc, cfg.IsDev())})
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db, jwt: jwtSvc}
+	return &harness{srv: srv, db: db}
 }
 
 func toMigrations(files []migrations.File) []migrate.Migration {
@@ -139,11 +130,8 @@ func toMigrations(files []migrations.File) []migrate.Migration {
 
 func (h *harness) token(t *testing.T) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(seedUserID, seedEmail, time.Now())
-	if err != nil {
-		t.Fatalf("token: %v", err)
-	}
-	return tok
+	// authstub: the bearer token IS the user id string.
+	return seedUserID
 }
 
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {

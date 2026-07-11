@@ -2,21 +2,22 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/web/httpx"
 )
 
-// TokenVerifier is the narrow contract the JWT middleware needs. jwt.JWT
-// (internal/shared/jwt) satisfies it. Defining it here keeps the middleware from hard-depending on the
-// concrete type, so tests (and any future verifier) can substitute their own.
-type TokenVerifier interface {
-	Verify(token string) (jwt.Claims, error)
+// TokenAuthenticator is the narrow contract the auth middleware needs; the
+// user feature's Service satisfies it (opaque-token lookup in the DB).
+// Defining it here keeps the middleware from hard-depending on the concrete
+// type, so tests (and any future authenticator) can substitute their own.
+type TokenAuthenticator interface {
+	Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, err error)
 }
 
 // ctxKeyUserID is the context key under which the authenticated user id is
@@ -26,36 +27,41 @@ type ctxKeyUserIDType struct{}
 
 var ctxKeyUserID ctxKeyUserIDType
 
-// JWT builds the authentication middleware. It reads the
-// "Authorization: Bearer <token>" header, verifies the RS256 token via verifier,
-// and on success stores the parsed user id (Claims.ID) in the request context
-// (retrievable with UserIDFromCtx). A missing header, malformed header,
-// verification failure, or an unparsable id claim all produce the frozen 401
-// envelope (via httpx.WriteError on an *errs.UnauthorizedError) and the
-// downstream handler is not called.
+type ctxKeyTokenIDType struct{}
+
+var ctxKeyTokenID ctxKeyTokenIDType
+
+// Auth builds the authentication middleware. It reads the
+// "Authorization: Bearer <token>" header, authenticates the opaque token via
+// authn, and on success stores the user id and the token row id in the request
+// context (retrievable with UserIDFromCtx / TokenIDFromCtx). A missing header,
+// malformed header, or failed authentication produces the frozen 401 envelope
+// (via httpx.WriteError on an *errs.UnauthorizedError) and the downstream
+// handler is not called.
 //
 // dev controls only the unhandled-500 path inside httpx.WriteError; the 401
-// path does not expose internals.
-func JWT(verifier TokenVerifier, dev bool) Middleware {
+// path does not expose internals — a non-Unauthorized authenticator error
+// (e.g. the DB being down) is mapped to the generic 401.
+func Auth(authn TokenAuthenticator, dev bool) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, ok := bearerToken(r)
 			if !ok {
-				httpx.WriteError(w, errs.NewUnauthorized("JWT Token not found"), dev)
+				httpx.WriteError(w, errs.NewUnauthorized("Access token not found"), dev)
 				return
 			}
-			claims, err := verifier.Verify(token)
+			userID, tokenID, err := authn.Authenticate(r.Context(), token)
 			if err != nil {
-				httpx.WriteError(w, errs.NewUnauthorized("Invalid JWT Token"), dev)
+				var ue *errs.UnauthorizedError
+				if !errors.As(err, &ue) {
+					err = errs.NewUnauthorized("Invalid access token")
+				}
+				httpx.WriteError(w, err, dev)
 				return
 			}
-			id, perr := vo.ParseId(claims.ID)
-			if perr != nil {
-				httpx.WriteError(w, errs.NewUnauthorized("Invalid JWT Token"), dev)
-				return
-			}
-			ctx := context.WithValue(r.Context(), ctxKeyUserID, id)
-			reqctx.AddLogAttr(ctx, "user_id", id.String())
+			ctx := context.WithValue(r.Context(), ctxKeyUserID, userID)
+			ctx = context.WithValue(ctx, ctxKeyTokenID, tokenID)
+			reqctx.AddLogAttr(ctx, "user_id", userID.String())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -80,15 +86,22 @@ func bearerToken(r *http.Request) (string, bool) {
 	return token, true
 }
 
-// UserIDFromCtx returns the authenticated user id stored by the JWT middleware,
-// reporting whether one was present. Handlers behind the JWT middleware can
-// rely on ok being true; public handlers will see ok=false.
+// UserIDFromCtx returns the authenticated user id stored by the auth
+// middleware, reporting whether one was present. Handlers behind the auth
+// middleware can rely on ok being true; public handlers will see ok=false.
 func UserIDFromCtx(ctx context.Context) (vo.Id, bool) {
 	id, ok := ctx.Value(ctxKeyUserID).(vo.Id)
 	return id, ok
 }
 
-// RequireUser pulls the user id placed by the JWT middleware; absence is
+// TokenIDFromCtx returns the authenticated request's access-token row id
+// (the "current session" for logout / revoke-current / isCurrent marking).
+func TokenIDFromCtx(ctx context.Context) (vo.Id, bool) {
+	id, ok := ctx.Value(ctxKeyTokenID).(vo.Id)
+	return id, ok
+}
+
+// RequireUser pulls the user id placed by the auth middleware; absence is
 // treated as unauthorized (defense in depth — every route is already behind
 // that middleware). The dev flag only gates the 500 exception path inside
 // httpx.WriteError, which this 401 branch never reaches, so it is passed as
@@ -96,7 +109,7 @@ func UserIDFromCtx(ctx context.Context) (vo.Id, bool) {
 func RequireUser(w http.ResponseWriter, r *http.Request) (vo.Id, bool) {
 	id, ok := UserIDFromCtx(r.Context())
 	if !ok {
-		httpx.WriteError(w, errs.NewUnauthorized("JWT Token not found"), false)
+		httpx.WriteError(w, errs.NewUnauthorized("Access token not found"), false)
 		return vo.Id{}, false
 	}
 	return id, true

@@ -30,7 +30,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
 
 	"github.com/joho/godotenv"
 
@@ -205,21 +204,7 @@ func run(serveArgs []string) error {
 	}
 	slog.Info("migrations applied", "backend", be.Name())
 
-	// Generate the JWT keypair on first boot if it is missing (no keys are
-	// committed or baked into the image). force=false: an existing keypair is left
-	// untouched so a restart never invalidates issued tokens. Persist the key
-	// directory on a volume to keep tokens valid across restarts. Same path the
-	// jwt:generate CLI command uses.
-	passphrase, _, err := jwt.EnsureKeypair(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase, false)
-	if err != nil {
-		return err
-	}
-	jwtSvc, err := jwt.New(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, passphrase)
-	if err != nil {
-		return err
-	}
-
-	handler := server.BuildAPI(cfg, db, jwtSvc, clock.New())
+	handler := server.BuildAPI(cfg, db, clock.New())
 
 	srv := &http.Server{
 		Addr:              addr(cfg.Port),

@@ -4506,7 +4506,7 @@ const docTemplate = `{
         },
         "/api/v1/user/login-user": {
             "post": {
-                "description": "Authenticates a user by username/password and returns a JWT plus the current user.",
+                "description": "Authenticates a user by username/password and returns an opaque access token plus the current user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4569,7 +4569,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Stateless logout; returns an empty success envelope (JWT is not invalidated server-side).",
+                "description": "Revokes the presenting session token.",
                 "produces": [
                     "application/json"
                 ],

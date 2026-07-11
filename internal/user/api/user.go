@@ -10,18 +10,19 @@ import (
 	"github.com/econumo/econumo/internal/web/apidoc"
 	"github.com/econumo/econumo/internal/web/endpoint"
 	"github.com/econumo/econumo/internal/web/httpx"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 // _ keeps the apidoc import alias visible to swag's annotation parser.
 var _ = apidoc.JsonResponseError{}
 
 // LoginUser handles POST /api/v1/user/login-user (public). The handler decodes
-// the credentials, calls Service.Login (which verifies the password, issues the
-// JWT, and builds the current user), and returns {token, user}. Bad credentials
-// surface as an *errs.UnauthorizedError -> 401.
+// the credentials, calls Service.Login (which verifies the password, mints an
+// opaque session token, and builds the current user), and returns
+// {token, user}. Bad credentials surface as an *errs.UnauthorizedError -> 401.
 //
 // @Summary     Log in
-// @Description Authenticates a user by username/password and returns a JWT plus the current user.
+// @Description Authenticates a user by username/password and returns an opaque access token plus the current user.
 // @Tags        User
 // @Accept      json
 // @Produce     json
@@ -38,13 +39,13 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
-	res, err := h.svc.Login(r.Context(), req, h.now.Now())
+	res, err := h.svc.Login(r.Context(), req, r.Header.Get("User-Agent"), h.now.Now())
 	if err != nil {
 		httpx.WriteError(w, err, h.dev)
 		return
 	}
-	// Record the user on this public route's operation log line (login has no JWT
-	// middleware to do it).
+	// Record the user on this public route's operation log line (login has no
+	// auth middleware to do it).
 	reqctx.AddLogAttr(r.Context(), "user_id", res.User.Id)
 	// Login returns the raw {token,user} at the top level, NOT the
 	// {success,message,data} envelope — the SPA reads response.token off the top
@@ -73,12 +74,12 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandlePublic(w, r, h.dev, h.svc.Register)
 }
 
-// LogoutUser handles POST /api/v1/user/logout-user (auth). JWT is stateless, so
-// there is nothing to invalidate server-side; the handler just returns a success
-// envelope. The result serializes as {} (see LogoutResult).
+// LogoutUser handles POST /api/v1/user/logout-user (auth). It revokes the
+// session that authenticated this request, so the presented token stops
+// working immediately.
 //
 // @Summary     Log out
-// @Description Stateless logout; returns an empty success envelope (JWT is not invalidated server-side).
+// @Description Revokes the presenting session token.
 // @Tags        User
 // @Produce     json
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.LogoutResult}
@@ -88,7 +89,8 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/v1/user/logout-user [post]
 func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.dev, func(ctx context.Context, _ vo.Id) (*model.LogoutResult, error) {
-		return h.svc.Logout(ctx)
+		tokenID, _ := middleware.TokenIDFromCtx(ctx)
+		return h.svc.Logout(ctx, tokenID)
 	})
 }
 

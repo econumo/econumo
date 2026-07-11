@@ -1,5 +1,5 @@
 == err:unauthorized GET /api/v1/user/get-user-data [] -> 401
-{"success":false,"message":"JWT Token not found","code":0,"errors":{}}
+{"success":false,"message":"Access token not found","code":0,"errors":{}}
 
 == err:validation-empty-name POST /api/v1/category/create-category [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"name":["This value should not be blank."]}}

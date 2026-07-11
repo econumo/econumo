@@ -12,11 +12,16 @@ func init() {
 			// Field name is "value" (a budget id) — frozen quirk.
 			{Label: "update-budget", Method: "POST", Path: "/api/v1/user/update-budget", Auth: "owner",
 				Body: map[string]any{"value": Budget}},
-			// JWT is stateless: token stays usable after both of these.
+			// update-password spares the presenting session (only OTHER sessions are
+			// revoked), so the owner token keeps working here.
 			{Label: "update-password", Method: "POST", Path: "/api/v1/user/update-password", Auth: "owner",
 				Body: map[string]any{"oldPassword": SeedPassword, "newPassword": "new-secret-pw"}},
-			{Label: "logout-user", Method: "POST", Path: "/api/v1/user/logout-user", Auth: "owner"}, // pins the frozen {"result":"test"} quirk
 			{Label: "get-user-data-after", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
+			// Logout revokes the presenting session (DB-backed tokens) — a subsequent
+			// call with the same token must 401 with the frozen envelope. Also pins
+			// the frozen {"result":"test"} quirk.
+			{Label: "logout-user", Method: "POST", Path: "/api/v1/user/logout-user", Auth: "owner"},
+			{Label: "err:get-user-data-after-logout", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
 		}
 	}})
 

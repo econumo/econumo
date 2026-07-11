@@ -25,7 +25,7 @@ func NormalizeParity(b []byte) string {
 var (
 	datetimeRe = regexp.MustCompile(`\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}`)
 	dateRe     = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
-	jwtRe      = regexp.MustCompile(`eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+`)
+	tokenRe    = regexp.MustCompile(`eco_(ses|pat)_[A-Za-z0-9_-]{43}`)
 
 	// inviteCodeRe redacts generate-invite's freshly-minted connection code — a
 	// 5-hex-char string with per-character randomized case
@@ -37,12 +37,12 @@ var (
 
 // NormalizeGolden makes a response body stable across runs AND engines: the
 // parity redaction (UUIDv7 and the generate-invite response code, both via
-// NormalizeParity) plus clock-derived datetimes/dates and JWTs. Everything
+// NormalizeParity) plus clock-derived datetimes/dates and bearer tokens. Everything
 // else — field names, amounts, names, ordering, envelope shape, validation
 // messages — is compared byte-for-byte against the golden.
 func NormalizeGolden(b []byte) string {
 	s := NormalizeParity(b)
-	s = jwtRe.ReplaceAllString(s, "<jwt>")
+	s = tokenRe.ReplaceAllString(s, "<token>")
 	s = datetimeRe.ReplaceAllString(s, "<datetime>")
 	s = dateRe.ReplaceAllString(s, "<date>")
 	return s
