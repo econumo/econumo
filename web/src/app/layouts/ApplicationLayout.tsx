@@ -25,6 +25,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
 import { useBudgets } from '@/features/budgets/queries'
+import { recordPathname } from '@/lib/navigation'
 
 function useIsFullyLoaded() {
   const queries = [
@@ -54,6 +55,9 @@ function useLastSyncAt(): string {
 export function ApplicationLayout() {
   const { t } = useTranslation()
   const location = useLocation()
+  // Recorded during render (idempotent per pathname) so children mounting in
+  // this same pass can already read their origin via previousPathname().
+  recordPathname(location.pathname)
   const queryClient = useQueryClient()
   const isCompact = useIsCompact()
   const isFullyLoaded = useIsFullyLoaded()

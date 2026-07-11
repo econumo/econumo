@@ -1,10 +1,12 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { previousPathname } from '@/lib/navigation'
+import { RouterPage } from '@/app/router-pages'
 
 interface Crumb {
   label: string
@@ -16,7 +18,7 @@ interface SettingsShellProps {
   title: string
   /** desktop heading (defaults to title) */
   heading?: string
-  /** where the mobile back button navigates (hierarchical "up", not history back) */
+  /** the page's parent; one of the two pages the mobile back button may return to */
   backTo: string
   /** desktop breadcrumbs shown above the heading */
   crumbs?: Crumb[]
@@ -30,12 +32,16 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
   const navigate = useNavigate()
   const isCompact = useIsCompact()
 
-  // Deterministic "up" navigation: on compact viewports this chevron is the
-  // ONLY exit (no sidebar), so it must not depend on the history stack —
-  // history-back can trap the user when the stack is odd (restored tab,
-  // login/logout redirect chains) with no way back to the account list.
+  // Where the user arrived from, captured at mount (the in-app trail, not the
+  // browser history — that can hold restored/redirect entries).
+  const [cameFrom] = useState(() => previousPathname())
+
+  // On compact viewports this chevron is the ONLY exit (no sidebar). It returns
+  // to the origin only when that is this page's parent or the main screen; any
+  // other or unknown origin falls back to the main screen, so a broken history
+  // can never trap the user in settings.
   const goBack = () => {
-    void navigate(backTo)
+    void navigate(cameFrom === backTo || cameFrom === RouterPage.HOME ? cameFrom : RouterPage.HOME)
   }
 
   return (

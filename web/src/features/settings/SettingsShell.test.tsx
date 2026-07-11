@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import { recordPathname, resetNavTracking } from '@/lib/navigation'
 import { SettingsShell } from './SettingsShell'
 
 function mockCompactViewport() {
@@ -9,15 +10,11 @@ function mockCompactViewport() {
   }))
 }
 
-it('mobile back always goes up to backTo, never through history', async () => {
-  // A broken/odd history stack (restored tab, redirect chains) must not trap
-  // the user: on compact viewports the chevron is the only way out, so it
-  // navigates the hierarchy deterministically instead of replaying history.
-  mockCompactViewport()
-  const user = userEvent.setup()
+function renderShell() {
   const router = createMemoryRouter(
     [
-      { path: '/somewhere-odd', element: <div>ODD HISTORY ENTRY</div> },
+      { path: '/', element: <div>MAIN SCREEN</div> },
+      { path: '/somewhere-odd', element: <div>ODD PAGE</div> },
       {
         path: '/settings/profile',
         element: (
@@ -28,11 +25,48 @@ it('mobile back always goes up to backTo, never through history', async () => {
       },
       { path: '/settings', element: <div>SETTINGS HUB</div> },
     ],
-    { initialEntries: ['/somewhere-odd', '/settings/profile'], initialIndex: 1 },
+    { initialEntries: ['/settings/profile'] },
   )
   render(<RouterProvider router={router} />)
+}
 
+beforeEach(() => {
+  mockCompactViewport()
+  resetNavTracking()
+})
+
+it('mobile back returns to the parent settings page when the user came from it', async () => {
+  const user = userEvent.setup()
+  recordPathname('/settings')
+  recordPathname('/settings/profile')
+  renderShell()
   await user.click(screen.getByRole('button', { name: 'back' }))
   expect(await screen.findByText('SETTINGS HUB')).toBeInTheDocument()
-  expect(screen.queryByText('ODD HISTORY ENTRY')).not.toBeInTheDocument()
+})
+
+it('mobile back returns to the main screen when the user came from it', async () => {
+  const user = userEvent.setup()
+  recordPathname('/')
+  recordPathname('/settings/profile')
+  renderShell()
+  await user.click(screen.getByRole('button', { name: 'back' }))
+  expect(await screen.findByText('MAIN SCREEN')).toBeInTheDocument()
+})
+
+it('mobile back falls back to the main screen when the origin is any other page', async () => {
+  const user = userEvent.setup()
+  recordPathname('/somewhere-odd')
+  recordPathname('/settings/profile')
+  renderShell()
+  await user.click(screen.getByRole('button', { name: 'back' }))
+  expect(await screen.findByText('MAIN SCREEN')).toBeInTheDocument()
+  expect(screen.queryByText('ODD PAGE')).not.toBeInTheDocument()
+})
+
+it('mobile back falls back to the main screen on a deep link (no origin)', async () => {
+  const user = userEvent.setup()
+  recordPathname('/settings/profile')
+  renderShell()
+  await user.click(screen.getByRole('button', { name: 'back' }))
+  expect(await screen.findByText('MAIN SCREEN')).toBeInTheDocument()
 })
