@@ -36,7 +36,8 @@ export const avatarColorSwatches: Record<AvatarColor, string> = {
 // rows), curated for character: expressive faces, animals, abstract shapes,
 // and a few fun objects. Every name must exist in availableIcons (which is
 // bounded by the bundled Material Symbols font), and the backend's
-// RandomAvatarIcons must be a subset (both asserted by the sync test).
+// RandomAvatarIcons mirrors this list exactly, names and order (both
+// asserted by the sync test).
 export const avatarIcons = [
   'face', 'sentiment_very_satisfied', 'sentiment_very_dissatisfied', 'sick',
   'psychology', 'smart_toy',

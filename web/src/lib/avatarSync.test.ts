@@ -26,12 +26,8 @@ describe('backend avatar constants stay in sync', () => {
     expect(goStringSlice(goSrc, 'AvatarColors')).toEqual([...avatarColors])
   })
 
-  it('every backend random icon exists in the avatar picker page', () => {
-    const backendIcons = goStringSlice(goSrc, 'RandomAvatarIcons')
-    expect(backendIcons.length).toBeGreaterThan(0)
-    for (const icon of backendIcons) {
-      expect(avatarIcons, `backend icon "${icon}" missing from avatarIcons`).toContain(icon)
-    }
+  it('icon pools are identical (names and order)', () => {
+    expect(goStringSlice(goSrc, 'RandomAvatarIcons')).toEqual([...avatarIcons])
   })
 
   it('every avatar picker icon exists in availableIcons', () => {

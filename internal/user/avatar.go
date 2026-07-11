@@ -20,14 +20,20 @@ var AvatarColors = []string{
 	"red", "orange", "amber", "emerald", "teal", "sky", "fuchsia",
 }
 
-// RandomAvatarIcons is the curated subset random registration defaults draw
-// from. Every name must exist in the frontend's availableIcons (asserted by a
-// frontend sync test); update-avatar itself accepts any well-formed name.
+// RandomAvatarIcons is the pool random registration defaults draw from — the
+// avatar picker page, mirrored from the frontend (web/src/lib/avatars.ts
+// avatarIcons; a sync test asserts exact equality, so names and order are
+// contract). update-avatar itself accepts any well-formed name.
 var RandomAvatarIcons = []string{
-	"face", "sentiment_very_satisfied", "smart_toy", "owl",
-	"cruelty_free", "flutter_dash", "emoji_nature", "savings",
-	"auto_awesome", "rocket_launch", "planet", "cloud",
-	"wb_sunny", "star", "favorite", "crown",
+	"face", "sentiment_very_satisfied", "sentiment_very_dissatisfied", "sick",
+	"psychology", "smart_toy",
+	"owl", "cruelty_free", "flutter_dash", "emoji_nature", "bug_report",
+	"savings", "egg",
+	"auto_awesome", "all_inclusive", "extension", "toys", "gesture", "hive",
+	"blur_on",
+	"rocket_launch", "planet", "cloud", "bolt", "wb_sunny", "nightlight",
+	"ac_unit", "water_drop", "local_fire_department", "star", "favorite",
+	"diamond", "crown", "chess_knight", "motorcycle", "swords",
 }
 
 var avatarIconRe = regexp.MustCompile(`^[a-z0-9_]{1,64}$`)
