@@ -1,6 +1,6 @@
 -- Access-token queries (access_tokens): login sessions + personal access
 -- tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
--- time.Time), not in SQL, to avoid engine date-format differences — the
+-- time.Time), not in SQL, to avoid engine date-format differences; the
 -- list/get queries return raw rows.
 
 -- name: InsertAccessToken :exec

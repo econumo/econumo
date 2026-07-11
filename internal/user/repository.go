@@ -38,6 +38,30 @@ type Repository interface {
 	GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error)
 }
 
+// AccessTokens persists opaque bearer credentials (sessions + PATs). Liveness
+// is evaluated in the domain (AccessToken.IsLive), not in SQL. Lookups on a
+// missing row return *errs.NotFoundError.
+type AccessTokens interface {
+	Insert(ctx context.Context, t *model.AccessToken) error
+
+	// GetByHash resolves the sha256 hex of a presented bearer token — the hot
+	// path behind every authenticated request.
+	GetByHash(ctx context.Context, hash string) (*model.AccessToken, error)
+
+	// GetByID loads one row (logout / revoke-by-id paths).
+	GetByID(ctx context.Context, id vo.Id) (*model.AccessToken, error)
+
+	// Update persists the mutable lifecycle fields (last_used_at, expires_at,
+	// revoked_at) of an existing row.
+	Update(ctx context.Context, t *model.AccessToken) error
+
+	// ListByUser returns ALL rows (live and dead) of one kind, ordered by
+	// (created_at, id); callers filter with IsLive/IsDead.
+	ListByUser(ctx context.Context, userID vo.Id, kind string) ([]model.AccessToken, error)
+
+	Delete(ctx context.Context, id vo.Id) error
+}
+
 // PasswordRequests persists password-reset codes (users_password_requests) for
 // the remind/reset flow. The infra passwordrequestrepo implements it.
 type PasswordRequests interface {

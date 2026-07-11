@@ -11,9 +11,7 @@ import (
 )
 
 const deleteAccessToken = `-- name: DeleteAccessToken :exec
-d;
-
-DELETE FROM access_tokens WHERE id =
+DELETE FROM access_tokens WHERE id = ?
 `
 
 func (q *Queries) DeleteAccessToken(ctx context.Context, id string) error {
@@ -22,11 +20,9 @@ func (q *Queries) DeleteAccessToken(ctx context.Context, id string) error {
 }
 
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
-);
-
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens
-WHERE token_hash =
+WHERE token_hash = ?
 `
 
 func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error) {
@@ -48,11 +44,9 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (A
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-?;
-
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens
-WHERE id =
+WHERE id = ?
 `
 
 func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error) {
@@ -76,7 +70,7 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 const insertAccessToken = `-- name: InsertAccessToken :exec
 
 INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAccessTokenParams struct {
@@ -94,7 +88,7 @@ type InsertAccessTokenParams struct {
 
 // Access-token queries (access_tokens): login sessions + personal access
 // tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
-// time.Time), not in SQL, to avoid engine date-format differences — the
+// time.Time), not in SQL, to avoid engine date-format differences; the
 // list/get queries return raw rows.
 func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error {
 	_, err := q.db.ExecContext(ctx, insertAccessToken,
@@ -113,12 +107,10 @@ func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenPa
 }
 
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-?;
-
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens
 WHERE user_id = ? AND kind = ?
-ORDER BY created_at,
+ORDER BY created_at, id
 `
 
 type ListAccessTokensByUserParams struct {
@@ -161,9 +153,7 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 }
 
 const updateAccessToken = `-- name: UpdateAccessToken :exec
-?;
-
-UPDATE access_tokens SET last_used_at = ?, expires_at = ?, revoked_at = ? WHERE id =
+UPDATE access_tokens SET last_used_at = ?, expires_at = ?, revoked_at = ? WHERE id = ?
 `
 
 type UpdateAccessTokenParams struct {
