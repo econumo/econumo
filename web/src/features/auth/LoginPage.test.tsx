@@ -65,14 +65,41 @@ it('shows the session-expired notice when reason=expired', () => {
   expect(screen.getByText(/session has expired/i)).toBeInTheDocument()
 })
 
-it('hides the self-hosted section when custom API is not allowed', () => {
+it('hides the custom-server option when custom API is not allowed', () => {
   window.econumoConfig = { ALLOW_CUSTOM_API: 'false' }
   renderLogin()
-  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /custom server/i })).not.toBeInTheDocument()
 })
 
-it('shows the self-hosted section when custom API is allowed', () => {
+it('persists the collapse and clears the server address', async () => {
   window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  localStorage.setItem('selfHosted', 'true')
+  localStorage.setItem('backendHost', JSON.stringify('https://old.example.test'))
+  const user = userEvent.setup()
   renderLogin()
-  expect(screen.getByRole('checkbox')).toBeInTheDocument()
+  expect(screen.getByLabelText('Server address')).toHaveValue('https://old.example.test')
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(localStorage.getItem('selfHosted')).toBe('false')
+  expect(localStorage.getItem('backendHost')).toBeNull()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.getByLabelText('Server address')).toHaveValue(window.location.origin)
+})
+
+it('prefills the current origin when expanding with no custom server configured', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.getByLabelText('Server address')).toHaveValue(window.location.origin)
+})
+
+it('reveals the server address field through the custom-server disclosure', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
+  renderLogin()
+  expect(screen.queryByLabelText('Server address')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.getByLabelText('Server address')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.queryByLabelText('Server address')).not.toBeInTheDocument()
 })

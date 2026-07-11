@@ -371,7 +371,7 @@ export default {
             }
           },
           'server_host': {
-            'self_hosted': 'Custom server',
+            'connect': 'Connect to a custom server',
             'label': 'Server address',
             'placeholder': 'https://',
             'validation': {

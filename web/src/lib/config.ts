@@ -1,4 +1,4 @@
-import { getItem, setItem } from './storage'
+import { getItem, removeItem, setItem } from './storage'
 
 export interface LocaleOption {
   value: string
@@ -50,6 +50,10 @@ export function backendHost(value?: string): string {
   }
   setItem('backendHost', value)
   return value
+}
+
+export function clearBackendHost(): void {
+  removeItem('backendHost')
 }
 
 export function isHttps(): boolean {

@@ -63,3 +63,15 @@ it('shows the paywall instead of the form when enabled', () => {
   expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument()
   expect(screen.getByRole('link')).toHaveAttribute('href', 'https://pay.econumo.com/cloud/')
 })
+
+it('persists the collapse and clears the server address', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  localStorage.setItem('selfHosted', 'true')
+  localStorage.setItem('backendHost', JSON.stringify('https://old.example.test'))
+  const user = userEvent.setup()
+  renderPage()
+  expect(screen.getByLabelText('Server address')).toHaveValue('https://old.example.test')
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(localStorage.getItem('selfHosted')).toBe('false')
+  expect(localStorage.getItem('backendHost')).toBeNull()
+})
