@@ -4,13 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts as fixtureAccountsForAccess, fixtureFolders } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts as fixtureAccountsForAccess, fixtureFolders, fixtureUsd } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { AccountsSettingsPage } from './AccountsSettingsPage'
 
-function mockViewport() {
+function mockViewport(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023') ? compact : false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 
@@ -303,4 +303,57 @@ it('each folder header offers an add-account button preset to that folder', asyn
   await screen.findByTestId('folder-General')
   await user.click(screen.getByRole('button', { name: 'add account to Savings' }))
   expect(useUiStore.getState().accountModal?.folderId).toBe('f2')
+})
+
+it('compact: the preview sheet lists connections and grants access in place', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  let granted: unknown
+  server.use(
+    ...coreHandlers({ connections: [{ user: partner, sharedAccounts: [] }] }),
+    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+      granted = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  mockViewport(true)
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByText('Cash'))
+  await screen.findByText('Account details')
+  await user.click(await screen.findByRole('button', { name: /Partner/ }))
+  await user.click(await screen.findByRole('button', { name: 'Full control' }))
+  await waitFor(() => expect(granted).toEqual({ accountId: 'a1', userId: 'u2', role: 'admin' }))
+})
+
+it('compact: the preview sheet shows the empty hint when the owner has no connections', async () => {
+  mockViewport(true)
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByText('Cash'))
+  await screen.findByText('Account details')
+  expect(await screen.findByText('No connections found')).toBeInTheDocument()
+})
+
+it('compact: the preview sheet shows a read-only access list to a non-admin member', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const foreign = {
+    id: 'a-foreign', owner: partner, folderId: 'f1', name: 'Shared wallet', position: 5,
+    currency: fixtureUsd, balance: '10', type: 1, icon: 'wallet',
+    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'user' }],
+  }
+  server.use(...coreHandlers({
+    accounts: [...fixtureAccountsForAccess, foreign],
+    connections: [{ user: partner, sharedAccounts: [] }],
+  }))
+  mockViewport(true)
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByText('Shared wallet'))
+  await screen.findByText('Account details')
+  expect(await screen.findByText('Owner')).toBeInTheDocument()
+  expect(screen.getByText('Manage transactions')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Partner/ })).toBeNull()
 })

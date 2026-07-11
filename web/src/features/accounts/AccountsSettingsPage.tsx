@@ -25,6 +25,7 @@ import type { FolderDto } from '@/api/dto/folder'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
 import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
+import { ShareEntryList } from '@/features/connections/ShareEntryList'
 import type { ShareEntry } from '@/features/connections/shared'
 import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
 import { useConnections, useRevokeAccountAccess, useSetAccountAccess } from '@/features/connections/queries'
@@ -290,10 +291,11 @@ export function AccountsSettingsPage() {
   const [deleteAccountTarget, setDeleteAccountTarget] = useState<AccountDto | null>(null)
   const [previewAccount, setPreviewAccount] = useState<AccountDto | null>(null)
   const [accessAccountId, setAccessAccountId] = useState<string | null>(null)
-  const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
+  const [levelTarget, setLevelTarget] = useState<{ accountId: string; entry: ShareEntry } | null>(null)
 
   // read the live cache copy so optimistic grant/revoke updates show immediately
   const accessAccount = accessAccountId ? accounts.find((a) => a.id === accessAccountId) ?? null : null
+  const previewLive = previewAccount ? accounts.find((a) => a.id === previewAccount.id) ?? previewAccount : null
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -513,36 +515,36 @@ export function AccountsSettingsPage() {
       </DndContext>
 
       <ShareAccessDialog
-        open={accessAccount !== null && levelEntry === null}
+        open={accessAccount !== null && levelTarget === null}
         title={accessAccount?.name ?? ''}
         kind="accounts"
         entries={accessAccount && user ? buildShareEntries(connections, accessAccount.sharedAccess, user.id, accessAccount.owner.id) : []}
         onPick={(entry) => {
-          if (entry.role !== 'owner') {
-            setLevelEntry(entry)
+          if (entry.role !== 'owner' && accessAccountId) {
+            setLevelTarget({ accountId: accessAccountId, entry })
           }
         }}
         onClose={() => setAccessAccountId(null)}
       />
 
       <AccessLevelDialog
-        open={levelEntry !== null}
+        open={levelTarget !== null}
         kind="accounts"
-        user={levelEntry?.user ?? null}
-        role={levelEntry?.role ?? null}
+        user={levelTarget?.entry.user ?? null}
+        role={levelTarget?.entry.role ?? null}
         onSelect={(role) => {
-          if (levelEntry && accessAccountId) {
-            setAccountAccess.mutate({ accountId: accessAccountId, userId: levelEntry.user.id, role })
+          if (levelTarget) {
+            setAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id, role })
           }
-          setLevelEntry(null)
+          setLevelTarget(null)
         }}
         onRevoke={() => {
-          if (levelEntry && accessAccountId) {
-            revokeAccountAccess.mutate({ accountId: accessAccountId, userId: levelEntry.user.id })
+          if (levelTarget) {
+            revokeAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id })
           }
-          setLevelEntry(null)
+          setLevelTarget(null)
         }}
-        onClose={() => setLevelEntry(null)}
+        onClose={() => setLevelTarget(null)}
       />
 
       <PromptDialog
@@ -606,27 +608,56 @@ export function AccountsSettingsPage() {
         destructive
       />
 
-      {previewAccount ? (
+      {previewLive ? (
         <ResponsiveDialog
           open
           onOpenChange={(o) => !o && setPreviewAccount(null)}
           title={t('pages.settings.accounts.preview_account_modal.header')}
         >
           <div className="flex items-center gap-3">
-            <EntityIcon name={previewAccount.icon} className="text-2xl text-muted-foreground" />
+            <EntityIcon name={previewLive.icon} className="text-2xl text-muted-foreground" />
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-medium">{previewAccount.name}</span>
+              <span className="truncate text-sm font-medium">{previewLive.name}</span>
               <span className="text-xs text-muted-foreground">
-                {moneyFormat(previewAccount.balance, previewAccount.currency, { useNativePrecision: false })}
+                {moneyFormat(previewLive.balance, previewLive.currency, { useNativePrecision: false })}
               </span>
             </span>
           </div>
+          {user && hasAccountAdminAccess(previewLive, user.id) ? (
+            <div className="mt-4 flex flex-col gap-1">
+              <span className="text-[11px] text-muted-foreground">{t('pages.settings.accounts.list_actions.access')}</span>
+              {buildShareEntries(connections, previewLive.sharedAccess, user.id, previewLive.owner.id).length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('modules.connections.modals.share_access.list_empty')}</p>
+              ) : (
+                <ShareEntryList
+                  kind="accounts"
+                  entries={buildShareEntries(connections, previewLive.sharedAccess, user.id, previewLive.owner.id)}
+                  onPick={(entry) => {
+                    if (entry.role !== 'owner') {
+                      setLevelTarget({ accountId: previewLive.id, entry })
+                    }
+                  }}
+                />
+              )}
+            </div>
+          ) : previewLive.sharedAccess.length > 0 ? (
+            <div className="mt-4 flex flex-col gap-1">
+              <span className="text-[11px] text-muted-foreground">{t('pages.settings.accounts.list_actions.access')}</span>
+              <ShareEntryList
+                kind="accounts"
+                entries={[
+                  { user: previewLive.owner, role: 'owner' },
+                  ...previewLive.sharedAccess.map((a) => ({ user: a.user, role: a.role })),
+                ]}
+              />
+            </div>
+          ) : null}
           <div className={`mt-4 ${dialogActionsClass}`}>
             <Button
               type="button"
               variant="destructive"
               onClick={() => {
-                setDeleteAccountTarget(previewAccount)
+                setDeleteAccountTarget(previewLive)
                 setPreviewAccount(null)
               }}
             >
@@ -635,7 +666,7 @@ export function AccountsSettingsPage() {
             <Button
               type="button"
               onClick={() => {
-                openAccountModal({ account: previewAccount })
+                openAccountModal({ account: previewLive })
                 setPreviewAccount(null)
               }}
             >
