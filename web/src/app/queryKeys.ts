@@ -12,6 +12,8 @@ export const queryKeys = {
   budget: ['budget'] as const,
   budgets: ['budgets'] as const,
   budgetTransactions: ['budgetTransactions'] as const,
+  sessions: ['sessions'] as const,
+  personalTokens: ['personalTokens'] as const,
 }
 
 export const TEN_MINUTES = 10 * 60_000
