@@ -158,17 +158,22 @@ Two layers, mapped deliberately:
   denied) → MCP **tool errors** (`isError: true`) carrying the same
   human-readable message the REST envelope would; the model can self-correct
   (e.g. re-read `econumo://categories` after a bad category id).
-- **Infrastructure errors** (DB failure, panics) → JSON-RPC error responses
-  with no internals leaked. `ECONUMO_DEBUG` does NOT add stack traces to MCP
-  responses.
+- **Infrastructure errors** (DB failure, panics) → a generic `"Internal
+  error"` **tool error**, not a JSON-RPC error response: the SDK's typed
+  handlers can't emit JSON-RPC errors directly, so infra failures are mapped
+  to the same `isError: true` shape as domain errors but with a static
+  message — nothing leaks. `ECONUMO_DEBUG` does NOT add stack traces to MCP
+  responses; the underlying error is logged at ERROR instead.
 
 ## Logging
 
 Same two-tier slog discipline as the REST edge:
 
-- Operation-result line per request; the operation is the JSON-RPC method
-  (`tools/call`, `resources/read`, `prompts/get`, …), enriched via
-  `reqctx.AddLogAttr` with `tool` / `resource_uri` / `prompt` name.
+- Operation-result line per request; the operation message is the static
+  string `mcp` (the access-log middleware derives it from the last path
+  segment of `/mcp`, same as every REST route), enriched via
+  `reqctx.AddLogAttr` with a `tool` / `resource` / `prompt` attr naming the
+  specific tool call, resource read, or prompt get.
 - Tool **arguments are never logged** (amounts, payee names, free text — PII
   by this repo's standard). UUIDs only, as everywhere.
 - Status mapping as usual: domain tool errors WARN, infra errors ERROR.

@@ -96,7 +96,10 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │                             split theirs into role interfaces + a composite for wiring
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
-│   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   │   ├── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   │   └── mcp/ ...................  MCP edge (account, budget, category, currency, payee, tag, transaction,
+│   │                                 user only): tool/resource/prompt registration, mirroring api/ (see
+│   │                                 MCP endpoint below)
 │   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
 │   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
 │   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
@@ -172,6 +175,19 @@ special: CSV export, multipart import, query-param reads, and login's raw
 `{token,user}` response. Routes are registered in
 `internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
 in `internal/model/<feature>_dto.go`.
+
+### MCP endpoint
+
+`/mcp` is a second, independent HTTP edge — mounted on the root mux next to
+`/health`, outside `/api`, so the REST `apiparity` scanner never sees it (its
+own golden suite, `internal/test/mcpparity/`, owns coverage instead). It's the
+official Go SDK's Streamable HTTP handler in **stateless, JSON-response**
+mode (no SSE, no server-held sessions — every tool call is a sub-second DB
+round trip). Auth is the same bearer-token middleware as REST (PATs are the
+intended credential for MCP clients). Shared edge infra lives in
+`internal/web/mcp/`; each feature that exposes MCP surface registers its own
+tools/resources/prompts from an `internal/<feature>/mcp/` package, composed at
+`server.BuildAPI` exactly like `RegisterAPI`.
 
 ### Frontend architecture (React 19 + Vite)
 
@@ -265,6 +281,13 @@ Tests live alongside the Go code:
 - `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
   `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
   (the bearer token IS the user id string).
+- `internal/test/mcpparity/` — the MCP counterpart to `apiparity`: a golden-file JSON-RPC
+  scenario catalogue (`initialize`, `tools/list`, `resources/list`, `prompts/list`, each
+  tool/resource/prompt) replayed against the real `server.BuildAPI` handler over `/mcp`,
+  normalized the same way as the REST goldens. Runs in the smoke tier and, under
+  `-tags enginecompare`, against both engines. Regenerate goldens with
+  `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
+  as `apiparity`.
 
 Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
 default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
@@ -337,6 +360,13 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   > (`SQLITE_BUSY_TIMEOUT`, `OPEN_EXCHANGE_RATES_TOKEN`).
 - `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
   (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
+  A `users.timezone` column opportunistically persists it: a decorator around
+  `middleware.TokenAuthenticator` (wired once in `server.BuildAPI`) writes the header's
+  value on every authenticated request where it differs from the last value seen for that
+  user (throttled by an in-memory per-user cache, same pattern as the token
+  `last_used_at` throttle). MCP clients send no header, so `/mcp` (only) falls back to the
+  stored value when none is present; the header always wins when it is present, on both
+  edges — REST behavior is unchanged.
 
 ### Logging
 

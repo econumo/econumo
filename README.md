@@ -85,6 +85,64 @@ repository (no external translation platform). To contribute a language, copy
 request — the test suite verifies key and placeholder parity between
 catalogues automatically.
 
+### MCP
+
+Econumo speaks [MCP](https://modelcontextprotocol.io/) natively — the binary
+exposes a Streamable HTTP endpoint at `/mcp` (stateless, JSON responses) so
+Claude Code, Claude Desktop, Cursor, and any other MCP client can read your
+accounts/budgets/transactions and log expenses over the network, no extra
+process required.
+
+Auth reuses the existing bearer tokens: any access token works, but a
+[personal access token](https://econumo.com/docs/self-hosting/cli-commands/)
+(`Settings → Personal access tokens` in the app) is the intended credential —
+it doesn't expire on inactivity like a session does. Point your client at
+`https://your-econumo.example.com/mcp` with a static `Authorization` header:
+
+```jsonc
+// Claude Code (.mcp.json) / Claude Desktop / Cursor — remote server with a static header:
+{
+  "mcpServers": {
+    "econumo": {
+      "type": "http",
+      "url": "https://your-econumo.example.com/mcp",
+      "headers": { "Authorization": "Bearer eco_pat_..." }
+    }
+  }
+}
+```
+
+> [!NOTE]
+> claude.ai web **custom connectors** require OAuth and aren't supported yet
+> — use Claude Code, Claude Desktop, or another client that accepts a static
+> bearer header.
+
+**Resources** (read-only, scoped to the authenticated user):
+
+| URI | Content |
+|---|---|
+| `econumo://accounts` | accounts with type, currency, archived flag, and current balance |
+| `econumo://categories` | expense/income categories |
+| `econumo://tags` | tags |
+| `econumo://payees` | payees |
+| `econumo://currencies` | currency codes + rates vs. the instance base currency |
+| `econumo://budgets` | the user's budgets (id, name, currency) |
+| `econumo://user` | the current user's profile + connected (shared-access) users |
+
+**Tools:**
+
+| Tool | Purpose |
+|---|---|
+| `get_budget` | full monthly budget state (folders/envelopes/categories/tags, limits, spent, available) |
+| `list_transactions` | list transactions, optionally filtered by account and period |
+| `create_transaction` | record an expense, income, or transfer |
+| `update_transaction` | edit an existing transaction |
+| `delete_transaction` | delete a transaction |
+
+**Prompts:** `log-expense` (turn a free-text description like "27.50
+groceries at Lidl yesterday, card" into a recorded transaction) and
+`budget-review` (summarize a month's budget, flagging overspent envelopes).
+
 ### Upgrading from v0.x (PHP)
 
 v1.x is a full rewrite — the PHP backend became the Go binary and the Vue.js
