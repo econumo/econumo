@@ -33,9 +33,16 @@ func TestDecodeCursor_Invalid(t *testing.T) {
 		if err == nil {
 			t.Fatalf("decodeCursor(%q): want error", raw)
 		}
-		_, ok := errs.AsValidation(err)
+		ve, ok := errs.AsValidation(err)
 		if !ok {
 			t.Fatalf("decodeCursor(%q): err type %T, want *errs.ValidationError", raw, err)
+		}
+		if ve.Msg != "Form validation error" {
+			t.Errorf("decodeCursor(%q): Msg = %q, want %q", raw, ve.Msg, "Form validation error")
+		}
+		if len(ve.Fields) != 1 || ve.Fields[0].Key != "cursor" || ve.Fields[0].Message != "This value is not a valid cursor." {
+			t.Errorf("decodeCursor(%q): Fields = %+v, want one {Key: %q, Message: %q}",
+				raw, ve.Fields, "cursor", "This value is not a valid cursor.")
 		}
 	}
 }
