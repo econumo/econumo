@@ -94,7 +94,7 @@ accounts/budgets/transactions and log expenses over the network, no extra
 process required.
 
 Auth reuses the existing bearer tokens: any access token works, but a
-[personal access token](https://econumo.com/docs/self-hosting/cli-commands/)
+personal access token
 (`Settings → Personal access tokens` in the app) is the intended credential —
 it doesn't expire on inactivity like a session does. Point your client at
 `https://your-econumo.example.com/mcp` with a static `Authorization` header:
