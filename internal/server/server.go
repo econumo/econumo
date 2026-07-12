@@ -54,6 +54,7 @@ import (
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
+	usermcp "github.com/econumo/econumo/internal/user/mcp"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
@@ -243,6 +244,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		accountmcp.Register(accountSvc),
 		currencymcp.Register(currencyReadSvc),
 		budgetmcp.Register(budgetSvc),
+		usermcp.Register(userReadSvc, connectionSvc),
 	)
 	mcpHandler := middleware.Chain(
 		middleware.Auth(authn, cfg.IsDev()),
