@@ -82,6 +82,67 @@ func TestListPageByAccount_Keyset(t *testing.T) {
 	wantIDs(t, second, "…003", "…004")
 }
 
+// saveTx seeds a row through the PRODUCTION write path (model.FromState +
+// repo.Save), unlike seedTx above which inserts raw SQL directly. Both bind
+// spentAt as a time.Time through the same wrapped SQLite driver, so both now
+// store the bare persistence layout.
+func saveTx(t *testing.T, repo *txrepo.Repo, ctx context.Context, id, account string, spentAt time.Time) {
+	t.Helper()
+	tr := model.FromState(model.NewState{
+		ID:          vo.MustParseId(id),
+		UserID:      vo.MustParseId(pUser),
+		Type:        model.TransactionTypeExpense,
+		AccountID:   vo.MustParseId(account),
+		Amount:      "5.00000000",
+		Description: "t",
+		SpentAt:     spentAt,
+		CreatedAt:   spentAt,
+		UpdatedAt:   spentAt,
+	})
+	if err := repo.Save(ctx, tr); err != nil {
+		t.Fatalf("save %s: %v", id, err)
+	}
+}
+
+// TestListPageByAccount_Keyset_SaveWritten is the exact scenario the apiparity
+// paging probe exposed: a row written through the fixture builder (which
+// always formats spent_at to the bare persistence layout in Go, independent
+// of the driver) tied at the same second as rows written through repo.Save
+// (sqlc time.Time binds, which went through modernc's raw String()
+// serialization before the driver.go fix). Before the fix, the fixture row's
+// bare text and repo.Save's long-format text for the identical instant were
+// NOT SQL-equal (a bare string is always the lexicographic PREFIX of, hence
+// less than, its long-format counterpart), so the keyset predicate's string
+// comparison (`spent_at < ? OR (spent_at = ? AND id > ?)`) misordered/dropped
+// rows at the tie. With the fix, every row (regardless of write path) stores
+// the bare layout and the pagination walk is correct across the tie.
+func TestListPageByAccount_Keyset_SaveWritten(t *testing.T) {
+	repo, db := pagingSetup(t)
+	f := fixture.New(t, db)
+	ctx := context.Background()
+	acct := vo.MustParseId(pAcctA)
+	tie := time.Date(2026, 6, 20, 9, 30, 0, 0, time.UTC)
+	older := time.Date(2026, 6, 19, 9, 30, 0, 0, time.UTC)
+
+	f.Transaction(fixture.Transaction{ID: "e0000000-0000-0000-0000-000000000001", UserID: pUser, AccountID: pAcctA, SpentAt: tie})
+	saveTx(t, repo, ctx, "e0000000-0000-0000-0000-000000000002", pAcctA, tie)
+	saveTx(t, repo, ctx, "e0000000-0000-0000-0000-000000000003", pAcctA, tie)
+	saveTx(t, repo, ctx, "e0000000-0000-0000-0000-000000000004", pAcctA, older)
+
+	first, err := repo.ListPageByAccount(ctx, acct, nil, 2)
+	if err != nil {
+		t.Fatalf("first page: %v", err)
+	}
+	wantIDs(t, first, "…001", "…002") // tied group (001,002,003): id ASC picks the two smallest
+
+	after := &domtransaction.PageCursor{SpentAt: first[1].SpentAt, ID: first[1].ID}
+	second, err := repo.ListPageByAccount(ctx, acct, after, 2)
+	if err != nil {
+		t.Fatalf("second page: %v", err)
+	}
+	wantIDs(t, second, "…003", "…004") // remaining tied row, then the older row
+}
+
 func TestListRecentByAccountIDs_PartitionsAndTransfers(t *testing.T) {
 	repo, db := pagingSetup(t)
 	ctx := context.Background()
