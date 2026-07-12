@@ -151,7 +151,8 @@ export default {
           'classification': 'Classification',
           'data': 'Data',
           'preferences': 'Preferences'
-        }
+        },
+        'footer': { 'api': 'API' }
       },
       'sync': { 'menu_item': 'Full sync', 'failing': 'Can\'t reach the server — retrying' },
       'accounts': {

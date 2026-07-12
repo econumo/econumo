@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getLocaleOptions } from '@/lib/config'
+import { getLocaleOptions, getVersion, backendHost } from '@/lib/config'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
@@ -103,6 +103,19 @@ export function SettingsPage() {
           ) : null}
         </div>
       </div>
+
+      <footer className="flex items-center justify-center gap-2 py-1 text-xs text-muted-foreground/60">
+        <span>Econumo {getVersion()}</span>
+        <span aria-hidden="true">·</span>
+        <a
+          href={`${backendHost()}/api/doc`}
+          target="_blank"
+          rel="noreferrer"
+          className="transition-colors hover:text-muted-foreground"
+        >
+          {t('pages.settings.settings.footer.api')}
+        </a>
+      </footer>
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
       <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
