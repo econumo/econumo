@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getLocaleOptions } from '@/lib/config'
+import { getLocaleOptions, getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
@@ -14,6 +14,10 @@ import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
+
+// A tagged release (e.g. "v1.2.3") links to its notes; anything else ("dev",
+// a commit sha) has no release page, so it stays plain text.
+const SEMVER = /^v\d+\.\d+\.\d+$/
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -50,6 +54,7 @@ export function SettingsPage() {
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
+  const version = getVersion()
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -103,6 +108,31 @@ export function SettingsPage() {
           ) : null}
         </div>
       </div>
+
+      <footer className="flex items-center justify-center gap-2 py-1 text-xs text-muted-foreground/60">
+        {SEMVER.test(version) ? (
+          <a
+            href={`${getWebsiteUrl()}/releases/${version}/`}
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-muted-foreground"
+          >
+            Econumo {version}
+          </a>
+        ) : (
+          <span>Econumo {version}</span>
+        )}
+        <span aria-hidden="true">·</span>
+        <a
+          href={`${backendHost()}/api/doc`}
+          target="_blank"
+          rel="noreferrer"
+          className="transition-colors hover:text-muted-foreground"
+        >
+          {t('pages.settings.settings.footer.api')}
+        </a>
+      </footer>
+
 
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
       <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
