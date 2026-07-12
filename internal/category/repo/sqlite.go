@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -45,4 +46,15 @@ func (sqliteQuerier) InsertOperationId(ctx context.Context, db backend.DBTX, p i
 
 func (sqliteQuerier) MarkOperationHandled(ctx context.Context, db backend.DBTX, p markOpParams) error {
 	return sqlitegen.New(db).MarkOperationHandled(ctx, p)
+}
+
+func (sqliteQuerier) UsageCounts(ctx context.Context, db backend.DBTX, userID string, since time.Time) (map[string]int, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT c.id, COUNT(t.id) FROM categories c
+		 JOIN transactions t ON t.category_id = c.id AND t.spent_at >= ?
+		 WHERE c.user_id = ? GROUP BY c.id`, since, userID)
+	if err != nil {
+		return nil, err
+	}
+	return scanUsageCounts(rows)
 }

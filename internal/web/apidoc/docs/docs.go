@@ -2309,6 +2309,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/category/sort-category-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Reorders the user's categories server-side by name or by usage over a sliding window, and returns the full ordered list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Category"
+                ],
+                "summary": "Sort the category list",
+                "parameters": [
+                    {
+                        "description": "Sort category list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortCategoryListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortCategoryListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/category/unarchive-category": {
             "post": {
                 "security": [
@@ -7481,6 +7550,31 @@ const docTemplate = `{
         },
         "model.ShowFolderResult": {
             "type": "object"
+        },
+        "model.SortCategoryListRequest": {
+            "type": "object",
+            "properties": {
+                "by": {
+                    "type": "string"
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "periodMonths": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.SortCategoryListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategoryResult"
+                    }
+                }
+            }
         },
         "model.StructureResult": {
             "type": "object",

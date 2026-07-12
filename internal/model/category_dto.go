@@ -195,3 +195,51 @@ type OrderCategoryListResult struct {
 type GetCategoryListResult struct {
 	Items []CategoryResult `json:"items"`
 }
+
+// SortCategoryListRequest is the sort-category-list body: server-side sorting
+// of the user's categories by name or by usage over a sliding window.
+type SortCategoryListRequest struct {
+	By           string `json:"by"`
+	Direction    string `json:"direction"`
+	PeriodMonths int    `json:"periodMonths"`
+}
+
+func (r SortCategoryListRequest) Validate() error {
+	return validateSortRequest(r.By, r.Direction, r.PeriodMonths)
+}
+
+// validateSortRequest is shared by the category/payee/tag sort DTOs (identical
+// frozen messages).
+func validateSortRequest(by, direction string, periodMonths int) error {
+	var fields []errs.FieldError
+	switch by {
+	case "name":
+		if periodMonths != 0 {
+			fields = append(fields, errs.FieldError{Key: "periodMonths", Message: "periodMonths is only valid when by is usage."})
+		}
+	case "usage":
+		if periodMonths < 1 || periodMonths > 6 {
+			fields = append(fields, errs.FieldError{Key: "periodMonths", Message: "This value should be an integer between 1 and 6."})
+		}
+	case "":
+		fields = append(fields, errs.FieldError{Key: "by", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	default:
+		fields = append(fields, errs.FieldError{Key: "by", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+	}
+	switch direction {
+	case "asc", "desc":
+	case "":
+		fields = append(fields, errs.FieldError{Key: "direction", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	default:
+		fields = append(fields, errs.FieldError{Key: "direction", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// SortCategoryListResult is the sort-category-list response: {items: [...]}.
+type SortCategoryListResult struct {
+	Items []CategoryResult `json:"items"`
+}
