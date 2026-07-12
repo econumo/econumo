@@ -10,6 +10,10 @@
 //	                            module-supplied RegisterAPI seam attaches the
 //	                            public group (login/register/remind/reset, plus
 //	                            /api/doc) and the authenticated group here
+//	/mcp              (*)    -> MCP endpoint (JSON-RPC over Streamable HTTP),
+//	                            wrapped in the global chain plus the caller-
+//	                            supplied auth/timezone-fallback handler; nil
+//	                            Deps.MCP leaves it unmounted
 //	/                 (*)    -> SPA file server with index.html fallback
 //
 // The auth middleware itself is built in the user module and is applied by
@@ -71,6 +75,10 @@ type Deps struct {
 	// stays decoupled from the translation catalogue package; nil disables
 	// language resolution (every request defaults to "en").
 	SupportedLanguages []string
+
+	// MCP is the fully-wrapped MCP endpoint handler (auth + timezone fallback
+	// applied by the composition root). Nil = endpoint not mounted.
+	MCP http.Handler
 }
 
 // New builds the root http.Handler from deps.
@@ -108,6 +116,13 @@ func New(deps Deps) http.Handler {
 		deps.RegisterAPI(apiMux)
 	}
 	root.Handle("/api/", global(apiMux))
+
+	// MCP endpoint. Mounted at the root (outside /api: JSON-RPC, not the REST
+	// contract, so the apiparity machinery must not scan it) but inside the
+	// same global chain.
+	if deps.MCP != nil {
+		root.Handle("/mcp", global(deps.MCP))
+	}
 
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so

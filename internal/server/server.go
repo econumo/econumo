@@ -50,6 +50,8 @@ import (
 	handleruser "github.com/econumo/econumo/internal/user/api"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/apidoc"
+	webmcp "github.com/econumo/econumo/internal/web/mcp"
+	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -228,11 +230,20 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		apidoc.RegisterAPI(),
 	)
 
+	mcpRegister := webmcp.Compose(
+	// Feature registrations land here task by task.
+	)
+	mcpHandler := middleware.Chain(
+		middleware.Auth(authn, cfg.IsDev()),
+		timezoneFallback(userSvc),
+	)(webmcp.NewHandler(mcpRegister))
+
 	return router.New(router.Deps{
 		Cfg:                cfg,
 		DB:                 pinger{db},
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
+		MCP:                mcpHandler,
 	})
 }
 
