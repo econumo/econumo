@@ -24,6 +24,7 @@ const (
 	locationKey ctxKey = iota
 	logAttrsKey
 	languageKey
+	explicitLocationKey
 )
 
 // WithLocation returns a context carrying the request's timezone.
@@ -52,6 +53,18 @@ func Language(ctx context.Context) string {
 		return lang
 	}
 	return "en"
+}
+
+// WithExplicitLocation is WithLocation for a timezone the CALLER supplied
+// (X-Timezone header) rather than the UTC default; the distinction lets the
+// timezone-persist path ignore defaulted requests.
+func WithExplicitLocation(ctx context.Context, loc *time.Location) context.Context {
+	return context.WithValue(WithLocation(ctx, loc), explicitLocationKey, true)
+}
+
+func IsLocationExplicit(ctx context.Context) bool {
+	v, _ := ctx.Value(explicitLocationKey).(bool)
+	return v
 }
 
 // logAccumulator is a request-scoped, pointer-backed bag of structured log
