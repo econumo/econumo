@@ -109,3 +109,38 @@ func TestUserIDMissing(t *testing.T) {
 	}
 	_ = vo.Id{}
 }
+
+func TestPromptsListAndGet(t *testing.T) {
+	ts := httptest.NewServer(webmcp.NewHandler(webmcp.Compose()))
+	defer ts.Close()
+
+	// Test: prompts/list returns both names
+	_, out := rpc(t, ts.URL, `{"jsonrpc":"2.0","id":1,"method":"prompts/list","params":{}}`)
+	outJSON := string(mustJSON(t, out))
+	if !strings.Contains(outJSON, "log-expense") {
+		t.Fatalf("prompts/list missing log-expense: %s", outJSON)
+	}
+	if !strings.Contains(outJSON, "budget-review") {
+		t.Fatalf("prompts/list missing budget-review: %s", outJSON)
+	}
+
+	// Test: prompts/get log-expense with description contains both description and create_transaction
+	_, out = rpc(t, ts.URL, `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"log-expense","arguments":{"description":"5 coffee"}}}`)
+	outJSON = string(mustJSON(t, out))
+	if !strings.Contains(outJSON, "5 coffee") {
+		t.Fatalf("log-expense prompt missing description: %s", outJSON)
+	}
+	if !strings.Contains(outJSON, "create_transaction") {
+		t.Fatalf("log-expense prompt missing create_transaction: %s", outJSON)
+	}
+
+	// Test: prompts/get budget-review without arguments contains get_budget and "the current month"
+	_, out = rpc(t, ts.URL, `{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"budget-review","arguments":{}}}`)
+	outJSON = string(mustJSON(t, out))
+	if !strings.Contains(outJSON, "get_budget") {
+		t.Fatalf("budget-review prompt missing get_budget: %s", outJSON)
+	}
+	if !strings.Contains(outJSON, "the current month") {
+		t.Fatalf("budget-review prompt missing 'the current month': %s", outJSON)
+	}
+}

@@ -36,6 +36,7 @@ func NewHandler(register Register) http.Handler {
 		&sdk.ServerOptions{Instructions: instructions},
 	)
 	register(srv)
+	addPrompts(srv)
 	return sdk.NewStreamableHTTPHandler(
 		func(*http.Request) *sdk.Server { return srv },
 		&sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true},
