@@ -1,3 +1,4 @@
+import type { Query } from '@tanstack/react-query'
 import { QueryClient } from '@tanstack/react-query'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { getVersion } from './config'
@@ -19,12 +20,20 @@ export function createAppQueryClient() {
   })
 }
 
+// query families that must NOT hit localStorage: on-demand full-list fetches
+// (search) and month windows (budget dialog) would re-inflate storage
+const EPHEMERAL_QUERIES = new Set(['transactionSearch', 'transactionPeriod'])
+
 export function createPersistOptions() {
   return {
     persister: createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY }),
     maxAge: CACHE_MAX_AGE_MS,
     // a release may change response shapes; never restore across versions
     buster: getVersion(),
+    dehydrateOptions: {
+      shouldDehydrateQuery: (query: Query) =>
+        query.state.status === 'success' && !EPHEMERAL_QUERIES.has(query.queryKey[0] as string),
+    },
   }
 }
 
