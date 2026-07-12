@@ -64,6 +64,27 @@ it('renders the menu rows with exact labels and navigates', async () => {
 })
 
 
+it('shows a plain version label for non-release builds', async () => {
+  window.econumoConfig = { VERSION: 'dev' }
+  renderPage()
+  const label = await screen.findByText('Econumo dev')
+  expect(label.tagName).toBe('SPAN')
+})
+
+it('links a semver version to its release notes page', async () => {
+  window.econumoConfig = { VERSION: 'v1.2.3' }
+  renderPage()
+  const label = await screen.findByText('Econumo v1.2.3')
+  expect(label).toHaveAttribute('href', 'https://econumo.com/releases/v1.2.3/')
+})
+
+it('links to the API docs', async () => {
+  window.econumoConfig = { API_URL: 'https://api.example.test' }
+  renderPage()
+  const link = await screen.findByRole('link', { name: 'API' })
+  expect(link).toHaveAttribute('href', 'https://api.example.test/api/doc')
+})
+
 it('Import CSV and Export CSV rows open their dialogs', async () => {
   server.use(...coreHandlers())
   const user = userEvent.setup()
