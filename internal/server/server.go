@@ -19,6 +19,7 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
+	categorymcp "github.com/econumo/econumo/internal/category/mcp"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
 	appconnection "github.com/econumo/econumo/internal/connection"
@@ -36,12 +37,14 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
+	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/port"
 	appsystem "github.com/econumo/econumo/internal/system"
 	handlersystem "github.com/econumo/econumo/internal/system/api"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
+	tagmcp "github.com/econumo/econumo/internal/tag/mcp"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
@@ -231,7 +234,9 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	)
 
 	mcpRegister := webmcp.Compose(
-	// Feature registrations land here task by task.
+		categorymcp.Register(categoryReadSvc),
+		tagmcp.Register(tagReadSvc),
+		payeemcp.Register(payeeReadSvc),
 	)
 	mcpHandler := middleware.Chain(
 		middleware.Auth(authn, cfg.IsDev()),
