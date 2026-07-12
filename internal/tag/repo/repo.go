@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -28,6 +29,7 @@ type querier interface {
 	CountTagsByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertTag(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteTag(ctx context.Context, db backend.DBTX, id string) error
+	UsageCounts(ctx context.Context, db backend.DBTX, userID string, since time.Time) (map[string]int, error)
 }
 
 type Repo struct {
@@ -110,6 +112,26 @@ func (r *Repo) Save(ctx context.Context, t *model.Tag) error {
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteTag(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) UsageCounts(ctx context.Context, userID vo.Id, since time.Time) (map[string]int, error) {
+	return r.q.UsageCounts(ctx, r.db(ctx), userID.String(), since)
+}
+
+// scanUsageCounts is shared by both engine adapters: id -> count, one row per
+// tag that has at least one qualifying transaction.
+func scanUsageCounts(rows *sql.Rows) (map[string]int, error) {
+	defer rows.Close()
+	out := make(map[string]int)
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		out[id] = n
+	}
+	return out, rows.Err()
 }
 
 func hydrate(row tagRow) (*model.Tag, error) {

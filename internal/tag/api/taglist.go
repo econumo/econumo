@@ -32,6 +32,24 @@ func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.dev, h.svc.OrderTagList)
 }
 
+// SortTagList handles POST /api/v1/tag/sort-tag-list (auth).
+//
+// @Summary     Sort the tag list
+// @Description Reorders the user's tags server-side by name or by usage over a sliding window, and returns the full ordered list.
+// @Tags        Tag
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SortTagListRequest true "Sort tag list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SortTagListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/tag/sort-tag-list [post]
+func (h *Handlers) SortTagList(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.dev, h.svc.SortTagList)
+}
+
 // GetTagList handles GET /api/v1/tag/get-tag-list (auth). The request has no
 // body, so there is nothing to decode; the handler returns the user's tags
 // ordered by position.

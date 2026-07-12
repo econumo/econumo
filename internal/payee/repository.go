@@ -2,6 +2,7 @@ package payee
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -28,4 +29,8 @@ type Repository interface {
 	// Delete removes a payee. Transactions referencing it have payee_id set to
 	// NULL via the ON DELETE SET NULL FK.
 	Delete(ctx context.Context, id vo.Id) error
+
+	// UsageCounts returns, for each of the owner's payees that has at least one
+	// transaction with spent_at >= since, the count of such transactions.
+	UsageCounts(ctx context.Context, userID vo.Id, since time.Time) (map[string]int, error)
 }

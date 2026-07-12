@@ -152,3 +152,36 @@ func TestPayeeReadRepo_OwnPlusShared(t *testing.T) {
 		t.Fatalf("want own + shared (2), got %d", len(shared))
 	}
 }
+
+func TestPayeeRepo_UsageCounts(t *testing.T) {
+	repo, _, _, f := newRepo(t)
+	ctx := context.Background()
+	seedUser(t, f, userA)
+	_ = repo.Save(ctx, payee(payeeA1, userA, "X", 0))
+	_ = repo.Save(ctx, payee(payeeA2, userA, "Y", 1))
+	payeeZ := "ca700000-0000-0000-0000-0000000000a3" // never used
+	_ = repo.Save(ctx, payee(payeeZ, userA, "Z", 2))
+
+	f.Account(fixture.Account{ID: "acc00000-0000-0000-0000-0000000000c1", UserID: userA, CurrencyID: usdID, Name: "C"})
+	seed := func(id, payeeID, spent string) {
+		f.Transaction(fixture.Transaction{ID: id, UserID: userA, AccountID: "acc00000-0000-0000-0000-0000000000c1",
+			PayeeID: payeeID, Type: 0, Amount: "1.00000000", SpentAt: spent})
+	}
+	seed("7c000000-0000-0000-0000-000000000010", payeeA1, "2026-06-01 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000011", payeeA1, "2026-06-02 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000012", payeeA1, "2026-06-03 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000013", payeeA2, "2026-06-01 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000014", payeeA2, "2025-01-01 10:00:00") // outside the window
+
+	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	counts, err := repo.UsageCounts(ctx, vo.MustParseId(userA), since)
+	if err != nil {
+		t.Fatalf("UsageCounts: %v", err)
+	}
+	if counts[payeeA1] != 3 || counts[payeeA2] != 1 {
+		t.Errorf("counts = %v, want payeeA1=3 payeeA2=1", counts)
+	}
+	if _, ok := counts[payeeZ]; ok {
+		t.Errorf("unused payee must be absent from the map, got %v", counts)
+	}
+}

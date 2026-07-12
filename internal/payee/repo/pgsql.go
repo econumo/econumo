@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -38,4 +39,15 @@ func (pgsqlQuerier) UpsertPayee(ctx context.Context, db backend.DBTX, p upsertPa
 
 func (pgsqlQuerier) DeletePayee(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeletePayee(ctx, id)
+}
+
+func (pgsqlQuerier) UsageCounts(ctx context.Context, db backend.DBTX, userID string, since time.Time) (map[string]int, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT p.id, COUNT(t.id) FROM payees p
+		 JOIN transactions t ON t.payee_id = p.id AND t.spent_at >= $1
+		 WHERE p.user_id = $2 GROUP BY p.id`, since, userID)
+	if err != nil {
+		return nil, err
+	}
+	return scanUsageCounts(rows)
 }

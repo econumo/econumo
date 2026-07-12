@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -29,4 +30,15 @@ func (sqliteQuerier) UpsertPayee(ctx context.Context, db backend.DBTX, p upsertP
 
 func (sqliteQuerier) DeletePayee(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeletePayee(ctx, id)
+}
+
+func (sqliteQuerier) UsageCounts(ctx context.Context, db backend.DBTX, userID string, since time.Time) (map[string]int, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT p.id, COUNT(t.id) FROM payees p
+		 JOIN transactions t ON t.payee_id = p.id AND t.spent_at >= ?
+		 WHERE p.user_id = ? GROUP BY p.id`, since, userID)
+	if err != nil {
+		return nil, err
+	}
+	return scanUsageCounts(rows)
 }

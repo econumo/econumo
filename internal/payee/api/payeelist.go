@@ -32,6 +32,24 @@ func (h *Handlers) OrderPayeeList(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.dev, h.svc.OrderPayeeList)
 }
 
+// SortPayeeList handles POST /api/v1/payee/sort-payee-list (auth).
+//
+// @Summary     Sort the payee list
+// @Description Reorders the user's payees server-side by name or by usage over a sliding window, and returns the full ordered list.
+// @Tags        Payee
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SortPayeeListRequest true "Sort payee list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SortPayeeListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/payee/sort-payee-list [post]
+func (h *Handlers) SortPayeeList(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.dev, h.svc.SortPayeeList)
+}
+
 // GetPayeeList handles GET /api/v1/payee/get-payee-list (auth). The request has
 // no body, so there is nothing to decode; the handler returns the user's payees
 // ordered by position.

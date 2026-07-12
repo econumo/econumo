@@ -132,3 +132,20 @@ type OrderPayeeListResult struct {
 type GetPayeeListResult struct {
 	Items []PayeeResult `json:"items"`
 }
+
+// SortPayeeListRequest is the sort-payee-list body: server-side sorting of the
+// user's payees by name or by usage over a sliding window.
+type SortPayeeListRequest struct {
+	By           string `json:"by"`
+	Direction    string `json:"direction"`
+	PeriodMonths int    `json:"periodMonths"`
+}
+
+func (r SortPayeeListRequest) Validate() error {
+	return validateSortRequest(r.By, r.Direction, r.PeriodMonths)
+}
+
+// SortPayeeListResult is the sort-payee-list response: {items: [...]}.
+type SortPayeeListResult struct {
+	Items []PayeeResult `json:"items"`
+}
