@@ -62,6 +62,8 @@ func WithExplicitLocation(ctx context.Context, loc *time.Location) context.Conte
 	return context.WithValue(WithLocation(ctx, loc), explicitLocationKey, true)
 }
 
+// IsLocationExplicit reports whether the request's timezone came from the
+// caller (WithExplicitLocation) rather than being defaulted or unset.
 func IsLocationExplicit(ctx context.Context) bool {
 	v, _ := ctx.Value(explicitLocationKey).(bool)
 	return v

@@ -9,6 +9,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
@@ -16,9 +17,9 @@ import (
 )
 
 type listInput struct {
-	AccountID   string `json:"account_id,omitempty" jsonschema:"filter by account id (UUID)"`
-	PeriodStart string `json:"period_start,omitempty" jsonschema:"inclusive start, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'"`
-	PeriodEnd   string `json:"period_end,omitempty" jsonschema:"inclusive end, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'"`
+	AccountID   string `json:"account_id,omitempty" jsonschema:"filter by account id (UUID); mutually exclusive with period_start/period_end"`
+	PeriodStart string `json:"period_start,omitempty" jsonschema:"inclusive start, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_end; mutually exclusive with account_id"`
+	PeriodEnd   string `json:"period_end,omitempty" jsonschema:"inclusive end, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_start; mutually exclusive with account_id"`
 }
 
 type txFields struct {
@@ -82,12 +83,18 @@ func (f txFields) toRequestFields() (typ string, amount vo.FlexString, accountID
 func Register(svc *apptransaction.Service) webmcp.Register {
 	return func(s *sdk.Server) {
 		sdk.AddTool(s, &sdk.Tool{Name: "list_transactions",
-			Description: "List the user's transactions, optionally filtered by account and/or period."},
+			Description: "List the user's transactions, optionally filtered by EITHER account_id OR a full period (period_start and period_end together), not both."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in listInput) (*sdk.CallToolResult, model.GetTransactionListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_transactions")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, model.GetTransactionListResult{}, err
+				}
+				if in.AccountID != "" && (in.PeriodStart != "" || in.PeriodEnd != "") {
+					return nil, model.GetTransactionListResult{}, errs.NewValidation("account_id cannot be combined with period filters")
+				}
+				if (in.PeriodStart != "") != (in.PeriodEnd != "") {
+					return nil, model.GetTransactionListResult{}, errs.NewValidation("period_start and period_end must be provided together")
 				}
 				res, err := svc.GetTransactionList(ctx, userID, model.TransactionListRequest{
 					AccountId:   in.AccountID,

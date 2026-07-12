@@ -21,6 +21,7 @@ import (
 func UserID(ctx context.Context) (vo.Id, error) {
 	id, ok := middleware.UserIDFromCtx(ctx)
 	if !ok {
+		slog.ErrorContext(ctx, "mcp user missing from context")
 		return vo.Id{}, errors.New("Internal error")
 	}
 	return id, nil

@@ -1,19 +1,21 @@
-package server_test
+package server
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
-	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/mcptest"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
@@ -25,7 +27,7 @@ func newTimezoneTestUserSvc(t *testing.T, db *dbtest.DB) *appuser.Service {
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
-	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
+	budgets := NewUserBudgetAccess(db.Engine, db.TX)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false)
 }
 
@@ -34,7 +36,7 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
 	userSvc := newTimezoneTestUserSvc(t, db)
-	authn := server.NewTimezoneTrackingAuthenticator(authstub.Authenticator{}, userSvc)
+	authn := NewTimezoneTrackingAuthenticator(authstub.Authenticator{}, userSvc)
 
 	loc, err := time.LoadLocation("Europe/Amsterdam")
 	if err != nil {
@@ -64,4 +66,82 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	if _, _, err := authn.Authenticate(ctx, "not-a-user-id"); err == nil {
 		t.Fatal("want auth error")
 	}
+}
+
+// runTimezoneFallback runs the middleware over ctx and reports the timezone
+// the wrapped handler observed via reqctx.Location.
+func runTimezoneFallback(t *testing.T, users *appuser.Service, ctx context.Context) string {
+	t.Helper()
+	var got string
+	h := timezoneFallback(users)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = reqctx.Location(r.Context()).String()
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil).WithContext(ctx)
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	return got
+}
+
+// timezoneFallbackFixture builds a fresh DB per subtest: the sqlite fixture's
+// no-crypto identifier is derived only from the id's leading bytes, which are
+// identical for UUIDv7s minted within the same fixture.User needs one DB per
+// scenario to avoid spurious UNIQUE collisions.
+func timezoneFallbackFixture(t *testing.T) (*appuser.Service, *fixture.Builder) {
+	t.Helper()
+	db := dbtest.NewSQLite(t)
+	return newTimezoneTestUserSvc(t, db), fixture.New(t, db)
+}
+
+func TestTimezoneFallback(t *testing.T) {
+	t.Run("non-explicit uses stored timezone", func(t *testing.T) {
+		userSvc, f := timezoneFallbackFixture(t)
+		userID := f.User(fixture.User{})
+		uid, err := vo.ParseId(userID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := userSvc.PersistTimezone(context.Background(), uid, "Europe/Amsterdam"); err != nil {
+			t.Fatal(err)
+		}
+		ctx := mcptest.CtxWithUser(t, userID)
+		if got := runTimezoneFallback(t, userSvc, ctx); got != "Europe/Amsterdam" {
+			t.Fatalf("timezone = %q, want Europe/Amsterdam", got)
+		}
+	})
+
+	t.Run("explicit header wins over stored timezone", func(t *testing.T) {
+		userSvc, f := timezoneFallbackFixture(t)
+		userID := f.User(fixture.User{})
+		uid, err := vo.ParseId(userID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := userSvc.PersistTimezone(context.Background(), uid, "Europe/Amsterdam"); err != nil {
+			t.Fatal(err)
+		}
+		loc, err := time.LoadLocation("America/New_York")
+		if err != nil {
+			t.Fatalf("LoadLocation: %v", err)
+		}
+		ctx := reqctx.WithExplicitLocation(mcptest.CtxWithUser(t, userID), loc)
+		if got := runTimezoneFallback(t, userSvc, ctx); got != "America/New_York" {
+			t.Fatalf("timezone = %q, want America/New_York", got)
+		}
+	})
+
+	t.Run("no stored timezone falls back to UTC", func(t *testing.T) {
+		userSvc, f := timezoneFallbackFixture(t)
+		userID := f.User(fixture.User{})
+		ctx := mcptest.CtxWithUser(t, userID)
+		if got := runTimezoneFallback(t, userSvc, ctx); got != "UTC" {
+			t.Fatalf("timezone = %q, want UTC", got)
+		}
+	})
+
+	t.Run("no auth user in context defaults to UTC without panic", func(t *testing.T) {
+		userSvc, _ := timezoneFallbackFixture(t)
+		ctx := context.Background()
+		if got := runTimezoneFallback(t, userSvc, ctx); got != "UTC" {
+			t.Fatalf("timezone = %q, want UTC", got)
+		}
+	})
 }

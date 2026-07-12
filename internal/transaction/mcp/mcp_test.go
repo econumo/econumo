@@ -346,3 +346,48 @@ func TestListTransactionsFilters(t *testing.T) {
 		t.Fatalf("list account filter: expected empty, got %d items: %#v", len(items2), items2)
 	}
 }
+
+func TestListTransactionsFilters_InvalidCombos(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "list_transactions",
+		Arguments: map[string]any{
+			"account_id":   accountID,
+			"period_start": "2024-04-01",
+			"period_end":   "2024-04-02",
+		},
+	})
+	if err != nil {
+		t.Fatalf("account_id+period: transport error: %v", err)
+	}
+	if !res.IsError {
+		t.Fatalf("account_id+period: expected isError, got: %#v", res)
+	}
+	text, ok := res.Content[0].(*sdk.TextContent)
+	if !ok || text.Text != "account_id cannot be combined with period filters" {
+		t.Fatalf("account_id+period: unexpected message: %#v", res.Content)
+	}
+
+	res2, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "list_transactions",
+		Arguments: map[string]any{"period_start": "2024-04-01"},
+	})
+	if err != nil {
+		t.Fatalf("lone period_start: transport error: %v", err)
+	}
+	if !res2.IsError {
+		t.Fatalf("lone period_start: expected isError, got: %#v", res2)
+	}
+	text2, ok := res2.Content[0].(*sdk.TextContent)
+	if !ok || text2.Text != "period_start and period_end must be provided together" {
+		t.Fatalf("lone period_start: unexpected message: %#v", res2.Content)
+	}
+}

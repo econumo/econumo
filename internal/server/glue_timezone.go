@@ -20,7 +20,14 @@ import (
 type timezoneTrackingAuthenticator struct {
 	inner middleware.TokenAuthenticator
 	users *appuser.Service
-	seen  sync.Map // vo.Id -> string (last persisted IANA name)
+	// seen: vo.Id -> string (last persisted IANA name). Load-then-Store below is
+	// deliberately non-atomic under concurrent requests for the same user — a
+	// duplicate persist just repeats the same idempotent UPDATE, so "~one write
+	// per user" (not "exactly one") is the actual guarantee. It also records
+	// names PersistTimezone silently drops (e.g. "Local", or anything
+	// time.LoadLocation rejects) so a client that keeps sending one of those
+	// doesn't cause a repo call on every request.
+	seen sync.Map
 }
 
 func NewTimezoneTrackingAuthenticator(inner middleware.TokenAuthenticator, users *appuser.Service) middleware.TokenAuthenticator {
