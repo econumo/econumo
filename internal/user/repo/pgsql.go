@@ -52,3 +52,11 @@ func (pgsqlQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p opt
 func (pgsqlQuerier) UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error {
 	return pgsqlgen.New(db).UpdateUserLanguage(ctx, pgsqlgen.UpdateUserLanguageParams(p))
 }
+
+func (pgsqlQuerier) GetUserTimezone(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return pgsqlgen.New(db).GetUserTimezone(ctx, id)
+}
+
+func (pgsqlQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error {
+	return pgsqlgen.New(db).UpdateUserTimezone(ctx, pgsqlgen.UpdateUserTimezoneParams(p))
+}

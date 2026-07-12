@@ -42,6 +42,13 @@ type Repository interface {
 	// GetOptions loads just the option rows for a user (used by get-option-list,
 	// which does not need the full aggregate).
 	GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error)
+
+	// GetTimezone loads the caller-observed IANA timezone (empty string if never
+	// set). Missing user -> *errs.NotFoundError.
+	GetTimezone(ctx context.Context, id vo.Id) (string, error)
+
+	// UpdateTimezone persists the caller-observed IANA timezone.
+	UpdateTimezone(ctx context.Context, id vo.Id, tz string) error
 }
 
 // AccessTokens persists opaque bearer credentials (sessions + PATs). Liveness

@@ -45,3 +45,11 @@ func (sqliteQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p op
 func (sqliteQuerier) UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error {
 	return sqlitegen.New(db).UpdateUserLanguage(ctx, p)
 }
+
+func (sqliteQuerier) GetUserTimezone(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).GetUserTimezone(ctx, id)
+}
+
+func (sqliteQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error {
+	return sqlitegen.New(db).UpdateUserTimezone(ctx, p)
+}
