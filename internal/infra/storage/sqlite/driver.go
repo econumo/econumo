@@ -42,13 +42,27 @@ func innerModernSQLiteDriver() driver.Driver {
 // the bare layout every fixture and legacy row uses, which silently breaks
 // lexicographic datetime comparisons (including keyset pagination). Every
 // other value is left to database/sql's default converter.
+//
+// *time.Time is handled too: sqlc emits it for nullable datetime columns
+// (access_tokens.expires_at/revoked_at, users_connections_invites.expired_at,
+// ...) and repos bind those pointers directly — leaving it to ErrSkip would
+// let the default converter dereference the pointer and hand modernc a bare
+// time.Time again. A nil pointer stays with the default converter, which
+// binds it as SQL NULL.
 func checkNamedValue(nv *driver.NamedValue) error {
-	t, ok := nv.Value.(time.Time)
-	if !ok {
+	switch t := nv.Value.(type) {
+	case time.Time:
+		nv.Value = t.UTC().Format(datetime.Layout)
+		return nil
+	case *time.Time:
+		if t == nil {
+			return driver.ErrSkip
+		}
+		nv.Value = t.UTC().Format(datetime.Layout)
+		return nil
+	default:
 		return driver.ErrSkip
 	}
-	nv.Value = t.UTC().Format(datetime.Layout)
-	return nil
 }
 
 type wrapDriver struct{ inner driver.Driver }

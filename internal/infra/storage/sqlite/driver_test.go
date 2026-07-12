@@ -75,6 +75,48 @@ func TestWrappedDriver_TimeBindThroughPreparedStatement(t *testing.T) {
 	}
 }
 
+// TestWrappedDriver_TimePointerBind pins the *time.Time path: sqlc emits
+// *time.Time for nullable datetime columns (e.g. access_tokens.expires_at /
+// revoked_at, users_connections_invites.expired_at) and repos bind those
+// pointers directly. A non-nil pointer must store the same bare 19-char
+// layout as a value bind; a nil pointer must store SQL NULL (database/sql's
+// default converter behavior for nil pointers, which the checker must not
+// disturb).
+func TestWrappedDriver_TimePointerBind(t *testing.T) {
+	db, err := sql.Open(wrappedDriverName, "file:"+t.Name()+"?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	db.SetMaxOpenConns(1)
+
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, "CREATE TABLE t (id INTEGER PRIMARY KEY, ts DATETIME DEFAULT NULL)"); err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+
+	when := time.Date(2026, 6, 15, 12, 0, 0, 123456789, time.UTC)
+	var nilPtr *time.Time
+	if _, err := db.ExecContext(ctx, "INSERT INTO t (id, ts) VALUES (1, ?), (2, ?)", &when, nilPtr); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	var got sql.NullString
+	if err := db.QueryRowContext(ctx, "SELECT CAST(ts AS TEXT) FROM t WHERE id = 1").Scan(&got); err != nil {
+		t.Fatalf("select non-nil: %v", err)
+	}
+	if want := "2026-06-15 12:00:00"; !got.Valid || got.String != want {
+		t.Fatalf("stored ts (non-nil *time.Time) = %+v, want %q", got, want)
+	}
+
+	if err := db.QueryRowContext(ctx, "SELECT CAST(ts AS TEXT) FROM t WHERE id = 2").Scan(&got); err != nil {
+		t.Fatalf("select nil: %v", err)
+	}
+	if got.Valid {
+		t.Fatalf("stored ts (nil *time.Time) = %q, want SQL NULL", got.String)
+	}
+}
+
 // TestWrappedDriver_NonTimeValuesUnaffected proves checkNamedValue's ErrSkip
 // path leaves ordinary values to database/sql's default converter.
 func TestWrappedDriver_NonTimeValuesUnaffected(t *testing.T) {
