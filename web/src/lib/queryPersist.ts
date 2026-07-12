@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { QueryClient } from '@tanstack/react-query'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 import { getVersion } from './config'
@@ -9,12 +10,22 @@ export const QUERY_CACHE_KEY = 'econumo.query-cache'
 
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000
 
+// An unreachable backend (network error — no HTTP response) retries forever
+// with capped backoff, so the boot loader recovers by itself once the backend
+// is back. HTTP errors keep the default three attempts.
+function retryPolicy(failureCount: number, error: unknown): boolean {
+  if (axios.isAxiosError(error) && !error.response) {
+    return true
+  }
+  return failureCount < 3
+}
+
 export function createAppQueryClient() {
   return new QueryClient({
     defaultOptions: {
       // gcTime must outlive maxAge, or queries get garbage-collected out of
       // the persisted snapshot before it expires.
-      queries: { gcTime: CACHE_MAX_AGE_MS },
+      queries: { gcTime: CACHE_MAX_AGE_MS, retry: retryPolicy },
     },
   })
 }
