@@ -3,12 +3,21 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner } from '@/test/fixtures'
+import { queryKeys } from '@/app/queryKeys'
 import { useAccountTransactions, transactionTitleInfo } from './useAccountTransactions'
 import type { ViewTransaction } from './useAccountTransactions'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>
 )
+
+function makeWrapper() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  )
+  return { queryClient, wrapper }
+}
 
 const t = (key: string, params?: Record<string, string>) => {
   if (key.endsWith('transfer_from')) return `Transfer from ${params?.account}`
@@ -51,17 +60,87 @@ it('search matches category, payee, description and amount terms', async () => {
   })
   await waitFor(() => expect(result.current.length).toBeGreaterThan(0))
 
+  // search runs over an on-demand full-account fetch, not the in-memory window
   rerender({ search: 'coffee' })
-  expect(result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))).toEqual(['t1'])
+  await waitFor(() =>
+    expect(result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))).toEqual(['t1']),
+  )
 
   rerender({ search: 'salary' })
-  expect(result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))).toEqual(['t2'])
+  await waitFor(() =>
+    expect(result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))).toEqual(['t2']),
+  )
 
   rerender({ search: '9.99' })
-  expect(result.current.filter((e) => e.kind === 'transaction')).toHaveLength(1)
+  await waitFor(() => expect(result.current.filter((e) => e.kind === 'transaction')).toHaveLength(1))
 
   rerender({ search: 'nothing-matches' })
-  expect(result.current).toHaveLength(0)
+  await waitFor(() => expect(result.current).toHaveLength(0))
+})
+
+const author = { id: 'u1', name: 'U', avatar: 'face:fuchsia' }
+const base = { type: 'expense', amount: 1, amountRecipient: null, categoryId: null, description: '', payeeId: null, tagId: null, author, accountRecipientId: null }
+
+function setupHorizon(transactions: unknown[], pages: unknown) {
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.transactions, transactions)
+  queryClient.setQueryData(queryKeys.transactionPages, pages)
+  queryClient.setQueryData(queryKeys.accounts, [])
+  queryClient.setQueryData(queryKeys.categories, [])
+  queryClient.setQueryData(queryKeys.payees, [])
+  queryClient.setQueryData(queryKeys.tags, [])
+  return renderHook(() => useAccountTransactions('B', ''), { wrapper })
+}
+
+describe('useAccountTransactions horizon', () => {
+  it('hides rows older than the loaded horizon while hasMore', () => {
+    const { result } = setupHorizon(
+      [
+        { ...base, id: 'new', date: '2026-06-05 10:00:00', accountId: 'B' },
+        { ...base, id: 'stray', date: '2026-01-01 10:00:00', accountId: 'A', accountRecipientId: 'B', type: 'transfer', amountRecipient: 1 },
+      ],
+      { B: { nextCursor: 'c', hasMore: true, oldestLoaded: { date: '2026-06-05 10:00:00', id: 'new' } } },
+    )
+    const txIds = result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))
+    expect(txIds).toEqual(['new'])
+  })
+
+  it('shows everything once the account is exhausted', () => {
+    const { result } = setupHorizon(
+      [
+        { ...base, id: 'new', date: '2026-06-05 10:00:00', accountId: 'B' },
+        { ...base, id: 'old', date: '2026-01-01 10:00:00', accountId: 'B' },
+      ],
+      { B: { nextCursor: null, hasMore: false, oldestLoaded: null } },
+    )
+    const txIds = result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))
+    expect(txIds).toEqual(['new', 'old'])
+  })
+
+  it('search bypasses the horizon by fetching the full account list on demand', async () => {
+    server.use(
+      ...coreHandlers({
+        transactions: [
+          { ...base, id: 'new', date: '2026-06-05 10:00:00', accountId: 'B' },
+          { ...base, id: 'old', date: '2026-01-01 10:00:00', accountId: 'B', description: 'lunch' },
+        ],
+      }),
+    )
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.transactions, [{ ...base, id: 'new', date: '2026-06-05 10:00:00', accountId: 'B' }])
+    queryClient.setQueryData(queryKeys.transactionPages, {
+      B: { nextCursor: 'c', hasMore: true, oldestLoaded: { date: '2026-06-05 10:00:00', id: 'new' } },
+    })
+    queryClient.setQueryData(queryKeys.accounts, [])
+    queryClient.setQueryData(queryKeys.categories, [])
+    queryClient.setQueryData(queryKeys.payees, [])
+    queryClient.setQueryData(queryKeys.tags, [])
+
+    const { result } = renderHook(() => useAccountTransactions('B', 'lunch'), { wrapper })
+    await waitFor(() => expect(result.current.filter((e) => e.kind === 'transaction')).toHaveLength(1))
+    const txIds = result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))
+    expect(txIds).toEqual(['old'])
+  })
 })
 
 it('title logic: transfer direction, source priority and suppression source', () => {
