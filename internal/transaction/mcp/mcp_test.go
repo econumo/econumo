@@ -9,11 +9,17 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appcategory "github.com/econumo/econumo/internal/category"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	apppayee "github.com/econumo/econumo/internal/payee"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
+	apptag "github.com/econumo/econumo/internal/tag"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/mcptest"
@@ -27,17 +33,41 @@ func newTransactionService(t *testing.T, db *dbtest.DB) *apptransaction.Service 
 	t.Helper()
 	txm := db.TX
 	curLookup := currencyrepo.New(db.Engine, txm)
+	accessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm))
 	accSvc := appaccount.NewService(
 		accountrepo.NewRepo(db.Engine, txm), accountrepo.NewFolderRepo(db.Engine, txm),
+		accountrepo.NewAccessRepo(db.Engine, txm),
 		server.NewAccountCurrencyLookup(curLookup), server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
-		nil, nil, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
+		accessResolver, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 	txRepo := transactionrepo.NewRepo(db.Engine, txm)
-	accessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm))
+
+	// The importer backs the owned-entity checks on create/update, so it must be
+	// wired for real here — a nil one panics as soon as a category/payee/tag is set.
+	catRepo := categoryrepo.NewRepo(db.Engine, txm)
+	tgRepo := tagrepo.NewRepo(db.Engine, txm)
+	pyRepo := payeerepo.NewRepo(db.Engine, txm)
+	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver)
+	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), tagrepo.NewReadRepo(db.Engine, txm), accessResolver)
+	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), payeerepo.NewReadRepo(db.Engine, txm), accessResolver)
+	txImport := transactionrepo.NewImportLookup(
+		server.NewTransactionImportAccounts(accSvc, accountrepo.NewRepo(db.Engine, txm), accountrepo.NewFolderRepo(db.Engine, txm), curLookup, "USD"),
+		accessResolver,
+		server.NewTransactionImportCategories(catSvc, catRepo),
+		server.NewTransactionImportPayees(pySvc, pyRepo),
+		server.NewTransactionImportTags(tgSvc, tgRepo),
+		txRepo,
+	)
+	txExport := transactionrepo.NewExportLookup(
+		txRepo,
+		server.NewTransactionCategoryNameLookup(catRepo),
+		server.NewTransactionTagNameLookup(tgRepo),
+		server.NewTransactionPayeeNameLookup(pyRepo),
+	)
 	return apptransaction.NewService(
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
-		nil, nil, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
+		txExport, txImport, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 }
 

@@ -68,13 +68,13 @@ func flexPtr(s string) *vo.FlexString {
 	if s == "" {
 		return nil
 	}
-	f := vo.FlexString(s)
+	f := vo.NewFlexString(s)
 	return &f
 }
 
 func (f txFields) toRequestFields() (typ string, amount vo.FlexString, accountID, date string,
 	categoryID, accountRecipientID *string, amountRecipient *vo.FlexString, description, payeeID, tagID *string) {
-	return f.Type, vo.FlexString(f.Amount), f.AccountID, expand(f.Date, false),
+	return f.Type, vo.NewFlexString(f.Amount), f.AccountID, expand(f.Date, false),
 		strPtr(f.CategoryID), strPtr(f.AccountRecipientID), flexPtr(f.AmountRecipient),
 		strPtr(f.Description), strPtr(f.PayeeID), strPtr(f.TagID)
 }

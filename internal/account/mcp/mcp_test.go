@@ -27,8 +27,9 @@ func newAccountService(t *testing.T, db *dbtest.DB) *appaccount.Service {
 	curLookup := currencyrepo.New(db.Engine, txm)
 	accCur := server.NewAccountCurrencyLookup(curLookup)
 	accUser := server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm))
+	accessRepo := accountrepo.NewAccessRepo(db.Engine, txm)
 	opGuard := operationrepo.NewGuard(db.Engine, txm)
-	return appaccount.NewService(repo, folderRepo, accCur, accUser, nil, nil, txm, opGuard, clock.New())
+	return appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, nil, txm, opGuard, clock.New())
 }
 
 func TestAccountsResource(t *testing.T) {

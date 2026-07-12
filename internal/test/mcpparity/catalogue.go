@@ -1,0 +1,90 @@
+package mcpparity
+
+// The MCP scenario catalogue: JSON-RPC call sequences replayed against the
+// live /mcp endpoint (the production handler, server.BuildAPI), on top of the
+// apiparity.Seed fixture. Body shapes for the REST seeding steps are copied
+// from the existing apiparity catalogue files (internal/test/apiparity/*.go)
+// so the two suites stay in lockstep with the real endpoints' validation.
+
+import "github.com/econumo/econumo/internal/test/apiparity"
+
+func init() {
+	register(Scenario{Name: "lifecycle", Steps: []Step{
+		{Label: "initialize", RPC: `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"mcpparity","version":"1"}}}`},
+		{Label: "tools-list", RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`},
+		{Label: "resources-list", RPC: `{"jsonrpc":"2.0","id":3,"method":"resources/list","params":{}}`},
+		{Label: "prompts-list", RPC: `{"jsonrpc":"2.0","id":4,"method":"prompts/list","params":{}}`},
+	}})
+
+	// unauthorized exercises the auth gate: /mcp sits behind the same bearer
+	// middleware as the REST API, so a missing token never reaches the MCP
+	// server — it gets the standard 401 envelope, not a JSON-RPC error.
+	register(Scenario{Name: "unauthorized", Steps: []Step{
+		{Label: "initialize-no-auth", NoAuth: true,
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"mcpparity","version":"1"}}}`},
+	}})
+
+	// resources REST-seeds one fresh category/tag/payee/account (on top of the
+	// apiparity fixture's own category/tag/payee/account) so every
+	// econumo://... resource reflects both the seeded fixture AND a
+	// just-written row, then reads all seven resources.
+	register(Scenario{Name: "resources", Steps: []Step{
+		{Label: "seed-category", Method: "POST", Path: "/api/v1/category/create-category",
+			Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000c1", "name": "MCP Category", "type": "expense", "icon": "tag"}},
+		{Label: "seed-tag", Method: "POST", Path: "/api/v1/tag/create-tag",
+			Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000c1", "name": "MCP Tag"}},
+		{Label: "seed-payee", Method: "POST", Path: "/api/v1/payee/create-payee",
+			Body: map[string]any{"id": "20000000-0000-0000-0000-0000000000c1", "name": "MCP Payee"}},
+		{Label: "seed-account", Method: "POST", Path: "/api/v1/account/create-account",
+			Body: map[string]any{"id": "a0000000-0000-0000-0000-0000000000c1", "name": "MCP Account", "icon": "bank", "currencyId": apiparity.USD, "folderId": apiparity.OwnerFolder}},
+		{Label: "read-accounts", RPC: `{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"econumo://accounts"}}`},
+		{Label: "read-categories", RPC: `{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"econumo://categories"}}`},
+		{Label: "read-currencies", RPC: `{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"econumo://currencies"}}`},
+		{Label: "read-payees", RPC: `{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"econumo://payees"}}`},
+		{Label: "read-tags", RPC: `{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"econumo://tags"}}`},
+		{Label: "read-user", RPC: `{"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"econumo://user"}}`},
+		{Label: "read-budgets", RPC: `{"jsonrpc":"2.0","id":7,"method":"resources/read","params":{"uri":"econumo://budgets"}}`},
+	}})
+
+	// budget REST-creates a budget then drives get_budget for a valid and an
+	// invalid month. Unlike category/tag/payee/account/transaction,
+	// create-budget honors the client-supplied id verbatim (it isn't an
+	// operation/idempotency id, see internal/budget/create.go) and its
+	// response is {item: {meta, filters, balances, ...}} rather than the
+	// {item: {id, ...}} shape extractItemID expects — so the seeded id is
+	// referenced directly (mcpBudgetID) instead of via CaptureID.
+	const mcpBudgetID = "b0000000-0000-0000-0000-0000000000c1"
+	register(Scenario{Name: "budget", Steps: []Step{
+		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
+			Body: map[string]any{"id": mcpBudgetID, "name": "MCP Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01"}},
+		{Label: "get-budget",
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"2024-04"}}}`},
+		{Label: "get-budget-bad-month",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"junk"}}}`},
+	}})
+
+	// transactions REST-seeds a FRESH account (so list_transactions starts
+	// empty rather than inheriting the fixture's two seeded transactions),
+	// captures its minted id, then drives create_transaction / list_transactions
+	// and an error-path create with a bogus category id. The scenario ends
+	// there rather than adding a delete_transaction step: create_transaction's
+	// MCP response only carries the new id inside the (normalized-away)
+	// structuredContent, so capturing it back out for a delete step would need
+	// a second extraction convention; update/delete are already covered by the
+	// transaction feature's own MCP tests (internal/transaction/mcp/mcp_test.go).
+	register(Scenario{Name: "transactions", Steps: []Step{
+		{Label: "seed-account", Method: "POST", Path: "/api/v1/account/create-account", CaptureID: true,
+			Body: map[string]any{"id": "a0000000-0000-0000-0000-0000000000c2", "name": "MCP Wallet", "icon": "wallet", "currencyId": apiparity.USD, "folderId": apiparity.OwnerFolder}},
+		{Label: "create-transaction",
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_transaction","arguments":{"type":"expense","amount":"12.50","account_id":"%s","date":"2024-04-02","category_id":"` + apiparity.CatFood + `"}}}`},
+		{Label: "list-transactions",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"%s"}}}`},
+		{Label: "create-transaction-bogus-category",
+			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_transaction","arguments":{"type":"expense","amount":"9.00","account_id":"%s","date":"2024-04-02","category_id":"00000000-0000-0000-0000-000000000000"}}}`},
+	}})
+
+	register(Scenario{Name: "prompts", Steps: []Step{
+		{Label: "get-log-expense", RPC: `{"jsonrpc":"2.0","id":1,"method":"prompts/get","params":{"name":"log-expense","arguments":{"description":"27.50 groceries at Lidl yesterday"}}}`},
+		{Label: "get-budget-review", RPC: `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"budget-review","arguments":{}}}`},
+	}})
+}

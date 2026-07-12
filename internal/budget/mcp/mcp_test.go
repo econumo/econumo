@@ -12,6 +12,7 @@ import (
 	budgetmcp "github.com/econumo/econumo/internal/budget/mcp"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	domcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -49,6 +50,7 @@ func newBudgetService(t *testing.T, db *dbtest.DB) *appbudget.Service {
 			server.NewBudgetTagMetadataLookup(tagRepo),
 			server.NewBudgetPayeeMetadataLookup(payeeRepo),
 		),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm)),
 		txm, clk,
 	)
 }
