@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
@@ -13,6 +14,8 @@ import type { Id } from '@/api/types'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { TagDto } from '@/api/dto/tag'
 import { useUiStore } from '@/app/uiStore'
+import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import * as transactionApi from '@/api/transaction'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -31,6 +34,18 @@ export interface BudgetTransactionsTarget {
   icon: string
   /** null = the budget base currency */
   currencyId: Id | null
+}
+
+// [monthStart, nextMonthStart) in the strict wire datetime format
+function monthBounds(periodStart: string): { periodStart: string; periodEnd: string } {
+  const [y, m] = periodStart.split('-').map(Number)
+  const nextY = m === 12 ? y + 1 : y
+  const nextM = m === 12 ? 1 : m + 1
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return {
+    periodStart: `${y}-${pad(m)}-01 00:00:00`,
+    periodEnd: `${nextY}-${pad(nextM)}-01 00:00:00`,
+  }
 }
 
 interface BudgetTransactionsDialogProps {
@@ -66,6 +81,17 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
     : null
   const { data: transactions, isLoading } = useBudgetTransactions(params)
 
+  // The flat cache holds only windows now; older own rows in this budget month
+  // may be outside them. Fetch the month once so editability detection keeps
+  // working (not persisted — see queryPersist).
+  const { data: monthTransactions } = useQuery({
+    queryKey: queryKeys.transactionPeriod(selectedDate),
+    queryFn: () => transactionApi.getTransactionList(monthBounds(selectedDate)).then((r) => r.items),
+    enabled: element !== null,
+    staleTime: TEN_MINUTES,
+    gcTime: TEN_MINUTES,
+  })
+
   if (!element) {
     return null
   }
@@ -74,7 +100,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
   // list; otherwise (a partner's row in a shared budget) a read-only shape is
   // synthesized from the budget wire — enough for the preview, never editable
   const toViewTransaction = (wireTx: BudgetTransactionDto): ViewTransaction => {
-    const tx = allTransactions?.find((item) => item.id === wireTx.id)
+    const tx = allTransactions?.find((item) => item.id === wireTx.id) ?? monthTransactions?.find((item) => item.id === wireTx.id)
     if (tx) {
       return {
         ...tx,
