@@ -25,7 +25,7 @@ func newTimezoneTestUserSvc(t *testing.T, db *dbtest.DB) *appuser.Service {
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
-	budgets := server.NewUserBudgetExistence(db.Engine, db.TX)
+	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false)
 }
 
