@@ -4142,6 +4142,24 @@ const docTemplate = `{
                         "description": "Period end (Y-m-d H:i:s or Y-m-d)",
                         "name": "periodEnd",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Page size (1-500); requires accountId. Keyset page mode.",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque page cursor from a previous response; requires limit",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newest N transactions per visible account (1-500); exclusive with all other params",
+                        "name": "perAccountLimit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -6812,11 +6830,20 @@ const docTemplate = `{
         "model.GetTransactionListResult": {
             "type": "object",
             "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TransactionAccountPageResult"
+                    }
+                },
                 "items": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.TransactionResult"
                     }
+                },
+                "page": {
+                    "$ref": "#/definitions/model.TransactionPageResult"
                 }
             }
         },
@@ -7494,6 +7521,31 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TransactionAccountPageResult": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TransactionPageResult": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "nextCursor": {
                     "type": "string"
                 }
             }

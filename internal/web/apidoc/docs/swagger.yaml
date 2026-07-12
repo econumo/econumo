@@ -788,10 +788,16 @@ definitions:
     type: object
   model.GetTransactionListResult:
     properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.TransactionAccountPageResult'
+        type: array
       items:
         items:
           $ref: '#/definitions/model.TransactionResult'
         type: array
+      page:
+        $ref: '#/definitions/model.TransactionPageResult'
     type: object
   model.GetUserDataResult:
     properties:
@@ -1228,6 +1234,22 @@ definitions:
       position:
         type: integer
       updatedAt:
+        type: string
+    type: object
+  model.TransactionAccountPageResult:
+    properties:
+      hasMore:
+        type: boolean
+      id:
+        type: string
+      nextCursor:
+        type: string
+    type: object
+  model.TransactionPageResult:
+    properties:
+      hasMore:
+        type: boolean
+      nextCursor:
         type: string
     type: object
   model.TransactionResult:
@@ -3965,6 +3987,19 @@ paths:
       - description: Period end (Y-m-d H:i:s or Y-m-d)
         in: query
         name: periodEnd
+        type: string
+      - description: Page size (1-500); requires accountId. Keyset page mode.
+        in: query
+        name: limit
+        type: string
+      - description: Opaque page cursor from a previous response; requires limit
+        in: query
+        name: cursor
+        type: string
+      - description: Newest N transactions per visible account (1-500); exclusive
+          with all other params
+        in: query
+        name: perAccountLimit
         type: string
       produces:
       - application/json

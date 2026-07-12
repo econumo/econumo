@@ -195,3 +195,13 @@ func (e envelope) errorsMap() map[string][]string {
 	}
 	return m
 }
+
+// dataMap decodes the success payload as a generic object for inspecting
+// optional/shape-varying keys (e.g. "page", "accounts").
+func (e envelope) dataMap() map[string]any {
+	m := map[string]any{}
+	if len(e.Data) > 0 {
+		_ = json.Unmarshal(e.Data, &m)
+	}
+	return m
+}
