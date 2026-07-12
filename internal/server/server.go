@@ -212,17 +212,19 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
 
+	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
+
 	registerAPI := router.Compose(
-		handleruser.RegisterAPI(userHandlers, userSvc, cfg.IsDev()),
-		handlercategory.RegisterAPI(categoryHandlers, userSvc, cfg.IsDev()),
-		handlertag.RegisterAPI(tagHandlers, userSvc, cfg.IsDev()),
-		handlerpayee.RegisterAPI(payeeHandlers, userSvc, cfg.IsDev()),
-		handlercurrency.RegisterAPI(currencyHandlers, userSvc, cfg.IsDev()),
-		handleraccount.RegisterAPI(accountHandlers, userSvc, cfg.IsDev()),
-		handlertransaction.RegisterAPI(transactionHandlers, userSvc, cfg.IsDev()),
-		handlerconnection.RegisterAPI(connectionHandlers, userSvc, cfg.IsDev()),
-		handlerbudget.RegisterAPI(budgetHandlers, userSvc, cfg.IsDev()),
-		handlersystem.RegisterAPI(systemHandlers, userSvc, cfg.IsDev()),
+		handleruser.RegisterAPI(userHandlers, authn, cfg.IsDev()),
+		handlercategory.RegisterAPI(categoryHandlers, authn, cfg.IsDev()),
+		handlertag.RegisterAPI(tagHandlers, authn, cfg.IsDev()),
+		handlerpayee.RegisterAPI(payeeHandlers, authn, cfg.IsDev()),
+		handlercurrency.RegisterAPI(currencyHandlers, authn, cfg.IsDev()),
+		handleraccount.RegisterAPI(accountHandlers, authn, cfg.IsDev()),
+		handlertransaction.RegisterAPI(transactionHandlers, authn, cfg.IsDev()),
+		handlerconnection.RegisterAPI(connectionHandlers, authn, cfg.IsDev()),
+		handlerbudget.RegisterAPI(budgetHandlers, authn, cfg.IsDev()),
+		handlersystem.RegisterAPI(systemHandlers, authn, cfg.IsDev()),
 		apidoc.RegisterAPI(),
 	)
 
