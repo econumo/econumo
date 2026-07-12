@@ -157,7 +157,13 @@ Two layers, mapped deliberately:
 - **Domain errors** (the `errs` taxonomy: validation, not-found, access
   denied) → MCP **tool errors** (`isError: true`) carrying the same
   human-readable message the REST envelope would; the model can self-correct
-  (e.g. re-read `econumo://categories` after a bad category id).
+  on genuine validation errors (e.g. an unparsable month string). This does
+  NOT cover an unknown reference id (category/payee/tag/account): that hits a
+  FK constraint at the DB, which is indistinguishable from an infrastructure
+  failure at the edge, so it surfaces as the generic `"Internal error"` tool
+  error below instead of a self-correctable message — REST 500s identically
+  on the same bad id today. A future service-level reference-id validation
+  would improve both edges together.
 - **Infrastructure errors** (DB failure, panics) → a generic `"Internal
   error"` **tool error**, not a JSON-RPC error response: the SDK's typed
   handlers can't emit JSON-RPC errors directly, so infra failures are mapped
@@ -176,7 +182,11 @@ Same two-tier slog discipline as the REST edge:
   specific tool call, resource read, or prompt get.
 - Tool **arguments are never logged** (amounts, payee names, free text — PII
   by this repo's standard). UUIDs only, as everywhere.
-- Status mapping as usual: domain tool errors WARN, infra errors ERROR.
+- Status mapping differs from REST: every tool call rides HTTP 200 (the
+  `isError` distinction lives inside the JSON-RPC body, not the status code),
+  so the per-request operation line is always INFO, whether or not the tool
+  result is an error. Infrastructure errors additionally emit a separate
+  ERROR line at the point `MapErr` logs and replaces them.
 
 ## Testing
 
