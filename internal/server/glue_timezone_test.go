@@ -81,10 +81,10 @@ func runTimezoneFallback(t *testing.T, users *appuser.Service, ctx context.Conte
 	return got
 }
 
-// timezoneFallbackFixture builds a fresh DB per subtest: the sqlite fixture's
-// no-crypto identifier is derived only from the id's leading bytes, which are
-// identical for UUIDv7s minted within the same fixture.User needs one DB per
-// scenario to avoid spurious UNIQUE collisions.
+// timezoneFallbackFixture builds a fresh DB per subtest: the fixture's
+// no-crypto user identifier is derived from the id's leading bytes, which
+// collide for UUIDv7s minted in quick succession, so sharing one DB across
+// scenarios would hit spurious UNIQUE violations.
 func timezoneFallbackFixture(t *testing.T) (*appuser.Service, *fixture.Builder) {
 	t.Helper()
 	db := dbtest.NewSQLite(t)
