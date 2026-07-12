@@ -217,3 +217,102 @@ func TestTransactionTools_FullFlow(t *testing.T) {
 		t.Fatalf("list2: expected empty, got: %#v", items2)
 	}
 }
+
+func TestListTransactionsFilters(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID1 := f.Account(fixture.Account{UserID: userID})
+	accountID2 := f.Account(fixture.Account{UserID: userID})
+	categoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	// Create first transaction on accountID1 at 2024-04-01 15:30:00
+	tx1Res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "create_transaction",
+		Arguments: map[string]any{
+			"type":        "expense",
+			"amount":      "12.50",
+			"account_id":  accountID1,
+			"date":        "2024-04-01 15:30:00",
+			"category_id": categoryID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("create tx1: transport error: %v", err)
+	}
+	if tx1Res.IsError {
+		t.Fatalf("create tx1: unexpected error: %#v", tx1Res.Content)
+	}
+	tx1ID := structured(t, tx1Res)["item"].(map[string]any)["id"].(string)
+
+	// Create second transaction on accountID1 at 2024-04-03
+	tx2Res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "create_transaction",
+		Arguments: map[string]any{
+			"type":        "expense",
+			"amount":      "25.00",
+			"account_id":  accountID1,
+			"date":        "2024-04-03",
+			"category_id": categoryID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("create tx2: transport error: %v", err)
+	}
+	if tx2Res.IsError {
+		t.Fatalf("create tx2: unexpected error: %#v", tx2Res.Content)
+	}
+	tx2ID := structured(t, tx2Res)["item"].(map[string]any)["id"].(string)
+
+	// Test period filtering: query 2024-04-01 only should return only tx1
+	// (expand("2024-04-01", false) = "2024-04-01 00:00:00", expand("2024-04-01", true) = "2024-04-01 23:59:59")
+	// tx1 at 15:30:00 is within this range; tx2 at 2024-04-03 is outside
+	// Note: period filters only work when account_id is NOT specified
+	listRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "list_transactions",
+		Arguments: map[string]any{
+			"period_start": "2024-04-01",
+			"period_end":   "2024-04-01",
+		},
+	})
+	if err != nil {
+		t.Fatalf("list period filter: transport error: %v", err)
+	}
+	if listRes.IsError {
+		t.Fatalf("list period filter: unexpected error: %#v", listRes.Content)
+	}
+	items := structured(t, listRes)["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("list period filter: expected 1 item, got %d: %#v", len(items), items)
+	}
+	foundID := items[0].(map[string]any)["id"].(string)
+	if foundID != tx1ID {
+		t.Fatalf("list period filter: expected tx1 (%q), got %q", tx1ID, foundID)
+	}
+	// Verify tx2 is NOT in the filtered results
+	if foundID == tx2ID {
+		t.Fatalf("list period filter: unexpectedly returned tx2 (%q)", tx2ID)
+	}
+
+	// Test account_id filtering: query accountID2 (no transactions) should return empty
+	listRes2, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "list_transactions",
+		Arguments: map[string]any{
+			"account_id": accountID2,
+		},
+	})
+	if err != nil {
+		t.Fatalf("list account filter: transport error: %v", err)
+	}
+	if listRes2.IsError {
+		t.Fatalf("list account filter: unexpected error: %#v", listRes2.Content)
+	}
+	items2 := structured(t, listRes2)["items"].([]any)
+	if len(items2) != 0 {
+		t.Fatalf("list account filter: expected empty, got %d items: %#v", len(items2), items2)
+	}
+}
