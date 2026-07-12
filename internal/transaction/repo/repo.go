@@ -27,6 +27,9 @@ type (
 	exportAcctRow = sqlitegen.ListExportAccountsForUserRow
 )
 
+// txCols is the column list shared by every hand-built transactions SELECT.
+const txCols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient"
+
 type querier interface {
 	GetTransactionByID(ctx context.Context, db backend.DBTX, id string) (txRow, error)
 	UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error
@@ -131,10 +134,9 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 	}
 	usePeriod := !periodStart.IsZero() && !periodEnd.IsZero()
 
-	const cols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient"
 	var b strings.Builder
 	b.WriteString("SELECT ")
-	b.WriteString(cols)
+	b.WriteString(txCols)
 	b.WriteString(" FROM transactions WHERE (account_id IN (")
 	in1 := placeholders(r.driver, 1, len(ids))
 	b.WriteString(in1)
@@ -158,12 +160,103 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 	// between SQLite and PostgreSQL, and the CSV export serves this order directly.
 	b.WriteString(" ORDER BY spent_at DESC, id")
 
+	return r.scanTransactions(ctx, b.String(), args)
+}
+
+// ListPageByAccount returns one keyset page for an account. The mixed-direction
+// order (spent_at DESC, id ASC) forces the expanded OR predicate instead of a
+// row-value comparison.
+func (r *Repo) ListPageByAccount(ctx context.Context, accountID vo.Id, after *domtransaction.PageCursor, limit int) ([]*model.Transaction, error) {
+	s := accountID.String()
+	var b strings.Builder
+	b.WriteString("SELECT ")
+	b.WriteString(txCols)
+	b.WriteString(" FROM transactions WHERE (account_id = ")
+	b.WriteString(placeholders(r.driver, 1, 1))
+	b.WriteString(" OR account_recipient_id = ")
+	b.WriteString(placeholders(r.driver, 2, 1))
+	b.WriteString(")")
+	args := []any{s, s}
+	if after != nil {
+		b.WriteString(" AND (spent_at < ")
+		b.WriteString(placeholders(r.driver, 3, 1))
+		b.WriteString(" OR (spent_at = ")
+		b.WriteString(placeholders(r.driver, 4, 1))
+		b.WriteString(" AND id > ")
+		b.WriteString(placeholders(r.driver, 5, 1))
+		b.WriteString("))")
+		args = append(args, after.SpentAt, after.SpentAt, after.ID.String())
+	}
+	b.WriteString(" ORDER BY spent_at DESC, id LIMIT ")
+	b.WriteString(placeholders(r.driver, len(args)+1, 1))
+	args = append(args, limit)
+	return r.scanTransactions(ctx, b.String(), args)
+}
+
+// ListRecentByAccountIDs windows each account's newest rows via ROW_NUMBER over
+// the union of source-side and recipient-side matches, so a transfer ranks in
+// both accounts' partitions.
+func (r *Repo) ListRecentByAccountIDs(ctx context.Context, accountIDs []vo.Id, perAccountLimit int) (map[string][]*model.Transaction, error) {
+	out := make(map[string][]*model.Transaction, len(accountIDs))
+	if len(accountIDs) == 0 {
+		return out, nil
+	}
+	ids := make([]any, len(accountIDs))
+	for i, id := range accountIDs {
+		ids[i] = id.String()
+	}
+	var b strings.Builder
+	b.WriteString("SELECT ")
+	b.WriteString(txCols)
+	b.WriteString(", acct FROM (SELECT u.*, ROW_NUMBER() OVER (PARTITION BY u.acct ORDER BY u.spent_at DESC, u.id) AS rn FROM (")
+	b.WriteString("SELECT ")
+	b.WriteString(txCols)
+	b.WriteString(", account_id AS acct FROM transactions WHERE account_id IN (")
+	b.WriteString(placeholders(r.driver, 1, len(ids)))
+	b.WriteString(") UNION ALL SELECT ")
+	b.WriteString(txCols)
+	b.WriteString(", account_recipient_id AS acct FROM transactions WHERE account_recipient_id IN (")
+	b.WriteString(placeholders(r.driver, 1+len(ids), len(ids)))
+	b.WriteString(")) u) w WHERE w.rn <= ")
+	b.WriteString(placeholders(r.driver, 1+2*len(ids), 1))
+	b.WriteString(" ORDER BY acct, rn")
+
+	args := make([]any, 0, len(ids)*2+1)
+	args = append(args, ids...)
+	args = append(args, ids...)
+	args = append(args, perAccountLimit)
+
 	rows, err := r.db(ctx).QueryContext(ctx, b.String(), args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	for rows.Next() {
+		var row txRow
+		var acct string
+		if serr := rows.Scan(
+			&row.ID, &row.UserID, &row.AccountID, &row.AccountRecipientID, &row.CategoryID,
+			&row.PayeeID, &row.TagID, &row.Description, &row.CreatedAt, &row.UpdatedAt,
+			&row.SpentAt, &row.Type, &row.Amount, &row.AmountRecipient, &acct,
+		); serr != nil {
+			return nil, serr
+		}
+		t, herr := hydrate(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out[acct] = append(out[acct], t)
+	}
+	return out, rows.Err()
+}
 
+// scanTransactions runs a hand-built select over txCols and hydrates the rows.
+func (r *Repo) scanTransactions(ctx context.Context, query string, args []any) ([]*model.Transaction, error) {
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 	var out []*model.Transaction
 	for rows.Next() {
 		var row txRow
