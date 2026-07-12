@@ -14,8 +14,10 @@ import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
@@ -175,6 +177,7 @@ export function BudgetPage() {
   // user record loads); month switches show the previous period as placeholder
   // data (isPlaceholderData) while the new one loads
   const { data: budget, isPending, isPlaceholderData, isFetching } = useBudget()
+  const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
@@ -319,8 +322,9 @@ export function BudgetPage() {
   if (!budget || !buckets) {
     // cold load only — month switches keep the previous period via keepPreviousData
     return isPending ? (
-      <div className="flex h-full items-center justify-center" data-testid="budget-loading">
+      <div className="relative flex h-full items-center justify-center" data-testid="budget-loading">
         <CoinLoader label={t('modules.app.modal.loading.data_loading')} />
+        {showLogoutEscape ? <LogoutEscapeButton placement="container" /> : null}
       </div>
     ) : null
   }

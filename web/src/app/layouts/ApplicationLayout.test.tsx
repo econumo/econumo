@@ -112,6 +112,60 @@ it('a reload with a persisted cache skips the boot loader and refreshes in the b
   await waitFor(() => expect(accountFetches).toBeGreaterThan(coldBootFetches))
 })
 
+it('the boot loader grows a logout escape after three seconds when the backend is unreachable', async () => {
+  mockViewport(false)
+  server.use(http.get('*/api/*', () => HttpResponse.error()))
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    renderShell('/')
+    expect(screen.getByText('Loading your data')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Log out' })).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(3000)
+    const link = await screen.findByRole('link', { name: 'Log out' })
+    expect(link).toHaveAttribute('href', '/logout')
+    // the escape floats at the bottom of the screen so its appearance never
+    // shifts the loader
+    expect(screen.getByText(/Having trouble\?/)).toBeInTheDocument()
+    expect(link.closest('div')?.className).toContain('fixed')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('no logout escape appears once the app has loaded', async () => {
+  mockViewport(false)
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    renderShell('/')
+    expect(await screen.findByText('Cash')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(screen.queryByRole('link', { name: 'Log out' })).not.toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('the sync icon turns into an amber warning while background refreshes fail, and recovers on success', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const syncButton = screen.getByRole('button', { name: 'sync' })
+  expect(syncButton.title).toContain('Full sync')
+  expect(syncButton.className).not.toContain('amber')
+
+  server.use(http.get('*/api/*', () => HttpResponse.error()))
+  await user.click(syncButton)
+  await waitFor(() => expect(syncButton.title).toContain("Can't reach the server"))
+  expect(syncButton.className).toContain('amber')
+
+  server.resetHandlers()
+  server.use(...coreHandlers())
+  await user.click(syncButton)
+  await waitFor(() => expect(syncButton.title).toContain('Full sync'))
+  expect(syncButton.className).not.toContain('amber')
+})
+
 it('desktop shows sidebar and workspace together', async () => {
   mockViewport(false)
   renderShell('/account/a1')

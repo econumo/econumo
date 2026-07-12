@@ -21,7 +21,7 @@ export default {
   // elements
   'elements': {
     'econumo': { 'label': 'Econumo' },
-    'loader': { 'label': 'loading' },
+    'loader': { 'label': 'loading', 'having_trouble': 'Having trouble?' },
     'select': {
       'search_placeholder': 'Search',
       'create_placeholder': 'Search or enter a new name',
@@ -153,7 +153,7 @@ export default {
           'preferences': 'Preferences'
         }
       },
-      'sync': { 'menu_item': 'Full sync' },
+      'sync': { 'menu_item': 'Full sync', 'failing': 'Can\'t reach the server — retrying' },
       'accounts': {
         'menu_item': 'Accounts',
         'header': 'Accounts',

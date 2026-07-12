@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw, Rocket, Settings, Wallet } from 'lucide-react'
@@ -13,9 +13,11 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
+import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
@@ -42,6 +44,17 @@ function useIsFullyLoaded() {
     useBudgets(),
   ]
   return queries.every((q) => q.data !== undefined)
+}
+
+// A background refresh that isn't succeeding — mid-retry after failures, or
+// settled in error with stale data on screen — must be visible: the sync icon
+// becomes an amber warning until the next successful fetch clears it.
+function useSyncFailing(): boolean {
+  const cache = useQueryClient().getQueryCache()
+  return useSyncExternalStore(
+    useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]),
+    () => cache.getAll().some((q) => q.state.status === 'error' || q.state.fetchFailureCount > 0),
+  )
 }
 
 // lastSyncAt = the oldest fetch among the core lists (Vue takes the min of the
@@ -75,10 +88,19 @@ export function ApplicationLayout() {
   }
   const showBootLoader = !isFullyLoaded && !hasLoadedOnce.current && !isRestoring
 
+  const showLogoutEscape = useLogoutEscape(showBootLoader)
+
   const showSidebar = !isCompact || location.pathname === '/'
   const showWorkspace = !isCompact || location.pathname !== '/'
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
+  const syncFailing = useSyncFailing()
+  const syncTitle = `${t(syncFailing ? 'pages.settings.sync.failing' : 'pages.settings.sync.menu_item')} — ${lastSyncAt}`
+  // constant geometry (-m/p cancel out) so the amber circle appears without
+  // nudging the icon
+  const syncClass = `-m-1.5 rounded-full p-1.5 ${
+    syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
+  }`
   const { collapsed, toggleCollapsed } = useSidebarStore()
   // compact unmounts the whole sidebar on navigation — going back must land
   // on the same spot in the account list
@@ -164,8 +186,8 @@ export function ApplicationLayout() {
               <button
                 type="button"
                 aria-label="sync"
-                title={`${t('pages.settings.sync.menu_item')} — ${lastSyncAt}`}
-                className="text-muted-foreground hover:text-foreground"
+                title={syncTitle}
+                className={syncClass}
                 onClick={() => void queryClient.invalidateQueries()}
               >
                 <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
@@ -185,8 +207,8 @@ export function ApplicationLayout() {
               <button
                 type="button"
                 aria-label="sync"
-                title={`${t('pages.settings.sync.menu_item')} — ${lastSyncAt}`}
-                className="text-muted-foreground hover:text-foreground"
+                title={syncTitle}
+                className={syncClass}
                 onClick={() => void queryClient.invalidateQueries()}
               >
                 <RefreshCw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
@@ -217,6 +239,7 @@ export function ApplicationLayout() {
       <TransactionDialog />
       <SwitchAccountPrompt />
       <LoadingDialog open={showBootLoader} label={t('modules.app.modal.loading.data_loading')} />
+      {showLogoutEscape ? <LogoutEscapeButton /> : null}
     </div>
   )
 }
