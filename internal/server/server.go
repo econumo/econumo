@@ -13,9 +13,11 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
+	accountmcp "github.com/econumo/econumo/internal/account/mcp"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/budget"
 	handlerbudget "github.com/econumo/econumo/internal/budget/api"
+	budgetmcp "github.com/econumo/econumo/internal/budget/mcp"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
@@ -27,6 +29,7 @@ import (
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
+	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -237,6 +240,9 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		categorymcp.Register(categoryReadSvc),
 		tagmcp.Register(tagReadSvc),
 		payeemcp.Register(payeeReadSvc),
+		accountmcp.Register(accountSvc),
+		currencymcp.Register(currencyReadSvc),
+		budgetmcp.Register(budgetSvc),
 	)
 	mcpHandler := middleware.Chain(
 		middleware.Auth(authn, cfg.IsDev()),
