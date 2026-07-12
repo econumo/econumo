@@ -22,7 +22,7 @@ func (q *Queries) ExistsUserByIdentifier(ctx context.Context, identifier string)
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone
 FROM users
 WHERE id = ?
 `
@@ -41,6 +41,7 @@ type GetUserByIDRow struct {
 	Algorithm   string
 	AccessLevel string
 	AccessUntil *time.Time
+	Timezone    string
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -60,12 +61,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.Algorithm,
 		&i.AccessLevel,
 		&i.AccessUntil,
+		&i.Timezone,
 	)
 	return i, err
 }
 
 const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone
 FROM users
 WHERE identifier = ?
 `
@@ -84,6 +86,7 @@ type GetUserByIdentifierRow struct {
 	Algorithm   string
 	AccessLevel string
 	AccessUntil *time.Time
+	Timezone    string
 }
 
 func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error) {
@@ -103,8 +106,20 @@ func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (G
 		&i.Algorithm,
 		&i.AccessLevel,
 		&i.AccessUntil,
+		&i.Timezone,
 	)
 	return i, err
+}
+
+const getUserTimezone = `-- name: GetUserTimezone :one
+SELECT timezone FROM users WHERE id = ?
+`
+
+func (q *Queries) GetUserTimezone(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserTimezone, id)
+	var timezone string
+	err := row.Scan(&timezone)
+	return timezone, err
 }
 
 const insertUser = `-- name: InsertUser :exec
@@ -181,6 +196,20 @@ type UpdateUserLanguageParams struct {
 
 func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserLanguage, arg.Language, arg.ID)
+	return err
+}
+
+const updateUserTimezone = `-- name: UpdateUserTimezone :exec
+UPDATE users SET timezone = ? WHERE id = ?
+`
+
+type UpdateUserTimezoneParams struct {
+	Timezone string
+	ID       string
+}
+
+func (q *Queries) UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserTimezone, arg.Timezone, arg.ID)
 	return err
 }
 

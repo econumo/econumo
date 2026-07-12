@@ -37,6 +37,7 @@ type (
 		Algorithm   string
 		AccessLevel string
 		AccessUntil *time.Time
+		Timezone    string
 	}
 	optionRow      = sqlitegen.UsersOption
 	userParams     = sqlitegen.UpsertUserParams
