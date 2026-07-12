@@ -1,6 +1,7 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type { TagDto } from './dto/tag'
+import type { SortListForm } from './category'
 
 interface Envelope<T> {
   data: T
@@ -8,6 +9,11 @@ interface Envelope<T> {
 
 export async function getTagList(): Promise<TagDto[]> {
   const response = await api.get<Envelope<{ items: TagDto[] }>>(apiUrl('/api/v1/tag/get-tag-list'))
+  return response.data.data.items
+}
+
+export async function sortTagList(form: SortListForm): Promise<TagDto[]> {
+  const response = await api.post<Envelope<{ items: TagDto[] }>>(apiUrl('/api/v1/tag/sort-tag-list'), form)
   return response.data.data.items
 }
 

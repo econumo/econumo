@@ -7,7 +7,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 export function useTransactions() {
   return useQuery({
     queryKey: queryKeys.transactions,
-    queryFn: transactionApi.getTransactionList,
+    queryFn: () => transactionApi.getTransactionList().then((r) => r.items),
     staleTime: TEN_MINUTES,
     // the multi-account backend query has no ORDER BY; date desc is applied here
     select: (items) => [...items].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),

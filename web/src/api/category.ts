@@ -6,8 +6,19 @@ interface Envelope<T> {
   data: T
 }
 
+export interface SortListForm {
+  by: 'name' | 'usage'
+  direction: 'asc' | 'desc'
+  periodMonths?: number
+}
+
 export async function getCategoryList(): Promise<CategoryDto[]> {
   const response = await api.get<Envelope<{ items: CategoryDto[] }>>(apiUrl('/api/v1/category/get-category-list'))
+  return response.data.data.items
+}
+
+export async function sortCategoryList(form: SortListForm): Promise<CategoryDto[]> {
+  const response = await api.post<Envelope<{ items: CategoryDto[] }>>(apiUrl('/api/v1/category/sort-category-list'), form)
   return response.data.data.items
 }
 

@@ -1,6 +1,7 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type { PayeeDto } from './dto/payee'
+import type { SortListForm } from './category'
 
 interface Envelope<T> {
   data: T
@@ -8,6 +9,11 @@ interface Envelope<T> {
 
 export async function getPayeeList(): Promise<PayeeDto[]> {
   const response = await api.get<Envelope<{ items: PayeeDto[] }>>(apiUrl('/api/v1/payee/get-payee-list'))
+  return response.data.data.items
+}
+
+export async function sortPayeeList(form: SortListForm): Promise<PayeeDto[]> {
+  const response = await api.post<Envelope<{ items: PayeeDto[] }>>(apiUrl('/api/v1/payee/sort-payee-list'), form)
   return response.data.data.items
 }
 
