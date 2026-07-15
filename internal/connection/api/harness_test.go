@@ -11,13 +11,16 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	"github.com/econumo/econumo/internal/config"
 	appconnection "github.com/econumo/econumo/internal/connection"
 	handlerconnection "github.com/econumo/econumo/internal/connection/api"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -55,6 +58,7 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
+	f   *fixture.Builder
 }
 
 func newHarness(t *testing.T) *harness {
@@ -83,12 +87,18 @@ func newHarness(t *testing.T) *harness {
 	txm := tdb.TX
 	folderRepo := accountrepo.NewFolderRepo("sqlite", txm)
 	accountRepo := accountrepo.NewRepo("sqlite", txm)
+	accountAccessRepo := accountrepo.NewAccessRepo("sqlite", txm)
+	userOwnerLookup := server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm))
+	accountCurrencyLookup := server.NewAccountCurrencyLookup(currencyrepo.New("sqlite", txm))
+	opGuard := operationrepo.NewGuard("sqlite", txm)
+	accountSvc := appaccount.NewService(
+		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, txm, opGuard, clock.New(),
+	)
 	svc := appconnection.NewService(
 		connectionrepo.NewRepo("sqlite", txm),
 		connectionrepo.NewInviteRepo("sqlite", txm),
-		server.NewConnectionFolderPort(folderRepo),
-		accountRepo,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
+		userOwnerLookup,
+		server.NewConnectionAccountAccessRevoker(accountSvc),
 		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)),
 		txm, clock.New(),
 	)
@@ -97,7 +107,7 @@ func newHarness(t *testing.T) *harness {
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db}
+	return &harness{srv: srv, db: db, f: f}
 }
 
 func (h *harness) token(t *testing.T, userID, email string) string {

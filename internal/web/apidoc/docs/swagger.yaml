@@ -1191,17 +1191,6 @@ definitions:
         description: '"" when the login sent no User-Agent'
         type: string
     type: object
-  model.SetAccountAccessRequest:
-    properties:
-      accountId:
-        type: string
-      role:
-        type: string
-      userId:
-        type: string
-    type: object
-  model.SetAccountAccessResult:
-    type: object
   model.SetLimitRequest:
     properties:
       amount:
@@ -3326,89 +3315,6 @@ paths:
       security:
       - Bearer: []
       summary: List connections
-      tags:
-      - Connection
-  /api/v1/connection/revoke-account-access:
-    post:
-      consumes:
-      - application/json
-      description: Removes a connected user's grant on an account you own or administer.
-      parameters:
-      - description: Revoke account access request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.RevokeAccountAccessRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.RevokeAccountAccessResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Revoke account access
-      tags:
-      - Connection
-  /api/v1/connection/set-account-access:
-    post:
-      consumes:
-      - application/json
-      description: Grants or updates a connected user's role on an account you own
-        or administer.
-      parameters:
-      - description: Set account access request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.SetAccountAccessRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.SetAccountAccessResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Set account access
       tags:
       - Connection
   /api/v1/currency/get-currency-list:

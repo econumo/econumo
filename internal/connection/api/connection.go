@@ -26,42 +26,6 @@ func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetConnectionList)
 }
 
-// SetAccountAccess handles POST /api/v1/connection/set-account-access (auth).
-//
-// @Summary     Set account access
-// @Description Grants or updates a connected user's role on an account you own or administer.
-// @Tags        Connection
-// @Accept      json
-// @Produce     json
-// @Param       request body     model.SetAccountAccessRequest true "Set account access request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.SetAccountAccessResult}
-// @Failure     400     {object} apidoc.JsonResponseError
-// @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     500     {object} apidoc.JsonResponseException
-// @Security    Bearer
-// @Router      /api/v1/connection/set-account-access [post]
-func (h *Handlers) SetAccountAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.SetAccountAccess)
-}
-
-// RevokeAccountAccess handles POST /api/v1/connection/revoke-account-access (auth).
-//
-// @Summary     Revoke account access
-// @Description Removes a connected user's grant on an account you own or administer.
-// @Tags        Connection
-// @Accept      json
-// @Produce     json
-// @Param       request body     model.RevokeAccountAccessRequest true "Revoke account access request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.RevokeAccountAccessResult}
-// @Failure     400     {object} apidoc.JsonResponseError
-// @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     500     {object} apidoc.JsonResponseException
-// @Security    Bearer
-// @Router      /api/v1/connection/revoke-account-access [post]
-func (h *Handlers) RevokeAccountAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.RevokeAccountAccess)
-}
-
 // GenerateInvite handles POST /api/v1/connection/generate-invite (auth).
 // Ported from EconumoCloudBundle: creates/refreshes the user's invite code.
 //

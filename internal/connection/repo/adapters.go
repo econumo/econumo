@@ -1,9 +1,8 @@
 // AccountAccessResolver satisfies the category/tag AccountAccess port by
 // delegating to the connection AccountAccess repo. Lives here (infra) so
-// connection depends only on its own small interfaces. The UserLookup,
-// FolderPort, SharedAccessLookup and AccessRevoker counterparts live in
-// internal/server: they need the user and account features' types, which a
-// feature package must not import.
+// connection depends only on its own small interfaces. The UserLookup and the
+// account-access revoker counterparts live in internal/server: they need the
+// user and account features' types, which a feature package must not import.
 package repo
 
 import (

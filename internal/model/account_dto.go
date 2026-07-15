@@ -389,3 +389,29 @@ func (r DeclineAccountAccessRequest) Validate() error {
 
 // DeclineAccountAccessResult is the (empty) response.
 type DeclineAccountAccessResult struct{}
+
+// RevokeAccountAccessRequest removes a connected user's grant on an owned
+// account.
+type RevokeAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+	UserId    string `json:"userId"`
+}
+
+// Validate enforces NotBlank on accountId/userId.
+func (r RevokeAccountAccessRequest) Validate() error {
+	var fields []errs.FieldError
+	for _, f := range []struct{ key, val string }{
+		{"accountId", r.AccountId}, {"userId", r.UserId},
+	} {
+		if strings.TrimSpace(f.val) == "" {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// RevokeAccountAccessResult is the (empty) response.
+type RevokeAccountAccessResult struct{}

@@ -137,21 +137,24 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
 	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
 	userOwnerLookup := NewUserOwnerLookup(userRepo)
-	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
-	connectionFolderPort := NewConnectionFolderPort(folderRepo)
 
-	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
-	connectionSvc := appconnection.NewService(
-		connectionRepo, connectionInviteRepo, connectionFolderPort, accountRepo,
-		userOwnerLookup, connectionBudgetRevoker, txm, clk,
-	)
+	// Account service is built before connection: delete-connection's unwind
+	// needs it (via ConnectionAccountAccessRevoker), and account is otherwise
+	// self-sufficient — it no longer references connection.
 	accountAccessRepo := accountrepo.NewAccessRepo(cfg.DatabaseDriver, txm)
 	accountSvc := appaccount.NewService(
 		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, txm, opGuard, clk,
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
+
+	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
+	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
+	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
+	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
+	connectionSvc := appconnection.NewService(
+		connectionRepo, connectionInviteRepo, userOwnerLookup,
+		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, txm, clk,
+	)
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 

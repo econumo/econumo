@@ -6,79 +6,31 @@ package server
 import (
 	"context"
 	appconnection "github.com/econumo/econumo/internal/connection"
-	domconnection "github.com/econumo/econumo/internal/connection"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// connectionFolderRepo is the slice of the account FolderRepository the
-// connection side effects need.
-type connectionFolderRepo interface {
-	ListByUser(ctx context.Context, userID vo.Id) ([]*model.Folder, error)
-	MembershipsByUser(ctx context.Context, userID vo.Id) (map[string][]string, error)
-	AddAccount(ctx context.Context, folderID, accountID vo.Id) error
-	RemoveAccount(ctx context.Context, folderID, accountID vo.Id) error
+// connectionAccountRevoker is the slice of the account service that
+// delete-connection's unwind needs.
+type connectionAccountRevoker interface {
+	RevokeAccessBetween(ctx context.Context, a, b vo.Id) error
 }
 
-// ConnectionFolderPort adapts the account FolderRepository to
-// connection.FolderPort.
-type ConnectionFolderPort struct{ folders connectionFolderRepo }
+// ConnectionAccountAccessRevoker adapts the account service to
+// connection.AccountAccessRevoker.
+type ConnectionAccountAccessRevoker struct{ accounts connectionAccountRevoker }
 
-var _ domconnection.FolderPort = (*ConnectionFolderPort)(nil)
+var _ appconnection.AccountAccessRevoker = (*ConnectionAccountAccessRevoker)(nil)
 
-// NewConnectionFolderPort wraps an account FolderRepository.
-func NewConnectionFolderPort(folders connectionFolderRepo) *ConnectionFolderPort {
-	return &ConnectionFolderPort{folders: folders}
+// NewConnectionAccountAccessRevoker wraps the account service.
+func NewConnectionAccountAccessRevoker(accounts connectionAccountRevoker) *ConnectionAccountAccessRevoker {
+	return &ConnectionAccountAccessRevoker{accounts: accounts}
 }
 
-// LastFolderID returns the user's highest-position folder.
-func (p *ConnectionFolderPort) LastFolderID(ctx context.Context, userID vo.Id) (vo.Id, bool, error) {
-	fs, err := p.folders.ListByUser(ctx, userID)
-	if err != nil {
-		return vo.Id{}, false, err
-	}
-	var last *model.Folder
-	for _, f := range fs {
-		if last == nil || f.Position > last.Position {
-			last = f
-		}
-	}
-	if last == nil {
-		return vo.Id{}, false, nil
-	}
-	return last.ID, true, nil
-}
-
-// FoldersContaining returns the user's folder ids that contain the account.
-func (p *ConnectionFolderPort) FoldersContaining(ctx context.Context, userID, accountID vo.Id) ([]vo.Id, error) {
-	memberships, err := p.folders.MembershipsByUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	var out []vo.Id
-	for folderID, accountIDs := range memberships {
-		for _, aid := range accountIDs {
-			if aid == accountID.String() {
-				fid, perr := vo.ParseId(folderID)
-				if perr != nil {
-					return nil, perr
-				}
-				out = append(out, fid)
-				break
-			}
-		}
-	}
-	return out, nil
-}
-
-// AddAccount adds the account to the folder.
-func (p *ConnectionFolderPort) AddAccount(ctx context.Context, folderID, accountID vo.Id) error {
-	return p.folders.AddAccount(ctx, folderID, accountID)
-}
-
-// RemoveAccount removes the account from the folder.
-func (p *ConnectionFolderPort) RemoveAccount(ctx context.Context, folderID, accountID vo.Id) error {
-	return p.folders.RemoveAccount(ctx, folderID, accountID)
+// RevokeAccessBetween unwinds account sharing between the two users, both
+// directions, via the account feature.
+func (r *ConnectionAccountAccessRevoker) RevokeAccessBetween(ctx context.Context, a, b vo.Id) error {
+	return r.accounts.RevokeAccessBetween(ctx, a, b)
 }
 
 // connectionBudgetRepoPort is the slice of the budget repository the revoker
