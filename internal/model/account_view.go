@@ -18,12 +18,3 @@ type OwnerView struct {
 	Name   string
 	Avatar string
 }
-
-// SharedAccessView is one accounts_access grant on an account: the granted
-// user's id + the role alias. The owner embed (name/avatar) is resolved by
-// the account service via UserLookup.
-type SharedAccessView struct {
-	UserID     string
-	Role       string
-	IsAccepted bool
-}

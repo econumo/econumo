@@ -361,6 +361,105 @@ func TestDeclineAccess_RemovesOwnRow(t *testing.T) {
 	}
 }
 
+func TestListPendingReceived_ExcludesSoftDeletedAccount(t *testing.T) {
+	db := dbtest.New(t)
+	f, acctID := accessFixture(t, db)
+	f.AccountAccessPending(acctID, accessUserBID, int(model.RoleUser))
+	svc := newAccessSvc(t, db)
+	ctx := context.Background()
+
+	if _, err := svc.DeleteAccount(ctx, mustParseID(t, accessOwnerID), model.DeleteAccountRequest{Id: acctID}); err != nil {
+		t.Fatalf("DeleteAccount (owner soft-delete): %v", err)
+	}
+
+	list, err := svc.GetAccountList(ctx, mustParseID(t, accessUserBID))
+	if err != nil {
+		t.Fatalf("GetAccountList: %v", err)
+	}
+	for _, item := range list.Items {
+		if item.Id == acctID {
+			t.Fatalf("pending grant for a soft-deleted account still rides GetAccountList: items=%v", list.Items)
+		}
+	}
+}
+
+func TestAcceptAccess_DeletedAccountNotFound(t *testing.T) {
+	db := dbtest.New(t)
+	f, acctID := accessFixture(t, db)
+	f.AccountAccessPending(acctID, accessUserBID, int(model.RoleUser))
+	svc := newAccessSvc(t, db)
+	ctx := context.Background()
+
+	if _, err := svc.DeleteAccount(ctx, mustParseID(t, accessOwnerID), model.DeleteAccountRequest{Id: acctID}); err != nil {
+		t.Fatalf("DeleteAccount (owner soft-delete): %v", err)
+	}
+
+	_, err := svc.AcceptAccess(ctx, mustParseID(t, accessUserBID), model.AcceptAccountAccessRequest{AccountId: acctID})
+	if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("AcceptAccess on deleted account err = %v, want NotFoundError", err)
+	}
+
+	var n int
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctID, accessUserBID).Scan(&n); err != nil {
+		t.Fatalf("count options: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("accounts_options rows after denied accept = %d, want 0", n)
+	}
+	folderRepo := accountrepo.NewFolderRepo(db.Engine, db.TX)
+	memberships, merr := folderRepo.MembershipsByUser(ctx, mustParseID(t, accessUserBID))
+	if merr != nil {
+		t.Fatalf("MembershipsByUser: %v", merr)
+	}
+	for _, ids := range memberships {
+		for _, id := range ids {
+			if id == acctID {
+				t.Fatalf("account placed into a folder despite denied accept: memberships=%v", memberships)
+			}
+		}
+	}
+}
+
+func TestGrantAccess_DeletedAccountNotFound(t *testing.T) {
+	db := dbtest.New(t)
+	_, acctID := accessFixture(t, db)
+	svc := newAccessSvc(t, db)
+	ctx := context.Background()
+
+	if _, err := svc.DeleteAccount(ctx, mustParseID(t, accessOwnerID), model.DeleteAccountRequest{Id: acctID}); err != nil {
+		t.Fatalf("DeleteAccount (owner soft-delete): %v", err)
+	}
+
+	_, err := svc.GrantAccess(ctx, mustParseID(t, accessOwnerID), model.GrantAccountAccessRequest{
+		AccountId: acctID, UserId: accessUserBID, Role: "user",
+	})
+	if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("GrantAccess on deleted account err = %v, want NotFoundError", err)
+	}
+}
+
+func TestDeclineAccess_DeletedAccountStillSucceeds(t *testing.T) {
+	db := dbtest.New(t)
+	f, acctID := accessFixture(t, db)
+	f.AccountAccessPending(acctID, accessUserBID, int(model.RoleUser))
+	svc := newAccessSvc(t, db)
+	ctx := context.Background()
+
+	if _, err := svc.DeleteAccount(ctx, mustParseID(t, accessOwnerID), model.DeleteAccountRequest{Id: acctID}); err != nil {
+		t.Fatalf("DeleteAccount (owner soft-delete): %v", err)
+	}
+
+	if _, err := svc.DeclineAccess(ctx, mustParseID(t, accessUserBID), model.DeclineAccountAccessRequest{AccountId: acctID}); err != nil {
+		t.Fatalf("DeclineAccess on a deleted account's pending row: %v", err)
+	}
+	accessRepo := accountrepo.NewAccessRepo(db.Engine, db.TX)
+	if _, gerr := accessRepo.Get(ctx, mustParseID(t, acctID), mustParseID(t, accessUserBID)); gerr == nil {
+		t.Fatalf("grant still present after declining a deleted account's pending row")
+	} else if _, ok := errs.AsNotFound(gerr); !ok {
+		t.Fatalf("Get after decline err = %v, want NotFoundError", gerr)
+	}
+}
+
 func TestRevokeAccess_OwnerRemovesGrant(t *testing.T) {
 	db := dbtest.New(t)
 	f, acctID := accessFixture(t, db)

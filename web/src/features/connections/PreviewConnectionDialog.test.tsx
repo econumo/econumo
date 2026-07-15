@@ -64,7 +64,7 @@ it('shows empty states without shared items', async () => {
   expect(await screen.findByText('No shared accounts')).toBeInTheDocument()
 })
 
-it('owned account row opens the level dialog; picking a role posts set-account-access', async () => {
+it('owned account row opens the level dialog; picking a role posts grant-access', async () => {
   let body: unknown
   server.use(
     ...coreHandlers({ accounts: sharedAccounts, budgets: budgetsWithShared, connections: fixtureConnections }),

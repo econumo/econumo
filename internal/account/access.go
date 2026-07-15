@@ -64,6 +64,13 @@ func (s *Service) GrantAccess(ctx context.Context, userID vo.Id, req model.Grant
 	if err := s.requireOwnerAdmin(ctx, userID, accountID); err != nil {
 		return nil, err
 	}
+	acct, err := s.accounts.GetByID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if acct.IsDeleted {
+		return nil, errs.NewNotFound("Account not found")
+	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		grant, gerr := s.access.Get(txCtx, accountID, affectedUserID)
@@ -102,6 +109,13 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		}
 		if grant.IsAccepted {
 			return errs.NewAccessDenied("Access denied")
+		}
+		acct, aerr := s.accounts.GetByID(txCtx, accountID)
+		if aerr != nil {
+			return aerr
+		}
+		if acct.IsDeleted {
+			return errs.NewNotFound("Account not found")
 		}
 		folderID, ferr := s.resolveAccountFolder(txCtx, userID, req.FolderId)
 		if ferr != nil {

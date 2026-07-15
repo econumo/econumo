@@ -259,13 +259,16 @@ func (q *Queries) ListIssuedAccountAccess(ctx context.Context, userID string) ([
 }
 
 const listPendingReceivedAccountAccess = `-- name: ListPendingReceivedAccountAccess :many
-SELECT account_id, user_id, role, created_at, updated_at, is_accepted
+SELECT accounts_access.account_id, accounts_access.user_id, accounts_access.role,
+       accounts_access.created_at, accounts_access.updated_at, accounts_access.is_accepted
 FROM accounts_access
-WHERE user_id = ? AND is_accepted = 0
-ORDER BY created_at, account_id
+JOIN accounts a ON a.id = accounts_access.account_id AND a.is_deleted = 0
+WHERE accounts_access.user_id = ? AND accounts_access.is_accepted = 0
+ORDER BY accounts_access.created_at, accounts_access.account_id
 `
 
-// Pending grants TO this user (invites awaiting acceptance). Ordered so both
+// Pending grants TO this user (invites awaiting acceptance), excluding grants
+// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
 // engines return identical row order.
 func (q *Queries) ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error) {
 	rows, err := q.db.QueryContext(ctx, listPendingReceivedAccountAccess, userID)

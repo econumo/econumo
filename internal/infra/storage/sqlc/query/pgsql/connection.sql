@@ -39,12 +39,15 @@ JOIN accounts a ON a.id = aa.account_id
 WHERE a.user_id = $1;
 
 -- name: ListPendingReceivedAccountAccess :many
--- Pending grants TO this user (invites awaiting acceptance). Ordered so both
+-- Pending grants TO this user (invites awaiting acceptance), excluding grants
+-- on accounts the owner has soft-deleted (no ghost invites). Ordered so both
 -- engines return identical row order.
-SELECT account_id, user_id, role, created_at, updated_at, is_accepted
+SELECT accounts_access.account_id, accounts_access.user_id, accounts_access.role,
+       accounts_access.created_at, accounts_access.updated_at, accounts_access.is_accepted
 FROM accounts_access
-WHERE user_id = $1 AND is_accepted = false
-ORDER BY created_at, account_id;
+JOIN accounts a ON a.id = accounts_access.account_id AND a.is_deleted = false
+WHERE accounts_access.user_id = $1 AND accounts_access.is_accepted = false
+ORDER BY accounts_access.created_at, accounts_access.account_id;
 
 -- name: ListConnectedUserIDs :many
 SELECT connected_user_id
