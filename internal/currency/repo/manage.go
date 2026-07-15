@@ -3,11 +3,6 @@
 // path over GLOBAL currencies only) even though both hit the same table: the
 // two write paths have disjoint callers (HTTP API vs CLI) and disjoint
 // invariants (ownership + archival vs admin-only inserts).
-//
-// var _ appcurrency.ManageModel = (*ManageRepo)(nil) is asserted at the
-// server.BuildAPI wiring site, not here — this package cannot import the
-// currency feature package's ManageModel without inverting the dependency
-// (ManageModel is declared once ManageRepo has a consumer).
 package repo
 
 import (
@@ -16,6 +11,7 @@ import (
 	"errors"
 	"time"
 
+	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -63,6 +59,8 @@ type ManageRepo struct {
 	tx *backend.TxManager
 	q  manageQuerier
 }
+
+var _ appcurrency.ManageModel = (*ManageRepo)(nil)
 
 // NewManageRepo selects the engine adapter by driver name. driver matches
 // config.DatabaseDriver: "sqlite" | "postgresql".
