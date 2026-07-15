@@ -126,6 +126,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
       open
       caps
       fullScreen
+      dismissible={false}
       onOpenChange={(o) => !o && onDone()}
       title={title}
       footer={
