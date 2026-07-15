@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -96,4 +96,32 @@ it('tapping a row opens the view dialog, and deleting it asks for confirmation f
 
   await user.click(screen.getByRole('button', { name: 'Delete' }))
   await screen.findByText('No recurring transactions yet')
+})
+
+it('skipping from the view dialog advances the template and closes the dialog', async () => {
+  // a month past the fixture date, so the advanced dayKey provably differs
+  const advancedPaymentAt = formatDateTime(new Date(Date.now() + 395 * 24 * 3600 * 1000))
+  let skipCalls = 0
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring] } })),
+    http.post('*/api/v1/recurring/skip-recurring-transaction', () => {
+      skipCalls += 1
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: { ...wireRecurring, nextPaymentAt: advancedPaymentAt } },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByTestId('recurring-r1'))
+  expect(await screen.findByText('Recurring transaction')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Skip' }))
+  await waitFor(() => expect(screen.queryByText('Recurring transaction')).toBeNull())
+  expect(skipCalls).toBe(1)
+  expect(screen.getByTestId('recurring-summary-r1')).toHaveTextContent(advancedPaymentAt.slice(0, 10))
 })

@@ -88,7 +88,7 @@ export function RecurringSettingsPage() {
         <ViewRecurringDialog
           recurring={selected}
           onClose={() => setSelected(null)}
-          onSkip={() => skipRecurring.mutate(selected.id)}
+          onSkip={() => skipRecurring.mutate(selected.id, { onSuccess: () => setSelected(null) })}
           onEdit={() => {
             setSelected(null)
             openRecurringModal({ recurring: selected })

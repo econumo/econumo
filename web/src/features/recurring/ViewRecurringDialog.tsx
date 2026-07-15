@@ -11,7 +11,7 @@ import { dayKey } from '@/lib/datetime'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 
-interface ViewRecurringDialogProps {
+export interface ViewRecurringDialogProps {
   recurring: RecurringDto
   onClose: () => void
   onPost?: () => void
