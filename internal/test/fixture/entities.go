@@ -444,6 +444,7 @@ func (b *Builder) Budget(bg Budget) string {
 type BudgetElement struct {
 	ID         string
 	BudgetID   string
+	CurrencyID string // nullable; empty -> NULL (only envelope elements carry one)
 	ExternalID string
 	Type       int
 	Position   int
@@ -453,8 +454,8 @@ func (b *Builder) BudgetElement(e BudgetElement) string {
 	b.t.Helper()
 	id := b.orNewID(e.ID)
 	now := b.now()
-	b.insert(`INSERT INTO budgets_elements (id, budget_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		id, e.BudgetID, e.ExternalID, e.Type, e.Position, now, now)
+	b.insert(`INSERT INTO budgets_elements (id, budget_id, currency_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, e.BudgetID, nullable(e.CurrencyID), e.ExternalID, e.Type, e.Position, now, now)
 	return id
 }
 

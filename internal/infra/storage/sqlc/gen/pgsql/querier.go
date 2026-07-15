@@ -87,10 +87,6 @@ type Querier interface {
 	GetCurrencyByIDView(ctx context.Context, id string) (GetCurrencyByIDViewRow, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
-	// Read-model queries for the currency module (PostgreSQL variant). No $N
-	// placeholders are needed (neither query is parameterised). See the sqlite
-	// variant for documentation.
-	GetCurrencyListView(ctx context.Context) ([]GetCurrencyListViewRow, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
@@ -98,7 +94,9 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetGlobalCurrencyIDByCode(ctx context.Context, code string) (string, error)
+	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
+	// Latest rate row per (currency, base) pair. See the sqlite variant.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]GetLatestCurrencyRateListViewRow, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module (PostgreSQL variant: $N placeholders).
@@ -124,6 +122,15 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	// Read-model queries for the currency module (PostgreSQL variant). No $N
+	// placeholders are needed (neither query is parameterised). See the sqlite
+	// variant for documentation.
+	// Per-user visible currencies: all globals, the user's own customs (archived
+	// included, the settings page needs them), and foreign customs reachable via
+	// accounts or budgets shared to the user (budget currency and element
+	// currencies). Codes can repeat across owners, so id breaks ties. $1 is
+	// reused for all four user-id positions so the generated param stays single.
+	GetUserCurrencyListView(ctx context.Context, userID *string) ([]GetUserCurrencyListViewRow, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)

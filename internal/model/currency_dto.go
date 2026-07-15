@@ -5,13 +5,18 @@ package model
 
 // CurrencyResult is one currency in the API. name is the English display name
 // resolved from the Intl table (the stored currencies.name is NULL in practice);
-// fractionDigits is an int. Frozen wire shape; see CLAUDE.md.
+// fractionDigits is an int. scope is "global" | "own" | "shared" (reachable via
+// a shared account/budget, not owned by the caller); isArchived/isHidden are
+// ints 0/1. Frozen wire shape; see CLAUDE.md.
 type CurrencyResult struct {
 	Id             string `json:"id"`
 	Code           string `json:"code"`
 	Name           string `json:"name"`
 	Symbol         string `json:"symbol"`
 	FractionDigits int    `json:"fractionDigits"`
+	Scope          string `json:"scope"`
+	IsArchived     int    `json:"isArchived"`
+	IsHidden       int    `json:"isHidden"`
 }
 
 // GetCurrencyListResult is the get-currency-list response: {items: [...]}.

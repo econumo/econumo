@@ -139,14 +139,6 @@ type Querier interface {
 	GetCurrencyByIDView(ctx context.Context, id string) (GetCurrencyByIDViewRow, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
-	// Read-model queries for the currency module (CQRS read side). Both currency
-	// endpoints are pure reads, so the whole module lives on the read side; there is
-	// no write aggregate. Kept separate from currencies.sql (the user-module lookup)
-	// to keep the read concern visibly distinct.
-	// All currencies ordered by code ASC (matches CurrencyRepository::getAll ->
-	// findBy([], ['code' => 'ASC'])). The name column is NULL for every row in
-	// practice; the app layer resolves the display name from the Intl table.
-	GetCurrencyListView(ctx context.Context) ([]GetCurrencyListViewRow, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
@@ -155,15 +147,16 @@ type Querier interface {
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetGlobalCurrencyIDByCode(ctx context.Context, code string) (string, error)
+	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
 	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
 	// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
 	// datetime TEXT, letting rows AT/after the boundary leak in (so "< Dec 1" wrongly
 	// returned a December date, snapping the rate period to the wrong month).
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
-	// All rate rows published on the single most-recent published_at date (matches
-	// CurrencyRateRepository::getAll(): find MAX(published_at), return every row on
-	// it). published_at is a DATE; the wire formats it as "Y-m-d 00:00:00".
+	// Latest rate row per (currency, base) pair. The previous single-latest-date
+	// form dropped any currency whose newest rate predates the newest OXR batch,
+	// which breaks backdated custom rates.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]CurrenciesRate, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module. The read-side query lives in
@@ -201,6 +194,15 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	// Read-model queries for the currency module (CQRS read side). Both currency
+	// endpoints are pure reads, so the whole module lives on the read side; there is
+	// no write aggregate. Kept separate from currencies.sql (the user-module lookup)
+	// to keep the read concern visibly distinct.
+	// Per-user visible currencies: all globals, the user's own customs (archived
+	// included, the settings page needs them), and foreign customs reachable via
+	// accounts or budgets shared to the user (budget currency and element
+	// currencies). Codes can repeat across owners, so id breaks ties.
+	GetUserCurrencyListView(ctx context.Context, arg GetUserCurrencyListViewParams) ([]GetUserCurrencyListViewRow, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)

@@ -1,4 +1,4 @@
-// CQRS read side for the currency module. CurrencyListView and
+// CQRS read side for the currency module. UserCurrencyListView and
 // LatestCurrencyRateListView run purpose-built read queries and return the
 // app-layer view-row types directly (so they satisfy app/currency.ReadModel with
 // no bridging adapter). The rate's published date is formatted "Y-m-d 00:00:00"
@@ -22,18 +22,18 @@ import (
 
 // Canonical read-row types: the sqlite-generated ones (the pgsql shim copies
 // into them). The list-view query selects a column subset, so sqlc emits a
-// dedicated GetCurrencyListViewRow. The rate query selects the full table in
-// column order, so sqlc reuses the CurrenciesRate model directly (sqlite); the
-// pgsql engine emits its own GetLatestCurrencyRateListViewRow with identical
-// fields, which the shim converts into CurrenciesRate.
+// dedicated GetUserCurrencyListViewRow. The rate query selects the full table
+// (aliased), so both engines emit dedicated row types with identical fields;
+// the pgsql shim converts into the sqlite CurrenciesRate model.
 type (
-	currencyRow = sqlitegen.GetCurrencyListViewRow
+	currencyRow = sqlitegen.GetUserCurrencyListViewRow
 	rateRow     = sqlitegen.CurrenciesRate
 )
 
 // readQuerier is the engine-agnostic read surface, in the canonical types.
 type readQuerier interface {
-	GetCurrencyListView(ctx context.Context, db backend.DBTX) ([]currencyRow, error)
+	GetUserCurrencyListView(ctx context.Context, db backend.DBTX, userID string) ([]currencyRow, error)
+	GetHiddenCurrencyIDs(ctx context.Context, db backend.DBTX, userID string) ([]string, error)
 	GetLatestCurrencyRateListView(ctx context.Context, db backend.DBTX) ([]rateRow, error)
 }
 
@@ -60,9 +60,11 @@ func NewReadRepo(driver string, tx *backend.TxManager) *ReadRepo {
 
 func (r *ReadRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-// CurrencyListView returns all currencies ordered by code ASC.
-func (r *ReadRepo) CurrencyListView(ctx context.Context) ([]model.CurrencyViewRow, error) {
-	rows, err := r.q.GetCurrencyListView(ctx, r.db(ctx))
+// UserCurrencyListView returns every currency visible to userID: all globals,
+// the user's own customs, and foreign customs reachable via a shared
+// account/budget/budget-element, ordered by code ASC then id ASC.
+func (r *ReadRepo) UserCurrencyListView(ctx context.Context, userID string) ([]model.CurrencyViewRow, error) {
+	rows, err := r.q.GetUserCurrencyListView(ctx, r.db(ctx), userID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,13 +76,20 @@ func (r *ReadRepo) CurrencyListView(ctx context.Context) ([]model.CurrencyViewRo
 			Symbol:         c.Symbol,
 			Name:           c.Name,
 			FractionDigits: c.FractionDigits,
+			UserID:         c.UserID,
+			IsArchived:     c.IsArchived,
 		})
 	}
 	return out, nil
 }
 
-// LatestCurrencyRateListView returns every rate on the most-recent published
-// date, with the date pre-formatted "Y-m-d 00:00:00".
+// HiddenCurrencyIDs returns the ids of global currencies userID has hidden.
+func (r *ReadRepo) HiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error) {
+	return r.q.GetHiddenCurrencyIDs(ctx, r.db(ctx), userID)
+}
+
+// LatestCurrencyRateListView returns the latest rate row per (currency, base)
+// pair, with the date pre-formatted "Y-m-d 00:00:00".
 func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]model.CurrencyRateViewRow, error) {
 	rows, err := r.q.GetLatestCurrencyRateListView(ctx, r.db(ctx))
 	if err != nil {
@@ -104,8 +113,20 @@ func (r *ReadRepo) LatestCurrencyRateListView(ctx context.Context) ([]model.Curr
 
 type sqliteReadQuerier struct{}
 
-func (sqliteReadQuerier) GetCurrencyListView(ctx context.Context, db backend.DBTX) ([]currencyRow, error) {
-	return sqlitegen.New(db).GetCurrencyListView(ctx)
+func (sqliteReadQuerier) GetUserCurrencyListView(ctx context.Context, db backend.DBTX, userID string) ([]currencyRow, error) {
+	// c.user_id is nullable, so the first occurrence (c.user_id = ?) binds a
+	// *string; the other three occurrences (accounts_access.user_id etc.) are
+	// NOT NULL columns and bind plain strings.
+	return sqlitegen.New(db).GetUserCurrencyListView(ctx, sqlitegen.GetUserCurrencyListViewParams{
+		UserID:   &userID,
+		UserID_2: userID,
+		UserID_3: userID,
+		UserID_4: userID,
+	})
+}
+
+func (sqliteReadQuerier) GetHiddenCurrencyIDs(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return sqlitegen.New(db).GetHiddenCurrencyIDs(ctx, userID)
 }
 
 func (sqliteReadQuerier) GetLatestCurrencyRateListView(ctx context.Context, db backend.DBTX) ([]rateRow, error) {
@@ -114,8 +135,8 @@ func (sqliteReadQuerier) GetLatestCurrencyRateListView(ctx context.Context, db b
 
 type pgsqlReadQuerier struct{}
 
-func (pgsqlReadQuerier) GetCurrencyListView(ctx context.Context, db backend.DBTX) ([]currencyRow, error) {
-	rows, err := pgsqlgen.New(db).GetCurrencyListView(ctx)
+func (pgsqlReadQuerier) GetUserCurrencyListView(ctx context.Context, db backend.DBTX, userID string) ([]currencyRow, error) {
+	rows, err := pgsqlgen.New(db).GetUserCurrencyListView(ctx, &userID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,6 +145,10 @@ func (pgsqlReadQuerier) GetCurrencyListView(ctx context.Context, db backend.DBTX
 		out[i] = currencyRow(c)
 	}
 	return out, nil
+}
+
+func (pgsqlReadQuerier) GetHiddenCurrencyIDs(ctx context.Context, db backend.DBTX, userID string) ([]string, error) {
+	return pgsqlgen.New(db).GetHiddenCurrencyIDs(ctx, userID)
 }
 
 func (pgsqlReadQuerier) GetLatestCurrencyRateListView(ctx context.Context, db backend.DBTX) ([]rateRow, error) {
