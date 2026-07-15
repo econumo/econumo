@@ -37,6 +37,21 @@ type AccountStore interface {
 	SaveCorrection(ctx context.Context, c model.AccountCorrection) error
 }
 
+// AccessStore persists the per-account grants (accounts_access) plus the two
+// per-user cleanup reads revocation needs. A missing grant returns an
+// *errs.NotFoundError.
+type AccessStore interface {
+	Get(ctx context.Context, accountID, userID vo.Id) (*model.AccountAccess, error)
+	Save(ctx context.Context, a *model.AccountAccess) error
+	Delete(ctx context.Context, accountID, userID vo.Id) error
+	ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.AccountAccess, error)
+	ListReceived(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error)
+	ListPendingReceived(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error)
+	ListIssued(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error)
+	// DeleteOption removes the user's accounts_options row for the account.
+	DeleteOption(ctx context.Context, accountID, userID vo.Id) error
+}
+
 // PositionStore is the per-user account ordering surface (the accounts_options
 // table). Consumed by CreateAccount and OrderAccountList (writes) and
 // buildAccountResult (usecase.go, the read for the embed).
