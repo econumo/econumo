@@ -1190,6 +1190,8 @@ definitions:
     type: object
   model.SharedAccess:
     properties:
+      isAccepted:
+        type: integer
       role:
         type: string
       user:

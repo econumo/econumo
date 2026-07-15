@@ -7436,6 +7436,9 @@ const docTemplate = `{
         "model.SharedAccess": {
             "type": "object",
             "properties": {
+                "isAccepted": {
+                    "type": "integer"
+                },
                 "role": {
                     "type": "string"
                 },
