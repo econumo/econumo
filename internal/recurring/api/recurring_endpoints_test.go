@@ -110,3 +110,63 @@ func TestCreateRecurringTransaction_BadSchedule(t *testing.T) {
 		t.Fatalf("status=%d body=%s", status, env.raw)
 	}
 }
+
+func createTemplate(t *testing.T, h *harness, tok string) recurringItem {
+	t.Helper()
+	const opID = "0197c100-0000-7000-8000-000000000005"
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok, createRecurringReq(opID, "expense", "42.50"))
+	if status != http.StatusOK {
+		t.Fatalf("create failed: %s", env.raw)
+	}
+	return mustUnmarshal[struct {
+		Item recurringItem `json:"item"`
+	}](t, env.Data).Item
+}
+
+func TestUpdateRecurringTransaction_Success(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	item := createTemplate(t, h, tok)
+	body := map[string]any{
+		"id": item.ID, "type": "expense", "amount": "99",
+		"accountId": accountID, "schedule": "weekly",
+		"nextPaymentAt": "2026-09-05 00:00:00", "description": "updated",
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/update-recurring-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		Item recurringItem `json:"item"`
+	}](t, env.Data)
+	if res.Item.Schedule != "weekly" || res.Item.Amount != "99" || res.Item.NextPaymentAt != "2026-09-05 00:00:00" {
+		t.Fatalf("unexpected item: %+v", res.Item)
+	}
+}
+
+func TestUpdateRecurringTransaction_NotFound(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	body := map[string]any{
+		"id": "0197c1aa-0000-7000-8000-000000000099", "type": "expense", "amount": "1",
+		"accountId": accountID, "schedule": "weekly", "nextPaymentAt": "2026-09-05 00:00:00",
+	}
+	status, _ := h.do(t, http.MethodPost, "/api/v1/recurring/update-recurring-transaction", tok, body)
+	if status != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400", status)
+	}
+}
+
+func TestDeleteRecurringTransaction_Success(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	item := createTemplate(t, h, tok)
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/delete-recurring-transaction", tok, map[string]any{"id": item.ID})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
+	if list := mustUnmarshal[recurringList](t, listEnv.Data); len(list.Items) != 0 {
+		t.Fatalf("template still listed after delete")
+	}
+}
