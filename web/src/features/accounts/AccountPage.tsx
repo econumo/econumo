@@ -365,6 +365,7 @@ export function AccountPage() {
             setRecurringPreview(null)
           }}
           canChange={canChangeTransaction}
+          skipPending={skipRecurring.isPending}
         />
       ) : null}
 

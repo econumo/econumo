@@ -20,9 +20,20 @@ export interface ViewRecurringDialogProps {
   onDelete: () => void
   canChange: boolean
   dismissible?: boolean
+  skipPending?: boolean
 }
 
-export function ViewRecurringDialog({ recurring, onClose, onPost, onSkip, onEdit, onDelete, canChange, dismissible = true }: ViewRecurringDialogProps) {
+export function ViewRecurringDialog({
+  recurring,
+  onClose,
+  onPost,
+  onSkip,
+  onEdit,
+  onDelete,
+  canChange,
+  dismissible = true,
+  skipPending = false,
+}: ViewRecurringDialogProps) {
   const { t } = useTranslation()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
@@ -123,7 +134,7 @@ export function ViewRecurringDialog({ recurring, onClose, onPost, onSkip, onEdit
               {t('modals.recurring.preview.post')}
             </Button>
           ) : null}
-          <Button type="button" variant="secondary" className={onPost ? '' : 'flex-1'} disabled={!canChange} onClick={onSkip}>
+          <Button type="button" variant="secondary" className={onPost ? '' : 'flex-1'} disabled={!canChange || skipPending} onClick={onSkip}>
             {t('modals.recurring.preview.skip')}
           </Button>
           <Button

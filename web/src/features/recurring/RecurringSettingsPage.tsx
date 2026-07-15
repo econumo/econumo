@@ -98,6 +98,7 @@ export function RecurringSettingsPage() {
             setSelected(null)
           }}
           canChange={canChangeRecurring(selected)}
+          skipPending={skipRecurring.isPending}
         />
       ) : null}
 
