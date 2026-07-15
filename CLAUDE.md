@@ -67,8 +67,8 @@ Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the nine features (`account`, `budget`, `category`, `connection`,
-`currency`, `payee`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the ten features (`account`, `budget`, `category`, `connection`,
+`currency`, `payee`, `recurring`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -414,6 +414,10 @@ data unreadable. Most are also asserted by the test suite.
 ### Notable behaviours
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
+- **Recurring transaction scheduling**: templates advance from the scheduled date with
+  month-end clamping via a persisted scheduled day (31st → Feb 28 → Mar 31); posting is
+  manual (the user acts on a due template) and idempotent on the client-supplied
+  transaction id.
 
 ## Deployment
 
