@@ -8,7 +8,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees } from '@/features/classifications/queries'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { moneyFormat } from '@/lib/money'
-import { dayKey } from '@/lib/datetime'
+import { dayKey, isFuture } from '@/lib/datetime'
 import { useRecurring } from './queries'
 
 export function RecurringSettingsPage() {
@@ -53,7 +53,11 @@ export function RecurringSettingsPage() {
             />
             <div className="min-w-0 flex-1">
               <p className="truncate">{title(rt)}</p>
-              <p className="text-sm text-muted-foreground">
+              {/* a past next-payment date means the template needs attention (post or skip) */}
+              <p
+                data-testid={`recurring-summary-${rt.id}`}
+                className={`text-sm ${isFuture(rt.nextPaymentAt) ? 'text-muted-foreground' : 'text-destructive'}`}
+              >
                 <span>{scheduleLabel(rt)}</span> · <span>{dayKey(rt.nextPaymentAt)}</span>
               </p>
             </div>

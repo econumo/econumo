@@ -49,6 +49,19 @@ it('lists templates with schedule and next payment date', async () => {
   expect(screen.getByText('Monthly')).toBeInTheDocument()
 })
 
+it('highlights overdue templates and not future-dated ones', async () => {
+  const overdue = { ...wireRecurring, id: 'r-overdue', nextPaymentAt: '2020-01-01 00:00:00' }
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring, overdue] } })),
+  )
+  renderPage()
+  await screen.findByTestId('recurring-r-overdue')
+  expect(screen.getByTestId('recurring-summary-r-overdue')).toHaveClass('text-destructive')
+  expect(screen.getByTestId('recurring-summary-r1')).not.toHaveClass('text-destructive')
+})
+
 it('shows the empty state when there are no templates', async () => {
   server.use(
     ...coreHandlers(),
