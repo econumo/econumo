@@ -85,7 +85,9 @@ different module and is unaffected.)
   `symbol` defaults to the code. `fractionDigits` 0–8, default 2. `rate`, when
   present, writes today's rate row in the same transaction. Honors the
   `operationId` idempotency guard.
-- `update-currency` — `{id, name, symbol, fractionDigits}`. Code is immutable.
+- `update-currency` — `{id, name, symbol, fractionDigits}`. A full replace:
+  all three value fields are required (same validation as create). Code is
+  immutable.
 - `archive-currency` / `unarchive-currency` — `{id}`. Archived customs leave
   the owner's pickers but keep rendering wherever referenced (shared accounts
   included).
@@ -125,8 +127,11 @@ Returns, for the caller:
 
 1. all global currencies,
 2. all their own customs (archived included — the settings page needs them),
-3. foreign customs referenced by accounts shared to them
-   (`accounts_access` → `accounts.currency_id`, owner ≠ caller).
+3. foreign customs reachable through sharing, i.e. referenced by
+   - accounts shared to them (`accounts_access` → `accounts.currency_id`), or
+   - budgets shared to them (`budgets_access` → `budgets.currency_id` and
+     `budgets_elements.currency_id`),
+   where the currency's owner ≠ caller.
 
 `CurrencyResult` gains three additive fields (existing fields frozen):
 
@@ -220,8 +225,8 @@ close.
 - **Unit/integration (per package)**: WriteService use cases — ownership,
   code collisions (own + global), base-currency guards, delete-in-use across
   every referencing table, rate upsert incl. backdating, hide/show guards.
-  Read scoping — globals + own + shared-visible via `accounts_access`
-  fixtures. Denomination tightening — foreign custom rejected, archived own
+  Read scoping — globals + own + shared-visible via `accounts_access` AND
+  `budgets_access` fixtures (budget currency and element currency each). Denomination tightening — foreign custom rejected, archived own
   rejected, existing references untouched.
 - **Repo tests, both engines**: partial-index semantics and the
   per-currency-latest rate query, via the default sqlite run and
