@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
+import { formatDateTime } from '@/lib/datetime'
 import { RecurringSettingsPage } from './RecurringSettingsPage'
 
 function mockMatchMedia() {
@@ -26,10 +27,13 @@ function renderPage() {
   return queryClient
 }
 
+// a year out, so the "not overdue" assertions never age into failures
+const futurePaymentAt = formatDateTime(new Date(Date.now() + 365 * 24 * 3600 * 1000))
+
 const wireRecurring = {
   id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
   amount: '50.5', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'rent',
-  schedule: 'monthly', nextPaymentAt: '2026-08-31 00:00:00',
+  schedule: 'monthly', nextPaymentAt: futurePaymentAt,
 }
 
 beforeEach(() => {
