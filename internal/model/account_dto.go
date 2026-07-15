@@ -35,10 +35,12 @@ type AccountResult struct {
 }
 
 // SharedAccess is one accounts_access grant on the account: the granted user
-// (id, avatar, name) + the role alias (admin/user/guest).
+// (id, avatar, name), the role alias (admin/user/guest), and whether the
+// grant has been accepted (int 0/1, like isArchived).
 type SharedAccess struct {
-	User UserResult `json:"user"`
-	Role string     `json:"role"`
+	User       UserResult `json:"user"`
+	Role       string     `json:"role"`
+	IsAccepted int        `json:"isAccepted"`
 }
 
 // CreateAccountRequest is the create-account body. balance defaults to 0; icon

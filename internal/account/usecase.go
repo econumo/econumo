@@ -237,7 +237,11 @@ func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *a
 		if uerr != nil {
 			return nil, uerr
 		}
-		out = append(out, model.SharedAccess{User: u, Role: g.Role})
+		accepted := 0
+		if g.IsAccepted {
+			accepted = 1
+		}
+		out = append(out, model.SharedAccess{User: u, Role: g.Role, IsAccepted: accepted})
 	}
 	return out, nil
 }

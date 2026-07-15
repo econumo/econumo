@@ -23,6 +23,7 @@ type OwnerView struct {
 // user's id + the role alias. The owner embed (name/avatar) is resolved by
 // the account service via UserLookup.
 type SharedAccessView struct {
-	UserID string
-	Role   string
+	UserID     string
+	Role       string
+	IsAccepted bool
 }

@@ -15,14 +15,15 @@ func (h *harness) seedGrant(t *testing.T, accountID, userID string, role int) {
 	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).AccountAccess(accountID, userID, role)
 }
 
-// sharedAccessItem mirrors one sharedAccess[] entry: {user:{id,avatar,name}, role}.
+// sharedAccessItem mirrors one sharedAccess[] entry: {user:{id,avatar,name}, role, isAccepted}.
 type sharedAccessItem struct {
 	User struct {
 		ID     string `json:"id"`
 		Avatar string `json:"avatar"`
 		Name   string `json:"name"`
 	} `json:"user"`
-	Role string `json:"role"`
+	Role       string `json:"role"`
+	IsAccepted int    `json:"isAccepted"`
 }
 
 type accountWithShared struct {
@@ -56,6 +57,40 @@ func TestGetAccountList_SharedAccessPopulated(t *testing.T) {
 	}
 	if sa[0].Role != "user" {
 		t.Fatalf("role=%q want user", sa[0].Role)
+	}
+}
+
+// sharedAccess[] carries isAccepted: 1 for an accepted grant and 0 for a
+// pending one, distinguishing the two.
+func TestGetAccountList_SharedAccessIsAccepted(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "0")
+	pendingUserID := h.f.User(fixture.User{Name: "Pending User"})
+	h.seedGrant(t, acctID, otherUserID, 1)
+	h.f.AccountAccessPending(acctID, pendingUserID, 1)
+
+	_, env := h.do(t, http.MethodGet, "/api/v1/account/get-account-list", tok, nil)
+	var wrap struct {
+		Items []accountWithShared `json:"items"`
+	}
+	mustDecode(t, env.Data, &wrap)
+	if len(wrap.Items) != 1 {
+		t.Fatalf("items=%d want 1", len(wrap.Items))
+	}
+	sa := wrap.Items[0].SharedAccess
+	if len(sa) != 2 {
+		t.Fatalf("sharedAccess=%+v want 2 entries; body=%s", sa, env.raw)
+	}
+	byUser := map[string]int{}
+	for _, e := range sa {
+		byUser[e.User.ID] = e.IsAccepted
+	}
+	if byUser[otherUserID] != 1 {
+		t.Fatalf("accepted grant isAccepted=%d want 1", byUser[otherUserID])
+	}
+	if byUser[pendingUserID] != 0 {
+		t.Fatalf("pending grant isAccepted=%d want 0", byUser[pendingUserID])
 	}
 }
 

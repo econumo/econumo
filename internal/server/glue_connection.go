@@ -108,7 +108,7 @@ func (l *ConnectionSharedAccessLookup) ListByAccount(ctx context.Context, accoun
 	}
 	out := make([]model.SharedAccessView, len(grants))
 	for i, g := range grants {
-		out[i] = model.SharedAccessView{UserID: g.UserID.String(), Role: g.Role.Alias()}
+		out[i] = model.SharedAccessView{UserID: g.UserID.String(), Role: g.Role.Alias(), IsAccepted: g.IsAccepted}
 	}
 	return out, nil
 }
