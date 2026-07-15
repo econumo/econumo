@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -15,14 +14,13 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-var _ account.AccessStore = (*accountrepo.AccessRepo)(nil)
-
 const (
 	accessUsdID = "dffc2a06-6f29-4704-8575-31709adee926"
 	accessUserA = "11111111-1111-1111-1111-111111111111"
 	accessUserB = "22222222-2222-2222-2222-222222222222"
 	accessAcctA = "aaaa1111-0000-0000-0000-0000000000a1"
 	accessAcctB = "bbbb1111-0000-0000-0000-0000000000b1"
+	accessAcctC = "00000000-0000-0000-0000-0000000000c1"
 )
 
 var accessFixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
@@ -178,6 +176,40 @@ func TestAccessRepo_ReceivedVsPendingReceived(t *testing.T) {
 	}
 	if len(pendB) != 1 || pendB[0].AccountID.String() != accessAcctA {
 		t.Fatalf("want userB's 1 pending grant to be on acctA, got %+v", pendB)
+	}
+}
+
+func TestAccessRepo_ListPendingReceived_Ordering(t *testing.T) {
+	repo, _, f := newAccessRepo(t)
+	ctx := context.Background()
+
+	f.Account(fixture.Account{ID: accessAcctC, UserID: accessUserA, CurrencyID: accessUsdID, Name: "C", Type: 2, Icon: "x"})
+
+	// Grant on acctA (lexicographically LARGER id) created first.
+	first := model.NewAccountAccess(vo.MustParseId(accessAcctA), vo.MustParseId(accessUserB), model.RoleUser, accessFixedTime)
+	if err := repo.Save(ctx, first); err != nil {
+		t.Fatalf("Save first: %v", err)
+	}
+	// Grant on acctC (lexicographically SMALLER id) created an hour later. If
+	// ListPendingReceived sorted by account_id alone, acctC would sort first;
+	// pinning created_at as the primary sort key catches that regression.
+	second := model.NewAccountAccess(vo.MustParseId(accessAcctC), vo.MustParseId(accessUserB), model.RoleUser, accessFixedTime.Add(time.Hour))
+	if err := repo.Save(ctx, second); err != nil {
+		t.Fatalf("Save second: %v", err)
+	}
+
+	got, err := repo.ListPendingReceived(ctx, vo.MustParseId(accessUserB))
+	if err != nil {
+		t.Fatalf("ListPendingReceived: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("want 2 pending grants, got %d: %+v", len(got), got)
+	}
+	if got[0].AccountID.String() != accessAcctA || got[1].AccountID.String() != accessAcctC {
+		t.Fatalf("want order [acctA, acctC] (created_at asc), got [%s, %s]", got[0].AccountID.String(), got[1].AccountID.String())
+	}
+	if !got[0].CreatedAt.Equal(accessFixedTime) || !got[1].CreatedAt.Equal(accessFixedTime.Add(time.Hour)) {
+		t.Fatalf("createdAt mismatch: got[0]=%v got[1]=%v", got[0].CreatedAt, got[1].CreatedAt)
 	}
 }
 
