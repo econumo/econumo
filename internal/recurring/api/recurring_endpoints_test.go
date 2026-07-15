@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 )
@@ -168,5 +169,91 @@ func TestDeleteRecurringTransaction_Success(t *testing.T) {
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
 	if list := mustUnmarshal[recurringList](t, listEnv.Data); len(list.Items) != 0 {
 		t.Fatalf("template still listed after delete")
+	}
+}
+
+func TestPostRecurringTransaction_CreatesAndAdvances(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	item := createTemplate(t, h, tok) // nextPaymentAt 2026-08-31, monthly
+
+	const txOpID = "0197c200-0000-7000-8000-000000000001"
+	body := map[string]any{
+		"recurringId": item.ID, "id": txOpID, "type": "expense", "amount": "42.50",
+		"accountId": accountID, "categoryId": catID, "date": "2026-08-31 00:00:00", "description": "rent",
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		Item          struct{ ID, Amount, Date string } `json:"item"`
+		NextPaymentAt string                            `json:"nextPaymentAt"`
+	}](t, env.Data)
+	if res.Item.ID == "" || res.Item.Amount != "42.5" {
+		t.Fatalf("unexpected transaction: %+v", res.Item)
+	}
+	if res.NextPaymentAt != "2026-09-30 00:00:00" {
+		t.Fatalf("nextPaymentAt = %q, want advanced one month (clamped Sep 30)", res.NextPaymentAt)
+	}
+
+	// the real transaction exists
+	txStatus, txEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	if txStatus != http.StatusOK {
+		t.Fatalf("tx list status=%d body=%s", txStatus, txEnv.raw)
+	}
+	txList := mustUnmarshal[struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}](t, txEnv.Data)
+	found := false
+	for _, it := range txList.Items {
+		if it.ID == res.Item.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		raw, _ := json.Marshal(txList)
+		t.Fatalf("posted transaction id %q not found in get-transaction-list: %s", res.Item.ID, raw)
+	}
+}
+
+func TestPostRecurringTransaction_ReplayIsLocked(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	item := createTemplate(t, h, tok)
+	const txOpID = "0197c200-0000-7000-8000-000000000002"
+	body := map[string]any{
+		"recurringId": item.ID, "id": txOpID, "type": "expense", "amount": "10",
+		"accountId": accountID, "categoryId": catID, "date": "2026-08-31 00:00:00",
+	}
+	h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	if status != http.StatusBadRequest {
+		t.Fatalf("replay status=%d body=%s", status, env.raw)
+	}
+	// schedule advanced exactly once
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
+	list := mustUnmarshal[recurringList](t, listEnv.Data)
+	if list.Items[0].NextPaymentAt != "2026-09-30 00:00:00" {
+		t.Fatalf("nextPaymentAt = %q after replay, want single advance", list.Items[0].NextPaymentAt)
+	}
+}
+
+func TestSkipRecurringTransaction_AdvancesWithoutTransaction(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	item := createTemplate(t, h, tok)
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/skip-recurring-transaction", tok, map[string]any{"id": item.ID})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		Item recurringItem `json:"item"`
+	}](t, env.Data)
+	if res.Item.NextPaymentAt != "2026-09-30 00:00:00" {
+		t.Fatalf("nextPaymentAt = %q, want 2026-09-30 00:00:00", res.Item.NextPaymentAt)
 	}
 }

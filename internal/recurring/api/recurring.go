@@ -13,6 +13,8 @@ var _ = model.GetRecurringTransactionListResult{}
 var _ = model.CreateRecurringTransactionResult{}
 var _ = model.UpdateRecurringTransactionResult{}
 var _ = model.DeleteRecurringTransactionResult{}
+var _ = model.PostRecurringTransactionResult{}
+var _ = model.SkipRecurringTransactionResult{}
 
 // GetRecurringTransactionList handles GET /api/v1/recurring/get-recurring-transaction-list (auth).
 //
@@ -81,4 +83,40 @@ func (h *Handlers) UpdateRecurringTransaction(w http.ResponseWriter, r *http.Req
 // @Router      /api/v1/recurring/delete-recurring-transaction [post]
 func (h *Handlers) DeleteRecurringTransaction(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.dev, h.svc.DeleteRecurringTransaction)
+}
+
+// PostRecurringTransaction handles POST /api/v1/recurring/post-recurring-transaction (auth).
+//
+// @Summary     Post a recurring transaction
+// @Description Materializes one instance of a recurring transaction template as a real transaction and advances its schedule. Idempotent on the request id.
+// @Tags        Recurring
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.PostRecurringTransactionRequest true "Post recurring transaction request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.PostRecurringTransactionResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/recurring/post-recurring-transaction [post]
+func (h *Handlers) PostRecurringTransaction(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.dev, h.svc.PostRecurringTransaction)
+}
+
+// SkipRecurringTransaction handles POST /api/v1/recurring/skip-recurring-transaction (auth).
+//
+// @Summary     Skip a recurring transaction
+// @Description Advances a recurring transaction template's schedule without posting a transaction.
+// @Tags        Recurring
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SkipRecurringTransactionRequest true "Skip recurring transaction request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SkipRecurringTransactionResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/recurring/skip-recurring-transaction [post]
+func (h *Handlers) SkipRecurringTransaction(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.dev, h.svc.SkipRecurringTransaction)
 }

@@ -16,5 +16,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		mux.Handle("POST /api/v1/recurring/create-recurring-transaction", auth(h.CreateRecurringTransaction))
 		mux.Handle("POST /api/v1/recurring/update-recurring-transaction", auth(h.UpdateRecurringTransaction))
 		mux.Handle("POST /api/v1/recurring/delete-recurring-transaction", auth(h.DeleteRecurringTransaction))
+		mux.Handle("POST /api/v1/recurring/post-recurring-transaction", auth(h.PostRecurringTransaction))
+		mux.Handle("POST /api/v1/recurring/skip-recurring-transaction", auth(h.SkipRecurringTransaction))
 	}
 }
