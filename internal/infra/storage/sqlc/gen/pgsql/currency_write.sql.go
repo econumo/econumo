@@ -10,10 +10,56 @@ import (
 	"time"
 )
 
+const countCurrencyUsage = `-- name: CountCurrencyUsage :one
+SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = $1)
+     + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = $1)
+     + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = $1)
+     + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = $2) AS usage_count
+`
+
+type CountCurrencyUsageParams struct {
+	CurrencyID string
+	Value      *string
+}
+
+// Usage census for delete protection: accounts (including soft-deleted ones,
+// they still hold the FK), budgets, budget elements, and any user whose
+// profile currency option stores this code. $1 is reused for all three
+// currency-id positions so the generated param stays two fields.
+func (q *Queries) CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int32, error) {
+	row := q.db.QueryRowContext(ctx, countCurrencyUsage, arg.CurrencyID, arg.Value)
+	var usage_count int32
+	err := row.Scan(&usage_count)
+	return usage_count, err
+}
+
+const deleteCurrency = `-- name: DeleteCurrency :exec
+DELETE FROM currencies WHERE id = $1
+`
+
+func (q *Queries) DeleteCurrency(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteCurrency, id)
+	return err
+}
+
+const deleteHiddenCurrency = `-- name: DeleteHiddenCurrency :exec
+DELETE FROM users_hidden_currencies WHERE user_id = $1 AND currency_id = $2
+`
+
+type DeleteHiddenCurrencyParams struct {
+	UserID     string
+	CurrencyID string
+}
+
+func (q *Queries) DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error {
+	_, err := q.db.ExecContext(ctx, deleteHiddenCurrency, arg.UserID, arg.CurrencyID)
+	return err
+}
+
 const getCurrencyByCode = `-- name: GetCurrencyByCode :one
 SELECT id, code, symbol, name, fraction_digits, created_at
 FROM currencies
-WHERE code = $1
+WHERE code = $1 AND user_id IS NULL
 `
 
 type GetCurrencyByCodeRow struct {
@@ -25,7 +71,8 @@ type GetCurrencyByCodeRow struct {
 	CreatedAt      time.Time
 }
 
-// One currency by ISO code (full row), for the idempotency check in add-currency.
+// One GLOBAL currency by ISO code (full row), for the idempotency check in
+// add-currency.
 func (q *Queries) GetCurrencyByCode(ctx context.Context, code string) (GetCurrencyByCodeRow, error) {
 	row := q.db.QueryRowContext(ctx, getCurrencyByCode, code)
 	var i GetCurrencyByCodeRow
@@ -38,6 +85,63 @@ func (q *Queries) GetCurrencyByCode(ctx context.Context, code string) (GetCurren
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getCurrencyRecord = `-- name: GetCurrencyRecord :one
+
+SELECT id, code, symbol, name, fraction_digits, user_id, is_archived, created_at
+FROM currencies WHERE id = $1
+`
+
+type GetCurrencyRecordRow struct {
+	ID             string
+	Code           string
+	Symbol         string
+	Name           *string
+	FractionDigits int16
+	UserID         *string
+	IsArchived     bool
+	CreatedAt      time.Time
+}
+
+// User currency management (per-user custom currencies). Global currencies
+// have user_id NULL; custom currencies carry their owner id.
+func (q *Queries) GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error) {
+	row := q.db.QueryRowContext(ctx, getCurrencyRecord, id)
+	var i GetCurrencyRecordRow
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Symbol,
+		&i.Name,
+		&i.FractionDigits,
+		&i.UserID,
+		&i.IsArchived,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getGlobalCurrencyIDByCode = `-- name: GetGlobalCurrencyIDByCode :one
+SELECT id FROM currencies WHERE code = $1 AND user_id IS NULL
+`
+
+func (q *Queries) GetGlobalCurrencyIDByCode(ctx context.Context, code string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getGlobalCurrencyIDByCode, code)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const globalCurrencyCodeExists = `-- name: GlobalCurrencyCodeExists :one
+SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id IS NULL
+`
+
+func (q *Queries) GlobalCurrencyCodeExists(ctx context.Context, code string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, globalCurrencyCodeExists, code)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const insertCurrency = `-- name: InsertCurrency :exec
@@ -67,9 +171,56 @@ func (q *Queries) InsertCurrency(ctx context.Context, arg InsertCurrencyParams) 
 	return err
 }
 
+const insertHiddenCurrency = `-- name: InsertHiddenCurrency :exec
+INSERT INTO users_hidden_currencies (user_id, currency_id, created_at)
+VALUES ($1, $2, $3)
+ON CONFLICT (user_id, currency_id) DO NOTHING
+`
+
+type InsertHiddenCurrencyParams struct {
+	UserID     string
+	CurrencyID string
+	CreatedAt  time.Time
+}
+
+func (q *Queries) InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error {
+	_, err := q.db.ExecContext(ctx, insertHiddenCurrency, arg.UserID, arg.CurrencyID, arg.CreatedAt)
+	return err
+}
+
+const insertUserCurrency = `-- name: InsertUserCurrency :exec
+INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+type InsertUserCurrencyParams struct {
+	ID             string
+	Code           string
+	Symbol         string
+	Name           *string
+	FractionDigits int16
+	UserID         *string
+	IsArchived     bool
+	CreatedAt      time.Time
+}
+
+func (q *Queries) InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error {
+	_, err := q.db.ExecContext(ctx, insertUserCurrency,
+		arg.ID,
+		arg.Code,
+		arg.Symbol,
+		arg.Name,
+		arg.FractionDigits,
+		arg.UserID,
+		arg.IsArchived,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const listCurrencyCodes = `-- name: ListCurrencyCodes :many
 
-SELECT id, code FROM currencies
+SELECT id, code FROM currencies WHERE user_id IS NULL
 `
 
 type ListCurrencyCodesRow struct {
@@ -83,8 +234,9 @@ type ListCurrencyCodesRow struct {
 // lookup) and currency_read.sql (the CQRS read model) so the write concern is
 // visibly distinct. The HTTP API has no currency write path; these run only from
 // the CLI. (Comments kept ASCII-only to match the sqlite sibling; see its note.)
-// Every currency's id + code, used to build the rate loader's symbols list and
-// the code->id map. Mirrors CurrencyRepository::getAll() (code projection only).
+// Every GLOBAL currency's id + code, used to build the rate loader's symbols
+// list and the code->id map. Custom (per-user) currencies must never reach the
+// CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
 func (q *Queries) ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listCurrencyCodes)
 	if err != nil {
@@ -106,6 +258,57 @@ func (q *Queries) ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow
 		return nil, err
 	}
 	return items, nil
+}
+
+const ownerCurrencyCodeExists = `-- name: OwnerCurrencyCodeExists :one
+SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id = $2
+`
+
+type OwnerCurrencyCodeExistsParams struct {
+	Code   string
+	UserID *string
+}
+
+func (q *Queries) OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, ownerCurrencyCodeExists, arg.Code, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const setCurrencyArchived = `-- name: SetCurrencyArchived :exec
+UPDATE currencies SET is_archived = $1 WHERE id = $2
+`
+
+type SetCurrencyArchivedParams struct {
+	IsArchived bool
+	ID         string
+}
+
+func (q *Queries) SetCurrencyArchived(ctx context.Context, arg SetCurrencyArchivedParams) error {
+	_, err := q.db.ExecContext(ctx, setCurrencyArchived, arg.IsArchived, arg.ID)
+	return err
+}
+
+const updateCurrencyDetails = `-- name: UpdateCurrencyDetails :exec
+UPDATE currencies SET name = $1, symbol = $2, fraction_digits = $3 WHERE id = $4
+`
+
+type UpdateCurrencyDetailsParams struct {
+	Name           *string
+	Symbol         string
+	FractionDigits int16
+	ID             string
+}
+
+func (q *Queries) UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error {
+	_, err := q.db.ExecContext(ctx, updateCurrencyDetails,
+		arg.Name,
+		arg.Symbol,
+		arg.FractionDigits,
+		arg.ID,
+	)
+	return err
 }
 
 const upsertCurrencyRate = `-- name: UpsertCurrencyRate :exec

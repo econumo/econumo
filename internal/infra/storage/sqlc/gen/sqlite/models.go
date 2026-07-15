@@ -150,6 +150,8 @@ type Currency struct {
 	CreatedAt      time.Time
 	Name           *string
 	FractionDigits int16
+	UserID         *string
+	IsArchived     bool
 }
 
 type Folder struct {
@@ -239,6 +241,12 @@ type UsersConnectionsInvite struct {
 	UserID    string
 	Code      *string
 	ExpiredAt *time.Time
+}
+
+type UsersHiddenCurrency struct {
+	UserID     string
+	CurrencyID string
+	CreatedAt  time.Time
 }
 
 type UsersOption struct {
