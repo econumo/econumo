@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"testing"
+
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func TestUpdateCurrency_Success(t *testing.T) {
@@ -54,6 +56,66 @@ func TestUpdateCurrency_Blank_400(t *testing.T) {
 	}
 	if _, ok := env.errorsMap()["currency"]; !ok {
 		t.Fatalf("expected currency field error; body=%s", env.raw)
+	}
+}
+
+func TestUpdateCurrency_OwnCustomCode_Success(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+	f := fixture.New(t, h.tdb)
+	f.Currency(fixture.Currency{Code: "PTS", UserID: seedUserID})
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-currency", token, map[string]string{
+		"currency": "PTS",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("update-currency own custom=%d body=%s", status, env.raw)
+	}
+}
+
+func TestUpdateCurrency_ForeignCustomCode_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+	f := fixture.New(t, h.tdb)
+	otherUserID := "99999999-9999-9999-9999-999999999999"
+	f.User(fixture.User{ID: otherUserID, Name: "Other", Salt: seedSalt})
+	f.Currency(fixture.Currency{Code: "PTS", UserID: otherUserID})
+
+	// A foreign custom code must not resolve, even though it exists for someone
+	// else -> NotFound, same as an unknown code.
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-currency", token, map[string]string{
+		"currency": "PTS",
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("update-currency foreign custom=%d want 400 body=%s", status, env.raw)
+	}
+	if env.Message != "Currency PTS not found" {
+		t.Fatalf("message=%q want %q", env.Message, "Currency PTS not found")
+	}
+}
+
+func TestGetUserData_OwnCustomCurrency_ResolvesCurrencyID(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+	f := fixture.New(t, h.tdb)
+	pts := f.Currency(fixture.Currency{Code: "PTS", UserID: seedUserID})
+
+	if status, env := h.do(t, http.MethodPost, "/api/v1/user/update-currency", token, map[string]string{
+		"currency": "PTS",
+	}); status != http.StatusOK {
+		t.Fatalf("update-currency=%d body=%s", status, env.raw)
+	}
+
+	status, env := h.do(t, http.MethodGet, "/api/v1/user/get-user-data", token, nil)
+	if status != http.StatusOK {
+		t.Fatalf("get-user-data=%d body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+	cid, ok := res.User.optionValue("currency_id")
+	if !ok || cid == nil || *cid != pts {
+		t.Fatalf("currency_id option=%v (ok=%v) want own custom currency %q", cid, ok, pts)
 	}
 }
 

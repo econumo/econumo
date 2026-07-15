@@ -10,9 +10,14 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// CurrencyLookup resolves a currency by id for the account-result embed.
+// CurrencyLookup resolves a currency by id for the account-result embed, and
+// gates which currencies a user may denominate a new/changed account in.
 type CurrencyLookup interface {
 	GetByID(ctx context.Context, id string) (model.CurrencyView, error)
+	// EnsureUsable confirms the currency is usable by the user: global, or
+	// their own non-archived custom. Returns NotFound (missing) or a
+	// field-level ValidationError (foreign/archived) otherwise.
+	EnsureUsable(ctx context.Context, userID, currencyID string) error
 }
 
 // UserLookup resolves the owner (id, name, avatar) for the account-result embed.

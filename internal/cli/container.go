@@ -73,7 +73,7 @@ func newContainer(ctx context.Context) (*container, error) {
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
+		userRepo, txm, encodeSvc, hasher, accessTokens, server.NewUserCurrencyLookup(currencyLookup), budgetExistence,
 		passwordReqRepo, resetMailer, appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration,
 	)
 

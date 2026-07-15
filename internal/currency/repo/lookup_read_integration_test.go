@@ -65,6 +65,63 @@ func TestCurrencyLookup_GetByID(t *testing.T) {
 	}
 }
 
+func TestLookup_GetIDByCodeForUser(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	lk := currencyrepo.New(db.Engine, db.TX)
+	ctx := context.Background()
+	// Explicit distinct ids: fixture identifiers derive from the id's leading 8
+	// hex chars when the builder has no crypto, and UUIDv7's first 32 bits are
+	// pure timestamp, so 2 fresh ids minted this fast can collide (see
+	// TestReadRepo_UserCurrencyListScoping).
+	uid := f.User(fixture.User{ID: "a1000000-0000-7000-8000-000000000001", Name: "A"})
+	pts := f.Currency(fixture.Currency{Code: "PTS", UserID: uid})
+	// Own custom resolves.
+	got, err := lk.GetIDByCodeForUser(ctx, uid, "PTS")
+	if err != nil || got != pts {
+		t.Fatalf("own custom: got %q err %v", got, err)
+	}
+	// Global resolves for anyone.
+	if got, err = lk.GetIDByCodeForUser(ctx, uid, "USD"); err != nil || got != seededUSD {
+		t.Fatalf("global: got %q err %v", got, err)
+	}
+	// Foreign custom does NOT resolve.
+	other := f.User(fixture.User{ID: "b1000000-0000-7000-8000-000000000002", Name: "B"})
+	if _, err = lk.GetIDByCodeForUser(ctx, other, "PTS"); err == nil {
+		t.Fatal("foreign custom code must not resolve")
+	}
+}
+
+func TestLookup_EnsureUsable(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	lk := currencyrepo.New(db.Engine, db.TX)
+	ctx := context.Background()
+	alice := f.User(fixture.User{ID: "a2000000-0000-7000-8000-000000000001", Name: "Alice"})
+	bob := f.User(fixture.User{ID: "b2000000-0000-7000-8000-000000000002", Name: "Bob"})
+	pts := f.Currency(fixture.Currency{Code: "PTS", UserID: alice})
+	old := f.Currency(fixture.Currency{Code: "OLD", UserID: alice, IsArchived: true})
+	if err := lk.EnsureUsable(ctx, alice, seededUSD); err != nil {
+		t.Errorf("global should be usable: %v", err)
+	}
+	if err := lk.EnsureUsable(ctx, alice, pts); err != nil {
+		t.Errorf("own custom should be usable: %v", err)
+	}
+	if err := lk.EnsureUsable(ctx, bob, pts); err == nil {
+		t.Error("foreign custom must be rejected")
+	} else if v, ok := errs.AsValidation(err); !ok || v.Msg != "Validation failed" || v.Fields[0].Message != "Currency is not available" {
+		t.Errorf("wrong error: %v", err)
+	}
+	if err := lk.EnsureUsable(ctx, alice, old); err == nil {
+		t.Error("own archived custom must be rejected")
+	}
+	if err := lk.EnsureUsable(ctx, alice, fixture.NewID()); err == nil {
+		t.Error("missing currency must error")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Errorf("want NotFound, got %v", err)
+	}
+}
+
 func TestCurrencyReadRepo_UserCurrencyListView(t *testing.T) {
 	db := dbtest.New(t)
 	read := currencyrepo.NewReadRepo(db.Engine, db.TX)

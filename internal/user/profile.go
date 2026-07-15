@@ -35,7 +35,7 @@ func (s *Service) UpdateCurrency(ctx context.Context, userID vo.Id, req model.Up
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.currency.GetIDByCode(ctx, code); err != nil {
+	if _, err := s.currency.GetIDByCode(ctx, userID.String(), code); err != nil {
 		return nil, errs.NewNotFound(fmt.Sprintf("Currency %s not found", code))
 	}
 	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {

@@ -27,9 +27,16 @@ type AccountLookup interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 }
 
-// CurrencyLookup resolves a currency id by code (createBudget default currency).
+// CurrencyLookup resolves a currency id by code (createBudget default
+// currency) and gates which currencies a user may denominate a
+// budget/element in.
 type CurrencyLookup interface {
-	GetIDByCode(ctx context.Context, code string) (string, error)
+	// GetIDByCode resolves a code preferring the user's own custom currency,
+	// then a global one.
+	GetIDByCode(ctx context.Context, userID, code string) (string, error)
+	// EnsureUsable confirms the currency is usable by the user: global, or
+	// their own non-archived custom.
+	EnsureUsable(ctx context.Context, userID, currencyID string) error
 }
 
 // MetadataLookup resolves the categories + tags (+ payees) owned by a set of

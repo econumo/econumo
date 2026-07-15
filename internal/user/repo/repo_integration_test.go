@@ -10,6 +10,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
@@ -220,13 +221,30 @@ func TestUserReadRepo_Views(t *testing.T) {
 func TestUserReadRepo_CurrencyIDByCode(t *testing.T) {
 	_, read, _ := newRepos(t)
 	ctx := context.Background()
-	// USD is seeded by the baseline migration.
-	id, err := read.CurrencyIDByCode(ctx, "USD")
+	// USD is seeded by the baseline migration (global, so resolves for anyone).
+	id, err := read.CurrencyIDByCode(ctx, userA, "USD")
 	if err != nil {
 		t.Fatalf("CurrencyIDByCode(USD): %v", err)
 	}
 	if id != "dffc2a06-6f29-4704-8575-31709adee926" {
 		t.Errorf("want seeded USD id, got %q", id)
+	}
+}
+
+func TestUserReadRepo_CurrencyIDByCode_OwnCustomFirst(t *testing.T) {
+	_, read, db := newRepos(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	owner := f.User(fixture.User{ID: "a3000000-0000-7000-8000-000000000001", Name: "Owner"})
+	other := f.User(fixture.User{ID: "b3000000-0000-7000-8000-000000000002", Name: "Other"})
+	pts := f.Currency(fixture.Currency{Code: "PTS", UserID: owner})
+
+	id, err := read.CurrencyIDByCode(ctx, owner, "PTS")
+	if err != nil || id != pts {
+		t.Fatalf("own custom: got %q err %v", id, err)
+	}
+	if _, err := read.CurrencyIDByCode(ctx, other, "PTS"); err == nil {
+		t.Fatal("foreign custom code must not resolve")
 	}
 }
 
