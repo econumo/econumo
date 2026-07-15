@@ -75,7 +75,7 @@ func validateRate(rate string) error {
 
 func validateName(name string) (string, error) {
 	n := strings.TrimSpace(name)
-	if len(n) < 1 || len(n) > 64 {
+	if l := len([]rune(n)); l < 1 || l > 64 {
 		return "", errs.NewValidation("Validation failed",
 			errs.FieldError{Key: "name", Message: "Currency name must be 1-64 characters"})
 	}
@@ -84,7 +84,7 @@ func validateName(name string) (string, error) {
 
 func validateSymbol(symbol string) (string, error) {
 	sym := strings.TrimSpace(symbol)
-	if len(sym) < 1 || len(sym) > 12 {
+	if l := len([]rune(sym)); l < 1 || l > 12 {
 		return "", errs.NewValidation("Validation failed",
 			errs.FieldError{Key: "symbol", Message: "Currency symbol must be 1-12 characters"})
 	}

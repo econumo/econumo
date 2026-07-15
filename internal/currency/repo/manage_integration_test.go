@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,6 +55,36 @@ func TestManageRepo_InsertGetUpdateArchiveDelete(t *testing.T) {
 		t.Fatal("expected NotFound after delete")
 	} else if _, ok := errs.AsNotFound(err); !ok {
 		t.Fatalf("want NotFound, got %v", err)
+	}
+}
+
+func TestManageRepo_NameLength64Chars(t *testing.T) {
+	r, _, f := newManage(t)
+	ctx := context.Background()
+	uid := f.User(fixture.User{Name: "A"})
+	name64 := strings.Repeat("n", 64)
+	rec := model.CurrencyRecord{
+		ID: fixture.NewID(), Code: "PTS", Symbol: "pts", Name: &name64,
+		FractionDigits: 0, UserID: &uid, CreatedAt: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
+	}
+	if err := r.InsertUserCurrency(ctx, rec); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.GetCurrencyRecord(ctx, rec.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name == nil || *got.Name != name64 {
+		t.Fatalf("Name = %v, want 64-char name round-tripped", got.Name)
+	}
+
+	name64b := strings.Repeat("m", 64)
+	if err := r.UpdateCurrencyDetails(ctx, rec.ID, name64b, "kp", 2); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = r.GetCurrencyRecord(ctx, rec.ID)
+	if got.Name == nil || *got.Name != name64b {
+		t.Fatalf("updated Name = %v, want 64-char name round-tripped", got.Name)
 	}
 }
 

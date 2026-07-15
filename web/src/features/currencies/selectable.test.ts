@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { CurrencyDto } from '@/api/dto/currency'
+import type { CurrencyListItemDto } from '@/api/dto/currency'
 import { selectableCurrencies } from './selectable'
 
-const cur = (over: Partial<CurrencyDto>): CurrencyDto => ({
+const cur = (over: Partial<CurrencyListItemDto>): CurrencyListItemDto => ({
   id: 'x', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2,
   scope: 'global', isArchived: 0, isHidden: 0, ...over,
 })

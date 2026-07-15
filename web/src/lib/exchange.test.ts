@@ -1,8 +1,8 @@
 import { exchange } from './exchange'
 
-const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
-const eur = { id: 'eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
-const jpy = { id: 'jpy', code: 'JPY', name: 'Yen', symbol: '¥', fractionDigits: 0, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
+const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+const eur = { id: 'eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
+const jpy = { id: 'jpy', code: 'JPY', name: 'Yen', symbol: '¥', fractionDigits: 0 }
 const currencies = [usd, eur, jpy]
 
 // base currency is USD: rate = units of currency per 1 USD

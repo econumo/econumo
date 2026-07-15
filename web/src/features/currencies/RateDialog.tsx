@@ -10,11 +10,12 @@ import type { CurrencyDto } from '@/api/dto/currency'
 interface RateDialogProps {
   open: boolean
   currency?: CurrencyDto | null
+  serverError?: string | null
   onClose: () => void
   onSubmit: (form: { rate: string; date?: string }) => void
 }
 
-export function RateDialog({ open, currency, onClose, onSubmit }: RateDialogProps) {
+export function RateDialog({ open, currency, serverError, onClose, onSubmit }: RateDialogProps) {
   const { t } = useTranslation()
   const [rate, setRate] = useState('')
   const [date, setDate] = useState('')
@@ -64,7 +65,7 @@ export function RateDialog({ open, currency, onClose, onSubmit }: RateDialogProp
         <div className="flex flex-col gap-2">
           <Label htmlFor="rate-value">{t('modules.classifications.currencies.forms.currency.rate.label')}</Label>
           <Input id="rate-value" value={rate} onChange={(e) => setRate(e.target.value)} />
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {error ?? serverError ? <p className="text-sm text-destructive">{error ?? serverError}</p> : null}
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="rate-date">{t('modules.classifications.currencies.forms.currency.date.label')}</Label>

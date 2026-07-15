@@ -4,6 +4,7 @@
 ALTER TABLE currencies ADD COLUMN user_id UUID DEFAULT NULL;
 ALTER TABLE currencies ADD COLUMN is_archived BOOLEAN DEFAULT FALSE NOT NULL;
 ALTER TABLE currencies ADD CONSTRAINT fk_currencies_user_id FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE;
+ALTER TABLE currencies ALTER COLUMN name TYPE VARCHAR(64);
 ALTER TABLE currencies DROP CONSTRAINT currencies_code_key;
 DROP INDEX UNIQ_37C4469377153098;
 CREATE UNIQUE INDEX UNIQ_currencies_code_global ON currencies (code) WHERE user_id IS NULL;

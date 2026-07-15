@@ -2,8 +2,8 @@ import { buildAccountsTree, SYNTHETIC_FOLDER_ID } from './accountsTree'
 import type { AccountDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
 
-const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
-const eur = { id: 'eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
+const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+const eur = { id: 'eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 const owner = { id: 'u1', avatar: '', name: 'Ada' }
 
 const account = (over: Partial<AccountDto>): AccountDto => ({

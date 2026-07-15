@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Switch } from '@/components/ui/switch'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
-import type { CurrencyDto } from '@/api/dto/currency'
+import type { CurrencyListItemDto } from '@/api/dto/currency'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
@@ -51,11 +51,12 @@ export function CurrenciesPage() {
   const hideCurrency = useHideCurrency()
   const showCurrency = useShowCurrency()
 
-  const [dialog, setDialog] = useState<{ open: boolean; currency: CurrencyDto | null }>({ open: false, currency: null })
-  const [rateDialog, setRateDialog] = useState<{ open: boolean; currency: CurrencyDto | null }>({ open: false, currency: null })
-  const [deleteTarget, setDeleteTarget] = useState<CurrencyDto | null>(null)
+  const [dialog, setDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
+  const [rateDialog, setRateDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
+  const [deleteTarget, setDeleteTarget] = useState<CurrencyListItemDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [rateError, setRateError] = useState<string | null>(null)
 
   const own = currencies?.filter((c) => c.scope === 'own') ?? []
   const globals = currencies?.filter((c) => c.scope === 'global') ?? []
@@ -65,7 +66,10 @@ export function CurrenciesPage() {
   const baseCurrency = currencies?.find((c) => c.id === baseId)
 
   const closeDialog = () => setDialog({ open: false, currency: null })
-  const closeRateDialog = () => setRateDialog({ open: false, currency: null })
+  const closeRateDialog = () => {
+    setRateDialog({ open: false, currency: null })
+    setRateError(null)
+  }
 
   return (
     <SettingsShell
@@ -92,11 +96,11 @@ export function CurrenciesPage() {
       }
     >
       <div className="flex flex-col gap-6">
+        {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
         <section className="flex flex-col gap-1">
           <h2 className="mt-2 mb-1 px-1 text-sm font-semibold uppercase tracking-wide">
             {t('modules.classifications.currencies.pages.settings.my_currencies')}
           </h2>
-          {error ? <p className="px-1 pb-1 text-sm text-destructive">{error}</p> : null}
           {own.length === 0 ? (
             <p className="px-1 py-2 text-sm text-muted-foreground">{t('modules.classifications.currencies.pages.settings.empty_state')}</p>
           ) : (
@@ -125,9 +129,14 @@ export function CurrenciesPage() {
                   <Switch
                     aria-label={`archive ${currency.name}`}
                     checked={currency.isArchived === 0}
-                    onCheckedChange={() =>
-                      currency.isArchived === 0 ? archiveCurrency.mutate(currency.id) : unarchiveCurrency.mutate(currency.id)
-                    }
+                    onCheckedChange={() => {
+                      setError(null)
+                      if (currency.isArchived === 0) {
+                        archiveCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                      } else {
+                        unarchiveCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                      }
+                    }}
                   />
                   <DropdownMenu open={openMenuId === currency.id} onOpenChange={(open) => setOpenMenuId(open ? currency.id : null)}>
                     <DropdownMenuTrigger asChild>
@@ -174,7 +183,14 @@ export function CurrenciesPage() {
                   checked={currency.isHidden === 0}
                   disabled={locked}
                   title={lockedTitle}
-                  onCheckedChange={(checked) => (checked ? showCurrency.mutate(currency.id) : hideCurrency.mutate(currency.id))}
+                  onCheckedChange={(checked) => {
+                    setError(null)
+                    if (checked) {
+                      showCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                    } else {
+                      hideCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                    }
+                  }}
                 />
               </div>
             )
@@ -187,13 +203,13 @@ export function CurrenciesPage() {
         currency={dialog.currency}
         onClose={closeDialog}
         onSubmit={(form) => {
+          setError(null)
           if (dialog.currency) {
             updateCurrency.mutate(
               { id: dialog.currency.id, name: form.name, symbol: form.symbol, fractionDigits: form.fractionDigits },
-              { onSuccess: closeDialog },
+              { onSuccess: closeDialog, onError: (e) => setError(serverMessage(e)) },
             )
           } else {
-            setError(null)
             createCurrency.mutate(
               { code: form.code, name: form.name, symbol: form.symbol || undefined, fractionDigits: form.fractionDigits, rate: form.rate || undefined },
               { onSuccess: closeDialog, onError: (e) => setError(serverMessage(e)) },
@@ -205,14 +221,16 @@ export function CurrenciesPage() {
       <RateDialog
         open={rateDialog.open}
         currency={rateDialog.currency}
+        serverError={rateError}
         onClose={closeRateDialog}
         onSubmit={(form) => {
           if (!rateDialog.currency) {
             return
           }
+          setRateError(null)
           setCurrencyRate.mutate(
             { currencyId: rateDialog.currency.id, rate: form.rate, date: form.date },
-            { onSuccess: closeRateDialog },
+            { onSuccess: closeRateDialog, onError: (e) => setRateError(serverMessage(e)) },
           )
         }}
       />

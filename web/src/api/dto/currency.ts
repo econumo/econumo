@@ -6,6 +6,12 @@ export interface CurrencyDto {
   name: string
   symbol: string
   fractionDigits: number
+}
+
+// get-currency-list items (and the create/update-currency item echo) carry
+// scope/isArchived/isHidden on top of the shared shape; account/transaction
+// embeds never do, mirroring the Go CurrencyResult vs CurrencyListItem split.
+export interface CurrencyListItemDto extends CurrencyDto {
   scope: 'global' | 'own' | 'shared'
   isArchived: 0 | 1
   isHidden: 0 | 1

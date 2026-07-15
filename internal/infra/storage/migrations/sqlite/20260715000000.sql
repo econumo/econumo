@@ -32,7 +32,7 @@ CREATE TABLE currencies
     , code       TEXT     NOT NULL
     , symbol     VARCHAR(12) NOT NULL
     , created_at DATETIME    NOT NULL
-    , name VARCHAR(36) DEFAULT NULL
+    , name VARCHAR(64) DEFAULT NULL
     , fraction_digits SMALLINT DEFAULT '2' NOT NULL
     , user_id TEXT DEFAULT NULL
     , is_archived BOOLEAN DEFAULT '0' NOT NULL

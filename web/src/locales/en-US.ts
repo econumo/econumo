@@ -816,7 +816,7 @@ export default {
           'rate': { 'header': 'Set exchange rate', 'submit': 'Save rate' },
           'delete': {
             'title': 'Delete currency?',
-            'question': 'Are you sure you want to delete "{name}"?'
+            'question': 'Are you sure you want to delete “{name}”?'
           }
         },
         'forms': {

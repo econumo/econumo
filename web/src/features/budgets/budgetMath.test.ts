@@ -2,8 +2,8 @@ import { bucketElements, bucketStats, budgetTotals, periodRange, widgetMath, mak
 import { fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 
-const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
-const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
+const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
 // coerced version of the wire fixture
 const budget: BudgetDto = JSON.parse(JSON.stringify(fixtureWireBudget))

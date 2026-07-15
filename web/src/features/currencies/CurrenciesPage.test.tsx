@@ -167,6 +167,28 @@ it("profile currency row's visibility switch is disabled", async () => {
   expect(sw).toHaveAttribute('title', 'Your profile currency is always visible')
 })
 
+it('set-rate dialog surfaces a server 400 inline and stays open', async () => {
+  server.use(
+    http.post('*/api/v1/currency/set-currency-rate', () =>
+      HttpResponse.json(
+        { success: false, message: 'Rate must be a positive number', code: 400, errors: {} },
+        { status: 400 },
+      ),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Points')
+  await user.click(screen.getByRole('button', { name: 'actions Points' }))
+  const menu = await screen.findByRole('menu')
+  await user.click(within(menu).getByRole('menuitem', { name: 'Set exchange rate' }))
+  await screen.findByText('Set exchange rate')
+  await user.type(screen.getByLabelText('Exchange rate'), '-1')
+  await user.click(screen.getByRole('button', { name: 'Save rate' }))
+  expect(await screen.findByText('Rate must be a positive number')).toBeInTheDocument()
+  expect(screen.getByText('Set exchange rate')).toBeInTheDocument()
+})
+
 it('set-rate dialog posts {currencyId, rate, date?}', async () => {
   let body: Record<string, unknown> | undefined
   server.use(

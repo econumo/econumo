@@ -1,13 +1,13 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CurrencyDto, CurrencyRateDto } from './dto/currency'
+import type { CurrencyListItemDto, CurrencyRateDto } from './dto/currency'
 
 interface Envelope<T> {
   data: T
 }
 
-export async function getCurrencyList(): Promise<CurrencyDto[]> {
-  const response = await api.get<Envelope<{ items: CurrencyDto[] }>>(apiUrl('/api/v1/currency/get-currency-list'))
+export async function getCurrencyList(): Promise<CurrencyListItemDto[]> {
+  const response = await api.get<Envelope<{ items: CurrencyListItemDto[] }>>(apiUrl('/api/v1/currency/get-currency-list'))
   return response.data.data.items
 }
 
@@ -23,8 +23,8 @@ export async function createCurrency(form: {
   symbol?: string
   fractionDigits?: number
   rate?: string
-}): Promise<CurrencyDto> {
-  const response = await api.post<Envelope<{ item: CurrencyDto }>>(apiUrl('/api/v1/currency/create-currency'), form)
+}): Promise<CurrencyListItemDto> {
+  const response = await api.post<Envelope<{ item: CurrencyListItemDto }>>(apiUrl('/api/v1/currency/create-currency'), form)
   return response.data.data.item
 }
 

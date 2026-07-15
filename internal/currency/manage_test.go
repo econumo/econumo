@@ -305,6 +305,38 @@ func TestCreateCurrency_SymbolLength(t *testing.T) {
 	assertField(t, v, "symbol", "Currency symbol must be 1-12 characters")
 }
 
+func TestCreateCurrency_NameLength_MultibyteWithinLimit(t *testing.T) {
+	repo := newFakeManageRepo()
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	name := strings.Repeat("я", 33)
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: name}
+
+	res, err := svc.CreateCurrency(context.Background(), uid, req)
+	if err != nil {
+		t.Fatalf("CreateCurrency: %v", err)
+	}
+	if res.Item.Name != name {
+		t.Errorf("Name = %q, want %q", res.Item.Name, name)
+	}
+}
+
+func TestCreateCurrency_SymbolLength_MultibyteWithinLimit(t *testing.T) {
+	repo := newFakeManageRepo()
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	symbol := "₽₽₽₽₽"
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Symbol: strPtr(symbol)}
+
+	res, err := svc.CreateCurrency(context.Background(), uid, req)
+	if err != nil {
+		t.Fatalf("CreateCurrency: %v", err)
+	}
+	if res.Item.Symbol != symbol {
+		t.Errorf("Symbol = %q, want %q", res.Item.Symbol, symbol)
+	}
+}
+
 func TestCreateCurrency_FractionDigitsRange(t *testing.T) {
 	for _, d := range []int{-1, 9} {
 		repo := newFakeManageRepo()

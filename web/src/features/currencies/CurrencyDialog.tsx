@@ -96,7 +96,7 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="currency-symbol">{t('modules.classifications.currencies.forms.currency.symbol.label')}</Label>
-          <Input id="currency-symbol" maxLength={8} value={symbol} onChange={(e) => setSymbol(e.target.value)} />
+          <Input id="currency-symbol" maxLength={12} value={symbol} onChange={(e) => setSymbol(e.target.value)} />
         </div>
 
         <div className="flex flex-col gap-2">

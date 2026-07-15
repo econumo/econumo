@@ -4,7 +4,7 @@ import type { TransactionDto } from '@/api/dto/transaction'
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
-const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
+const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const owner = { id: 'u1', avatar: '', name: 'Ada' }
 const other = { id: 'u2', avatar: '', name: 'Bob' }
 

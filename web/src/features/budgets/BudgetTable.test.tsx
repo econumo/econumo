@@ -10,8 +10,8 @@ import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto } from '@/api/dto/budget'
 
-const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
-const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
+const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
 function renderTable(mutate?: (budget: BudgetDto) => void, extras: ElementRowExtras & { hideChildren?: boolean } = {}) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
