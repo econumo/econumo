@@ -37,6 +37,13 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   }
 }
 
+// jsdom has no Pointer Capture API; Radix Select's trigger calls it on pointerdown.
+if (typeof Element !== 'undefined' && !Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false
+  Element.prototype.setPointerCapture = () => {}
+  Element.prototype.releasePointerCapture = () => {}
+}
+
 // Imported dynamically so the storage rebind above runs first (i18n reads the
 // persisted locale from localStorage at init).
 await import('@/app/i18n')
