@@ -188,7 +188,7 @@ func validateRecurringFields(id, typ, amount, accountID, schedule, nextPaymentAt
 	}
 	if strings.TrimSpace(nextPaymentAt) != "" {
 		if _, err := time.Parse(datetime.Layout, nextPaymentAt); err != nil {
-			extra = append(extra, errs.FieldError{Key: "nextPaymentAt", Message: "This value is not valid.", Code: "INVALID_FORMAT_ERROR"})
+			extra = append(extra, errs.FieldError{Key: "nextPaymentAt", Message: "This value is not a valid datetime."})
 		}
 	}
 	return validateNotBlank([]blankCheck{

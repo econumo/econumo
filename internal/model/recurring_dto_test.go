@@ -40,8 +40,25 @@ func TestCreateRecurringTransactionRequest_Validate(t *testing.T) {
 
 	bad := ok
 	bad.NextPaymentAt = "2026-08-01"
-	if err := bad.Validate(); err == nil {
+	badErr := bad.Validate()
+	if badErr == nil {
 		t.Fatal("date without time must be rejected")
+	}
+	v, isValidation := errs.AsValidation(badErr)
+	if !isValidation {
+		t.Fatalf("expected ValidationError, got %T", badErr)
+	}
+	found := false
+	for _, f := range v.Fields {
+		if f.Key == "nextPaymentAt" {
+			found = true
+			if f.Message != "This value is not a valid datetime." {
+				t.Fatalf("nextPaymentAt message = %q, want %q", f.Message, "This value is not a valid datetime.")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("missing nextPaymentAt field error for bad datetime")
 	}
 }
 
