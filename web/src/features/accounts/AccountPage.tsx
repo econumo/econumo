@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { ChevronLeft, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
+import type { RecurringDto } from '@/api/dto/recurring'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -16,6 +17,8 @@ import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
 import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction } from '@/features/transactions/queries'
+import { useDeleteRecurring, useSkipRecurring } from '@/features/recurring/queries'
+import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
@@ -71,12 +74,17 @@ export function AccountPage() {
   const { data: accounts } = useAccounts()
   const { data: user } = useUserData()
   const deleteTransaction = useDeleteTransaction()
+  const skipRecurring = useSkipRecurring()
+  const deleteRecurring = useDeleteRecurring()
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const openRecurringModal = useUiStore((s) => s.openRecurringModal)
 
   const [search, setSearch] = useState('')
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
+  const [recurringPreview, setRecurringPreview] = useState<ViewTransaction | null>(null)
+  const [recurringDeleteTarget, setRecurringDeleteTarget] = useState<RecurringDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const entries = useAccountTransactions(id, search)
 
@@ -231,7 +239,7 @@ export function AccountPage() {
             <div
               key={entry.transaction.id}
               className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'}`}
-              onClick={() => setPreview(entry.transaction)}
+              onClick={() => (entry.transaction.recurring ? setRecurringPreview(entry.transaction) : setPreview(entry.transaction))}
             >
               <div className="min-w-0 flex-1">
                 <TransactionRow transaction={entry.transaction} pageAccount={account} />
@@ -255,12 +263,28 @@ export function AccountPage() {
                   </DropdownMenuTrigger>
                   {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onSelect={() => editTransaction(entry.transaction)}>
-                      {t('elements.button.edit.label')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(entry.transaction)}>
-                      {t('elements.button.delete.label')}
-                    </DropdownMenuItem>
+                    {entry.transaction.recurring ? (
+                      <>
+                        <DropdownMenuItem onSelect={() => openRecurringModal({ recurring: entry.transaction.recurring })}>
+                          {t('elements.button.edit.label')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => setRecurringDeleteTarget(entry.transaction.recurring ?? null)}
+                        >
+                          {t('elements.button.delete.label')}
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuItem onSelect={() => editTransaction(entry.transaction)}>
+                          {t('elements.button.edit.label')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(entry.transaction)}>
+                          {t('elements.button.delete.label')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}
@@ -307,6 +331,47 @@ export function AccountPage() {
           }
         }}
         question={t('pages.account.delete_transaction_modal.question')}
+        confirmLabel={t('elements.button.delete.label')}
+        cancelLabel={t('elements.button.cancel.label')}
+        destructive
+      />
+
+      {recurringPreview?.recurring ? (
+        <ViewRecurringDialog
+          recurring={recurringPreview.recurring}
+          onClose={() => setRecurringPreview(null)}
+          onPost={() => {
+            openTransactionModal({ postRecurring: recurringPreview.recurring })
+            setRecurringPreview(null)
+          }}
+          onSkip={() => {
+            const rt = recurringPreview.recurring
+            if (rt) {
+              skipRecurring.mutate(rt.id, { onSuccess: () => setRecurringPreview(null) })
+            }
+          }}
+          onEdit={() => {
+            const rt = recurringPreview.recurring
+            setRecurringPreview(null)
+            openRecurringModal({ recurring: rt })
+          }}
+          onDelete={() => {
+            setRecurringDeleteTarget(recurringPreview.recurring ?? null)
+            setRecurringPreview(null)
+          }}
+          canChange={canChangeTransaction}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={recurringDeleteTarget !== null}
+        onClose={() => setRecurringDeleteTarget(null)}
+        onConfirm={() => {
+          if (recurringDeleteTarget) {
+            deleteRecurring.mutate(recurringDeleteTarget.id, { onSettled: () => setRecurringDeleteTarget(null) })
+          }
+        }}
+        question={t('pages.settings.recurring.delete_question')}
         confirmLabel={t('elements.button.delete.label')}
         cancelLabel={t('elements.button.cancel.label')}
         destructive

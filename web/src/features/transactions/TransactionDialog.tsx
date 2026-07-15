@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,7 @@ import type { OpenTransactionParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags, useCreateCategory, useCreatePayee, useCreateTag } from '@/features/classifications/queries'
 import { useExchange } from '@/features/currencies/useExchange'
+import { usePostRecurring } from '@/features/recurring/queries'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
 import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedNumber } from './useTransactionForm'
@@ -75,6 +76,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
+  const postRecurring = usePostRecurring()
   const createCategory = useCreateCategory()
   const createPayee = useCreatePayee()
   const createTag = useCreateTag()
@@ -92,6 +94,17 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const isExpense = form.type === 'expense'
   const ownerId = account?.owner.id
   const canEditData = canChangeAccountData(account, user?.id)
+  const crossCurrency = isTransfer && account && accountRecipient && account.currency.id !== accountRecipient.currency.id
+
+  // posting a recurring template starts with an empty recipient amount
+  // (Task 15's initialFormState); prefill it once from the current rates,
+  // same as a fresh cross-currency transfer would compute on entry
+  useEffect(() => {
+    if (params.postRecurring && crossCurrency && form.amountRecipient === '') {
+      patch({ amountRecipient: recomputeRecipientAmount(form.amount, account, accountRecipient, exchangeFn) })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
   const currentCategories = categoryOptions(categories, form.type, ownerId)
@@ -99,8 +112,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const selectedTag = tags.find((tag) => tag.id === form.tagId)
   const visibleTags = tags.filter((tag) => tag.isArchived === 0 && (!ownerId || tag.ownerUserId === ownerId))
   const tagRow = selectedTag && !visibleTags.some((tg) => tg.id === selectedTag.id) ? [...visibleTags, selectedTag] : visibleTags
-
-  const crossCurrency = isTransfer && account && accountRecipient && account.currency.id !== accountRecipient.currency.id
 
   const setAmount = (amount: string) => {
     if (isTransfer) {
@@ -170,7 +181,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
     const payload = buildPayload(form)
     try {
-      if (form.isNew) {
+      if (params.postRecurring) {
+        await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
+      } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
         if (isTransfer && payload.accountRecipientId) {
           setSwitchAccountPrompt(payload.accountRecipientId)
@@ -185,8 +198,12 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const dateOnly = dayKey(form.date)
-  const pending = createTransaction.isPending || updateTransaction.isPending
-  const title = form.isNew ? t('modals.transaction.create_form.header') : t('modals.transaction.update_form.header')
+  const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending
+  const title = params.postRecurring
+    ? t('modals.recurring.post_form.header')
+    : form.isNew
+      ? t('modals.transaction.create_form.header')
+      : t('modals.transaction.update_form.header')
 
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,

@@ -33,6 +33,24 @@ const seedAmount = (value: number | null | undefined, account: AccountDto | unde
 }
 
 export function initialFormState(params: OpenTransactionParams, accounts: AccountDto[], routeAccountId: Id | null): TransactionFormState {
+  const rt = params.postRecurring
+  if (rt) {
+    const account = accounts.find((a) => a.id === rt.accountId)
+    return {
+      id: uuidv7(),
+      isNew: true,
+      type: rt.type,
+      accountId: rt.accountId,
+      accountRecipientId: rt.accountRecipientId,
+      amount: seedAmount(rt.amount, account),
+      amountRecipient: '',
+      categoryId: rt.categoryId,
+      payeeId: rt.payeeId,
+      tagId: rt.tagId,
+      description: rt.description,
+      date: rt.nextPaymentAt,
+    }
+  }
   const tx = params.transaction
   if (tx) {
     const account = accounts.find((a) => a.id === tx.accountId)

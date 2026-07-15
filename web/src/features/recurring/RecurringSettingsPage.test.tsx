@@ -44,11 +44,7 @@ beforeEach(() => {
 })
 
 it('lists templates with schedule and next payment date', async () => {
-  server.use(
-    ...coreHandlers(),
-    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
-      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring] } })),
-  )
+  server.use(...coreHandlers({ recurring: [wireRecurring] }))
   renderPage()
   expect(await screen.findByText('rent')).toBeInTheDocument()
   expect(screen.getByText('Monthly')).toBeInTheDocument()
@@ -56,11 +52,7 @@ it('lists templates with schedule and next payment date', async () => {
 
 it('highlights overdue templates and not future-dated ones', async () => {
   const overdue = { ...wireRecurring, id: 'r-overdue', nextPaymentAt: '2020-01-01 00:00:00' }
-  server.use(
-    ...coreHandlers(),
-    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
-      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring, overdue] } })),
-  )
+  server.use(...coreHandlers({ recurring: [wireRecurring, overdue] }))
   renderPage()
   await screen.findByTestId('recurring-r-overdue')
   expect(screen.getByTestId('recurring-summary-r-overdue')).toHaveClass('text-destructive')
@@ -68,20 +60,14 @@ it('highlights overdue templates and not future-dated ones', async () => {
 })
 
 it('shows the empty state when there are no templates', async () => {
-  server.use(
-    ...coreHandlers(),
-    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
-      HttpResponse.json({ success: true, message: '', data: { items: [] } })),
-  )
+  server.use(...coreHandlers({ recurring: [] }))
   renderPage()
   expect(await screen.findByText('No recurring transactions yet')).toBeInTheDocument()
 })
 
 it('tapping a row opens the view dialog, and deleting it asks for confirmation first', async () => {
   server.use(
-    ...coreHandlers(),
-    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
-      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring] } })),
+    ...coreHandlers({ recurring: [wireRecurring] }),
     http.post('*/api/v1/recurring/delete-recurring-transaction', () =>
       HttpResponse.json({ success: true, message: '', data: {} })),
   )
@@ -103,9 +89,7 @@ it('skipping from the view dialog advances the template and closes the dialog', 
   const advancedPaymentAt = formatDateTime(new Date(Date.now() + 395 * 24 * 3600 * 1000))
   let skipCalls = 0
   server.use(
-    ...coreHandlers(),
-    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
-      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring] } })),
+    ...coreHandlers({ recurring: [wireRecurring] }),
     http.post('*/api/v1/recurring/skip-recurring-transaction', () => {
       skipCalls += 1
       return HttpResponse.json({

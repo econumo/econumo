@@ -1,3 +1,4 @@
+import { Repeat } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -42,7 +43,7 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
     // top line, then description / tag / payee stacked one per line below.
     <div
       data-testid={`tx-${tx.id}`}
-      className={`flex w-full items-start gap-4 px-2 py-2 text-left ${tx.isInFuture ? 'opacity-50' : ''}`}
+      className={`flex w-full items-start gap-4 px-2 py-2 text-left ${tx.isInFuture || tx.recurring ? 'opacity-50' : ''}`}
     >
       <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-econumo-card">
         <EntityIcon name={icon} className="text-xl text-[#666666]" />
@@ -55,6 +56,7 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate text-base leading-6" title={title.text}>
+          {tx.recurring ? <Repeat className="mr-1 inline size-3 text-muted-foreground" /> : null}
           {title.text}
         </span>
         {title.source !== 'description' && tx.description ? (
