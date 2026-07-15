@@ -794,6 +794,44 @@ export default {
             }
           }
         }
+      },
+      'currencies': {
+        'pages': {
+          'settings': {
+            'menu_item': 'Currencies',
+            'header': 'Currencies',
+            'create_currency': 'Create currency',
+            'my_currencies': 'My currencies',
+            'global_currencies': 'Global currencies',
+            'archived_item': 'Archived',
+            'empty_state': 'Create your own currency, like "Points", set its exchange rate, and use it for accounts and budgets.',
+            'rate_caption': '1 {base} = {rate} {code}',
+            'locked_base': 'The base currency is always visible',
+            'locked_profile': 'Your profile currency is always visible',
+          }
+        },
+        'modals': {
+          'create': { 'header': 'New currency' },
+          'edit': { 'header': 'Edit currency' },
+          'rate': { 'header': 'Set exchange rate', 'submit': 'Save rate' },
+          'delete': {
+            'title': 'Delete currency?',
+            'question': 'Are you sure you want to delete "{name}"?'
+          }
+        },
+        'forms': {
+          'currency': {
+            'code': { 'label': 'Code' },
+            'name': {
+              'label': 'Name',
+              'validation': { 'required_field': 'Required field' }
+            },
+            'symbol': { 'label': 'Symbol' },
+            'fraction_digits': { 'label': 'Decimal places' },
+            'rate': { 'label': 'Exchange rate' },
+            'date': { 'label': 'Date' }
+          }
+        }
       }
     },
     'connections': {

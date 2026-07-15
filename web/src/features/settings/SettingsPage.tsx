@@ -94,6 +94,7 @@ export function SettingsPage() {
             <MenuRow label={t('modules.classifications.categories.pages.settings.menu_item')} to={RouterPage.SETTINGS_CATEGORIES} />
             <MenuRow label={t('modules.classifications.tags.pages.settings.menu_item')} to={RouterPage.SETTINGS_TAGS} />
             <MenuRow label={t('modules.classifications.payees.pages.settings.menu_item')} to={RouterPage.SETTINGS_PAYEES} />
+            <MenuRow label={t('modules.classifications.currencies.pages.settings.menu_item')} to={RouterPage.SETTINGS_CURRENCIES} />
           </MenuGroup>
 
           <MenuGroup label={t('pages.settings.settings.groups.data')}>
