@@ -497,6 +497,196 @@ func TestDeleteCurrency_NotOwner(t *testing.T) {
 	}
 }
 
+func TestSetCurrencyRate_HappyPathDefaultDate(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "1.5"}
+
+	if _, err := svc.SetCurrencyRate(context.Background(), uid, req); err != nil {
+		t.Fatalf("SetCurrencyRate: %v", err)
+	}
+	if len(repo.rates) != 1 {
+		t.Fatalf("rates upserted = %d, want 1", len(repo.rates))
+	}
+	rr := repo.rates[0]
+	if rr.CurrencyID != "own-pts" || rr.BaseCurrencyID != "global-usd" || rr.Rate != "1.5" {
+		t.Errorf("rate = %+v, want CurrencyID=own-pts BaseCurrencyID=global-usd Rate=1.5", rr)
+	}
+	wantDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
+	if !rr.Date.Equal(wantDate) {
+		t.Errorf("rate Date = %v, want %v", rr.Date, wantDate)
+	}
+}
+
+func TestSetCurrencyRate_ExplicitDate(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "1.5", Date: strPtr("2026-01-15")}
+
+	if _, err := svc.SetCurrencyRate(context.Background(), uid, req); err != nil {
+		t.Fatalf("SetCurrencyRate: %v", err)
+	}
+	wantDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
+	if !repo.rates[0].Date.Equal(wantDate) {
+		t.Errorf("rate Date = %v, want %v", repo.rates[0].Date, wantDate)
+	}
+}
+
+func TestSetCurrencyRate_BadDate(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "1.5", Date: strPtr("15/01/2026")}
+
+	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	assertField(t, v, "date", "Date is not valid")
+}
+
+func TestSetCurrencyRate_BadRate(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "0"}
+
+	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	assertField(t, v, "rate", "Rate must be a positive number")
+}
+
+func TestSetCurrencyRate_GlobalTarget(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.SetCurrencyRateRequest{CurrencyId: "global-usd", Rate: "1.5"}
+
+	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
+	ad, ok := errs.AsAccessDenied(err)
+	if !ok {
+		t.Fatalf("err = %v, want *AccessDeniedError", err)
+	}
+	if ad.Msg != "" {
+		t.Errorf("Msg = %q, want empty", ad.Msg)
+	}
+}
+
+func TestSetCurrencyRate_ForeignTarget(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["foreign-pts"] = model.CurrencyRecord{ID: "foreign-pts", Code: "GEM", Symbol: "GEM", UserID: strPtr(manageOtherID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.SetCurrencyRateRequest{CurrencyId: "foreign-pts", Rate: "1.5"}
+
+	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
+	ad, ok := errs.AsAccessDenied(err)
+	if !ok {
+		t.Fatalf("err = %v, want *AccessDeniedError", err)
+	}
+	if ad.Msg != "" {
+		t.Errorf("Msg = %q, want empty", ad.Msg)
+	}
+}
+
+func TestHideCurrency_HappyPath(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-gbp"] = model.CurrencyRecord{ID: "global-gbp", Code: "GBP", Symbol: "£"}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	if _, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "global-gbp"}); err != nil {
+		t.Fatalf("HideCurrency: %v", err)
+	}
+	if !repo.hidden[manageMeID+"|global-gbp"] {
+		t.Error("expected global-gbp to be hidden for the caller")
+	}
+}
+
+func TestHideCurrency_CustomTarget(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	_, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "own-pts"})
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	if v.Msg != "This currency cannot be hidden" {
+		t.Errorf("Msg = %q, want %q", v.Msg, "This currency cannot be hidden")
+	}
+}
+
+func TestHideCurrency_BaseCurrency(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	_, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "global-usd"})
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	if v.Msg != "The base currency cannot be modified" {
+		t.Errorf("Msg = %q, want %q", v.Msg, "The base currency cannot be modified")
+	}
+}
+
+func TestHideCurrency_ProfileCurrency(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-eur"] = model.CurrencyRecord{ID: "global-eur", Code: "EUR", Symbol: "€"}
+	svc := appcurrency.NewManageService(repo, passthroughTx{}, &fakeOps{}, fixedClock{t: manageNow}, fakeProfileCurrency{code: "EUR"}, "USD")
+	uid := vo.MustParseId(manageMeID)
+
+	_, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "global-eur"})
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	if v.Msg != "This currency cannot be hidden" {
+		t.Errorf("Msg = %q, want %q", v.Msg, "This currency cannot be hidden")
+	}
+}
+
+func TestShowCurrency_HappyPath(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-gbp"] = model.CurrencyRecord{ID: "global-gbp", Code: "GBP", Symbol: "£"}
+	repo.hidden[manageMeID+"|global-gbp"] = true
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	if _, err := svc.ShowCurrency(context.Background(), uid, model.ShowCurrencyRequest{Id: "global-gbp"}); err != nil {
+		t.Fatalf("ShowCurrency: %v", err)
+	}
+	if repo.hidden[manageMeID+"|global-gbp"] {
+		t.Error("expected global-gbp to no longer be hidden")
+	}
+
+	if _, err := svc.ShowCurrency(context.Background(), uid, model.ShowCurrencyRequest{Id: "global-gbp"}); err != nil {
+		t.Fatalf("ShowCurrency (idempotent): %v", err)
+	}
+	if repo.hidden[manageMeID+"|global-gbp"] {
+		t.Error("expected global-gbp to remain shown")
+	}
+}
+
 func assertField(t *testing.T, v *errs.ValidationError, key, message string) {
 	t.Helper()
 	for _, f := range v.Fields {
