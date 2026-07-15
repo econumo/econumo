@@ -36,10 +36,6 @@ func (sqliteQuerier) CountAvailableAccounts(ctx context.Context, db backend.DBTX
 	return sqlitegen.New(db).CountAvailableAccounts(ctx, sqlitegen.CountAvailableAccountsParams{UserID: userID, UserID_2: userID})
 }
 
-func (sqliteQuerier) ListPendingReceivedAccountAccess(ctx context.Context, db backend.DBTX, userID string) ([]accessRow, error) {
-	return sqlitegen.New(db).ListPendingReceivedAccountAccess(ctx, userID)
-}
-
 func (sqliteQuerier) UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error {
 	return sqlitegen.New(db).UpsertAccount(ctx, p)
 }

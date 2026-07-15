@@ -325,3 +325,67 @@ func (r OrderFolderListRequest) Validate() error {
 type OrderFolderListResult struct {
 	Items []AccountFolderResult `json:"items"`
 }
+
+// GrantAccountAccessRequest grants/updates a connected user's role on an owned
+// account. New grants start pending (isAccepted 0).
+type GrantAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+	UserId    string `json:"userId"`
+	Role      string `json:"role"`
+}
+
+// Validate enforces NotBlank on accountId/userId/role (UUID + role-alias
+// validity are checked in the service via the value-object constructors).
+func (r GrantAccountAccessRequest) Validate() error {
+	var fields []errs.FieldError
+	for _, f := range []struct{ key, val string }{
+		{"accountId", r.AccountId}, {"userId", r.UserId}, {"role", r.Role},
+	} {
+		if strings.TrimSpace(f.val) == "" {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// GrantAccountAccessResult is the (empty) response.
+type GrantAccountAccessResult struct{}
+
+// AcceptAccountAccessRequest accepts a pending grant. folderId picks where the
+// account lands; blank is tolerated only when the user has no folders (a
+// "General" folder is then created), same as create-account.
+type AcceptAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+	FolderId  string `json:"folderId"`
+}
+
+// Validate enforces accountId NotBlank.
+func (r AcceptAccountAccessRequest) Validate() error {
+	if strings.TrimSpace(r.AccountId) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	}
+	return nil
+}
+
+// AcceptAccountAccessResult is the (empty) response.
+type AcceptAccountAccessResult struct{}
+
+// DeclineAccountAccessRequest removes the caller's own grant (their side of
+// the share), pending or accepted.
+type DeclineAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+}
+
+// Validate enforces accountId NotBlank.
+func (r DeclineAccountAccessRequest) Validate() error {
+	if strings.TrimSpace(r.AccountId) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+	}
+	return nil
+}
+
+// DeclineAccountAccessResult is the (empty) response.
+type DeclineAccountAccessResult struct{}

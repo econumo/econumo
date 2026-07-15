@@ -26,10 +26,6 @@ type AccountStore interface {
 	// new account's position when no options rows exist).
 	CountAvailable(ctx context.Context, userID vo.Id) (int, error)
 
-	// ListPendingReceived returns the user's pending (not yet accepted) received
-	// grants, ordered by grant creation.
-	ListPendingReceived(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error)
-
 	Save(ctx context.Context, a *model.Account) error
 
 	// SaveCorrection inserts a balance-correction transaction (type income/expense
