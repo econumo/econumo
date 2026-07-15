@@ -278,16 +278,16 @@ func (b *Builder) AccountOption(accountID, userID string, position int) {
 func (b *Builder) AccountAccess(accountID, userID string, role int) {
 	b.t.Helper()
 	now := b.now()
-	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)`,
-		accountID, userID, role, now, now)
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		accountID, userID, role, true, now, now)
 }
 
 // AccountAccessPending grants a user a PENDING (not yet accepted) grant.
 func (b *Builder) AccountAccessPending(accountID, userID string, role int) {
 	b.t.Helper()
 	now := b.now()
-	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)`,
-		accountID, userID, role, now, now)
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		accountID, userID, role, false, now, now)
 }
 
 // Category describes a categories row.

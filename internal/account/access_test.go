@@ -89,7 +89,7 @@ func TestGrantAccess_CreatesPendingWithoutPlacement(t *testing.T) {
 	}
 
 	var n int
-	if err := db.Raw.QueryRow(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`, acctID, accessUserBID).Scan(&n); err != nil {
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctID, accessUserBID).Scan(&n); err != nil {
 		t.Fatalf("count options: %v", err)
 	}
 	if n != 0 {
@@ -192,7 +192,7 @@ func TestAcceptAccess_PlacesIntoChosenFolder(t *testing.T) {
 	}
 
 	var pos int
-	if err := db.Raw.QueryRow(`SELECT position FROM accounts_options WHERE account_id = ? AND user_id = ?`, acctID, accessUserBID).Scan(&pos); err != nil {
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT position FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctID, accessUserBID).Scan(&pos); err != nil {
 		t.Fatalf("read position: %v", err)
 	}
 	if pos != 1 {
@@ -266,7 +266,7 @@ func TestAcceptAccess_NoFoldersCreatesGeneral(t *testing.T) {
 	}
 
 	var name string
-	if err := db.Raw.QueryRow(`SELECT name FROM folders WHERE user_id = ?`, accessUserBID).Scan(&name); err != nil {
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT name FROM folders WHERE user_id = ?`), accessUserBID).Scan(&name); err != nil {
 		t.Fatalf("read created folder: %v", err)
 	}
 	if name != "General" {
@@ -341,7 +341,7 @@ func TestDeclineAccess_RemovesOwnRow(t *testing.T) {
 		t.Fatalf("grant still present after declining an accepted row")
 	}
 	var n int
-	if err := db.Raw.QueryRow(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`, acctID, accessUserCID).Scan(&n); err != nil {
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctID, accessUserCID).Scan(&n); err != nil {
 		t.Fatalf("count options: %v", err)
 	}
 	if n != 0 {
@@ -393,7 +393,7 @@ func TestRevokeAccess_OwnerRemovesGrant(t *testing.T) {
 		t.Fatalf("grant still present after revoking an accepted row")
 	}
 	var n int
-	if err := db.Raw.QueryRow(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`, acctID, accessUserCID).Scan(&n); err != nil {
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctID, accessUserCID).Scan(&n); err != nil {
 		t.Fatalf("count options: %v", err)
 	}
 	if n != 0 {
