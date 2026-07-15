@@ -3,11 +3,11 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
 import type { RecurringDto } from '@/api/dto/recurring'
-import type { TransactionDto, TransactionType } from '@/api/dto/transaction'
+import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 
 export interface OpenTransactionParams {
-  transaction?: TransactionDto
+  transaction?: TransactionPrefill
   type?: TransactionType
   accountId?: Id
   // present when a recurring template was just posted — Task 15 uses it to
@@ -22,7 +22,7 @@ export interface OpenAccountParams {
 
 export interface OpenRecurringParams {
   recurring?: RecurringDto
-  fromTransaction?: TransactionDto
+  fromTransaction?: TransactionPrefill
   accountId?: Id
 }
 
