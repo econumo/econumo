@@ -6,7 +6,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureBudgets, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
 import { ApplicationLayout } from './ApplicationLayout'
 
@@ -206,4 +206,62 @@ it('compact viewport hides the sidebar on content routes', async () => {
   renderShell('/account/a1')
   await waitFor(() => expect(screen.getByTestId('workspace')).toBeInTheDocument())
   expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
+})
+
+const fixtureOtherOwner = { id: 'u2', avatar: 'pets:sky', name: 'Bob' }
+
+// One pending account invite + one pending budget invite for the current
+// user (u1) — two invites owned by someone else, count === 2.
+const pendingAccount = {
+  id: 'a-pending', owner: fixtureOtherOwner, folderId: null, name: 'Shared Cash', position: 0,
+  currency: fixtureAccounts[0].currency, balance: '10', type: 1, icon: 'wallet',
+  sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 0 }],
+}
+const pendingBudget = {
+  id: 'b-pending', ownerUserId: fixtureOtherOwner.id, name: 'Shared Budget', startedAt: '2026-01-01 00:00:00',
+  currencyId: fixtureAccounts[0].currency.id,
+  access: [
+    { user: fixtureOtherOwner, role: 'owner', isAccepted: 1 },
+    { user: fixtureOwner, role: 'user', isAccepted: 0 },
+  ],
+}
+
+it('shows a sharing-requests button above the Budget link when invites are pending, and clicking it opens the dialog', async () => {
+  mockViewport(false)
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, pendingAccount], budgets: [...fixtureBudgets, pendingBudget] }))
+  const user = userEvent.setup()
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  const button = screen.getByRole('button', { name: /Sharing requests/ })
+  expect(button).toHaveTextContent('2')
+  const budgetLink = screen.getByRole('link', { name: 'Budget' })
+  // eslint-disable-next-line no-bitwise
+  expect(button.compareDocumentPosition(budgetLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  await user.click(button)
+  expect(await screen.findByRole('heading', { name: 'Sharing requests' })).toBeInTheDocument()
+})
+
+it('hides the sharing-requests button when there are no pending invites', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Sharing requests/ })).not.toBeInTheDocument()
+})
+
+it('collapsed rail shows the sharing-requests icon button with a count bubble, and clicking it opens the dialog', async () => {
+  mockViewport(false)
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, pendingAccount], budgets: [...fixtureBudgets, pendingBudget] }))
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Budget')).not.toBeInTheDocument()
+
+  const button = screen.getByTitle('Sharing requests')
+  expect(button).toHaveTextContent('2')
+  await user.click(button)
+  expect(await screen.findByRole('heading', { name: 'Sharing requests' })).toBeInTheDocument()
 })
