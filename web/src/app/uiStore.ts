@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
+import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 
@@ -9,11 +10,20 @@ export interface OpenTransactionParams {
   transaction?: TransactionDto
   type?: TransactionType
   accountId?: Id
+  // present when a recurring template was just posted — Task 15 uses it to
+  // show the "next payment" follow-up after the transaction is created
+  postRecurring?: RecurringDto
 }
 
 export interface OpenAccountParams {
   account?: AccountDto
   folderId?: Id | null
+}
+
+export interface OpenRecurringParams {
+  recurring?: RecurringDto
+  fromTransaction?: TransactionDto
+  accountId?: Id
 }
 
 interface UiState {
@@ -23,6 +33,9 @@ interface UiState {
   accountModal: OpenAccountParams | null
   openAccountModal: (params: OpenAccountParams) => void
   closeAccountModal: () => void
+  recurringModal: OpenRecurringParams | null
+  openRecurringModal: (params: OpenRecurringParams) => void
+  closeRecurringModal: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
 }
@@ -45,6 +58,13 @@ export const useUiStore = create<UiState>()((set) => ({
   closeAccountModal: () => {
     trackEvent(METRICS.UI_MODAL_ACCOUNT_CLOSE)
     set({ accountModal: null })
+  },
+  recurringModal: null,
+  openRecurringModal: (params) => {
+    set({ recurringModal: params })
+  },
+  closeRecurringModal: () => {
+    set({ recurringModal: null })
   },
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
