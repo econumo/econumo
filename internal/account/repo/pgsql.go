@@ -35,6 +35,18 @@ func (pgsqlQuerier) CountAvailableAccounts(ctx context.Context, db backend.DBTX,
 	return pgsqlgen.New(db).CountAvailableAccounts(ctx, userID)
 }
 
+func (pgsqlQuerier) ListPendingReceivedAccountAccess(ctx context.Context, db backend.DBTX, userID string) ([]accessRow, error) {
+	rows, err := pgsqlgen.New(db).ListPendingReceivedAccountAccess(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]accessRow, len(rows))
+	for i, a := range rows {
+		out[i] = accessRow(a)
+	}
+	return out, nil
+}
+
 func (pgsqlQuerier) UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error {
 	return pgsqlgen.New(db).UpsertAccount(ctx, pgsqlgen.UpsertAccountParams(p))
 }

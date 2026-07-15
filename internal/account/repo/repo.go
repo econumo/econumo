@@ -26,6 +26,7 @@ import (
 type (
 	accountRow        = sqlitegen.Account
 	optionRow         = sqlitegen.AccountsOption
+	accessRow         = sqlitegen.AccountsAccess
 	upsertAccountP    = sqlitegen.UpsertAccountParams
 	getOptionP        = sqlitegen.GetAccountOptionParams
 	upsertOptionP     = sqlitegen.UpsertAccountOptionParams
@@ -46,6 +47,7 @@ type querier interface {
 	GetAccount(ctx context.Context, db backend.DBTX, id string) (accountRow, error)
 	ListAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) ([]accountRow, error)
 	CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error)
+	ListPendingReceivedAccountAccess(ctx context.Context, db backend.DBTX, userID string) ([]accessRow, error)
 	UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error
 	GetAccountOption(ctx context.Context, db backend.DBTX, p getOptionP) (optionRow, error)
 	ListAccountOptionsByUser(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
@@ -120,6 +122,24 @@ func (r *Repo) ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Accoun
 func (r *Repo) CountAvailable(ctx context.Context, userID vo.Id) (int, error) {
 	n, err := r.q.CountAvailableAccounts(ctx, r.db(ctx), userID.String())
 	return int(n), err
+}
+
+// ListPendingReceived returns the user's pending (not yet accepted) received
+// grants, ordered by grant creation.
+func (r *Repo) ListPendingReceived(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error) {
+	rows, err := r.q.ListPendingReceivedAccountAccess(ctx, r.db(ctx), userID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.AccountAccess, 0, len(rows))
+	for _, row := range rows {
+		a, herr := hydrateAccess(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, a)
+	}
+	return out, nil
 }
 
 // Save upserts an account row.
@@ -235,5 +255,21 @@ func hydrateAccount(row accountRow) (*model.Account, error) {
 		ID: id, UserID: userID, CurrencyID: currencyID, Name: row.Name,
 		Type: model.AccountType(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
+}
+
+// hydrateAccess reconstitutes an AccountAccess grant from a row.
+func hydrateAccess(row accessRow) (*model.AccountAccess, error) {
+	accountID, err := vo.ParseId(row.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	userID, err := vo.ParseId(row.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.AccountAccess{
+		AccountID: accountID, UserID: userID, Role: model.Role(row.Role),
+		IsAccepted: row.IsAccepted, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
 }

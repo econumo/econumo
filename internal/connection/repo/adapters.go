@@ -32,10 +32,10 @@ func (r *AccountAccessResolver) AccountOwner(ctx context.Context, accountID vo.I
 	return r.access.AccountOwner(ctx, accountID)
 }
 
-// HasWriteGrant reports whether the user holds an admin OR user grant on the
-// account — the transaction feature's write-access check (a guest grant or no
-// grant is denied). A missing grant or a guest grant is false, nil error;
-// other errors propagate.
+// HasWriteGrant reports whether the user holds an ACCEPTED admin OR user grant
+// on the account — the transaction feature's write-access check (a guest
+// grant, an unaccepted grant, or no grant at all is denied). A missing grant
+// or a guest grant is false, nil error; other errors propagate.
 func (r *AccountAccessResolver) HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error) {
 	grant, err := r.access.Get(ctx, accountID, userID)
 	if err != nil {
@@ -46,14 +46,14 @@ func (r *AccountAccessResolver) HasWriteGrant(ctx context.Context, accountID, us
 		return false, err
 	}
 	role := grant.Role
-	return role == model.RoleAdmin || role == model.RoleUser, nil
+	return grant.IsAccepted && (role == model.RoleAdmin || role == model.RoleUser), nil
 }
 
-// HasAdminGrant reports whether the user holds an admin grant on the account —
-// the category feature's own AccountAccess port shape (it must not import
-// connection directly, so the Role comparison happens here instead of
-// at the call site). A missing grant or a non-admin grant is false, nil error;
-// other errors propagate.
+// HasAdminGrant reports whether the user holds an ACCEPTED admin grant on the
+// account — the category feature's own AccountAccess port shape (it must not
+// import connection directly, so the Role comparison happens here instead of
+// at the call site). A missing grant, a non-admin grant, or an unaccepted
+// grant is false, nil error; other errors propagate.
 func (r *AccountAccessResolver) HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error) {
 	grant, err := r.access.Get(ctx, accountID, userID)
 	if err != nil {
@@ -63,5 +63,5 @@ func (r *AccountAccessResolver) HasAdminGrant(ctx context.Context, accountID, us
 		}
 		return false, err
 	}
-	return grant.Role == model.RoleAdmin, nil
+	return grant.IsAccepted && grant.Role == model.RoleAdmin, nil
 }

@@ -142,7 +142,10 @@ func NewConnectionAccessRevoker(repo connectionAccessRevokerDeps, svc connection
 }
 
 // HasAccess reports whether the user owns the account or holds a grant on it
-// (the delete-account precondition).
+// (the delete-account precondition). This intentionally counts ANY row,
+// pending included: a pending recipient "deleting" the account from their side
+// is equivalent to declining the invite, and RevokeOwnAccess unwinds nothing
+// extra for it (a pending grant has no folder/options rows to clean up).
 func (a *ConnectionAccessRevoker) HasAccess(ctx context.Context, userID, accountID vo.Id) (bool, error) {
 	owner, err := a.repo.AccountOwner(ctx, accountID)
 	if err == nil && owner.Equal(userID) {

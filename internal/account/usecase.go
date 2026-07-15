@@ -285,6 +285,26 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 			items[i], items[j] = items[j], items[i]
 		}
 	}
+
+	// Pending (not yet accepted) grants received by the user ride the list as
+	// inert placeholder entries — folderId null, position 0, balance "0" — so
+	// the recipient can see and act on the invite. ListAvailable (above) already
+	// excludes pending grants, so this cannot duplicate an entry.
+	pending, err := s.accounts.ListPendingReceived(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range pending {
+		acct, gerr := s.accounts.GetByID(ctx, g.AccountID)
+		if gerr != nil {
+			return nil, gerr
+		}
+		item, berr := s.buildAccountResult(ctx, userID, acct, "0", nil, nil, cache)
+		if berr != nil {
+			return nil, berr
+		}
+		items = append(items, item)
+	}
 	return items, nil
 }
 
