@@ -24,3 +24,9 @@ it('renders read-only rows when onPick is omitted', () => {
   expect(screen.getByText('Newcomer')).toBeInTheDocument()
   expect(screen.queryByRole('button')).toBeNull()
 })
+
+it('shows the invitation-pending suffix for an accounts entry too, not just budgets', () => {
+  const pendingEntries: ShareEntry[] = [{ user: { id: 'u2', name: 'Partner', avatar: 'pets:sky' }, role: 'user', isAccepted: false }]
+  render(<ShareEntryList kind="accounts" entries={pendingEntries} />)
+  expect(screen.getByText(/Manage transactions – invitation pending/)).toBeInTheDocument()
+})

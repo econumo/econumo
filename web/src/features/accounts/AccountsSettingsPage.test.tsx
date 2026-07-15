@@ -160,7 +160,7 @@ it('account delete confirm posts and removes; edit opens the account modal', asy
 it('access control: shared avatars, grant and revoke through the dialogs', async () => {
   const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   const sharedAccounts = [
-    { ...fixtureAccountsForAccess[0], sharedAccess: [{ user: partner, role: 'user' }] },
+    { ...fixtureAccountsForAccess[0], sharedAccess: [{ user: partner, role: 'user', isAccepted: 1 }] },
     ...fixtureAccountsForAccess.slice(1),
   ]
   let granted: unknown
@@ -170,11 +170,11 @@ it('access control: shared avatars, grant and revoke through the dialogs', async
       accounts: sharedAccounts,
       connections: [{ user: partner, sharedAccounts: [] }],
     }),
-    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
       granted = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
-    http.post('*/api/v1/connection/revoke-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/revoke-access', async ({ request }) => {
       revoked = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
@@ -310,7 +310,7 @@ it('compact: the preview sheet lists connections and grants access in place', as
   let granted: unknown
   server.use(
     ...coreHandlers({ connections: [{ user: partner, sharedAccounts: [] }] }),
-    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
       granted = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
@@ -341,7 +341,7 @@ it('compact: the preview sheet shows a read-only access list to a non-admin memb
   const foreign = {
     id: 'a-foreign', owner: partner, folderId: 'f1', name: 'Shared wallet', position: 5,
     currency: fixtureUsd, balance: '10', type: 1, icon: 'wallet',
-    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'user' }],
+    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'user', isAccepted: 1 }],
   }
   server.use(...coreHandlers({
     accounts: [...fixtureAccountsForAccess, foreign],

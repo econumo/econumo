@@ -10,12 +10,17 @@ import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
 export function useBudgets() {
+  const { data: user } = useUserData()
   return useQuery({
     queryKey: queryKeys.budgets,
     queryFn: budgetApi.getBudgetList,
     staleTime: TEN_MINUTES,
-    // the list is unsorted on the wire; the settings page shows name asc (Vue parity)
-    select: (items) => [...items].sort((a, b) => a.name.localeCompare(b.name)),
+    // the list is unsorted on the wire; the settings page shows name asc (Vue parity).
+    // Invites I have not accepted are surfaced by the sharing-requests modal, not the list.
+    select: (items) =>
+      items
+        .filter((b) => b.ownerUserId === user?.id || b.access.some((a) => a.user.id === user?.id && a.isAccepted === 1))
+        .sort((a, b) => a.name.localeCompare(b.name)),
   })
 }
 

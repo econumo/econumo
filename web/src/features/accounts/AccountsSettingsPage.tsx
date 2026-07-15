@@ -28,7 +28,7 @@ import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
 import { ShareEntryList } from '@/features/connections/ShareEntryList'
 import type { ShareEntry } from '@/features/connections/shared'
 import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
-import { useConnections, useRevokeAccountAccess, useSetAccountAccess } from '@/features/connections/queries'
+import { useConnections } from '@/features/connections/queries'
 import { useUserData } from '@/features/user/queries'
 import {
   useAccounts,
@@ -41,6 +41,8 @@ import {
   useOrderFolders,
   useOrderAccounts,
   useDeleteAccount,
+  useGrantAccountAccess,
+  useRevokeAccountAccess,
 } from './queries'
 import type { FolderBucket } from './accountOrdering'
 import { bucketsFromAccounts, moveAccount, buildAccountChanges } from './accountOrdering'
@@ -273,7 +275,7 @@ export function AccountsSettingsPage() {
   const { data: user } = useUserData()
   const { data: connections = [] } = useConnections()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
-  const setAccountAccess = useSetAccountAccess()
+  const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
 
   const createFolder = useCreateFolder()
@@ -536,7 +538,7 @@ export function AccountsSettingsPage() {
         role={levelTarget?.entry.role ?? null}
         onSelect={(role) => {
           if (levelTarget) {
-            setAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id, role })
+            grantAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id, role })
           }
           setLevelTarget(null)
         }}
@@ -649,7 +651,7 @@ export function AccountsSettingsPage() {
                 kind="accounts"
                 entries={[
                   { user: previewLive.owner, role: 'owner' },
-                  ...previewLive.sharedAccess.map((a) => ({ user: a.user, role: a.role })),
+                  ...previewLive.sharedAccess.map((a) => ({ user: a.user, role: a.role, isAccepted: a.isAccepted === 1 })),
                 ]}
               />
             </div>

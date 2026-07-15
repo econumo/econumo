@@ -19,7 +19,6 @@ import { buildShareEntries, hasBudgetAdminAccess } from '@/features/connections/
 import { useConnections } from '@/features/connections/queries'
 import { useUserData, useUpdateDefaultBudget, userOption } from '@/features/user/queries'
 import {
-  useAcceptBudgetAccess,
   useBudgets,
   useCreateBudget,
   useDeclineBudgetAccess,
@@ -38,7 +37,6 @@ export function BudgetsPage() {
   const createBudget = useCreateBudget()
   const deleteBudget = useDeleteBudget()
   const updateDefaultBudget = useUpdateDefaultBudget()
-  const acceptAccess = useAcceptBudgetAccess()
   const declineAccess = useDeclineBudgetAccess()
   const grantAccess = useGrantBudgetAccess()
   const revokeAccess = useRevokeBudgetAccess()
@@ -81,7 +79,6 @@ export function BudgetsPage() {
       ) : (
         <ul className="flex flex-col">
           {budgets.map((budget) => {
-            const access = myAccess(budget)
             const accepted = isAccepted(budget)
             const isDefault = defaultBudgetId === budget.id
             return (
@@ -99,11 +96,6 @@ export function BudgetsPage() {
                   <span className={`truncate text-sm ${!accepted ? 'text-muted-foreground' : ''}`} title={budget.name}>
                     {budget.name}
                   </span>
-                  {!accepted && access ? (
-                    <span className="text-xs text-muted-foreground">
-                      {t(`modules.budget.page.settings.level.${access.role}`)} - {t('modules.budget.page.settings.not_accepted')}
-                    </span>
-                  ) : null}
                 </span>
                 {budget.access.length > 1 ? (
                   <span className="flex items-center -space-x-2">
@@ -121,11 +113,6 @@ export function BudgetsPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {!accepted ? (
-                      <DropdownMenuItem onSelect={() => acceptAccess.mutate(budget.id)}>
-                        {t('elements.button.accept.label')}
-                      </DropdownMenuItem>
-                    ) : null}
                     {accepted ? (
                       <DropdownMenuItem onSelect={() => goTo(budget)}>
                         {t('modules.budget.page.settings.list_actions.go_to')}

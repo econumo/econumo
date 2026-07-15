@@ -4,13 +4,23 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useCreateAccount, useFolders } from './queries'
+import { useAccounts, useCreateAccount, useFolders } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
+const wireUser = { id: 'u1', name: 'Ada', email: 'ada@example.test', avatar: 'face:emerald', options: [] }
 const wireAccount = {
   id: 'a-real', owner: wireOwner, folderId: 'f1', name: 'Cash', position: 0,
   currency: { id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 },
   balance: '100.5', type: 1, icon: 'wallet', sharedAccess: [],
+}
+const wirePartner = { id: 'u2', avatar: '', name: 'Partner' }
+function pendingAccount(isAccepted: 0 | 1) {
+  return {
+    id: 'a-pending', owner: wirePartner, folderId: null, name: 'Shared wallet', position: 1,
+    currency: { id: 'c1', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 },
+    balance: '0', type: 1, icon: 'wallet',
+    sharedAccess: [{ user: wireOwner, role: 'user', isAccepted }],
+  }
 }
 const wireCorrection = {
   id: 't-corr', author: wireOwner, type: 'income', accountId: 'a-real', accountRecipientId: null,
@@ -68,4 +78,25 @@ it('create-account with an empty folders cache refetches folders (first-account 
   result.current.create.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: 0, icon: 'wallet', folderId: null })
   await waitFor(() => expect(result.current.create.isSuccess).toBe(true))
   await waitFor(() => expect(folderListHits).toBeGreaterThan(0))
+})
+
+it('useAccounts hides an account pending my acceptance, and shows it once accepted', async () => {
+  server.use(
+    http.get('*/api/v1/user/get-user-data', () => HttpResponse.json({ success: true, message: '', data: { user: wireUser } })),
+    http.get('*/api/v1/account/get-account-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [wireAccount, pendingAccount(0)] } }),
+    ),
+  )
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useAccounts(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(result.current.data?.map((a) => a.id)).toEqual(['a-real'])
+
+  server.use(
+    http.get('*/api/v1/account/get-account-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [wireAccount, pendingAccount(1)] } }),
+    ),
+  )
+  await result.current.refetch()
+  await waitFor(() => expect(result.current.data?.map((a) => a.id)).toEqual(['a-real', 'a-pending']))
 })
