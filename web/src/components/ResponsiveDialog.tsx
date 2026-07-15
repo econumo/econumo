@@ -44,6 +44,14 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
   // the home indicator itself; a pinned footer carries its own inset instead
   const bodyClass = `flex-1 overflow-y-auto px-4 pt-1 ${footer ? 'pb-4' : 'pb-[max(env(safe-area-inset-bottom),1rem)]'}`
 
+  // An open combobox popup (Base UI, not a Radix layer, so Radix's document-
+  // capture Escape handler doesn't know about it) owns Escape: it closes the
+  // picker, and the dialog must stay put
+  const onEscapeKeyDown = (e: KeyboardEvent) => {
+    if (document.querySelector('[data-slot="combobox-content"]')) {
+      e.preventDefault()
+    }
+  }
   // An interaction that BEGAN inside a dialog stacked on top of this one must
   // never dismiss this one. Radix defers its outside-check to the click phase,
   // by which time the upper dialog may have closed and unmounted — a detached
@@ -79,6 +87,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
           ref={contentRef}
           className="top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 ring-0 data-open:zoom-in-100 data-closed:zoom-out-100 [&_[data-slot=dialog-close]]:top-[max(env(safe-area-inset-top),0.5rem)]"
           onInteractOutside={onInteractOutside}
+          onEscapeKeyDown={onEscapeKeyDown}
           showCloseButton={showCloseButton}
         >
           {/* the full-viewport page sits under the status bar — keep the header (and the corner X above) clear of it */}
@@ -98,7 +107,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange} dismissible={dismissible}>
-        <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside}>
+        <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside} onEscapeKeyDown={onEscapeKeyDown}>
           {/* the drawer has no corner X, so it never needs the pr-8 clearance */}
           <DrawerHeader className={hideHeader ? 'sr-only' : undefined}>
             <DrawerTitle className={titleClass}>{title}</DrawerTitle>
@@ -118,6 +127,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
       <DialogContent
         ref={contentRef}
         onInteractOutside={onInteractOutside}
+        onEscapeKeyDown={onEscapeKeyDown}
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >
