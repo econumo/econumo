@@ -24,6 +24,8 @@ func TestBuilder_SeedsEveryEntity(t *testing.T) {
 
 	eur := f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
 	f.Rate(fixture.Rate{CurrencyID: eur, Rate: "0.85000000"})
+	f.Currency(fixture.Currency{Code: "PTS", Symbol: "pts", Name: "Points", UserID: owner, IsArchived: true})
+	f.HiddenCurrency(guest, eur)
 
 	folder := f.Folder(fixture.Folder{UserID: owner})
 	acct := f.Account(fixture.Account{UserID: owner, Name: "Cash"})
@@ -51,8 +53,9 @@ func TestBuilder_SeedsEveryEntity(t *testing.T) {
 		{"users", 2},
 		{"users_options", 4},
 		{"users_connections", 2},
-		{"currencies", 2}, // baseline USD + the seeded EUR
+		{"currencies", 3}, // baseline USD + the seeded EUR + owner's custom PTS
 		{"currencies_rates", 1},
+		{"users_hidden_currencies", 1},
 		{"folders", 1},
 		{"accounts", 2},
 		{"accounts_folders", 1},
