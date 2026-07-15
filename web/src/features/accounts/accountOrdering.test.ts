@@ -2,7 +2,7 @@ import { bucketsFromAccounts, moveAccount, buildAccountChanges } from './account
 import type { AccountDto } from '@/api/dto/account'
 
 const owner = { id: 'u1', avatar: '', name: 'Ada' }
-const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const }
 const account = (id: string, folderId: string | null, position: number): AccountDto => ({
   id, owner, folderId, name: id, position, currency: usd, balance: 0, type: 1, icon: 'wallet', sharedAccess: [],
 })

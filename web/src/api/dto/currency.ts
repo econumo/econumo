@@ -6,6 +6,9 @@ export interface CurrencyDto {
   name: string
   symbol: string
   fractionDigits: number
+  scope: 'global' | 'own' | 'shared'
+  isArchived: 0 | 1
+  isHidden: 0 | 1
 }
 
 export interface CurrencyRateDto {

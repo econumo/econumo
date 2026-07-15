@@ -25,8 +25,8 @@ it('fuzzy-matches subsequences like the Vue component', () => {
 })
 
 it('builds the deduped option label', () => {
-  expect(fullCurrencyLabel({ id: '1', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 })).toBe('USD, $, US Dollar')
-  expect(fullCurrencyLabel({ id: '2', code: 'X', name: 'X', symbol: 'X', fractionDigits: 2 })).toBe('X')
+  expect(fullCurrencyLabel({ id: '1', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const })).toBe('USD, $, US Dollar')
+  expect(fullCurrencyLabel({ id: '2', code: 'X', name: 'X', symbol: 'X', fractionDigits: 2, scope: 'global' as const, isArchived: 0 as const, isHidden: 0 as const })).toBe('X')
 })
 
 it('shows the selected code and picks a currency from the list', async () => {
