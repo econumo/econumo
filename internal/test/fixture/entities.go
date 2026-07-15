@@ -272,13 +272,21 @@ func (b *Builder) AccountOption(accountID, userID string, position int) {
 		accountID, userID, position, now, now)
 }
 
-// AccountAccess grants a user access to an account (accounts_access). role is
-// stored verbatim (admin=0, user=1, guest=2) — 0 is a real role, not "unset", so
-// it is NOT coerced.
+// AccountAccess grants a user ACCEPTED access to an account (accounts_access).
+// role is stored verbatim (admin=0, user=1, guest=2) — 0 is a real role, not
+// "unset", so it is NOT coerced.
 func (b *Builder) AccountAccess(accountID, userID string, role int) {
 	b.t.Helper()
 	now := b.now()
-	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)`,
+		accountID, userID, role, now, now)
+}
+
+// AccountAccessPending grants a user a PENDING (not yet accepted) grant.
+func (b *Builder) AccountAccessPending(accountID, userID string, role int) {
+	b.t.Helper()
+	now := b.now()
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)`,
 		accountID, userID, role, now, now)
 }
 

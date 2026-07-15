@@ -3,16 +3,17 @@
 -- admin=0, user=1, guest=2.
 
 -- name: GetAccountAccess :one
-SELECT account_id, user_id, role, created_at, updated_at
+SELECT account_id, user_id, role, created_at, updated_at, is_accepted
 FROM accounts_access
 WHERE account_id = ? AND user_id = ?;
 
 -- name: UpsertAccountAccess :exec
-INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT (account_id, user_id) DO UPDATE SET
-    role       = excluded.role,
-    updated_at = excluded.updated_at;
+    role        = excluded.role,
+    is_accepted = excluded.is_accepted,
+    updated_at  = excluded.updated_at;
 
 -- name: DeleteAccountAccess :exec
 DELETE FROM accounts_access
@@ -20,22 +21,30 @@ WHERE account_id = ? AND user_id = ?;
 
 -- name: ListReceivedAccountAccess :many
 -- Grants TO this user (accounts shared with them).
-SELECT account_id, user_id, role, created_at, updated_at
+SELECT account_id, user_id, role, created_at, updated_at, is_accepted
 FROM accounts_access
 WHERE user_id = ?;
 
 -- name: ListAccountAccessByAccount :many
 -- All grants ON one account (for the account's sharedAccess[] embed).
-SELECT account_id, user_id, role, created_at, updated_at
+SELECT account_id, user_id, role, created_at, updated_at, is_accepted
 FROM accounts_access
 WHERE account_id = ?;
 
 -- name: ListIssuedAccountAccess :many
 -- Grants on accounts OWNED by this user (issued to others).
-SELECT aa.account_id, aa.user_id, aa.role, aa.created_at, aa.updated_at
+SELECT aa.account_id, aa.user_id, aa.role, aa.created_at, aa.updated_at, aa.is_accepted
 FROM accounts_access aa
 JOIN accounts a ON a.id = aa.account_id
 WHERE a.user_id = ?;
+
+-- name: ListPendingReceivedAccountAccess :many
+-- Pending grants TO this user (invites awaiting acceptance). Ordered so both
+-- engines return identical row order.
+SELECT account_id, user_id, role, created_at, updated_at, is_accepted
+FROM accounts_access
+WHERE user_id = ? AND is_accepted = 0
+ORDER BY created_at, account_id;
 
 -- name: ListConnectedUserIDs :many
 SELECT connected_user_id

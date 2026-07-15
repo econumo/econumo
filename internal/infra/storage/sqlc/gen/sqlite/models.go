@@ -34,11 +34,12 @@ type Account struct {
 }
 
 type AccountsAccess struct {
-	AccountID string
-	UserID    string
-	Role      int16
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	AccountID  string
+	UserID     string
+	Role       int16
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsAccepted bool
 }
 
 type AccountsFolder struct {
