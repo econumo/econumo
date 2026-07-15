@@ -1,0 +1,48 @@
+== create-currency POST /api/v1/currency/create-currency [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isArchived":0,"isHidden":0}}}
+
+== read-after-create GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isArchived":0,"isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isArchived":0,"isHidden":0}]}}
+
+== rates-after-create GET /api/v1/currency/get-currency-rate-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>"}]}}
+
+== err:create-duplicate-code POST /api/v1/currency/create-currency [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"code":["Currency already exists"]}}
+
+== update-currency POST /api/v1/currency/update-currency [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isArchived":0,"isHidden":0}}}
+
+== err:update-foreign POST /api/v1/currency/update-currency [guest] -> 403
+{"success":false,"message":"","code":0,"errors":[]}
+
+== set-currency-rate POST /api/v1/currency/set-currency-rate [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:set-rate-global POST /api/v1/currency/set-currency-rate [owner] -> 403
+{"success":false,"message":"","code":0,"errors":[]}
+
+== archive-currency POST /api/v1/currency/archive-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-archive GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isArchived":1,"isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isArchived":0,"isHidden":0}]}}
+
+== unarchive-currency POST /api/v1/currency/unarchive-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:hide-currency-base POST /api/v1/currency/hide-currency [owner] -> 400
+{"success":false,"message":"The base currency cannot be modified","code":400,"errors":{}}
+
+== show-currency POST /api/v1/currency/show-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:hide-custom POST /api/v1/currency/hide-currency [owner] -> 400
+{"success":false,"message":"This currency cannot be hidden","code":400,"errors":{}}
+
+== delete-currency POST /api/v1/currency/delete-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-delete GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isArchived":0,"isHidden":0}]}}
+

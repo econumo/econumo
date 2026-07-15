@@ -1,5 +1,5 @@
 == get-currency-list GET /api/v1/currency/get-currency-list [owner] -> 200
-{"success":true,"message":"","data":{"items":[{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2}]}}
+{"success":true,"message":"","data":{"items":[{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isArchived":0,"isHidden":0}]}}
 
 == get-currency-rate-list GET /api/v1/currency/get-currency-rate-list [owner] -> 200
 {"success":true,"message":"","data":{"items":[]}}

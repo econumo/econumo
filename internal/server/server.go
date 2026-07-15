@@ -131,7 +131,10 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 
 	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
-	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, cfg.IsDev())
+	currencyManageRepo := currencyrepo.NewManageRepo(cfg.DatabaseDriver, txm)
+	currencyManageSvc := appcurrency.NewManageService(currencyManageRepo, txm, opGuard, clk,
+		NewCurrencyProfileCurrency(userRepo), cfg.CurrencyBase)
+	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, currencyManageSvc, cfg.IsDev())
 
 	// Connection service is built first: the account result embeds sharedAccess[]
 	// and delete-account revokes the caller's own access.
