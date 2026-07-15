@@ -127,8 +127,10 @@ func (rt *RecurringTransaction) Update(s RecurringNewState, now time.Time) {
 	rt.TagID = s.TagID
 	rt.Description = s.Description
 	rt.Schedule = s.Schedule
+	if !s.NextPaymentAt.Equal(rt.NextPaymentAt) {
+		rt.ScheduledDay = int16(s.NextPaymentAt.Day())
+	}
 	rt.NextPaymentAt = s.NextPaymentAt
-	rt.ScheduledDay = int16(s.NextPaymentAt.Day())
 	rt.normalize()
 	rt.UpdatedAt = now
 }

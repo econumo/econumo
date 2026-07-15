@@ -119,3 +119,41 @@ func TestRecurringUpdate_TransferClearsClassifiers_AndRederivesDay(t *testing.T)
 		t.Fatal("UpdatedAt not stamped")
 	}
 }
+
+func TestRecurringUpdate_SameNextPaymentAt_PreservesScheduledDay(t *testing.T) {
+	created := d("2027-01-01 10:00:00")
+	rt := model.NewRecurringTransaction(model.RecurringNewState{
+		ID: vo.NewId(), UserID: vo.NewId(), Type: model.TransactionTypeExpense,
+		AccountID: vo.NewId(), Amount: "50", Schedule: model.RecurringScheduleMonthly,
+		NextPaymentAt: d("2027-01-31 00:00:00"), CreatedAt: created,
+	})
+	if rt.ScheduledDay != 31 {
+		t.Fatalf("ScheduledDay = %d, want 31", rt.ScheduledDay)
+	}
+
+	rt.Advance(d("2027-02-01 10:00:00"))
+	if want := d("2027-02-28 00:00:00"); !rt.NextPaymentAt.Equal(want) {
+		t.Fatalf("NextPaymentAt = %s, want %s (clamped)", rt.NextPaymentAt, want)
+	}
+	if rt.ScheduledDay != 31 {
+		t.Fatalf("ScheduledDay = %d, want 31 (unchanged by Advance)", rt.ScheduledDay)
+	}
+
+	later := d("2027-02-02 10:00:00")
+	rt.Update(model.RecurringNewState{
+		ID: rt.ID, UserID: rt.UserID, Type: rt.Type,
+		AccountID: rt.AccountID, Amount: "75",
+		Schedule: model.RecurringScheduleMonthly, NextPaymentAt: rt.NextPaymentAt,
+	}, later)
+	if rt.Amount != "75" {
+		t.Fatalf("Amount = %q, want 75", rt.Amount)
+	}
+	if rt.ScheduledDay != 31 {
+		t.Fatalf("ScheduledDay = %d, want 31 (preserved when NextPaymentAt unchanged)", rt.ScheduledDay)
+	}
+
+	rt.Advance(d("2027-03-01 10:00:00"))
+	if want := d("2027-03-31 00:00:00"); !rt.NextPaymentAt.Equal(want) {
+		t.Fatalf("NextPaymentAt after clamp recovery = %s, want %s", rt.NextPaymentAt, want)
+	}
+}
