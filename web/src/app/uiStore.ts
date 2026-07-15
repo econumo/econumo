@@ -10,8 +10,9 @@ export interface OpenTransactionParams {
   transaction?: TransactionPrefill
   type?: TransactionType
   accountId?: Id
-  // present when a recurring template was just posted — Task 15 uses it to
-  // show the "next payment" follow-up after the transaction is created
+  // present when the caller is posting a due recurring template — switches
+  // TransactionDialog into posting mode (prefilled from the template, with a
+  // recurringId sent alongside the created transaction)
   postRecurring?: RecurringDto
 }
 
@@ -61,9 +62,11 @@ export const useUiStore = create<UiState>()((set) => ({
   },
   recurringModal: null,
   openRecurringModal: (params) => {
+    trackEvent(METRICS.UI_MODAL_RECURRING_OPEN)
     set({ recurringModal: params })
   },
   closeRecurringModal: () => {
+    trackEvent(METRICS.UI_MODAL_RECURRING_CLOSE)
     set({ recurringModal: null })
   },
   switchAccountPrompt: null,
