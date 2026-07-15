@@ -189,6 +189,24 @@ type Payee struct {
 	UpdatedAt  time.Time
 }
 
+type RecurringTransaction struct {
+	ID                 string
+	UserID             string
+	AccountID          string
+	AccountRecipientID *string
+	CategoryID         *string
+	PayeeID            *string
+	TagID              *string
+	Type               int16
+	Amount             string
+	Description        string
+	Schedule           string
+	NextPaymentAt      time.Time
+	ScheduledDay       int16
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 type Tag struct {
 	ID         string
 	UserID     string

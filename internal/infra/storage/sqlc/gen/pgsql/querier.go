@@ -34,6 +34,7 @@ type Querier interface {
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
+	DeleteRecurringTransaction(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
 	DeleteUserPasswordRequest(ctx context.Context, id string) error
@@ -97,6 +98,7 @@ type Querier interface {
 	// Available payees: own + payees of users who shared an account with this user.
 	// $1 is reused for both positions so the generated param stays single.
 	GetPayeeListView(ctx context.Context, userID string) ([]Payee, error)
+	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
 	// Write-side queries for the tag module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
 	// placeholder syntax. The tags table has no type/icon columns.
@@ -209,6 +211,7 @@ type Querier interface {
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
+	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error
 	UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error
