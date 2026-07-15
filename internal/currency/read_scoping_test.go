@@ -61,7 +61,7 @@ func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	byID := make(map[string]model.CurrencyResult, len(res.Items))
+	byID := make(map[string]model.CurrencyListItem, len(res.Items))
 	for _, item := range res.Items {
 		byID[item.Id] = item
 	}

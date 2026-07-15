@@ -6417,6 +6417,35 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CurrencyListItem": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "fractionDigits": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "isHidden": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                }
+            }
+        },
         "model.CurrencyRateResult": {
             "type": "object",
             "properties": {
@@ -6749,7 +6778,7 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.CurrencyResult"
+                        "$ref": "#/definitions/model.CurrencyListItem"
                     }
                 }
             }

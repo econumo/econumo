@@ -62,7 +62,7 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, userID vo.Id) (*model
 	for _, id := range hidden {
 		hiddenSet[id] = true
 	}
-	items := make([]model.CurrencyResult, 0, len(rows))
+	items := make([]model.CurrencyListItem, 0, len(rows))
 	for _, r := range rows {
 		scope := ScopeGlobal
 		if r.UserID != nil {
@@ -80,15 +80,17 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, userID vo.Id) (*model
 		if scope == ScopeGlobal && hiddenSet[r.ID] {
 			isHidden = 1
 		}
-		items = append(items, model.CurrencyResult{
-			Id:             r.ID,
-			Code:           r.Code,
-			Name:           currencyName(r),
-			Symbol:         r.Symbol,
-			FractionDigits: int(r.FractionDigits),
-			Scope:          scope,
-			IsArchived:     archived,
-			IsHidden:       isHidden,
+		items = append(items, model.CurrencyListItem{
+			CurrencyResult: model.CurrencyResult{
+				Id:             r.ID,
+				Code:           r.Code,
+				Name:           currencyName(r),
+				Symbol:         r.Symbol,
+				FractionDigits: int(r.FractionDigits),
+			},
+			Scope:      scope,
+			IsArchived: archived,
+			IsHidden:   isHidden,
 		})
 	}
 	return &model.GetCurrencyListResult{Items: items}, nil
