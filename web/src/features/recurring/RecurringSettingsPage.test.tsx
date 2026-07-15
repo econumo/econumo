@@ -1,0 +1,60 @@
+import { render, screen } from '@testing-library/react'
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
+import { createMemoryRouter, RouterProvider } from 'react-router'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/test/msw'
+import { coreHandlers } from '@/test/fixtures'
+import { RecurringSettingsPage } from './RecurringSettingsPage'
+
+function mockMatchMedia() {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+}
+
+function renderPage() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter(
+    [{ path: '/settings/recurring', element: <RecurringSettingsPage /> }],
+    { initialEntries: ['/settings/recurring'] },
+  )
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  return queryClient
+}
+
+const wireRecurring = {
+  id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+  amount: '50.5', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'rent',
+  schedule: 'monthly', nextPaymentAt: '2026-08-31 00:00:00',
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  window.econumoConfig = {}
+  mockMatchMedia()
+})
+
+it('lists templates with schedule and next payment date', async () => {
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring] } })),
+  )
+  renderPage()
+  expect(await screen.findByText('rent')).toBeInTheDocument()
+  expect(screen.getByText('Monthly')).toBeInTheDocument()
+})
+
+it('shows the empty state when there are no templates', async () => {
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [] } })),
+  )
+  renderPage()
+  expect(await screen.findByText('No recurring transactions yet')).toBeInTheDocument()
+})

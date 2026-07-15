@@ -180,6 +180,13 @@ export default {
       'export_csv': {
         'menu_item': 'Export CSV',
         'error': 'Failed to export transactions'
+      },
+      'recurring': {
+        'menu_item': 'Recurring transactions',
+        'header': 'Recurring transactions',
+        'empty': 'No recurring transactions yet',
+        'create': 'Add recurring transaction',
+        'delete_question': 'Delete this recurring transaction?'
       }
     },
   },
@@ -288,6 +295,30 @@ export default {
       'icons': 'Avatar icons',
       'colors': 'Avatar colors',
       'change': 'Change avatar'
+    },
+    'recurring': {
+      'create_form': { 'header': 'Add recurring transaction' },
+      'update_form': { 'header': 'Edit recurring transaction' },
+      'post_form': { 'header': 'Post recurring transaction' },
+      'form': {
+        'schedule': { 'label': 'Repeats' },
+        'next_payment': { 'label': 'Next payment' }
+      },
+      'schedule': {
+        'weekly': 'Weekly',
+        'biweekly': 'Every 2 weeks',
+        'monthly': 'Monthly',
+        'quarterly': 'Every 3 months',
+        'yearly': 'Yearly'
+      },
+      'preview': {
+        'header': 'Recurring transaction',
+        'post': 'Post',
+        'skip': 'Skip',
+        'next_payment': 'Next payment',
+        'schedule': 'Repeats'
+      },
+      'make_recurring': 'Make recurring'
     }
   },
   'modules': {
