@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RecurringDto } from '@/api/dto/recurring'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { Button } from '@/components/ui/button'
 import { RouterPage } from '@/app/router-pages'
@@ -8,9 +9,11 @@ import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees } from '@/features/classifications/queries'
 import { SettingsShell } from '@/features/settings/SettingsShell'
+import { useUserData } from '@/features/user/queries'
 import { moneyFormat } from '@/lib/money'
 import { dayKey, isFuture } from '@/lib/datetime'
-import { useRecurring } from './queries'
+import { useDeleteRecurring, useRecurring, useSkipRecurring } from './queries'
+import { ViewRecurringDialog } from './ViewRecurringDialog'
 
 export function RecurringSettingsPage() {
   const { t } = useTranslation()
@@ -18,8 +21,12 @@ export function RecurringSettingsPage() {
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
+  const { data: user } = useUserData()
   const openRecurringModal = useUiStore((s) => s.openRecurringModal)
+  const skipRecurring = useSkipRecurring()
+  const deleteRecurring = useDeleteRecurring()
   const [selected, setSelected] = useState<RecurringDto | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<RecurringDto | null>(null)
 
   const scheduleLabel = (rt: RecurringDto) => t(`modals.recurring.schedule.${rt.schedule}`)
   const accountOf = (rt: RecurringDto) => accounts?.find((a) => a.id === rt.accountId)
@@ -28,6 +35,14 @@ export function RecurringSettingsPage() {
     payees?.find((p) => p.id === rt.payeeId)?.name ||
     categories?.find((c) => c.id === rt.categoryId)?.name ||
     scheduleLabel(rt)
+  const canChangeRecurring = (rt: RecurringDto): boolean => {
+    const account = accountOf(rt)
+    if (!account) {
+      return false
+    }
+    const myRole = account.sharedAccess.find((access) => access.user.id === user?.id)?.role
+    return account.owner.id === user?.id || myRole === 'admin' || myRole === 'user'
+  }
 
   return (
     <SettingsShell
@@ -69,8 +84,36 @@ export function RecurringSettingsPage() {
           </div>
         ))
       )}
-      {/* selected -> ViewRecurringDialog wired in Task 14; keep state so the row click is testable */}
-      {selected ? <span data-testid="recurring-selected" className="hidden" /> : null}
+      {selected ? (
+        <ViewRecurringDialog
+          recurring={selected}
+          onClose={() => setSelected(null)}
+          onSkip={() => skipRecurring.mutate(selected.id)}
+          onEdit={() => {
+            setSelected(null)
+            openRecurringModal({ recurring: selected })
+          }}
+          onDelete={() => {
+            setDeleteTarget(selected)
+            setSelected(null)
+          }}
+          canChange={canChangeRecurring(selected)}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteRecurring.mutate(deleteTarget.id, { onSettled: () => setDeleteTarget(null) })
+          }
+        }}
+        question={t('pages.settings.recurring.delete_question')}
+        confirmLabel={t('elements.button.delete.label')}
+        cancelLabel={t('elements.button.cancel.label')}
+        destructive
+      />
     </SettingsShell>
   )
 }

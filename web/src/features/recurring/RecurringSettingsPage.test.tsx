@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -74,4 +75,25 @@ it('shows the empty state when there are no templates', async () => {
   )
   renderPage()
   expect(await screen.findByText('No recurring transactions yet')).toBeInTheDocument()
+})
+
+it('tapping a row opens the view dialog, and deleting it asks for confirmation first', async () => {
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/recurring/get-recurring-transaction-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [wireRecurring] } })),
+    http.post('*/api/v1/recurring/delete-recurring-transaction', () =>
+      HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByTestId('recurring-r1'))
+  expect(await screen.findByText('Recurring transaction')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Delete' }))
+  expect(await screen.findByText('Delete this recurring transaction?')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Delete' }))
+  await screen.findByText('No recurring transactions yet')
 })
