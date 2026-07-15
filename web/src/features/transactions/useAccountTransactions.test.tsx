@@ -29,6 +29,12 @@ beforeEach(() => {
   window.econumoConfig = {}
 })
 
+// Restored unconditionally, even if a test fails mid-assertion, so a leftover
+// fake-timer install can't bleed into later tests.
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 it('filters by account (both legs), groups by day desc with labels', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   vi.setSystemTime(new Date(2026, 6, 2, 12, 0, 0))
@@ -47,7 +53,6 @@ it('filters by account (both legs), groups by day desc with labels', async () =>
 
   const kinds = result.current.map((e) => (e.kind === 'separator' ? `sep:${e.label}` : e.transaction.id))
   expect(kinds).toEqual(['sep:today', 'tx-today', 'sep:yesterday', 'tx-yesterday', 'sep:date', 'tx-incoming-transfer'])
-  vi.useRealTimers()
 })
 
 it('search matches category, payee, description and amount terms', async () => {
@@ -111,7 +116,6 @@ it('merges one virtual row per template at its next payment date', async () => {
 
   const virtualEntry = result.current.find((e) => e.kind === 'transaction' && e.transaction.id === 'r1')
   expect(virtualEntry?.kind === 'transaction' && virtualEntry.transaction.recurring).toEqual(rt)
-  vi.useRealTimers()
 })
 
 it('virtual transfer rows appear only on the source account', async () => {
@@ -136,7 +140,6 @@ it('virtual transfer rows appear only on the source account', async () => {
   const { result: resultA2 } = renderHook(() => useAccountTransactions('a2', ''), { wrapper: shared })
   await waitFor(() => expect(resultA2.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'tx-a2')).toBe(true))
   expect(resultA2.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'r2')).toBe(false)
-  vi.useRealTimers()
 })
 
 it('overdue templates surface at their past date', async () => {
@@ -154,5 +157,4 @@ it('overdue templates surface at their past date', async () => {
   const entries = result.current
   const idx = entries.findIndex((e) => e.kind === 'transaction' && e.transaction.id === 'r3')
   expect(entries[idx - 1]).toEqual({ kind: 'separator', day: '2026-06-15', label: 'date' })
-  vi.useRealTimers()
 })
