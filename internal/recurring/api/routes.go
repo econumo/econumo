@@ -13,5 +13,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		mux.Handle("GET /api/v1/recurring/get-recurring-transaction-list", auth(h.GetRecurringTransactionList))
+		mux.Handle("POST /api/v1/recurring/create-recurring-transaction", auth(h.CreateRecurringTransaction))
 	}
 }
