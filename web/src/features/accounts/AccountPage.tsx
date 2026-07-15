@@ -317,6 +317,11 @@ export function AccountPage() {
             setDeleteTarget(preview)
             setPreview(null)
           }}
+          onMakeRecurring={() => {
+            const txToMakeRecurring = preview
+            setPreview(null)
+            openRecurringModal({ fromTransaction: txToMakeRecurring })
+          }}
           canChange={canTouchRow(preview)}
           isShared={account.sharedAccess.length > 0}
         />

@@ -1,4 +1,4 @@
-import { ChevronDown, Trash2 } from 'lucide-react'
+import { ChevronDown, Repeat, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,9 +22,11 @@ interface ViewTransactionDialogProps {
   dismissible?: boolean
   /** amount currency when the account isn't visible to the caller (budget rows) */
   fallbackCurrency?: CurrencyLike | null
+  /** callback to make a recurring transaction from this one */
+  onMakeRecurring?: () => void
 }
 
-export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency }: ViewTransactionDialogProps) {
+export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
   const isTransfer = tx.type === 'transfer'
   const typeLabel = t(`pages.account.preview_transaction_modal.type.${tx.type}`)
@@ -93,7 +95,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       showClose
       dismissible={dismissible}
       footer={
-        /* dismiss on the left, actions on the right: collapse icon | wide Edit | delete icon */
+        /* dismiss on the left, actions on the right: collapse icon | wide Edit | repeat/delete icons */
         <div className="flex gap-3 [&_button]:h-11">
           <Button
             type="button"
@@ -109,6 +111,20 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
           <Button type="button" className="flex-1" disabled={!canChange} onClick={onEdit}>
             {t('elements.button.edit.label')}
           </Button>
+          {onMakeRecurring ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="size-11"
+              disabled={!canChange}
+              aria-label={t('modals.recurring.make_recurring')}
+              title={t('modals.recurring.make_recurring')}
+              onClick={onMakeRecurring}
+            >
+              <Repeat className="size-4" />
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="destructive"
