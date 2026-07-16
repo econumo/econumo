@@ -1,7 +1,6 @@
 package mcp_test
 
 import (
-	"strings"
 	"testing"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -19,7 +18,7 @@ func newReadService(t *testing.T, db *dbtest.DB) *apppayee.ReadService {
 	return apppayee.NewReadService(payeerepo.NewReadRepo(db.Engine, db.TX))
 }
 
-func TestPayeesResource(t *testing.T) {
+func TestListPayeesTool(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
@@ -45,14 +44,6 @@ func TestPayeesResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cs.Close()
-
-	res, err := cs.ReadResource(ctx, &sdk.ReadResourceParams{URI: "econumo://payees"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Contents) != 1 || !strings.Contains(res.Contents[0].Text, `"Landlord"`) {
-		t.Fatalf("contents: %+v", res.Contents)
-	}
 
 	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_payees", Arguments: map[string]any{}})
 	if err != nil {

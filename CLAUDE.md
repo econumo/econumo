@@ -97,9 +97,8 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
 │   │   ├── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
-│   │   └── mcp/ ...................  MCP edge (account, budget, category, currency, payee, tag, transaction,
-│   │                                 user only): tool/resource/prompt registration, mirroring api/ (see
-│   │                                 MCP endpoint below)
+│   │   └── mcp/ ...................  MCP edge (all nine features have one): tool registration, mirroring
+│   │                                 api/ (see MCP endpoint below; prompts live in internal/web/mcp)
 │   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
 │   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
 │   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
@@ -186,7 +185,7 @@ mode (no SSE, no server-held sessions — every tool call is a sub-second DB
 round trip). Auth is the same bearer-token middleware as REST (PATs are the
 intended credential for MCP clients). Shared edge infra lives in
 `internal/web/mcp/`; each feature that exposes MCP surface registers its own
-tools/resources/prompts from an `internal/<feature>/mcp/` package, composed at
+tools/prompts from an `internal/<feature>/mcp/` package, composed at
 `server.BuildAPI` exactly like `RegisterAPI`.
 
 ### Frontend architecture (React 19 + Vite)
@@ -282,8 +281,8 @@ Tests live alongside the Go code:
   `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
   (the bearer token IS the user id string).
 - `internal/test/mcpparity/` — the MCP counterpart to `apiparity`: a golden-file JSON-RPC
-  scenario catalogue (`initialize`, `tools/list`, `resources/list`, `prompts/list`, each
-  tool/resource/prompt) replayed against the real `server.BuildAPI` handler over `/mcp`,
+  scenario catalogue (`initialize`, `tools/list`, `prompts/list`, each tool/prompt)
+  replayed against the real `server.BuildAPI` handler over `/mcp`,
   normalized the same way as the REST goldens. Runs in the smoke tier and, under
   `-tags enginecompare`, against both engines. Regenerate goldens with
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule

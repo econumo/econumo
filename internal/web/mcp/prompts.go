@@ -21,7 +21,7 @@ func addPrompts(s *sdk.Server) {
 		text := fmt.Sprintf(`Log this in my Econumo finance tracker: %s
 
 Follow these steps:
-1. Read econumo://accounts, econumo://categories and econumo://payees (or, if resources are unavailable in your client, call list_accounts, list_categories and list_payees).
+1. Call list_accounts, list_categories and list_payees.
 2. Work out the type (expense unless clearly income or a transfer), the amount (decimal string), the date (default: today), and the best-matching account, category and payee (payee may be omitted).
 3. Call create_transaction.
 4. Confirm in one line what you logged: amount, currency, category, account, date.
@@ -47,7 +47,7 @@ If the amount or the account is ambiguous, ask me before creating anything.`,
 		text := fmt.Sprintf(`Review my Econumo budget for %s.
 
 Follow these steps:
-1. Read econumo://budgets (or, if resources are unavailable in your client, call list_budgets); if I have more than one budget, ask which one.
+1. Call list_budgets; if I have more than one budget, ask which one.
 2. Call get_budget with the budget_id (and the month, if not current).
 3. Compare limits against spending per envelope/category: flag anything overspent, and anything above 90%% of its limit.
 4. If something looks unusual, sample the underlying activity with list_transactions.

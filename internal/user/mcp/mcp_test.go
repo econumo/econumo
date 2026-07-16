@@ -1,7 +1,6 @@
 package mcp_test
 
 import (
-	"strings"
 	"testing"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -15,7 +14,7 @@ import (
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
-func TestUserResource(t *testing.T) {
+func TestGetUserTool(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	const email = "profile-owner@example.test"
@@ -43,21 +42,6 @@ func TestUserResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cs.Close()
-
-	res, err := cs.ReadResource(ctx, &sdk.ReadResourceParams{URI: "econumo://user"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Contents) != 1 {
-		t.Fatalf("contents: %+v", res.Contents)
-	}
-	text := res.Contents[0].Text
-	if !strings.Contains(text, email) {
-		t.Fatalf("expected user email in resource text: %s", text)
-	}
-	if strings.Contains(text, "\"items\"") {
-		t.Fatalf("resource should no longer carry connections: %s", text)
-	}
 
 	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "get_user", Arguments: map[string]any{}})
 	if err != nil {

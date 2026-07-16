@@ -1,7 +1,6 @@
 package mcp_test
 
 import (
-	"strings"
 	"testing"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -32,7 +31,7 @@ func newAccountService(t *testing.T, db *dbtest.DB) *appaccount.Service {
 	return appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, nil, txm, opGuard, clock.New())
 }
 
-func TestAccountsResource(t *testing.T) {
+func TestListAccountsTool(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
@@ -58,21 +57,6 @@ func TestAccountsResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cs.Close()
-
-	res, err := cs.ReadResource(ctx, &sdk.ReadResourceParams{URI: "econumo://accounts"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Contents) != 1 {
-		t.Fatalf("contents: %+v", res.Contents)
-	}
-	text := res.Contents[0].Text
-	if !strings.Contains(text, `"Checking"`) {
-		t.Fatalf("expected account name in resource text: %s", text)
-	}
-	if !strings.Contains(text, `"balance"`) {
-		t.Fatalf("expected balance key in resource text: %s", text)
-	}
 
 	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_accounts", Arguments: map[string]any{}})
 	if err != nil {

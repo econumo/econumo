@@ -1,7 +1,6 @@
 package mcp_test
 
 import (
-	"strings"
 	"testing"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -19,7 +18,7 @@ func newCurrencyReadService(t *testing.T, db *dbtest.DB) *appcurrency.ReadServic
 	return appcurrency.NewReadService(currencyrepo.NewReadRepo(db.Engine, db.TX))
 }
 
-func TestCurrenciesResource(t *testing.T) {
+func TestListCurrenciesTool(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
@@ -46,21 +45,6 @@ func TestCurrenciesResource(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cs.Close()
-
-	res, err := cs.ReadResource(ctx, &sdk.ReadResourceParams{URI: "econumo://currencies"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Contents) != 1 {
-		t.Fatalf("contents: %+v", res.Contents)
-	}
-	text := res.Contents[0].Text
-	if !strings.Contains(text, `"EUR"`) {
-		t.Fatalf("expected EUR in resource text: %s", text)
-	}
-	if !strings.Contains(text, `"rates"`) || !strings.Contains(text, `"0.85`) {
-		t.Fatalf("expected rates in resource text: %s", text)
-	}
 
 	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_currencies", Arguments: map[string]any{}})
 	if err != nil {

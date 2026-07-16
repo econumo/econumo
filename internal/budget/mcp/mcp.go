@@ -11,7 +11,6 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
-	"github.com/econumo/econumo/internal/shared/vo"
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 )
 
@@ -19,18 +18,8 @@ type emptyInput struct{}
 
 func Register(svc *appbudget.Service) webmcp.Register {
 	return func(s *sdk.Server) {
-		webmcp.AddJSONResource(s, "econumo://budgets", "budgets",
-			"The user's budgets (id, name, currency); pass a budget id and month to the get_budget tool for monthly state.",
-			func(ctx context.Context, userID vo.Id) ([]model.MetaResult, error) {
-				res, err := svc.GetBudgetList(ctx, userID)
-				if err != nil {
-					return nil, err
-				}
-				return res.Items, nil
-			})
-
 		sdk.AddTool(s, &sdk.Tool{Name: "list_budgets",
-			Description: "The user's budgets. Same data as econumo://budgets."},
+			Description: "The user's budgets; pass a budget id and month to the get_budget tool for monthly state."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetBudgetListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_budgets")
 				userID, err := webmcp.UserID(ctx)
@@ -45,7 +34,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		type getBudgetInput struct {
-			BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from econumo://budgets"`
+			BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM; defaults to the current month"`
 		}
 

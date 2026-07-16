@@ -34,11 +34,8 @@ func Register(read *appcurrency.ReadService) webmcp.Register {
 			return currenciesDoc{Currencies: list.Items, Rates: rates.Items}, nil
 		}
 
-		webmcp.AddJSONResource(s, "econumo://currencies", "currencies",
-			"Known currencies plus the latest exchange rates against the instance base currency.", load)
-
 		sdk.AddTool(s, &sdk.Tool{Name: "list_currencies",
-			Description: "Known currencies plus the latest exchange rates. Same data as econumo://currencies."},
+			Description: "Known currencies plus the latest exchange rates against the instance base currency."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, currenciesDoc, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_currencies")
 				userID, err := webmcp.UserID(ctx)

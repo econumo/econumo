@@ -117,19 +117,6 @@ it doesn't expire on inactivity like a session does. Point your client at
 > — use Claude Code, Claude Desktop, or another client that accepts a static
 > bearer header.
 
-**Resources** (read-only, scoped to the authenticated user):
-
-| URI | Content |
-|---|---|
-| `econumo://accounts` | accounts with type, currency, archived flag, and current balance |
-| `econumo://categories` | expense/income categories |
-| `econumo://tags` | tags |
-| `econumo://payees` | payees |
-| `econumo://currencies` | currency codes + rates vs. the instance base currency |
-| `econumo://budgets` | the user's budgets (id, name, currency) |
-| `econumo://user` | the current user's profile (id, name, email, avatar, base currency) |
-| `econumo://connections` | users connected to the current user and the accounts they share |
-
 **Tools:**
 
 | Tool | Purpose |
@@ -139,19 +126,14 @@ it doesn't expire on inactivity like a session does. Point your client at
 | `create_transaction` | record an expense, income, or transfer |
 | `update_transaction` | edit an existing transaction |
 | `delete_transaction` | delete a transaction |
-| `list_accounts` | same data as `econumo://accounts` |
-| `list_categories` | same data as `econumo://categories` |
-| `list_tags` | same data as `econumo://tags` |
-| `list_payees` | same data as `econumo://payees` |
-| `list_currencies` | same data as `econumo://currencies` |
-| `list_budgets` | same data as `econumo://budgets` |
-| `get_user` | same data as `econumo://user` |
-| `list_connections` | same data as `econumo://connections` |
-
-The `list_*`/`get_user` tools exist because resources are
-application-controlled — some clients (e.g. Claude Desktop) can't read them
-without the user manually attaching them — so these give any client a
-model-driven way to look up ids.
+| `list_accounts` | accounts with type, currency, archived flag, and current balance |
+| `list_categories` | expense/income categories |
+| `list_tags` | tags |
+| `list_payees` | payees |
+| `list_currencies` | currency codes + rates vs. the instance base currency |
+| `list_budgets` | the user's budgets (id, name, currency) |
+| `get_user` | the current user's profile (id, name, email, avatar, base currency) |
+| `list_connections` | users connected to the current user and the accounts they share |
 
 **Prompts:** `log-expense` (turn a free-text description like "27.50
 groceries at Lidl yesterday, card" into a recorded transaction) and

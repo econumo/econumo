@@ -108,7 +108,7 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "create_transaction",
-			Description: "Record a new expense, income or transfer. Look up account/category/payee/tag ids in the econumo:// resources first."},
+			Description: "Record a new expense, income or transfer. Look up account/category/payee/tag ids with list_accounts/list_categories/list_payees/list_tags first."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in createInput) (*sdk.CallToolResult, model.CreateTransactionResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_transaction")
 				userID, err := webmcp.UserID(ctx)

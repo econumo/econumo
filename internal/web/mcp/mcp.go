@@ -2,7 +2,7 @@
 // server, mounts the Streamable HTTP transport (stateless + JSON responses:
 // tools are sub-second DB calls with nothing to stream, and statelessness
 // keeps /mcp restart-safe and proxy-friendly), and defines the seam through
-// which feature packages register their tools/resources/prompts.
+// which feature packages register their tools/prompts.
 package mcp
 
 import (
@@ -24,11 +24,11 @@ func Compose(fns ...Register) Register {
 	}
 }
 
-const instructions = "Econumo personal-finance server. Read reference data from the econumo:// " +
-	"resources (accounts, categories, tags, payees, currencies, budgets, user); query monthly " +
-	"budget state with get_budget and transactions with list_transactions; log changes with " +
-	"create_transaction / update_transaction / delete_transaction. Amounts are decimal strings; " +
-	"ids are UUIDs from the resources."
+const instructions = "Econumo personal-finance server. Read reference data with the list_accounts, " +
+	"list_categories, list_tags, list_payees, list_currencies, list_budgets and get_user tools; " +
+	"query monthly budget state with get_budget and transactions with list_transactions; log " +
+	"changes with create_transaction / update_transaction / delete_transaction. Amounts are " +
+	"decimal strings; ids are UUIDs from the list_* tools."
 
 func NewHandler(register Register) http.Handler {
 	srv := sdk.NewServer(

@@ -25,11 +25,8 @@ func Register(svc *appconnection.Service) webmcp.Register {
 			return *result, nil
 		}
 
-		webmcp.AddJSONResource(s, "econumo://connections", "connections",
-			"Users connected to the current user and the accounts they share.", load)
-
 		sdk.AddTool(s, &sdk.Tool{Name: "list_connections",
-			Description: "Users connected to the current user and the accounts they share. Same data as econumo://connections."},
+			Description: "Users connected to the current user and the accounts they share."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetConnectionListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_connections")
 				userID, err := webmcp.UserID(ctx)

@@ -1,15 +1,11 @@
 package mcp_test
 
 import (
-	"encoding/json"
-	"reflect"
 	"strings"
 	"testing"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	appconnection "github.com/econumo/econumo/internal/connection"
 	connectionmcp "github.com/econumo/econumo/internal/connection/mcp"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
@@ -24,22 +20,19 @@ import (
 func newConnectionService(t *testing.T, db *dbtest.DB) *appconnection.Service {
 	t.Helper()
 	txm := db.TX
-	folderRepo := accountrepo.NewFolderRepo(db.Engine, txm)
-	accountRepo := accountrepo.NewRepo(db.Engine, txm)
 	userRepo := userrepo.NewRepo(db.Engine, txm)
-	budgetRepo := budgetrepo.NewRepo(db.Engine, txm)
+	// The revokers and the limiter are only reached by the invite/revoke write
+	// paths; this suite exercises the list read, so they stay nil.
 	return appconnection.NewService(
 		connectionrepo.NewRepo(db.Engine, txm),
 		connectionrepo.NewInviteRepo(db.Engine, txm),
-		server.NewConnectionFolderPort(folderRepo),
-		accountRepo,
 		server.NewUserOwnerLookup(userRepo),
-		server.NewConnectionBudgetRevoker(budgetRepo),
+		nil, nil, nil,
 		txm, clock.New(),
 	)
 }
 
-func TestConnectionsResourceAndListConnectionsTool(t *testing.T) {
+func TestListConnectionsTool(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 
@@ -79,21 +72,6 @@ func TestConnectionsResourceAndListConnectionsTool(t *testing.T) {
 	}
 	defer cs.Close()
 
-	res, err := cs.ReadResource(ctx, &sdk.ReadResourceParams{URI: "econumo://connections"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Contents) != 1 {
-		t.Fatalf("contents: %+v", res.Contents)
-	}
-	resourceText := res.Contents[0].Text
-	if !strings.Contains(resourceText, "Connected Friend") {
-		t.Fatalf("expected connected user name in resource text: %s", resourceText)
-	}
-	if !strings.Contains(resourceText, accountID) {
-		t.Fatalf("expected shared account id in resource text: %s", resourceText)
-	}
-
 	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_connections", Arguments: map[string]any{}})
 	if err != nil {
 		t.Fatalf("list_connections: transport error: %v", err)
@@ -108,15 +86,7 @@ func TestConnectionsResourceAndListConnectionsTool(t *testing.T) {
 	if !strings.Contains(toolText.Text, "Connected Friend") {
 		t.Fatalf("list_connections: expected connected user name: %s", toolText.Text)
 	}
-
-	var resourceDoc, toolDoc any
-	if err := json.Unmarshal([]byte(resourceText), &resourceDoc); err != nil {
-		t.Fatalf("decode resource: %v", err)
-	}
-	if err := json.Unmarshal([]byte(toolText.Text), &toolDoc); err != nil {
-		t.Fatalf("decode tool: %v", err)
-	}
-	if !reflect.DeepEqual(resourceDoc, toolDoc) {
-		t.Fatalf("resource and tool payloads differ:\nresource: %s\ntool: %s", resourceText, toolText.Text)
+	if !strings.Contains(toolText.Text, accountID) {
+		t.Fatalf("list_connections: expected shared account id: %s", toolText.Text)
 	}
 }

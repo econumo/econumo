@@ -12,8 +12,7 @@ func init() {
 	register(Scenario{Name: "lifecycle", Steps: []Step{
 		{Label: "initialize", RPC: `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"mcpparity","version":"1"}}}`},
 		{Label: "tools-list", RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`},
-		{Label: "resources-list", RPC: `{"jsonrpc":"2.0","id":3,"method":"resources/list","params":{}}`},
-		{Label: "prompts-list", RPC: `{"jsonrpc":"2.0","id":4,"method":"prompts/list","params":{}}`},
+		{Label: "prompts-list", RPC: `{"jsonrpc":"2.0","id":3,"method":"prompts/list","params":{}}`},
 	}})
 
 	// unauthorized exercises the auth gate: /mcp sits behind the same bearer
@@ -24,11 +23,11 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"mcpparity","version":"1"}}}`},
 	}})
 
-	// resources REST-seeds one fresh category/tag/payee/account (on top of the
-	// apiparity fixture's own category/tag/payee/account) so every
-	// econumo://... resource reflects both the seeded fixture AND a
-	// just-written row, then reads all seven resources.
-	register(Scenario{Name: "resources", Steps: []Step{
+	// reference_tools REST-seeds one fresh category/tag/payee/account (on top
+	// of the apiparity fixture's own category/tag/payee/account) so every
+	// list_*/get_user tool reflects both the seeded fixture AND a
+	// just-written row, then calls all eight reference-data tools.
+	register(Scenario{Name: "reference_tools", Steps: []Step{
 		{Label: "seed-category", Method: "POST", Path: "/api/v1/category/create-category",
 			Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000c1", "name": "MCP Category", "type": "expense", "icon": "tag"}},
 		{Label: "seed-tag", Method: "POST", Path: "/api/v1/tag/create-tag",
@@ -37,22 +36,14 @@ func init() {
 			Body: map[string]any{"id": "20000000-0000-0000-0000-0000000000c1", "name": "MCP Payee"}},
 		{Label: "seed-account", Method: "POST", Path: "/api/v1/account/create-account",
 			Body: map[string]any{"id": "a0000000-0000-0000-0000-0000000000c1", "name": "MCP Account", "icon": "bank", "currencyId": apiparity.USD, "folderId": apiparity.OwnerFolder}},
-		{Label: "read-accounts", RPC: `{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"econumo://accounts"}}`},
-		{Label: "read-categories", RPC: `{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"econumo://categories"}}`},
-		{Label: "read-currencies", RPC: `{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"econumo://currencies"}}`},
-		{Label: "read-payees", RPC: `{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"econumo://payees"}}`},
-		{Label: "read-tags", RPC: `{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"econumo://tags"}}`},
-		{Label: "read-user", RPC: `{"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"econumo://user"}}`},
-		{Label: "read-budgets", RPC: `{"jsonrpc":"2.0","id":7,"method":"resources/read","params":{"uri":"econumo://budgets"}}`},
-		{Label: "list-accounts", RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_accounts","arguments":{}}}`},
-		{Label: "list-categories", RPC: `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"list_categories","arguments":{}}}`},
-		{Label: "list-tags", RPC: `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"list_tags","arguments":{}}}`},
-		{Label: "list-payees", RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_payees","arguments":{}}}`},
-		{Label: "list-currencies", RPC: `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"list_currencies","arguments":{}}}`},
-		{Label: "list-budgets", RPC: `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"list_budgets","arguments":{}}}`},
-		{Label: "get-user", RPC: `{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"get_user","arguments":{}}}`},
-		{Label: "read-connections", RPC: `{"jsonrpc":"2.0","id":15,"method":"resources/read","params":{"uri":"econumo://connections"}}`},
-		{Label: "list-connections", RPC: `{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"list_connections","arguments":{}}}`},
+		{Label: "list-accounts", RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_accounts","arguments":{}}}`},
+		{Label: "list-categories", RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_categories","arguments":{}}}`},
+		{Label: "list-tags", RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_tags","arguments":{}}}`},
+		{Label: "list-payees", RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_payees","arguments":{}}}`},
+		{Label: "list-currencies", RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_currencies","arguments":{}}}`},
+		{Label: "list-budgets", RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_budgets","arguments":{}}}`},
+		{Label: "get-user", RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_user","arguments":{}}}`},
+		{Label: "list-connections", RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_connections","arguments":{}}}`},
 	}})
 
 	// budget REST-creates a budget then drives get_budget for a valid and an

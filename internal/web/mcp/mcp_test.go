@@ -96,13 +96,6 @@ func mustJSON(t *testing.T, v any) []byte {
 	return b
 }
 
-func TestJSONTextNoHTMLEscaping(t *testing.T) {
-	got, err := webmcp.JSONText(map[string]string{"a": "x<y>/z"})
-	if err != nil || got != `{"a":"x<y>/z"}` {
-		t.Fatalf("JSONText = %q, %v", got, err)
-	}
-}
-
 func TestUserIDMissing(t *testing.T) {
 	if _, err := webmcp.UserID(context.Background()); err == nil {
 		t.Fatal("want error on missing user")

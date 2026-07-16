@@ -25,12 +25,8 @@ func Register(read *appuser.ReadService) webmcp.Register {
 			return *u, nil
 		}
 
-		webmcp.AddJSONResource(s, "econumo://user", "user",
-			"The authenticated user's profile: id, name, email, avatar, base currency.",
-			load)
-
 		sdk.AddTool(s, &sdk.Tool{Name: "get_user",
-			Description: "The authenticated user's profile: id, name, email, avatar, base currency. Same data as econumo://user."},
+			Description: "The authenticated user's profile: id, name, email, avatar, base currency."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetUserDataResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_user")
 				userID, err := webmcp.UserID(ctx)

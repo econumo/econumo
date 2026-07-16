@@ -85,7 +85,7 @@ func structured(t *testing.T, res *sdk.CallToolResult) map[string]any {
 	return m
 }
 
-func TestBudgetsResourceAndGetBudgetTool(t *testing.T) {
+func TestBudgetTools(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
@@ -94,21 +94,6 @@ func TestBudgetsResourceAndGetBudgetTool(t *testing.T) {
 	svc := newBudgetService(t, db)
 	ctx := mcptest.CtxWithUser(t, userID)
 	cs := connectBudgetSession(t, ctx, svc)
-
-	res, err := cs.ReadResource(ctx, &sdk.ReadResourceParams{URI: "econumo://budgets"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Contents) != 1 {
-		t.Fatalf("contents: %+v", res.Contents)
-	}
-	text := res.Contents[0].Text
-	if !strings.Contains(text, `"Household"`) {
-		t.Fatalf("expected budget name in resource text: %s", text)
-	}
-	if !strings.Contains(text, budgetID) {
-		t.Fatalf("expected budget id in resource text: %s", text)
-	}
 
 	getRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name: "get_budget",
