@@ -19,4 +19,6 @@ i18n.use(initReactI18next).init({
   returnNull: false,
 })
 
+document.documentElement.lang = locale()
+
 export default i18n

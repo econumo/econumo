@@ -15,7 +15,7 @@ interface ImportResultDialogProps {
 }
 
 export function ImportResultDialog({ open, result, onClose }: ImportResultDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   if (!result) return null
 
   const outcome =
@@ -43,8 +43,8 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
       <div className="flex flex-col gap-3">
         <outcome.Icon className={`mx-auto size-10 ${outcome.tone}`} aria-hidden />
         <div className="flex flex-col gap-1 text-center text-sm">
-          {result.imported > 0 ? <p>{pluralPick(t('transactions.import_result.imported'), result.imported)}</p> : null}
-          {result.failed > 0 ? <p>{pluralPick(t('transactions.import_result.failed'), result.failed)}</p> : null}
+          {result.imported > 0 ? <p>{pluralPick(t('transactions.import_result.imported'), result.imported, i18n.language)}</p> : null}
+          {result.failed > 0 ? <p>{pluralPick(t('transactions.import_result.failed'), result.failed, i18n.language)}</p> : null}
         </div>
 
         {shownErrors.length > 0 ? (

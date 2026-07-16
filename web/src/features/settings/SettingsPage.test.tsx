@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { SettingsPage } from './SettingsPage'
@@ -38,6 +39,12 @@ beforeEach(() => {
   server.use(...coreHandlers())
 })
 
+afterEach(async () => {
+  // the language-switch test leaves i18n on 'ru'; restore 'en' for later tests
+  await i18n.changeLanguage('en')
+  document.documentElement.lang = 'en'
+})
+
 it('renders the menu rows with exact labels and navigates', async () => {
   mockViewport(false)
   const user = userEvent.setup()
@@ -45,22 +52,33 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('Settings')).toBeInTheDocument()
   // Full sync moved to the sidebar footer refresh button
   expect(screen.queryByText('Full sync')).not.toBeInTheDocument()
-  // grouped menu; currency moved to the profile page, so with a single locale
-  // there is no Preferences group at all
+  // grouped menu; currency moved to the profile page
   expect(screen.getByText('Finances')).toBeInTheDocument()
   expect(screen.getByText('Classification')).toBeInTheDocument()
   expect(screen.getByText('Data')).toBeInTheDocument()
-  expect(screen.queryByText('Preferences')).not.toBeInTheDocument()
   expect(screen.queryByText('Default currency')).not.toBeInTheDocument()
   expect(screen.getByText('Shared access')).toBeInTheDocument()
   expect(screen.getByText('Accounts')).toBeInTheDocument()
   expect(screen.getByText('Payees')).toBeInTheDocument()
-  // language group hidden with a single locale
-  expect(screen.queryByText('User Interface')).not.toBeInTheDocument()
-  expect(screen.queryByText('Language')).not.toBeInTheDocument()
+  // en + ru locales are registered, so the Preferences/Language row shows
+  expect(screen.getByText('Preferences')).toBeInTheDocument()
+  expect(screen.getByText('Language')).toBeInTheDocument()
 
   await user.click(screen.getByText('Budgets'))
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
+})
+
+it('Language row opens a dialog to switch locale and closes on pick', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Language'))
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
+  expect(screen.getByText('English')).toBeInTheDocument()
+  expect(screen.getByText('Русский')).toBeInTheDocument()
+  await user.click(screen.getByText('Русский'))
+  await screen.findByText('Язык')
+  expect(document.documentElement.lang).toBe('ru')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
 

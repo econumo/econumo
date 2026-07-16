@@ -85,7 +85,10 @@ export function locale(value?: string): string {
 }
 
 export function getLocaleOptions(): LocaleOption[] {
-  return [{ value: 'en', label: 'English', short: 'Eng' }]
+  return [
+    { value: 'en', label: 'English', short: 'EN' },
+    { value: 'ru', label: 'Русский', short: 'RU' },
+  ]
 }
 
 export function getWebsiteUrl(): string {
