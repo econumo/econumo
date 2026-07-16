@@ -13,49 +13,33 @@ import (
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 )
 
-// ConnectionLister is the consumer-side port for the connection feature
-// (features never import features; server wires the concrete service, whose
-// GetConnectionList satisfies this directly).
-type ConnectionLister interface {
-	GetConnectionList(ctx context.Context, userID vo.Id) (*model.GetConnectionListResult, error)
-}
-
-type userDoc struct {
-	User        model.CurrentUserResult  `json:"user"`
-	Connections []model.ConnectionResult `json:"connections"`
-}
-
 type emptyInput struct{}
 
-func Register(read *appuser.ReadService, connections ConnectionLister) webmcp.Register {
+func Register(read *appuser.ReadService) webmcp.Register {
 	return func(s *sdk.Server) {
-		load := func(ctx context.Context, userID vo.Id) (userDoc, error) {
+		load := func(ctx context.Context, userID vo.Id) (model.GetUserDataResult, error) {
 			u, err := read.GetUserData(ctx, userID)
 			if err != nil {
-				return userDoc{}, err
+				return model.GetUserDataResult{}, err
 			}
-			conns, err := connections.GetConnectionList(ctx, userID)
-			if err != nil {
-				return userDoc{}, err
-			}
-			return userDoc{User: u.User, Connections: conns.Items}, nil
+			return *u, nil
 		}
 
 		webmcp.AddJSONResource(s, "econumo://user", "user",
-			"The authenticated user's profile (id, name, email, avatar, base currency) and connected users with shared-account access.",
+			"The authenticated user's profile: id, name, email, avatar, base currency.",
 			load)
 
 		sdk.AddTool(s, &sdk.Tool{Name: "get_user",
-			Description: "The authenticated user's profile and connected users. Same data as econumo://user."},
-			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, userDoc, error) {
+			Description: "The authenticated user's profile: id, name, email, avatar, base currency. Same data as econumo://user."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetUserDataResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "get_user")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
-					return nil, userDoc{}, err
+					return nil, model.GetUserDataResult{}, err
 				}
 				doc, err := load(ctx, userID)
 				if err != nil {
-					return nil, userDoc{}, webmcp.MapErr(ctx, err)
+					return nil, model.GetUserDataResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, doc, nil
 			})

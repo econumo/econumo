@@ -51,6 +51,8 @@ func init() {
 		{Label: "list-currencies", RPC: `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"list_currencies","arguments":{}}}`},
 		{Label: "list-budgets", RPC: `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"list_budgets","arguments":{}}}`},
 		{Label: "get-user", RPC: `{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"get_user","arguments":{}}}`},
+		{Label: "read-connections", RPC: `{"jsonrpc":"2.0","id":15,"method":"resources/read","params":{"uri":"econumo://connections"}}`},
+		{Label: "list-connections", RPC: `{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"list_connections","arguments":{}}}`},
 	}})
 
 	// budget REST-creates a budget then drives get_budget for a valid and an

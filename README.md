@@ -127,7 +127,8 @@ it doesn't expire on inactivity like a session does. Point your client at
 | `econumo://payees` | payees |
 | `econumo://currencies` | currency codes + rates vs. the instance base currency |
 | `econumo://budgets` | the user's budgets (id, name, currency) |
-| `econumo://user` | the current user's profile + connected (shared-access) users |
+| `econumo://user` | the current user's profile (id, name, email, avatar, base currency) |
+| `econumo://connections` | users connected to the current user and the accounts they share |
 
 **Tools:**
 
@@ -145,6 +146,7 @@ it doesn't expire on inactivity like a session does. Point your client at
 | `list_currencies` | same data as `econumo://currencies` |
 | `list_budgets` | same data as `econumo://budgets` |
 | `get_user` | same data as `econumo://user` |
+| `list_connections` | same data as `econumo://connections` |
 
 The `list_*`/`get_user` tools exist because resources are
 application-controlled — some clients (e.g. Claude Desktop) can't read them
