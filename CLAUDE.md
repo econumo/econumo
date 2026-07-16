@@ -192,14 +192,15 @@ namespaces: `common`, `errors` (error-code catalogue, see the envelope section
 above), and `emails` (backend-rendered mail). `{var}` placeholders use the same
 `{name}` syntax in both stacks. Adding a language means a new
 `locales/<lang>.json` plus entries in `i18n.Supported`
-(`internal/infra/i18n/i18n.go`), `getLocaleOptions()` (`web/src/lib/config.ts`),
+(`internal/infra/i18n/i18n.go`), registering the catalogue in `resources`
+(`web/src/app/i18n.ts`), `getLocaleOptions()` (`web/src/lib/config.ts`),
 and the `languages` list in `internal/test/i18ntest`.
 - **Backend runtime**: `internal/infra/i18n` (`i18n.T(lang, key, params)`) translates
   server-rendered text — currently just the password-reset email; API error
   `message`/`errors` strings stay frozen English, never translated here (see
   above). The `Language` middleware resolves `Accept-Language` to a supported
   two-letter tag and stashes it in `reqctx`; the middleware chain is
-  `requestid -> recover -> cors -> timezone -> language -> [auth]`
+  `requestid -> accesslog -> recover -> cors -> timezone -> language -> [auth]`
   (`internal/web/middleware/middleware.go`).
 - **Frontend runtime**: `web/src/app/i18n` wires `react-i18next`; UI language
   choice persists in `localStorage` (`locale()` in `web/src/lib/config.ts`) and
@@ -214,10 +215,10 @@ and the `languages` list in `internal/test/i18ntest`.
   plural strings are authored as a single pipe-joined value.
 - **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
   key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
-  frontend-source `t()`-call key coverage against the catalogue, and two-way
+  frontend-source `t()`-call key coverage against the catalogue, two-way
   coverage between `errs.AllCodes` and the `errors.*` catalogue keys (every
-  registered code has a translation and vice versa) plus between email
-  template keys and `emails.*`.
+  registered code has a translation and vice versa), and that every mailer
+  email key has an `emails.*` entry in every language.
 
 ## Testing
 

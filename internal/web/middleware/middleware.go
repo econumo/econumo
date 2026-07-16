@@ -2,7 +2,7 @@
 // API. Each middleware is a plain func(http.Handler) http.Handler (stdlib only
 // — no router dependency). The chain order (outer -> inner) is:
 //
-//	requestid -> recover -> cors -> timezone -> language -> [auth]
+//	requestid -> accesslog -> recover -> cors -> timezone -> language -> [auth]
 //
 // The token-authentication middleware is intentionally NOT implemented here: it
 // is security-sensitive and is built as part of the user module (Phase 2),
