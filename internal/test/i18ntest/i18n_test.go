@@ -85,9 +85,16 @@ func TestKeyParity(t *testing.T) {
 var placeholderRe = regexp.MustCompile(`\{[a-zA-Z0-9_]+\}`)
 
 func placeholders(s string) []string {
-	ph := placeholderRe.FindAllString(s, -1)
-	sort.Strings(ph)
-	return ph
+	seen := map[string]bool{}
+	unique := make([]string, 0, 4)
+	for _, ph := range placeholderRe.FindAllString(s, -1) {
+		if !seen[ph] {
+			seen[ph] = true
+			unique = append(unique, ph)
+		}
+	}
+	sort.Strings(unique)
+	return unique
 }
 
 func TestPlaceholderParity(t *testing.T) {
