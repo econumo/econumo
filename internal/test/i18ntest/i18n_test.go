@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/locales"
@@ -22,7 +23,13 @@ import (
 var registeredCodes = errs.AllCodes
 var emailKeys = mailer.EmailKeys
 
-var languages = []string{"en", "ru"}
+var languages = i18n.Supported
+
+func TestLanguagesNeverShrink(t *testing.T) {
+	if len(languages) < 2 {
+		t.Fatalf("i18n.Supported has %d languages, want >= 2: %v", len(languages), languages)
+	}
+}
 
 func flatten(prefix string, node map[string]any, out map[string]string) {
 	for k, v := range node {

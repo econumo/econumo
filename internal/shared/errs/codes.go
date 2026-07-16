@@ -8,7 +8,6 @@ const (
 	CodeIsBlank            = "common.is_blank"
 	CodeInvalidChoice      = "common.invalid_choice"
 	CodeInvalidFormat      = "common.invalid_format"
-	CodeValidation         = "common.validation"
 	CodeInvalidUUID        = "common.invalid_uuid"
 	CodeInvalidEmail       = "common.invalid_email"
 	CodeTooLong            = "common.too_long"
@@ -81,7 +80,6 @@ var AllCodes = []string{
 	CodeIsBlank,
 	CodeInvalidChoice,
 	CodeInvalidFormat,
-	CodeValidation,
 	CodeInvalidUUID,
 	CodeInvalidEmail,
 	CodeTooLong,

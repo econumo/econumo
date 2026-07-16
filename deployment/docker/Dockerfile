@@ -17,6 +17,9 @@ RUN npm install -g pnpm@11
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
+# web/src/app/i18n.ts imports ../../../locales/*.json, so locales/ must land
+# one level above WORKDIR (/build/locales), mirroring the repo-root layout.
+COPY locales/ /build/locales/
 # Vite inlines ECONUMO_VERSION (envPrefix in vite.config.ts) as the UI version label.
 # Pass --build-arg ECONUMO_VERSION=v1.2.3 to set it; defaults to "dev".
 ARG ECONUMO_VERSION=""
@@ -30,6 +33,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
+# internal/infra/i18n imports github.com/econumo/econumo/locales, which lives
+# at the module root alongside cmd/ and internal/.
+COPY locales/ ./locales/
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /app/econumo ./cmd/econumo
 # Pre-create runtime dirs owned by the non-root user (distroless can't mkdir on boot).
