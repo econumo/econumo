@@ -301,7 +301,6 @@ func TestListTransactionsFilters(t *testing.T) {
 	// Test period filtering: query 2024-04-01 only should return only tx1
 	// (expand("2024-04-01", false) = "2024-04-01 00:00:00", expand("2024-04-01", true) = "2024-04-01 23:59:59")
 	// tx1 at 15:30:00 is within this range; tx2 at 2024-04-03 is outside
-	// Note: period filters only work when account_id is NOT specified
 	listRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name: "list_transactions",
 		Arguments: map[string]any{
@@ -345,6 +344,30 @@ func TestListTransactionsFilters(t *testing.T) {
 	if len(items2) != 0 {
 		t.Fatalf("list account filter: expected empty, got %d items: %#v", len(items2), items2)
 	}
+
+	// Combined account_id + full period: accountID1 windowed to 2024-04-01
+	// returns only tx1 (tx2 on the same account is outside the window).
+	listRes3, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "list_transactions",
+		Arguments: map[string]any{
+			"account_id":   accountID1,
+			"period_start": "2024-04-01",
+			"period_end":   "2024-04-01",
+		},
+	})
+	if err != nil {
+		t.Fatalf("list account+period filter: transport error: %v", err)
+	}
+	if listRes3.IsError {
+		t.Fatalf("list account+period filter: unexpected error: %#v", listRes3.Content)
+	}
+	items3 := structured(t, listRes3)["items"].([]any)
+	if len(items3) != 1 {
+		t.Fatalf("list account+period filter: expected 1 item, got %d: %#v", len(items3), items3)
+	}
+	if id := items3[0].(map[string]any)["id"].(string); id != tx1ID {
+		t.Fatalf("list account+period filter: expected tx1 (%q), got %q", tx1ID, id)
+	}
 }
 
 func TestListTransactionsFilters_InvalidCombos(t *testing.T) {
@@ -357,37 +380,22 @@ func TestListTransactionsFilters_InvalidCombos(t *testing.T) {
 	ctx := mcptest.CtxWithUser(t, userID)
 	cs := connectSession(t, ctx, svc)
 
-	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
-		Name: "list_transactions",
-		Arguments: map[string]any{
-			"account_id":   accountID,
-			"period_start": "2024-04-01",
-			"period_end":   "2024-04-02",
-		},
-	})
-	if err != nil {
-		t.Fatalf("account_id+period: transport error: %v", err)
-	}
-	if !res.IsError {
-		t.Fatalf("account_id+period: expected isError, got: %#v", res)
-	}
-	text, ok := res.Content[0].(*sdk.TextContent)
-	if !ok || text.Text != "account_id cannot be combined with period filters" {
-		t.Fatalf("account_id+period: unexpected message: %#v", res.Content)
-	}
-
-	res2, err := cs.CallTool(ctx, &sdk.CallToolParams{
-		Name:      "list_transactions",
-		Arguments: map[string]any{"period_start": "2024-04-01"},
-	})
-	if err != nil {
-		t.Fatalf("lone period_start: transport error: %v", err)
-	}
-	if !res2.IsError {
-		t.Fatalf("lone period_start: expected isError, got: %#v", res2)
-	}
-	text2, ok := res2.Content[0].(*sdk.TextContent)
-	if !ok || text2.Text != "period_start and period_end must be provided together" {
-		t.Fatalf("lone period_start: unexpected message: %#v", res2.Content)
+	// A lone period bound is rejected, with or without account_id.
+	for name, args := range map[string]map[string]any{
+		"lone period_start":          {"period_start": "2024-04-01"},
+		"lone period_end":            {"period_end": "2024-04-01"},
+		"account_id plus lone bound": {"account_id": accountID, "period_start": "2024-04-01"},
+	} {
+		res, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_transactions", Arguments: args})
+		if err != nil {
+			t.Fatalf("%s: transport error: %v", name, err)
+		}
+		if !res.IsError {
+			t.Fatalf("%s: expected isError, got: %#v", name, res)
+		}
+		text, ok := res.Content[0].(*sdk.TextContent)
+		if !ok || text.Text != "period_start and period_end must be provided together" {
+			t.Fatalf("%s: unexpected message: %#v", name, res.Content)
+		}
 	}
 }

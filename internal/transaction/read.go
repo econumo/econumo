@@ -10,8 +10,10 @@ import (
 )
 
 // GetTransactionList returns transactions for: a single account (if accountId
-// given, access-checked), or a [periodStart, periodEnd) window across the user's
-// visible accounts, or all visible-account transactions.
+// given, access-checked, optionally narrowed to a [periodStart, periodEnd)
+// window when BOTH bounds are set — a lone bound is ignored), or a
+// [periodStart, periodEnd) window across the user's visible accounts, or all
+// visible-account transactions.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.TransactionListRequest) (*model.GetTransactionListResult, error) {
 	var txs []*model.Transaction
 
@@ -23,6 +25,22 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		}
 		if aerr := s.checkViewAccess(ctx, userID, accountID); aerr != nil {
 			return nil, aerr
+		}
+		if req.PeriodStart != "" && req.PeriodEnd != "" {
+			start, perr := parseFlexible(req.PeriodStart)
+			if perr != nil {
+				return nil, perr
+			}
+			end, perr := parseFlexible(req.PeriodEnd)
+			if perr != nil {
+				return nil, perr
+			}
+			list, lerr := s.repo.ListByAccountIDs(ctx, []vo.Id{accountID}, start, end)
+			if lerr != nil {
+				return nil, lerr
+			}
+			txs = list
+			break
 		}
 		list, err := s.repo.ListByAccount(ctx, accountID)
 		if err != nil {

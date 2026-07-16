@@ -17,9 +17,9 @@ import (
 )
 
 type listInput struct {
-	AccountID   string `json:"account_id,omitempty" jsonschema:"filter by account id (UUID); mutually exclusive with period_start/period_end"`
-	PeriodStart string `json:"period_start,omitempty" jsonschema:"inclusive start, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_end; mutually exclusive with account_id"`
-	PeriodEnd   string `json:"period_end,omitempty" jsonschema:"inclusive end, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_start; mutually exclusive with account_id"`
+	AccountID   string `json:"account_id,omitempty" jsonschema:"filter by account id (UUID); may be combined with a full period window"`
+	PeriodStart string `json:"period_start,omitempty" jsonschema:"inclusive start, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_end; may be combined with account_id"`
+	PeriodEnd   string `json:"period_end,omitempty" jsonschema:"inclusive end, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_start; may be combined with account_id"`
 }
 
 type txFields struct {
@@ -83,15 +83,12 @@ func (f txFields) toRequestFields() (typ string, amount vo.FlexString, accountID
 func Register(svc *apptransaction.Service) webmcp.Register {
 	return func(s *sdk.Server) {
 		sdk.AddTool(s, &sdk.Tool{Name: "list_transactions",
-			Description: "List the user's transactions, optionally filtered by EITHER account_id OR a full period (period_start and period_end together), not both."},
+			Description: "List the user's transactions, optionally filtered by account_id and/or a full period (period_start and period_end together); the filters compose."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in listInput) (*sdk.CallToolResult, model.GetTransactionListResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "list_transactions")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, model.GetTransactionListResult{}, err
-				}
-				if in.AccountID != "" && (in.PeriodStart != "" || in.PeriodEnd != "") {
-					return nil, model.GetTransactionListResult{}, errs.NewValidation("account_id cannot be combined with period filters")
 				}
 				if (in.PeriodStart != "") != (in.PeriodEnd != "") {
 					return nil, model.GetTransactionListResult{}, errs.NewValidation("period_start and period_end must be provided together")

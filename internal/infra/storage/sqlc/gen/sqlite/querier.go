@@ -317,8 +317,8 @@ type Querier interface {
 	// The owner's tags ordered by position; used by order-tag-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
-	// Transactions on an account (as source or recipient), newest first. Mirrors
-	// TransactionRepository::findByAccountId (orderBy spentAt DESC).
+	// Transactions on an account (as source or recipient), newest first; id is the
+	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error

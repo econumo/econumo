@@ -81,6 +81,8 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"%s"}}}`},
 		{Label: "create-transaction-bogus-category",
 			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_transaction","arguments":{"type":"expense","amount":"9.00","account_id":"%s","date":"2024-04-02","category_id":"00000000-0000-0000-0000-000000000000"}}}`},
+		{Label: "list-transactions-account-period",
+			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"%s","period_start":"2024-04-02","period_end":"2024-04-02"}}}`},
 	}})
 
 	register(Scenario{Name: "prompts", Steps: []Step{

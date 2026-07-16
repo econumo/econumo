@@ -89,8 +89,9 @@ surface. The resource registrations are restorable from git history
    full monthly budget state (folders/envelopes/categories/tags, limits,
    spent, available) via the budget read service.
 2. `list_transactions` — optional inputs `account_id` (UUID),
-   `period_start`, `period_end` (datetimes) — mirrors the existing
-   `TransactionListRequest` filter surface exactly. Returns transaction items.
+   `period_start`, `period_end` (datetimes). The filters compose: an
+   account, a full period window, or both together; a lone period bound is
+   rejected at the MCP edge. Returns transaction items.
 3. `create_transaction` — inputs mirror `CreateTransactionRequest` minus
    `id`: `type` (`expense`/`income`/`transfer`), `amount` (decimal string),
    `account_id`, `date`, optional `category_id` (required for non-transfers),
