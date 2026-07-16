@@ -54,6 +54,25 @@ ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
 
 ## Frontend
 
+### Initial language detection (browser locale, clamped to supported)
+
+`locale()` today can return an UNSUPPORTED tag (e.g. `de` from
+`navigator.language`): i18next then falls back to English for rendering, but
+the raw tag leaks into `<html lang>`, `pluralPick`, and the `Accept-Language`
+header. Fix the resolution so `locale()` always returns a supported tag:
+
+1. stored localStorage value, if it is in the supported set (stale or
+   tampered values are ignored, not deleted);
+2. otherwise the first entry in `navigator.languages` (falling back to
+   `navigator.language`) whose primary subtag is supported;
+3. otherwise `'en'`.
+
+The supported set comes from `getLocaleOptions()` — one source of truth on
+the web side. Selecting a language explicitly still persists it exactly as
+today.
+
+### Persisting the choice
+
 `applyLocale(value)` (the shared path behind the selector dropdown and the
 Settings dialog) additionally fires a fire-and-forget
 `update-language` request when an access token is present; failures are
@@ -73,6 +92,8 @@ no call — login capture covers it.
 - i18ntest guards cover the new error code's catalogue entries.
 - SPA test: `applyLocale` posts `update-language` when a token is present,
   and does not when logged out.
+- SPA detection tests: unsupported stored value ignored; `navigator.languages`
+  `['de-DE', 'ru-RU']` → `ru`; all-unsupported / undetectable → `en`.
 
 ## Out of scope
 
