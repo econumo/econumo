@@ -53,4 +53,24 @@ func TestTagsResource(t *testing.T) {
 	if len(res.Contents) != 1 || !strings.Contains(res.Contents[0].Text, `"Vacation"`) {
 		t.Fatalf("contents: %+v", res.Contents)
 	}
+
+	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_tags", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatalf("list_tags: transport error: %v", err)
+	}
+	if toolRes.IsError {
+		t.Fatalf("list_tags: unexpected error: %#v", toolRes.Content)
+	}
+	m, ok := toolRes.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("list_tags: structuredContent is not a map: %#v", toolRes.StructuredContent)
+	}
+	items, ok := m["items"].([]any)
+	if !ok || len(items) == 0 {
+		t.Fatalf("list_tags: missing items: %#v", m)
+	}
+	item, ok := items[0].(map[string]any)
+	if !ok || item["name"] != "Vacation" {
+		t.Fatalf("list_tags: expected Vacation tag, got: %#v", items)
+	}
 }

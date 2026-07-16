@@ -81,4 +81,32 @@ func TestUserResource(t *testing.T) {
 	if !strings.Contains(text, "Connected Friend") {
 		t.Fatalf("expected connection name in resource text: %s", text)
 	}
+
+	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "get_user", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatalf("get_user: transport error: %v", err)
+	}
+	if toolRes.IsError {
+		t.Fatalf("get_user: unexpected error: %#v", toolRes.Content)
+	}
+	m, ok := toolRes.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("get_user: structuredContent is not a map: %#v", toolRes.StructuredContent)
+	}
+	u, ok := m["user"].(map[string]any)
+	if !ok || u["email"] != email {
+		t.Fatalf("get_user: expected user email %q, got: %#v", email, m)
+	}
+	conns, ok := m["connections"].([]any)
+	if !ok || len(conns) == 0 {
+		t.Fatalf("get_user: missing connections: %#v", m)
+	}
+	conn, ok := conns[0].(map[string]any)
+	if !ok {
+		t.Fatalf("get_user: connection not a map: %#v", conns)
+	}
+	connUser, ok := conn["user"].(map[string]any)
+	if !ok || connUser["name"] != "Connected Friend" {
+		t.Fatalf("get_user: expected Connected Friend, got: %#v", conn)
+	}
 }

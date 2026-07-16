@@ -61,4 +61,34 @@ func TestCurrenciesResource(t *testing.T) {
 	if !strings.Contains(text, `"rates"`) || !strings.Contains(text, `"0.85`) {
 		t.Fatalf("expected rates in resource text: %s", text)
 	}
+
+	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_currencies", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatalf("list_currencies: transport error: %v", err)
+	}
+	if toolRes.IsError {
+		t.Fatalf("list_currencies: unexpected error: %#v", toolRes.Content)
+	}
+	m, ok := toolRes.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("list_currencies: structuredContent is not a map: %#v", toolRes.StructuredContent)
+	}
+	currencies, ok := m["currencies"].([]any)
+	if !ok || len(currencies) == 0 {
+		t.Fatalf("list_currencies: missing currencies: %#v", m)
+	}
+	found := false
+	for _, c := range currencies {
+		cm, ok := c.(map[string]any)
+		if ok && cm["code"] == "EUR" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("list_currencies: expected EUR currency, got: %#v", currencies)
+	}
+	rates, ok := m["rates"].([]any)
+	if !ok || len(rates) == 0 {
+		t.Fatalf("list_currencies: missing rates: %#v", m)
+	}
 }

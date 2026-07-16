@@ -8,6 +8,7 @@ import (
 
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 )
@@ -17,20 +18,38 @@ type currenciesDoc struct {
 	Rates      []model.CurrencyRateResult `json:"rates"`
 }
 
+type emptyInput struct{}
+
 func Register(read *appcurrency.ReadService) webmcp.Register {
 	return func(s *sdk.Server) {
+		load := func(ctx context.Context, userID vo.Id) (currenciesDoc, error) {
+			list, err := read.GetCurrencyList(ctx, userID)
+			if err != nil {
+				return currenciesDoc{}, err
+			}
+			rates, err := read.GetCurrencyRateList(ctx, userID)
+			if err != nil {
+				return currenciesDoc{}, err
+			}
+			return currenciesDoc{Currencies: list.Items, Rates: rates.Items}, nil
+		}
+
 		webmcp.AddJSONResource(s, "econumo://currencies", "currencies",
-			"Known currencies plus the latest exchange rates against the instance base currency.",
-			func(ctx context.Context, userID vo.Id) (currenciesDoc, error) {
-				list, err := read.GetCurrencyList(ctx, userID)
+			"Known currencies plus the latest exchange rates against the instance base currency.", load)
+
+		sdk.AddTool(s, &sdk.Tool{Name: "list_currencies",
+			Description: "Known currencies plus the latest exchange rates. Same data as econumo://currencies."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, currenciesDoc, error) {
+				reqctx.AddLogAttr(ctx, "tool", "list_currencies")
+				userID, err := webmcp.UserID(ctx)
 				if err != nil {
-					return currenciesDoc{}, err
+					return nil, currenciesDoc{}, err
 				}
-				rates, err := read.GetCurrencyRateList(ctx, userID)
+				doc, err := load(ctx, userID)
 				if err != nil {
-					return currenciesDoc{}, err
+					return nil, currenciesDoc{}, webmcp.MapErr(ctx, err)
 				}
-				return currenciesDoc{Currencies: list.Items, Rates: rates.Items}, nil
+				return nil, doc, nil
 			})
 	}
 }

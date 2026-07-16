@@ -73,4 +73,24 @@ func TestAccountsResource(t *testing.T) {
 	if !strings.Contains(text, `"balance"`) {
 		t.Fatalf("expected balance key in resource text: %s", text)
 	}
+
+	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_accounts", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatalf("list_accounts: transport error: %v", err)
+	}
+	if toolRes.IsError {
+		t.Fatalf("list_accounts: unexpected error: %#v", toolRes.Content)
+	}
+	m, ok := toolRes.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("list_accounts: structuredContent is not a map: %#v", toolRes.StructuredContent)
+	}
+	items, ok := m["items"].([]any)
+	if !ok || len(items) == 0 {
+		t.Fatalf("list_accounts: missing items: %#v", m)
+	}
+	item, ok := items[0].(map[string]any)
+	if !ok || item["name"] != "Checking" {
+		t.Fatalf("list_accounts: expected Checking account, got: %#v", items)
+	}
 }

@@ -8,9 +8,12 @@ import (
 
 	appcategory "github.com/econumo/econumo/internal/category"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 )
+
+type emptyInput struct{}
 
 func Register(read *appcategory.ReadService) webmcp.Register {
 	return func(s *sdk.Server) {
@@ -22,6 +25,21 @@ func Register(read *appcategory.ReadService) webmcp.Register {
 					return nil, err
 				}
 				return res.Items, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "list_categories",
+			Description: "The user's transaction categories. Same data as econumo://categories."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetCategoryListResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "list_categories")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.GetCategoryListResult{}, err
+				}
+				res, err := read.GetCategoryList(ctx, userID)
+				if err != nil {
+					return nil, model.GetCategoryListResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
 			})
 	}
 }

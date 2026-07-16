@@ -138,6 +138,18 @@ it doesn't expire on inactivity like a session does. Point your client at
 | `create_transaction` | record an expense, income, or transfer |
 | `update_transaction` | edit an existing transaction |
 | `delete_transaction` | delete a transaction |
+| `list_accounts` | same data as `econumo://accounts` |
+| `list_categories` | same data as `econumo://categories` |
+| `list_tags` | same data as `econumo://tags` |
+| `list_payees` | same data as `econumo://payees` |
+| `list_currencies` | same data as `econumo://currencies` |
+| `list_budgets` | same data as `econumo://budgets` |
+| `get_user` | same data as `econumo://user` |
+
+The `list_*`/`get_user` tools exist because resources are
+application-controlled — some clients (e.g. Claude Desktop) can't read them
+without the user manually attaching them — so these give any client a
+model-driven way to look up ids.
 
 **Prompts:** `log-expense` (turn a free-text description like "27.50
 groceries at Lidl yesterday, card" into a recorded transaction) and

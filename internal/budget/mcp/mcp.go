@@ -15,6 +15,8 @@ import (
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 )
 
+type emptyInput struct{}
+
 func Register(svc *appbudget.Service) webmcp.Register {
 	return func(s *sdk.Server) {
 		webmcp.AddJSONResource(s, "econumo://budgets", "budgets",
@@ -25,6 +27,21 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					return nil, err
 				}
 				return res.Items, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "list_budgets",
+			Description: "The user's budgets. Same data as econumo://budgets."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, model.GetBudgetListResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "list_budgets")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.GetBudgetListResult{}, err
+				}
+				res, err := svc.GetBudgetList(ctx, userID)
+				if err != nil {
+					return nil, model.GetBudgetListResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
 			})
 
 		type getBudgetInput struct {

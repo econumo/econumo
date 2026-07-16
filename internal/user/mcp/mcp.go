@@ -7,6 +7,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
@@ -24,20 +25,39 @@ type userDoc struct {
 	Connections []model.ConnectionResult `json:"connections"`
 }
 
+type emptyInput struct{}
+
 func Register(read *appuser.ReadService, connections ConnectionLister) webmcp.Register {
 	return func(s *sdk.Server) {
+		load := func(ctx context.Context, userID vo.Id) (userDoc, error) {
+			u, err := read.GetUserData(ctx, userID)
+			if err != nil {
+				return userDoc{}, err
+			}
+			conns, err := connections.GetConnectionList(ctx, userID)
+			if err != nil {
+				return userDoc{}, err
+			}
+			return userDoc{User: u.User, Connections: conns.Items}, nil
+		}
+
 		webmcp.AddJSONResource(s, "econumo://user", "user",
 			"The authenticated user's profile (id, name, email, avatar, base currency) and connected users with shared-account access.",
-			func(ctx context.Context, userID vo.Id) (userDoc, error) {
-				u, err := read.GetUserData(ctx, userID)
+			load)
+
+		sdk.AddTool(s, &sdk.Tool{Name: "get_user",
+			Description: "The authenticated user's profile and connected users. Same data as econumo://user."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in emptyInput) (*sdk.CallToolResult, userDoc, error) {
+				reqctx.AddLogAttr(ctx, "tool", "get_user")
+				userID, err := webmcp.UserID(ctx)
 				if err != nil {
-					return userDoc{}, err
+					return nil, userDoc{}, err
 				}
-				conns, err := connections.GetConnectionList(ctx, userID)
+				doc, err := load(ctx, userID)
 				if err != nil {
-					return userDoc{}, err
+					return nil, userDoc{}, webmcp.MapErr(ctx, err)
 				}
-				return userDoc{User: u.User, Connections: conns.Items}, nil
+				return nil, doc, nil
 			})
 	}
 }

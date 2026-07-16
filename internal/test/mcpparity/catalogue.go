@@ -44,6 +44,13 @@ func init() {
 		{Label: "read-tags", RPC: `{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"econumo://tags"}}`},
 		{Label: "read-user", RPC: `{"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"econumo://user"}}`},
 		{Label: "read-budgets", RPC: `{"jsonrpc":"2.0","id":7,"method":"resources/read","params":{"uri":"econumo://budgets"}}`},
+		{Label: "list-accounts", RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_accounts","arguments":{}}}`},
+		{Label: "list-categories", RPC: `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"list_categories","arguments":{}}}`},
+		{Label: "list-tags", RPC: `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"list_tags","arguments":{}}}`},
+		{Label: "list-payees", RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_payees","arguments":{}}}`},
+		{Label: "list-currencies", RPC: `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"list_currencies","arguments":{}}}`},
+		{Label: "list-budgets", RPC: `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"list_budgets","arguments":{}}}`},
+		{Label: "get-user", RPC: `{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"get_user","arguments":{}}}`},
 	}})
 
 	// budget REST-creates a budget then drives get_budget for a valid and an

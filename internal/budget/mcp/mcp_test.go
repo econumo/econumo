@@ -152,4 +152,20 @@ func TestBudgetsResourceAndGetBudgetTool(t *testing.T) {
 	if !ok || !strings.Contains(badText.Text, "month must be YYYY-MM") {
 		t.Fatalf("get_budget bad month: expected validation message, got: %#v", badRes.Content)
 	}
+
+	listRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_budgets", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatalf("list_budgets: transport error: %v", err)
+	}
+	if listRes.IsError {
+		t.Fatalf("list_budgets: unexpected error: %#v", listRes.Content)
+	}
+	items, ok := structured(t, listRes)["items"].([]any)
+	if !ok || len(items) == 0 {
+		t.Fatalf("list_budgets: missing items: %#v", structured(t, listRes))
+	}
+	listItem, ok := items[0].(map[string]any)
+	if !ok || listItem["name"] != "Household" {
+		t.Fatalf("list_budgets: expected Household budget, got: %#v", items)
+	}
 }

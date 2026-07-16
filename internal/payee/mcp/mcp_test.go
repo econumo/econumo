@@ -53,4 +53,24 @@ func TestPayeesResource(t *testing.T) {
 	if len(res.Contents) != 1 || !strings.Contains(res.Contents[0].Text, `"Landlord"`) {
 		t.Fatalf("contents: %+v", res.Contents)
 	}
+
+	toolRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_payees", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatalf("list_payees: transport error: %v", err)
+	}
+	if toolRes.IsError {
+		t.Fatalf("list_payees: unexpected error: %#v", toolRes.Content)
+	}
+	m, ok := toolRes.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("list_payees: structuredContent is not a map: %#v", toolRes.StructuredContent)
+	}
+	items, ok := m["items"].([]any)
+	if !ok || len(items) == 0 {
+		t.Fatalf("list_payees: missing items: %#v", m)
+	}
+	item, ok := items[0].(map[string]any)
+	if !ok || item["name"] != "Landlord" {
+		t.Fatalf("list_payees: expected Landlord payee, got: %#v", items)
+	}
 }
