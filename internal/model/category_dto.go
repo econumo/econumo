@@ -150,7 +150,7 @@ func (r DeleteCategoryRequest) Validate() error {
 	case ModeDelete:
 	case ModeReplace:
 		if r.ReplaceId == nil || strings.TrimSpace(*r.ReplaceId) == "" {
-			fields = append(fields, errs.FieldError{Key: "replaceId", Message: "replaceId is required for mode=replace"})
+			fields = append(fields, errs.FieldError{Key: "replaceId", Message: "replaceId is required for mode=replace", Code: errs.CodeCategoryReplaceIDRequired})
 		}
 	case "":
 		fields = append(fields, errs.FieldError{Key: "mode", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
@@ -181,7 +181,7 @@ type OrderCategoryListRequest struct {
 // "Categories list is empty").
 func (r OrderCategoryListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Categories list is empty")
+		return &errs.ValidationError{Msg: "Categories list is empty", MsgCode: errs.CodeCategoryListEmpty}
 	}
 	return nil
 }

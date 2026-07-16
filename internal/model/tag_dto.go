@@ -122,7 +122,7 @@ type OrderTagListRequest struct {
 // "Tags list is empty").
 func (r OrderTagListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Tags list is empty")
+		return &errs.ValidationError{Msg: "Tags list is empty", MsgCode: errs.CodeTagListEmpty}
 	}
 	return nil
 }

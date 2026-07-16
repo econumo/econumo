@@ -1060,10 +1060,74 @@
       "invalid_email": "This value is not a valid email address.",
       "too_long": "This value is too long.",
       "too_short": "This value is too short.",
-      "too_many_attempts": "Too many attempts. Try again later."
+      "too_many_attempts": "Too many attempts. Try again later.",
+      "operation_locked": "Operation is locked",
+      "invalid_datetime_format": "Invalid date format, expected Y-m-d H:i:s",
+      "invalid_datetime": "This value is not a valid datetime.",
+      "icon_required": "Icon value must not be empty",
+      "folder_name_length": "Folder name must be {min}-{max} characters",
+      "invalid_currency_code": "CurrencyCode is incorrect",
+      "invalid_id": "invalid id"
     },
     "auth": {
       "invalid_credentials": "Invalid credentials."
+    },
+    "account": {
+      "name_length": "Account name must be {min}-{max} characters",
+      "list_empty": "Accounts list is empty",
+      "folder_list_empty": "Folders list is empty",
+      "folder_already_exists": "Folder already exists."
+    },
+    "budget": {
+      "name_length": "Budget name must be {min}-{max} characters",
+      "envelope_name_length": "Envelope name must be {min}-{max} characters",
+      "invalid_element_type_alias": "BudgetElementType with alias {alias} not exists",
+      "invalid_role_alias": "BudgetUserRole with alias {alias} not exists",
+      "transaction_filter_required": "Validation failed"
+    },
+    "category": {
+      "name_length": "Category name must be {min}-{max} characters",
+      "type_invalid": "CategoryType not exists",
+      "replace_id_required": "replaceId is required for mode=replace",
+      "not_found": "Category not found",
+      "cannot_be_replaced": "Categories cannot be replaced",
+      "list_empty": "Categories list is empty"
+    },
+    "connection": {
+      "invalid_uuid": "This is not a valid UUID.",
+      "invalid_role_alias": "AccountRole with alias {alias} not exists",
+      "invalid_code": "ConnectionCode is incorrect",
+      "inviting_yourself": "Inviting yourself?",
+      "deleting_yourself": "Deleting yourself?"
+    },
+    "payee": {
+      "name_length": "Payee name must be {min}-{max} characters",
+      "already_exists": "Payee already exists.",
+      "list_empty": "Payees list is empty"
+    },
+    "tag": {
+      "name_length": "Tag name must be {min}-{max} characters",
+      "already_exists": "Tag already exists.",
+      "list_empty": "Tags list is empty"
+    },
+    "token": {
+      "name_length": "Token name must be {min}-{max} characters",
+      "invalid_expiration_date": "Invalid expiration date",
+      "expiration_in_future": "Expiration date must be in the future",
+      "retention_negative": "Retention must not be negative"
+    },
+    "transaction": {
+      "account_not_available": "account.account.not_available",
+      "item_not_available": "transaction.transaction.not_available",
+      "invalid_import_file": "Please upload a valid CSV file"
+    },
+    "user": {
+      "report_period_invalid": "ReportPeriod is incorrect",
+      "already_exists": "User already exists",
+      "registration_disabled": "Registration disabled",
+      "password_incorrect": "Password is not correct",
+      "reset_password_error": "Reset password error",
+      "reset_code_expired": "The code is expired"
     }
   },
   "emails": {}

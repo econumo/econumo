@@ -56,7 +56,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 
 		// position: append after the current last, i.e. maxPos+1. When the user has

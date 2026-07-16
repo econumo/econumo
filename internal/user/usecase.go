@@ -162,7 +162,7 @@ func newCurrencyCode(v string) (string, error) {
 	c := strings.ToUpper(strings.TrimSpace(v))
 	if len([]rune(c)) != 3 {
 		return "", errs.NewValidation("CurrencyCode is incorrect",
-			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect"})
+			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 	}
 	return c, nil
 }
@@ -171,7 +171,7 @@ func newCurrencyCode(v string) (string, error) {
 func newReportPeriod(v string) (string, error) {
 	if v != model.DefaultReportPeriod {
 		return "", errs.NewValidation("ReportPeriod is incorrect",
-			errs.FieldError{Key: "value", Message: "ReportPeriod is incorrect"})
+			errs.FieldError{Key: "value", Message: "ReportPeriod is incorrect", Code: errs.CodeUserReportPeriodInvalid})
 	}
 	return v, nil
 }

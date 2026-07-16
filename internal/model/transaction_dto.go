@@ -144,7 +144,7 @@ func (r TransactionListRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.AccountId) != "" {
 		if _, err := vo.ParseId(r.AccountId); err != nil {
-			fields = append(fields, errs.FieldError{Key: "accountId", Message: "This value is not a valid UUID."})
+			fields = append(fields, errs.FieldError{Key: "accountId", Message: "This value is not a valid UUID.", Code: errs.CodeInvalidUUID})
 		}
 	}
 	for _, f := range []struct{ key, val string }{
@@ -155,7 +155,7 @@ func (r TransactionListRequest) Validate() error {
 			continue
 		}
 		if _, err := time.Parse(datetime.Layout, f.val); err != nil {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value is not a valid datetime."})
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value is not a valid datetime.", Code: errs.CodeInvalidDatetime})
 		}
 	}
 	if len(fields) > 0 {

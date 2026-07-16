@@ -50,7 +50,7 @@ func NewService(
 func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id, notAvailableMsg string) error {
 	owner, err := s.accounts.AccountOwner(ctx, accountID)
 	if err != nil {
-		return errs.NewValidation(notAvailableMsg)
+		return &errs.ValidationError{Msg: notAvailableMsg, MsgCode: notAvailableCode(notAvailableMsg)}
 	}
 	if owner.Equal(userID) {
 		return nil
@@ -62,7 +62,16 @@ func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id,
 	if ok {
 		return nil
 	}
-	return errs.NewValidation(notAvailableMsg)
+	return &errs.ValidationError{Msg: notAvailableMsg, MsgCode: notAvailableCode(notAvailableMsg)}
+}
+
+// notAvailableCode maps checkWriteAccess's two frozen notAvailableMsg literals
+// to their catalogue codes.
+func notAvailableCode(msg string) string {
+	if msg == "transaction.transaction.not_available" {
+		return errs.CodeTransactionItemNotAvailable
+	}
+	return errs.CodeTransactionAccountNotAvailable
 }
 
 // checkViewAccess verifies the user may VIEW the account's transactions: owner
@@ -220,7 +229,7 @@ func (s *Service) normalizeTransferAmounts(ctx context.Context, st *model.NewSta
 	}
 	dstCur, err := s.accounts.AccountCurrency(ctx, *st.AccountRecipID)
 	if err != nil {
-		return errs.NewValidation("account.account.not_available")
+		return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
 	}
 	if srcCur.Equal(dstCur) {
 		amount := st.Amount

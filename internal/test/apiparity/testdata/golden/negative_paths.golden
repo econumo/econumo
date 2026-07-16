@@ -1,11 +1,11 @@
 == err:category-name-too-short POST /api/v1/category/create-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Category name must be 3-64 characters"]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Category name must be 3-64 characters"]},"errorCodes":{"name":[{"code":"category.name_length","params":{"max":64,"min":3}}]}}
 
 == err:order-empty-changes POST /api/v1/category/order-category-list [owner] -> 400
-{"success":false,"message":"Categories list is empty","code":400,"errors":{}}
+{"success":false,"message":"Categories list is empty","code":400,"errors":{},"messageCode":"category.list_empty"}
 
 == err:account-order-empty POST /api/v1/account/order-account-list [owner] -> 400
-{"success":false,"message":"Accounts list is empty","code":400,"errors":{}}
+{"success":false,"message":"Accounts list is empty","code":400,"errors":{},"messageCode":"account.list_empty"}
 
 == err:replace-folder-blank POST /api/v1/account/replace-folder [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"replaceId":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}],"replaceId":[{"code":"common.is_blank"}]}}
@@ -17,7 +17,7 @@
 {"success":false,"message":"Form validation error","code":400,"errors":{"value":["This value is not a valid UUID."]},"errorCodes":{"value":[{"code":"common.invalid_uuid"}]}}
 
 == err:budget-name-too-short POST /api/v1/budget/create-budget [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Budget name must be 3-64 characters"]},"errorCodes":{"name":[{"code":"common.validation"}]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Budget name must be 3-64 characters"]},"errorCodes":{"name":[{"code":"budget.name_length","params":{"max":64,"min":3}}]}}
 
 == err:update-tx-bad-type POST /api/v1/transaction/update-transaction [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"type":["The value you selected is not a valid choice."]},"errorCodes":{"type":[{"code":"common.invalid_choice"}]}}
@@ -56,23 +56,23 @@
 {"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == err:show-folder-bad-uuid POST /api/v1/account/show-folder [owner] -> 400
-{"success":false,"message":"invalid id","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{},"messageCode":"common.invalid_id"}
 
 == err:order-account-bad-uuid POST /api/v1/account/order-account-list [owner] -> 400
-{"success":false,"message":"invalid id","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{},"messageCode":"common.invalid_id"}
 
 == err:order-folder-bad-uuid POST /api/v1/account/order-folder-list [owner] -> 400
-{"success":false,"message":"invalid id","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{},"messageCode":"common.invalid_id"}
 
 == err:archive-category-bad-uuid POST /api/v1/category/archive-category [owner] -> 400
-{"success":false,"message":"invalid id","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{},"messageCode":"common.invalid_id"}
 
 == err:unarchive-category-bad-uuid POST /api/v1/category/unarchive-category [owner] -> 400
-{"success":false,"message":"invalid id","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{},"messageCode":"common.invalid_id"}
 
 == err:delete-category-bad-uuid POST /api/v1/category/delete-category [owner] -> 400
-{"success":false,"message":"invalid id","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{},"messageCode":"common.invalid_id"}
 
 == err:order-category-bad-uuid POST /api/v1/category/order-category-list [owner] -> 400
-{"success":false,"message":"invalid id","code":400,"errors":{}}
+{"success":false,"message":"invalid id","code":400,"errors":{},"messageCode":"common.invalid_id"}
 

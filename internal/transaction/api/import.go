@@ -46,7 +46,7 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 
 	if err := r.ParseMultipartForm(maxImportUpload); err != nil {
 		httpx.WriteError(w, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "file", Message: "Please upload a valid CSV file"}), h.dev)
+			errs.FieldError{Key: "file", Message: "Please upload a valid CSV file", Code: errs.CodeTransactionInvalidImportFile}), h.dev)
 		return
 	}
 
@@ -96,6 +96,11 @@ func parseImportMapping(raw string) (model.ImportMapping, error) {
 	// fields); decode into a string-pointer map first.
 	var obj map[string]*string
 	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+		// No Code here by design: Message is the raw json.Unmarshal error text,
+		// which varies per malformed payload, so it cannot map to a fixed
+		// catalogue string (the frozen "en value = exact message" invariant would
+		// break). This is the import-parsing carve-out from the code-registration
+		// task brief.
 		return m, errs.NewValidation("Invalid mapping JSON",
 			errs.FieldError{Key: "mapping", Message: err.Error()})
 	}

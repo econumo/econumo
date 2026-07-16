@@ -120,7 +120,7 @@ type OrderPayeeListRequest struct {
 // "Payees list is empty").
 func (r OrderPayeeListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Payees list is empty")
+		return &errs.ValidationError{Msg: "Payees list is empty", MsgCode: errs.CodePayeeListEmpty}
 	}
 	return nil
 }

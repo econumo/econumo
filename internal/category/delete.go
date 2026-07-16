@@ -33,12 +33,12 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.De
 			return gerr
 		}
 		if !c.UserID.Equal(userID) {
-			return errs.NewValidation("Category not found")
+			return &errs.ValidationError{Msg: "Category not found", MsgCode: errs.CodeCategoryNotFound}
 		}
 
 		if req.Mode == model.ModeReplace {
 			if req.ReplaceId == nil {
-				return errs.NewValidation("Category not found")
+				return &errs.ValidationError{Msg: "Category not found", MsgCode: errs.CodeCategoryNotFound}
 			}
 			replaceID, perr := vo.ParseId(*req.ReplaceId)
 			if perr != nil {
@@ -49,10 +49,10 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.De
 				return rerr
 			}
 			if !replacement.UserID.Equal(userID) {
-				return errs.NewValidation("Categories cannot be replaced")
+				return &errs.ValidationError{Msg: "Categories cannot be replaced", MsgCode: errs.CodeCategoryCannotBeReplaced}
 			}
 			if replacement.Type != c.Type {
-				return errs.NewValidation("Categories cannot be replaced")
+				return &errs.ValidationError{Msg: "Categories cannot be replaced", MsgCode: errs.CodeCategoryCannotBeReplaced}
 			}
 			if rerr := s.repo.ReassignTransactions(ctx, id, replaceID); rerr != nil {
 				return rerr

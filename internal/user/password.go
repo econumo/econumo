@@ -40,7 +40,7 @@ func isNotFound(err error) bool {
 func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentTokenID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
 	_, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
 		if !s.hasher.Verify(u.Algorithm, u.Password, req.OldPassword, u.Salt) {
-			return errs.NewValidation("Password is not correct")
+			return &errs.ValidationError{Msg: "Password is not correct", MsgCode: errs.CodeUserPasswordIncorrect}
 		}
 		newHash, herr := s.hasher.Hash(req.NewPassword)
 		if herr != nil {
@@ -111,7 +111,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeReset, lowered)
-			return nil, errs.NewValidation("Reset password error")
+			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
@@ -120,13 +120,13 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeReset, lowered)
-			return nil, errs.NewValidation("Reset password error")
+			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
 	if pr.IsExpired(s.clock.Now()) {
 		s.failAttempt(RateScopeReset, lowered)
-		return nil, errs.NewValidation("The code is expired")
+		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserResetCodeExpired}
 	}
 
 	newHash, herr := s.hasher.Hash(req.Password)

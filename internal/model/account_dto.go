@@ -175,7 +175,7 @@ type OrderAccountListRequest struct {
 // Validate enforces a non-empty changes list.
 func (r OrderAccountListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Accounts list is empty")
+		return &errs.ValidationError{Msg: "Accounts list is empty", MsgCode: errs.CodeAccountListEmpty}
 	}
 	return nil
 }
@@ -314,7 +314,7 @@ type OrderFolderListRequest struct {
 // Validate enforces a non-empty changes list.
 func (r OrderFolderListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Folders list is empty")
+		return &errs.ValidationError{Msg: "Folders list is empty", MsgCode: errs.CodeAccountFolderListEmpty}
 	}
 	return nil
 }
