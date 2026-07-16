@@ -110,10 +110,10 @@ func (s *Service) UpdateAvatar(ctx context.Context, userID vo.Id, req model.Upda
 	color := strings.TrimSpace(req.Color)
 	var fields []errs.FieldError
 	if !IsValidAvatarIcon(icon) {
-		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value is not valid.", Code: "INVALID_FORMAT_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
 	}
 	if !IsValidAvatarColor(color) {
-		fields = append(fields, errs.FieldError{Key: "color", Message: "The value you selected is not a valid choice.", Code: "NO_SUCH_CHOICE_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "color", Message: "The value you selected is not a valid choice.", Code: errs.CodeNoSuchChoice})
 	}
 	if len(fields) > 0 {
 		return nil, errs.NewValidation("Validation failed", fields...)

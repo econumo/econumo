@@ -17,7 +17,7 @@
 {"success":false,"message":"Session not found","code":0,"errors":{}}
 
 == err:revoke-session-blank POST /api/v1/user/revoke-session [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == revoke-session-current POST /api/v1/user/revoke-session [guest] -> 200
 {"success":true,"message":"","data":{}}

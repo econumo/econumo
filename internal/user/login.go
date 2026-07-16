@@ -24,13 +24,13 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			s.failAttempt(RateScopeLogin, limitKey)
-			return nil, errs.NewUnauthorized("Invalid credentials.")
+			return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 		}
 		return nil, err
 	}
 	if !u.IsActive || !s.hasher.Verify(u.Algorithm, u.Password, req.Password, u.Salt) {
 		s.failAttempt(RateScopeLogin, limitKey)
-		return nil, errs.NewUnauthorized("Invalid credentials.")
+		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 
 	email, derr := s.encode.Decode(u.Email)

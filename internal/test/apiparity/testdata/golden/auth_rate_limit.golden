@@ -1,20 +1,20 @@
 == err:login-bad-1 POST /api/v1/user/login-user [] -> 401
-{"success":false,"message":"Invalid credentials.","code":0,"errors":{}}
+{"success":false,"message":"Invalid credentials.","code":0,"errors":{},"messageCode":"auth.invalid_credentials"}
 
 == err:login-bad-2 POST /api/v1/user/login-user [] -> 401
-{"success":false,"message":"Invalid credentials.","code":0,"errors":{}}
+{"success":false,"message":"Invalid credentials.","code":0,"errors":{},"messageCode":"auth.invalid_credentials"}
 
 == err:login-bad-3 POST /api/v1/user/login-user [] -> 401
-{"success":false,"message":"Invalid credentials.","code":0,"errors":{}}
+{"success":false,"message":"Invalid credentials.","code":0,"errors":{},"messageCode":"auth.invalid_credentials"}
 
 == err:login-bad-4 POST /api/v1/user/login-user [] -> 401
-{"success":false,"message":"Invalid credentials.","code":0,"errors":{}}
+{"success":false,"message":"Invalid credentials.","code":0,"errors":{},"messageCode":"auth.invalid_credentials"}
 
 == err:login-bad-5 POST /api/v1/user/login-user [] -> 401
-{"success":false,"message":"Invalid credentials.","code":0,"errors":{}}
+{"success":false,"message":"Invalid credentials.","code":0,"errors":{},"messageCode":"auth.invalid_credentials"}
 
 == err:login-limited POST /api/v1/user/login-user [] -> 429
-{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}
+{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{},"messageCode":"common.too_many_attempts"}
 
 == err:reset-bad-1 POST /api/v1/user/reset-password [] -> 400
 {"success":false,"message":"Reset password error","code":400,"errors":{}}
@@ -32,7 +32,7 @@
 {"success":false,"message":"Reset password error","code":400,"errors":{}}
 
 == err:reset-limited POST /api/v1/user/reset-password [] -> 429
-{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}
+{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{},"messageCode":"common.too_many_attempts"}
 
 == remind-1 POST /api/v1/user/remind-password [] -> 200
 {"success":true,"message":"","data":{}}
@@ -44,7 +44,7 @@
 {"success":true,"message":"","data":{}}
 
 == err:remind-limited POST /api/v1/user/remind-password [] -> 429
-{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}
+{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{},"messageCode":"common.too_many_attempts"}
 
 == register-1 POST /api/v1/user/register-user [] -> 200
 {"success":true,"message":"","data":{"user":{"id":"<generated-uuid>","name":"RLU","email":"ratelimit@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"budget","value":null},{"name":"onboarding","value":"started"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
@@ -62,5 +62,5 @@
 {"success":false,"message":"User already exists","code":400,"errors":{}}
 
 == err:register-limited POST /api/v1/user/register-user [] -> 429
-{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}
+{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{},"messageCode":"common.too_many_attempts"}
 

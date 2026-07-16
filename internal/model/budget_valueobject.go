@@ -26,7 +26,7 @@ func ElementTypeFromAlias(alias string) (ElementType, error) {
 		}
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "type", Message: "BudgetElementType with alias " + alias + " not exists", Code: "VALIDATION_ERROR",
+		Key: "type", Message: "BudgetElementType with alias " + alias + " not exists", Code: errs.CodeValidation,
 	})
 }
 
@@ -70,7 +70,7 @@ func BudgetRoleFromAlias(alias string) (BudgetRole, error) {
 		}
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "role", Message: "BudgetUserRole with alias " + alias + " not exists", Code: "VALIDATION_ERROR",
+		Key: "role", Message: "BudgetUserRole with alias " + alias + " not exists", Code: errs.CodeValidation,
 	})
 }
 
@@ -84,7 +84,7 @@ func (r BudgetRole) Int16() int16 { return int16(r) }
 func ValidateName(label, name string) error {
 	if n := len([]rune(name)); n < 3 || n > 64 {
 		return errs.NewValidation("Validation failed", errs.FieldError{
-			Key: "name", Message: label + " name must be 3-64 characters", Code: "VALIDATION_ERROR",
+			Key: "name", Message: label + " name must be 3-64 characters", Code: errs.CodeValidation,
 		})
 	}
 	return nil

@@ -114,3 +114,42 @@ func TestWriteError_AccessDenied(t *testing.T) {
 		t.Errorf("success = true, want false")
 	}
 }
+
+func TestWriteErrorEmitsAdditiveCodes(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, errs.NewValidation("",
+		errs.FieldError{Key: "name", Message: "Category name must be 3-64 characters",
+			Code: "category.name_length", Params: map[string]any{"min": 3, "max": 64}}), false)
+	body := rec.Body.String()
+	for _, want := range []string{
+		`"errors":{"name":["Category name must be 3-64 characters"]}`,
+		`"errorCodes":{"name":[{"code":"category.name_length","params":{"max":64,"min":3}}]}`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body missing %s\nbody: %s", want, body)
+		}
+	}
+}
+
+func TestWriteErrorOmitsCodeKeysWhenAbsent(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, errs.NewValidation("", errs.FieldError{Key: "name", Message: "msg"}), false)
+	body := rec.Body.String()
+	for _, banned := range []string{"errorCodes", "messageCode", "messageParams"} {
+		if strings.Contains(body, banned) {
+			t.Errorf("body must omit %q when no codes set\nbody: %s", banned, body)
+		}
+	}
+}
+
+func TestWriteErrorFieldlessMessageCode(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: "auth.invalid_credentials"}, false)
+	body := rec.Body.String()
+	if !strings.Contains(body, `"messageCode":"auth.invalid_credentials"`) {
+		t.Errorf("missing messageCode\nbody: %s", body)
+	}
+	if !strings.Contains(body, `"message":"Invalid credentials."`) {
+		t.Errorf("frozen message changed\nbody: %s", body)
+	}
+}

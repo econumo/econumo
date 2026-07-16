@@ -33,10 +33,10 @@ type CreatePayeeRequest struct {
 func (r CreatePayeeRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -56,10 +56,10 @@ type UpdatePayeeRequest struct {
 func (r UpdatePayeeRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -77,7 +77,7 @@ type ArchivePayeeRequest struct {
 
 func (r ArchivePayeeRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ type UnarchivePayeeRequest struct {
 
 func (r UnarchivePayeeRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -105,7 +105,7 @@ type DeletePayeeRequest struct {
 
 func (r DeletePayeeRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }

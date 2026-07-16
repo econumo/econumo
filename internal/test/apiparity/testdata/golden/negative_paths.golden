@@ -8,52 +8,52 @@
 {"success":false,"message":"Accounts list is empty","code":400,"errors":{}}
 
 == err:replace-folder-blank POST /api/v1/account/replace-folder [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"replaceId":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"replaceId":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}],"replaceId":[{"code":"common.is_blank"}]}}
 
 == err:guest-updates-owner-account POST /api/v1/account/update-account [guest] -> 403
 {"success":false,"message":"Access denied","code":0,"errors":[]}
 
 == err:update-budget-bad-uuid POST /api/v1/user/update-budget [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"value":["This value is not a valid UUID."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"value":["This value is not a valid UUID."]},"errorCodes":{"value":[{"code":"common.invalid_uuid"}]}}
 
 == err:budget-name-too-short POST /api/v1/budget/create-budget [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Budget name must be 3-64 characters"]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Budget name must be 3-64 characters"]},"errorCodes":{"name":[{"code":"common.validation"}]}}
 
 == err:update-tx-bad-type POST /api/v1/transaction/update-transaction [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"type":["The value you selected is not a valid choice."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"type":["The value you selected is not a valid choice."]},"errorCodes":{"type":[{"code":"common.invalid_choice"}]}}
 
 == err:create-account-blank POST /api/v1/account/create-account [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"currencyId":["This value should not be blank."],"icon":["This value should not be blank."],"id":["This value should not be blank."],"name":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"currencyId":["This value should not be blank."],"icon":["This value should not be blank."],"id":["This value should not be blank."],"name":["This value should not be blank."]},"errorCodes":{"currencyId":[{"code":"common.is_blank"}],"icon":[{"code":"common.is_blank"}],"id":[{"code":"common.is_blank"}],"name":[{"code":"common.is_blank"}]}}
 
 == err:update-account-blank POST /api/v1/account/update-account [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"icon":["This value should not be blank."],"id":["This value should not be blank."],"name":["This value should not be blank."],"updatedAt":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"icon":["This value should not be blank."],"id":["This value should not be blank."],"name":["This value should not be blank."],"updatedAt":["This value should not be blank."]},"errorCodes":{"icon":[{"code":"common.is_blank"}],"id":[{"code":"common.is_blank"}],"name":[{"code":"common.is_blank"}],"updatedAt":[{"code":"common.is_blank"}]}}
 
 == err:delete-account-blank-id POST /api/v1/account/delete-account [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == err:create-folder-blank-name POST /api/v1/account/create-folder [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"name":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["This value should not be blank."]},"errorCodes":{"name":[{"code":"common.is_blank"}]}}
 
 == err:update-folder-blank POST /api/v1/account/update-folder [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"name":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"name":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}],"name":[{"code":"common.is_blank"}]}}
 
 == err:hide-folder-blank-id POST /api/v1/account/hide-folder [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == err:show-folder-blank-id POST /api/v1/account/show-folder [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == err:update-category-blank POST /api/v1/category/update-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"icon":["This value should not be blank."],"id":["This value should not be blank."],"name":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"icon":["This value should not be blank."],"id":["This value should not be blank."],"name":["This value should not be blank."]},"errorCodes":{"icon":[{"code":"common.is_blank"}],"id":[{"code":"common.is_blank"}],"name":[{"code":"common.is_blank"}]}}
 
 == err:archive-category-blank-id POST /api/v1/category/archive-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == err:unarchive-category-blank-id POST /api/v1/category/unarchive-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == err:delete-category-blank-id POST /api/v1/category/delete-category [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."]},"errorCodes":{"id":[{"code":"common.is_blank"}]}}
 
 == err:show-folder-bad-uuid POST /api/v1/account/show-folder [owner] -> 400
 {"success":false,"message":"invalid id","code":400,"errors":{}}

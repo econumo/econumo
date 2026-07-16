@@ -41,13 +41,13 @@ type CreateCategoryRequest struct {
 func (r CreateCategoryRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Type) == "" {
-		fields = append(fields, errs.FieldError{Key: "type", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "type", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -73,13 +73,13 @@ type UpdateCategoryRequest struct {
 func (r UpdateCategoryRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Icon) == "" {
-		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -99,7 +99,7 @@ type ArchiveCategoryRequest struct {
 // Validate enforces id NotBlank.
 func (r ArchiveCategoryRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -116,7 +116,7 @@ type UnarchiveCategoryRequest struct {
 // Validate enforces id NotBlank.
 func (r UnarchiveCategoryRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ type DeleteCategoryRequest struct {
 func (r DeleteCategoryRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	switch r.Mode {
 	case ModeDelete:
@@ -153,9 +153,9 @@ func (r DeleteCategoryRequest) Validate() error {
 			fields = append(fields, errs.FieldError{Key: "replaceId", Message: "replaceId is required for mode=replace"})
 		}
 	case "":
-		fields = append(fields, errs.FieldError{Key: "mode", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "mode", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	default:
-		fields = append(fields, errs.FieldError{Key: "mode", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "mode", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)

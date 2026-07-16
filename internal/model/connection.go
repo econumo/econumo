@@ -30,7 +30,7 @@ func RoleFromAlias(alias string) (Role, error) {
 		}
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "role", Message: "AccountRole with alias " + alias + " not exists", Code: "VALIDATION_ERROR",
+		Key: "role", Message: "AccountRole with alias " + alias + " not exists", Code: errs.CodeValidation,
 	})
 }
 

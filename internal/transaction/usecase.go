@@ -176,7 +176,7 @@ func buildState(
 		// Non-transfer requires a category.
 		if categoryID == nil || *categoryID == "" {
 			return st, errs.NewValidation("Validation failed",
-				errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+				errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 		cid, err := vo.ParseId(*categoryID)
 		if err != nil {
@@ -229,7 +229,7 @@ func (s *Service) normalizeTransferAmounts(ctx context.Context, st *model.NewSta
 	}
 	if st.AmountRecipient == nil {
 		return errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "amountRecipient", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			errs.FieldError{Key: "amountRecipient", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -245,6 +245,6 @@ func parseType(alias string) (model.TransactionType, error) {
 		return model.TransactionTypeTransfer, nil
 	default:
 		return 0, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+			errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 }

@@ -57,7 +57,7 @@ func (r CreateTransactionRequest) Validate() error {
 		{"accountId", r.AccountId}, {"date", r.Date},
 	} {
 		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	if len(fields) > 0 {
@@ -96,7 +96,7 @@ func (r UpdateTransactionRequest) Validate() error {
 		{"accountId", r.AccountId}, {"date", r.Date},
 	} {
 		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	if len(fields) > 0 {
@@ -118,7 +118,7 @@ type DeleteTransactionRequest struct {
 
 func (r DeleteTransactionRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
