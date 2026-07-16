@@ -59,7 +59,8 @@ make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
-(`.github/workflows/publish-release.yml`), not locally. Everything publishes to
+(`.github/workflows/publish-release.yml`), not locally; its "Publish Dev"
+checkbox can also move the `dev` tag. Everything publishes to
 `ghcr.io/econumo/econumo` only.
 
 ## Architecture
@@ -418,7 +419,7 @@ data unreadable. Most are also asserted by the test suite.
 ## Deployment
 
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
-  - `:dev` — published locally via `make publish-dev`.
+  - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
