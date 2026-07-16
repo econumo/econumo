@@ -30,17 +30,17 @@ import type { TransactionType } from '@/api/dto/transaction'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 
-// strips the EntitySelect trigger button down so the CardField carries the chrome
+// strips the EntitySelect field down so the CardField carries the chrome
 const cardSelectClass =
-  '[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:font-normal [&_button]:shadow-none'
+  '[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent'
 
 // CardField around an EntitySelect where the WHOLE card is the tap target —
-// clicks on the label/padding forward to the trigger inside
+// clicks on the label/padding forward to the field inside
 function SelectCard({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
-  // if the popover was open at pointerdown, that press already dismissed it —
+  // if the picker was open at pointerdown, that press already dismissed it —
   // forwarding the click would immediately reopen
   const wasOpen = useRef(false)
-  const trigger = (root: HTMLElement) => root.querySelector<HTMLButtonElement>('button[role="combobox"]')
+  const trigger = (root: HTMLElement) => root.querySelector<HTMLInputElement>('[data-slot=entity-select] input')
   return (
     <div
       className="cursor-pointer"
@@ -48,7 +48,7 @@ function SelectCard({ label, error, children }: { label: string; error?: string 
         wasOpen.current = trigger(e.currentTarget)?.getAttribute('aria-expanded') === 'true'
       }}
       onClick={(e) => {
-        if (wasOpen.current || (e.target as HTMLElement).closest('button')) {
+        if (wasOpen.current || (e.target as HTMLElement).closest('input, button')) {
           return
         }
         trigger(e.currentTarget)?.click()
@@ -285,7 +285,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       {/* Vue fuses the account and the oversized amount into one gray card */}
       <div className="flex flex-col rounded-lg bg-econumo-card px-3 py-2">
         {!isTransfer ? (
-          <div className="[&_button]:h-auto [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-0 [&_button]:py-1 [&_button]:shadow-none">
+          <div className="[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:py-1 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent">
             <EntitySelect
               aria-label="account"
               value={form.accountId}
