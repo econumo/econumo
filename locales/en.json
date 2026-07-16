@@ -1130,5 +1130,10 @@
       "reset_code_expired": "The code is expired"
     }
   },
-  "emails": {}
+  "emails": {
+    "reset": {
+      "subject": "Reset password confirmation code",
+      "body": "Hi {name},\nYour confirmation code is: {code}.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+    }
+  }
 }

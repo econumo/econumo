@@ -14,13 +14,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/locales"
 )
 
-// Wired to mailer.EmailKeys in the localized-email task.
 var registeredCodes = errs.AllCodes
-var emailKeys []string
+var emailKeys = mailer.EmailKeys
 
 var languages = []string{"en", "ru"}
 
