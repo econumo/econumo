@@ -130,7 +130,13 @@ it('surfaces server field errors under the name input', async () => {
   server.use(
     http.post('*/api/v1/user/update-name', () =>
       HttpResponse.json(
-        { success: false, message: 'Form validation error', code: 400, errors: { name: ['This value is too long.'] } },
+        {
+          success: false,
+          message: 'Form validation error',
+          code: 400,
+          errors: { name: ['This value is too long.'] },
+          errorCodes: { name: [{ code: 'common.too_long' }] },
+        },
         { status: 400 },
       ),
     ),

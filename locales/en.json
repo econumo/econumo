@@ -132,6 +132,7 @@
       }
     },
     "app": {
+      "error": "Something went wrong. Please try again.",
       "modal": {
         "self_hosted": {
           "information": "Econumo can run on your own server. Enter your server address to connect."

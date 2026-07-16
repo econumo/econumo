@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { isAxiosError } from 'axios'
 import { MoreVertical, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -8,19 +7,12 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto, InviteDto } from '@/api/dto/connection'
 import { RouterPage } from '@/app/router-pages'
+import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { GenerateInviteDialog } from './GenerateInviteDialog'
 import { AcceptInviteDialog } from './AcceptInviteDialog'
 import { PreviewConnectionDialog } from './PreviewConnectionDialog'
 import { useAcceptInvite, useConnections, useDeleteConnection, useGenerateInvite } from './queries'
-
-function serverMessage(error: unknown): string {
-  if (isAxiosError(error)) {
-    const message = (error.response?.data as { message?: string } | undefined)?.message
-    if (message) return message
-  }
-  return 'Something went wrong'
-}
 
 export function ConnectionsPage() {
   const { t } = useTranslation()
@@ -119,7 +111,7 @@ export function ConnectionsPage() {
               setAcceptOpen(false)
               setAcceptError(null)
             },
-            onError: (error) => setAcceptError(serverMessage(error)),
+            onError: (error) => setAcceptError(apiErrorMessage(error)),
           })
         }
         onClose={() => setAcceptOpen(false)}

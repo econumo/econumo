@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
+import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -74,7 +75,7 @@ export function ProfilePage() {
         if (isAxiosError(error)) {
           const fieldErrors = (error.response?.data as { errors?: Record<string, string[]> } | undefined)?.errors?.name
           if (fieldErrors?.length) {
-            setNameError(fieldErrors.join(' '))
+            setNameError(apiErrorMessage(error))
             return
           }
         }
