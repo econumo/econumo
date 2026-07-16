@@ -36,15 +36,15 @@ export function SessionsPage() {
 
   return (
     <SettingsShell
-      title={t('modules.user.page.settings.profile.sessions.header')}
+      title={t('user.page.settings.profile.sessions.header')}
       backTo={RouterPage.SETTINGS_PROFILE}
       crumbs={[
-        { label: t('pages.settings.settings.header_desktop'), to: RouterPage.SETTINGS },
-        { label: t('modules.user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
+        { label: t('settings.page.header_desktop'), to: RouterPage.SETTINGS },
+        { label: t('user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
       ]}
     >
       <p className="max-w-md px-1 py-2 text-xs text-muted-foreground">
-        {t('modules.user.page.settings.profile.sessions.description')}
+        {t('user.page.settings.profile.sessions.description')}
       </p>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
@@ -53,15 +53,15 @@ export function SessionsPage() {
             <MonitorSmartphone className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate text-sm">
-                {describeUserAgent(session.userAgent) || t('modules.user.page.settings.profile.sessions.unknown_device')}
+                {describeUserAgent(session.userAgent) || t('user.page.settings.profile.sessions.unknown_device')}
                 {session.isCurrent ? (
                   <span className="ml-2 rounded bg-econumo-magenta/10 px-1.5 py-0.5 text-[11px] font-medium text-econumo-magenta">
-                    {t('modules.user.page.settings.profile.sessions.current')}
+                    {t('user.page.settings.profile.sessions.current')}
                   </span>
                 ) : null}
               </span>
               <span className="text-xs text-muted-foreground">
-                {t('modules.user.page.settings.profile.sessions.last_active')} {relativeTime(session.lastUsedAt)}
+                {t('user.page.settings.profile.sessions.last_active')} {relativeTime(session.lastUsedAt)}
               </span>
             </div>
             <Button
@@ -72,8 +72,8 @@ export function SessionsPage() {
               onClick={() => setConfirmTarget(session)}
             >
               {session.isCurrent
-                ? t('modules.user.page.settings.profile.sessions.sign_out')
-                : t('modules.user.page.settings.profile.sessions.revoke')}
+                ? t('user.page.settings.profile.sessions.sign_out')
+                : t('user.page.settings.profile.sessions.revoke')}
             </Button>
           </div>
         ))}
@@ -82,7 +82,7 @@ export function SessionsPage() {
       {others.length > 0 ? (
         <div className="max-w-md py-2">
           <Button type="button" onClick={() => setConfirmOthers(true)}>
-            {t('modules.user.page.settings.profile.sessions.revoke_others')}
+            {t('user.page.settings.profile.sessions.revoke_others')}
           </Button>
         </div>
       ) : null}
@@ -93,15 +93,15 @@ export function SessionsPage() {
         onConfirm={() => confirmTarget && revoke(confirmTarget)}
         question={
           confirmTarget?.isCurrent
-            ? t('modules.user.page.settings.profile.sessions.confirm_sign_out')
-            : t('modules.user.page.settings.profile.sessions.confirm_revoke')
+            ? t('user.page.settings.profile.sessions.confirm_sign_out')
+            : t('user.page.settings.profile.sessions.confirm_revoke')
         }
         confirmLabel={
           confirmTarget?.isCurrent
-            ? t('modules.user.page.settings.profile.sessions.sign_out')
-            : t('modules.user.page.settings.profile.sessions.revoke')
+            ? t('user.page.settings.profile.sessions.sign_out')
+            : t('user.page.settings.profile.sessions.revoke')
         }
-        cancelLabel={t('elements.button.cancel.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
       <ConfirmDialog
@@ -111,9 +111,9 @@ export function SessionsPage() {
           revokeOthers.mutate()
           setConfirmOthers(false)
         }}
-        question={t('modules.user.page.settings.profile.sessions.confirm_revoke_others')}
-        confirmLabel={t('modules.user.page.settings.profile.sessions.sign_out')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('user.page.settings.profile.sessions.confirm_revoke_others')}
+        confirmLabel={t('user.page.settings.profile.sessions.sign_out')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </SettingsShell>

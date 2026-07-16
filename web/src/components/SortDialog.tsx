@@ -13,16 +13,16 @@ interface SortDialogProps {
 export function SortDialog({ open, onClose, onPick }: SortDialogProps) {
   const { t } = useTranslation()
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modals.sort.header')}>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('common.sort.header')}>
       <div className="flex flex-col gap-2 [&_button]:h-11">
         <Button type="button" variant="secondary" onClick={() => onPick('asc')}>
-          {t('modals.sort.mode.alphabet.asc')}
+          {t('common.sort.mode.alphabet.asc')}
         </Button>
         <Button type="button" variant="secondary" onClick={() => onPick('desc')}>
-          {t('modals.sort.mode.alphabet.desc')}
+          {t('common.sort.mode.alphabet.desc')}
         </Button>
         <Button type="button" variant="ghost" onClick={onClose}>
-          {t('elements.button.cancel.label')}
+          {t('common.button.cancel.label')}
         </Button>
       </div>
     </ResponsiveDialog>

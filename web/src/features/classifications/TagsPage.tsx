@@ -23,10 +23,10 @@ export function TagsPage() {
 
   const validate = (value: string): string | null => {
     if (!isNotEmpty(value)) {
-      return t('modules.classifications.tags.forms.tag.name.validation.required_field')
+      return t('classifications.tags.forms.tag.name.validation.required_field')
     }
     if (!isValidTagName(value)) {
-      return t('modules.classifications.tags.forms.tag.name.validation.invalid_name')
+      return t('classifications.tags.forms.tag.name.validation.invalid_name')
     }
     return null
   }
@@ -34,9 +34,9 @@ export function TagsPage() {
   return (
     <>
       <ClassificationList
-        title={t('modules.classifications.tags.pages.settings.header')}
-        createLabel={t('modules.classifications.tags.pages.settings.create_tag')}
-        deleteTitle={t('modules.classifications.tags.modals.delete.title')}
+        title={t('classifications.tags.pages.settings.header')}
+        createLabel={t('classifications.tags.pages.settings.create_tag')}
+        deleteTitle={t('classifications.tags.modals.delete.title')}
         items={own}
         storageKey="settings.tags.activeOnly"
         onCreate={() => setDialog({ open: true, tag: null })}
@@ -55,12 +55,12 @@ export function TagsPage() {
             createTag.mutate({ name, ownerUserId: user?.id }, { onSuccess: () => setDialog({ open: false, tag: null }) })
           }
         }}
-        title={dialog.tag ? t('modules.classifications.tags.modals.edit.header') : t('modules.classifications.tags.modals.create.header')}
-        inputLabel={t('modules.classifications.tags.forms.tag.name.label')}
+        title={dialog.tag ? t('classifications.tags.modals.edit.header') : t('classifications.tags.modals.create.header')}
+        inputLabel={t('classifications.tags.forms.tag.name.label')}
         initialValue={dialog.tag?.name ?? ''}
         validate={validate}
-        submitLabel={dialog.tag ? t('elements.button.update.label') : t('elements.button.create.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={dialog.tag ? t('common.button.update.label') : t('common.button.create.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
     </>
   )

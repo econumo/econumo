@@ -60,13 +60,13 @@ export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean 
   }
 
   const userCurrency = currencies?.find((c) => c.id === userCurrencyId(user)) ?? null
-  const tree = buildAccountsTree(accounts, folders, userCurrency, exchangeFn, t('elements.folders.default_folder'))
+  const tree = buildAccountsTree(accounts, folders, userCurrency, exchangeFn, t('accounts.folders.default_folder'))
 
   if (tree.length === 0) {
     return (
       <div className="px-3 py-2">
         <div className="flex items-center justify-between py-1 text-sm font-medium">
-          <span>{folders[0]?.name ?? t('elements.folders.default_folder')}</span>
+          <span>{folders[0]?.name ?? t('accounts.folders.default_folder')}</span>
           <span className="text-muted-foreground">{userCurrency ? moneyFormat(0, userCurrency) : '0'}</span>
         </div>
         <button
@@ -75,7 +75,7 @@ export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean 
           onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}
         >
           <EntityIcon name="add_card" className="text-base" />
-          <span className="flex-1 truncate text-left">{t('blocks.main.create_account')}</span>
+          <span className="flex-1 truncate text-left">{t('common.nav.create_account')}</span>
           <span className="text-muted-foreground">0</span>
         </button>
       </div>

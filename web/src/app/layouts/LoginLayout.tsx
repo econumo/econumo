@@ -16,19 +16,19 @@ export function LoginLayout() {
     // the form lives on a white card over the brand gray so it reads as one
     // object instead of loose fields on a bare page
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-econumo-card p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
-      <img src={logo} width={194} height={20} alt={t('elements.econumo.label')} />
+      <img src={logo} width={194} height={20} alt={t('common.econumo.label')} />
       <div className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm">
         <div className="mb-6 flex rounded-lg bg-econumo-card p-1">
           <NavLink to={RouterPage.LOGIN} className={tabClass}>
-            {t('modules.user.page.sign_in.header')}
+            {t('auth.page.sign_in.header')}
           </NavLink>
           {registerEnabled ? (
             <NavLink to={RouterPage.REGISTER} className={tabClass}>
-              {t('modules.user.page.sign_up.header')}
+              {t('auth.page.sign_up.header')}
             </NavLink>
           ) : (
             <span className="flex-1 rounded-md py-2 text-center text-sm font-medium text-muted-foreground/50">
-              {t('modules.user.page.sign_up.header')}
+              {t('auth.page.sign_up.header')}
             </span>
           )}
         </div>
@@ -52,11 +52,11 @@ export function LoginLayout() {
         <a
           target="_blank"
           rel="nofollow"
-          href={t('blocks.help.url')}
-          title={t('blocks.help.label')}
+          href={t('common.help.url')}
+          title={t('common.help.label')}
           className="transition-colors hover:text-foreground"
         >
-          {t('blocks.help.label')}
+          {t('common.help.label')}
         </a>
       </div>
     </div>

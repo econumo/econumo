@@ -120,14 +120,14 @@ export function ClassificationList<T extends ClassificationItem>({
       onClick={() => setSortOpen(true)}
     >
       <ArrowDownUp className="size-4 text-econumo-purple" />
-      {t('blocks.list.order_list')}
+      {t('common.list.order_list')}
     </Button>
   )
 
   const filterControl = (
-    <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground" title={t('blocks.list.active_only')}>
-      <Switch aria-label={t('blocks.list.active_only')} checked={activeOnly} onCheckedChange={toggleActiveOnly} />
-      {t('blocks.list.active_only')}
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground" title={t('common.list.active_only')}>
+      <Switch aria-label={t('common.list.active_only')} checked={activeOnly} onCheckedChange={toggleActiveOnly} />
+      {t('common.list.active_only')}
     </label>
   )
 
@@ -163,7 +163,7 @@ export function ClassificationList<T extends ClassificationItem>({
         </div>
       ) : null}
       {visible.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-muted-foreground">{t('blocks.list.list_empty')}</p>
+        <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
       ) : (
         visibleSections.map((section) => {
           const sectionItems = section.items
@@ -202,7 +202,7 @@ export function ClassificationList<T extends ClassificationItem>({
                         {item.name}
                       </span>
                       {item.isArchived === 1 ? (
-                        <span className="text-xs text-muted-foreground">{t('modules.classifications.categories.pages.settings.archived_item')}</span>
+                        <span className="text-xs text-muted-foreground">{t('classifications.categories.pages.settings.archived_item')}</span>
                       ) : null}
                     </span>
                     <Switch
@@ -226,9 +226,9 @@ export function ClassificationList<T extends ClassificationItem>({
                         </DropdownMenuTrigger>
                         {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
                         <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenuItem onSelect={() => onEdit(item)}>{t('elements.button.edit.label')}</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => onEdit(item)}>{t('common.button.edit.label')}</DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(item)}>
-                            {t('elements.button.delete.label')}
+                            {t('common.button.delete.label')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -254,7 +254,7 @@ export function ClassificationList<T extends ClassificationItem>({
               setSheetItem(null)
             }}
           >
-            {t('elements.button.edit.label')}
+            {t('common.button.edit.label')}
           </Button>
           <Button
             type="button"
@@ -265,7 +265,7 @@ export function ClassificationList<T extends ClassificationItem>({
               setSheetItem(null)
             }}
           >
-            {t('elements.button.delete.label')}
+            {t('common.button.delete.label')}
           </Button>
         </div>
       </ResponsiveDialog>
@@ -291,8 +291,8 @@ export function ClassificationList<T extends ClassificationItem>({
         }}
         title={deleteTitle}
         question={deleteTarget?.name ?? ''}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </SettingsShell>

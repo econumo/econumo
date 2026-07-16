@@ -16,7 +16,7 @@ export function CustomServerSection({
   children: ReactNode
 }) {
   const { t } = useTranslation()
-  const label = t('modules.user.form.user.server_host.connect')
+  const label = t('user.form.server_host.connect')
 
   return (
     <div className="flex flex-col gap-2">
@@ -34,7 +34,7 @@ export function CustomServerSection({
       {open ? (
         <div className="flex flex-col gap-2 border-l-2 border-border pl-3">
           {children}
-          <p className="text-xs text-muted-foreground">{t('modules.app.modal.self_hosted.information')}</p>
+          <p className="text-xs text-muted-foreground">{t('common.app.modal.self_hosted.information')}</p>
         </div>
       ) : null}
     </div>

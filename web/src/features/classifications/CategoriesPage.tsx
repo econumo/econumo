@@ -32,14 +32,14 @@ export function CategoriesPage() {
   return (
     <>
       <ClassificationList
-        title={t('modules.classifications.categories.pages.settings.header')}
-        createLabel={t('modules.classifications.categories.pages.settings.create_category')}
-        deleteTitle={t('modules.classifications.categories.modals.delete.title')}
+        title={t('classifications.categories.pages.settings.header')}
+        createLabel={t('classifications.categories.pages.settings.create_category')}
+        deleteTitle={t('classifications.categories.modals.delete.title')}
         items={own}
         storageKey="settings.categories.activeOnly"
         sections={[
-          { label: t('modules.classifications.categories.forms.category.type.expense'), match: (c) => c.type === 'expense' },
-          { label: t('modules.classifications.categories.forms.category.type.income'), match: (c) => c.type === 'income' },
+          { label: t('classifications.categories.forms.category.type.expense'), match: (c) => c.type === 'expense' },
+          { label: t('classifications.categories.forms.category.type.income'), match: (c) => c.type === 'income' },
         ]}
         showIcon
         onCreate={() => setDialog({ open: true, category: null })}

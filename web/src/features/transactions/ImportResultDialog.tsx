@@ -20,19 +20,19 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
 
   const outcome =
     result.failed === 0
-      ? { title: t('modals.import_result.success_title'), Icon: CheckCircle2, tone: 'text-green-600' }
+      ? { title: t('transactions.import_result.success_title'), Icon: CheckCircle2, tone: 'text-green-600' }
       : result.imported > 0
-        ? { title: t('modals.import_result.partial_success_title'), Icon: AlertTriangle, tone: 'text-amber-600' }
-        : { title: t('modals.import_result.error_title'), Icon: XCircle, tone: 'text-destructive' }
+        ? { title: t('transactions.import_result.partial_success_title'), Icon: AlertTriangle, tone: 'text-amber-600' }
+        : { title: t('transactions.import_result.error_title'), Icon: XCircle, tone: 'text-destructive' }
 
   const formatRows = (rows: number[]): string => {
     if (rows.length === 0) return ''
-    if (rows.length === 1) return `${t('modals.import_result.row')} ${rows[0]}`
+    if (rows.length === 1) return `${t('transactions.import_result.row')} ${rows[0]}`
     const shown = rows.slice(0, MAX_DISPLAY_ROWS).join(', ')
     const extra = rows.length - MAX_DISPLAY_ROWS
     return extra > 0
-      ? `${t('modals.import_result.rows')} ${shown} +${extra} ${t('modals.import_result.more')}`
-      : `${t('modals.import_result.rows')} ${shown}`
+      ? `${t('transactions.import_result.rows')} ${shown} +${extra} ${t('transactions.import_result.more')}`
+      : `${t('transactions.import_result.rows')} ${shown}`
   }
 
   const shownErrors = result.errors.slice(0, MAX_DISPLAY_ERRORS)
@@ -43,13 +43,13 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
       <div className="flex flex-col gap-3">
         <outcome.Icon className={`mx-auto size-10 ${outcome.tone}`} aria-hidden />
         <div className="flex flex-col gap-1 text-center text-sm">
-          {result.imported > 0 ? <p>{pluralPick(t('modals.import_result.imported'), result.imported)}</p> : null}
-          {result.failed > 0 ? <p>{pluralPick(t('modals.import_result.failed'), result.failed)}</p> : null}
+          {result.imported > 0 ? <p>{pluralPick(t('transactions.import_result.imported'), result.imported)}</p> : null}
+          {result.failed > 0 ? <p>{pluralPick(t('transactions.import_result.failed'), result.failed)}</p> : null}
         </div>
 
         {shownErrors.length > 0 ? (
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">{t('modals.import_result.errors_detail')}</p>
+            <p className="text-sm font-medium">{t('transactions.import_result.errors_detail')}</p>
             <ul className="flex max-h-60 flex-col gap-1 overflow-y-auto">
               {shownErrors.map((error) => (
                 <li key={error.message} className="text-xs text-muted-foreground">
@@ -59,13 +59,13 @@ export function ImportResultDialog({ open, result, onClose }: ImportResultDialog
               ))}
             </ul>
             {extraErrors > 0 ? (
-              <p className="text-xs text-muted-foreground">{t('modals.import_result.and_more', { count: extraErrors })}</p>
+              <p className="text-xs text-muted-foreground">{t('transactions.import_result.and_more', { count: extraErrors })}</p>
             ) : null}
           </div>
         ) : null}
 
         <Button type="button" className="w-full h-11" onClick={onClose}>
-          {t('elements.button.ok.label')}
+          {t('common.button.ok.label')}
         </Button>
       </div>
     </ResponsiveDialog>

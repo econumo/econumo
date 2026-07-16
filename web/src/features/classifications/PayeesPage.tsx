@@ -23,10 +23,10 @@ export function PayeesPage() {
 
   const validate = (value: string): string | null => {
     if (!isNotEmpty(value)) {
-      return t('modules.classifications.payees.forms.payee.name.validation.required_field')
+      return t('classifications.payees.forms.payee.name.validation.required_field')
     }
     if (!isValidPayeeName(value)) {
-      return t('modules.classifications.payees.forms.payee.name.validation.invalid_name')
+      return t('classifications.payees.forms.payee.name.validation.invalid_name')
     }
     return null
   }
@@ -34,10 +34,10 @@ export function PayeesPage() {
   return (
     <>
       <ClassificationList
-        title={t('modules.classifications.payees.pages.settings.header')}
-        heading={t('modules.classifications.payees.pages.settings.menu_item')}
-        createLabel={t('modules.classifications.payees.pages.settings.create_payee')}
-        deleteTitle={t('modules.classifications.payees.modals.delete.title')}
+        title={t('classifications.payees.pages.settings.header')}
+        heading={t('classifications.payees.pages.settings.menu_item')}
+        createLabel={t('classifications.payees.pages.settings.create_payee')}
+        deleteTitle={t('classifications.payees.modals.delete.title')}
         items={own}
         storageKey="settings.payees.activeOnly"
         onCreate={() => setDialog({ open: true, payee: null })}
@@ -57,12 +57,12 @@ export function PayeesPage() {
             createPayee.mutate({ name, ownerUserId: user?.id }, { onSuccess: () => setDialog({ open: false, payee: null }) })
           }
         }}
-        title={dialog.payee ? t('modules.classifications.payees.modals.edit.header') : t('modules.classifications.payees.modals.create.header')}
-        inputLabel={t('modules.classifications.payees.forms.payee.name.label')}
+        title={dialog.payee ? t('classifications.payees.modals.edit.header') : t('classifications.payees.modals.create.header')}
+        inputLabel={t('classifications.payees.forms.payee.name.label')}
         initialValue={dialog.payee?.name ?? ''}
         validate={validate}
-        submitLabel={dialog.payee ? t('elements.button.update.label') : t('elements.button.create.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={dialog.payee ? t('common.button.update.label') : t('common.button.create.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
     </>
   )

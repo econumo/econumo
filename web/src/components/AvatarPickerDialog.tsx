@@ -48,12 +48,12 @@ export function AvatarPickerDialog({ open, onClose }: AvatarPickerDialogProps) {
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modals.avatar_picker.title')}>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('user.avatar_picker.title')}>
       <div className="flex flex-col gap-4">
         <div className="flex justify-center">
           <UserAvatar avatar={joinAvatar(icon, color)} size="xl" />
         </div>
-        <div role="radiogroup" aria-label={t('modals.avatar_picker.colors')} className="flex flex-wrap justify-center gap-2">
+        <div role="radiogroup" aria-label={t('user.avatar_picker.colors')} className="flex flex-wrap justify-center gap-2">
           {avatarColors.map((c) => (
             <button
               key={c}
@@ -71,13 +71,13 @@ export function AvatarPickerDialog({ open, onClose }: AvatarPickerDialogProps) {
             />
           ))}
         </div>
-        <IconPicker value={icon} onChange={setIcon} icons={avatarIcons} aria-label={t('modals.avatar_picker.icons')} />
+        <IconPicker value={icon} onChange={setIcon} icons={avatarIcons} aria-label={t('user.avatar_picker.icons')} />
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="button" onClick={save} disabled={updateAvatar.isPending}>
-            {t('elements.button.save.label')}
+            {t('common.button.save.label')}
           </Button>
         </div>
       </div>

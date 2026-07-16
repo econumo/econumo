@@ -31,7 +31,7 @@ export function SwitchAccountPrompt() {
           navigate(RouterPage.ACCOUNT(account.id))
         }}
       >
-        {t('elements.switch_to_account')} <strong>{account.name}</strong>
+        {t('accounts.switch_to_account')} <strong>{account.name}</strong>
       </button>
       <button type="button" aria-label="close" className="text-muted-foreground hover:text-foreground" onClick={() => setPrompt(null)}>
         <X className="size-4" />
