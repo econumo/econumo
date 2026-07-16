@@ -252,14 +252,14 @@ export function PersonalTokensPage() {
             {created?.token}
           </code>
           <div className={dialogActionsClass}>
-            <Button type="button" variant="secondary" onClick={copy}>
+            <Button type="button" variant="secondary" onClick={() => setCreated(null)}>
+              {t('user.page.settings.profile.tokens.created_dialog.done')}
+            </Button>
+            <Button type="button" onClick={copy}>
               {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
               {copied
                 ? t('user.page.settings.profile.tokens.created_dialog.copied')
                 : t('user.page.settings.profile.tokens.created_dialog.copy')}
-            </Button>
-            <Button type="button" onClick={() => setCreated(null)}>
-              {t('user.page.settings.profile.tokens.created_dialog.done')}
             </Button>
           </div>
         </div>
