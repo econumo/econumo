@@ -1054,9 +1054,7 @@
     "common": {
       "is_blank": "This value should not be blank.",
       "invalid_choice": "The value you selected is not a valid choice.",
-      "no_such_choice": "The value you selected is not a valid choice.",
       "invalid_format": "This value is not valid.",
-      "regex_failed": "This value is not valid.",
       "validation": "This value is invalid.",
       "invalid_uuid": "This value is not a valid UUID.",
       "invalid_email": "This value is not a valid email address.",

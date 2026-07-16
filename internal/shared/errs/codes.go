@@ -7,9 +7,7 @@ package errs
 const (
 	CodeIsBlank            = "common.is_blank"
 	CodeInvalidChoice      = "common.invalid_choice"
-	CodeNoSuchChoice       = "common.no_such_choice"
 	CodeInvalidFormat      = "common.invalid_format"
-	CodeRegexFailed        = "common.regex_failed"
 	CodeValidation         = "common.validation"
 	CodeInvalidUUID        = "common.invalid_uuid"
 	CodeInvalidEmail       = "common.invalid_email"
@@ -22,9 +20,7 @@ const (
 var AllCodes = []string{
 	CodeIsBlank,
 	CodeInvalidChoice,
-	CodeNoSuchChoice,
 	CodeInvalidFormat,
-	CodeRegexFailed,
 	CodeValidation,
 	CodeInvalidUUID,
 	CodeInvalidEmail,

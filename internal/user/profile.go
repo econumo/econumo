@@ -113,7 +113,7 @@ func (s *Service) UpdateAvatar(ctx context.Context, userID vo.Id, req model.Upda
 		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
 	}
 	if !IsValidAvatarColor(color) {
-		fields = append(fields, errs.FieldError{Key: "color", Message: "The value you selected is not a valid choice.", Code: errs.CodeNoSuchChoice})
+		fields = append(fields, errs.FieldError{Key: "color", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	if len(fields) > 0 {
 		return nil, errs.NewValidation("Validation failed", fields...)

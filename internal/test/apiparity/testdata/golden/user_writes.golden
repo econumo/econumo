@@ -17,7 +17,7 @@
 {"success":false,"message":"Form validation error","code":400,"errors":{"color":["This value should not be blank."],"icon":["This value should not be blank."]},"errorCodes":{"color":[{"code":"common.is_blank"}],"icon":[{"code":"common.is_blank"}]}}
 
 == err:update-avatar-bad-values POST /api/v1/user/update-avatar [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"color":["The value you selected is not a valid choice."],"icon":["This value is not valid."]},"errorCodes":{"color":[{"code":"common.no_such_choice"}],"icon":[{"code":"common.invalid_format"}]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"color":["The value you selected is not a valid choice."],"icon":["This value is not valid."]},"errorCodes":{"color":[{"code":"common.invalid_choice"}],"icon":[{"code":"common.invalid_format"}]}}
 
 == update-password POST /api/v1/user/update-password [owner] -> 200
 {"success":true,"message":"","data":{}}

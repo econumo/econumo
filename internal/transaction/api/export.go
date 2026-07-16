@@ -43,7 +43,7 @@ func (h *Handlers) ExportTransactionList(w http.ResponseWriter, r *http.Request)
 	raw := r.URL.Query().Get("accountId")
 	if !accountIdPattern.MatchString(raw) {
 		httpx.WriteError(w, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "accountId", Message: "This value is not valid.", Code: errs.CodeRegexFailed}), h.dev)
+			errs.FieldError{Key: "accountId", Message: "This value is not valid.", Code: errs.CodeInvalidFormat}), h.dev)
 		return
 	}
 
