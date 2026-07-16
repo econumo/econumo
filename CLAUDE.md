@@ -181,6 +181,44 @@ router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config is read from
 same name sets it per image build, default `dev`). Lint is oxlint, tests are
 vitest (`pnpm test`).
 
+### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
+
+Translations live in two catalogues, `locales/{en,ru}.json`, shared by both
+stacks — no per-stack duplication. The Go side embeds them (`package locales`,
+`go:embed *.json` in `locales/embed.go`, read via `locales.FS`); the SPA
+imports the same files through Vite JSON imports for `react-i18next`. Keys are
+namespaced to mirror `web/src/features/<name>` plus three cross-cutting
+namespaces: `common`, `errors` (error-code catalogue, see the envelope section
+above), and `emails` (backend-rendered mail). `{var}` placeholders use the same
+`{name}` syntax in both stacks. Adding a language means a new
+`locales/<lang>.json` plus entries in `i18n.Supported`
+(`internal/infra/i18n/i18n.go`), `getLocaleOptions()` (`web/src/lib/config.ts`),
+and the `languages` list in `internal/test/i18ntest`.
+- **Backend runtime**: `internal/infra/i18n` (`i18n.T(lang, key, params)`) translates
+  server-rendered text — currently just the password-reset email; API error
+  `message`/`errors` strings stay frozen English, never translated here (see
+  above). The `Language` middleware resolves `Accept-Language` to a supported
+  two-letter tag and stashes it in `reqctx`; the middleware chain is
+  `requestid -> recover -> cors -> timezone -> language -> [auth]`
+  (`internal/web/middleware/middleware.go`).
+- **Frontend runtime**: `web/src/app/i18n` wires `react-i18next`; UI language
+  choice persists in `localStorage` (`locale()` in `web/src/lib/config.ts`) and
+  is applied via `LanguageSelector` (`web/src/components/LanguageSelector.tsx`,
+  surfaced on auth pages and in Settings). `apiErrorMessage`
+  (`web/src/lib/apiError.ts`) renders a failed response by preferring
+  `messageCode`/`errorCodes` (translated through the catalogue) and falling
+  back to the envelope's frozen `message` for codes the SPA doesn't recognize.
+  `pluralPick` (`web/src/lib/plural.ts`) reads pipe-delimited catalogue values
+  (`"one | many"`, Russian `"one | few | many"`) and picks the variant via
+  `Intl.PluralRules` — i18next's own plural suffixes are not used, so all
+  plural strings are authored as a single pipe-joined value.
+- **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
+  key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
+  frontend-source `t()`-call key coverage against the catalogue, and two-way
+  coverage between `errs.AllCodes` and the `errors.*` catalogue keys (every
+  registered code has a translation and vice versa) plus between email
+  template keys and `emails.*`.
+
 ## Testing
 
 Tests live alongside the Go code:
@@ -376,6 +414,14 @@ data unreadable. Most are also asserted by the test suite.
 - Not implemented (501): `{"success": false, "message": <string>, "code": 0, "errors": []}` — here `errors` is an array `[]` (the lone exception to the object rule).
 - Rate-limited (429): `{"success": false, "message": "Too many attempts. Try again later.", "code": 429, "errors": {}}` — same shape as the handled-error envelope.
 - JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
+- **Additive i18n codes** (handled-error envelope only): `errorCodes` (field → `[{code, params}]`,
+  the per-field sibling of `errors`) and `messageCode` + `messageParams` (the fieldless sibling of
+  `message`) — all three `omitempty`, so an endpoint that hasn't been given codes yet serializes
+  exactly as before (goldens stay byte-identical). `code` is a catalogue key under `errors.*` in
+  `locales/{en,ru}.json` (registry: `internal/shared/errs/codes.go`, `AllCodes`); `params` feeds
+  `{var}` placeholder interpolation. The frozen `errors`/`message` strings are unchanged — always
+  English, never translated server-side. Clients render the localized text with the code when
+  present and fall back to the frozen string otherwise (see `apiErrorMessage` below).
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
