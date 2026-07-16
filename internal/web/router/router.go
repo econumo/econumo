@@ -14,7 +14,7 @@
 //
 // The auth middleware itself is built in the user module and is applied by
 // the API registration func to the authenticated sub-group — the router only
-// supplies the global chain (requestid -> recover -> cors -> timezone).
+// supplies the global chain (requestid -> recover -> cors -> timezone -> language).
 package router
 
 import (
@@ -65,6 +65,12 @@ type Deps struct {
 	// until the resource modules are wired (Phase 2+), in which case only the
 	// health-check and SPA are served.
 	RegisterAPI RegisterAPI
+
+	// SupportedLanguages lists the Accept-Language tags the Language middleware
+	// recognizes (e.g. i18n.Supported from the composition root). The router
+	// stays decoupled from the translation catalogue package; nil disables
+	// language resolution (every request defaults to "en").
+	SupportedLanguages []string
 }
 
 // New builds the root http.Handler from deps.
@@ -73,16 +79,17 @@ func New(deps Deps) http.Handler {
 
 	// Global middleware chain applied to the server-side route groups
 	// (internal + API). Order is outer -> inner: requestid -> accesslog ->
-	// recover -> cors -> timezone. (auth is added per-group inside RegisterAPI by
-	// the user module — see package doc.) AccessLog sits inside RequestID (so the
-	// request_id is in context) and outside Recover (so it observes the 500 that
-	// Recover writes for a panic).
+	// recover -> cors -> timezone -> language. (auth is added per-group inside
+	// RegisterAPI by the user module — see package doc.) AccessLog sits inside
+	// RequestID (so the request_id is in context) and outside Recover (so it
+	// observes the 500 that Recover writes for a panic).
 	global := middleware.Chain(
 		middleware.RequestID,
 		middleware.AccessLog,
 		middleware.Recover(deps.Cfg.IsDev()),
 		middleware.CORS(deps.Cfg.CORSAllowedOrigins),
 		middleware.Timezone,
+		middleware.Language(deps.SupportedLanguages),
 	)
 
 	// Health check. Registered directly on root; the GET /health pattern is more

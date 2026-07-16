@@ -2,7 +2,7 @@
 // API. Each middleware is a plain func(http.Handler) http.Handler (stdlib only
 // — no router dependency). The chain order (outer -> inner) is:
 //
-//	requestid -> recover -> cors -> timezone -> [auth]
+//	requestid -> recover -> cors -> timezone -> language -> [auth]
 //
 // The token-authentication middleware is intentionally NOT implemented here: it
 // is security-sensitive and is built as part of the user module (Phase 2),
@@ -192,4 +192,33 @@ func Timezone(next http.Handler) http.Handler {
 // without importing this (ui) package.
 func LocationFromCtx(ctx context.Context) *time.Location {
 	return reqctx.Location(ctx)
+}
+
+// Language resolves the Accept-Language header to a supported two-letter tag
+// and stores it in the request context. Entries are honored in header order
+// (q-values are ignored: browsers already order by preference); the primary
+// subtag is matched case-insensitively. No match or no header means the
+// context default ("en") applies. supported is passed in by the composition
+// root (e.g. i18n.Supported) so this package stays decoupled from the
+// translation catalogue.
+func Language(supported []string) func(http.Handler) http.Handler {
+	set := make(map[string]bool, len(supported))
+	for _, s := range supported {
+		set[s] = true
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
+				tag := strings.ToLower(strings.TrimSpace(strings.SplitN(part, ";", 2)[0]))
+				if primary, _, found := strings.Cut(tag, "-"); found {
+					tag = primary
+				}
+				if set[tag] {
+					next.ServeHTTP(w, r.WithContext(reqctx.WithLanguage(r.Context(), tag)))
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
