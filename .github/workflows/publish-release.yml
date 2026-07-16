@@ -14,12 +14,12 @@ on:
         description: "Version tag to publish (e.g., v1.2.3)"
         required: true
       push_latest:
-        description: "Publish Latest (move the 'latest' tag to this build; main only)"
+        description: "Publish Latest"
         required: false
         type: boolean
         default: false
       push_dev:
-        description: "Publish Dev (move the 'dev' tag to this build)"
+        description: "Publish Dev"
         required: false
         type: boolean
         default: false
