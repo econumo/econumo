@@ -125,7 +125,8 @@ export function PersonalTokensPage() {
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate text-sm">{token.name}</span>
               <span className="text-xs text-muted-foreground">
-                {t('user.page.settings.profile.tokens.last_used')} {relativeTime(token.lastUsedAt)}
+                {t('user.page.settings.profile.tokens.last_used')}{' '}
+                {relativeTime(token.lastUsedAt, { lang: i18n.language, justNow: t('common.date.just_now') })}
                 {' · '}
                 {token.expiresAt
                   ? `${t('user.page.settings.profile.tokens.expires')} ${formatDate(parseUtcDateTime(token.expiresAt))}`

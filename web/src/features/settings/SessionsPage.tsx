@@ -12,7 +12,7 @@ import { describeUserAgent, relativeTime } from './securityFormat'
 import { SettingsShell } from './SettingsShell'
 
 export function SessionsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { data: sessions } = useSessions()
   const revokeSession = useRevokeSession()
@@ -60,7 +60,8 @@ export function SessionsPage() {
                 ) : null}
               </span>
               <span className="text-xs text-muted-foreground">
-                {t('user.page.settings.profile.sessions.last_active')} {relativeTime(session.lastUsedAt)}
+                {t('user.page.settings.profile.sessions.last_active')}{' '}
+                {relativeTime(session.lastUsedAt, { lang: i18n.language, justNow: t('common.date.just_now') })}
               </span>
             </div>
             <Button

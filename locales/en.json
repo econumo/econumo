@@ -101,6 +101,7 @@
       }
     },
     "date": {
+      "just_now": "just now",
       "month_short": {
         "jan": "Jan",
         "feb": "Feb",
