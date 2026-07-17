@@ -142,6 +142,10 @@
           "data_loading": "Идёт загрузка"
         }
       }
+    },
+    "update": {
+      "notice": "Вышла Econumo {version}",
+      "dismiss": "Скрыть"
     }
   },
   "accounts": {
@@ -300,6 +304,9 @@
     "export_csv": {
       "menu_item": "Экспорт CSV",
       "error": "Не удалось экспортировать транзакции"
+    },
+    "update": {
+      "available": "Доступна новая версия {version}"
     }
   },
   "transactions": {

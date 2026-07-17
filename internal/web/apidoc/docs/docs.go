@@ -3457,6 +3457,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/system/get-update-info": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the latest Econumo release published on econumo.com (version + release-page URL), or empty strings when unknown. The client compares against its own version.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Get the latest published release",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetUpdateInfoResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tag/archive-tag": {
             "post": {
                 "security": [
@@ -6886,6 +6935,17 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.TransactionResult"
                     }
+                }
+            }
+        },
+        "model.GetUpdateInfoResult": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
