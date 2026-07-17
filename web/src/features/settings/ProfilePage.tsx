@@ -3,9 +3,14 @@ import { Check, ChevronRight, Lock } from 'lucide-react'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { applyLocale } from '@/components/LanguageSelector'
+import { getLocaleOptions } from '@/lib/config'
+import i18n from '@/app/i18n'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
@@ -16,6 +21,33 @@ import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, useUpdateName, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
 import { SettingsShell } from './SettingsShell'
+
+// Two languages, pick-one: a short list of buttons with a check on the
+// active one, same idiom as SortDialog.
+function LanguageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('settings.language.menu_item')}>
+      <div className="flex flex-col gap-2 [&_button]:h-11">
+        {getLocaleOptions().map((option) => (
+          <Button
+            key={option.value}
+            type="button"
+            variant={option.value === i18n.language ? 'secondary' : 'ghost'}
+            className="justify-between"
+            onClick={() => {
+              applyLocale(option.value)
+              onClose()
+            }}
+          >
+            {option.label}
+            {option.value === i18n.language ? <Check className="size-4" /> : null}
+          </Button>
+        ))}
+      </div>
+    </ResponsiveDialog>
+  )
+}
 
 export function ProfilePage() {
   const { t } = useTranslation()
@@ -31,6 +63,7 @@ export function ProfilePage() {
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [languageOpen, setLanguageOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
   const savedTimer = useRef<number | null>(null)
@@ -166,6 +199,17 @@ export function ProfilePage() {
           <ChevronRight className="size-4" />
         </span>
       </button>
+      <button
+        type="button"
+        className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        onClick={() => setLanguageOpen(true)}
+      >
+        {t('settings.language.menu_item')}
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {getLocaleOptions().find((o) => o.value === i18n.language)?.label ?? ''}
+          <ChevronRight className="size-4" />
+        </span>
+      </button>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('user.page.settings.profile.groups.security')}
@@ -206,6 +250,8 @@ export function ProfilePage() {
           }
         }}
       />
+
+      <LanguageDialog open={languageOpen} onClose={() => setLanguageOpen(false)} />
 
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 

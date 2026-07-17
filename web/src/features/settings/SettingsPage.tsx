@@ -1,17 +1,14 @@
 import { useState } from 'react'
-import { Check, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
-import { applyLocale } from '@/components/LanguageSelector'
-import { getLocaleOptions, getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
+import { getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
-import i18n from '@/app/i18n'
 import { useUserData } from '@/features/user/queries'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
@@ -49,33 +46,6 @@ function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string;
   )
 }
 
-// Two languages, pick-one: a short list of buttons with a check on the
-// active one, same idiom as SortDialog.
-function LanguageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation()
-  return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('settings.language.menu_item')}>
-      <div className="flex flex-col gap-2 [&_button]:h-11">
-        {getLocaleOptions().map((option) => (
-          <Button
-            key={option.value}
-            type="button"
-            variant={option.value === i18n.language ? 'secondary' : 'ghost'}
-            className="justify-between"
-            onClick={() => {
-              applyLocale(option.value)
-              onClose()
-            }}
-          >
-            {option.label}
-            {option.value === i18n.language ? <Check className="size-4" /> : null}
-          </Button>
-        ))}
-      </div>
-    </ResponsiveDialog>
-  )
-}
-
 export function SettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -84,7 +54,6 @@ export function SettingsPage() {
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
-  const [languageOpen, setLanguageOpen] = useState(false)
   const version = getVersion()
 
   return (
@@ -132,11 +101,6 @@ export function SettingsPage() {
             <MenuRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
           </MenuGroup>
 
-          {getLocaleOptions().length > 1 ? (
-            <MenuGroup label={t('settings.page.groups.preferences')}>
-              <MenuRow label={t('settings.language.menu_item')} onClick={() => setLanguageOpen(true)} />
-            </MenuGroup>
-          ) : null}
         </div>
       </div>
 
@@ -168,7 +132,6 @@ export function SettingsPage() {
       <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
       <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
       <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
-      <LanguageDialog open={languageOpen} onClose={() => setLanguageOpen(false)} />
     </div>
   )
 }

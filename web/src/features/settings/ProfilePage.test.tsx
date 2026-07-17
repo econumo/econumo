@@ -7,6 +7,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { recordPathname, resetNavTracking } from '@/lib/navigation'
+import i18n from '@/app/i18n'
 import { ProfilePage } from './ProfilePage'
 
 function mockViewport(compact = false) {
@@ -174,6 +175,21 @@ it('changing the default currency posts the code and updates the cache', async (
     const cached = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)!
     expect(cached.options.find((o) => o.name === 'currency_id')!.value).toBe('cur-eur')
   })
+})
+
+it('Language row opens a dialog to switch locale and closes on pick', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Language'))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('English')).toBeInTheDocument()
+  await user.click(within(dialog).getByText('Русский'))
+  await screen.findByText('Язык')
+  expect(document.documentElement.lang).toBe('ru')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  // restore for later tests in this file
+  await i18n.changeLanguage('en')
+  document.documentElement.lang = 'en'
 })
 
 it('clicking the avatar opens the avatar picker dialog', async () => {

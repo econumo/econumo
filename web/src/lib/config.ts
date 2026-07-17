@@ -95,7 +95,7 @@ export function locale(value?: string): string {
 export function getLocaleOptions(): LocaleOption[] {
   return [
     { value: 'en', label: 'English', short: 'EN' },
-    { value: 'ru', label: 'Русский', short: 'RU' },
+    { value: 'ru', label: 'Русский', short: 'РУ' },
   ]
 }
 
