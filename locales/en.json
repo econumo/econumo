@@ -942,7 +942,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Tags work across categories — use them to track things like a trip or a project. Archive tags you no longer need.",
+          "info": "Tags automatically group spending within your budget — handy for trips, for example: mark every trip expense with one tag and get a spending breakdown right in the budget.",
           "create_tag": "Create tag",
           "archived_item": "Archived"
         }
