@@ -29,6 +29,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/system"
 
 	"github.com/joho/godotenv"
 
@@ -203,7 +204,9 @@ func run(serveArgs []string) error {
 	}
 	slog.Info("migrations applied", "backend", be.Name())
 
-	handler := server.BuildAPI(cfg, db, server.Seams{})
+	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
+	handler := server.BuildAPI(cfg, db, server.Seams{Updates: updates})
+	updates.StartPolling(ctx)
 
 	srv := &http.Server{
 		Addr:              addr(cfg.Port),
