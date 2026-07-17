@@ -26,6 +26,12 @@ func NewAccountCurrencyLookup(inner *currencyrepo.Lookup) *AccountCurrencyLookup
 	return &AccountCurrencyLookup{inner: inner}
 }
 
+// EnsureUsable confirms the currency is usable by the user (global, or their
+// own non-archived custom).
+func (l *AccountCurrencyLookup) EnsureUsable(ctx context.Context, userID, currencyID string) error {
+	return l.inner.EnsureUsable(ctx, userID, currencyID)
+}
+
 // GetByID resolves a currency for the account-result embed.
 func (l *AccountCurrencyLookup) GetByID(ctx context.Context, id string) (model.CurrencyView, error) {
 	v, err := l.inner.GetByID(ctx, id)

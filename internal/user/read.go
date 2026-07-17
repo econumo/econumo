@@ -25,9 +25,10 @@ import (
 type ReadModel interface {
 	UserView(ctx context.Context, id string) (model.UserViewRow, error)
 	OptionViews(ctx context.Context, userID string) ([]model.OptionViewRow, error)
-	// CurrencyIDByCode resolves a code to its id; returns sql.ErrNoRows when the
-	// code is unknown so the service can apply the USD fallback.
-	CurrencyIDByCode(ctx context.Context, code string) (string, error)
+	// CurrencyIDByCode resolves a code to its id (own custom first, then
+	// global); returns sql.ErrNoRows when the code is unknown so the service
+	// can apply the USD fallback.
+	CurrencyIDByCode(ctx context.Context, userID, code string) (string, error)
 }
 
 // ReadService serves the user read endpoints.
@@ -100,14 +101,15 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 		}
 	}
 
-	// Resolve currency_id, falling back to USD when the code is unknown.
-	currencyID, err := s.read.CurrencyIDByCode(ctx, currencyCode)
+	// Resolve currency_id (own-first-then-global), falling back to USD when the
+	// code is unknown.
+	currencyID, err := s.read.CurrencyIDByCode(ctx, userID.String(), currencyCode)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return model.CurrentUserResult{}, err
 		}
 		currencyCode = model.DefaultCurrency
-		currencyID, err = s.read.CurrencyIDByCode(ctx, currencyCode)
+		currencyID, err = s.read.CurrencyIDByCode(ctx, userID.String(), currencyCode)
 		if err != nil {
 			return model.CurrentUserResult{}, err
 		}

@@ -132,13 +132,13 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		options = append(options, model.OptionResult{Name: o.Name, Value: o.Value})
 	}
 
-	// Resolve currency_id from the currency code, falling back to USD when the
-	// code can't be resolved.
+	// Resolve currency_id from the currency code (own-first-then-global),
+	// falling back to USD when the code can't be resolved.
 	code := u.CurrencyCode()
-	currencyID, err := s.currency.GetIDByCode(ctx, code)
+	currencyID, err := s.currency.GetIDByCode(ctx, u.ID.String(), code)
 	if err != nil {
 		code = s.currency.DefaultCode()
-		currencyID, err = s.currency.GetIDByCode(ctx, code)
+		currencyID, err = s.currency.GetIDByCode(ctx, u.ID.String(), code)
 		if err != nil {
 			return model.CurrentUserResult{}, err
 		}

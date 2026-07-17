@@ -52,3 +52,16 @@ type RateInput struct {
 	Rate string
 	Date time.Time
 }
+
+// CurrencyRecord is one currencies row with ownership and archival state.
+// UserID nil = global (admin-managed); non-nil = custom, owned by that user.
+type CurrencyRecord struct {
+	ID             string
+	Code           string
+	Symbol         string
+	Name           *string
+	FractionDigits int
+	UserID         *string
+	IsArchived     bool
+	CreatedAt      time.Time
+}

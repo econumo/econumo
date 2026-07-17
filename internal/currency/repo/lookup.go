@@ -24,10 +24,15 @@ const defaultCode = "USD"
 // currencyViewRow is the canonical (sqlite-generated) GetCurrencyByIDView row.
 type currencyViewRow = sqlitegen.GetCurrencyByIDViewRow
 
+// currencyRecordRow (the canonical GetCurrencyRecord row) is declared in
+// manage.go, shared package-wide.
+
 // lookupQuerier is the engine-agnostic lookup surface, in the canonical types.
 type lookupQuerier interface {
 	GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error)
+	GetCurrencyIDByCodeForUser(ctx context.Context, db backend.DBTX, code, userID string) (string, error)
 	GetCurrencyByIDView(ctx context.Context, db backend.DBTX, id string) (currencyViewRow, error)
+	GetCurrencyRecord(ctx context.Context, db backend.DBTX, id string) (currencyRecordRow, error)
 }
 
 // Lookup implements the user feature's CurrencyLookup port over the
@@ -62,6 +67,42 @@ func (l *Lookup) GetIDByCode(ctx context.Context, code string) (string, error) {
 		return "", err
 	}
 	return id, nil
+}
+
+// GetIDByCodeForUser resolves a code preferring the user's own custom
+// currency, then a global one. Foreign customs never resolve (the generated
+// query's ORDER BY places the user's own row first when both exist).
+func (l *Lookup) GetIDByCodeForUser(ctx context.Context, userID, code string) (string, error) {
+	id, err := l.q.GetCurrencyIDByCodeForUser(ctx, l.tx.Querier(ctx), code, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errs.NewNotFound(fmt.Sprintf("Currency %s not found", code))
+		}
+		return "", err
+	}
+	return id, nil
+}
+
+// EnsureUsable reports whether the user may denominate new entities in the
+// currency: global, or their own non-archived custom. A foreign custom or an
+// own archived custom is rejected with a field-level validation error; a
+// missing currency id is NotFound.
+func (l *Lookup) EnsureUsable(ctx context.Context, userID, currencyID string) error {
+	row, err := l.q.GetCurrencyRecord(ctx, l.tx.Querier(ctx), currencyID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return errs.NewNotFound("Currency not found")
+		}
+		return err
+	}
+	if row.UserID == nil {
+		return nil
+	}
+	if *row.UserID == userID && !row.IsArchived {
+		return nil
+	}
+	return errs.NewValidation("Validation failed",
+		errs.FieldError{Key: "currencyId", Message: "Currency is not available", Code: errs.CodeCurrencyNotAvailable})
 }
 
 // DefaultCode returns the fallback currency code (USD).
@@ -112,8 +153,16 @@ func (sqliteLookupQuerier) GetCurrencyIDByCode(ctx context.Context, db backend.D
 	return sqlitegen.New(db).GetCurrencyIDByCode(ctx, code)
 }
 
+func (sqliteLookupQuerier) GetCurrencyIDByCodeForUser(ctx context.Context, db backend.DBTX, code, userID string) (string, error) {
+	return sqlitegen.New(db).GetCurrencyIDByCodeForUser(ctx, sqlitegen.GetCurrencyIDByCodeForUserParams{Code: code, UserID: &userID})
+}
+
 func (sqliteLookupQuerier) GetCurrencyByIDView(ctx context.Context, db backend.DBTX, id string) (currencyViewRow, error) {
 	return sqlitegen.New(db).GetCurrencyByIDView(ctx, id)
+}
+
+func (sqliteLookupQuerier) GetCurrencyRecord(ctx context.Context, db backend.DBTX, id string) (currencyRecordRow, error) {
+	return sqlitegen.New(db).GetCurrencyRecord(ctx, id)
 }
 
 // pgsqlLookupQuerier is the thin whole-struct conversion shim.
@@ -125,7 +174,16 @@ func (pgsqlLookupQuerier) GetCurrencyIDByCode(ctx context.Context, db backend.DB
 	return pgsqlgen.New(db).GetCurrencyIDByCode(ctx, code)
 }
 
+func (pgsqlLookupQuerier) GetCurrencyIDByCodeForUser(ctx context.Context, db backend.DBTX, code, userID string) (string, error) {
+	return pgsqlgen.New(db).GetCurrencyIDByCodeForUser(ctx, pgsqlgen.GetCurrencyIDByCodeForUserParams{Code: code, UserID: &userID})
+}
+
 func (pgsqlLookupQuerier) GetCurrencyByIDView(ctx context.Context, db backend.DBTX, id string) (currencyViewRow, error) {
 	row, err := pgsqlgen.New(db).GetCurrencyByIDView(ctx, id)
 	return currencyViewRow(row), err
+}
+
+func (pgsqlLookupQuerier) GetCurrencyRecord(ctx context.Context, db backend.DBTX, id string) (currencyRecordRow, error) {
+	row, err := pgsqlgen.New(db).GetCurrencyRecord(ctx, id)
+	return currencyRecordRow(row), err
 }

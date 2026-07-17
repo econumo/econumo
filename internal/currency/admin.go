@@ -140,12 +140,19 @@ func normalizeCode(code string) string {
 }
 
 // validateCode normalizes and enforces the ISO 4217 shape (3 ASCII letters),
-// returning a *ValidationError on failure.
+// returning a *ValidationError on failure. The CLI path's field key ("currency")
+// is frozen; use validateCodeField for callers that need a different key.
 func validateCode(code string) (string, error) {
+	return validateCodeField(code, "currency")
+}
+
+// validateCodeField is validateCode with a caller-chosen field key, for use
+// cases (e.g. create-currency) whose wire contract keys the error differently.
+func validateCodeField(code, key string) (string, error) {
 	c := normalizeCode(code)
 	if len(c) != 3 || !isAlpha(c) {
 		return "", errs.NewValidation("CurrencyCode is incorrect",
-			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
+			errs.FieldError{Key: key, Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 	}
 	return c, nil
 }

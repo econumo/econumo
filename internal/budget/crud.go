@@ -34,6 +34,11 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if b.budget.Name != req.Name && !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if !curID.Equal(b.budget.CurrencyID) {
+		if eerr := s.currency.EnsureUsable(ctx, userID.String(), curID.String()); eerr != nil {
+			return nil, eerr
+		}
+	}
 
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {

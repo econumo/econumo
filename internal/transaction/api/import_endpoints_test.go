@@ -6,6 +6,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"testing"
+
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // importResult mirrors the import response data.
@@ -93,6 +96,37 @@ func TestImport_CreatesTransactions_FindOrCreate(t *testing.T) {
 	}
 	if !sawExpense || !sawIncome {
 		t.Fatalf("want one expense + one income; items=%+v", list.Items)
+	}
+}
+
+// TestImport_NewAccount_PrefersOwnCustomCurrencyOverGlobalCode: importing a row
+// that names an unknown account creates it in the base currency CODE
+// (config.CurrencyBase = "USD" in this harness), resolved user-aware — so when
+// the importing user has their OWN custom currency coded "USD", the new
+// account must use THAT currency, not the global USD.
+func TestImport_NewAccount_PrefersOwnCustomCurrencyOverGlobalCode(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	ownUSD := f.Currency(fixture.Currency{Code: "USD", UserID: seedUserID})
+
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Savings,2024-03-02,1000,Salary,march pay,Employer\n"
+	status, env := h.doImport(t, tok, csv, importMapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 {
+		t.Fatalf("imported=%d want 1; errors=%v", res.Imported, res.Errors)
+	}
+
+	var currencyID string
+	if err := h.db.QueryRow("SELECT currency_id FROM accounts WHERE user_id = ? AND name = ?", seedUserID, "Savings").Scan(&currencyID); err != nil {
+		t.Fatalf("query new account currency: %v", err)
+	}
+	if currencyID != ownUSD {
+		t.Fatalf("new account currency = %q, want own custom USD %q (not the global one)", currencyID, ownUSD)
 	}
 }
 

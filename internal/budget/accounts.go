@@ -90,6 +90,11 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 		if gerr != nil {
 			return gerr
 		}
+		if el.CurrencyID == nil || !el.CurrencyID.Equal(curID) {
+			if eerr := s.currency.EnsureUsable(txCtx, userID.String(), curID.String()); eerr != nil {
+				return eerr
+			}
+		}
 		el.UpdateCurrency(&curID, now)
 		return s.elements.SaveElement(txCtx, el)
 	})

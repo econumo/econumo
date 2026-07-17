@@ -10,11 +10,30 @@ import (
 )
 
 const getCurrencyIDByCode = `-- name: GetCurrencyIDByCode :one
-SELECT id FROM currencies WHERE code = ?
+SELECT id FROM currencies WHERE code = ? AND user_id IS NULL
 `
 
 func (q *Queries) GetCurrencyIDByCode(ctx context.Context, code string) (string, error) {
 	row := q.db.QueryRowContext(ctx, getCurrencyIDByCode, code)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getCurrencyIDByCodeForUser = `-- name: GetCurrencyIDByCodeForUser :one
+SELECT id FROM currencies
+WHERE code = ? AND (user_id IS NULL OR user_id = ?)
+ORDER BY (user_id IS NULL) ASC
+LIMIT 1
+`
+
+type GetCurrencyIDByCodeForUserParams struct {
+	Code   string
+	UserID *string
+}
+
+func (q *Queries) GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, getCurrencyIDByCodeForUser, arg.Code, arg.UserID)
 	var id string
 	err := row.Scan(&id)
 	return id, err

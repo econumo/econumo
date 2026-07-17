@@ -6,10 +6,38 @@ package server
 import (
 	"context"
 	appbudget "github.com/econumo/econumo/internal/budget"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+// BudgetCurrencyLookup adapts currencyrepo.Lookup to budget.CurrencyLookup:
+// GetIDByCode is user-aware (own-first-then-global) here, unlike the
+// concrete Lookup's global-only GetIDByCode used directly by the CLI and the
+// rate provider.
+type BudgetCurrencyLookup struct {
+	inner *currencyrepo.Lookup
+}
+
+var _ appbudget.CurrencyLookup = (*BudgetCurrencyLookup)(nil)
+
+// NewBudgetCurrencyLookup wraps a currencyrepo.Lookup.
+func NewBudgetCurrencyLookup(inner *currencyrepo.Lookup) *BudgetCurrencyLookup {
+	return &BudgetCurrencyLookup{inner: inner}
+}
+
+// GetIDByCode resolves a code preferring the user's own custom currency, then
+// a global one.
+func (l *BudgetCurrencyLookup) GetIDByCode(ctx context.Context, userID, code string) (string, error) {
+	return l.inner.GetIDByCodeForUser(ctx, userID, code)
+}
+
+// EnsureUsable confirms the currency is usable by the user (global, or their
+// own non-archived custom).
+func (l *BudgetCurrencyLookup) EnsureUsable(ctx context.Context, userID, currencyID string) error {
+	return l.inner.EnsureUsable(ctx, userID, currencyID)
+}
 
 type budgetAccountRepo interface {
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)

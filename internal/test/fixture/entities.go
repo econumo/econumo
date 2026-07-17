@@ -144,6 +144,8 @@ type Currency struct {
 	Symbol         string // default "$"
 	Name           string // nullable; empty -> NULL
 	FractionDigits *int   // default 2; pointer so an explicit 0 (e.g. JPY/unknown) is honored
+	UserID         string // empty = global (NULL)
+	IsArchived     bool
 }
 
 func (b *Builder) Currency(c Currency) string {
@@ -159,15 +161,26 @@ func (b *Builder) Currency(c Currency) string {
 	if c.FractionDigits != nil {
 		digits = *c.FractionDigits
 	}
+	arch := "FALSE"
+	if c.IsArchived {
+		arch = "TRUE"
+	}
 	now := b.now()
 	if c.Name == "" {
-		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, created_at) VALUES (?, ?, ?, NULL, ?, ?)`,
-			id, c.Code, c.Symbol, digits, now)
+		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, created_at) VALUES (?, ?, ?, NULL, ?, ?, `+arch+`, ?)`,
+			id, c.Code, c.Symbol, digits, nullable(c.UserID), now)
 	} else {
-		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
-			id, c.Code, c.Symbol, c.Name, digits, now)
+		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, created_at) VALUES (?, ?, ?, ?, ?, ?, `+arch+`, ?)`,
+			id, c.Code, c.Symbol, c.Name, digits, nullable(c.UserID), now)
 	}
 	return id
+}
+
+// HiddenCurrency marks a global currency hidden for the user.
+func (b *Builder) HiddenCurrency(userID, currencyID string) {
+	b.t.Helper()
+	b.insert(`INSERT INTO users_hidden_currencies (user_id, currency_id, created_at) VALUES (?, ?, ?)`,
+		userID, currencyID, b.now())
 }
 
 // Rate describes a currencies_rates row.
@@ -431,6 +444,7 @@ func (b *Builder) Budget(bg Budget) string {
 type BudgetElement struct {
 	ID         string
 	BudgetID   string
+	CurrencyID string // nullable; empty -> NULL (only envelope elements carry one)
 	ExternalID string
 	Type       int
 	Position   int
@@ -440,8 +454,8 @@ func (b *Builder) BudgetElement(e BudgetElement) string {
 	b.t.Helper()
 	id := b.orNewID(e.ID)
 	now := b.now()
-	b.insert(`INSERT INTO budgets_elements (id, budget_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		id, e.BudgetID, e.ExternalID, e.Type, e.Position, now, now)
+	b.insert(`INSERT INTO budgets_elements (id, budget_id, currency_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, e.BudgetID, nullable(e.CurrencyID), e.ExternalID, e.Type, e.Position, now, now)
 	return id
 }
 

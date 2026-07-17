@@ -5,6 +5,7 @@ import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { fullCurrencyLabel, fuzzyMatch } from '@/components/CurrencySelect'
 import { useCurrencies } from '@/features/currencies/queries'
+import { selectableCurrencies } from '@/features/currencies/selectable'
 import type { Id } from '@/api/types'
 
 interface CurrencyPickerDialogProps {
@@ -27,7 +28,7 @@ export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: Cu
     }
   }, [open])
 
-  const options = (currencies ?? []).filter(
+  const options = selectableCurrencies(currencies, value ?? undefined).filter(
     (c) => !search || fuzzyMatch(c.name, search) || fuzzyMatch(c.symbol, search) || fuzzyMatch(c.code, search),
   )
 

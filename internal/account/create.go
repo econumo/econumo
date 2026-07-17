@@ -40,6 +40,9 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 	if err != nil {
 		return nil, err
 	}
+	if err := s.currency.EnsureUsable(ctx, userID.String(), currencyID.String()); err != nil {
+		return nil, err
+	}
 	icon, err := newIcon(req.Icon)
 	if err != nil {
 		return nil, err

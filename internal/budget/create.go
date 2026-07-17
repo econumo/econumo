@@ -30,14 +30,16 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 		}
 	}
 
-	// Resolve currency: explicit id, else the user's default currency code.
+	// Resolve currency: explicit id (checked usable below), else the user's
+	// default currency code (own-first-then-global; not usability-checked, same
+	// as update-currency's own code resolution).
 	currencyID := req.CurrencyId
 	if currencyID == "" {
 		code, cerr := s.users.CurrencyCode(ctx, userID.String())
 		if cerr != nil {
 			return nil, cerr
 		}
-		id, cerr := s.currency.GetIDByCode(ctx, code)
+		id, cerr := s.currency.GetIDByCode(ctx, userID.String(), code)
 		if cerr != nil {
 			return nil, cerr
 		}
@@ -46,6 +48,11 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	curID, err := vo.ParseId(currencyID)
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"currencyId": ""})
+	}
+	if req.CurrencyId != "" {
+		if eerr := s.currency.EnsureUsable(ctx, userID.String(), curID.String()); eerr != nil {
+			return nil, eerr
+		}
 	}
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {

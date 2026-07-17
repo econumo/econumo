@@ -107,7 +107,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
+		server.NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), server.NewBudgetTagMetadataLookup(tagRepo), server.NewBudgetPayeeMetadataLookup(payeeRepo)),
 		txm, clk,
 	)

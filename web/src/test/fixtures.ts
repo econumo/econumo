@@ -18,8 +18,8 @@ export const fixtureUser = {
 
 export const fixtureOwner = { id: 'u1', avatar: 'face:emerald', name: 'Ada' }
 
-export const fixtureUsd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
-export const fixtureEur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
+export const fixtureUsd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2, scope: 'global', isArchived: 0, isHidden: 0 }
+export const fixtureEur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2, scope: 'global', isArchived: 0, isHidden: 0 }
 
 export const fixtureFolders = [
   { id: 'f1', name: 'General', position: 0, isVisible: 1 },

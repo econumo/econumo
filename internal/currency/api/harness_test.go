@@ -17,6 +17,7 @@ import (
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -26,11 +27,12 @@ import (
 const (
 	testDataSalt = "0123456789abcdef"
 
-	seedUserID = "11111111-1111-1111-1111-111111111111"
-	seedEmail  = "user@example.test"
-	seedName   = "Seed User"
-	seedSalt   = "0000000000000000000000000000000000000001"
-	seedAvatar = "https://avatar.test/x"
+	seedUserID  = "11111111-1111-1111-1111-111111111111"
+	otherUserID = "22222222-2222-2222-2222-222222222222"
+	seedEmail   = "user@example.test"
+	seedName    = "Seed User"
+	seedSalt    = "0000000000000000000000000000000000000001"
+	seedAvatar  = "https://avatar.test/x"
 
 	usdID = "cccccccc-0000-0000-0000-0000000000us"
 	eurID = "cccccccc-0000-0000-0000-0000000000eu"
@@ -41,11 +43,24 @@ type fixedClock struct{ t time.Time }
 
 func (c fixedClock) Now() time.Time { return c.t }
 
+// fakeProfileCurrency stubs the currency feature's ProfileCurrency port
+// (normally satisfied by a glue adapter over the user feature). Mutable so a
+// test can point the caller's profile currency away from the default before
+// exercising the hide-currency guard.
+type fakeProfileCurrency struct{ code string }
+
+func (f *fakeProfileCurrency) CurrencyCode(ctx context.Context, userID string) (string, error) {
+	return f.code, nil
+}
+
+var _ appcurrency.ProfileCurrency = (*fakeProfileCurrency)(nil)
+
 type harness struct {
-	srv   *httptest.Server
-	db    *sql.DB
-	clock fixedClock
-	f     *fixture.Builder
+	srv     *httptest.Server
+	db      *sql.DB
+	clock   fixedClock
+	f       *fixture.Builder
+	profile *fakeProfileCurrency
 }
 
 func newHarness(t *testing.T) *harness {
@@ -58,12 +73,17 @@ func newHarness(t *testing.T) *harness {
 
 	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
 	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
+	f.User(fixture.User{ID: otherUserID, Email: "other@example.test", Name: "Other User", Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 
 	readRepo := currencyrepo.NewReadRepo("sqlite", tdb.TX)
+	manageRepo := currencyrepo.NewManageRepo("sqlite", tdb.TX)
+	opGuard := operationrepo.NewGuard("sqlite", tdb.TX)
+	profile := &fakeProfileCurrency{code: "EUR"}
 
-	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, CurrencyBase: "USD"}
 	readSvc := appcurrency.NewReadService(readRepo)
-	handlers := handlercurrency.NewHandlers(readSvc, cfg.IsDev())
+	manageSvc := appcurrency.NewManageService(manageRepo, tdb.TX, opGuard, clk, profile, cfg.CurrencyBase)
+	handlers := handlercurrency.NewHandlers(readSvc, manageSvc, cfg.IsDev())
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
@@ -73,7 +93,7 @@ func newHarness(t *testing.T) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, clock: clk, f: f}
+	return &harness{srv: srv, db: db, clock: clk, f: f, profile: profile}
 }
 
 // resetCurrencies clears the currencies + rates tables so a test controls the
@@ -105,11 +125,36 @@ func (h *harness) seedRate(t *testing.T, id, currencyID, baseID, publishedAt, ra
 	h.f.Rate(fixture.Rate{ID: id, CurrencyID: currencyID, BaseCurrencyID: baseID, PublishedAt: publishedAt, Rate: rate})
 }
 
+// seedCustomCurrency inserts a currency owned by userID (a per-user custom
+// currency, as opposed to seedCurrency's global row).
+func (h *harness) seedCustomCurrency(t *testing.T, id, userID, code, symbol string, fractionDigits int) {
+	t.Helper()
+	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{
+		ID: id, Code: code, Symbol: symbol, FractionDigits: &fractionDigits, UserID: userID,
+	})
+}
+
 func (h *harness) do(t *testing.T, method, path, token string) (int, envelope) {
 	t.Helper()
-	req, err := http.NewRequest(method, h.srv.URL+path, nil)
+	return h.doJSON(t, method, path, token, nil)
+}
+
+func (h *harness) doJSON(t *testing.T, method, path, token string, body any) (int, envelope) {
+	t.Helper()
+	var reader io.Reader
+	if body != nil {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			t.Fatalf("marshal body: %v", err)
+		}
+		reader = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequest(method, h.srv.URL+path, reader)
 	if err != nil {
 		t.Fatalf("new request: %v", err)
+	}
+	if reader != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)

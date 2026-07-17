@@ -17,6 +17,10 @@ type Querier interface {
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	// New-category position = count of the owner's existing categories.
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
+	// Usage census for delete protection: accounts (including soft-deleted ones,
+	// they still hold the FK), budgets, budget elements, and any user whose
+	// profile currency option stores this code.
+	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
 	// New-payee position = count of the owner's existing payees.
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
@@ -36,8 +40,10 @@ type Querier interface {
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
+	DeleteCurrency(ctx context.Context, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
+	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
@@ -124,34 +130,33 @@ type Querier interface {
 	// (a time.Time bound mis-compares at the boundary; see the budget read notes).
 	GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error)
 	GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error)
-	// One currency by ISO code (full row), for the idempotency check in add-currency.
+	// One GLOBAL currency by ISO code (full row), for the idempotency check in
+	// add-currency.
 	GetCurrencyByCode(ctx context.Context, code string) (GetCurrencyByCodeRow, error)
 	// One currency by id, for embedding in another resource (e.g. the account
 	// result's currency block). name is NULL in practice; the app resolves the
 	// display name from the Intl table.
 	GetCurrencyByIDView(ctx context.Context, id string) (GetCurrencyByIDViewRow, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
-	// Read-model queries for the currency module (CQRS read side). Both currency
-	// endpoints are pure reads, so the whole module lives on the read side; there is
-	// no write aggregate. Kept separate from currencies.sql (the user-module lookup)
-	// to keep the read concern visibly distinct.
-	// All currencies ordered by code ASC (matches CurrencyRepository::getAll ->
-	// findBy([], ['code' => 'ASC'])). The name column is NULL for every row in
-	// practice; the app layer resolves the display name from the Intl table.
-	GetCurrencyListView(ctx context.Context) ([]GetCurrencyListViewRow, error)
+	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
+	// User currency management (per-user custom currencies). Global currencies
+	// have user_id NULL; custom currencies carry their owner id.
+	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
 	// Write-side queries for folders + the accounts_folders membership join
 	// (SQLite). A folder belongs to a user, has a position and an is_visible flag,
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
+	GetGlobalCurrencyIDByCode(ctx context.Context, code string) (string, error)
+	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
 	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
 	// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
 	// datetime TEXT, letting rows AT/after the boundary leak in (so "< Dec 1" wrongly
 	// returned a December date, snapping the rate period to the wrong month).
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
-	// All rate rows published on the single most-recent published_at date (matches
-	// CurrencyRateRepository::getAll(): find MAX(published_at), return every row on
-	// it). published_at is a DATE; the wire formats it as "Y-m-d 00:00:00".
+	// Latest rate row per (currency, base) pair. The previous single-latest-date
+	// form dropped any currency whose newest rate predates the newest OXR batch,
+	// which breaks backdated custom rates.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]CurrenciesRate, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module. The read-side query lives in
@@ -189,6 +194,15 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
+	// Read-model queries for the currency module (CQRS read side). Both currency
+	// endpoints are pure reads, so the whole module lives on the read side; there is
+	// no write aggregate. Kept separate from currencies.sql (the user-module lookup)
+	// to keep the read concern visibly distinct.
+	// Per-user visible currencies: all globals, the user's own customs (archived
+	// included, the settings page needs them), and foreign customs reachable via
+	// accounts or budgets shared to the user (budget currency and element
+	// currencies). Codes can repeat across owners, so id breaks ties.
+	GetUserCurrencyListView(ctx context.Context, arg GetUserCurrencyListViewParams) ([]GetUserCurrencyListViewRow, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
@@ -206,6 +220,7 @@ type Querier interface {
 	// write concerns visibly distinct.
 	// The user's display fields for get-user-data / the login response user object.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
+	GlobalCurrencyCodeExists(ctx context.Context, code string) (int64, error)
 	// Access-token queries (access_tokens): login sessions + personal access
 	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
 	// time.Time), not in SQL, to avoid engine date-format differences; the
@@ -225,6 +240,7 @@ type Querier interface {
 	InsertCorrectionTransaction(ctx context.Context, arg InsertCorrectionTransactionParams) error
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
+	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
 	// create endpoint takes a client-supplied operation id (category, tag, ...). The
 	// shared OperationGuard (internal/infra/operation) is built on these.
@@ -232,6 +248,7 @@ type Querier interface {
 	// (GetOperationId) so a duplicate create is rejected.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
@@ -277,8 +294,9 @@ type Querier interface {
 	// emitted query length when a query's leading comment contains multi-byte UTF-8
 	// (it truncates the SQL by the byte-vs-rune delta), which silently corrupts the
 	// generated statement.
-	// Every currency's id + code, used to build the rate loader's symbols list and
-	// the code->id map. Mirrors CurrencyRepository::getAll() (code projection only).
+	// Every GLOBAL currency's id + code, used to build the rate loader's symbols
+	// list and the code->id map. Custom (per-user) currencies must never reach the
+	// CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
 	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
 	// Read-side query for the transaction CSV export (SQLite). Returns the user's
@@ -309,6 +327,7 @@ type Querier interface {
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	// Replace-mode: point every transaction on the old category at the new one
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
@@ -316,7 +335,9 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	SetCurrencyArchived(ctx context.Context, arg SetCurrencyArchivedParams) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error

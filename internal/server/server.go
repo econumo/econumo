@@ -100,7 +100,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		Global: cfg.RateLimitGlobal,
 	}, clk)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
+		userRepo, txm, encodeSvc, hasher, accessTokens, NewUserCurrencyLookup(currencyLookup), budgetExistence,
 		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
@@ -132,7 +132,10 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 
 	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
-	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, cfg.IsDev())
+	currencyManageRepo := currencyrepo.NewManageRepo(cfg.DatabaseDriver, txm)
+	currencyManageSvc := appcurrency.NewManageService(currencyManageRepo, txm, opGuard, clk,
+		NewCurrencyProfileCurrency(userRepo), cfg.CurrencyBase)
+	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, currencyManageSvc, cfg.IsDev())
 
 	// Connection service is built first: the account result embeds sharedAccess[]
 	// and delete-account revokes the caller's own access.
@@ -183,7 +186,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		NewBudgetUserLookup(userRepo, clk),
 		NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
+		NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
 		txm, clk,
 	)
