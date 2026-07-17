@@ -2,9 +2,21 @@ import { Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
-import { applyLocale } from '@/components/LanguageSelector'
-import { getLocaleOptions } from '@/lib/config'
+import { getLocaleOptions, locale } from '@/lib/config'
+import { getToken } from '@/lib/storage'
+import { updateLanguage } from '@/api/user'
 import i18n from '@/app/i18n'
+
+export function applyLocale(value: string): void {
+  locale(value)
+  void i18n.changeLanguage(value)
+  document.documentElement.lang = value
+  // Best-effort server-side persist for future background emails; login
+  // capture self-corrects if this is offline/fails.
+  if (getToken() !== null) {
+    updateLanguage(value).catch(() => {})
+  }
+}
 
 // Two languages, pick-one: a short list of buttons with a check on the
 // active one, same idiom as SortDialog.

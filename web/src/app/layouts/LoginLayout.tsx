@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { useTranslation } from 'react-i18next'
+import { LanguageBadge } from '@/components/LanguageBadge'
 import { isRegistrationAllowed } from '@/lib/config'
 import { econumoPackage } from '@/lib/package'
 import { RouterPage } from '@/app/router-pages'
@@ -16,7 +17,14 @@ export function LoginLayout() {
     // the form lives on a white card over the brand gray so it reads as one
     // object instead of loose fields on a bare page
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-econumo-card p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
-      <img src={logo} width={194} height={20} alt={t('common.econumo.label')} />
+      {/* the badge hangs off the logo's right edge (absolute) so the logo
+          itself stays exactly page-centered */}
+      <div className="relative">
+        <img src={logo} width={194} height={20} alt={t('common.econumo.label')} />
+        <div className="absolute top-1/2 left-full ml-2 -translate-y-1/2">
+          <LanguageBadge />
+        </div>
+      </div>
       <div className="w-full max-w-sm rounded-xl border bg-background p-6 shadow-sm">
         <div className="mb-6 flex rounded-lg bg-econumo-card p-1">
           <NavLink to={RouterPage.LOGIN} className={tabClass}>

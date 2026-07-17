@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
-import { LanguageSelector } from '@/components/LanguageSelector'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { econumoPackage } from '@/lib/package'
@@ -77,18 +76,9 @@ export function RegistrationPage() {
     }
   })
 
-  // pinned to the viewport, not the card, so it never collides with the form
-  // above the sign-in/sign-up tabs and stays put across both auth pages
-  const languageSelector = (
-    <div className="fixed top-[max(env(safe-area-inset-top),1rem)] right-[max(env(safe-area-inset-right),1rem)] z-10">
-      <LanguageSelector />
-    </div>
-  )
-
   if (pkg.isPaywallEnabled) {
     return (
       <>
-        {languageSelector}
         <div className="flex flex-col items-center gap-4 text-center">
           <div dangerouslySetInnerHTML={{ __html: t('auth.page.sign_up.paywall.header') }} />
           <div dangerouslySetInnerHTML={{ __html: t('auth.page.sign_up.paywall.text') }} />
@@ -105,7 +95,6 @@ export function RegistrationPage() {
 
   return (
     <>
-      {languageSelector}
       <div className="flex w-full flex-col gap-4">
         <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
           <div className="flex flex-col gap-2">

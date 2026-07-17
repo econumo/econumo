@@ -8,7 +8,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
-import { LanguageSelector } from '@/components/LanguageSelector'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { getToken } from '@/lib/storage'
@@ -83,11 +82,6 @@ export function LoginPage() {
 
   return (
     <>
-      {/* pinned to the viewport, not the card, so it never collides with the
-          form above the sign-in/sign-up tabs and stays put across both pages */}
-      <div className="fixed top-[max(env(safe-area-inset-top),1rem)] right-[max(env(safe-area-inset-right),1rem)] z-10">
-        <LanguageSelector />
-      </div>
       <div className="flex w-full flex-col gap-4">
         {sessionExpired ? (
           <Alert variant="destructive">
