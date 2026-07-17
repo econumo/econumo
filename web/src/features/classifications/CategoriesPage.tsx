@@ -12,6 +12,7 @@ import {
   useUnarchiveCategory,
   useDeleteCategory,
   useOrderCategories,
+  useSortCategories,
 } from './queries'
 
 export function CategoriesPage() {
@@ -24,6 +25,7 @@ export function CategoriesPage() {
   const unarchiveCategory = useUnarchiveCategory()
   const deleteCategory = useDeleteCategory()
   const orderCategories = useOrderCategories()
+  const sortCategories = useSortCategories()
 
   const [dialog, setDialog] = useState<{ open: boolean; category: CategoryDto | null }>({ open: false, category: null })
 
@@ -48,6 +50,7 @@ export function CategoriesPage() {
         onDelete={(id) => deleteCategory.mutate(id)}
         onToggleArchive={(category) => (category.isArchived === 0 ? archiveCategory.mutate(category.id) : unarchiveCategory.mutate(category.id))}
         onOrder={(changes) => orderCategories.mutate(changes)}
+        onSort={(form) => sortCategories.mutate(form)}
       />
       <CategoryDialog
         open={dialog.open}

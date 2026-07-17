@@ -125,10 +125,15 @@
     },
     "sort": {
       "header": "Sort",
+      "period": "Usage period (months)",
       "mode": {
         "alphabet": {
           "asc": "Alphabetically (A-Z)",
           "desc": "Alphabetically (Z-A)"
+        },
+        "usage": {
+          "asc": "Least used first",
+          "desc": "Most used first"
         }
       }
     },

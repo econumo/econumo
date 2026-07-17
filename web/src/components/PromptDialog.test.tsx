@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PromptDialog } from './PromptDialog'
-import { SortDialog } from './SortDialog'
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -41,13 +40,4 @@ it('prompt seeds the initial value for edit mode', () => {
     <PromptDialog open onClose={() => {}} onSubmit={() => {}} title="Change name" inputLabel="Name" initialValue="General" submitLabel="Update" cancelLabel="Cancel" />,
   )
   expect(screen.getByLabelText('Name')).toHaveValue('General')
-})
-
-it('sort dialog picks a direction', async () => {
-  const user = userEvent.setup()
-  const onPick = vi.fn()
-  render(<SortDialog open onClose={() => {}} onPick={onPick} />)
-  expect(screen.getByText('Sort')).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Alphabetically (Z-A)' }))
-  expect(onPick).toHaveBeenCalledWith('desc')
 })

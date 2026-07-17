@@ -156,6 +156,17 @@ export function useOrderCategories() {
   })
 }
 
+export function useSortCategories() {
+  const ops = useEntityCacheOps('categories', false)
+  return useMutation({
+    mutationFn: categoryApi.sortCategoryList,
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.CATEGORY_ORDER_LIST)
+    },
+  })
+}
+
 export function useUpdatePayee() {
   const ops = useEntityCacheOps('payees', false)
   return useMutation({
@@ -211,6 +222,17 @@ export function useOrderPayees() {
   })
 }
 
+export function useSortPayees() {
+  const ops = useEntityCacheOps('payees', false)
+  return useMutation({
+    mutationFn: payeeApi.sortPayeeList,
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.PAYEE_ORDER_LIST)
+    },
+  })
+}
+
 export function useUpdateTag() {
   const ops = useEntityCacheOps('tags', true)
   return useMutation({
@@ -259,6 +281,17 @@ export function useOrderTags() {
   const ops = useEntityCacheOps('tags', false)
   return useMutation({
     mutationFn: tagApi.orderTagList,
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.TAG_ORDER_LIST)
+    },
+  })
+}
+
+export function useSortTags() {
+  const ops = useEntityCacheOps('tags', false)
+  return useMutation({
+    mutationFn: tagApi.sortTagList,
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.TAG_ORDER_LIST)

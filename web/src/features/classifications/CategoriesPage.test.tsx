@@ -199,12 +199,15 @@ it('delete posts mode=delete and scrubs the category from cached transactions', 
   })
 })
 
-it('A-Z sort posts the changed positions', async () => {
+it('A-Z sort posts the sort form to the server and applies the response', async () => {
   let body: unknown
   server.use(
-    http.post('*/api/v1/category/order-category-list', async ({ request }) => {
+    http.post('*/api/v1/category/sort-category-list', async ({ request }) => {
       body = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { items: [{ id: 'cat-new', ownerUserId: 'u1', name: 'New order', position: 0, type: 'expense', icon: 'home', isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }] },
+      })
     }),
   )
   const user = userEvent.setup()
@@ -212,13 +215,6 @@ it('A-Z sort posts the changed positions', async () => {
   await screen.findByText('Food')
   await user.click(screen.getByRole('button', { name: /Reorder list/ }))
   await user.click(await screen.findByRole('button', { name: 'Alphabetically (A-Z)' }))
-  // alphabetical: Food(0) Old(1) Salary(2); current: Food(0) Salary(1) Old(2)
-  await waitFor(() =>
-    expect(body).toEqual({
-      changes: [
-        { id: 'cat-archived', position: 1 },
-        { id: 'cat-salary', position: 2 },
-      ],
-    }),
-  )
+  await waitFor(() => expect(body).toEqual({ by: 'name', direction: 'asc' }))
+  expect(await screen.findByText('New order')).toBeInTheDocument()
 })

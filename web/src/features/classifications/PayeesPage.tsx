@@ -5,7 +5,7 @@ import { isNotEmpty, isValidPayeeName } from '@/lib/validation'
 import type { PayeeDto } from '@/api/dto/payee'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList } from './ClassificationList'
-import { usePayees, useCreatePayee, useUpdatePayee, useArchivePayee, useUnarchivePayee, useDeletePayee, useOrderPayees } from './queries'
+import { usePayees, useCreatePayee, useUpdatePayee, useArchivePayee, useUnarchivePayee, useDeletePayee, useOrderPayees, useSortPayees } from './queries'
 
 export function PayeesPage() {
   const { t } = useTranslation()
@@ -17,6 +17,7 @@ export function PayeesPage() {
   const unarchivePayee = useUnarchivePayee()
   const deletePayee = useDeletePayee()
   const orderPayees = useOrderPayees()
+  const sortPayees = useSortPayees()
 
   const [dialog, setDialog] = useState<{ open: boolean; payee: PayeeDto | null }>({ open: false, payee: null })
   const own = payees.filter((p) => !user || p.ownerUserId === user.id)
@@ -46,6 +47,7 @@ export function PayeesPage() {
         onDelete={(id) => deletePayee.mutate(id)}
         onToggleArchive={(payee) => (payee.isArchived === 0 ? archivePayee.mutate(payee.id) : unarchivePayee.mutate(payee.id))}
         onOrder={(changes) => orderPayees.mutate(changes)}
+        onSort={(form) => sortPayees.mutate(form)}
       />
       <PromptDialog
         open={dialog.open}
