@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
@@ -62,7 +63,7 @@ function SelectCard({ label, error, children }: { label: string; error?: string 
 }
 
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id: routeAccountId } = useParams()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
@@ -124,23 +125,23 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
   const amountErrors = (raw: string, withFormula: boolean): string | null => {
     if (!isNotEmpty(raw)) {
-      return t('elements.validation.required_field')
+      return t('common.validation.required_field')
     }
     if (withFormula) {
       if (!isValidFormula(raw)) {
-        return t('elements.validation.invalid_formula')
+        return t('common.validation.invalid_formula')
       }
       const evaluated = evaluatedNumber(raw)
       if (Number.isNaN(evaluated)) {
-        return t('elements.validation.invalid_number')
+        return t('common.validation.invalid_number')
       }
       return null
     }
     if (!isValidNumber(raw)) {
-      return t('elements.validation.invalid_number')
+      return t('common.validation.invalid_number')
     }
     if (!isValidDecimalNumber(raw)) {
-      return t('elements.validation.invalid_decimal_number')
+      return t('common.validation.invalid_decimal_number')
     }
     return null
   }
@@ -158,7 +159,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       }
     }
     if (!isTransfer && !form.categoryId) {
-      next.category = t('modals.transaction.form.category.validation.required_field')
+      next.category = t('transactions.modal.form.category.validation.required_field')
     }
     setErrors(next)
     return Object.keys(next).length === 0
@@ -186,7 +187,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
   const dateOnly = dayKey(form.date)
   const pending = createTransaction.isPending || updateTransaction.isPending
-  const title = form.isNew ? t('modals.transaction.create_form.header') : t('modals.transaction.update_form.header')
+  const title = form.isNew ? t('transactions.modal.create_form.header') : t('transactions.modal.update_form.header')
 
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,
@@ -206,10 +207,10 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="transaction-dialog-form" disabled={pending}>
-            {form.isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
+            {form.isNew ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -252,6 +253,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
               <Calendar
                 mode="single"
                 weekStartsOn={1}
+                locale={calendarLocale(i18n.language)}
                 selected={parseDateTime(dateOnly)}
                 onSelect={(day) => {
                   if (day) {
@@ -277,7 +279,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
             }`}
             onClick={() => setType(type)}
           >
-            {t(`modals.transaction.transaction_type.${type}`)}
+            {t(`transactions.modal.transaction_type.${type}`)}
           </button>
         ))}
       </div>
@@ -296,9 +298,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         ) : null}
         <div className={amountCardInputClass}>
           <Label htmlFor="tx-amount" className="sr-only">
-            {t('modals.transaction.form.amount.label')}
+            {t('transactions.modal.form.amount.label')}
           </Label>
-          <CalculatorInput id="tx-amount" autoFocus placeholder={t('modals.transaction.form.amount.label')} value={form.amount} onChange={setAmount} />
+          <CalculatorInput id="tx-amount" autoFocus placeholder={t('transactions.modal.form.amount.label')} value={form.amount} onChange={setAmount} />
         </div>
         {errors.amount ? <p className="pb-1 text-sm text-destructive">{errors.amount}</p> : null}
       </div>
@@ -308,7 +310,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           {/* Vue order: the exchanged amount lives right under the main amount, ABOVE the accounts */}
           {crossCurrency ? (
             <CardField
-              label={t('modals.transaction.form.amount_recipient.label', { currency: accountRecipient?.currency.code ?? '' })}
+              label={t('transactions.modal.form.amount_recipient.label', { currency: accountRecipient?.currency.code ?? '' })}
               htmlFor="tx-amount-recipient"
               error={errors.amountRecipient}
             >
@@ -324,7 +326,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-1">
               <div className="min-w-0 flex-1">
-                <SelectCard label={t('modals.transaction.form.from.label')}>
+                <SelectCard label={t('transactions.modal.form.from.label')}>
                   <EntitySelect
                     aria-label="from account"
                     value={form.accountId}
@@ -344,7 +346,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 <ArrowUpDown className="size-4" />
               </Button>
             </div>
-            <SelectCard label={t('modals.transaction.form.to.label')}>
+            <SelectCard label={t('transactions.modal.form.to.label')}>
               <EntitySelect
                 aria-label="to account"
                 value={form.accountRecipientId}
@@ -356,9 +358,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </>
       ) : (
         <>
-          <SelectCard label={t('modals.transaction.form.category.label')} error={errors.category}>
+          <SelectCard label={t('transactions.modal.form.category.label')} error={errors.category}>
               <EntitySelect
-                aria-label={t('modals.transaction.form.category.label')}
+                aria-label={t('transactions.modal.form.category.label')}
                 value={form.categoryId}
                 onChange={(id) => patch({ categoryId: id })}
                 options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
@@ -376,9 +378,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
               />
           </SelectCard>
 
-          <SelectCard label={t(`modals.transaction.form.payee.${form.type}`)}>
+          <SelectCard label={t(`transactions.modal.form.payee.${form.type}`)}>
               <EntitySelect
-                aria-label={t(`modals.transaction.form.payee.${form.type}`)}
+                aria-label={t(`transactions.modal.form.payee.${form.type}`)}
                 value={form.payeeId}
                 onChange={(id) => patch({ payeeId: id })}
                 options={currentPayees.map((p) => ({ value: p.id, label: p.name }))}
@@ -398,7 +400,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           </SelectCard>
 
           {isExpense ? (
-            <CardField label={t('pages.account.preview_transaction_modal.tags.label')}>
+            <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
               <div className="flex items-center gap-2">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-0.5">
                   {tagRow.map((tag) => {
@@ -429,7 +431,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                   <button
                     type="button"
                     aria-label="add tag"
-                    title={t('elements.button.add.label')}
+                    title={t('common.button.add.label')}
                     className="shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setAddTagOpen(true)}
                   >
@@ -442,11 +444,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </>
       )}
 
-      <CardField label={t('modals.transaction.form.description.label')} htmlFor="tx-description">
+      <CardField label={t('transactions.modal.form.description.label')} htmlFor="tx-description">
         <Textarea
           id="tx-description"
           className={`${cardFieldControlClass} min-h-16 resize-none`}
-          placeholder={t('modals.transaction.form.description.placeholder')}
+          placeholder={t('transactions.modal.form.description.placeholder')}
           value={form.description}
           onChange={(e) => patch({ description: e.target.value })}
         />

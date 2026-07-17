@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 export function PasswordInput({ className, ...props }: Omit<React.ComponentProps<'input'>, 'type'>) {
   const { t } = useTranslation()
   const [visible, setVisible] = useState(false)
-  const label = visible ? t('elements.password.hide') : t('elements.password.show')
+  const label = visible ? t('common.password.hide') : t('common.password.show')
 
   return (
     <div className="relative">

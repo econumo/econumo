@@ -15,7 +15,7 @@ func parseSpentAt(v string) (time.Time, error) {
 	t, err := time.Parse(datetime.Layout, v)
 	if err != nil {
 		return time.Time{}, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "date", Message: "Invalid date format, expected Y-m-d H:i:s"})
+			errs.FieldError{Key: "date", Message: "Invalid date format, expected Y-m-d H:i:s", Code: errs.CodeInvalidDatetimeFormat})
 	}
 	return t, nil
 }

@@ -187,8 +187,8 @@ type Querier interface {
 	// category/payee/tag (non-transfers). Listing filters by account id sets the
 	// app layer computes (excluding deleted/hidden-folder accounts).
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
-	GetUserByID(ctx context.Context, id string) (User, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
+	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
@@ -317,6 +317,7 @@ type Querier interface {
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error

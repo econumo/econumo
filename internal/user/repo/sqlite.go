@@ -12,11 +12,13 @@ type sqliteQuerier struct{}
 var _ querier = sqliteQuerier{}
 
 func (sqliteQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string) (userRow, error) {
-	return sqlitegen.New(db).GetUserByID(ctx, id)
+	row, err := sqlitegen.New(db).GetUserByID(ctx, id)
+	return userRow(row), err
 }
 
 func (sqliteQuerier) GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error) {
-	return sqlitegen.New(db).GetUserByIdentifier(ctx, identifier)
+	row, err := sqlitegen.New(db).GetUserByIdentifier(ctx, identifier)
+	return userRow(row), err
 }
 
 func (sqliteQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error) {
@@ -38,4 +40,8 @@ func (sqliteQuerier) GetUserOptions(ctx context.Context, db backend.DBTX, userID
 
 func (sqliteQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error {
 	return sqlitegen.New(db).UpsertUserOption(ctx, p)
+}
+
+func (sqliteQuerier) UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error {
+	return sqlitegen.New(db).UpdateUserLanguage(ctx, p)
 }

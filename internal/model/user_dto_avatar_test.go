@@ -14,10 +14,10 @@ func TestUpdateAvatarRequestValidate(t *testing.T) {
 		wantFields map[string]string // key -> code
 	}{
 		{"valid", model.UpdateAvatarRequest{Icon: "face", Color: "fuchsia"}, nil},
-		{"both blank", model.UpdateAvatarRequest{}, map[string]string{"icon": "IS_BLANK_ERROR", "color": "IS_BLANK_ERROR"}},
-		{"blank icon", model.UpdateAvatarRequest{Color: "red"}, map[string]string{"icon": "IS_BLANK_ERROR"}},
-		{"blank color", model.UpdateAvatarRequest{Icon: "face"}, map[string]string{"color": "IS_BLANK_ERROR"}},
-		{"whitespace icon", model.UpdateAvatarRequest{Icon: "   ", Color: "red"}, map[string]string{"icon": "IS_BLANK_ERROR"}},
+		{"both blank", model.UpdateAvatarRequest{}, map[string]string{"icon": errs.CodeIsBlank, "color": errs.CodeIsBlank}},
+		{"blank icon", model.UpdateAvatarRequest{Color: "red"}, map[string]string{"icon": errs.CodeIsBlank}},
+		{"blank color", model.UpdateAvatarRequest{Icon: "face"}, map[string]string{"color": errs.CodeIsBlank}},
+		{"whitespace icon", model.UpdateAvatarRequest{Icon: "   ", Color: "red"}, map[string]string{"icon": errs.CodeIsBlank}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

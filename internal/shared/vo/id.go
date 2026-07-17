@@ -33,7 +33,7 @@ func NewId() Id {
 func ParseId(s string) (Id, error) {
 	u, err := uuid.Parse(s)
 	if err != nil {
-		return Id{}, errs.NewValidation("invalid id")
+		return Id{}, &errs.ValidationError{Msg: "invalid id", MsgCode: errs.CodeInvalidID}
 	}
 	// Normalize to canonical lowercase string form.
 	return Id{value: u.String()}, nil

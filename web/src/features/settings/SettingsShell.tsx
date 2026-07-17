@@ -48,7 +48,7 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
     <div className="flex h-full flex-col gap-3 p-4">
       {isCompact ? (
         <header className="flex items-center gap-2">
-          <Button type="button" variant="ghost" size="icon" aria-label="back" title={t('elements.button.back.label')} onClick={goBack}>
+          <Button type="button" variant="ghost" size="icon" aria-label="back" title={t('common.button.back.label')} onClick={goBack}>
             <ChevronLeft className="size-5" />
           </Button>
           <h1 className="flex-1 truncate text-center text-lg">{title}</h1>
@@ -58,7 +58,7 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
         // Vue anatomy: breadcrumb chip, large light title, wide action button UNDER the title
         <header className="flex flex-col gap-1">
           <nav className="flex items-center gap-1">
-            {(crumbs ?? [{ label: t('pages.settings.settings.header_desktop'), to: '/settings' }]).map((crumb, i) => (
+            {(crumbs ?? [{ label: t('settings.page.header_desktop'), to: '/settings' }]).map((crumb, i) => (
               <Fragment key={crumb.to}>
                 {i > 0 ? <ChevronRight className="size-3 text-muted-foreground" aria-hidden="true" /> : null}
                 <Link

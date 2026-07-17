@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -162,7 +163,7 @@ func newCurrencyCode(v string) (string, error) {
 	c := strings.ToUpper(strings.TrimSpace(v))
 	if len([]rune(c)) != 3 {
 		return "", errs.NewValidation("CurrencyCode is incorrect",
-			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect"})
+			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 	}
 	return c, nil
 }
@@ -171,9 +172,21 @@ func newCurrencyCode(v string) (string, error) {
 func newReportPeriod(v string) (string, error) {
 	if v != model.DefaultReportPeriod {
 		return "", errs.NewValidation("ReportPeriod is incorrect",
-			errs.FieldError{Key: "value", Message: "ReportPeriod is incorrect"})
+			errs.FieldError{Key: "value", Message: "ReportPeriod is incorrect", Code: errs.CodeUserReportPeriodInvalid})
 	}
 	return v, nil
+}
+
+// newLanguage enforces the language invariant: must be a member of
+// i18n.Supported.
+func newLanguage(v string) (string, error) {
+	for _, lang := range i18n.Supported {
+		if v == lang {
+			return v, nil
+		}
+	}
+	return "", errs.NewValidation("Language is incorrect",
+		errs.FieldError{Key: "language", Message: "Language is incorrect", Code: errs.CodeUserLanguageInvalid})
 }
 
 // newSalt generates a salt as sha1(10 random bytes) -> 40 hex chars. See

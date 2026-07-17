@@ -30,6 +30,11 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
+	// UpdateLanguage persists the user's last selected UI language. Write-only:
+	// nothing reads the column yet (future background email rendering). Kept out
+	// of Save/UpsertUser so profile mutations cannot clobber it.
+	UpdateLanguage(ctx context.Context, id vo.Id, language string) error
+
 	// ListIDs returns all user ids (for the optional connect-users flow on
 	// registration).
 	ListIDs(ctx context.Context) ([]vo.Id, error)

@@ -118,7 +118,7 @@ export function EntitySelect({
           id={id}
           aria-label={ariaLabel}
           placeholder={
-            open ? (onCreate ? t('elements.select.create_placeholder') : t('elements.select.search_placeholder')) : (placeholder ?? '')
+            open ? (onCreate ? t('common.select.create_placeholder') : t('common.select.search_placeholder')) : (placeholder ?? '')
           }
           className="h-full w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
           onKeyDown={(e) => {
@@ -151,7 +151,7 @@ export function EntitySelect({
               ) : row.icon ? (
                 <EntityIcon name={row.icon} className="text-base text-muted-foreground" />
               ) : null}
-              {row.create ? `${t('elements.button.add.label')} «${row.label}»` : row.label}
+              {row.create ? `${t('common.button.add.label')} «${row.label}»` : row.label}
             </ComboboxItem>
           )}
         </ComboboxList>
@@ -159,7 +159,7 @@ export function EntitySelect({
         {onCreate && !canCreate ? (
           <div className="flex items-center gap-1.5 border-t px-3 py-2 text-xs text-muted-foreground">
             <Plus className="size-3.5" />
-            {t('elements.select.create_hint')}
+            {t('common.select.create_hint')}
           </div>
         ) : null}
       </ComboboxContent>

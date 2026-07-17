@@ -40,7 +40,7 @@ interface BudgetTransactionsDialogProps {
 }
 
 export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTransactionsDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const { data: currencies = [] } = useCurrencies()
   const { data: user } = useUserData()
@@ -129,10 +129,10 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
     if (day !== currentDay) {
       currentDay = day
       const label = isToday(day)
-        ? t('pages.account.transaction_list.today')
+        ? t('accounts.page.transaction_list.today')
         : isYesterday(day)
-          ? t('pages.account.transaction_list.yesterday')
-          : formatDayHeading(day)
+          ? t('accounts.page.transaction_list.yesterday')
+          : formatDayHeading(day, i18n.language)
       rows.push({ kind: 'sep', key: `sep-${day}`, label })
     }
     rows.push({ kind: 'tx', key: tx.id, tx })
@@ -147,7 +147,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
             <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="loading" />
           </div>
         ) : rows.length === 0 ? (
-          <p className="py-2 text-sm text-muted-foreground">{t('blocks.list.list_empty')}</p>
+          <p className="py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
         ) : (
           <div className="max-h-80 overflow-y-auto scrollbar-slim">
             {rows.map((row) =>
@@ -163,7 +163,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
                     <button
                       key={row.key}
                       type="button"
-                      title={t('pages.account.preview_transaction_modal.header')}
+                      title={t('accounts.page.preview_transaction_modal.header')}
                       className="flex w-full items-center gap-2 rounded-md px-1 py-1.5 text-sm hover:bg-accent/50"
                       data-testid={`budget-tx-${row.key}`}
                       onClick={() => setPreview(toViewTransaction(tx))}
@@ -220,9 +220,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
             })
           }
         }}
-        question={t('pages.account.delete_transaction_modal.question')}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('accounts.page.delete_transaction_modal.question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </>

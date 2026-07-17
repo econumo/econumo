@@ -7,7 +7,8 @@
 // Currently it carries the caller's timezone (the X-Timezone request header,
 // resolved to a *time.Location), used to compute day boundaries — e.g. an
 // account's "balance as of end of today" — in the user's local day rather than
-// the server's UTC day.
+// the server's UTC day; and the caller's UI language (resolved from
+// Accept-Language), used to select translated backend text (e.g. emails).
 package reqctx
 
 import (
@@ -22,6 +23,7 @@ type ctxKey int
 const (
 	locationKey ctxKey = iota
 	logAttrsKey
+	languageKey
 )
 
 // WithLocation returns a context carrying the request's timezone.
@@ -36,6 +38,20 @@ func Location(ctx context.Context) *time.Location {
 		return loc
 	}
 	return time.UTC
+}
+
+// WithLanguage returns a context carrying the caller's UI language (a
+// supported two-letter tag resolved from Accept-Language by the middleware).
+func WithLanguage(ctx context.Context, lang string) context.Context {
+	return context.WithValue(ctx, languageKey, lang)
+}
+
+// Language returns the request's language, or "en" when none was set.
+func Language(ctx context.Context) string {
+	if lang, ok := ctx.Value(languageKey).(string); ok && lang != "" {
+		return lang
+	}
+	return "en"
 }
 
 // logAccumulator is a request-scoped, pointer-backed bag of structured log

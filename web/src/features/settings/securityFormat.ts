@@ -12,14 +12,17 @@ export function parseUtcDateTime(s: string): Date {
 
 // relativeTime renders "just now" / "5 minutes ago" / "3 days ago" for the
 // sessions list. Server touch-throttling makes sub-minute precision noise, so
-// anything under a minute is "just now".
-export function relativeTime(utcDatetime: string, now: Date = new Date()): string {
+// anything under a minute is the caller-supplied justNow text (catalogue-translated).
+export function relativeTime(
+  utcDatetime: string,
+  { lang = 'en', justNow = 'just now', now = new Date() }: { lang?: string; justNow?: string; now?: Date } = {},
+): string {
   const then = parseUtcDateTime(utcDatetime)
   const seconds = Math.max(0, Math.floor((now.getTime() - then.getTime()) / 1000))
   if (seconds < 60) {
-    return 'just now'
+    return justNow
   }
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
+  const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'always' })
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) {
     return rtf.format(-minutes, 'minute')

@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -434,6 +435,30 @@ func TestRequireUser_UserInContext_ReturnsID(t *testing.T) {
 	// nothing.
 	if rec.Body.Len() != 0 {
 		t.Fatalf("body=%q want empty (nothing written)", rec.Body.String())
+	}
+}
+
+func TestLanguageMiddleware(t *testing.T) {
+	cases := []struct{ header, want string }{
+		{"", "en"},
+		{"ru", "ru"},
+		{"ru-RU,ru;q=0.9,en;q=0.8", "ru"},
+		{"de-DE,de;q=0.9", "en"},
+		{"EN-us", "en"},
+	}
+	for _, tc := range cases {
+		var got string
+		h := Language([]string{"en", "ru"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			got = reqctx.Language(r.Context())
+		}))
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		if tc.header != "" {
+			r.Header.Set("Accept-Language", tc.header)
+		}
+		h.ServeHTTP(httptest.NewRecorder(), r)
+		if got != tc.want {
+			t.Errorf("header %q: language = %q, want %q", tc.header, got, tc.want)
+		}
 	}
 }
 
