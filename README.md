@@ -78,10 +78,10 @@ $ docker compose exec econumo /app/econumo user:create "Name" user@example.com p
 
 ### Localization
 
-Econumo speaks **English** and **Russian**. The web app follows your browser
-language on first visit; switch it any time via the badge next to the logo on
-the sign-in page, or in **Settings → Profile → Language**. The
-password-recovery email is localized too.
+The web app follows your browser language on first visit; switch it any time
+via the badge next to the logo on the sign-in page, or in
+**Settings → Profile → Language**. The password-recovery email is localized
+too.
 
 All translations live in [`locales/`](locales/) — one JSON catalogue per
 language, shared by the backend and the web app and managed right in the
