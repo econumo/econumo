@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { RouterPage } from '@/app/router-pages'
 import type { CreatedPersonalTokenDto, PersonalTokenDto } from '@/api/dto/user'
+import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime } from '@/lib/datetime'
 import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } from './security'
 import { parseUtcDateTime, relativeTime } from './securityFormat'
@@ -34,7 +35,7 @@ export function expiresAtFrom(choice: ExpiryChoice, customDate: string, now: Dat
 }
 
 export function PersonalTokensPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: tokens } = usePersonalTokens()
   const createToken = useCreatePersonalToken()
   const revokeToken = useRevokePersonalToken()
@@ -195,6 +196,7 @@ export function PersonalTokensPage() {
                       <Calendar
                         mode="single"
                         weekStartsOn={1}
+                        locale={calendarLocale(i18n.language)}
                         selected={customDate ? parseDateTime(customDate) : undefined}
                         onSelect={(day) => {
                           if (day) {

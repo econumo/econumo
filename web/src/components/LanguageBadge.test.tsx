@@ -31,9 +31,9 @@ it('switches language via the dialog, persists it, and updates <html lang>', asy
   await waitFor(() => expect(i18n.language).toBe('en'))
 })
 
-it('shows the current locale code on the badge', async () => {
+it('shows the current locale short code on the badge', async () => {
   render(<LanguageBadge />)
-  expect(screen.getByRole('button', { name: /language/i })).toHaveTextContent('en')
+  expect(screen.getByRole('button', { name: /language/i })).toHaveTextContent('EN')
 })
 
 it('persists the choice to the API when authenticated', async () => {

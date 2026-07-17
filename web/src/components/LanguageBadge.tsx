@@ -18,7 +18,7 @@ export function LanguageBadge() {
           title={t('settings.language.menu_item')}
           onClick={() => setOpen(true)}
         >
-          {current?.value ?? 'en'}
+          {current?.short ?? 'EN'}
         </button>
       </Badge>
       {open ? <LanguageDialog open onClose={() => setOpen(false)} /> : null}

@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
@@ -62,7 +63,7 @@ function SelectCard({ label, error, children }: { label: string; error?: string 
 }
 
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id: routeAccountId } = useParams()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
@@ -252,6 +253,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
               <Calendar
                 mode="single"
                 weekStartsOn={1}
+                locale={calendarLocale(i18n.language)}
                 selected={parseDateTime(dateOnly)}
                 onSelect={(day) => {
                   if (day) {
