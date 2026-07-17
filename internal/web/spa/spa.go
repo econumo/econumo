@@ -43,6 +43,7 @@ func Handler(dir string) http.Handler {
 		fsPath := filepath.Join(dir, filepath.FromSlash(rel))
 
 		if fileExists(fsPath) {
+			setCacheControl(w, cleaned)
 			fs.ServeHTTP(w, r)
 			return
 		}
@@ -62,8 +63,25 @@ func Handler(dir string) http.Handler {
 		}
 
 		// SPA fallback: serve index.html for client-side routes.
+		setCacheControl(w, "/"+indexFile)
 		http.ServeFile(w, r, filepath.Join(dir, indexFile))
 	})
+}
+
+// setCacheControl picks the caching policy by path. Vite-fingerprinted files
+// under /assets/ are content-addressed, so they never change and cache forever.
+// Everything else (index.html, econumo-config.js, manifest, icons) keeps its
+// name across deploys and must revalidate on every load: without an explicit
+// Cache-Control, iOS home-screen web apps heuristically cache the shell across
+// launches and keep running the old bundle until the icon is re-added.
+// no-cache still allows storing — revalidation is a cheap 304 via
+// Last-Modified/If-Modified-Since.
+func setCacheControl(w http.ResponseWriter, cleaned string) {
+	if strings.HasPrefix(cleaned, "/assets/") {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-cache")
 }
 
 // isReservedPath reports whether the path belongs to a server-side route group
