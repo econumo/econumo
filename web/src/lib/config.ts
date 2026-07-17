@@ -73,12 +73,20 @@ export function isHttps(): boolean {
 }
 
 export function locale(value?: string): string {
+  const supported = new Set(getLocaleOptions().map((o) => o.value))
   if (value === undefined) {
     const stored = getItem('locale')
-    if (stored) {
-      return stored as string
+    if (typeof stored === 'string' && supported.has(stored)) {
+      return stored
     }
-    return (navigator.language || 'en').split('-')[0] || 'en'
+    const candidates = navigator.languages?.length ? navigator.languages : [navigator.language]
+    for (const tag of candidates) {
+      const primary = (tag || '').toLowerCase().split('-')[0]
+      if (supported.has(primary)) {
+        return primary
+      }
+    }
+    return 'en'
   }
   setItem('locale', value)
   return value

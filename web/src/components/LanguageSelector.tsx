@@ -3,12 +3,19 @@ import { Globe } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { getLocaleOptions, locale } from '@/lib/config'
+import { getToken } from '@/lib/storage'
+import { updateLanguage } from '@/api/user'
 import i18n from '@/app/i18n'
 
 export function applyLocale(value: string): void {
   locale(value)
   void i18n.changeLanguage(value)
   document.documentElement.lang = value
+  // Best-effort server-side persist for future background emails; login
+  // capture self-corrects if this is offline/fails.
+  if (getToken() !== null) {
+    updateLanguage(value).catch(() => {})
+  }
 }
 
 export function LanguageSelector() {
