@@ -4,7 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
+import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { SettingsPage } from './SettingsPage'
+
+const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
+vi.mock('@/hooks/useAvailableUpdate', () => ({
+  useAvailableUpdate: () => mockUpdate.value,
+}))
 
 function mockViewport(compact: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -36,6 +42,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
+  mockUpdate.value = null
 })
 
 it('renders the menu rows with exact labels and navigates', async () => {
@@ -84,4 +91,18 @@ it('Import CSV and Export CSV rows open their dialogs', async () => {
   renderPage()
   await user.click(await screen.findByText('Import CSV'))
   expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
+})
+
+it('shows the new-version link when an update is available', async () => {
+  mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
+  renderPage()
+  const link = await screen.findByRole('link', { name: /v9\.9\.9/ })
+  expect(link).toHaveAttribute('href', 'https://econumo.com/releases/v9.9.9/')
+  expect(link).toHaveAttribute('target', '_blank')
+})
+
+it('shows no new-version link when no update is available', async () => {
+  renderPage()
+  expect(await screen.findByText('Settings')).toBeInTheDocument()
+  expect(screen.queryByText(/New version/)).not.toBeInTheDocument()
 })

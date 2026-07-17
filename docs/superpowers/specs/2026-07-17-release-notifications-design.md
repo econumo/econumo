@@ -93,8 +93,10 @@ DTOs live in `internal/model/system_dto.go`; routes in
 
 ### Config
 
-- `ECONUMO_CHECK_UPDATES` — bool, default `true`; parsed in `config.Load`
-  (malformed value fails at boot, consistent with other config).
+- `ECONUMO_CHECK_UPDATES` — bool, default `true`; parsed in `config.Load` via
+  the repo's lenient `getBool` (malformed values fall back to the default
+  `true`, consistent with `ECONUMO_DEBUG` / `ECONUMO_ALLOW_REGISTRATION` and
+  the repo's other boolean flags — it does not fail at boot).
 - The feed URL is a constant; tests override it via the service constructor
   (no env knob).
 
