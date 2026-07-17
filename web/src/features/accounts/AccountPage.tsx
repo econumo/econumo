@@ -15,7 +15,7 @@ import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
 import { useUserData } from '@/features/user/queries'
-import { useDeleteTransaction } from '@/features/transactions/queries'
+import { useAccountTransactionPager, useDeleteTransaction } from '@/features/transactions/queries'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
@@ -28,7 +28,7 @@ import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDi
 // filtering happens on the data, not the DOM.
 const LIST_CHUNK = 100
 
-function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; children: (entry: DailyListEntry) => ReactNode }) {
+function WindowedEntries({ entries, onExhausted, children }: { entries: DailyListEntry[]; onExhausted?: () => void; children: (entry: DailyListEntry) => ReactNode }) {
   const [visibleCount, setVisibleCount] = useState(LIST_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const hasMore = visibleCount < entries.length
@@ -44,7 +44,11 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
     const observer = new IntersectionObserver(
       (hits) => {
         if (hits.some((hit) => hit.isIntersecting)) {
-          setVisibleCount((count) => count + LIST_CHUNK)
+          if (hasMore) {
+            setVisibleCount((count) => count + LIST_CHUNK)
+          } else {
+            onExhausted?.()
+          }
         }
       },
       { root: sentinel.parentElement, rootMargin: '600px' },
@@ -53,12 +57,12 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
     return () => observer.disconnect()
     // re-observe after each growth: the sentinel may still be in range and the
     // observer only fires on intersection *changes*
-  }, [hasMore, visibleCount])
+  }, [hasMore, visibleCount, onExhausted])
 
   return (
     <>
       {entries.slice(0, visibleCount).map(children)}
-      {hasMore ? <div ref={sentinelRef} aria-hidden="true" className="h-px" /> : null}
+      {hasMore || onExhausted ? <div ref={sentinelRef} aria-hidden="true" className="h-px" /> : null}
     </>
   )
 }
@@ -79,6 +83,7 @@ export function AccountPage() {
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const entries = useAccountTransactions(id, search)
+  const pager = useAccountTransactionPager(id)
 
   const account = accounts?.find((a) => a.id === id)
   if (!account) {
@@ -218,7 +223,11 @@ export function AccountPage() {
       )}
 
       <div className="flex-1 overflow-y-auto">
-        <WindowedEntries key={account.id} entries={entries}>
+        <WindowedEntries
+          key={account.id}
+          entries={entries}
+          onExhausted={pager.hasMore && search.trim() === '' ? pager.fetchNext : undefined}
+        >
           {(entry) =>
             entry.kind === 'separator' ? (
             <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">

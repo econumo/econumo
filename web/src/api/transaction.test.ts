@@ -36,9 +36,9 @@ it('getTransactionList coerces amount strings', async () => {
       HttpResponse.json({ success: true, message: '', data: { items: [wireTx] } }),
     ),
   )
-  const items = await transactionApi.getTransactionList()
-  expect(items[0].amount).toBe(9.99)
-  expect(items[0].amountRecipient).toBe(9.99)
+  const response = await transactionApi.getTransactionList()
+  expect(response.items[0].amount).toBe(9.99)
+  expect(response.items[0].amountRecipient).toBe(9.99)
 })
 
 it('createTransaction returns {item, accounts} both coerced', async () => {

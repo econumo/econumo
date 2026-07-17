@@ -32,6 +32,24 @@ func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.dev, h.svc.OrderCategoryList)
 }
 
+// SortCategoryList handles POST /api/v1/category/sort-category-list (auth).
+//
+// @Summary     Sort the category list
+// @Description Reorders the user's categories server-side by name or by usage over a sliding window, and returns the full ordered list.
+// @Tags        Category
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SortCategoryListRequest true "Sort category list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SortCategoryListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/category/sort-category-list [post]
+func (h *Handlers) SortCategoryList(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.dev, h.svc.SortCategoryList)
+}
+
 // GetCategoryList handles GET /api/v1/category/get-category-list (auth). The
 // request has no body, so there is nothing to decode; the handler returns the
 // user's categories ordered by position.

@@ -19,6 +19,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		mux.Handle("POST /api/v1/tag/unarchive-tag", auth(h.UnarchiveTag))
 		mux.Handle("POST /api/v1/tag/delete-tag", auth(h.DeleteTag))
 		mux.Handle("POST /api/v1/tag/order-tag-list", auth(h.OrderTagList))
+		mux.Handle("POST /api/v1/tag/sort-tag-list", auth(h.SortTagList))
 		mux.Handle("GET /api/v1/tag/get-tag-list", auth(h.GetTagList))
 	}
 }

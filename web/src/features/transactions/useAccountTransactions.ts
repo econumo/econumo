@@ -1,14 +1,18 @@
 import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { AccountDto } from '@/api/dto/account'
 import type { CategoryDto } from '@/api/dto/category'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { TagDto } from '@/api/dto/tag'
 import type { TransactionDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
+import * as transactionApi from '@/api/transaction'
+import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
-import { useTransactions } from './queries'
+import { useTransactionPages, useTransactions } from './queries'
+import { byNewestFirst, isOlderThan } from './window'
 
 export interface ViewTransaction extends TransactionDto {
   account?: AccountDto
@@ -55,17 +59,37 @@ function haystack(tx: ViewTransaction): string {
 
 export function useAccountTransactions(accountId: Id | undefined, search: string): DailyListEntry[] {
   const { data: transactions } = useTransactions()
+  const { data: pages } = useTransactionPages()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
 
+  const searching = search.trim() !== ''
+  // Search runs over the account's FULL list, fetched on demand (the window
+  // in memory is partial). Not persisted (see queryPersist).
+  const { data: searchItems } = useQuery({
+    queryKey: queryKeys.transactionSearch(accountId ?? ''),
+    queryFn: () => transactionApi.getTransactionList({ accountId }).then((r) => r.items),
+    enabled: searching && !!accountId,
+    staleTime: TEN_MINUTES,
+    gcTime: TEN_MINUTES,
+  })
+
   return useMemo(() => {
-    if (!transactions || !accountId) {
+    if (!accountId) {
       return []
     }
-    const enriched: ViewTransaction[] = transactions
+    const state = pages?.[accountId]
+    const horizon = !searching && state?.hasMore ? state.oldestLoaded : null
+    const source = searching ? searchItems : transactions
+    if (!source) {
+      return []
+    }
+    const enriched: ViewTransaction[] = [...source]
+      .sort(byNewestFirst)
       .filter((tx) => tx.accountId === accountId || tx.accountRecipientId === accountId)
+      .filter((tx) => !horizon || !isOlderThan(tx, horizon))
       .map((tx) => ({
         ...tx,
         account: accounts?.find((a) => a.id === tx.accountId),
@@ -94,7 +118,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
       entries.push({ kind: 'transaction', transaction: tx })
     }
     return entries
-  }, [transactions, accounts, categories, payees, tags, accountId, search])
+  }, [transactions, searchItems, searching, pages, accounts, categories, payees, tags, accountId, search])
 }
 
 export interface TitleInfo {

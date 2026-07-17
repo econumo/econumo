@@ -2302,6 +2302,75 @@
                 }
             }
         },
+        "/api/v1/category/sort-category-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Reorders the user's categories server-side by name or by usage over a sliding window, and returns the full ordered list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Category"
+                ],
+                "summary": "Sort the category list",
+                "parameters": [
+                    {
+                        "description": "Sort category list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortCategoryListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortCategoryListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/category/unarchive-category": {
             "post": {
                 "security": [
@@ -3312,6 +3381,75 @@
                 }
             }
         },
+        "/api/v1/payee/sort-payee-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Reorders the user's payees server-side by name or by usage over a sliding window, and returns the full ordered list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payee"
+                ],
+                "summary": "Sort the payee list",
+                "parameters": [
+                    {
+                        "description": "Sort payee list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortPayeeListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortPayeeListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/payee/unarchive-payee": {
             "post": {
                 "security": [
@@ -3775,6 +3913,75 @@
                 }
             }
         },
+        "/api/v1/tag/sort-tag-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Reorders the user's tags server-side by name or by usage over a sliding window, and returns the full ordered list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tag"
+                ],
+                "summary": "Sort the tag list",
+                "parameters": [
+                    {
+                        "description": "Sort tag list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortTagListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortTagListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tag/unarchive-tag": {
             "post": {
                 "security": [
@@ -4134,6 +4341,24 @@
                         "type": "string",
                         "description": "Period end (Y-m-d H:i:s or Y-m-d)",
                         "name": "periodEnd",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Page size (1-500); requires accountId. Keyset page mode.",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Opaque page cursor from a previous response; requires limit",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Newest N transactions per visible account (1-500); exclusive with all other params",
+                        "name": "perAccountLimit",
                         "in": "query"
                     }
                 ],
@@ -6874,11 +7099,20 @@
         "model.GetTransactionListResult": {
             "type": "object",
             "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TransactionAccountPageResult"
+                    }
+                },
                 "items": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.TransactionResult"
                     }
+                },
+                "page": {
+                    "$ref": "#/definitions/model.TransactionPageResult"
                 }
             }
         },
@@ -7517,6 +7751,81 @@
         "model.ShowFolderResult": {
             "type": "object"
         },
+        "model.SortCategoryListRequest": {
+            "type": "object",
+            "properties": {
+                "by": {
+                    "type": "string"
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "periodMonths": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.SortCategoryListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategoryResult"
+                    }
+                }
+            }
+        },
+        "model.SortPayeeListRequest": {
+            "type": "object",
+            "properties": {
+                "by": {
+                    "type": "string"
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "periodMonths": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.SortPayeeListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PayeeResult"
+                    }
+                }
+            }
+        },
+        "model.SortTagListRequest": {
+            "type": "object",
+            "properties": {
+                "by": {
+                    "type": "string"
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "periodMonths": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.SortTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TagResult"
+                    }
+                }
+            }
+        },
         "model.StructureResult": {
             "type": "object",
             "properties": {
@@ -7556,6 +7865,31 @@
                     "type": "integer"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TransactionAccountPageResult": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TransactionPageResult": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "nextCursor": {
                     "type": "string"
                 }
             }

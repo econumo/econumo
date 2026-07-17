@@ -4,6 +4,7 @@
 package model
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -129,17 +130,43 @@ type DeleteTransactionResult struct {
 	Accounts []AccountResult   `json:"accounts"`
 }
 
-// TransactionListRequest is the get-transaction-list query (all optional): by
-// accountId, or by [periodStart, periodEnd), or neither (all visible).
+// TransactionListRequest is the get-transaction-list query (all optional).
+// Modes: accountId alone (full per-account list), periodStart+periodEnd
+// (window across visible accounts), accountId+limit[+cursor] (keyset page),
+// perAccountLimit (newest N per visible account), or nothing (all visible).
 type TransactionListRequest struct {
-	AccountId   string `json:"accountId"`
-	PeriodStart string `json:"periodStart"`
-	PeriodEnd   string `json:"periodEnd"`
+	AccountId       string `json:"accountId"`
+	PeriodStart     string `json:"periodStart"`
+	PeriodEnd       string `json:"periodEnd"`
+	Limit           string `json:"limit"`
+	Cursor          string `json:"cursor"`
+	PerAccountLimit string `json:"perAccountLimit"`
 }
 
-// Validate: every field is optional, but when present accountId must be a UUID
-// and periodStart/periodEnd must match the strict "Y-m-d H:i:s" datetime format.
-// The exact messages and field grouping are wire-frozen.
+// boundedInt reports whether v parses as an integer in [1, 500].
+func boundedInt(v string) bool {
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	return err == nil && n >= 1 && n <= 500
+}
+
+// LimitValue returns the parsed limit; call only after Validate succeeded.
+func (r TransactionListRequest) LimitValue() int {
+	n, _ := strconv.Atoi(strings.TrimSpace(r.Limit))
+	return n
+}
+
+// PerAccountLimitValue returns the parsed perAccountLimit; call only after
+// Validate succeeded.
+func (r TransactionListRequest) PerAccountLimitValue() int {
+	n, _ := strconv.Atoi(strings.TrimSpace(r.PerAccountLimit))
+	return n
+}
+
+// Validate: every field is optional, but when present accountId must be a UUID,
+// periodStart/periodEnd must match the strict "Y-m-d H:i:s" datetime format,
+// limit/perAccountLimit must be integers in [1,500], and the paging params must
+// form a consistent mode (see the struct doc). The exact messages and field
+// grouping are wire-frozen.
 func (r TransactionListRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.AccountId) != "" {
@@ -158,13 +185,52 @@ func (r TransactionListRequest) Validate() error {
 			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value is not a valid datetime.", Code: errs.CodeInvalidDatetime})
 		}
 	}
+	if r.PerAccountLimit != "" {
+		if !boundedInt(r.PerAccountLimit) {
+			fields = append(fields, errs.FieldError{Key: "perAccountLimit", Message: "This value should be an integer between 1 and 500."})
+		}
+		if r.AccountId != "" || r.Limit != "" || r.Cursor != "" || r.PeriodStart != "" || r.PeriodEnd != "" {
+			fields = append(fields, errs.FieldError{Key: "perAccountLimit", Message: "perAccountLimit cannot be combined with other parameters."})
+		}
+	}
+	if r.Limit != "" {
+		if !boundedInt(r.Limit) {
+			fields = append(fields, errs.FieldError{Key: "limit", Message: "This value should be an integer between 1 and 500."})
+		}
+		if r.AccountId == "" {
+			fields = append(fields, errs.FieldError{Key: "limit", Message: "limit requires accountId."})
+		}
+		if r.PeriodStart != "" || r.PeriodEnd != "" {
+			fields = append(fields, errs.FieldError{Key: "limit", Message: "limit cannot be combined with periodStart or periodEnd."})
+		}
+	}
+	if r.Cursor != "" && r.Limit == "" {
+		fields = append(fields, errs.FieldError{Key: "cursor", Message: "cursor requires limit."})
+	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Form validation error", fields...)
 	}
 	return nil
 }
 
-// GetTransactionListResult is the response: {items: [...]}.
+// TransactionPageResult is the page-mode pagination block.
+type TransactionPageResult struct {
+	NextCursor *string `json:"nextCursor"`
+	HasMore    bool    `json:"hasMore"`
+}
+
+// TransactionAccountPageResult is one account's pagination state in boot mode.
+type TransactionAccountPageResult struct {
+	Id         string  `json:"id"`
+	NextCursor *string `json:"nextCursor"`
+	HasMore    bool    `json:"hasMore"`
+}
+
+// GetTransactionListResult is the response: {items: [...]}. page appears only
+// in page mode, accounts only in boot mode; both omitted otherwise so legacy
+// responses stay byte-identical.
 type GetTransactionListResult struct {
-	Items []TransactionResult `json:"items"`
+	Items    []TransactionResult            `json:"items"`
+	Page     *TransactionPageResult         `json:"page,omitempty"`
+	Accounts []TransactionAccountPageResult `json:"accounts,omitempty"`
 }

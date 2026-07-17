@@ -1,0 +1,21 @@
+== sort-category-name-asc POST /api/v1/category/sort-category-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"c0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Food","position":0,"type":"expense","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"c0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Salary","position":1,"type":"income","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== get-category-list-after-sort GET /api/v1/category/get-category-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"c0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Food","position":0,"type":"expense","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"c0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Salary","position":1,"type":"income","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== sort-category-usage-desc POST /api/v1/category/sort-category-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"c0000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Food","position":0,"type":"expense","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"c0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Salary","position":1,"type":"income","icon":"i","isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== sort-payee-name-asc POST /api/v1/payee/sort-payee-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"20000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Shop","position":0,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== sort-tag-name-desc POST /api/v1/tag/sort-tag-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"10000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Work","position":0,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
+== err:sort-bad-by POST /api/v1/category/sort-category-list [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"by":["The value you selected is not a valid choice."]},"errorCodes":{"by":[{"code":"INVALID_CHOICE_ERROR"}]}}
+
+== err:sort-usage-no-period POST /api/v1/category/sort-category-list [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"periodMonths":["This value should be an integer between 1 and 6."]}}
+

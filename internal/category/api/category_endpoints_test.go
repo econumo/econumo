@@ -3,8 +3,11 @@ package api_test
 import (
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"regexp"
 	"testing"
+
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // apiDatetime matches the API datetime format "2006-01-02 15:04:05" (space
@@ -360,4 +363,93 @@ func TestUpdateCategory_NotOwned_403(t *testing.T) {
 	if status != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
 	}
+}
+
+func TestSortCategoryList_ByName(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	createCategory(t, h, token, catID1, "Zebra", "expense")
+	createCategory(t, h, token, catID2, "Apple", "expense")
+	createCategory(t, h, token, catID3, "Mango", "expense")
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/category/sort-category-list", token,
+		map[string]any{"by": "name", "direction": "asc"})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d; body: %s", status, env.raw)
+	}
+	names := itemNames(t, env)
+	want := []string{"Apple", "Mango", "Zebra"}
+	if !reflect.DeepEqual(names, want) {
+		t.Fatalf("names = %v, want %v", names, want)
+	}
+}
+
+func TestSortCategoryList_ByUsage(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	createCategory(t, h, token, catID1, "Alpha", "expense")
+	createCategory(t, h, token, catID2, "Beta", "expense")
+	// Gamma is the LAST alphabetical category; seeding it as the most-used
+	// proves usage-desc sorts by count (not by name).
+	idGamma := createCategory(t, h, token, catID3, "Gamma", "expense")
+
+	f := fixture.New(t, h.tdb)
+	acctID := f.Account(fixture.Account{UserID: seedUserID, CurrencyID: fixture.USD, Name: "UsageAcct"})
+	base := h.clock.t
+	for _, offset := range []int{-3, -2, -1} {
+		f.Transaction(fixture.Transaction{
+			UserID: seedUserID, AccountID: acctID, CategoryID: idGamma,
+			Type: 0, Amount: "1.00000000", SpentAt: base.AddDate(0, 0, offset),
+		})
+	}
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/category/sort-category-list", token,
+		map[string]any{"by": "usage", "direction": "desc", "periodMonths": 6})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d; body: %s", status, env.raw)
+	}
+	names := itemNames(t, env)
+	if len(names) == 0 || names[0] != "Gamma" {
+		t.Fatalf("usage-desc order = %v, want the most-used category (Gamma) first", names)
+	}
+}
+
+func TestSortCategoryList_Validation(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+	cases := []struct {
+		body    map[string]any
+		key     string
+		wantMsg string
+	}{
+		{map[string]any{"direction": "asc"}, "by", "This value should not be blank."},
+		{map[string]any{"by": "color", "direction": "asc"}, "by", "The value you selected is not a valid choice."},
+		{map[string]any{"by": "name"}, "direction", "This value should not be blank."},
+		{map[string]any{"by": "usage", "direction": "asc"}, "periodMonths", "This value should be an integer between 1 and 6."},
+		{map[string]any{"by": "usage", "direction": "asc", "periodMonths": 7}, "periodMonths", "This value should be an integer between 1 and 6."},
+		{map[string]any{"by": "name", "direction": "asc", "periodMonths": 3}, "periodMonths", "periodMonths is only valid when by is usage."},
+	}
+	for _, tc := range cases {
+		status, env := h.do(t, http.MethodPost, "/api/v1/category/sort-category-list", token, tc.body)
+		if status != http.StatusBadRequest {
+			t.Fatalf("body %v: status = %d, want 400; body: %s", tc.body, status, env.raw)
+		}
+		msgs := env.errorsMap()[tc.key]
+		if len(msgs) == 0 || msgs[0] != tc.wantMsg {
+			t.Fatalf("body %v: errors[%s] = %v, want %q", tc.body, tc.key, msgs, tc.wantMsg)
+		}
+	}
+}
+
+// itemNames extracts data.items[].name in order.
+func itemNames(t *testing.T, env envelope) []string {
+	t.Helper()
+	res := mustUnmarshal[itemsWrapper](t, env.Data)
+	out := make([]string, len(res.Items))
+	for i, it := range res.Items {
+		out[i] = it.Name
+	}
+	return out
 }

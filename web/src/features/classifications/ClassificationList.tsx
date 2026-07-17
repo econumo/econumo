@@ -10,6 +10,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { SortDialog } from '@/components/SortDialog'
 import { SortableList } from '@/components/SortableList'
+import type { SortListForm } from '@/api/category'
 import { getChangedPositions } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -47,6 +48,7 @@ interface ClassificationListProps<T extends ClassificationItem> {
   onDelete: (id: string) => void
   onToggleArchive: (item: T) => void
   onOrder: (changes: { id: string; position: number }[]) => void
+  onSort: (form: SortListForm) => void
 }
 
 export function ClassificationList<T extends ClassificationItem>({
@@ -64,6 +66,7 @@ export function ClassificationList<T extends ClassificationItem>({
   onDelete,
   onToggleArchive,
   onOrder,
+  onSort,
 }: ClassificationListProps<T>) {
   const { t } = useTranslation()
   const isCompact = useIsCompact()
@@ -278,9 +281,8 @@ export function ClassificationList<T extends ClassificationItem>({
       <SortDialog
         open={sortOpen}
         onClose={() => setSortOpen(false)}
-        onPick={(direction) => {
-          const ordered = [...items].sort((a, b) => (direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)))
-          commitOrder(ordered.map((i) => i.id))
+        onPick={(form) => {
+          onSort(form)
           setSortOpen(false)
         }}
       />

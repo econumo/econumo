@@ -1,10 +1,25 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CreateTransactionDto, TransactionDto, TransactionItemDto } from './dto/transaction'
+import type { CreateTransactionDto, TransactionDto, TransactionItemDto, TransactionPageDto, TransactionAccountPageDto } from './dto/transaction'
 import { coerceAccount, coerceTransaction } from './account'
 
 interface Envelope<T> {
   data: T
+}
+
+export interface TransactionListParams {
+  perAccountLimit?: number
+  accountId?: Id
+  limit?: number
+  cursor?: string
+  periodStart?: string
+  periodEnd?: string
+}
+
+export interface TransactionListResponse {
+  items: TransactionDto[]
+  page?: TransactionPageDto
+  accounts?: TransactionAccountPageDto[]
 }
 
 function coerceItem(raw: TransactionItemDto): TransactionItemDto {
@@ -14,9 +29,13 @@ function coerceItem(raw: TransactionItemDto): TransactionItemDto {
   }
 }
 
-export async function getTransactionList(): Promise<TransactionDto[]> {
-  const response = await api.get<Envelope<{ items: TransactionDto[] }>>(apiUrl('/api/v1/transaction/get-transaction-list'))
-  return response.data.data.items.map(coerceTransaction)
+export async function getTransactionList(params: TransactionListParams = {}): Promise<TransactionListResponse> {
+  const response = await api.get<Envelope<TransactionListResponse>>(
+    apiUrl('/api/v1/transaction/get-transaction-list'),
+    { params },
+  )
+  const data = response.data.data
+  return { ...data, items: data.items.map(coerceTransaction) }
 }
 
 export async function createTransaction(form: CreateTransactionDto): Promise<TransactionItemDto> {

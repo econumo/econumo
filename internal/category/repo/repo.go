@@ -35,6 +35,7 @@ type querier interface {
 	GetOperationId(ctx context.Context, db backend.DBTX, id string) (opRow, error)
 	InsertOperationId(ctx context.Context, db backend.DBTX, p insertOpParams) error
 	MarkOperationHandled(ctx context.Context, db backend.DBTX, p markOpParams) error
+	UsageCounts(ctx context.Context, db backend.DBTX, userID string, since time.Time) (map[string]int, error)
 }
 
 type Repo struct {
@@ -129,6 +130,26 @@ func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) err
 		CategoryID:   &newStr,
 		CategoryID_2: &oldStr,
 	})
+}
+
+func (r *Repo) UsageCounts(ctx context.Context, userID vo.Id, since time.Time) (map[string]int, error) {
+	return r.q.UsageCounts(ctx, r.db(ctx), userID.String(), since)
+}
+
+// scanUsageCounts is shared by both engine adapters: id -> count, one row per
+// category that has at least one qualifying transaction.
+func scanUsageCounts(rows *sql.Rows) (map[string]int, error) {
+	defer rows.Close()
+	out := make(map[string]int)
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		out[id] = n
+	}
+	return out, rows.Err()
 }
 
 // OperationGuard (category.OperationGuard): row-based idempotency on

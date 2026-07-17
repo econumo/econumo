@@ -2,6 +2,7 @@ package category
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -32,4 +33,8 @@ type Repository interface {
 	// ReassignTransactions points every transaction on oldID at newID (replace
 	// mode), before the old category is deleted.
 	ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error
+
+	// UsageCounts returns, for each of the owner's categories that has at least
+	// one transaction with spent_at >= since, the count of such transactions.
+	UsageCounts(ctx context.Context, userID vo.Id, since time.Time) (map[string]int, error)
 }

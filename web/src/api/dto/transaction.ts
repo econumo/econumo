@@ -22,6 +22,17 @@ export interface TransactionDto extends CreateTransactionDto {
   author: UserDto
 }
 
+export interface TransactionPageDto {
+  nextCursor: string | null
+  hasMore: boolean
+}
+
+export interface TransactionAccountPageDto {
+  id: string
+  nextCursor: string | null
+  hasMore: boolean
+}
+
 export interface TransactionItemDto {
   item: TransactionDto
   accounts: AccountDto[]

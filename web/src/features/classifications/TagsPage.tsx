@@ -5,7 +5,7 @@ import { isNotEmpty, isValidTagName } from '@/lib/validation'
 import type { TagDto } from '@/api/dto/tag'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList } from './ClassificationList'
-import { useTags, useCreateTag, useUpdateTag, useArchiveTag, useUnarchiveTag, useDeleteTag, useOrderTags } from './queries'
+import { useTags, useCreateTag, useUpdateTag, useArchiveTag, useUnarchiveTag, useDeleteTag, useOrderTags, useSortTags } from './queries'
 
 export function TagsPage() {
   const { t } = useTranslation()
@@ -17,6 +17,7 @@ export function TagsPage() {
   const unarchiveTag = useUnarchiveTag()
   const deleteTag = useDeleteTag()
   const orderTags = useOrderTags()
+  const sortTags = useSortTags()
 
   const [dialog, setDialog] = useState<{ open: boolean; tag: TagDto | null }>({ open: false, tag: null })
   const own = tags.filter((tg) => !user || tg.ownerUserId === user.id)
@@ -45,6 +46,7 @@ export function TagsPage() {
         onDelete={(id) => deleteTag.mutate(id)}
         onToggleArchive={(tag) => (tag.isArchived === 0 ? archiveTag.mutate(tag.id) : unarchiveTag.mutate(tag.id))}
         onOrder={(changes) => orderTags.mutate(changes)}
+        onSort={(form) => sortTags.mutate(form)}
       />
       <PromptDialog
         open={dialog.open}

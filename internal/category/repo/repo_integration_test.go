@@ -215,3 +215,36 @@ func TestCategoryRepo_OperationGuard_Idempotency(t *testing.T) {
 		t.Error("is_handled should be true after MarkHandled")
 	}
 }
+
+func TestCategoryRepo_UsageCounts(t *testing.T) {
+	repo, _, _, f := newRepo(t)
+	ctx := context.Background()
+	seedUser(t, f, userA)
+	_ = repo.Save(ctx, cat(catA1, userA, "X", 0, model.TypeExpense))
+	_ = repo.Save(ctx, cat(catA2, userA, "Y", 1, model.TypeExpense))
+	catZ := "ca700000-0000-0000-0000-0000000000a3" // never used
+	_ = repo.Save(ctx, cat(catZ, userA, "Z", 2, model.TypeExpense))
+
+	f.Account(fixture.Account{ID: "acc00000-0000-0000-0000-0000000000c1", UserID: userA, CurrencyID: usdID, Name: "C"})
+	seed := func(id, cat, spent string) {
+		f.Transaction(fixture.Transaction{ID: id, UserID: userA, AccountID: "acc00000-0000-0000-0000-0000000000c1",
+			CategoryID: cat, Type: 0, Amount: "1.00000000", SpentAt: spent})
+	}
+	seed("7c000000-0000-0000-0000-000000000010", catA1, "2026-06-01 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000011", catA1, "2026-06-02 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000012", catA1, "2026-06-03 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000013", catA2, "2026-06-01 10:00:00")
+	seed("7c000000-0000-0000-0000-000000000014", catA2, "2025-01-01 10:00:00") // outside the window
+
+	since := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	counts, err := repo.UsageCounts(ctx, vo.MustParseId(userA), since)
+	if err != nil {
+		t.Fatalf("UsageCounts: %v", err)
+	}
+	if counts[catA1] != 3 || counts[catA2] != 1 {
+		t.Errorf("counts = %v, want catA1=3 catA2=1", counts)
+	}
+	if _, ok := counts[catZ]; ok {
+		t.Errorf("unused category must be absent from the map, got %v", counts)
+	}
+}

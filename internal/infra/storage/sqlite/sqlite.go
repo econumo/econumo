@@ -1,6 +1,8 @@
 // Package sqlite is the SQLite database backend, using the pure-Go
-// modernc.org/sqlite driver (CGO stays off). It registers itself under the
-// driver name "sqlite" via init() and is blank-imported in cmd/econumo.
+// modernc.org/sqlite driver (CGO stays off). It is blank-imported in
+// cmd/econumo; driver.go registers a thin wrapper over modernc's "sqlite"
+// driver under the name "sqlite-econumo" (see wrappedDriverName), which Open
+// below uses.
 package sqlite
 
 import (
@@ -39,7 +41,7 @@ func (b *Backend) SetBusyTimeout(ms int) { b.busyTimeoutMS = ms }
 // is capped at one open connection to avoid "database is locked".
 func (b *Backend) Open(ctx context.Context, dsn string) (*sql.DB, error) {
 	path := normalizeDSN(dsn)
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open(wrappedDriverName, path)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite open: %w", err)
 	}

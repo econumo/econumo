@@ -12,15 +12,19 @@ import (
 var _ = apidoc.JsonResponseUnauthorized{}
 
 // GetTransactionList handles GET /api/v1/transaction/get-transaction-list (auth).
-// Optional query params: accountId, periodStart, periodEnd.
+// Optional query params: accountId, periodStart, periodEnd, limit, cursor,
+// perAccountLimit.
 //
 // @Summary     Get the transaction list
 // @Description Returns transactions for an account, or a date window across visible accounts, or all visible-account transactions.
 // @Tags        Transaction
 // @Produce     json
-// @Param       accountId   query    string false "Account id filter"
-// @Param       periodStart query    string false "Period start (Y-m-d H:i:s or Y-m-d)"
-// @Param       periodEnd   query    string false "Period end (Y-m-d H:i:s or Y-m-d)"
+// @Param       accountId       query    string false "Account id filter"
+// @Param       periodStart     query    string false "Period start (Y-m-d H:i:s or Y-m-d)"
+// @Param       periodEnd       query    string false "Period end (Y-m-d H:i:s or Y-m-d)"
+// @Param       limit           query    string false "Page size (1-500); requires accountId. Keyset page mode."
+// @Param       cursor          query    string false "Opaque page cursor from a previous response; requires limit"
+// @Param       perAccountLimit query    string false "Newest N transactions per visible account (1-500); exclusive with all other params"
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.GetTransactionListResult}
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
 // @Failure     500 {object} apidoc.JsonResponseException
@@ -33,9 +37,12 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	req := model.TransactionListRequest{
-		AccountId:   q.Get("accountId"),
-		PeriodStart: q.Get("periodStart"),
-		PeriodEnd:   q.Get("periodEnd"),
+		AccountId:       q.Get("accountId"),
+		PeriodStart:     q.Get("periodStart"),
+		PeriodEnd:       q.Get("periodEnd"),
+		Limit:           q.Get("limit"),
+		Cursor:          q.Get("cursor"),
+		PerAccountLimit: q.Get("perAccountLimit"),
 	}
 	if err := req.Validate(); err != nil {
 		httpx.WriteError(w, err, h.dev)

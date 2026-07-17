@@ -134,3 +134,20 @@ type OrderTagListResult struct {
 type GetTagListResult struct {
 	Items []TagResult `json:"items"`
 }
+
+// SortTagListRequest is the sort-tag-list body: server-side sorting of the
+// user's tags by name or by usage over a sliding window.
+type SortTagListRequest struct {
+	By           string `json:"by"`
+	Direction    string `json:"direction"`
+	PeriodMonths int    `json:"periodMonths"`
+}
+
+func (r SortTagListRequest) Validate() error {
+	return validateSortRequest(r.By, r.Direction, r.PeriodMonths)
+}
+
+// SortTagListResult is the sort-tag-list response: {items: [...]}.
+type SortTagListResult struct {
+	Items []TagResult `json:"items"`
+}

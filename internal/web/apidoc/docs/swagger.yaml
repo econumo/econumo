@@ -788,10 +788,16 @@ definitions:
     type: object
   model.GetTransactionListResult:
     properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.TransactionAccountPageResult'
+        type: array
       items:
         items:
           $ref: '#/definitions/model.TransactionResult'
         type: array
+      page:
+        $ref: '#/definitions/model.TransactionPageResult'
     type: object
   model.GetUserDataResult:
     properties:
@@ -1202,6 +1208,54 @@ definitions:
     type: object
   model.ShowFolderResult:
     type: object
+  model.SortCategoryListRequest:
+    properties:
+      by:
+        type: string
+      direction:
+        type: string
+      periodMonths:
+        type: integer
+    type: object
+  model.SortCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.SortPayeeListRequest:
+    properties:
+      by:
+        type: string
+      direction:
+        type: string
+      periodMonths:
+        type: integer
+    type: object
+  model.SortPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.SortTagListRequest:
+    properties:
+      by:
+        type: string
+      direction:
+        type: string
+      periodMonths:
+        type: integer
+    type: object
+  model.SortTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
   model.StructureResult:
     properties:
       elements:
@@ -1228,6 +1282,22 @@ definitions:
       position:
         type: integer
       updatedAt:
+        type: string
+    type: object
+  model.TransactionAccountPageResult:
+    properties:
+      hasMore:
+        type: boolean
+      id:
+        type: string
+      nextCursor:
+        type: string
+    type: object
+  model.TransactionPageResult:
+    properties:
+      hasMore:
+        type: boolean
+      nextCursor:
         type: string
     type: object
   model.TransactionResult:
@@ -2878,6 +2948,48 @@ paths:
       summary: Reorder the category list
       tags:
       - Category
+  /api/v1/category/sort-category-list:
+    post:
+      consumes:
+      - application/json
+      description: Reorders the user's categories server-side by name or by usage
+        over a sliding window, and returns the full ordered list.
+      parameters:
+      - description: Sort category list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortCategoryListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortCategoryListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the category list
+      tags:
+      - Category
   /api/v1/category/unarchive-category:
     post:
       consumes:
@@ -3480,6 +3592,48 @@ paths:
       summary: Reorder the payee list
       tags:
       - Payee
+  /api/v1/payee/sort-payee-list:
+    post:
+      consumes:
+      - application/json
+      description: Reorders the user's payees server-side by name or by usage over
+        a sliding window, and returns the full ordered list.
+      parameters:
+      - description: Sort payee list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortPayeeListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortPayeeListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the payee list
+      tags:
+      - Payee
   /api/v1/payee/unarchive-payee:
     post:
       consumes:
@@ -3759,6 +3913,48 @@ paths:
       summary: Reorder the tag list
       tags:
       - Tag
+  /api/v1/tag/sort-tag-list:
+    post:
+      consumes:
+      - application/json
+      description: Reorders the user's tags server-side by name or by usage over a
+        sliding window, and returns the full ordered list.
+      parameters:
+      - description: Sort tag list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortTagListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortTagListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the tag list
+      tags:
+      - Tag
   /api/v1/tag/unarchive-tag:
     post:
       consumes:
@@ -3975,6 +4171,19 @@ paths:
       - description: Period end (Y-m-d H:i:s or Y-m-d)
         in: query
         name: periodEnd
+        type: string
+      - description: Page size (1-500); requires accountId. Keyset page mode.
+        in: query
+        name: limit
+        type: string
+      - description: Opaque page cursor from a previous response; requires limit
+        in: query
+        name: cursor
+        type: string
+      - description: Newest N transactions per visible account (1-500); exclusive
+          with all other params
+        in: query
+        name: perAccountLimit
         type: string
       produces:
       - application/json

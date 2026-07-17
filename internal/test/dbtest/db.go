@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	_ "modernc.org/sqlite" // register the pure-Go sqlite driver for tests
+	_ "github.com/econumo/econumo/internal/infra/storage/sqlite" // register "sqlite-econumo" for tests
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
@@ -63,7 +63,7 @@ func NewSQLite(t testing.TB) *DB {
 	// A per-test-named shared-cache in-memory DB: isolated between tests, shared
 	// across this test's (single) connection.
 	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
-	raw, err := sql.Open("sqlite", dsn)
+	raw, err := sql.Open("sqlite-econumo", dsn)
 	if err != nil {
 		t.Fatalf("dbtest: open sqlite: %v", err)
 	}

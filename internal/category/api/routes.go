@@ -18,6 +18,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		mux.Handle("POST /api/v1/category/unarchive-category", auth(h.UnarchiveCategory))
 		mux.Handle("POST /api/v1/category/delete-category", auth(h.DeleteCategory))
 		mux.Handle("POST /api/v1/category/order-category-list", auth(h.OrderCategoryList))
+		mux.Handle("POST /api/v1/category/sort-category-list", auth(h.SortCategoryList))
 		mux.Handle("GET /api/v1/category/get-category-list", auth(h.GetCategoryList))
 	}
 }

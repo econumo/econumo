@@ -4,6 +4,7 @@ import type { AccountDto, AccountItemDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import type { TransactionPagesMap } from '@/features/transactions/window'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
 export function useAccounts() {
@@ -84,6 +85,13 @@ export function useDeleteAccount() {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
         (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
       )
+      queryClient.setQueryData<TransactionPagesMap>(queryKeys.transactionPages, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        const { [id]: _removed, ...rest } = prev
+        return rest
+      })
     },
   })
 }
