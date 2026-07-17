@@ -47,12 +47,25 @@ Find every plural key by grepping `en.json` for `" | "` and make sure your
 translation has the right variant count for the target language — placeholder
 parity won't catch a missing variant.
 
-**Quality**: use `ru.json` as the reference for how a full translation reads —
-tone, brand handling, what stays untranslated (the "Econumo" brand, currency
-codes, icon names). Pick one term per app concept (budget, envelope, payee,
-tag, ...) and use it consistently across all namespaces; inconsistency across
-the ~1200 lines is the most common quality failure. Prefer the informal or
-formal register that is conventional for software UI in that language.
+**Quality — translate from BOTH `en.json` and `ru.json`, not en alone.**
+English UI strings are short and often ambiguous out of context: "Clear" could
+mean *erase* or *transparent*, "Transfer" could be a noun or a verb, "Balance"
+has several senses in a finance app. The Russian translation was written by
+someone who knew the intended meaning, so reading the two side by side pins
+down what each key actually says — when your translation of a key wouldn't
+agree with *both* sources, you've probably misread the English. `ru.json` also
+answers questions `en.json` can't:
+
+- **Register**: Russian addresses the user formally («Вы уверены…», «Ваше
+  имя»), so the app's established voice is formal — pick whatever register is
+  conventional for software UI in the target language, but let ru's formality
+  inform the call for languages where it's a real choice (German Sie, not du).
+- **What stays untranslated**: the "Econumo" brand, currency codes, icon
+  names, format strings — visible in what ru left alone.
+
+Pick one term per app concept (budget, envelope, payee, tag, ...) and use it
+consistently across all namespaces; inconsistency across the ~1200 lines is
+the most common quality failure.
 
 ## 2. Backend wiring — one line
 
