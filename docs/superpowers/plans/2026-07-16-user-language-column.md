@@ -17,7 +17,7 @@
 - The `language` column appears in NO SELECT, NO DTO, NO API response, and must NOT be added to `UpsertUser` (the whole-row upsert would clobber it with an empty value on every profile mutation).
 - Both write paths store only members of `i18n.Supported` (endpoint: validated; login: middleware-resolved).
 - Frozen contract: existing goldens stay byte-identical; ONLY the new `update-language` scenario adds golden content.
-- New error code `user.invalid_language` registered in `errs.AllCodes` with `errors.user.invalid_language` entries in BOTH `locales/en.json` and `locales/ru.json` (i18ntest guard enforces).
+- New error code `user.language_invalid` registered in `errs.AllCodes` with `errors.user.language_invalid` entries in BOTH `locales/en.json` and `locales/ru.json` (i18ntest guard enforces).
 - sqlc query files: ASCII-ONLY comments (an em dash in a `.sql` comment mangles sqlc v1.30 sqlite codegen). Regenerate with `sqlc generate` (config `internal/infra/storage/sqlc/sqlc.yaml`).
 - Raw SQL in tests must use `db.Rebind(query)` for `?`→`$N` portability.
 - Backend done-gate per task: `make go-test`. Frontend done-gate: `cd web && pnpm test && pnpm lint && pnpm exec tsc -b` (known allowed failure: pre-existing `ImportCsvDialog.test.tsx` happy-path timeout, identical on main).
@@ -150,14 +150,14 @@ git add -A && git commit -m "feat(user): users.language column with write-only r
 **Files:**
 - Modify: `internal/model/user_dto.go` (request/result DTOs), `internal/shared/errs/codes.go` (new code), `internal/user/usecase.go` (`newLanguage` validator), `internal/user/profile.go` (use case), `internal/user/api/routes.go` (route)
 - Create: `internal/user/api/language.go` (handler)
-- Modify: `internal/user/login.go` (capture), `locales/en.json`, `locales/ru.json` (`errors.user.invalid_language`)
+- Modify: `internal/user/login.go` (capture), `locales/en.json`, `locales/ru.json` (`errors.user.language_invalid`)
 - Modify: `internal/test/apiparity/` scenario catalogue (+ regenerated golden)
 - Modify: `CLAUDE.md` (one sentence, see Step 8)
 - Test: `internal/user/api/` endpoint test file (mirror siblings), login test in `internal/user/`
 
 **Interfaces:**
 - Consumes: `Repository.UpdateLanguage(ctx, id vo.Id, language string) error` (Task 1); `i18n.Supported` (`internal/infra/i18n`); `reqctx.Language(ctx)`.
-- Produces: `POST /api/v1/user/update-language`, body `{"language":"ru"}`, response `{"user": <CurrentUser>}` in the OK envelope; `errs.CodeUserLanguageInvalid = "user.invalid_language"`.
+- Produces: `POST /api/v1/user/update-language`, body `{"language":"ru"}`, response `{"user": <CurrentUser>}` in the OK envelope; `errs.CodeUserLanguageInvalid = "user.language_invalid"`.
 
 - [ ] **Step 1: DTOs in `internal/model/user_dto.go`**
 
@@ -184,10 +184,10 @@ type UpdateLanguageResult struct {
 
 - [ ] **Step 2: Error code + catalogue**
 
-`internal/shared/errs/codes.go`: add `CodeUserLanguageInvalid = "user.invalid_language"` to the const block and `AllCodes`.
+`internal/shared/errs/codes.go`: add `CodeUserLanguageInvalid = "user.language_invalid"` to the const block and `AllCodes`.
 
-`locales/en.json` under `errors.user`: `"invalid_language": "Language is incorrect"`.
-`locales/ru.json` under `errors.user`: `"invalid_language": "Некорректный язык"`.
+`locales/en.json` under `errors.user`: `"language_invalid": "Language is incorrect"`.
+`locales/ru.json` under `errors.user`: `"language_invalid": "Некорректный язык"`.
 
 Run: `go test ./internal/test/i18ntest/ -v` — PASS (two-way guard sees code + entries).
 
@@ -282,7 +282,7 @@ func (h *Handlers) UpdateLanguage(w http.ResponseWriter, r *http.Request) {
 mux.Handle("POST /api/v1/user/update-language", auth(h.UpdateLanguage))
 ```
 
-Add an endpoint test mirroring the file's update-report-period (or nearest sibling) endpoint test: happy path 200 with `"user"` in data, and invalid body `{"language":"xx"}` → 400 whose body contains `"user.invalid_language"`.
+Add an endpoint test mirroring the file's update-report-period (or nearest sibling) endpoint test: happy path 200 with `"user"` in data, and invalid body `{"language":"xx"}` → 400 whose body contains `"user.language_invalid"`.
 
 Run: `go test ./internal/user/... -v 2>&1 | tail -20` — PASS. Note `make go-lint` regenerates OpenAPI docs; run `make swagger` (or `make go-test`, which checks docs freshness) and commit the regenerated docs.
 

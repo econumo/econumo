@@ -69,7 +69,7 @@ const (
 	CodeTransactionInvalidImportFile   = "transaction.invalid_import_file"
 
 	CodeUserReportPeriodInvalid  = "user.report_period_invalid"
-	CodeUserLanguageInvalid      = "user.invalid_language"
+	CodeUserLanguageInvalid      = "user.language_invalid"
 	CodeUserAlreadyExists        = "user.already_exists"
 	CodeUserRegistrationDisabled = "user.registration_disabled"
 	CodeUserPasswordIncorrect    = "user.password_incorrect"

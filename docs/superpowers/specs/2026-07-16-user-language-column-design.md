@@ -41,7 +41,7 @@ ALTER TABLE users ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
   (named handler with swag annotations delegating to `endpoint.Handle`,
   route in `internal/user/api/routes.go`, DTO + `Validate()` in
   `internal/model/user_dto.go`). `Validate()` rejects values outside
-  `i18n.Supported` with a coded validation error (`user.invalid_language`;
+  `i18n.Supported` with a coded validation error (`user.language_invalid`;
   catalogue entries in en + ru). Success returns the family's standard
   envelope.
 - **Login capture**: after a successful login, `Login` persists
@@ -84,7 +84,7 @@ no call — login capture covers it.
 - Repo test for `UpdateLanguage` (runs on both engines via the existing
   pgsql rerun).
 - Endpoint tests: happy path (column updated), invalid language → 400 with
-  `user.invalid_language` in `errorCodes`.
+  `user.language_invalid` in `errorCodes`.
 - Login-capture test: login with `Accept-Language: ru` → column is `ru`;
   no header → column is `en`.
 - apiparity: new scenario + golden for `update-language` (guard requires
