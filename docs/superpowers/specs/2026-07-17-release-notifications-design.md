@@ -122,9 +122,10 @@ DTOs live in `internal/model/system_dto.go`; routes in
    with a close button. Dismissal stores the version in `localStorage`
    (`econumo.dismissed-update-version`); the notice stays hidden for that
    version and reappears for the next one.
-3. **Settings page row** — next to the existing version label in the
-   `SettingsPage` footer area: a highlighted "New version v1.0.2 available →"
-   link to the release URL. Persistent, not dismissible.
+3. **Settings page row** — a primary-tinted card row at the top of the
+   `SettingsPage` menu (between the user card and the "Finances" group):
+   "New version v1.0.2 available", linking to the release URL (new tab).
+   Persistent, not dismissible.
 
 ### i18n
 

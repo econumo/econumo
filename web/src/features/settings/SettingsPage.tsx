@@ -83,6 +83,18 @@ export function SettingsPage() {
             </Link>
           ) : null}
 
+          {update ? (
+            <a
+              href={update.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-4 py-3.5 text-sm font-medium text-primary hover:bg-primary/15"
+            >
+              <span>{t('settings.update.available', { version: update.version })}</span>
+              <ChevronRight className="size-4" />
+            </a>
+          ) : null}
+
           <MenuGroup label={t('settings.page.groups.service')}>
             <MenuRow label={t('settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
             <MenuRow label={t('connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
@@ -102,17 +114,6 @@ export function SettingsPage() {
 
         </div>
       </div>
-
-      {update ? (
-        <a
-          href={update.url}
-          target="_blank"
-          rel="noreferrer"
-          className="mx-auto pb-1 text-xs font-medium text-primary hover:underline"
-        >
-          {t('settings.update.available', { version: update.version })} →
-        </a>
-      ) : null}
 
       <footer className="flex items-center justify-center gap-2 py-1 text-xs text-muted-foreground/60">
         {SEMVER.test(version) ? (

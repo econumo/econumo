@@ -93,12 +93,14 @@ it('Import CSV and Export CSV rows open their dialogs', async () => {
   expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
 })
 
-it('shows the new-version link when an update is available', async () => {
+it('shows the new-version menu row above the Finances group when an update is available', async () => {
   mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
   renderPage()
   const link = await screen.findByRole('link', { name: /v9\.9\.9/ })
   expect(link).toHaveAttribute('href', 'https://econumo.com/releases/v9.9.9/')
   expect(link).toHaveAttribute('target', '_blank')
+  const finances = screen.getByText('Finances')
+  expect(link.compareDocumentPosition(finances) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 it('shows no new-version link when no update is available', async () => {
