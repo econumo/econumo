@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -372,5 +373,42 @@ func TestUpdateReportPeriod_WritesReportPeriodOption(t *testing.T) {
 	}
 	if res.User.Currency != "USD" {
 		t.Fatalf("deprecated currency field = %q, want USD; body: %s", res.User.Currency, env.raw)
+	}
+}
+
+func TestUpdateLanguage_Success(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-language", token, map[string]string{
+		"language": "ru",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+	if !bytes.Contains(env.Data, []byte(`"user"`)) {
+		t.Fatalf("expected \"user\" in data; body: %s", env.raw)
+	}
+	var got string
+	if err := h.db.QueryRowContext(context.Background(), "SELECT language FROM users WHERE id = ?", seedUserID).Scan(&got); err != nil {
+		t.Fatalf("read back language: %v", err)
+	}
+	if got != "ru" {
+		t.Fatalf("persisted language = %q, want ru", got)
+	}
+}
+
+func TestUpdateLanguage_Unsupported_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-language", token, map[string]string{
+		"language": "xx",
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
+	}
+	if !bytes.Contains(env.raw, []byte("user.invalid_language")) {
+		t.Fatalf("expected user.invalid_language in body: %s", env.raw)
 	}
 }

@@ -183,6 +183,30 @@ type UpdateReportPeriodResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-language
+// ---------------------------------------------------------------------------
+
+// UpdateLanguageRequest is the update-language request body. Membership in the
+// supported-language set is checked in the feature (tier-2), like ReportPeriod.
+type UpdateLanguageRequest struct {
+	Language string `json:"language"`
+}
+
+// Validate enforces NotBlank (the supported-language invariant is checked in
+// the service — tier 2).
+func (r UpdateLanguageRequest) Validate() error {
+	if strings.TrimSpace(r.Language) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "language", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// UpdateLanguageResult is the update-language response.
+type UpdateLanguageResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // update-password
 // ---------------------------------------------------------------------------
 

@@ -1123,6 +1123,7 @@
     },
     "user": {
       "report_period_invalid": "Период отчёта указан неверно.",
+      "invalid_language": "Некорректный язык",
       "already_exists": "Такой пользователь уже существует.",
       "registration_disabled": "Регистрация отключена.",
       "password_incorrect": "Неверный пароль.",

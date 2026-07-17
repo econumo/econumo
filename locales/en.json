@@ -1123,6 +1123,7 @@
     },
     "user": {
       "report_period_invalid": "ReportPeriod is incorrect",
+      "invalid_language": "Language is incorrect",
       "already_exists": "User already exists",
       "registration_disabled": "Registration disabled",
       "password_incorrect": "Password is not correct",

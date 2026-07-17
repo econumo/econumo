@@ -212,7 +212,10 @@ and the `languages` list in `internal/test/i18ntest`.
   `pluralPick` (`web/src/lib/plural.ts`) reads pipe-delimited catalogue values
   (`"one | many"`, Russian `"one | few | many"`) and picks the variant via
   `Intl.PluralRules` — i18next's own plural suffixes are not used, so all
-  plural strings are authored as a single pipe-joined value.
+  plural strings are authored as a single pipe-joined value. The selected
+  language is also persisted server-side (`users.language`, default `en` —
+  written by `update-language` and on login from `Accept-Language`; write-only,
+  for future background email rendering).
 - **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
   key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
   frontend-source `t()`-call key coverage against the catalogue, two-way

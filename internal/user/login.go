@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 // Login authenticates by identifier (md5 of the lowercased username), verifies
@@ -49,5 +50,7 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 		return nil, cerr
 	}
 	s.clearAttempt(RateScopeLogin, limitKey)
+	// Best-effort: the language preference must never block a login.
+	_ = s.repo.UpdateLanguage(ctx, u.ID, reqctx.Language(ctx))
 	return &model.LoginResult{Token: token, User: cur}, nil
 }

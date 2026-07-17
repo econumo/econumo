@@ -69,6 +69,7 @@ const (
 	CodeTransactionInvalidImportFile   = "transaction.invalid_import_file"
 
 	CodeUserReportPeriodInvalid  = "user.report_period_invalid"
+	CodeUserLanguageInvalid      = "user.invalid_language"
 	CodeUserAlreadyExists        = "user.already_exists"
 	CodeUserRegistrationDisabled = "user.registration_disabled"
 	CodeUserPasswordIncorrect    = "user.password_incorrect"
@@ -137,6 +138,7 @@ var AllCodes = []string{
 	CodeTransactionInvalidImportFile,
 
 	CodeUserReportPeriodInvalid,
+	CodeUserLanguageInvalid,
 	CodeUserAlreadyExists,
 	CodeUserRegistrationDisabled,
 	CodeUserPasswordIncorrect,
