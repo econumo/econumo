@@ -102,7 +102,7 @@ func (l *Lookup) EnsureUsable(ctx context.Context, userID, currencyID string) er
 		return nil
 	}
 	return errs.NewValidation("Validation failed",
-		errs.FieldError{Key: "currencyId", Message: "Currency is not available"})
+		errs.FieldError{Key: "currencyId", Message: "Currency is not available", Code: errs.CodeCurrencyNotAvailable})
 }
 
 // DefaultCode returns the fallback currency code (USD).

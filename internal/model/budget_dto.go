@@ -493,7 +493,7 @@ func ValidateBlank(fields map[string]string) error {
 	var fe []errs.FieldError
 	for key, val := range fields {
 		if strings.TrimSpace(val) == "" {
-			fe = append(fe, errs.FieldError{Key: key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fe = append(fe, errs.FieldError{Key: key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	if len(fe) > 0 {

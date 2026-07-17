@@ -40,7 +40,7 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 	updatedAt, err := time.Parse(datetime.Layout, req.UpdatedAt)
 	if err != nil {
 		return nil, errs.NewValidation("Invalid updatedAt",
-			errs.FieldError{Key: "updatedAt", Message: "Invalid date format, expected Y-m-d H:i:s"})
+			errs.FieldError{Key: "updatedAt", Message: "Invalid date format, expected Y-m-d H:i:s", Code: errs.CodeInvalidDatetimeFormat})
 	}
 	requested := vo.NewDecimal(req.Balance.String())
 

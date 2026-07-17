@@ -248,6 +248,48 @@ func TestUserReadRepo_CurrencyIDByCode_OwnCustomFirst(t *testing.T) {
 	}
 }
 
+func TestUserRepo_UpdateLanguage(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	if err := repo.UpdateLanguage(ctx, vo.MustParseId(userA), "ru"); err != nil {
+		t.Fatalf("UpdateLanguage: %v", err)
+	}
+	var got string
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT language FROM users WHERE id = ?`), userA).Scan(&got); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if got != "ru" {
+		t.Errorf("language = %q, want ru", got)
+	}
+
+	// A missing id affects 0 rows and returns nil (no NotFound mapping).
+	if err := repo.UpdateLanguage(ctx, vo.NewId(), "fr"); err != nil {
+		t.Errorf("UpdateLanguage(missing id): %v, want nil", err)
+	}
+}
+
+func TestUserRepo_UpdateLanguage_DefaultsToEnglish(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	var got string
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT language FROM users WHERE id = ?`), userA).Scan(&got); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if got != "en" {
+		t.Errorf("default language = %q, want en", got)
+	}
+}
+
 func TestUserRepo_AlgorithmRoundTrip(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()

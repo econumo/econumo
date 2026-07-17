@@ -152,7 +152,7 @@ func validateCodeField(code, key string) (string, error) {
 	c := normalizeCode(code)
 	if len(c) != 3 || !isAlpha(c) {
 		return "", errs.NewValidation("CurrencyCode is incorrect",
-			errs.FieldError{Key: key, Message: "CurrencyCode is incorrect"})
+			errs.FieldError{Key: key, Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 	}
 	return c, nil
 }

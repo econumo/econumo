@@ -31,7 +31,7 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
           {user ? (
             <div className="flex items-center gap-3">
               <UserAvatar avatar={user.avatar} size="md" />
-              <p className="text-sm text-muted-foreground">{t('modules.connections.modals.share_access.choose_access_level')}</p>
+              <p className="text-sm text-muted-foreground">{t('connections.modals.share_access.choose_access_level')}</p>
             </div>
           ) : null}
           <div className="flex flex-col">
@@ -43,7 +43,7 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
                 className={`rounded-md px-3 py-2.5 text-left text-sm hover:bg-accent ${role === option ? 'bg-accent font-medium' : ''}`}
                 onClick={() => onSelect(option)}
               >
-                {t(`modules.connections.${kind}.roles.${option}`)}
+                {t(`connections.${kind}.roles.${option}`)}
               </button>
             ))}
             {role && role !== 'owner' ? (
@@ -52,12 +52,12 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
                 className="rounded-md px-3 py-2.5 text-left text-sm text-destructive hover:bg-accent"
                 onClick={() => setConfirmRevoke(true)}
               >
-                {t('modules.connections.modals.share_access.revoke_access')}
+                {t('connections.modals.share_access.revoke_access')}
               </button>
             ) : null}
           </div>
           <Button type="button" variant="secondary" className="w-full h-11" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
         </div>
       </ResponsiveDialog>
@@ -69,10 +69,10 @@ export function AccessLevelDialog({ open, kind, user, role, onSelect, onRevoke, 
           setConfirmRevoke(false)
           onRevoke()
         }}
-        title={t('modules.connections.modals.share_access.revoke_confirm.title')}
-        question={t('modules.connections.modals.share_access.revoke_confirm.question', { name: user?.name ?? '' })}
-        confirmLabel={t('modules.connections.modals.share_access.revoke_access')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('connections.modals.share_access.revoke_confirm.title')}
+        question={t('connections.modals.share_access.revoke_confirm.question', { name: user?.name ?? '' })}
+        confirmLabel={t('connections.modals.share_access.revoke_access')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </>

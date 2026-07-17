@@ -67,13 +67,13 @@ type CreateCurrencyRequest struct {
 func (r CreateCurrencyRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Code) == "" {
-		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -99,13 +99,13 @@ type UpdateCustomCurrencyRequest struct {
 func (r UpdateCustomCurrencyRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Symbol) == "" {
-		fields = append(fields, errs.FieldError{Key: "symbol", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "symbol", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -150,10 +150,10 @@ type SetCurrencyRateRequest struct {
 func (r SetCurrencyRateRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.CurrencyId) == "" {
-		fields = append(fields, errs.FieldError{Key: "currencyId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "currencyId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Rate) == "" {
-		fields = append(fields, errs.FieldError{Key: "rate", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "rate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -182,7 +182,7 @@ type ShowCurrencyResult struct{}
 func validateBlankId(id string) error {
 	if strings.TrimSpace(id) == "" {
 		return errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }

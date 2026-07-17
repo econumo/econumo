@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getLocaleOptions, getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
+import { getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
@@ -63,10 +63,10 @@ export function SettingsPage() {
           <Button type="button" variant="ghost" size="icon" aria-label="back" onClick={() => navigate(RouterPage.HOME)}>
             <ChevronLeft className="size-5" />
           </Button>
-          <h1 className="flex-1 truncate text-lg font-semibold">{t('pages.settings.settings.header')}</h1>
+          <h1 className="flex-1 truncate text-lg font-semibold">{t('settings.page.header')}</h1>
         </header>
       ) : (
-        <h1 className="text-xl font-semibold">{t('pages.settings.settings.header_desktop')}</h1>
+        <h1 className="text-xl font-semibold">{t('settings.page.header_desktop')}</h1>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -84,29 +84,24 @@ export function SettingsPage() {
             </Link>
           ) : null}
 
-          <MenuGroup label={t('pages.settings.settings.groups.service')}>
-            <MenuRow label={t('pages.settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
-            <MenuRow label={t('modules.connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
-            <MenuRow label={t('modules.budget.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
+          <MenuGroup label={t('settings.page.groups.service')}>
+            <MenuRow label={t('settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
+            <MenuRow label={t('connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
+            <MenuRow label={t('budgets.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
           </MenuGroup>
 
-          <MenuGroup label={t('pages.settings.settings.groups.classification')}>
-            <MenuRow label={t('modules.classifications.categories.pages.settings.menu_item')} to={RouterPage.SETTINGS_CATEGORIES} />
-            <MenuRow label={t('modules.classifications.tags.pages.settings.menu_item')} to={RouterPage.SETTINGS_TAGS} />
-            <MenuRow label={t('modules.classifications.payees.pages.settings.menu_item')} to={RouterPage.SETTINGS_PAYEES} />
-            <MenuRow label={t('modules.classifications.currencies.pages.settings.menu_item')} to={RouterPage.SETTINGS_CURRENCIES} />
+          <MenuGroup label={t('settings.page.groups.classification')}>
+            <MenuRow label={t('classifications.categories.pages.settings.menu_item')} to={RouterPage.SETTINGS_CATEGORIES} />
+            <MenuRow label={t('classifications.tags.pages.settings.menu_item')} to={RouterPage.SETTINGS_TAGS} />
+            <MenuRow label={t('classifications.payees.pages.settings.menu_item')} to={RouterPage.SETTINGS_PAYEES} />
+            <MenuRow label={t('classifications.currencies.pages.settings.menu_item')} to={RouterPage.SETTINGS_CURRENCIES} />
           </MenuGroup>
 
-          <MenuGroup label={t('pages.settings.settings.groups.data')}>
-            <MenuRow label={t('pages.settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
-            <MenuRow label={t('pages.settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
+          <MenuGroup label={t('settings.page.groups.data')}>
+            <MenuRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
+            <MenuRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
           </MenuGroup>
 
-          {getLocaleOptions().length > 1 ? (
-            <MenuGroup label={t('pages.settings.settings.groups.preferences')}>
-              <MenuRow label={t('pages.settings.language.menu_item')} onClick={() => {}} />
-            </MenuGroup>
-          ) : null}
         </div>
       </div>
 
@@ -130,7 +125,7 @@ export function SettingsPage() {
           rel="noreferrer"
           className="transition-colors hover:text-muted-foreground"
         >
-          {t('pages.settings.settings.footer.api')}
+          {t('settings.page.footer.api')}
         </a>
       </footer>
 

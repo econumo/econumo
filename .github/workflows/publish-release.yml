@@ -4,7 +4,8 @@ name: Publish Release
 # - Always pushes the version tag (e.g. v1.2.3).
 # - Also pushes/moves "latest" only when push_latest is checked AND the workflow
 #   is dispatched from the main branch.
-# The local "dev" tag is published separately via `make publish`.
+# - Also pushes/moves "dev" when push_dev is checked (any branch). Unlike
+#   `make publish-dev`, the UI version label is the release version, not "dev".
 
 on:
   workflow_dispatch:
@@ -13,7 +14,12 @@ on:
         description: "Version tag to publish (e.g., v1.2.3)"
         required: true
       push_latest:
-        description: "Also move the 'latest' tag to this build (main only)"
+        description: "Publish Latest"
+        required: false
+        type: boolean
+        default: false
+      push_dev:
+        description: "Publish Dev"
         required: false
         type: boolean
         default: false
@@ -52,6 +58,9 @@ jobs:
           if [ "${{ github.event.inputs.push_latest }}" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:latest"
           fi
+          if [ "${{ github.event.inputs.push_dev }}" = "true" ]; then
+            TAGS="${TAGS},${IMAGE}:dev"
+          fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
           echo "Publishing ${VERSION} -> [${TAGS}]"
@@ -84,9 +93,8 @@ jobs:
         with:
           ref: ${{ needs.create-tag.outputs.version }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
+      # No QEMU: both build stages run on $BUILDPLATFORM (Go cross-compiles,
+      # the SPA is platform-independent) and the distroless stage only COPYs.
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 

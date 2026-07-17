@@ -44,12 +44,12 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
     <ResponsiveDialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title={t('modules.user.modal.access_recovery.header')}
-      description={t('modules.user.modal.access_recovery.information')}
+      title={t('auth.access_recovery_modal.header')}
+      description={t('auth.access_recovery_modal.information')}
     >
       <form onSubmit={isCodeSent ? changePassword : sendCode} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="recovery-email">{t('modules.user.form.user.email.placeholder')}</Label>
+          <Label htmlFor="recovery-email">{t('user.form.email.placeholder')}</Label>
           <Input
             className="h-11"
             id="recovery-email"
@@ -58,8 +58,8 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
             autoFocus={!isCodeSent}
             {...register('email', {
               validate: {
-                required: (v) => isNotEmpty(v) || t('modules.user.form.user.email.validation.required_field'),
-                email: (v) => isValidEmail(v) || t('modules.user.form.user.email.validation.invalid_email'),
+                required: (v) => isNotEmpty(v) || t('user.form.email.validation.required_field'),
+                email: (v) => isValidEmail(v) || t('user.form.email.validation.invalid_email'),
               },
             })}
           />
@@ -68,60 +68,60 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
 
         {isCodeSent ? (
           <>
-            <p className="text-sm text-muted-foreground">{t('modules.user.modal.access_recovery.instruction')}</p>
+            <p className="text-sm text-muted-foreground">{t('auth.access_recovery_modal.instruction')}</p>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="recovery-code">{t('modules.user.form.user.code.placeholder')}</Label>
+              <Label htmlFor="recovery-code">{t('user.form.code.placeholder')}</Label>
               <Input
                 className="h-11"
                 id="recovery-code"
                 autoFocus
                 {...register('code', {
                   validate: {
-                    required: (v) => isNotEmpty(v) || t('modules.user.form.user.code.validation.required_field'),
-                    code: (v) => isValidRecoveryCode(v) || t('modules.user.form.user.code.validation.invalid_code'),
+                    required: (v) => isNotEmpty(v) || t('user.form.code.validation.required_field'),
+                    code: (v) => isValidRecoveryCode(v) || t('user.form.code.validation.invalid_code'),
                   },
                 })}
               />
               {errors.code ? <p className="text-sm text-destructive">{errors.code.message}</p> : null}
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="recovery-password">{t('modules.user.form.user.password.placeholder')}</Label>
+              <Label htmlFor="recovery-password">{t('user.form.password.placeholder')}</Label>
               <Input
                 className="h-11"
                 id="recovery-password"
                 type="password"
                 {...register('password', {
                   validate: {
-                    required: (v) => isNotEmpty(v) || t('modules.user.form.user.password.validation.required_field'),
-                    password: (v) => isValidPassword(v) || t('modules.user.form.user.password.validation.invalid_password'),
+                    required: (v) => isNotEmpty(v) || t('user.form.password.validation.required_field'),
+                    password: (v) => isValidPassword(v) || t('user.form.password.validation.invalid_password'),
                   },
                 })}
               />
               {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
             </div>
             {reset.isError ? (
-              <p className="text-sm text-destructive">{t('modules.user.modal.access_recovery.reset_failed')}</p>
+              <p className="text-sm text-destructive">{t('auth.access_recovery_modal.reset_failed')}</p>
             ) : null}
             <div className={dialogActionsClass}>
               <Button type="button" variant="secondary" onClick={onClose}>
-                {t('elements.button.cancel.label')}
+                {t('common.button.cancel.label')}
               </Button>
               <Button type="submit" disabled={reset.isPending}>
-                {t('modules.user.form.access_recovery.action.change_password.label')}
+                {t('auth.form.access_recovery.action.change_password.label')}
               </Button>
             </div>
           </>
         ) : (
           <>
             {remind.isError ? (
-              <p className="text-sm text-destructive">{t('modules.user.modal.access_recovery.send_failed')}</p>
+              <p className="text-sm text-destructive">{t('auth.access_recovery_modal.send_failed')}</p>
             ) : null}
             <div className={dialogActionsClass}>
               <Button type="button" variant="secondary" onClick={onClose}>
-                {t('elements.button.cancel.label')}
+                {t('common.button.cancel.label')}
               </Button>
               <Button type="submit" disabled={remind.isPending}>
-                {t('modules.user.form.access_recovery.action.recover.label')}
+                {t('auth.form.access_recovery.action.recover.label')}
               </Button>
             </div>
           </>

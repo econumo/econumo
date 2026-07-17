@@ -63,7 +63,7 @@ var rateShape = regexp.MustCompile(`^[0-9]{1,11}(\.[0-9]{1,8})?$`)
 
 func validateRate(rate string) error {
 	bad := errs.NewValidation("Validation failed",
-		errs.FieldError{Key: "rate", Message: "Rate must be a positive number"})
+		errs.FieldError{Key: "rate", Message: "Rate must be a positive number", Code: errs.CodeCurrencyRateInvalid})
 	if !rateShape.MatchString(rate) {
 		return bad
 	}
@@ -77,7 +77,7 @@ func validateName(name string) (string, error) {
 	n := strings.TrimSpace(name)
 	if l := len([]rune(n)); l < 1 || l > 64 {
 		return "", errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "name", Message: "Currency name must be 1-64 characters"})
+			errs.FieldError{Key: "name", Message: "Currency name must be 1-64 characters", Code: errs.CodeCurrencyNameLength})
 	}
 	return n, nil
 }
@@ -86,7 +86,7 @@ func validateSymbol(symbol string) (string, error) {
 	sym := strings.TrimSpace(symbol)
 	if l := len([]rune(sym)); l < 1 || l > 12 {
 		return "", errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "symbol", Message: "Currency symbol must be 1-12 characters"})
+			errs.FieldError{Key: "symbol", Message: "Currency symbol must be 1-12 characters", Code: errs.CodeCurrencySymbolLength})
 	}
 	return sym, nil
 }
@@ -94,7 +94,7 @@ func validateSymbol(symbol string) (string, error) {
 func validateFractionDigits(d int) error {
 	if d < 0 || d > 8 {
 		return errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "fractionDigits", Message: "Fraction digits must be between 0 and 8"})
+			errs.FieldError{Key: "fractionDigits", Message: "Fraction digits must be between 0 and 8", Code: errs.CodeCurrencyFractionDigitsRange})
 	}
 	return nil
 }
@@ -179,7 +179,7 @@ func (s *ManageService) CreateCurrency(ctx context.Context, userID vo.Id, req mo
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 		dupOwn, cerr := s.repo.OwnerCodeExists(ctx, uid, code)
 		if cerr != nil {
@@ -191,7 +191,7 @@ func (s *ManageService) CreateCurrency(ctx context.Context, userID vo.Id, req mo
 		}
 		if dupOwn || dupGlobal {
 			return errs.NewValidation("Validation failed",
-				errs.FieldError{Key: "code", Message: "Currency already exists"})
+				errs.FieldError{Key: "code", Message: "Currency already exists", Code: errs.CodeCurrencyAlreadyExists})
 		}
 		rec.CreatedAt = now
 		if serr := s.repo.InsertUserCurrency(ctx, rec); serr != nil {

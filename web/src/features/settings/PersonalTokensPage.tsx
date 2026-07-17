@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { RouterPage } from '@/app/router-pages'
 import type { CreatedPersonalTokenDto, PersonalTokenDto } from '@/api/dto/user'
+import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime } from '@/lib/datetime'
 import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } from './security'
 import { parseUtcDateTime, relativeTime } from './securityFormat'
@@ -34,7 +36,7 @@ export function expiresAtFrom(choice: ExpiryChoice, customDate: string, now: Dat
 }
 
 export function PersonalTokensPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: tokens } = usePersonalTokens()
   const createToken = useCreatePersonalToken()
   const revokeToken = useRevokePersonalToken()
@@ -58,12 +60,12 @@ export function PersonalTokensPage() {
 
   const submit = () => {
     if (!name.trim()) {
-      setFormError(t('modules.user.page.settings.profile.tokens.form.name.validation.required_field'))
+      setFormError(t('user.page.settings.profile.tokens.form.name.validation.required_field'))
       return
     }
     const expiresAt = expiresAtFrom(expiry, customDate)
     if (expiry === 'custom' && (!expiresAt || parseUtcDateTime(expiresAt) <= new Date())) {
-      setFormError(t('modules.user.page.settings.profile.tokens.form.expiry.validation.invalid_date'))
+      setFormError(t('user.page.settings.profile.tokens.form.expiry.validation.invalid_date'))
       return
     }
     setFormError(null)
@@ -76,7 +78,7 @@ export function PersonalTokensPage() {
           setCopied(false)
           setCreated(result)
         },
-        onError: () => setFormError(t('modules.user.page.settings.profile.tokens.form.expiry.validation.invalid_date')),
+        onError: () => setFormError(t('user.page.settings.profile.tokens.form.expiry.validation.invalid_date')),
       },
     )
   }
@@ -92,32 +94,30 @@ export function PersonalTokensPage() {
 
   return (
     <SettingsShell
-      title={t('modules.user.page.settings.profile.tokens.header')}
+      title={t('user.page.settings.profile.tokens.header')}
       backTo={RouterPage.SETTINGS_PROFILE}
       crumbs={[
-        { label: t('pages.settings.settings.header_desktop'), to: RouterPage.SETTINGS },
-        { label: t('modules.user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
+        { label: t('settings.page.header_desktop'), to: RouterPage.SETTINGS },
+        { label: t('user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
       ]}
       actions={
         <Button
           type="button"
           size="sm"
           onClick={() => setCreateOpen(true)}
-          title={t('modules.user.page.settings.profile.tokens.create.label')}
-          aria-label={t('modules.user.page.settings.profile.tokens.create.label')}
+          title={t('user.page.settings.profile.tokens.create.label')}
+          aria-label={t('user.page.settings.profile.tokens.create.label')}
         >
           <Plus className="size-4" />
-          <span className="hidden sm:inline">{t('modules.user.page.settings.profile.tokens.create.label')}</span>
+          <span className="hidden sm:inline">{t('user.page.settings.profile.tokens.create.label')}</span>
         </Button>
       }
     >
-      <p className="max-w-md px-1 py-2 text-xs text-muted-foreground">
-        {t('modules.user.page.settings.profile.tokens.description')}
-      </p>
+      <InfoBox>{t('user.page.settings.profile.tokens.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
         {tokens && tokens.length === 0 ? (
-          <p className="px-1 text-sm text-muted-foreground">{t('modules.user.page.settings.profile.tokens.empty')}</p>
+          <p className="px-1 text-sm text-muted-foreground">{t('user.page.settings.profile.tokens.empty')}</p>
         ) : null}
         {(tokens ?? []).map((token) => (
           <div key={token.id} className="flex items-center gap-3 rounded-lg bg-econumo-card px-4 py-3">
@@ -125,11 +125,12 @@ export function PersonalTokensPage() {
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate text-sm">{token.name}</span>
               <span className="text-xs text-muted-foreground">
-                {t('modules.user.page.settings.profile.tokens.last_used')} {relativeTime(token.lastUsedAt)}
+                {t('user.page.settings.profile.tokens.last_used')}{' '}
+                {relativeTime(token.lastUsedAt, { lang: i18n.language, justNow: t('common.date.just_now') })}
                 {' · '}
                 {token.expiresAt
-                  ? `${t('modules.user.page.settings.profile.tokens.expires')} ${formatDate(parseUtcDateTime(token.expiresAt))}`
-                  : t('modules.user.page.settings.profile.tokens.never_expires')}
+                  ? `${t('user.page.settings.profile.tokens.expires')} ${formatDate(parseUtcDateTime(token.expiresAt))}`
+                  : t('user.page.settings.profile.tokens.never_expires')}
               </span>
             </div>
             <Button
@@ -139,7 +140,7 @@ export function PersonalTokensPage() {
               className="shrink-0 text-econumo-magenta"
               onClick={() => setConfirmRevoke(token)}
             >
-              {t('modules.user.page.settings.profile.tokens.revoke')}
+              {t('user.page.settings.profile.tokens.revoke')}
             </Button>
           </div>
         ))}
@@ -154,7 +155,7 @@ export function PersonalTokensPage() {
             resetForm()
           }
         }}
-        title={t('modules.user.page.settings.profile.tokens.create.label')}
+        title={t('user.page.settings.profile.tokens.create.label')}
       >
         <form
           className="flex flex-col gap-4"
@@ -164,18 +165,18 @@ export function PersonalTokensPage() {
             submit()
           }}
         >
-          <CardField label={t('modules.user.page.settings.profile.tokens.form.name.label')} htmlFor="token-name" error={formError}>
+          <CardField label={t('user.page.settings.profile.tokens.form.name.label')} htmlFor="token-name" error={formError}>
             <Input
               id="token-name"
               className={cardFieldControlClass}
-              placeholder={t('modules.user.page.settings.profile.tokens.form.name.placeholder')}
+              placeholder={t('user.page.settings.profile.tokens.form.name.placeholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </CardField>
           <fieldset className="flex flex-col gap-2">
             <legend className="pb-1 text-[11px] font-normal text-muted-foreground">
-              {t('modules.user.page.settings.profile.tokens.form.expiry.label')}
+              {t('user.page.settings.profile.tokens.form.expiry.label')}
             </legend>
             <div className="flex flex-wrap gap-2">
               {expiryOptions.map((option) =>
@@ -188,13 +189,14 @@ export function PersonalTokensPage() {
                         variant={expiry === 'custom' ? 'default' : 'secondary'}
                         onClick={() => setExpiry('custom')}
                       >
-                        {customDate || t('modules.user.page.settings.profile.tokens.form.expiry.options.custom')}
+                        {customDate || t('user.page.settings.profile.tokens.form.expiry.options.custom')}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         weekStartsOn={1}
+                        locale={calendarLocale(i18n.language)}
                         selected={customDate ? parseDateTime(customDate) : undefined}
                         onSelect={(day) => {
                           if (day) {
@@ -214,7 +216,7 @@ export function PersonalTokensPage() {
                     variant={expiry === option ? 'default' : 'secondary'}
                     onClick={() => setExpiry(option)}
                   >
-                    {t(`modules.user.page.settings.profile.tokens.form.expiry.options.${option}`)}
+                    {t(`user.page.settings.profile.tokens.form.expiry.options.${option}`)}
                   </Button>
                 ),
               )}
@@ -229,10 +231,10 @@ export function PersonalTokensPage() {
                 resetForm()
               }}
             >
-              {t('elements.button.cancel.label')}
+              {t('common.button.cancel.label')}
             </Button>
             <Button type="submit" disabled={createToken.isPending}>
-              {t('modules.user.page.settings.profile.tokens.form.submit.label')}
+              {t('user.page.settings.profile.tokens.form.submit.label')}
             </Button>
           </div>
         </form>
@@ -242,22 +244,22 @@ export function PersonalTokensPage() {
       <ResponsiveDialog
         open={created !== null}
         onOpenChange={(o) => !o && setCreated(null)}
-        title={t('modules.user.page.settings.profile.tokens.created_dialog.title')}
-        description={t('modules.user.page.settings.profile.tokens.created_dialog.warning')}
+        title={t('user.page.settings.profile.tokens.created_dialog.title')}
+        description={t('user.page.settings.profile.tokens.created_dialog.warning')}
       >
         <div className="flex flex-col gap-3">
           <code className="break-all rounded-lg bg-econumo-card px-3 py-2 text-xs" data-testid="created-token">
             {created?.token}
           </code>
           <div className={dialogActionsClass}>
-            <Button type="button" variant="secondary" onClick={copy}>
+            <Button type="button" variant="secondary" onClick={() => setCreated(null)}>
+              {t('user.page.settings.profile.tokens.created_dialog.done')}
+            </Button>
+            <Button type="button" onClick={copy}>
               {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
               {copied
-                ? t('modules.user.page.settings.profile.tokens.created_dialog.copied')
-                : t('modules.user.page.settings.profile.tokens.created_dialog.copy')}
-            </Button>
-            <Button type="button" onClick={() => setCreated(null)}>
-              {t('modules.user.page.settings.profile.tokens.created_dialog.done')}
+                ? t('user.page.settings.profile.tokens.created_dialog.copied')
+                : t('user.page.settings.profile.tokens.created_dialog.copy')}
             </Button>
           </div>
         </div>
@@ -272,9 +274,9 @@ export function PersonalTokensPage() {
           }
           setConfirmRevoke(null)
         }}
-        question={t('modules.user.page.settings.profile.tokens.confirm_revoke')}
-        confirmLabel={t('modules.user.page.settings.profile.tokens.revoke')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('user.page.settings.profile.tokens.confirm_revoke')}
+        confirmLabel={t('user.page.settings.profile.tokens.revoke')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </SettingsShell>

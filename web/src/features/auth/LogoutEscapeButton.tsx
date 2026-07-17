@@ -20,9 +20,9 @@ export function LogoutEscapeButton({ placement = 'screen' }: { placement?: 'scre
   const { t } = useTranslation()
   const caption = (
     <span className="text-xs text-muted-foreground">
-      {t('elements.loader.having_trouble')}{' '}
+      {t('common.loader.having_trouble')}{' '}
       <Link to={RouterPage.LOGOUT} className="underline underline-offset-2 hover:text-foreground">
-        {t('pages.settings.settings.logout')}
+        {t('settings.page.logout')}
       </Link>
     </span>
   )

@@ -21,7 +21,7 @@ func (s *ManageService) SetCurrencyRate(ctx context.Context, userID vo.Id, req m
 		parsed, perr := time.ParseInLocation(datetime.DateLayout, *req.Date, time.UTC)
 		if perr != nil {
 			return nil, errs.NewValidation("Validation failed",
-				errs.FieldError{Key: "date", Message: "Date is not valid"})
+				errs.FieldError{Key: "date", Message: "Date is not valid", Code: errs.CodeCurrencyDateInvalid})
 		}
 		date = parsed
 	}

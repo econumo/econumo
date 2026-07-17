@@ -32,7 +32,7 @@ export function AcceptInviteDialog({ open, pending, error, onSubmit, onClose }: 
     <ResponsiveDialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title={t('modules.connections.modals.accept_invite.label')}
+      title={t('connections.modals.accept_invite.label')}
     >
       <form
         className="flex flex-col gap-3"
@@ -44,12 +44,12 @@ export function AcceptInviteDialog({ open, pending, error, onSubmit, onClose }: 
           }
         }}
       >
-        <p className="text-sm text-muted-foreground">{t('modules.connections.modals.accept_invite.instruction')}</p>
+        <p className="text-sm text-muted-foreground">{t('connections.modals.accept_invite.instruction')}</p>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="invite-code">{t('modules.connections.modals.accept_invite.code.label')}</Label>
+          <Label htmlFor="invite-code">{t('connections.modals.accept_invite.code.label')}</Label>
           <Input id="invite-code" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
           {touched && empty ? (
-            <p className="text-sm text-destructive">{t('modules.connections.forms.invitation_code.validation.required_field')}</p>
+            <p className="text-sm text-destructive">{t('connections.forms.invitation_code.validation.required_field')}</p>
           ) : null}
           {error ? (
             <p role="alert" className="text-sm text-destructive">
@@ -59,10 +59,10 @@ export function AcceptInviteDialog({ open, pending, error, onSubmit, onClose }: 
         </div>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" disabled={pending}>
-            {t('elements.button.accept.label')}
+            {t('common.button.accept.label')}
           </Button>
         </div>
       </form>

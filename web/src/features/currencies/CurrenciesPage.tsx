@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { isAxiosError } from 'axios'
 import { MoreVertical, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +9,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import type { CurrencyListItemDto } from '@/api/dto/currency'
 import { RouterPage } from '@/app/router-pages'
+import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { CurrencyDialog } from './CurrencyDialog'
@@ -26,14 +26,6 @@ import {
   useHideCurrency,
   useShowCurrency,
 } from './queries'
-
-function serverMessage(error: unknown): string {
-  if (isAxiosError(error)) {
-    const message = (error.response?.data as { message?: string } | undefined)?.message
-    if (message) return message
-  }
-  return 'Something went wrong'
-}
 
 export function CurrenciesPage() {
   const { t } = useTranslation()
@@ -73,16 +65,16 @@ export function CurrenciesPage() {
 
   return (
     <SettingsShell
-      title={t('modules.classifications.currencies.pages.settings.header')}
-      heading={t('modules.classifications.currencies.pages.settings.menu_item')}
+      title={t('classifications.currencies.pages.settings.header')}
+      heading={t('classifications.currencies.pages.settings.menu_item')}
       backTo={RouterPage.SETTINGS}
       actions={
         isCompact ? (
           <Button
             type="button"
             size="icon"
-            aria-label={t('modules.classifications.currencies.pages.settings.create_currency')}
-            title={t('modules.classifications.currencies.pages.settings.create_currency')}
+            aria-label={t('classifications.currencies.pages.settings.create_currency')}
+            title={t('classifications.currencies.pages.settings.create_currency')}
             onClick={() => setDialog({ open: true, currency: null })}
           >
             <Plus className="size-4" />
@@ -90,7 +82,7 @@ export function CurrenciesPage() {
         ) : (
           <Button type="button" size="sm" onClick={() => setDialog({ open: true, currency: null })}>
             <Plus className="size-4" />
-            {t('modules.classifications.currencies.pages.settings.create_currency')}
+            {t('classifications.currencies.pages.settings.create_currency')}
           </Button>
         )
       }
@@ -99,10 +91,10 @@ export function CurrenciesPage() {
         {error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
         <section className="flex flex-col gap-1">
           <h2 className="mt-2 mb-1 px-1 text-sm font-semibold uppercase tracking-wide">
-            {t('modules.classifications.currencies.pages.settings.my_currencies')}
+            {t('classifications.currencies.pages.settings.my_currencies')}
           </h2>
           {own.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-muted-foreground">{t('modules.classifications.currencies.pages.settings.empty_state')}</p>
+            <p className="px-1 py-2 text-sm text-muted-foreground">{t('classifications.currencies.pages.settings.empty_state')}</p>
           ) : (
             own.map((currency) => {
               const rate = rateFor(currency.id)
@@ -115,7 +107,7 @@ export function CurrenciesPage() {
                     </span>
                     {rate ? (
                       <span className="truncate text-xs text-muted-foreground">
-                        {t('modules.classifications.currencies.pages.settings.rate_caption', {
+                        {t('classifications.currencies.pages.settings.rate_caption', {
                           base: baseCurrency?.code ?? '',
                           rate: rate.rate,
                           code: currency.code,
@@ -124,7 +116,7 @@ export function CurrenciesPage() {
                     ) : null}
                   </span>
                   {currency.isArchived === 1 ? (
-                    <Badge variant="secondary">{t('modules.classifications.currencies.pages.settings.archived_item')}</Badge>
+                    <Badge variant="secondary">{t('classifications.currencies.pages.settings.archived_item')}</Badge>
                   ) : null}
                   <Switch
                     aria-label={`archive ${currency.name}`}
@@ -132,9 +124,9 @@ export function CurrenciesPage() {
                     onCheckedChange={() => {
                       setError(null)
                       if (currency.isArchived === 0) {
-                        archiveCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                        archiveCurrency.mutate(currency.id, { onError: (e) => setError(apiErrorMessage(e)) })
                       } else {
-                        unarchiveCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                        unarchiveCurrency.mutate(currency.id, { onError: (e) => setError(apiErrorMessage(e)) })
                       }
                     }}
                   />
@@ -145,12 +137,12 @@ export function CurrenciesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setDialog({ open: true, currency })}>{t('elements.button.edit.label')}</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setDialog({ open: true, currency })}>{t('common.button.edit.label')}</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setRateDialog({ open: true, currency })}>
-                        {t('modules.classifications.currencies.modals.rate.header')}
+                        {t('classifications.currencies.modals.rate.header')}
                       </DropdownMenuItem>
                       <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(currency)}>
-                        {t('elements.button.delete.label')}
+                        {t('common.button.delete.label')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -162,15 +154,15 @@ export function CurrenciesPage() {
 
         <section className="flex flex-col gap-1">
           <h2 className="mt-2 mb-1 px-1 text-sm font-semibold uppercase tracking-wide">
-            {t('modules.classifications.currencies.pages.settings.global_currencies')}
+            {t('classifications.currencies.pages.settings.global_currencies')}
           </h2>
           {globals.map((currency) => {
             const locked = currency.id === baseId || currency.id === profileId
             const lockedTitle =
               currency.id === baseId
-                ? t('modules.classifications.currencies.pages.settings.locked_base')
+                ? t('classifications.currencies.pages.settings.locked_base')
                 : currency.id === profileId
-                  ? t('modules.classifications.currencies.pages.settings.locked_profile')
+                  ? t('classifications.currencies.pages.settings.locked_profile')
                   : undefined
             return (
               <div key={currency.id} className="flex items-center gap-2 rounded-md px-1 py-1.5 hover:bg-accent">
@@ -186,9 +178,9 @@ export function CurrenciesPage() {
                   onCheckedChange={(checked) => {
                     setError(null)
                     if (checked) {
-                      showCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                      showCurrency.mutate(currency.id, { onError: (e) => setError(apiErrorMessage(e)) })
                     } else {
-                      hideCurrency.mutate(currency.id, { onError: (e) => setError(serverMessage(e)) })
+                      hideCurrency.mutate(currency.id, { onError: (e) => setError(apiErrorMessage(e)) })
                     }
                   }}
                 />
@@ -207,12 +199,12 @@ export function CurrenciesPage() {
           if (dialog.currency) {
             updateCurrency.mutate(
               { id: dialog.currency.id, name: form.name, symbol: form.symbol, fractionDigits: form.fractionDigits },
-              { onSuccess: closeDialog, onError: (e) => setError(serverMessage(e)) },
+              { onSuccess: closeDialog, onError: (e) => setError(apiErrorMessage(e)) },
             )
           } else {
             createCurrency.mutate(
               { code: form.code, name: form.name, symbol: form.symbol || undefined, fractionDigits: form.fractionDigits, rate: form.rate || undefined },
-              { onSuccess: closeDialog, onError: (e) => setError(serverMessage(e)) },
+              { onSuccess: closeDialog, onError: (e) => setError(apiErrorMessage(e)) },
             )
           }
         }}
@@ -230,7 +222,7 @@ export function CurrenciesPage() {
           setRateError(null)
           setCurrencyRate.mutate(
             { currencyId: rateDialog.currency.id, rate: form.rate, date: form.date },
-            { onSuccess: closeRateDialog, onError: (e) => setRateError(serverMessage(e)) },
+            { onSuccess: closeRateDialog, onError: (e) => setRateError(apiErrorMessage(e)) },
           )
         }}
       />
@@ -241,14 +233,14 @@ export function CurrenciesPage() {
         onConfirm={() => {
           if (deleteTarget) {
             setError(null)
-            deleteCurrency.mutate(deleteTarget.id, { onError: (e) => setError(serverMessage(e)) })
+            deleteCurrency.mutate(deleteTarget.id, { onError: (e) => setError(apiErrorMessage(e)) })
             setDeleteTarget(null)
           }
         }}
-        title={t('modules.classifications.currencies.modals.delete.title')}
-        question={t('modules.classifications.currencies.modals.delete.question', { name: deleteTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('classifications.currencies.modals.delete.title')}
+        question={t('classifications.currencies.modals.delete.question', { name: deleteTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </SettingsShell>

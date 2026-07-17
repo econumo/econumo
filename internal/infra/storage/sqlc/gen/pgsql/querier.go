@@ -120,8 +120,8 @@ type Querier interface {
 	// Write + read queries for the transaction module (PostgreSQL: $N placeholders).
 	// See the sqlite variant for documentation.
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
-	GetUserByID(ctx context.Context, id string) (User, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
+	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	// Read-model queries for the currency module (PostgreSQL variant). No $N
 	// placeholders are needed (neither query is parameterised). See the sqlite
 	// variant for documentation.
@@ -219,6 +219,7 @@ type Querier interface {
 	SetCurrencyArchived(ctx context.Context, arg SetCurrencyArchivedParams) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error

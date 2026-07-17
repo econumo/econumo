@@ -18,17 +18,17 @@ func (s *ManageService) HideCurrency(ctx context.Context, userID vo.Id, req mode
 			return err
 		}
 		if rec.UserID != nil {
-			return errs.NewValidation("This currency cannot be hidden")
+			return &errs.ValidationError{Msg: "This currency cannot be hidden", MsgCode: errs.CodeCurrencyCannotBeHidden}
 		}
 		if rec.Code == s.baseCode {
-			return errs.NewValidation("The base currency cannot be modified")
+			return &errs.ValidationError{Msg: "The base currency cannot be modified", MsgCode: errs.CodeCurrencyBaseImmutable}
 		}
 		profileCode, err := s.profile.CurrencyCode(ctx, userID.String())
 		if err != nil {
 			return err
 		}
 		if rec.Code == profileCode {
-			return errs.NewValidation("This currency cannot be hidden")
+			return &errs.ValidationError{Msg: "This currency cannot be hidden", MsgCode: errs.CodeCurrencyCannotBeHidden}
 		}
 		return s.repo.HideCurrency(ctx, userID.String(), rec.ID, s.clock.Now())
 	}); err != nil {

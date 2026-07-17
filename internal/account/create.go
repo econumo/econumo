@@ -59,7 +59,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 
 		// position: append after the current last, i.e. maxPos+1. When the user has
@@ -188,7 +188,7 @@ const defaultFolderName = "General"
 func (s *Service) resolveAccountFolder(ctx context.Context, userID vo.Id, rawFolderID string) (vo.Id, error) {
 	if strings.TrimSpace(rawFolderID) == "" {
 		return s.defaultFolderOr(ctx, userID, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "folderId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"}))
+			errs.FieldError{Key: "folderId", Message: "This value should not be blank.", Code: errs.CodeIsBlank}))
 	}
 	folderID, err := vo.ParseId(rawFolderID)
 	if err != nil {

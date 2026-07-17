@@ -2,6 +2,7 @@
   "name": "web",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@11.13.1",
   "type": "module",
   "types": "dist/types/index.d.ts",
   "scripts": {
@@ -50,11 +51,6 @@
     "uuid": "^14.0.1",
     "vaul": "^1.1.2",
     "zustand": "^5.0.14"
-  },
-  "pnpm": {
-    "ignoredBuiltDependencies": [
-      "@parcel/watcher"
-    ]
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.2",

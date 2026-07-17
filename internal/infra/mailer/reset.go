@@ -2,10 +2,14 @@ package mailer
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/econumo/econumo/internal/infra/i18n"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
-const resetSubject = "Reset password confirmation code"
+// EmailKeys lists every catalogue key the mailer renders; the i18ntest guard
+// asserts each exists in every language.
+var EmailKeys = []string{"emails.reset.subject", "emails.reset.body"}
 
 // ResetSender builds and sends the password-reset confirmation-code email. It
 // satisfies the user service's reset-mailer port (structurally) so the app layer
@@ -27,9 +31,8 @@ func NewResetSender(m Mailer, from, replyTo string) *ResetSender {
 // always renders the message and returns nil — so the remind flow still succeeds
 // out of the box, and an empty From no longer silently swallows that output.
 func (s *ResetSender) SendResetPasswordCode(ctx context.Context, to, name, code string) error {
-	body := fmt.Sprintf(
-		"Hi %s,\nYour confirmation code is: %s.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n",
-		name, code,
-	)
-	return s.m.Send(ctx, Message{From: s.from, To: to, ReplyTo: s.replyTo, Subject: resetSubject, Text: body})
+	lang := reqctx.Language(ctx)
+	subject := i18n.T(lang, "emails.reset.subject", nil)
+	body := i18n.T(lang, "emails.reset.body", map[string]any{"name": name, "code": code})
+	return s.m.Send(ctx, Message{From: s.from, To: to, ReplyTo: s.replyTo, Subject: subject, Text: body})
 }

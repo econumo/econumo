@@ -1535,6 +1535,16 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.UpdateLanguageRequest:
+    properties:
+      language:
+        type: string
+    type: object
+  model.UpdateLanguageResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   model.UpdateNameRequest:
     properties:
       name:
@@ -5183,6 +5193,48 @@ paths:
       security:
       - Bearer: []
       summary: Update currency
+      tags:
+      - User
+  /api/v1/user/update-language:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's UI language preference and returns
+        the refreshed user.
+      parameters:
+      - description: Update language request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateLanguageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateLanguageResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update language
       tags:
       - User
   /api/v1/user/update-name:

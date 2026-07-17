@@ -45,7 +45,7 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
 
   const submit = () => {
     if (!isNotEmpty(name)) {
-      setError(t('modules.classifications.currencies.forms.currency.name.validation.required_field'))
+      setError(t('classifications.currencies.forms.currency.name.validation.required_field'))
       return
     }
     onSubmit({ code, name, symbol, fractionDigits, rate })
@@ -55,14 +55,14 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
     <ResponsiveDialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? t('modules.classifications.currencies.modals.create.header') : t('modules.classifications.currencies.modals.edit.header')}
+      title={isNew ? t('classifications.currencies.modals.create.header') : t('classifications.currencies.modals.edit.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="currency-dialog-form">
-            {isNew ? t('elements.button.create.label') : t('elements.button.update.label')}
+            {isNew ? t('common.button.create.label') : t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -78,7 +78,7 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
       >
         {isNew ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="currency-code">{t('modules.classifications.currencies.forms.currency.code.label')}</Label>
+            <Label htmlFor="currency-code">{t('classifications.currencies.forms.currency.code.label')}</Label>
             <Input
               id="currency-code"
               maxLength={3}
@@ -89,18 +89,18 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
         ) : null}
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="currency-name">{t('modules.classifications.currencies.forms.currency.name.label')}</Label>
+          <Label htmlFor="currency-name">{t('classifications.currencies.forms.currency.name.label')}</Label>
           <Input id="currency-name" maxLength={64} value={name} onChange={(e) => setName(e.target.value)} />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="currency-symbol">{t('modules.classifications.currencies.forms.currency.symbol.label')}</Label>
+          <Label htmlFor="currency-symbol">{t('classifications.currencies.forms.currency.symbol.label')}</Label>
           <Input id="currency-symbol" maxLength={12} value={symbol} onChange={(e) => setSymbol(e.target.value)} />
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="currency-fraction-digits">{t('modules.classifications.currencies.forms.currency.fraction_digits.label')}</Label>
+          <Label htmlFor="currency-fraction-digits">{t('classifications.currencies.forms.currency.fraction_digits.label')}</Label>
           <Input
             id="currency-fraction-digits"
             type="number"
@@ -113,7 +113,7 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
 
         {isNew ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="currency-rate">{t('modules.classifications.currencies.forms.currency.rate.label')}</Label>
+            <Label htmlFor="currency-rate">{t('classifications.currencies.forms.currency.rate.label')}</Label>
             <Input id="currency-rate" value={rate} onChange={(e) => setRate(e.target.value)} />
           </div>
         ) : null}

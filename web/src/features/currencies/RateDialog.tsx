@@ -31,7 +31,7 @@ export function RateDialog({ open, currency, serverError, onClose, onSubmit }: R
 
   const submit = () => {
     if (!isNotEmpty(rate)) {
-      setError(t('modules.classifications.currencies.forms.currency.name.validation.required_field'))
+      setError(t('classifications.currencies.forms.currency.name.validation.required_field'))
       return
     }
     onSubmit({ rate, date: date || undefined })
@@ -41,14 +41,14 @@ export function RateDialog({ open, currency, serverError, onClose, onSubmit }: R
     <ResponsiveDialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title={t('modules.classifications.currencies.modals.rate.header')}
+      title={t('classifications.currencies.modals.rate.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="rate-dialog-form">
-            {t('modules.classifications.currencies.modals.rate.submit')}
+            {t('classifications.currencies.modals.rate.submit')}
           </Button>
         </div>
       }
@@ -63,12 +63,12 @@ export function RateDialog({ open, currency, serverError, onClose, onSubmit }: R
         }}
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="rate-value">{t('modules.classifications.currencies.forms.currency.rate.label')}</Label>
+          <Label htmlFor="rate-value">{t('classifications.currencies.forms.currency.rate.label')}</Label>
           <Input id="rate-value" value={rate} onChange={(e) => setRate(e.target.value)} />
           {error ?? serverError ? <p className="text-sm text-destructive">{error ?? serverError}</p> : null}
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="rate-date">{t('modules.classifications.currencies.forms.currency.date.label')}</Label>
+          <Label htmlFor="rate-date">{t('classifications.currencies.forms.currency.date.label')}</Label>
           <Input id="rate-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
       </form>

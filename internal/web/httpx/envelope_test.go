@@ -163,7 +163,8 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 			name:       "too many requests -> 429 envelope",
 			err:        errs.NewTooManyRequests("Too many attempts. Try again later."),
 			wantStatus: http.StatusTooManyRequests,
-			wantBody:   `{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}` + "\n",
+			wantBody: `{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{},` +
+				`"messageCode":"common.too_many_attempts"}` + "\n",
 		},
 	}
 	for _, c := range cases {

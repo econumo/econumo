@@ -300,18 +300,25 @@ func newAccountName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {
 		return "", errs.NewValidation("Account name must be 3-64 characters",
-			errs.FieldError{Key: "name", Message: "Account name must be 3-64 characters"})
+			errs.FieldError{
+				Key: "name", Message: "Account name must be 3-64 characters", Code: errs.CodeAccountNameLength,
+				Params: map[string]any{"min": 3, "max": 64},
+			})
 	}
 	return v, nil
 }
 
 // newFolderName enforces the folder name invariant: rune length 3..64
-// ("Folder name must be 3-64 characters", field "name").
+// ("Folder name must be 3-64 characters", field "name"). Shares its code with
+// the budget feature's folder-name check (identical English text).
 func newFolderName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {
 		return "", errs.NewValidation("Folder name must be 3-64 characters",
-			errs.FieldError{Key: "name", Message: "Folder name must be 3-64 characters"})
+			errs.FieldError{
+				Key: "name", Message: "Folder name must be 3-64 characters", Code: errs.CodeFolderNameLength,
+				Params: map[string]any{"min": 3, "max": 64},
+			})
 	}
 	return v, nil
 }
@@ -320,7 +327,7 @@ func newFolderName(v string) (string, error) {
 func newIcon(v string) (string, error) {
 	if v == "" {
 		return "", errs.NewValidation("Icon value must not be empty",
-			errs.FieldError{Key: "icon", Message: "Icon value must not be empty"})
+			errs.FieldError{Key: "icon", Message: "Icon value must not be empty", Code: errs.CodeIconRequired})
 	}
 	return v, nil
 }

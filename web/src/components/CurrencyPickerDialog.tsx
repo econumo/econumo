@@ -35,7 +35,7 @@ export function CurrencyPickerDialog({ open, title, value, onClose, onPick }: Cu
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title}>
       <Command shouldFilter={false}>
-        <CommandInput autoFocus placeholder={t('pages.account.toolbar.search')} value={search} onValueChange={setSearch} />
+        <CommandInput autoFocus placeholder={t('accounts.page.toolbar.search')} value={search} onValueChange={setSearch} />
         <CommandList className="mt-4 max-h-72 max-md:max-h-96">
           <CommandEmpty />
           {options.map((currency) => (

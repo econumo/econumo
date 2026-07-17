@@ -30,19 +30,19 @@ export function ChangePasswordPage() {
   const validate = (): boolean => {
     const next: FormErrors = {}
     if (!isNotEmpty(oldPassword)) {
-      next.oldPassword = t('modules.user.form.change_password.password.validation.invalid_password')
+      next.oldPassword = t('user.change_password.form.password.validation.invalid_password')
     }
     if (!isValidPassword(newPassword)) {
-      next.newPassword = t('modules.user.form.user.password.validation.invalid_password')
+      next.newPassword = t('user.form.password.validation.invalid_password')
     } else if (newPassword === oldPassword) {
-      next.newPassword = t('modules.user.form.change_password.new_password.validation.not_equals')
+      next.newPassword = t('user.change_password.form.new_password.validation.not_equals')
     }
     if (!isNotEmpty(newPasswordRetry)) {
-      next.newPasswordRetry = t('modules.user.form.user.password_retry.validation.required_field')
+      next.newPasswordRetry = t('user.form.password_retry.validation.required_field')
     } else if (!isValidPassword(newPasswordRetry)) {
-      next.newPasswordRetry = t('modules.user.form.user.password_retry.validation.invalid_password')
+      next.newPasswordRetry = t('user.form.password_retry.validation.invalid_password')
     } else if (newPasswordRetry !== newPassword) {
-      next.newPasswordRetry = t('modules.user.form.change_password.new_password_retry.validation.not_equals')
+      next.newPasswordRetry = t('user.change_password.form.new_password_retry.validation.not_equals')
     }
     setErrors(next)
     return Object.keys(next).length === 0
@@ -63,7 +63,7 @@ export function ChangePasswordPage() {
           setOutcome('success')
         },
         onError: () => {
-          setErrorMessage(t('modules.user.modal.change_password_error.text'))
+          setErrorMessage(t('user.change_password.error.text'))
           setOutcome('error')
         },
       },
@@ -72,11 +72,11 @@ export function ChangePasswordPage() {
 
   return (
     <SettingsShell
-      title={t('modules.user.page.settings.profile.change_password.header')}
+      title={t('user.page.settings.profile.change_password.header')}
       backTo={RouterPage.SETTINGS_PROFILE}
       crumbs={[
-        { label: t('pages.settings.settings.header_desktop'), to: RouterPage.SETTINGS },
-        { label: t('modules.user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
+        { label: t('settings.page.header_desktop'), to: RouterPage.SETTINGS },
+        { label: t('user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
       ]}
     >
       <form
@@ -88,63 +88,63 @@ export function ChangePasswordPage() {
         }}
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="cp-old">{t('modules.user.form.change_password.password.label')}</Label>
+          <Label htmlFor="cp-old">{t('user.change_password.form.password.label')}</Label>
           <Input
             id="cp-old"
             type="password"
-            placeholder={t('modules.user.form.change_password.password.placeholder')}
+            placeholder={t('user.change_password.form.password.placeholder')}
             value={oldPassword}
             onChange={(e) => setOldPassword(e.target.value)}
           />
           {errors.oldPassword ? <p className="text-sm text-destructive">{errors.oldPassword}</p> : null}
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="cp-new">{t('modules.user.form.change_password.new_password.label')}</Label>
+          <Label htmlFor="cp-new">{t('user.change_password.form.new_password.label')}</Label>
           <Input
             id="cp-new"
             type="password"
-            placeholder={t('modules.user.form.change_password.new_password.placeholder')}
+            placeholder={t('user.change_password.form.new_password.placeholder')}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
           {errors.newPassword ? <p className="text-sm text-destructive">{errors.newPassword}</p> : null}
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="cp-retry">{t('modules.user.form.change_password.new_password_retry.label')}</Label>
+          <Label htmlFor="cp-retry">{t('user.change_password.form.new_password_retry.label')}</Label>
           <Input
             id="cp-retry"
             type="password"
-            placeholder={t('modules.user.form.change_password.new_password_retry.placeholder')}
+            placeholder={t('user.change_password.form.new_password_retry.placeholder')}
             value={newPasswordRetry}
             onChange={(e) => setNewPasswordRetry(e.target.value)}
           />
           {errors.newPasswordRetry ? <p className="text-sm text-destructive">{errors.newPasswordRetry}</p> : null}
         </div>
         <Button type="submit" className="h-10 w-full font-normal lg:w-auto lg:min-w-44 lg:self-start" disabled={updatePassword.isPending}>
-          {t('modules.user.form.change_password.submit.label')}
+          {t('user.change_password.form.submit.label')}
         </Button>
       </form>
 
-      <LoadingDialog open={updatePassword.isPending} label={t('modules.user.modal.change_password_loading.label')} />
+      <LoadingDialog open={updatePassword.isPending} label={t('user.change_password.loading.label')} />
 
       <ResponsiveDialog
         open={outcome === 'success'}
         onOpenChange={(o) => !o && setOutcome(null)}
-        title={t('modules.user.modal.change_password_success.text')}
+        title={t('user.change_password.success.text')}
       >
         <Button type="button" className="w-full h-11" onClick={() => setOutcome(null)}>
-          {t('elements.button.close.label')}
+          {t('common.button.close.label')}
         </Button>
       </ResponsiveDialog>
 
       <ResponsiveDialog
         open={outcome === 'error'}
         onOpenChange={(o) => !o && setOutcome(null)}
-        title={t('modules.user.modal.change_password_error.header')}
+        title={t('user.change_password.error.header')}
         description={errorMessage}
       >
         <Button type="button" className="w-full h-11" onClick={() => setOutcome(null)}>
-          {t('elements.button.close.label')}
+          {t('common.button.close.label')}
         </Button>
       </ResponsiveDialog>
     </SettingsShell>
