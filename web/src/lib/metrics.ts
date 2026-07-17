@@ -107,6 +107,8 @@ export const METRICS = {
   UI_MODAL_TRANSACTION_CHANGE_PAYEE: 'appUIModalTransactionChangePayee',
   UI_MODAL_TRANSACTION_CHANGE_TAG: 'appUIModalTransactionChangeTag',
   UI_MODAL_TRANSACTION_CHANGE_DATE: 'appUIModalTransactionChangeDate',
+  UI_MODAL_RECURRING_OPEN: 'appUIModalRecurringOpen',
+  UI_MODAL_RECURRING_CLOSE: 'appUIModalRecurringClose',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

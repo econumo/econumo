@@ -22,6 +22,13 @@ export interface TransactionDto extends CreateTransactionDto {
   author: UserDto
 }
 
+// Prefill data for the transaction/recurring dialogs: accepts enriched view
+// rows (e.g. ViewTransaction) whose author lookup may not have resolved yet,
+// without requiring dialogs to fabricate one.
+export interface TransactionPrefill extends Omit<TransactionDto, 'author'> {
+  author?: UserDto
+}
+
 export interface TransactionItemDto {
   item: TransactionDto
   accounts: AccountDto[]

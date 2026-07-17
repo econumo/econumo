@@ -2,21 +2,27 @@ import { useMemo } from 'react'
 import type { AccountDto } from '@/api/dto/account'
 import type { CategoryDto } from '@/api/dto/category'
 import type { PayeeDto } from '@/api/dto/payee'
+import type { RecurringDto } from '@/api/dto/recurring'
 import type { TagDto } from '@/api/dto/tag'
 import type { TransactionDto } from '@/api/dto/transaction'
+import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import { useRecurring } from '@/features/recurring/queries'
 import { useTransactions } from './queries'
 
-export interface ViewTransaction extends TransactionDto {
+export interface ViewTransaction extends Omit<TransactionDto, 'author'> {
+  author?: UserDto
   account?: AccountDto
   accountRecipient?: AccountDto
   category?: CategoryDto
   payee?: PayeeDto
   tag?: TagDto
   isInFuture: boolean
+  /** set on virtual rows synthesized from a recurring template's next payment */
+  recurring?: RecurringDto
 }
 
 export type DailyListEntry =
@@ -59,6 +65,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
+  const { data: recurring } = useRecurring()
 
   return useMemo(() => {
     if (!transactions || !accountId) {
@@ -76,13 +83,40 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
         isInFuture: isFuture(tx.date),
       }))
 
+    // one virtual row per template due on THIS account — transfers surface
+    // only on the source account, matching the real transaction row it will
+    // become once posted
+    const virtual: ViewTransaction[] = (recurring ?? [])
+      .filter((rt) => rt.accountId === accountId)
+      .map((rt) => ({
+        id: rt.id,
+        type: rt.type,
+        accountId: rt.accountId,
+        accountRecipientId: rt.accountRecipientId,
+        amount: rt.amount,
+        amountRecipient: null,
+        categoryId: rt.categoryId,
+        payeeId: rt.payeeId,
+        tagId: rt.tagId,
+        description: rt.description,
+        date: rt.nextPaymentAt,
+        account: accounts?.find((a) => a.id === rt.accountId),
+        accountRecipient: rt.accountRecipientId ? accounts?.find((a) => a.id === rt.accountRecipientId) : undefined,
+        category: rt.categoryId ? categories?.find((c) => c.id === rt.categoryId) : undefined,
+        payee: rt.payeeId ? payees?.find((p) => p.id === rt.payeeId) : undefined,
+        tag: rt.tagId ? tags?.find((tg) => tg.id === rt.tagId) : undefined,
+        isInFuture: isFuture(rt.nextPaymentAt),
+        recurring: rt,
+      }))
+    const merged = [...enriched, ...virtual].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+
     const terms = search.toLowerCase().split(' ').filter(Boolean)
-    const filtered = terms.length === 0 ? enriched : enriched.filter((tx) => {
+    const filtered = terms.length === 0 ? merged : merged.filter((tx) => {
       const hay = haystack(tx)
       return terms.every((term) => hay.includes(term))
     })
 
-    // already date-desc from useTransactions' select; group by day
+    // already date-desc from the merge above; group by day
     const entries: DailyListEntry[] = []
     let currentDay: string | null = null
     for (const tx of filtered) {
@@ -94,7 +128,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
       entries.push({ kind: 'transaction', transaction: tx })
     }
     return entries
-  }, [transactions, accounts, categories, payees, tags, accountId, search])
+  }, [transactions, accounts, categories, payees, tags, recurring, accountId, search])
 }
 
 export interface TitleInfo {

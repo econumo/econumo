@@ -22,6 +22,7 @@ import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
+import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
@@ -237,6 +238,7 @@ export function ApplicationLayout() {
 
       <AccountDialog />
       <TransactionDialog />
+      <RecurringDialog />
       <SwitchAccountPrompt />
       <LoadingDialog open={showBootLoader} label={t('common.app.modal.loading.data_loading')} />
       {showLogoutEscape ? <LogoutEscapeButton /> : null}

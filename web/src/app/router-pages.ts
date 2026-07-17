@@ -17,4 +17,5 @@ export const RouterPage = {
   SETTINGS_TAGS: '/settings/tags',
   SETTINGS_CONNECTIONS: '/settings/connections',
   SETTINGS_BUDGETS: '/settings/budgets',
+  SETTINGS_RECURRING: '/settings/recurring',
 } as const

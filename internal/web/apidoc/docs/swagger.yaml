@@ -470,6 +470,36 @@ definitions:
       token:
         type: string
     type: object
+  model.CreateRecurringTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      categoryId:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      nextPaymentAt:
+        type: string
+      payeeId:
+        type: string
+      schedule:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.CreateRecurringTransactionResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.RecurringTransactionResult'
+    type: object
   model.CreateTagRequest:
     properties:
       accountId:
@@ -646,6 +676,13 @@ definitions:
     type: object
   model.DeletePayeeResult:
     type: object
+  model.DeleteRecurringTransactionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteRecurringTransactionResult:
+    type: object
   model.DeleteTagRequest:
     properties:
       id:
@@ -777,6 +814,13 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.GetRecurringTransactionListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.RecurringTransactionResult'
         type: array
     type: object
   model.GetTagListResult:
@@ -1068,6 +1112,75 @@ definitions:
       position:
         type: integer
     type: object
+  model.PostRecurringTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      amountRecipient:
+        type: string
+      categoryId:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      payeeId:
+        type: string
+      recurringId:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.PostRecurringTransactionResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+      item:
+        $ref: '#/definitions/model.TransactionResult'
+      nextPaymentAt:
+        type: string
+    type: object
+  model.RecurringTransactionResult:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      categoryId:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      nextPaymentAt:
+        type: string
+      ownerUserId:
+        type: string
+      payeeId:
+        type: string
+      schedule:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   model.RegisterRequest:
     properties:
       email:
@@ -1201,6 +1314,16 @@ definitions:
         type: string
     type: object
   model.ShowFolderResult:
+    type: object
+  model.SkipRecurringTransactionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.SkipRecurringTransactionResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.RecurringTransactionResult'
     type: object
   model.StructureResult:
     properties:
@@ -1471,6 +1594,36 @@ definitions:
         type: string
     type: object
   model.UpdatePayeeResult:
+    type: object
+  model.UpdateRecurringTransactionRequest:
+    properties:
+      accountId:
+        type: string
+      accountRecipientId:
+        type: string
+      amount:
+        type: string
+      categoryId:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      nextPaymentAt:
+        type: string
+      payeeId:
+        type: string
+      schedule:
+        type: string
+      tagId:
+        type: string
+      type:
+        type: string
+    type: object
+  model.UpdateRecurringTransactionResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.RecurringTransactionResult'
     type: object
   model.UpdateReportPeriodRequest:
     properties:
@@ -3563,6 +3716,243 @@ paths:
       summary: Update a payee
       tags:
       - Payee
+  /api/v1/recurring/create-recurring-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Creates a recurring transaction template. Idempotent on the request
+        id.
+      parameters:
+      - description: Create recurring transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateRecurringTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateRecurringTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a recurring transaction
+      tags:
+      - Recurring
+  /api/v1/recurring/delete-recurring-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Deletes an existing recurring transaction template.
+      parameters:
+      - description: Delete recurring transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteRecurringTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteRecurringTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a recurring transaction
+      tags:
+      - Recurring
+  /api/v1/recurring/get-recurring-transaction-list:
+    get:
+      description: Returns every recurring transaction template on accounts the caller
+        can access.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetRecurringTransactionListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List recurring transactions
+      tags:
+      - Recurring
+  /api/v1/recurring/post-recurring-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Materializes one instance of a recurring transaction template as
+        a real transaction and advances its schedule. Idempotent on the request id.
+      parameters:
+      - description: Post recurring transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.PostRecurringTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.PostRecurringTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Post a recurring transaction
+      tags:
+      - Recurring
+  /api/v1/recurring/skip-recurring-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Advances a recurring transaction template's schedule without posting
+        a transaction.
+      parameters:
+      - description: Skip recurring transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SkipRecurringTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SkipRecurringTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Skip a recurring transaction
+      tags:
+      - Recurring
+  /api/v1/recurring/update-recurring-transaction:
+    post:
+      consumes:
+      - application/json
+      description: Updates an existing recurring transaction template.
+      parameters:
+      - description: Update recurring transaction request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateRecurringTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateRecurringTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a recurring transaction
+      tags:
+      - Recurring
   /api/v1/tag/archive-tag:
     post:
       consumes:

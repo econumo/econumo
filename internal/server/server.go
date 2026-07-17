@@ -37,6 +37,9 @@ import (
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
+	apprecurring "github.com/econumo/econumo/internal/recurring"
+	handlerrecurring "github.com/econumo/econumo/internal/recurring/api"
+	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/shared/port"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
@@ -173,6 +176,10 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 
+	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, txm, opGuard, clk)
+	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc, cfg.IsDev())
+
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
 
 	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
@@ -197,6 +204,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		handlercurrency.RegisterAPI(currencyHandlers, userSvc, cfg.IsDev()),
 		handleraccount.RegisterAPI(accountHandlers, userSvc, cfg.IsDev()),
 		handlertransaction.RegisterAPI(transactionHandlers, userSvc, cfg.IsDev()),
+		handlerrecurring.RegisterAPI(recurringHandlers, userSvc, cfg.IsDev()),
 		handlerconnection.RegisterAPI(connectionHandlers, userSvc, cfg.IsDev()),
 		handlerbudget.RegisterAPI(budgetHandlers, userSvc, cfg.IsDev()),
 		apidoc.RegisterAPI(),

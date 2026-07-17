@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
+import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { TransactionDialog } from './TransactionDialog'
 
@@ -313,4 +314,50 @@ it('creates a category on the fly and selects it', async () => {
   expect(created!.name).toBe('Books')
   expect(created!.type).toBe('expense')
   await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('Books'))
+})
+
+it('posting a recurring template: header + date prefill, submits to post-recurring-transaction (not create-transaction)', async () => {
+  const wireRecurringDto: RecurringDto = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: 42.5, categoryId: 'cat-food', payeeId: null, tagId: null, description: 'rent',
+    schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
+  }
+  let createCalled = false
+  let postBody: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () => {
+      createCalled = true
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+    http.post('*/api/v1/recurring/post-recurring-transaction', async ({ request }) => {
+      postBody = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: {
+          item: wireTxEcho({ id: 't-posted', date: wireRecurringDto.nextPaymentAt }),
+          accounts: fixtureAccounts,
+          nextPaymentAt: '2026-08-05 00:00:00',
+        },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ postRecurring: wireRecurringDto })
+
+  await screen.findByRole('heading', { name: 'Post recurring transaction' })
+  expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent('2026-07-05')
+  // the account list hasn't resolved yet at the moment the form seeds its
+  // initial state (TransactionForm only mounts once the modal opens), so the
+  // amount echoes normalizeNumber's un-padded value rather than the account's
+  // fraction digits — same limitation the edit-mode seed already has
+  expect(screen.getByLabelText('Amount')).toHaveValue('42.5')
+
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(postBody).toBeDefined())
+  expect(postBody!.recurringId).toBe('r1')
+  expect(postBody!.type).toBe('expense')
+  expect(postBody!.accountId).toBe('a1')
+  expect(createCalled).toBe(false)
 })

@@ -88,6 +88,7 @@ export function SettingsPage() {
             <MenuRow label={t('settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
             <MenuRow label={t('connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
             <MenuRow label={t('budgets.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
+            <MenuRow label={t('settings.recurring.menu_item')} to={RouterPage.SETTINGS_RECURRING} />
           </MenuGroup>
 
           <MenuGroup label={t('settings.page.groups.classification')}>
