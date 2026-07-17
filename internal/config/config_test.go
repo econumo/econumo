@@ -198,3 +198,22 @@ func TestLoadLogLevel(t *testing.T) {
 		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
 	}
 }
+
+func TestLoad_CheckUpdates(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.CheckUpdates {
+		t.Fatal("CheckUpdates default = false, want true")
+	}
+	t.Setenv("ECONUMO_CHECK_UPDATES", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.CheckUpdates {
+		t.Fatal("CheckUpdates with ECONUMO_CHECK_UPDATES=false = true, want false")
+	}
+}

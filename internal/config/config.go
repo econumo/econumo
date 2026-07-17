@@ -24,6 +24,7 @@ type Config struct {
 	AllowRegistration bool
 	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
+	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -69,6 +70,7 @@ func Load() (Config, error) {
 		MailerDSN:              os.Getenv("MAILER_DSN"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),
 		SQLiteBusyTimeout:      getInt("SQLITE_BUSY_TIMEOUT", 0),
+		CheckUpdates:           getBool("ECONUMO_CHECK_UPDATES", true),
 		Port:                   os.Getenv("PORT"),
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
