@@ -31,6 +31,18 @@ const CURRENCIES = [
   { id: '0197a5f6-0001-7000-8000-000000000005', code: 'CHF', name: 'Swiss Franc', symbol: '₣', fractionDigits: 2 },
 ]
 
+// CurrentUserDto shape (web/src/api/dto/user.ts) — AvatarPickerDialog and
+// other useUserData() consumers read it; avatar is the "<icon>:<color>" value.
+const USER = {
+  id: '0197a5f6-0002-7000-8000-000000000001',
+  name: 'Anna Kovaleva',
+  email: 'anna.kovaleva@fastmail.com',
+  avatar: 'owl:teal',
+  options: [],
+  currency: 'USD',
+  reportPeriod: 'month',
+}
+
 const RATES = CURRENCIES.map((c, i) => ({
   currencyId: c.id,
   baseCurrencyId: CURRENCIES[0].id,
@@ -44,5 +56,6 @@ export function EconumoPreviewProvider({ children }: { children: ReactNode }) {
   })
   client.setQueryData(queryKeys.currencies, CURRENCIES)
   client.setQueryData(queryKeys.currencyRates, RATES)
+  client.setQueryData(queryKeys.user, USER)
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>
 }
