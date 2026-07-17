@@ -1,3 +1,0 @@
-files:
-  - source: /web/src/locales/en-US.ts
-    translation: /web/src/locales/%locale%.ts

@@ -76,6 +76,22 @@ inside the container, e.g.:
 $ docker compose exec econumo /app/econumo user:create "Name" user@example.com password
 ```
 
+### Localization
+
+Econumo speaks **English** and **Russian**. The web app follows your browser
+language on first visit; switch it any time via the badge next to the logo on
+the sign-in page, or in **Settings → Profile → Language**. The
+password-recovery email is localized too.
+
+All translations live in [`locales/`](locales/) — one JSON catalogue per
+language, shared by the backend and the web app and managed right in the
+repository (no external translation platform). To contribute a language, copy
+[`locales/en.json`](locales/en.json), translate the values, and open a pull
+request — the test suite verifies key and placeholder parity between
+catalogues automatically (wiring a new language into the app takes a handful
+of registry entries on top of the catalogue; see the i18n section in
+[`CLAUDE.md`](CLAUDE.md)).
+
 ### Upgrading from v0.x (PHP)
 
 v1.x is a full rewrite — the PHP backend became the Go binary and the Vue.js
