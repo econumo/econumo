@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { RouterPage } from '@/app/router-pages'
 import type { CreatedPersonalTokenDto, PersonalTokenDto } from '@/api/dto/user'
@@ -112,9 +113,7 @@ export function PersonalTokensPage() {
         </Button>
       }
     >
-      <p className="max-w-md px-1 py-2 text-xs text-muted-foreground">
-        {t('user.page.settings.profile.tokens.description')}
-      </p>
+      <InfoBox>{t('user.page.settings.profile.tokens.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
         {tokens && tokens.length === 0 ? (

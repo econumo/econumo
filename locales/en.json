@@ -860,6 +860,7 @@
       "settings": {
         "menu_item": "Budgets",
         "header": "Budgets",
+        "info": "All your budgets live here. Create separate budgets for different goals and share them with your family.",
         "create_budget": "Create budget",
         "edit_modal": {
           "header": "Edit budget"
@@ -894,6 +895,7 @@
         "settings": {
           "menu_item": "Categories",
           "header": "Categories",
+          "info": "Categories group your expenses and income. Archive the ones you no longer use — their history is kept.",
           "archived_item": "Archived",
           "create_category": "Create category"
         }
@@ -939,6 +941,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
+          "info": "Tags work across categories — use them to track things like a trip or a project. Archive tags you no longer need.",
           "create_tag": "Create tag",
           "archived_item": "Archived"
         }
@@ -972,6 +975,7 @@
         "settings": {
           "menu_item": "Payees",
           "header": "Payees",
+          "info": "Payees show where your money goes. Archive payees you no longer need.",
           "create_payee": "Create payee",
           "archived_item": "Archived"
         }
@@ -1006,6 +1010,7 @@
       "settings": {
         "menu_item": "Shared access",
         "header": "Shared access",
+        "info": "Connections let you manage budgets and accounts together with another person. Invite your partner with a code, then set access levels per account.",
         "generate_invite": "Create invitation",
         "accept_invite": "Accept invitation"
       }

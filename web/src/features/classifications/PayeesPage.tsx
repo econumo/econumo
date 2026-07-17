@@ -35,6 +35,7 @@ export function PayeesPage() {
     <>
       <ClassificationList
         title={t('classifications.payees.pages.settings.header')}
+        info={t('classifications.payees.pages.settings.info')}
         heading={t('classifications.payees.pages.settings.menu_item')}
         createLabel={t('classifications.payees.pages.settings.create_payee')}
         deleteTitle={t('classifications.payees.modals.delete.title')}

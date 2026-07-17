@@ -35,6 +35,7 @@ export function TagsPage() {
     <>
       <ClassificationList
         title={t('classifications.tags.pages.settings.header')}
+        info={t('classifications.tags.pages.settings.info')}
         createLabel={t('classifications.tags.pages.settings.create_tag')}
         deleteTitle={t('classifications.tags.modals.delete.title')}
         items={own}

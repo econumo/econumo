@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { SortDialog } from '@/components/SortDialog'
@@ -31,6 +32,8 @@ interface ClassificationSection<T> {
 interface ClassificationListProps<T extends ClassificationItem> {
   title: string
   heading?: string
+  /** informational hint rendered above the list */
+  info?: string
   createLabel: string
   deleteTitle: string
   items: T[]
@@ -49,6 +52,7 @@ interface ClassificationListProps<T extends ClassificationItem> {
 export function ClassificationList<T extends ClassificationItem>({
   title,
   heading,
+  info,
   createLabel,
   deleteTitle,
   items,
@@ -155,6 +159,7 @@ export function ClassificationList<T extends ClassificationItem>({
         )
       }
     >
+      {info ? <InfoBox>{info}</InfoBox> : null}
       {isCompact ? (
         // compact toolbar row: reorder on the left, the active-only filter on the right
         <div className="flex items-center justify-between pb-1">

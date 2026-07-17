@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { SessionDto } from '@/api/dto/user'
 import { useRevokeOtherSessions, useRevokeSession, useSessions } from './security'
@@ -43,9 +44,7 @@ export function SessionsPage() {
         { label: t('user.page.settings.profile.menu_item'), to: RouterPage.SETTINGS_PROFILE },
       ]}
     >
-      <p className="max-w-md px-1 py-2 text-xs text-muted-foreground">
-        {t('user.page.settings.profile.sessions.description')}
-      </p>
+      <InfoBox>{t('user.page.settings.profile.sessions.description')}</InfoBox>
 
       <div className="flex max-w-md flex-col gap-2 py-2">
         {(sessions ?? []).map((session) => (

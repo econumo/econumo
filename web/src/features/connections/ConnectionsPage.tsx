@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto, InviteDto } from '@/api/dto/connection'
 import { RouterPage } from '@/app/router-pages'
@@ -54,6 +55,7 @@ export function ConnectionsPage() {
         </div>
       }
     >
+      <InfoBox>{t('connections.pages.settings.info')}</InfoBox>
       {connections.length === 0 ? (
         <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
       ) : (

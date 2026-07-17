@@ -33,6 +33,7 @@ export function CategoriesPage() {
     <>
       <ClassificationList
         title={t('classifications.categories.pages.settings.header')}
+        info={t('classifications.categories.pages.settings.info')}
         createLabel={t('classifications.categories.pages.settings.create_category')}
         deleteTitle={t('classifications.categories.modals.delete.title')}
         items={own}

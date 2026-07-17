@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import { UserOptions } from '@/api/dto/user'
@@ -76,6 +77,7 @@ export function BudgetsPage() {
         </Button>
       }
     >
+      <InfoBox>{t('budgets.page.settings.info')}</InfoBox>
       {budgets.length === 0 ? (
         <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
       ) : (
