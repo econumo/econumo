@@ -76,6 +76,15 @@ inside the container, e.g.:
 $ docker compose exec econumo /app/econumo user:create "Name" user@example.com password
 ```
 
+### Localization
+
+All translations live in [`locales/`](locales/) — one JSON catalogue per
+language, shared by the backend and the web app and managed right in the
+repository (no external translation platform). To contribute a language, copy
+[`locales/en.json`](locales/en.json), translate the values, and open a pull
+request — the test suite verifies key and placeholder parity between
+catalogues automatically.
+
 ### Upgrading from v0.x (PHP)
 
 v1.x is a full rewrite — the PHP backend became the Go binary and the Vue.js

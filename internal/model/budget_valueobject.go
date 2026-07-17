@@ -26,7 +26,8 @@ func ElementTypeFromAlias(alias string) (ElementType, error) {
 		}
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "type", Message: "BudgetElementType with alias " + alias + " not exists", Code: "VALIDATION_ERROR",
+		Key: "type", Message: "BudgetElementType with alias " + alias + " not exists", Code: errs.CodeBudgetInvalidElementTypeAlias,
+		Params: map[string]any{"alias": alias},
 	})
 }
 
@@ -70,7 +71,8 @@ func BudgetRoleFromAlias(alias string) (BudgetRole, error) {
 		}
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "role", Message: "BudgetUserRole with alias " + alias + " not exists", Code: "VALIDATION_ERROR",
+		Key: "role", Message: "BudgetUserRole with alias " + alias + " not exists", Code: errs.CodeBudgetInvalidRoleAlias,
+		Params: map[string]any{"alias": alias},
 	})
 }
 
@@ -84,8 +86,23 @@ func (r BudgetRole) Int16() int16 { return int16(r) }
 func ValidateName(label, name string) error {
 	if n := len([]rune(name)); n < 3 || n > 64 {
 		return errs.NewValidation("Validation failed", errs.FieldError{
-			Key: "name", Message: label + " name must be 3-64 characters", Code: "VALIDATION_ERROR",
+			Key: "name", Message: label + " name must be 3-64 characters", Code: nameLengthCode(label),
+			Params: map[string]any{"min": 3, "max": 64},
 		})
 	}
 	return nil
+}
+
+// nameLengthCode picks the catalogue code for ValidateName's label. Folder is
+// shared verbatim with the account feature's own folder-name check (identical
+// English text), so it uses the common code instead of a budget-specific one.
+func nameLengthCode(label string) string {
+	switch label {
+	case "Budget":
+		return errs.CodeBudgetNameLength
+	case "Envelope":
+		return errs.CodeBudgetEnvelopeNameLength
+	default: // "Folder"
+		return errs.CodeFolderNameLength
+	}
 }

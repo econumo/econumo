@@ -127,7 +127,7 @@ func (s *Service) revokeTokens(ctx context.Context, userID vo.Id, exceptTokenID 
 // row counts); this is the bulk variant for operators.
 func (s *Service) PurgeDeadTokens(ctx context.Context, retention time.Duration) (int64, error) {
 	if retention < 0 {
-		return 0, errs.NewValidation("Retention must not be negative")
+		return 0, &errs.ValidationError{Msg: "Retention must not be negative", MsgCode: errs.CodeTokenRetentionNegative}
 	}
 	return s.tokens.DeleteDead(ctx, s.clock.Now().Add(-retention))
 }

@@ -44,7 +44,7 @@ func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string)
 	var maxPos int16
 	for _, f := range folders {
 		if f.Name == name {
-			return nil, errs.NewValidation("Folder already exists.")
+			return nil, &errs.ValidationError{Msg: "Folder already exists.", MsgCode: errs.CodeAccountFolderAlreadyExists}
 		}
 		if f.Position > maxPos {
 			maxPos = f.Position
@@ -86,7 +86,7 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req model.Upda
 		}
 		for _, other := range folders {
 			if other.Name == name && !other.ID.Equal(id) {
-				return errs.NewValidation("Folder already exists.")
+				return &errs.ValidationError{Msg: "Folder already exists.", MsgCode: errs.CodeAccountFolderAlreadyExists}
 			}
 		}
 		f.UpdateName(name, s.clock.Now())

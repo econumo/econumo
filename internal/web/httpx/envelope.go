@@ -19,13 +19,26 @@ type okEnvelope struct {
 	Data    any    `json:"data"`
 }
 
+// CodeRef is one machine-readable error code + its message parameters, the
+// additive sibling of a frozen English message string.
+type CodeRef struct {
+	Code   string         `json:"code"`
+	Params map[string]any `json:"params,omitempty"`
+}
+
 // errEnvelope is the handled-error response. Errors is a map field-name ->
 // messages (see package doc); the key is always present, even when empty.
+// ErrorCodes/MessageCode/MessageParams are the additive machine-readable
+// siblings of Errors/Message and are OMITTED entirely when empty, so
+// untouched endpoints' wire output (and goldens) stay byte-identical.
 type errEnvelope struct {
-	Success bool                `json:"success"`
-	Message string              `json:"message"`
-	Code    int                 `json:"code"`
-	Errors  map[string][]string `json:"errors"`
+	Success       bool                 `json:"success"`
+	Message       string               `json:"message"`
+	Code          int                  `json:"code"`
+	Errors        map[string][]string  `json:"errors"`
+	ErrorCodes    map[string][]CodeRef `json:"errorCodes,omitempty"`
+	MessageCode   string               `json:"messageCode,omitempty"`
+	MessageParams map[string]any       `json:"messageParams,omitempty"`
 }
 
 // exceptionEnvelope is the unhandled-exception response (HTTP 500). It omits
@@ -63,13 +76,21 @@ func Raw(w http.ResponseWriter, payload any) {
 // Err writes an error envelope (default HTTP 400). errors may be nil; it is
 // always serialized as an object ({} when empty) for wire compatibility.
 func Err(w http.ResponseWriter, message string, code int, errors map[string][]string, httpCode int) {
+	errCoded(w, message, code, errors, nil, "", nil, httpCode)
+}
+
+// errCoded writes the error envelope with the additive code fields populated.
+func errCoded(w http.ResponseWriter, message string, code int, errors map[string][]string,
+	errorCodes map[string][]CodeRef, messageCode string, messageParams map[string]any, httpCode int,
+) {
 	if httpCode == 0 {
 		httpCode = http.StatusBadRequest
 	}
 	if errors == nil {
 		errors = map[string][]string{}
 	}
-	writeJSON(w, httpCode, errEnvelope{Success: false, Message: message, Code: code, Errors: errors})
+	writeJSON(w, httpCode, errEnvelope{Success: false, Message: message, Code: code, Errors: errors,
+		ErrorCodes: errorCodes, MessageCode: messageCode, MessageParams: messageParams})
 }
 
 // accessDeniedEnvelope is the 403 response. Its errors field is an empty ARRAY,

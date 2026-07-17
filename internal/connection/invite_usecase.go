@@ -70,7 +70,7 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.Acce
 			return gerr
 		}
 		if inv.UserID.Equal(userID) {
-			return errs.NewValidation("Inviting yourself?")
+			return &errs.ValidationError{Msg: "Inviting yourself?", MsgCode: errs.CodeConnectionInvitingYourself}
 		}
 		if cerr := s.access.ConnectUsers(txCtx, inv.UserID, userID); cerr != nil {
 			return cerr
@@ -98,7 +98,7 @@ func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req model.
 		return nil, err
 	}
 	if connectedID.Equal(userID) {
-		return nil, errs.NewValidation("Deleting yourself?")
+		return nil, &errs.ValidationError{Msg: "Deleting yourself?", MsgCode: errs.CodeConnectionDeletingYourself}
 	}
 
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {

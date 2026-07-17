@@ -35,11 +35,11 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
 
   const submit = () => {
     if (!isNotEmpty(name)) {
-      setError(t('modules.classifications.categories.forms.category.name.validation.required_field'))
+      setError(t('classifications.categories.forms.category.name.validation.required_field'))
       return
     }
     if (!isValidCategoryName(name)) {
-      setError(t('modules.classifications.categories.forms.category.name.validation.invalid_name'))
+      setError(t('classifications.categories.forms.category.name.validation.invalid_name'))
       return
     }
     onSubmit({ name, type, icon })
@@ -51,14 +51,14 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
       caps
       fullScreen
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? t('modules.classifications.categories.modals.create.header') : t('modules.classifications.categories.modals.edit.header')}
+      title={isNew ? t('classifications.categories.modals.create.header') : t('classifications.categories.modals.edit.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="category-dialog-form">
-            {isNew ? t('elements.button.create.label') : t('elements.button.update.label')}
+            {isNew ? t('common.button.create.label') : t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -85,17 +85,17 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
               className={`flex-1 rounded px-2 py-1.5 text-sm ${type === option ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'} disabled:opacity-60`}
               onClick={() => setType(option)}
             >
-              {t(`modules.classifications.categories.forms.category.type.${option}`)}
+              {t(`classifications.categories.forms.category.type.${option}`)}
             </button>
           ))}
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="category-name">{t('modules.classifications.categories.forms.category.name.label')}</Label>
+          <Label htmlFor="category-name">{t('classifications.categories.forms.category.name.label')}</Label>
           <Input
             id="category-name"
             maxLength={64}
-            placeholder={t('modules.classifications.categories.forms.category.name.placeholder')}
+            placeholder={t('classifications.categories.forms.category.name.placeholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -103,8 +103,8 @@ export function CategoryDialog({ open, category, onClose, onSubmit }: CategoryDi
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <Label>{t('modules.classifications.categories.forms.category.icon.label')}</Label>
-          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modules.classifications.categories.forms.category.icon.label')} />
+          <Label>{t('classifications.categories.forms.category.icon.label')}</Label>
+          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('classifications.categories.forms.category.icon.label')} />
         </div>
       </form>
     </ResponsiveDialog>

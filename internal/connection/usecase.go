@@ -48,7 +48,7 @@ func parseID(field, s string) (vo.Id, error) {
 	id, err := vo.ParseId(s)
 	if err != nil {
 		return vo.Id{}, errs.NewValidation("Validation failed", errs.FieldError{
-			Key: field, Message: "This is not a valid UUID.", Code: "INVALID_UUID_ERROR",
+			Key: field, Message: "This is not a valid UUID.", Code: errs.CodeConnectionInvalidUUID,
 		})
 	}
 	return id, nil

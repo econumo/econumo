@@ -99,7 +99,7 @@ function ElementRow({
   const available = displayAvailable(element)
   const expandable = element.children.length > 0
   const opts = cellOpts(currency)
-  const showTransactionsTitle = t('modules.budget.page.budget.structure.element.action.show_transactions')
+  const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
 
   const spentCell = (target: BudgetTransactionsTarget, spent: number) =>
     extras.onSpentClick ? (
@@ -153,7 +153,7 @@ function ElementRow({
             type="button"
             className="flex min-w-0 flex-1 items-center gap-2 text-left"
             aria-expanded={unfolded}
-            title={t(unfolded ? 'elements.button.collapse.label' : 'elements.button.expand.label')}
+            title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
             onClick={() => toggleElement(element.id)}
           >
             {name}
@@ -174,7 +174,7 @@ function ElementRow({
           {extras.onAvailableClick ? (
             <button
               type="button"
-              title={t('modules.budget.modal.set_limit_form.header')}
+              title={t('budgets.modal.set_limit_form.header')}
               aria-label={`limit ${element.name}`}
               onClick={() => extras.onAvailableClick!(element)}
             >
@@ -232,17 +232,17 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const realFolders = buckets.withFolder
   const sections: { key: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [
     ...realFolders.map((bucket, index) => ({ key: bucket.folder!.id, name: bucket.folder!.name, bucket, folderIndex: index })),
-    { key: '__no_folder__', name: t('modules.budget.page.budget.structure.no_folder'), bucket: buckets.withoutFolder, folderIndex: null },
-    { key: '__archive__', name: t('modules.budget.page.budget.structure.in_archive'), bucket: buckets.archive, folderIndex: null },
+    { key: '__no_folder__', name: t('budgets.page.budget.structure.no_folder'), bucket: buckets.withoutFolder, folderIndex: null },
+    { key: '__archive__', name: t('budgets.page.budget.structure.in_archive'), bucket: buckets.archive, folderIndex: null },
   ]
 
   return (
     <div className="flex flex-col gap-3" data-testid="budget-table">
       <div className="flex items-center gap-1.5 px-3 text-[11px] uppercase tracking-wide text-muted-foreground sm:gap-2 sm:px-4" data-testid="column-headers">
         <span className="min-w-0 flex-1" />
-        <span className="hidden w-24 text-right sm:block">{t('modules.budget.page.budget.structure.tab.budgeted')}</span>
-        <span className="w-20 text-center sm:w-24">{t('modules.budget.page.budget.structure.tab.spent')}</span>
-        <span className="w-20 text-center sm:w-24">{t('modules.budget.page.budget.structure.tab.available')}</span>
+        <span className="hidden w-24 text-right sm:block">{t('budgets.page.budget.structure.tab.budgeted')}</span>
+        <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.spent')}</span>
+        <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.available')}</span>
         <span className="hidden w-6 sm:block" />
       </div>
 
@@ -273,7 +273,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
               {!isArchiveSection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
             </header>
             {hideContents ? null : section.bucket.elements.length === 0 ? (
-              <p className="px-2 py-1 text-xs text-muted-foreground">{t('modules.budget.page.budget.structure.empty_folder.note')}</p>
+              <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
             ) : (
               section.bucket.elements.map((element) => (
                 <ElementRow
@@ -298,7 +298,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
       })}
 
       <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
-        <span className="min-w-0 flex-1 truncate text-[15px]">{t('modules.budget.page.budget.structure.total.name')}</span>
+        <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
         <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
         <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
           {moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}
@@ -315,17 +315,17 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         className="mb-[max(env(safe-area-inset-bottom),0.75rem)] flex flex-col gap-2 rounded-md border px-3 py-2.5 sm:hidden"
         data-testid="budget-totals-mobile"
       >
-        <span className="text-[15px] font-medium">{t('modules.budget.page.budget.structure.total.name')}</span>
+        <span className="text-[15px] font-medium">{t('budgets.page.budget.structure.total.name')}</span>
         <span className="flex items-baseline justify-between">
-          <span className="text-[13px] text-muted-foreground">{t('modules.budget.page.budget.structure.tab.budgeted')}</span>
+          <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.budgeted')}</span>
           <span className="text-[15px] font-medium tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
         </span>
         <span className="flex items-baseline justify-between">
-          <span className="text-[13px] text-muted-foreground">{t('modules.budget.page.budget.structure.tab.spent')}</span>
+          <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.spent')}</span>
           <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}</span>
         </span>
         <span className="flex items-center justify-between">
-          <span className="text-[13px] text-muted-foreground">{t('modules.budget.page.budget.structure.tab.available')}</span>
+          <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
       </div>

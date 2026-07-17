@@ -65,7 +65,7 @@ func (r CreateAccountRequest) Validate() error {
 		{"icon", r.Icon},
 	} {
 		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	if len(fields) > 0 {
@@ -101,7 +101,7 @@ func (r UpdateAccountRequest) Validate() error {
 		{"id", r.Id}, {"name", r.Name}, {"icon", r.Icon}, {"updatedAt", r.UpdatedAt},
 	} {
 		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	if len(fields) > 0 {
@@ -147,7 +147,7 @@ type DeleteAccountRequest struct {
 // Validate enforces id NotBlank.
 func (r DeleteAccountRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -177,7 +177,7 @@ type OrderAccountListRequest struct {
 // Validate enforces a non-empty changes list.
 func (r OrderAccountListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Accounts list is empty")
+		return &errs.ValidationError{Msg: "Accounts list is empty", MsgCode: errs.CodeAccountListEmpty}
 	}
 	return nil
 }
@@ -204,7 +204,7 @@ type CreateFolderRequest struct {
 // Validate enforces name NotBlank.
 func (r CreateFolderRequest) Validate() error {
 	if strings.TrimSpace(r.Name) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -224,10 +224,10 @@ type UpdateFolderRequest struct {
 func (r UpdateFolderRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -248,7 +248,7 @@ type HideFolderRequest struct {
 // Validate enforces id NotBlank.
 func (r HideFolderRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -264,7 +264,7 @@ type ShowFolderRequest struct {
 // Validate enforces id NotBlank.
 func (r ShowFolderRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -283,10 +283,10 @@ type ReplaceFolderRequest struct {
 func (r ReplaceFolderRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.ReplaceId) == "" {
-		fields = append(fields, errs.FieldError{Key: "replaceId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "replaceId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -316,7 +316,7 @@ type OrderFolderListRequest struct {
 // Validate enforces a non-empty changes list.
 func (r OrderFolderListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Folders list is empty")
+		return &errs.ValidationError{Msg: "Folders list is empty", MsgCode: errs.CodeAccountFolderListEmpty}
 	}
 	return nil
 }
@@ -342,7 +342,7 @@ func (r GrantAccountAccessRequest) Validate() error {
 		{"accountId", r.AccountId}, {"userId", r.UserId}, {"role", r.Role},
 	} {
 		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	if len(fields) > 0 {
@@ -365,7 +365,7 @@ type AcceptAccountAccessRequest struct {
 // Validate enforces accountId NotBlank.
 func (r AcceptAccountAccessRequest) Validate() error {
 	if strings.TrimSpace(r.AccountId) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -382,7 +382,7 @@ type DeclineAccountAccessRequest struct {
 // Validate enforces accountId NotBlank.
 func (r DeclineAccountAccessRequest) Validate() error {
 	if strings.TrimSpace(r.AccountId) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -404,7 +404,7 @@ func (r RevokeAccountAccessRequest) Validate() error {
 		{"accountId", r.AccountId}, {"userId", r.UserId},
 	} {
 		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	if len(fields) > 0 {

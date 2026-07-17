@@ -106,7 +106,10 @@ it('runImport chunks at 500 rows, remaps error rows, and tolerates chunk failure
   const post = vi.fn(async (file: File): Promise<{ imported: number; skipped: number; errors: Record<string, number[]> }> => {
     files.push({ name: file.name, rows: (await file.text()).trim().split('\n').length - 1 })
     if (files.length === 2) {
-      throw new Error('boom')
+      throw Object.assign(new Error('Request failed with status code 400'), {
+        isAxiosError: true,
+        response: { data: { success: false, message: 'boom', code: 400, errors: {}, messageCode: 'no.such.code' } },
+      })
     }
     if (files.length === 3) {
       return { imported: 199, skipped: 1, errors: { "Invalid date format 'x'": [3] } }

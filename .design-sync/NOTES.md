@@ -39,11 +39,15 @@ Repo-specific gotchas for future syncs. The config lives in
 - Roboto ships via @fontsource imports in index.css; `cfg.extraFonts` lists
   the four @fontsource css files so the woff2s copy into fonts/ and the
   bundle css urls rewrite.
-- Material Icons: the app serves `public/fonts/material-icons.woff2` at an
+- Material Icons: the app serves the font from `public/fonts/` at an
   absolute `/fonts/` URL the converter can't resolve —
   `.design-sync/material-icons.css` is a twin @font-face with an on-disk
   relative URL, listed in extraFonts. Entity icons (account/category) are
   Material icon **ligature names** rendered via the `.material-icon` class.
+  **The twin's url() must track the app's font FILENAME**: the 2026-07-11
+  rename to `material-symbols-rounded.woff2` left the twin pointing at a
+  gone file — the dead @font-face was silently dropped and every icon
+  captured as tofu until `[FONT_DANGLING]` flagged it (2026-07-16 sync).
 
 ## Brand facts (don't "fix" these in previews)
 
@@ -80,7 +84,8 @@ Repo-specific gotchas for future syncs. The config lives in
   (React 19 surfaces render errors asynchronously past the mount try/catch).
 - `cfg.provider` = `EconumoPreviewProvider` (from `.design-sync/ds-extras.tsx`, bundled
   via extraEntries): a seeded QueryClient for data-dependent components
-  (CurrencySelect, CurrencyPickerDialog). react-query lives INSIDE the bundle, so the
+  (CurrencySelect, CurrencyPickerDialog; since 2026-07-16 also `queryKeys.user`
+  seeded with a CurrentUserDto for AvatarPickerDialog/useUserData consumers). react-query lives INSIDE the bundle, so the
   provider must be a bundle export — a preview-side QueryClientProvider from
   node_modules is a different module instance and never reaches the bundle's hooks.
 - Slider: always pass explicit `defaultValue` array (omitting it renders two thumbs
@@ -131,11 +136,28 @@ Repo-specific gotchas for future syncs. The config lives in
 - ScrollArea needs `type="always"` for a scrollbar in static captures.
 - UserCard appends `?s=N` to avatar URLs — end data-URI avatars with `#`.
 
+- Avatars (2026-07): `avatar` values are `"<icon>:<color>"` (7-slug backend
+  allowlist; utilities `bg-avatar-<slug>-tint` / `text-avatar-<slug>` come from
+  index.css theme vars). UserCard renders UserAvatar — preview avatars are
+  these strings now, never image URLs (the old data-URI trick is dead).
+
 ## Known render warns
 
 (triaged legitimate warn lines; a warn not listed here is new)
 
+- none — the 2026-07-16 sync ended with zero `!` warn lines: `[FONT_DANGLING]`
+  was fixed (twin css filename) and all 18 `[GRID_OVERFLOW]` flags (a check new
+  to the 2.1.211 scripts) were resolved via cardMode overrides in config
+  (column for wide data-display/layout cards; Toaster/Menubar single+primaryStory).
+
 ## Re-sync risks
+
+- A rename of the Material font file under `web/public/fonts/` silently kills
+  the `.design-sync/material-icons.css` twin (dead @font-face dropped, icons
+  become tofu) — `[FONT_DANGLING]` is the tell; update the twin's url().
+- The seeded provider user in ds-extras.tsx hand-copies the CurrentUserDto
+  shape — a DTO field rename won't fail the build, components just read
+  undefined.
 
 - `web/dist/types/` and `dist/econumo.css` are build artifacts — always
   re-run cfg.buildCmd before the converter; stale types silently shrink the

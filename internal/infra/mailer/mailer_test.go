@@ -5,6 +5,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 func TestNew_ProviderSelection(t *testing.T) {
@@ -54,7 +56,7 @@ func TestResetSender(t *testing.T) {
 	if !c.called {
 		t.Fatal("expected the mailer to be called")
 	}
-	if c.msg.From != "from@econumo.test" || c.msg.To != "user@x.test" || c.msg.ReplyTo != "reply@econumo.test" || c.msg.Subject != resetSubject {
+	if c.msg.From != "from@econumo.test" || c.msg.To != "user@x.test" || c.msg.ReplyTo != "reply@econumo.test" || c.msg.Subject != "Reset password confirmation code" {
 		t.Errorf("message envelope = %+v", c.msg)
 	}
 	if !strings.Contains(c.msg.Text, "Alice") || !strings.Contains(c.msg.Text, "abc123def456") {
@@ -69,5 +71,42 @@ func TestResetSender(t *testing.T) {
 	}
 	if !c2.called {
 		t.Error("should still send when From is empty (console default renders it)")
+	}
+}
+
+// sendResetCapture builds a ResetSender over the package's capturing test
+// Mailer, sends a reset code through it, and returns the captured Message.
+func sendResetCapture(t *testing.T, ctx context.Context, to, name, code string) Message {
+	t.Helper()
+	c := &captureMailer{}
+	s := NewResetSender(c, "from@econumo.test", "reply@econumo.test")
+	if err := s.SendResetPasswordCode(ctx, to, name, code); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if !c.called {
+		t.Fatal("expected the mailer to be called")
+	}
+	return c.msg
+}
+
+func TestResetEmailEnglishUnchanged(t *testing.T) {
+	msg := sendResetCapture(t, context.Background(), "u@example.test", "Alice", "123456")
+	if msg.Subject != "Reset password confirmation code" {
+		t.Fatalf("subject = %q", msg.Subject)
+	}
+	want := "Hi Alice,\nYour confirmation code is: 123456.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+	if msg.Text != want {
+		t.Fatalf("en body drifted:\n%q\nwant:\n%q", msg.Text, want)
+	}
+}
+
+func TestResetEmailRussian(t *testing.T) {
+	ctx := reqctx.WithLanguage(context.Background(), "ru")
+	msg := sendResetCapture(t, ctx, "u@example.test", "Алиса", "123456")
+	if !strings.Contains(msg.Text, "Алиса") || !strings.Contains(msg.Text, "123456") {
+		t.Fatalf("ru body missing name/code: %q", msg.Text)
+	}
+	if strings.Contains(msg.Text, "confirmation code is") {
+		t.Fatalf("ru body still English: %q", msg.Text)
 	}
 }

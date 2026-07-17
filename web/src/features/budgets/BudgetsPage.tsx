@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import { UserOptions } from '@/api/dto/user'
@@ -65,17 +66,18 @@ export function BudgetsPage() {
 
   return (
     <SettingsShell
-      title={t('modules.budget.page.settings.header')}
+      title={t('budgets.page.settings.header')}
       backTo={RouterPage.SETTINGS}
       actions={
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
-          <span className="hidden sm:inline">{t('modules.budget.page.settings.create_budget')}</span>
+          <span className="hidden sm:inline">{t('budgets.page.settings.create_budget')}</span>
         </Button>
       }
     >
+      <InfoBox>{t('budgets.page.settings.info')}</InfoBox>
       {budgets.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-muted-foreground">{t('blocks.list.list_empty')}</p>
+        <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
       ) : (
         <ul className="flex flex-col">
           {budgets.map((budget) => {
@@ -115,22 +117,22 @@ export function BudgetsPage() {
                   <DropdownMenuContent align="end">
                     {accepted ? (
                       <DropdownMenuItem onSelect={() => goTo(budget)}>
-                        {t('modules.budget.page.settings.list_actions.go_to')}
+                        {t('budgets.page.settings.list_actions.go_to')}
                       </DropdownMenuItem>
                     ) : null}
                     {user && hasBudgetAdminAccess(budget, user.id) ? (
                       <DropdownMenuItem onSelect={() => setAccessBudgetId(budget.id)}>
-                        {t('modules.budget.page.settings.list_actions.access')}
+                        {t('budgets.page.settings.list_actions.access')}
                       </DropdownMenuItem>
                     ) : null}
                     {budget.ownerUserId !== user?.id ? (
                       <DropdownMenuItem variant="destructive" onSelect={() => setDeclineTarget(budget)}>
-                        {t('elements.button.decline.label')}
+                        {t('common.button.decline.label')}
                       </DropdownMenuItem>
                     ) : null}
                     {user && hasBudgetAdminAccess(budget, user.id) ? (
                       <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(budget)}>
-                        {t('elements.button.delete.label')}
+                        {t('common.button.delete.label')}
                       </DropdownMenuItem>
                     ) : null}
                   </DropdownMenuContent>
@@ -196,10 +198,10 @@ export function BudgetsPage() {
             declineAccess.mutate(declineTarget.id, { onSettled: () => setDeclineTarget(null) })
           }
         }}
-        title={t('modules.budget.page.settings.decline_access_modal.title')}
-        question={t('modules.budget.page.settings.decline_access_modal.question', { name: declineTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.decline.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('budgets.page.settings.decline_access_modal.title')}
+        question={t('budgets.page.settings.decline_access_modal.question', { name: declineTarget?.name ?? '' })}
+        confirmLabel={t('common.button.decline.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
@@ -211,21 +213,21 @@ export function BudgetsPage() {
             deleteBudget.mutate(deleteTarget.id, { onSettled: () => setDeleteTarget(null) })
           }
         }}
-        title={t('modules.budget.page.settings.delete_modal.title')}
-        question={t('modules.budget.page.settings.delete_modal.question', { name: deleteTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('budgets.page.settings.delete_modal.title')}
+        question={t('budgets.page.settings.delete_modal.question', { name: deleteTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
       <ResponsiveDialog
         open={errorOpen}
         onOpenChange={(o) => !o && setErrorOpen(false)}
-        title={t('modules.budget.modal.generic_error.header')}
-        description={t('modules.budget.modal.generic_error.description')}
+        title={t('budgets.modal.generic_error.header')}
+        description={t('budgets.modal.generic_error.description')}
       >
         <Button type="button" className="w-full h-11" onClick={() => setErrorOpen(false)}>
-          {t('elements.button.close.label')}
+          {t('common.button.close.label')}
         </Button>
       </ResponsiveDialog>
     </SettingsShell>

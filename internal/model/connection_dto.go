@@ -65,7 +65,7 @@ type AcceptInviteRequest struct {
 func (r AcceptInviteRequest) Validate() error {
 	if strings.TrimSpace(r.Code) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{
-			Key: "code", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR",
+			Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank,
 		})
 	}
 	return nil
@@ -86,7 +86,7 @@ type DeleteConnectionRequest struct {
 func (r DeleteConnectionRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
 		return errs.NewValidation("Validation failed", errs.FieldError{
-			Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR",
+			Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank,
 		})
 	}
 	return nil

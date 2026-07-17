@@ -117,14 +117,14 @@ function AccountRow({
             </DropdownMenuTrigger>
             {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onSelect={() => onMenu('edit')}>{t('elements.button.edit.label')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onMenu('edit')}>{t('common.button.edit.label')}</DropdownMenuItem>
               {showAccess ? (
                 <DropdownMenuItem onSelect={() => onMenu('access')}>
-                  {t('pages.settings.accounts.list_actions.access')}
+                  {t('settings.accounts.list_actions.access')}
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem variant="destructive" onSelect={() => onMenu('delete')}>
-                {t('elements.button.delete.label')}
+                {t('common.button.delete.label')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -209,7 +209,7 @@ function FolderSection({
           variant="ghost"
           size="icon"
           aria-label={`toggle folder ${folder.name}`}
-          title={t('pages.settings.accounts.folder_toggle')}
+          title={t('settings.accounts.folder_toggle')}
           onClick={(e) => {
             e.stopPropagation()
             onToggleCollapse()
@@ -243,17 +243,17 @@ function FolderSection({
           </DropdownMenuTrigger>
           {/* portaled content still bubbles React clicks to the header — don't reopen the menu */}
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            {index > 0 ? <DropdownMenuItem onSelect={() => onAction('up')}>{t('elements.button.up.label')}</DropdownMenuItem> : null}
+            {index > 0 ? <DropdownMenuItem onSelect={() => onAction('up')}>{t('common.button.up.label')}</DropdownMenuItem> : null}
             {index < total - 1 ? (
-              <DropdownMenuItem onSelect={() => onAction('down')}>{t('elements.button.down.label')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onAction('down')}>{t('common.button.down.label')}</DropdownMenuItem>
             ) : null}
-            <DropdownMenuItem onSelect={() => onAction('rename')}>{t('elements.button.edit.label')}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onAction('rename')}>{t('common.button.edit.label')}</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onAction(folder.isVisible === 1 ? 'hide' : 'show')}>
-              {folder.isVisible === 1 ? t('elements.button.hide.label') : t('elements.button.show.label')}
+              {folder.isVisible === 1 ? t('common.button.hide.label') : t('common.button.show.label')}
             </DropdownMenuItem>
             {index > 0 ? (
               <DropdownMenuItem variant="destructive" onSelect={() => onAction('delete')}>
-                {t('elements.button.delete.label')}
+                {t('common.button.delete.label')}
               </DropdownMenuItem>
             ) : null}
           </DropdownMenuContent>
@@ -343,10 +343,10 @@ export function AccountsSettingsPage() {
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
-      return t('elements.form.account.folder.validation.empty_name')
+      return t('accounts.form.folder.validation.empty_name')
     }
     if (!isValidFolderName(value)) {
-      return t('elements.form.account.folder.validation.error_name_length')
+      return t('accounts.form.folder.validation.error_name_length')
     }
     return null
   }
@@ -422,20 +422,20 @@ export function AccountsSettingsPage() {
 
   return (
     <SettingsShell
-      title={t('pages.settings.accounts.header')}
+      title={t('settings.accounts.header')}
       backTo={RouterPage.SETTINGS}
       actions={
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           <FolderPlus className="size-4" />
-          <span className="hidden sm:inline">{t('pages.settings.accounts.create_folder')}</span>
+          <span className="hidden sm:inline">{t('settings.accounts.create_folder')}</span>
         </Button>
       }
     >
-      <InfoBox>{t('pages.settings.accounts.info')}</InfoBox>
+      <InfoBox>{t('settings.accounts.info')}</InfoBox>
 
       {accounts.length === 0 ? (
         <button type="button" className="px-1 py-2 text-sm text-primary underline" onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}>
-          {t('pages.settings.accounts.list_empty_create')} {t('pages.settings.accounts.list_empty_new_account')}
+          {t('settings.accounts.list_empty_create')} {t('settings.accounts.list_empty_new_account')}
         </button>
       ) : null}
 
@@ -557,11 +557,11 @@ export function AccountsSettingsPage() {
         onSubmit={(name) => {
           createFolder.mutate(name, { onSuccess: () => setCreateOpen(false) })
         }}
-        title={t('pages.settings.accounts.create_folder_modal.header')}
-        inputLabel={t('elements.form.account.folder.label')}
+        title={t('settings.accounts.create_folder_modal.header')}
+        inputLabel={t('accounts.form.folder.label')}
         validate={folderNameValidator}
-        submitLabel={t('elements.button.create.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={t('common.button.create.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
 
       <PromptDialog
@@ -572,12 +572,12 @@ export function AccountsSettingsPage() {
             updateFolder.mutate({ id: renameTarget.id, name }, { onSuccess: () => setRenameTarget(null) })
           }
         }}
-        title={t('pages.settings.accounts.update_folder_modal.header')}
-        inputLabel={t('elements.form.account.folder.label')}
+        title={t('settings.accounts.update_folder_modal.header')}
+        inputLabel={t('accounts.form.folder.label')}
         initialValue={renameTarget?.name ?? ''}
         validate={folderNameValidator}
-        submitLabel={t('elements.button.update.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={t('common.button.update.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
 
       <ConfirmDialog
@@ -591,10 +591,10 @@ export function AccountsSettingsPage() {
             }
           }
         }}
-        title={t('pages.settings.accounts.delete_folder_modal.title')}
-        question={t('pages.settings.accounts.delete_folder_modal.question', { folder: deleteFolderTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('settings.accounts.delete_folder_modal.title')}
+        question={t('settings.accounts.delete_folder_modal.question', { folder: deleteFolderTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
@@ -606,9 +606,9 @@ export function AccountsSettingsPage() {
             deleteAccount.mutate(deleteAccountTarget.id, { onSettled: () => setDeleteAccountTarget(null) })
           }
         }}
-        question={t('pages.settings.accounts.delete_account_modal.question', { account: deleteAccountTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('settings.accounts.delete_account_modal.question', { account: deleteAccountTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
@@ -616,7 +616,7 @@ export function AccountsSettingsPage() {
         <ResponsiveDialog
           open
           onOpenChange={(o) => !o && setPreviewAccount(null)}
-          title={t('pages.settings.accounts.preview_account_modal.header')}
+          title={t('settings.accounts.preview_account_modal.header')}
         >
           <div className="flex items-center gap-3">
             <EntityIcon name={previewLive.icon} className="text-2xl text-muted-foreground" />
@@ -629,9 +629,9 @@ export function AccountsSettingsPage() {
           </div>
           {user && hasAccountAdminAccess(previewLive, user.id) ? (
             <div className="mt-4 flex flex-col gap-1">
-              <span className="text-[11px] text-muted-foreground">{t('pages.settings.accounts.list_actions.access')}</span>
+              <span className="text-[11px] text-muted-foreground">{t('settings.accounts.list_actions.access')}</span>
               {previewEntries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('modules.connections.modals.share_access.list_empty')}</p>
+                <p className="text-sm text-muted-foreground">{t('connections.modals.share_access.list_empty')}</p>
               ) : (
                 <ShareEntryList
                   kind="accounts"
@@ -646,7 +646,7 @@ export function AccountsSettingsPage() {
             </div>
           ) : previewLive.sharedAccess.length > 0 ? (
             <div className="mt-4 flex flex-col gap-1">
-              <span className="text-[11px] text-muted-foreground">{t('pages.settings.accounts.list_actions.access')}</span>
+              <span className="text-[11px] text-muted-foreground">{t('settings.accounts.list_actions.access')}</span>
               <ShareEntryList
                 kind="accounts"
                 entries={[
@@ -665,7 +665,7 @@ export function AccountsSettingsPage() {
                 setPreviewAccount(null)
               }}
             >
-              {t('elements.button.delete.label')}
+              {t('common.button.delete.label')}
             </Button>
             <Button
               type="button"
@@ -674,7 +674,7 @@ export function AccountsSettingsPage() {
                 setPreviewAccount(null)
               }}
             >
-              {t('elements.button.edit.label')}
+              {t('common.button.edit.label')}
             </Button>
           </div>
         </ResponsiveDialog>

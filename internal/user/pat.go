@@ -20,10 +20,10 @@ func (s *Service) CreatePersonalToken(ctx context.Context, userID vo.Id, req mod
 		exp, err := time.Parse(datetime.Layout, req.ExpiresAt)
 		if err != nil {
 			// Validate() already rejects this; defense in depth.
-			return nil, errs.NewValidation("Invalid expiration date")
+			return nil, &errs.ValidationError{Msg: "Invalid expiration date", MsgCode: errs.CodeTokenInvalidExpirationDate}
 		}
 		if !exp.After(now) {
-			return nil, errs.NewValidation("Expiration date must be in the future")
+			return nil, &errs.ValidationError{Msg: "Expiration date must be in the future", MsgCode: errs.CodeTokenExpirationInFuture}
 		}
 		expiresAt = &exp
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 // Login authenticates by identifier (md5 of the lowercased username), verifies
@@ -24,13 +25,13 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			s.failAttempt(RateScopeLogin, limitKey)
-			return nil, errs.NewUnauthorized("Invalid credentials.")
+			return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 		}
 		return nil, err
 	}
 	if !u.IsActive || !s.hasher.Verify(u.Algorithm, u.Password, req.Password, u.Salt) {
 		s.failAttempt(RateScopeLogin, limitKey)
-		return nil, errs.NewUnauthorized("Invalid credentials.")
+		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 
 	email, derr := s.encode.Decode(u.Email)
@@ -49,5 +50,7 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 		return nil, cerr
 	}
 	s.clearAttempt(RateScopeLogin, limitKey)
+	// Best-effort: the language preference must never block a login.
+	_ = s.repo.UpdateLanguage(ctx, u.ID, reqctx.Language(ctx))
 	return &model.LoginResult{Token: token, User: cur}, nil
 }

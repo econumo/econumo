@@ -29,7 +29,8 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 		if len(v.Fields) > 0 {
 			msg = "Form validation error"
 		}
-		Err(w, msg, http.StatusBadRequest, fieldsToMap(v.Fields), http.StatusBadRequest)
+		errCoded(w, msg, http.StatusBadRequest, fieldsToMap(v.Fields), fieldsToCodes(v.Fields),
+			v.MsgCode, v.MsgParams, http.StatusBadRequest)
 		return
 	}
 	if v, ok := errs.AsAccessDenied(err); ok {
@@ -38,11 +39,11 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 		return
 	}
 	if v, ok := errs.AsUnauthorized(err); ok {
-		Err(w, v.Error(), 0, nil, http.StatusUnauthorized)
+		errCoded(w, v.Error(), 0, nil, nil, v.Code, nil, http.StatusUnauthorized)
 		return
 	}
 	if v, ok := errs.AsTooManyRequests(err); ok {
-		Err(w, v.Error(), http.StatusTooManyRequests, nil, http.StatusTooManyRequests)
+		errCoded(w, v.Error(), http.StatusTooManyRequests, nil, nil, errs.CodeTooManyAttempts, nil, http.StatusTooManyRequests)
 		return
 	}
 	if v, ok := errs.AsNotFound(err); ok {
@@ -68,6 +69,23 @@ func fieldsToMap(fields []errs.FieldError) map[string][]string {
 	out := make(map[string][]string, len(fields))
 	for _, f := range fields {
 		out[f.Key] = append(out[f.Key], f.Message)
+	}
+	return out
+}
+
+// fieldsToCodes converts the flat field-error list into the wire map shape
+// (field name -> list of {code,params}), skipping fields with no Code (so
+// endpoints that don't set one keep emitting no errorCodes key at all).
+func fieldsToCodes(fields []errs.FieldError) map[string][]CodeRef {
+	var out map[string][]CodeRef
+	for _, f := range fields {
+		if f.Code == "" {
+			continue
+		}
+		if out == nil {
+			out = map[string][]CodeRef{}
+		}
+		out[f.Key] = append(out[f.Key], CodeRef{Code: f.Code, Params: f.Params})
 	}
 	return out
 }

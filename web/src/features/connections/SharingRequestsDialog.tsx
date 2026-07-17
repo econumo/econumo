@@ -60,11 +60,11 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
     <ResponsiveDialog
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title={t('modules.connections.sharing_requests.title')}
+      title={t('connections.sharing_requests.title')}
     >
       <div className="flex flex-col gap-4">
         {invites.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('modules.connections.sharing_requests.empty')}</p>
+          <p className="text-sm text-muted-foreground">{t('connections.sharing_requests.empty')}</p>
         ) : (
           invites.map((invite) => {
             const isExpanded = invite.kind === 'account' && expandedId === invite.id
@@ -74,14 +74,14 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
                   <UserAvatar avatar={invite.owner.avatar} size="md" />
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm font-medium">
-                      {t('modules.connections.sharing_requests.invited_you', { name: invite.owner.name })}
+                      {t('connections.sharing_requests.invited_you', { name: invite.owner.name })}
                     </span>
                     <span className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
-                      <span>{t(`modules.connections.sharing_requests.${invite.kind}`)}</span>
+                      <span>{t(`connections.sharing_requests.${invite.kind}`)}</span>
                       <span>·</span>
                       <span className="truncate">{invite.name}</span>
                       <span>·</span>
-                      <span>{t(`modules.connections.${invite.kind}s.roles.${invite.role}`)}</span>
+                      <span>{t(`connections.${invite.kind}s.roles.${invite.role}`)}</span>
                     </span>
                   </div>
                 </div>
@@ -89,11 +89,11 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
                 {isExpanded ? (
                   <div className="flex flex-col gap-2">
                     <Label htmlFor={`sharing-request-folder-${invite.id}`}>
-                      {t('modules.connections.sharing_requests.choose_folder')}
+                      {t('connections.sharing_requests.choose_folder')}
                     </Label>
                     <Select value={folderId} onValueChange={setFolderId}>
                       <SelectTrigger id={`sharing-request-folder-${invite.id}`} className="w-full">
-                        <SelectValue placeholder={t('modules.connections.sharing_requests.general_folder_hint')} />
+                        <SelectValue placeholder={t('connections.sharing_requests.general_folder_hint')} />
                       </SelectTrigger>
                       <SelectContent>
                         {folders && folders.length > 0 ? (
@@ -104,27 +104,27 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
                           ))
                         ) : (
                           <SelectItem value={NO_FOLDER_OPTION} disabled>
-                            {t('modules.connections.sharing_requests.general_folder_hint')}
+                            {t('connections.sharing_requests.general_folder_hint')}
                           </SelectItem>
                         )}
                       </SelectContent>
                     </Select>
                     <div className={dialogActionsClass}>
                       <Button type="button" variant="secondary" onClick={() => setExpandedId(null)}>
-                        {t('elements.button.cancel.label')}
+                        {t('common.button.cancel.label')}
                       </Button>
                       <Button type="button" onClick={() => confirmAccept(invite)}>
-                        {t('elements.button.accept.label')}
+                        {t('common.button.accept.label')}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className={dialogActionsClass}>
                     <Button type="button" variant="destructive" onClick={() => setDeclineTarget(invite)}>
-                      {t('elements.button.decline.label')}
+                      {t('common.button.decline.label')}
                     </Button>
                     <Button type="button" onClick={() => startAccept(invite)}>
-                      {t('elements.button.accept.label')}
+                      {t('common.button.accept.label')}
                     </Button>
                   </div>
                 )}
@@ -138,9 +138,9 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
         open={declineTarget !== null}
         onClose={() => setDeclineTarget(null)}
         onConfirm={confirmDecline}
-        question={t('modules.connections.sharing_requests.decline_question', { name: declineTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.decline.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('connections.sharing_requests.decline_question', { name: declineTarget?.name ?? '' })}
+        confirmLabel={t('common.button.decline.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </ResponsiveDialog>

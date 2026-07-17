@@ -1,0 +1,1185 @@
+{
+  "common": {
+    "help": {
+      "label": "© econumo.com",
+      "url": "https://econumo.com/"
+    },
+    "list": {
+      "list_empty": "List is empty",
+      "order_list": "Reorder list",
+      "active_only": "Active only"
+    },
+    "nav": {
+      "budget": "Budget",
+      "onboarding": "Getting started",
+      "create_account": "Add account",
+      "collapse_menu": "Collapse menu",
+      "expand_menu": "Expand menu",
+      "sharing_requests": "Sharing requests"
+    },
+    "econumo": {
+      "label": "Econumo"
+    },
+    "loader": {
+      "label": "loading",
+      "having_trouble": "Having trouble?"
+    },
+    "select": {
+      "search_placeholder": "Search",
+      "create_placeholder": "Search or enter a new name",
+      "create_hint": "Type a name to create it"
+    },
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password"
+    },
+    "button": {
+      "ok": {
+        "label": "OK"
+      },
+      "close": {
+        "label": "Close"
+      },
+      "cancel": {
+        "label": "Cancel"
+      },
+      "create": {
+        "label": "Create"
+      },
+      "add": {
+        "label": "Add"
+      },
+      "edit": {
+        "label": "Edit"
+      },
+      "update": {
+        "label": "Update"
+      },
+      "save": {
+        "label": "Save"
+      },
+      "delete": {
+        "label": "Delete"
+      },
+      "view": {
+        "label": "View"
+      },
+      "up": {
+        "label": "Move up"
+      },
+      "down": {
+        "label": "Move down"
+      },
+      "hide": {
+        "label": "Hide"
+      },
+      "show": {
+        "label": "Show"
+      },
+      "accept": {
+        "label": "Accept"
+      },
+      "expand": {
+        "label": "Expand"
+      },
+      "collapse": {
+        "label": "Collapse"
+      },
+      "decline": {
+        "label": "Decline"
+      },
+      "back": {
+        "label": "Back"
+      },
+      "import": {
+        "label": "Import"
+      },
+      "export": {
+        "label": "Export"
+      },
+      "change": {
+        "label": "Change"
+      }
+    },
+    "date": {
+      "just_now": "just now",
+      "month_short": {
+        "jan": "Jan",
+        "feb": "Feb",
+        "mar": "Mar",
+        "apr": "Apr",
+        "may": "May",
+        "jun": "Jun",
+        "jul": "Jul",
+        "aug": "Aug",
+        "sep": "Sep",
+        "oct": "Oct",
+        "nov": "Nov",
+        "dec": "Dec"
+      }
+    },
+    "validation": {
+      "required_field": "Required field",
+      "invalid_number": "Enter a valid number",
+      "invalid_decimal_number": "Enter a valid decimal number (max 8 decimal places)",
+      "invalid_formula": "Only numbers and operators (+, -, *, /, . and =) are allowed"
+    },
+    "sort": {
+      "header": "Sort",
+      "mode": {
+        "alphabet": {
+          "asc": "Alphabetically (A-Z)",
+          "desc": "Alphabetically (Z-A)"
+        }
+      }
+    },
+    "app": {
+      "error": "Something went wrong. Please try again.",
+      "modal": {
+        "self_hosted": {
+          "information": "Econumo can run on your own server. Enter your server address to connect."
+        },
+        "loading": {
+          "data_loading": "Loading your data"
+        }
+      }
+    }
+  },
+  "accounts": {
+    "folders": {
+      "default_folder": "All accounts"
+    },
+    "account": {
+      "name_hidden": "[Hidden account]"
+    },
+    "switch_to_account": "Switch to",
+    "form": {
+      "folder": {
+        "label": "Name",
+        "validation": {
+          "empty_name": "Enter folder name",
+          "error_name_length": "Folder name must be 3-64 characters"
+        }
+      },
+      "name": {
+        "label": "Name",
+        "placeholder": "Enter name",
+        "validation": {
+          "invalid_name": "Account name must be 3-64 characters"
+        }
+      },
+      "balance": {
+        "label": "Balance",
+        "placeholder": "Enter balance"
+      },
+      "currency": {
+        "label": "Currency"
+      }
+    },
+    "page": {
+      "toolbar": {
+        "settings": "Configure",
+        "search": "Search",
+        "shared_with": "Shared account"
+      },
+      "transaction_list": {
+        "none": "No transactions found",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "item": {
+          "transfer_from": "Transfer from {account}",
+          "transfer_to": "Transfer to {account}"
+        },
+        "action": {
+          "add_transaction": "Add transaction"
+        }
+      },
+      "preview_transaction_modal": {
+        "header": "Transaction details",
+        "type": {
+          "expense": "Expense",
+          "income": "Income",
+          "transfer": "Transfer"
+        },
+        "recipient": {
+          "label": "Recipient"
+        },
+        "sender": {
+          "label": "Sender"
+        },
+        "category": {
+          "label": "Category"
+        },
+        "description": {
+          "label": "Notes"
+        },
+        "payee": {
+          "label": "Payee"
+        },
+        "tags": {
+          "label": "Tags"
+        },
+        "author": {
+          "label": "Author"
+        },
+        "created_at": {
+          "label": "Date"
+        }
+      },
+      "delete_transaction_modal": {
+        "question": "Are you sure you want to delete this transaction?"
+      }
+    },
+    "modal": {
+      "create_form": {
+        "header": "New account"
+      },
+      "update_form": {
+        "header": "Edit account"
+      },
+      "form": {
+        "icon": {
+          "label": "Icon"
+        }
+      }
+    }
+  },
+  "settings": {
+    "page": {
+      "header": "Settings",
+      "header_desktop": "Settings",
+      "menu_item": "Settings",
+      "logout": "Log out",
+      "groups": {
+        "service": "Finances",
+        "classification": "Classification",
+        "data": "Data",
+        "preferences": "Preferences"
+      },
+      "footer": {
+        "api": "API"
+      }
+    },
+    "sync": {
+      "menu_item": "Full sync",
+      "failing": "Can't reach the server — retrying"
+    },
+    "accounts": {
+      "menu_item": "Accounts",
+      "header": "Accounts",
+      "info": "Accounts are organized into folders. Hide a folder to keep accounts you rarely use out of the way.",
+      "folder_toggle": "Collapse folder",
+      "list_empty_create": "Add",
+      "list_empty_new_account": "new account",
+      "list_actions": {
+        "access": "Access control"
+      },
+      "create_folder": "Create folder",
+      "create_folder_modal": {
+        "header": "New folder"
+      },
+      "update_folder_modal": {
+        "header": "Rename folder"
+      },
+      "delete_folder_modal": {
+        "title": "Delete folder?",
+        "question": "Are you sure you want to delete the folder “{folder}”?"
+      },
+      "delete_account_modal": {
+        "question": "Are you sure you want to delete the account “{account}”?"
+      },
+      "preview_account_modal": {
+        "header": "Account details"
+      }
+    },
+    "language": {
+      "menu_item": "Language"
+    },
+    "import_csv": {
+      "menu_item": "Import CSV"
+    },
+    "export_csv": {
+      "menu_item": "Export CSV",
+      "error": "Failed to export transactions"
+    }
+  },
+  "transactions": {
+    "modal": {
+      "transaction_type": {
+        "expense": "Expense",
+        "transfer": "Transfer",
+        "income": "Income"
+      },
+      "create_form": {
+        "header": "Add transaction"
+      },
+      "update_form": {
+        "header": "Edit transaction"
+      },
+      "form": {
+        "amount": {
+          "label": "Amount",
+          "validation": {
+            "required_field": "Amount is required"
+          }
+        },
+        "amount_recipient": {
+          "label": "Amount in {currency}",
+          "validation": {
+            "required_field": "Recipient amount is required"
+          }
+        },
+        "category": {
+          "label": "Category",
+          "validation": {
+            "required_field": "Category is required"
+          }
+        },
+        "payee": {
+          "expense": "Recipient",
+          "income": "Sender"
+        },
+        "description": {
+          "label": "Notes",
+          "placeholder": "Enter notes"
+        },
+        "from": {
+          "label": "From"
+        },
+        "to": {
+          "label": "To"
+        }
+      },
+      "dialog": {
+        "new_tag": {
+          "header": "New tag",
+          "name": {
+            "label": "New tag",
+            "placeholder": "Enter tag name",
+            "validation": {
+              "required_field": "Required field"
+            }
+          }
+        }
+      }
+    },
+    "import_csv": {
+      "header": "Import CSV",
+      "none": "None",
+      "file": {
+        "label": "CSV File",
+        "hint": "Maximum file size: 10 MB"
+      },
+      "mapping": {
+        "description": "Map the columns from your CSV file to the transaction fields. Required fields are marked with an asterisk (*)."
+      },
+      "amount_mode": {
+        "switch_to_single": "Switch to a single amount column",
+        "switch_to_dual": "Split into inflow/outflow columns"
+      },
+      "switch_to_manual": "Enter a value manually",
+      "switch_to_csv": "Use a CSV column",
+      "fields": {
+        "account": "Account",
+        "date": "Date",
+        "amount": "Amount",
+        "amount_inflow": "Amount (Inflow)",
+        "amount_outflow": "Amount (Outflow)",
+        "category": "Category",
+        "description": "Description",
+        "description_placeholder": "Enter description for all transactions",
+        "payee": "Payee",
+        "tag": "Tag"
+      }
+    },
+    "import_result": {
+      "success_title": "Import complete",
+      "partial_success_title": "Import completed with errors",
+      "error_title": "Import failed",
+      "imported": "{count} transaction(s) imported | {count} transactions imported",
+      "failed": "{count} transaction(s) failed | {count} transactions failed",
+      "errors_detail": "Error details",
+      "row": "Row",
+      "rows": "Rows",
+      "more": "more",
+      "and_more": "and {count} more error(s)"
+    },
+    "export_csv": {
+      "export_csv_form": {
+        "header": "Export CSV",
+        "accounts": "Select accounts",
+        "select_all": "Select all",
+        "deselect_all": "Deselect all"
+      }
+    }
+  },
+  "user": {
+    "avatar_picker": {
+      "title": "Choose your avatar",
+      "icons": "Avatar icons",
+      "colors": "Avatar colors",
+      "change": "Change avatar"
+    },
+    "change_password": {
+      "success": {
+        "text": "Password changed"
+      },
+      "error": {
+        "header": "Couldn't change password",
+        "text": "Something went wrong while changing your password. Check your current password and try again."
+      },
+      "loading": {
+        "label": "Changing password…"
+      },
+      "form": {
+        "password": {
+          "label": "Current password",
+          "placeholder": "Enter password",
+          "validation": {
+            "invalid_password": "Enter current password"
+          }
+        },
+        "new_password": {
+          "label": "New password",
+          "placeholder": "Enter a new password",
+          "validation": {
+            "not_equals": "New password must be different from the current one"
+          }
+        },
+        "new_password_retry": {
+          "label": "Confirm new password",
+          "placeholder": "Re-enter new password",
+          "validation": {
+            "not_equals": "Passwords do not match"
+          }
+        },
+        "submit": {
+          "label": "Change password"
+        }
+      }
+    },
+    "form": {
+      "name": {
+        "label": "Name",
+        "placeholder": "Your name",
+        "validation": {
+          "required_field": "Required field",
+          "invalid_name": "Enter your name"
+        }
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "Your email",
+        "validation": {
+          "required_field": "Required field",
+          "invalid_email": "Enter a valid email"
+        }
+      },
+      "code": {
+        "placeholder": "Confirmation code",
+        "validation": {
+          "required_field": "Required field",
+          "invalid_code": "Enter a valid code"
+        }
+      },
+      "password": {
+        "label": "Password",
+        "placeholder": "Password",
+        "validation": {
+          "required_field": "Required field",
+          "invalid_password": "Password must be at least 4 characters"
+        }
+      },
+      "password_retry": {
+        "label": "Confirm password",
+        "placeholder": "Re-enter password",
+        "validation": {
+          "required_field": "Required field",
+          "invalid_password": "Re-enter password",
+          "not_equals": "Passwords do not match"
+        }
+      },
+      "server_host": {
+        "connect": "Connect to a custom server",
+        "label": "Server address",
+        "placeholder": "https://",
+        "validation": {
+          "required_field": "Required field",
+          "invalid_url": "Enter a valid server address"
+        }
+      }
+    },
+    "page": {
+      "settings": {
+        "profile": {
+          "menu_item": "Profile",
+          "header": "Profile",
+          "groups": {
+            "personal_details": "Personal details",
+            "preferences": "Preferences",
+            "security": "Security"
+          },
+          "currency": {
+            "label": "Currency"
+          },
+          "change_password": {
+            "menu_item": "Change password",
+            "header": "Change password"
+          },
+          "sessions": {
+            "menu_item": "Sessions",
+            "header": "Sessions",
+            "description": "Devices currently signed in to your account. Revoke a session to sign that device out.",
+            "current": "Current",
+            "unknown_device": "Unknown device",
+            "last_active": "Last active",
+            "sign_out": "Sign out",
+            "revoke": "Revoke",
+            "revoke_others": "Sign out other devices",
+            "confirm_sign_out": "Sign out of this device?",
+            "confirm_revoke": "Revoke this session? The device will be signed out.",
+            "confirm_revoke_others": "Sign out of all other devices? Only this session will stay active."
+          },
+          "tokens": {
+            "menu_item": "API tokens",
+            "header": "API tokens",
+            "description": "Personal access tokens grant full access to your account over the API. Treat them like passwords.",
+            "empty": "No API tokens yet.",
+            "created": "Created",
+            "last_used": "Last used",
+            "expires": "Expires",
+            "never_expires": "Never expires",
+            "create": {
+              "label": "Create token"
+            },
+            "form": {
+              "name": {
+                "label": "Name",
+                "placeholder": "e.g. Home Assistant",
+                "validation": {
+                  "required_field": "Enter a token name"
+                }
+              },
+              "expiry": {
+                "label": "Expires",
+                "options": {
+                  "d30": "30 days",
+                  "d90": "90 days",
+                  "d365": "365 days",
+                  "custom": "Custom date",
+                  "never": "Never"
+                },
+                "validation": {
+                  "invalid_date": "Pick a future date"
+                }
+              },
+              "submit": {
+                "label": "Create token"
+              }
+            },
+            "created_dialog": {
+              "title": "Token created",
+              "warning": "Copy the token now — you won't be able to see it again.",
+              "copy": "Copy",
+              "copied": "Copied",
+              "done": "Done"
+            },
+            "revoke": "Revoke",
+            "confirm_revoke": "Revoke this token? Integrations using it will stop working immediately."
+          }
+        }
+      }
+    }
+  },
+  "auth": {
+    "sign_in_failed": {
+      "header": "Sign-in failed",
+      "information": "Check your email and password and try again. If the problem persists, contact support."
+    },
+    "access_recovery_modal": {
+      "header": "Reset password",
+      "information": "Enter the email address you registered with and we'll send you a security code.",
+      "instruction": "We've sent a security code to your email. Enter it below and choose a new password.",
+      "send_failed": "Couldn't send the code. Check the email address and try again.",
+      "reset_failed": "The password wasn't reset. Check the code and try again."
+    },
+    "sign_up_failed": {
+      "header": "Registration failed",
+      "information": "Check the entered details and try again. If the problem persists, contact support."
+    },
+    "sign_out": {
+      "title": "Log out",
+      "question": "Are you sure you want to log out?",
+      "action": {
+        "logout": "Log out",
+        "cancel": "Stay"
+      }
+    },
+    "form": {
+      "sign_in": {
+        "remember_me": "Remember me",
+        "action": {
+          "sign_in": "Sign in",
+          "forget_password": "Forgot password?"
+        }
+      },
+      "sign_up": {
+        "action": {
+          "sign_up": "Sign up"
+        }
+      },
+      "access_recovery": {
+        "action": {
+          "recover": {
+            "label": "Send code"
+          },
+          "change_password": {
+            "label": "Reset password"
+          }
+        }
+      }
+    },
+    "page": {
+      "sign_in": {
+        "header": "Sign in",
+        "session_expired": "Your session has expired. Please sign in again."
+      },
+      "sign_up": {
+        "header": "Sign up",
+        "privacy": {
+          "text": "By registering, you agree to our <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Privacy Policy</a> and <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Terms of Service</a>"
+        },
+        "paywall": {
+          "header": "Ready to start using Econumo?",
+          "text": "Make a one-time payment by clicking the button below to get started.",
+          "next_steps": "As soon as we receive your payment, we will send your login credentials to the provided email address.",
+          "action": "Sign up"
+        }
+      }
+    }
+  },
+  "onboarding": {
+    "header": "Getting started",
+    "title": "Welcome to Econumo!",
+    "complete": "Finish setup",
+    "add_account": "Add account",
+    "import_transactions": "Import transactions",
+    "steps": {
+      "accounts": {
+        "title": "Add your accounts",
+        "text": "To start, you can add an account by clicking the button below. Alternatively, you can always navigate to the <settings>Settings</settings> -> <accounts>Accounts</accounts> page to manage your accounts and arrange them into folders."
+      },
+      "transactions": {
+        "title": "Enter your first transaction",
+        "text": "You can enter transactions by selecting any account in the left sidebar and clicking the <action>Add transaction</action> button.",
+        "hint": "You can create categories, tags, and payees directly from the transaction modal by entering their names and pressing Enter."
+      },
+      "classifications": {
+        "title": "Manage categories, tags, and payees",
+        "text": "To manage categories, tags, and payees, navigate to <settings>Settings</settings> -> <categories>Categories</categories>, <tags>Tags</tags>, or <payees>Payees</payees>. You can also sort or archive them as necessary."
+      },
+      "avatar": {
+        "title": "Update your avatar",
+        "text": "Pick an icon and a color for your avatar — it represents you in shared accounts. <choose>Choose your avatar</choose>"
+      },
+      "connections": {
+        "title": "Connect with your partner",
+        "text": "To connect with your partner and manage shared access to your budget or accounts, please visit <settings>Settings</settings> -> <connections>Shared access</connections>."
+      },
+      "budget": {
+        "title": "Create your budget",
+        "text": "You can create your first budget on the <budget>Budget</budget> page.",
+        "text_secondary": "Additionally, you can access the <settings>Settings</settings> -> <budgets>Budgets</budgets> page to manage your budgets, shared access, and more."
+      }
+    },
+    "user_guide": {
+      "accounts": "User guide: accounts",
+      "transactions": "User guide: transactions",
+      "classifications": "User guide: classifications",
+      "user_profile": "User guide: user profile",
+      "shared_access": "User guide: shared access",
+      "budgets": "User guide: budgets"
+    }
+  },
+  "budgets": {
+    "modal": {
+      "budget_form": {
+        "accounts": "Accounts",
+        "accounts_included": "{count} of {total} included",
+        "accounts_hidden": "In hidden folders"
+      },
+      "create_budget_form": {
+        "header": "New budget"
+      },
+      "update_budget_form": {
+        "header": "Edit budget"
+      },
+      "create_folder_form": {
+        "header": "New folder"
+      },
+      "update_folder_form": {
+        "header": "Rename folder"
+      },
+      "create_envelope_form": {
+        "header": "New envelope"
+      },
+      "update_envelope_form": {
+        "header": "Edit envelope"
+      },
+      "change_element_currency_form": {
+        "header": "Change currency"
+      },
+      "delete_envelope": {
+        "header": "Delete envelope?",
+        "question": "Are you sure you want to delete this envelope?"
+      },
+      "delete_folder": {
+        "header": "Delete folder?",
+        "question": "Are you sure you want to delete the folder “{name}”?"
+      },
+      "set_limit_form": {
+        "header": "Set budget"
+      },
+      "generic_error": {
+        "header": "Something went wrong",
+        "description": "Please try again. If the error persists, report the issue."
+      },
+      "access_error": {
+        "header": "Access denied",
+        "description": "You need to accept the invitation before accessing this budget."
+      },
+      "expense_widget": {
+        "header": "Spending progress",
+        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}"
+      }
+    },
+    "form": {
+      "budget": {
+        "name": {
+          "label": "Name",
+          "placeholder": "My budget",
+          "validation": {
+            "required_field": "Required field",
+            "invalid_name": "Budget name must be 3-64 characters"
+          }
+        },
+        "folder_name": {
+          "label": "Folder name",
+          "placeholder": "Enter folder name",
+          "validation": {
+            "required_field": "Required field",
+            "invalid_name": "Folder name must be 3-64 characters"
+          }
+        }
+      },
+      "budget_envelope": {
+        "name": {
+          "label": "Name",
+          "placeholder": "",
+          "validation": {
+            "required_field": "Required field",
+            "invalid_name": "Envelope name must be 3-64 characters"
+          }
+        },
+        "currency": {
+          "label": "Currency",
+          "validation": {
+            "required_field": "Required field"
+          }
+        },
+        "categories": {
+          "label": "Categories",
+          "selected": "{count} selected"
+        },
+        "icon": {
+          "label": "Icon"
+        },
+        "status": {
+          "label": "Status",
+          "option": {
+            "active": "Active",
+            "archive": "Archived"
+          }
+        }
+      },
+      "budget_limit": {
+        "limit": {
+          "label": "Budget",
+          "validation": {
+            "invalid_number": "Invalid number",
+            "required_field": "Required field",
+            "invalid_formula": "Invalid formula"
+          }
+        }
+      }
+    },
+    "page": {
+      "budget": {
+        "empty": {
+          "header": "Budget",
+          "no_budget": "You haven’t created a budget yet.",
+          "description": "Create a budget or accept an invitation to start planning your finances.",
+          "create_budget": "Create a budget",
+          "initial_setup": "To create a budget, first add an account and at least one category.",
+          "create_account": "Add account"
+        },
+        "settings": {
+          "button": "Configure",
+          "menu": {
+            "edit": "Budget details",
+            "edit_structure": "Edit structure",
+            "edit_structure_done": "Done editing",
+            "budget_list": "Open budget list"
+          }
+        },
+        "structure": {
+          "no_folder": "Default folder",
+          "in_archive": "Archived",
+          "tab": {
+            "budgeted": "Budget",
+            "spent": "Spent",
+            "available": "Available"
+          },
+          "action": {
+            "create_folder": "Create folder",
+            "delete_folder": "Delete folder"
+          },
+          "empty_folder": {
+            "note": "This folder is empty. Move a category, tag, or envelope here, or create a new envelope."
+          },
+          "element": {
+            "action": {
+              "change_currency": "Change currency",
+              "show_transactions": "Show transactions"
+            }
+          },
+          "total": {
+            "name": "Total",
+            "expenses": "Total expenses"
+          }
+        }
+      },
+      "settings": {
+        "menu_item": "Budgets",
+        "header": "Budgets",
+        "info": "All your budgets live here. Create separate budgets for different goals and share them with your family.",
+        "create_budget": "Create budget",
+        "edit_modal": {
+          "header": "Edit budget"
+        },
+        "create_modal": {
+          "header": "New budget"
+        },
+        "delete_modal": {
+          "title": "Delete budget?",
+          "question": "Are you sure you want to delete “{name}”?"
+        },
+        "decline_access_modal": {
+          "title": "Decline access to the budget?",
+          "question": "Are you sure you want to decline access to the budget “{name}”?"
+        },
+        "not_accepted": "invitation pending",
+        "level": {
+          "guest": "View only",
+          "user": "Manage budget",
+          "admin": "Full control"
+        },
+        "list_actions": {
+          "access": "Access control",
+          "go_to": "Open budget"
+        }
+      }
+    }
+  },
+  "classifications": {
+    "categories": {
+      "pages": {
+        "settings": {
+          "menu_item": "Categories",
+          "header": "Categories",
+          "info": "Categories group your expenses and income. Archive the ones you no longer use — their history is kept.",
+          "archived_item": "Archived",
+          "create_category": "Create category"
+        }
+      },
+      "modals": {
+        "replace": {
+          "header": "Replace with",
+          "note": "The original category will be deleted and replaced with the selected one"
+        },
+        "delete": {
+          "title": "Delete category?",
+          "question": "Are you sure you want to delete “{name}”?"
+        },
+        "edit": {
+          "header": "Edit category"
+        },
+        "create": {
+          "header": "New category"
+        }
+      },
+      "forms": {
+        "category": {
+          "type": {
+            "income": "Income",
+            "expense": "Expense"
+          },
+          "name": {
+            "label": "Name",
+            "placeholder": "Enter name",
+            "validation": {
+              "required_field": "Required field",
+              "invalid_name": "Category name must be 3-64 characters"
+            }
+          },
+          "icon": {
+            "label": "Icon"
+          }
+        }
+      }
+    },
+    "tags": {
+      "pages": {
+        "settings": {
+          "menu_item": "Tags",
+          "header": "Tags",
+          "info": "Tags automatically group spending within your budget — handy for trips, for example: mark every trip expense with one tag and get a spending breakdown right in the budget.",
+          "create_tag": "Create tag",
+          "archived_item": "Archived"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edit tag"
+        },
+        "create": {
+          "header": "New tag"
+        },
+        "delete": {
+          "title": "Delete tag?",
+          "question": "Are you sure you want to delete “{name}”?"
+        }
+      },
+      "forms": {
+        "tag": {
+          "name": {
+            "label": "Name",
+            "validation": {
+              "required_field": "Required field",
+              "invalid_name": "Tag name must be 3-64 characters"
+            }
+          }
+        }
+      }
+    },
+    "payees": {
+      "pages": {
+        "settings": {
+          "menu_item": "Payees",
+          "header": "Payees",
+          "info": "Payees show where your money goes. Archive payees you no longer need.",
+          "create_payee": "Create payee",
+          "archived_item": "Archived"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edit payee"
+        },
+        "create": {
+          "header": "New payee"
+        },
+        "delete": {
+          "title": "Delete payee?",
+          "question": "Are you sure you want to delete “{name}”?"
+        }
+      },
+      "forms": {
+        "payee": {
+          "name": {
+            "label": "Name",
+            "validation": {
+              "required_field": "Required field",
+              "invalid_name": "Payee name must be 3-64 characters"
+            }
+          }
+        }
+      }
+    }
+  },
+  "connections": {
+    "pages": {
+      "settings": {
+        "menu_item": "Shared access",
+        "header": "Shared access",
+        "info": "Connections let you manage budgets and accounts together with another person. Invite your partner with a code, then set access levels per account.",
+        "generate_invite": "Create invitation",
+        "accept_invite": "Accept invitation"
+      }
+    },
+    "accounts": {
+      "roles": {
+        "owner": "Owner",
+        "admin": "Full control",
+        "user": "Manage transactions",
+        "guest": "View only",
+        "no_access": "No access"
+      }
+    },
+    "budgets": {
+      "roles": {
+        "owner": "Owner",
+        "admin": "Full control",
+        "user": "Manage budget",
+        "guest": "View only",
+        "no_access": "No access"
+      }
+    },
+    "modals": {
+      "delete_connection": {
+        "question": "Are you sure you want to remove the connection with {name}?"
+      },
+      "generate_invite": {
+        "instruction": "Share this code with the person you want to connect with. The code is valid for 5 minutes.",
+        "code": {
+          "label": "Invitation code"
+        }
+      },
+      "accept_invite": {
+        "label": "Accept invitation",
+        "instruction": "Ask the other person for their invitation code and enter it below. The code is valid for 5 minutes.",
+        "code": {
+          "label": "Invitation code"
+        }
+      },
+      "preview_connection": {
+        "accounts": "Shared accounts",
+        "budgets": "Shared budgets",
+        "budgets_empty": "No shared budgets",
+        "accounts_empty": "No shared accounts",
+        "shared_with_you": "Shared with you",
+        "your_account": "Your account",
+        "your_budget": "Your budget",
+        "tap_to_manage": "Select an item to manage access"
+      },
+      "decline_access": {
+        "decline_access": "Decline access"
+      },
+      "share_access": {
+        "not_accepted": "invitation pending",
+        "revoke_access": "Revoke access",
+        "revoke_confirm": {
+          "title": "Revoke access?",
+          "question": "Are you sure you want to revoke access from {name}?"
+        },
+        "list_empty": "No connections found",
+        "tap_to_share": "Select a user to share access with",
+        "choose_access_level": "Choose an access level to grant",
+        "select_user": "Select user {name}"
+      }
+    },
+    "forms": {
+      "invitation_code": {
+        "validation": {
+          "required_field": "Required field"
+        }
+      }
+    },
+    "sharing_requests": {
+      "title": "Sharing requests",
+      "empty": "No pending requests",
+      "invited_you": "{name} invited you",
+      "account": "Account",
+      "budget": "Budget",
+      "choose_folder": "Choose a folder for this account",
+      "general_folder_hint": "General (will be created)",
+      "decline_question": "Decline access to \"{name}\"?"
+    }
+  },
+  "errors": {
+    "common": {
+      "is_blank": "This value should not be blank.",
+      "invalid_choice": "The value you selected is not a valid choice.",
+      "invalid_format": "This value is not valid.",
+      "invalid_uuid": "This value is not a valid UUID.",
+      "invalid_email": "This value is not a valid email address.",
+      "too_long": "This value is too long.",
+      "too_short": "This value is too short.",
+      "too_many_attempts": "Too many attempts. Try again later.",
+      "operation_locked": "Operation is locked",
+      "invalid_datetime_format": "Invalid date format, expected Y-m-d H:i:s",
+      "invalid_datetime": "This value is not a valid datetime.",
+      "icon_required": "Icon value must not be empty",
+      "folder_name_length": "Folder name must be {min}-{max} characters",
+      "invalid_currency_code": "CurrencyCode is incorrect",
+      "invalid_id": "invalid id"
+    },
+    "auth": {
+      "invalid_credentials": "Invalid credentials."
+    },
+    "account": {
+      "name_length": "Account name must be {min}-{max} characters",
+      "list_empty": "Accounts list is empty",
+      "folder_list_empty": "Folders list is empty",
+      "folder_already_exists": "Folder already exists."
+    },
+    "budget": {
+      "name_length": "Budget name must be {min}-{max} characters",
+      "envelope_name_length": "Envelope name must be {min}-{max} characters",
+      "invalid_element_type_alias": "BudgetElementType with alias {alias} not exists",
+      "invalid_role_alias": "BudgetUserRole with alias {alias} not exists",
+      "transaction_filter_required": "Validation failed"
+    },
+    "category": {
+      "name_length": "Category name must be {min}-{max} characters",
+      "type_invalid": "CategoryType not exists",
+      "replace_id_required": "replaceId is required for mode=replace",
+      "not_found": "Category not found",
+      "cannot_be_replaced": "Categories cannot be replaced",
+      "list_empty": "Categories list is empty"
+    },
+    "connection": {
+      "invalid_uuid": "This is not a valid UUID.",
+      "invalid_role_alias": "AccountRole with alias {alias} not exists",
+      "invalid_code": "ConnectionCode is incorrect",
+      "inviting_yourself": "Inviting yourself?",
+      "deleting_yourself": "Deleting yourself?"
+    },
+    "payee": {
+      "name_length": "Payee name must be {min}-{max} characters",
+      "already_exists": "Payee already exists.",
+      "list_empty": "Payees list is empty"
+    },
+    "tag": {
+      "name_length": "Tag name must be {min}-{max} characters",
+      "already_exists": "Tag already exists.",
+      "list_empty": "Tags list is empty"
+    },
+    "token": {
+      "name_length": "Token name must be {min}-{max} characters",
+      "invalid_expiration_date": "Invalid expiration date",
+      "expiration_in_future": "Expiration date must be in the future",
+      "retention_negative": "Retention must not be negative"
+    },
+    "transaction": {
+      "account_not_available": "This account is not available for this operation.",
+      "item_not_available": "This transaction is not available for this operation.",
+      "invalid_import_file": "Please upload a valid CSV file"
+    },
+    "user": {
+      "report_period_invalid": "ReportPeriod is incorrect",
+      "language_invalid": "Language is incorrect",
+      "already_exists": "User already exists",
+      "registration_disabled": "Registration disabled",
+      "password_incorrect": "Password is not correct",
+      "reset_password_error": "Reset password error",
+      "reset_code_expired": "The code is expired"
+    }
+  },
+  "emails": {
+    "reset": {
+      "subject": "Reset password confirmation code",
+      "body": "Hi {name},\nYour confirmation code is: {code}.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+    }
+  }
+}

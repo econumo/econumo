@@ -153,7 +153,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 	}
 	for _, p := range payees {
 		if p.Name == name && !p.ID.Equal(exceptID) {
-			return errs.NewValidation("Payee already exists.")
+			return &errs.ValidationError{Msg: "Payee already exists.", MsgCode: errs.CodePayeeAlreadyExists}
 		}
 	}
 	return nil
@@ -166,7 +166,10 @@ func newPayeeName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {
 		return "", errs.NewValidation("Payee name must be 3-64 characters",
-			errs.FieldError{Key: "name", Message: "Payee name must be 3-64 characters"})
+			errs.FieldError{
+				Key: "name", Message: "Payee name must be 3-64 characters", Code: errs.CodePayeeNameLength,
+				Params: map[string]any{"min": 3, "max": 64},
+			})
 	}
 	return v, nil
 }
