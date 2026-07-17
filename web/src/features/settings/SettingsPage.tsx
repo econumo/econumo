@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
 import { getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
+import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
@@ -52,6 +53,7 @@ export function SettingsPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
   const version = getVersion()
+  const update = useAvailableUpdate()
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -100,6 +102,17 @@ export function SettingsPage() {
 
         </div>
       </div>
+
+      {update ? (
+        <a
+          href={update.url}
+          target="_blank"
+          rel="noreferrer"
+          className="mx-auto pb-1 text-xs font-medium text-primary hover:underline"
+        >
+          {t('settings.update.available', { version: update.version })} →
+        </a>
+      ) : null}
 
       <footer className="flex items-center justify-center gap-2 py-1 text-xs text-muted-foreground/60">
         {SEMVER.test(version) ? (
