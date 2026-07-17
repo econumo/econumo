@@ -662,6 +662,34 @@
     "complete": "Finish setup",
     "add_account": "Add account",
     "import_transactions": "Import transactions",
+    "steps": {
+      "accounts": {
+        "title": "Add your accounts",
+        "text": "To start, you can add an account by clicking the button below. Alternatively, you can always navigate to the <settings>Settings</settings> -> <accounts>Accounts</accounts> page to manage your accounts and arrange them into folders."
+      },
+      "transactions": {
+        "title": "Enter your first transaction",
+        "text": "You can enter transactions by selecting any account in the left sidebar and clicking the <action>Add transaction</action> button.",
+        "hint": "You can create categories, tags, and payees directly from the transaction modal by entering their names and pressing Enter."
+      },
+      "classifications": {
+        "title": "Manage categories, tags, and payees",
+        "text": "To manage categories, tags, and payees, navigate to <settings>Settings</settings> -> <categories>Categories</categories>, <tags>Tags</tags>, or <payees>Payees</payees>. You can also sort or archive them as necessary."
+      },
+      "avatar": {
+        "title": "Update your avatar",
+        "text": "Pick an icon and a color for your avatar — it represents you in shared accounts. <choose>Choose your avatar</choose>"
+      },
+      "connections": {
+        "title": "Connect with your partner",
+        "text": "To connect with your partner and manage shared access to your budget or accounts, please visit <settings>Settings</settings> -> <connections>Shared access</connections>."
+      },
+      "budget": {
+        "title": "Create your budget",
+        "text": "You can create your first budget on the <budget>Budget</budget> page.",
+        "text_secondary": "Additionally, you can access the <settings>Settings</settings> -> <budgets>Budgets</budgets> page to manage your budgets, shared access, and more."
+      }
+    },
     "user_guide": {
       "accounts": "User guide: accounts",
       "transactions": "User guide: transactions",

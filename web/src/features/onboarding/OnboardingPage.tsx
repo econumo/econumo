@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Check, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -97,11 +97,8 @@ export function OnboardingPage() {
   const isConnectionsEstablished = connections.length > 0
   const isBudgetCreated = budgets.length > 0
 
-  const settingsLink = (to: string, label: string) => (
-    <Link to={to} className="text-econumo-purple underline underline-offset-2">
-      {label}
-    </Link>
-  )
+  // Trans fills the children from the catalogue string's <tag>label</tag>
+  const settingsLink = (to: string) => <Link to={to} className="text-econumo-purple underline underline-offset-2" />
 
   const handleComplete = () => {
     completeOnboarding.mutate(undefined, { onSuccess: () => navigate(RouterPage.BUDGET) })
@@ -127,15 +124,18 @@ export function OnboardingPage() {
           <Step
             id="accounts"
             done={isAccountCreated}
-            title="Add your accounts"
+            title={t('onboarding.steps.accounts.title')}
             guideText={t('onboarding.user_guide.accounts')}
             guideHref="https://econumo.com/docs/user-guide/accounts"
           >
             <p>
-              To start, you can add an account by clicking the button below. Alternatively, you can always navigate to the{' '}
-              {settingsLink(RouterPage.SETTINGS, t('settings.page.menu_item'))} {'->'}{' '}
-              {settingsLink(RouterPage.SETTINGS_ACCOUNTS, t('settings.accounts.menu_item'))} page to manage your accounts and
-              arrange them into folders.
+              <Trans
+                i18nKey="onboarding.steps.accounts.text"
+                components={{
+                  settings: settingsLink(RouterPage.SETTINGS),
+                  accounts: settingsLink(RouterPage.SETTINGS_ACCOUNTS),
+                }}
+              />
             </p>
             <Button
               type="button"
@@ -150,16 +150,17 @@ export function OnboardingPage() {
           <Step
             id="transactions"
             done={isTransactionsEntered}
-            title="Enter your first transaction"
+            title={t('onboarding.steps.transactions.title')}
             guideText={t('onboarding.user_guide.transactions')}
             guideHref="https://econumo.com/docs/user-guide/transactions"
           >
             <p>
-              You can enter transactions by selecting any account in the left sidebar and clicking the{' '}
-              <span className="font-medium text-foreground">Add Transaction</span> button.
+              <Trans
+                i18nKey="onboarding.steps.transactions.text"
+                components={{ action: <span className="font-medium text-foreground" /> }}
+              />
               <br />
-              You can create categories, tags, and payees directly from the transaction modal by entering their names and pressing
-              Enter.
+              {t('onboarding.steps.transactions.hint')}
             </p>
             <Button
               type="button"
@@ -175,16 +176,20 @@ export function OnboardingPage() {
             id="classifications"
             done={isClassificationsCreated}
             idleIcon={<Lightbulb className="size-4" />}
-            title="Manage categories, tags, and payees"
+            title={t('onboarding.steps.classifications.title')}
             guideText={t('onboarding.user_guide.classifications')}
             guideHref="https://econumo.com/docs/user-guide/classifications"
           >
             <p>
-              To manage categories, tags, and payees, navigate to {settingsLink(RouterPage.SETTINGS, t('settings.page.menu_item'))}{' '}
-              {'->'} {settingsLink(RouterPage.SETTINGS_CATEGORIES, t('classifications.categories.pages.settings.menu_item'))},{' '}
-              {settingsLink(RouterPage.SETTINGS_TAGS, t('classifications.tags.pages.settings.menu_item'))}, or{' '}
-              {settingsLink(RouterPage.SETTINGS_PAYEES, t('classifications.payees.pages.settings.menu_item'))}. You can also
-              sort or archive them as necessary.
+              <Trans
+                i18nKey="onboarding.steps.classifications.text"
+                components={{
+                  settings: settingsLink(RouterPage.SETTINGS),
+                  categories: settingsLink(RouterPage.SETTINGS_CATEGORIES),
+                  tags: settingsLink(RouterPage.SETTINGS_TAGS),
+                  payees: settingsLink(RouterPage.SETTINGS_PAYEES),
+                }}
+              />
             </p>
           </Step>
 
@@ -192,45 +197,64 @@ export function OnboardingPage() {
             id="avatar"
             done={false}
             avatar={user?.avatar}
-            title="Update your avatar"
+            title={t('onboarding.steps.avatar.title')}
             guideText={t('onboarding.user_guide.user_profile')}
             guideHref="https://econumo.com/docs/user-guide/user-profile"
           >
             <p>
-              Pick an icon and a color for your avatar — it represents you in shared accounts.{' '}
-              <button type="button" onClick={() => setAvatarOpen(true)} className="text-econumo-purple underline underline-offset-2">
-                Choose your avatar
-              </button>
+              <Trans
+                i18nKey="onboarding.steps.avatar.text"
+                components={{
+                  choose: (
+                    <button
+                      type="button"
+                      onClick={() => setAvatarOpen(true)}
+                      className="text-econumo-purple underline underline-offset-2"
+                    />
+                  ),
+                }}
+              />
             </p>
           </Step>
 
           <Step
             id="connections"
             done={isConnectionsEstablished}
-            title="Connect with your partner"
+            title={t('onboarding.steps.connections.title')}
             guideText={t('onboarding.user_guide.shared_access')}
             guideHref="https://econumo.com/docs/user-guide/shared-access"
           >
             <p>
-              To connect with your partner and manage shared access to your budget or accounts, please visit{' '}
-              {settingsLink(RouterPage.SETTINGS, t('settings.page.menu_item'))} {'->'}{' '}
-              {settingsLink(RouterPage.SETTINGS_CONNECTIONS, t('connections.pages.settings.menu_item'))}.
+              <Trans
+                i18nKey="onboarding.steps.connections.text"
+                components={{
+                  settings: settingsLink(RouterPage.SETTINGS),
+                  connections: settingsLink(RouterPage.SETTINGS_CONNECTIONS),
+                }}
+              />
             </p>
           </Step>
 
           <Step
             id="budget"
             done={isBudgetCreated}
-            title="Create your budget"
+            title={t('onboarding.steps.budget.title')}
             guideText={t('onboarding.user_guide.budgets')}
             guideHref="https://econumo.com/docs/user-guide/budgets"
           >
             <p>
-              You can create your first budget on the {settingsLink(RouterPage.BUDGET, t('common.nav.budget'))} page.
+              <Trans
+                i18nKey="onboarding.steps.budget.text"
+                components={{ budget: settingsLink(RouterPage.BUDGET) }}
+              />
               <br />
-              Additionally, you can access the {settingsLink(RouterPage.SETTINGS, t('settings.page.menu_item'))} {'->'}{' '}
-              {settingsLink(RouterPage.SETTINGS_BUDGETS, t('budgets.page.settings.menu_item'))} page to manage your budgets,
-              shared access, and more.
+              <Trans
+                i18nKey="onboarding.steps.budget.text_secondary"
+                components={{
+                  settings: settingsLink(RouterPage.SETTINGS),
+                  budgets: settingsLink(RouterPage.SETTINGS_BUDGETS),
+                }}
+              />
             </p>
             <Button type="button" size="sm" className="mt-2" disabled={completeOnboarding.isPending} onClick={handleComplete}>
               {t('onboarding.complete')}
