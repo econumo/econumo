@@ -14,10 +14,7 @@ import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
-
-// A tagged release (e.g. "v1.2.3") links to its notes; anything else ("dev",
-// a commit sha) has no release page, so it stays plain text.
-const SEMVER = /^v\d+\.\d+\.\d+$/
+import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
