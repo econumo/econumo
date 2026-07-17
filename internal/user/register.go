@@ -20,7 +20,7 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 	s.failAttempt(RateScopeRegister, limitKey) // every attempt counts toward the cap
 
 	if !s.allowRegistration {
-		return nil, errs.NewValidation("Registration disabled")
+		return nil, &errs.ValidationError{Msg: "Registration disabled", MsgCode: errs.CodeUserRegistrationDisabled}
 	}
 
 	u, err := s.createUser(ctx, req.Name, req.Email, req.Password)
@@ -51,7 +51,7 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 		return nil, err
 	}
 	if exists {
-		return nil, errs.NewValidation("User already exists")
+		return nil, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 	}
 
 	encryptedEmail, eerr := s.encode.Encode(email)

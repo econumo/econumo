@@ -13,12 +13,12 @@ var _ querier = pgsqlQuerier{}
 
 func (pgsqlQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string) (userRow, error) {
 	u, err := pgsqlgen.New(db).GetUserByID(ctx, id)
-	return toUserRow(u), err
+	return userRow(u), err
 }
 
 func (pgsqlQuerier) GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error) {
 	u, err := pgsqlgen.New(db).GetUserByIdentifier(ctx, identifier)
-	return toUserRow(u), err
+	return userRow(u), err
 }
 
 func (pgsqlQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error) {
@@ -49,6 +49,6 @@ func (pgsqlQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p opt
 	return pgsqlgen.New(db).UpsertUserOption(ctx, pgsqlgen.UpsertUserOptionParams(p))
 }
 
-// toUserRow converts a pgsql User into the canonical userRow. The struct
-// conversion compiles only because the two types are field-identical.
-func toUserRow(u pgsqlgen.User) userRow { return userRow(u) }
+func (pgsqlQuerier) UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error {
+	return pgsqlgen.New(db).UpdateUserLanguage(ctx, pgsqlgen.UpdateUserLanguageParams(p))
+}

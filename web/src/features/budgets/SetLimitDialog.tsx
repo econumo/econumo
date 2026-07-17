@@ -34,7 +34,7 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
   const submit = () => {
     const result = limitAmountFromInput(value)
     if (!result.ok) {
-      setError(t('elements.validation.invalid_number'))
+      setError(t('common.validation.invalid_number'))
       return
     }
     onCommit(element.id, result.amount)
@@ -42,7 +42,7 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
   }
 
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('modules.budget.modal.set_limit_form.header')} description={element.name}>
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.modal.set_limit_form.header')} description={element.name}>
       <form
         className="flex flex-col gap-4"
         noValidate
@@ -52,16 +52,16 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
         }}
       >
         {/* the transaction dialog's amount card: label inside, borderless oversized input */}
-        <CardField label={t('modules.budget.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
+        <CardField label={t('budgets.form.budget_limit.limit.label')} htmlFor="set-limit-amount" error={error}>
           <div className={amountCardInputClass}>
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit">{t('elements.button.save.label')}</Button>
+          <Button type="submit">{t('common.button.save.label')}</Button>
         </div>
       </form>
     </ResponsiveDialog>

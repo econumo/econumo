@@ -39,7 +39,7 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 			return err
 		}
 		if exists {
-			return errs.NewValidation("User already exists")
+			return &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 		}
 	}
 

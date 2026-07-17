@@ -31,3 +31,6 @@ ON CONFLICT (id) DO UPDATE SET
     algorithm  = excluded.algorithm,
     updated_at = excluded.updated_at,
     is_active  = excluded.is_active;
+
+-- name: UpdateUserLanguage :exec
+UPDATE users SET language = ? WHERE id = ?;

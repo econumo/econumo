@@ -4,27 +4,40 @@
 # DATABASE_URL comes from the environment (.env), not baked in. Mount a volume
 # under /app/var to persist the sqlite db. Migrations run inside the binary on boot.
 
+# Both build stages run natively on the build host ($BUILDPLATFORM) — the SPA
+# output is platform-independent and Go cross-compiles — so a multi-arch build
+# never runs the heavy toolchains under QEMU emulation.
+
 # --- 1. Frontend build ---
-FROM node:26-alpine AS frontend
+FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend
 WORKDIR /build/web
-RUN npm install -g pnpm@10
-COPY web/package.json web/pnpm-lock.yaml ./
+RUN npm install -g pnpm@11
+# pnpm-workspace.yaml carries allowBuilds; without it pnpm 11 fails the
+# install on unapproved build scripts.
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
+# web/src/app/i18n.ts imports ../../../locales/*.json, so locales/ must land
+# one level above WORKDIR (/build/locales), mirroring the repo-root layout.
+COPY locales/ /build/locales/
 # Vite inlines ECONUMO_VERSION (envPrefix in vite.config.ts) as the UI version label.
 # Pass --build-arg ECONUMO_VERSION=v1.2.3 to set it; defaults to "dev".
 ARG ECONUMO_VERSION=""
 RUN ECONUMO_VERSION="${ECONUMO_VERSION:-dev}" pnpm run build
 
 # --- 2. Go build (CGO off -> fully static binary) ---
-FROM golang:1.26-alpine AS gobuild
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS gobuild
 WORKDIR /src
 # Module files first for layer-cached `go mod download`.
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/econumo ./cmd/econumo
+# internal/infra/i18n imports github.com/econumo/econumo/locales, which lives
+# at the module root alongside cmd/ and internal/.
+COPY locales/ ./locales/
+ARG TARGETOS TARGETARCH
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /app/econumo ./cmd/econumo
 # Pre-create runtime dirs owned by the non-root user (distroless can't mkdir on boot).
 RUN mkdir -p /out/var/db
 

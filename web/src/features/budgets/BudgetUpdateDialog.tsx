@@ -61,11 +61,11 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
 
   const submit = () => {
     if (!isNotEmpty(name)) {
-      setError(t('modules.budget.form.budget.name.validation.required_field'))
+      setError(t('budgets.form.budget.name.validation.required_field'))
       return
     }
     if (!isValidBudgetName(name)) {
-      setError(t('modules.budget.form.budget.name.validation.invalid_name'))
+      setError(t('budgets.form.budget.name.validation.invalid_name'))
       return
     }
     if (!currencyId) {
@@ -83,14 +83,14 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       caps
       fullScreen
       onOpenChange={(o) => !o && onClose()}
-      title={t('modules.budget.modal.update_budget_form.header')}
+      title={t('budgets.modal.update_budget_form.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="budget-update-form" disabled={updateBudget.isPending}>
-            {t('elements.button.update.label')}
+            {t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -104,7 +104,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           submit()
         }}
       >
-        <CardField label={t('modules.budget.form.budget.name.label')} htmlFor="budget-upd-name" error={error}>
+        <CardField label={t('budgets.form.budget.name.label')} htmlFor="budget-upd-name" error={error}>
           <Input
             id="budget-upd-name"
             className={cardFieldControlClass}
@@ -119,12 +119,12 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
         <button
           type="button"
           className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover disabled:opacity-60 disabled:hover:bg-econumo-card"
-          title={t('modules.budget.form.budget_envelope.currency.label')}
+          title={t('budgets.form.budget_envelope.currency.label')}
           disabled={!canConfigure}
           onClick={() => setCurrencyOpen(true)}
         >
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('modules.budget.form.budget_envelope.currency.label')}</span>
+            <span className="text-[11px] text-muted-foreground">{t('budgets.form.budget_envelope.currency.label')}</span>
             <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
@@ -135,7 +135,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
 
       <CurrencyPickerDialog
         open={currencyOpen}
-        title={t('modules.budget.form.budget_envelope.currency.label')}
+        title={t('budgets.form.budget_envelope.currency.label')}
         value={currencyId}
         onClose={() => setCurrencyOpen(false)}
         onPick={setCurrencyId}

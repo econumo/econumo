@@ -27,14 +27,14 @@ export type DailyListEntry =
   | { kind: 'separator'; day: string; label: 'today' | 'yesterday' | 'date' }
   | { kind: 'transaction'; transaction: ViewTransaction }
 
-export function separatorText(entry: { day: string; label: 'today' | 'yesterday' | 'date' }, t: (key: string) => string): string {
+export function separatorText(entry: { day: string; label: 'today' | 'yesterday' | 'date' }, t: (key: string) => string, lang = 'en'): string {
   if (entry.label === 'today') {
-    return t('pages.account.transaction_list.today')
+    return t('accounts.page.transaction_list.today')
   }
   if (entry.label === 'yesterday') {
-    return t('pages.account.transaction_list.yesterday')
+    return t('accounts.page.transaction_list.yesterday')
   }
-  return formatDayHeading(entry.day)
+  return formatDayHeading(entry.day, lang)
 }
 
 // Mirrors the Vue transactions-store search haystack: amounts, @author,
@@ -134,9 +134,9 @@ export function transactionTitleInfo(
   if (tx.type === 'transfer') {
     const incoming = tx.accountId !== pageAccountId
     const counterparty = incoming ? tx.account : tx.accountRecipient
-    const name = counterparty?.name ?? t('elements.account.name_hidden')
+    const name = counterparty?.name ?? t('accounts.account.name_hidden')
     return {
-      text: t(incoming ? 'pages.account.transaction_list.item.transfer_from' : 'pages.account.transaction_list.item.transfer_to', {
+      text: t(incoming ? 'accounts.page.transaction_list.item.transfer_from' : 'accounts.page.transaction_list.item.transfer_to', {
         account: name,
       }),
       source: 'transfer',

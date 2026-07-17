@@ -19,11 +19,11 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
 
   const submit = () => {
     if (!name) {
-      setError(t('modals.transaction.dialog.new_tag.name.validation.required_field'))
+      setError(t('transactions.modal.dialog.new_tag.name.validation.required_field'))
       return
     }
     if (!isValidTagName(name)) {
-      setError(t('modals.transaction.dialog.new_tag.name.validation.required_field'))
+      setError(t('transactions.modal.dialog.new_tag.name.validation.required_field'))
       return
     }
     onSubmit(name)
@@ -32,7 +32,7 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modals.transaction.dialog.new_tag.header')} hideHeader>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('transactions.modal.dialog.new_tag.header')} hideHeader>
       <form
         className="flex flex-col gap-4"
         noValidate
@@ -41,11 +41,11 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
           submit()
         }}
       >
-        <CardField label={t('modals.transaction.dialog.new_tag.name.label')} htmlFor="new-tag-name" error={error}>
+        <CardField label={t('transactions.modal.dialog.new_tag.name.label')} htmlFor="new-tag-name" error={error}>
           <Input
             id="new-tag-name"
             className={cardFieldControlClass}
-            placeholder={t('modals.transaction.dialog.new_tag.name.placeholder')}
+            placeholder={t('transactions.modal.dialog.new_tag.name.placeholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
@@ -53,9 +53,9 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
         </CardField>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit">{t('elements.button.add.label')}</Button>
+          <Button type="submit">{t('common.button.add.label')}</Button>
         </div>
       </form>
     </ResponsiveDialog>

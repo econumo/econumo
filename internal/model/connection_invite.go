@@ -26,7 +26,7 @@ type ConnectionCode struct {
 // path), rejecting anything not exactly connectionCodeLength chars.
 func NewConnectionCode(value string) (ConnectionCode, error) {
 	if len([]rune(value)) != connectionCodeLength {
-		return ConnectionCode{}, errs.NewValidation("ConnectionCode is incorrect")
+		return ConnectionCode{}, &errs.ValidationError{Msg: "ConnectionCode is incorrect", MsgCode: errs.CodeConnectionInvalidCode}
 	}
 	return ConnectionCode{value: value}, nil
 }

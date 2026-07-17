@@ -20,15 +20,15 @@ export function ShareAccessDialog({ open, title, kind, entries, onPick, onClose 
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title}>
       <div className="flex flex-col gap-2">
         {entries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('modules.connections.modals.share_access.list_empty')}</p>
+          <p className="text-sm text-muted-foreground">{t('connections.modals.share_access.list_empty')}</p>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">{t('modules.connections.modals.share_access.tap_to_share')}</p>
+            <p className="text-sm text-muted-foreground">{t('connections.modals.share_access.tap_to_share')}</p>
             <ShareEntryList kind={kind} entries={entries} onPick={onPick} />
           </>
         )}
         <Button type="button" className="w-full h-11" onClick={onClose}>
-          {t('elements.button.ok.label')}
+          {t('common.button.ok.label')}
         </Button>
       </div>
     </ResponsiveDialog>

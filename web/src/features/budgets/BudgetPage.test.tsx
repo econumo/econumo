@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
@@ -60,6 +60,32 @@ it('renders the full budget page: strip, chips, table, totals', async () => {
   expect(screen.getByRole('button', { name: 'currency EUR' })).toBeInTheDocument()
   // widget hidden until a chip is selected
   expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
+})
+
+it('the cold-load spinner grows a logout escape after three seconds when the backend never answers', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', async () => {
+      await delay('infinite')
+      return HttpResponse.error()
+    }),
+  )
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    renderPage()
+    expect(await screen.findByTestId('budget-loading')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Log out' })).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(3000)
+    const link = await screen.findByRole('link', { name: 'Log out' })
+    expect(link).toHaveAttribute('href', '/logout')
+    expect(screen.getByText(/Having trouble\?/)).toBeInTheDocument()
+    // anchored inside the loader area (not the viewport) so it centers under
+    // the spinner next to the sidebar, without shifting layout
+    expect(link.closest('div')?.className).toContain('absolute')
+    expect(screen.getByTestId('budget-loading').className).toContain('relative')
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('toggling a currency chip mounts the expense widget', async () => {

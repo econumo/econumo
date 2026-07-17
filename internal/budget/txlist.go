@@ -71,7 +71,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		}
 		rows, err = s.read.BudgetTransactionsByCategories(ctx, catIDs, f.includedAccountIDs, periodStart, periodEnd)
 	default:
-		return nil, errs.NewValidation("Validation failed")
+		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	if err != nil {
 		return nil, err

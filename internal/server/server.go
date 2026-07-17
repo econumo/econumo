@@ -29,6 +29,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
@@ -202,9 +203,10 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	)
 
 	return router.New(router.Deps{
-		Cfg:         cfg,
-		DB:          pinger{db},
-		RegisterAPI: registerAPI,
+		Cfg:                cfg,
+		DB:                 pinger{db},
+		RegisterAPI:        registerAPI,
+		SupportedLanguages: i18n.Supported,
 	})
 }
 

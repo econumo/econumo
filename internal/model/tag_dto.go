@@ -33,10 +33,10 @@ type CreateTagRequest struct {
 func (r CreateTagRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -56,10 +56,10 @@ type UpdateTagRequest struct {
 func (r UpdateTagRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
-		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if strings.TrimSpace(r.Name) == "" {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -77,7 +77,7 @@ type ArchiveTagRequest struct {
 
 func (r ArchiveTagRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ type UnarchiveTagRequest struct {
 
 func (r UnarchiveTagRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -107,7 +107,7 @@ type DeleteTagRequest struct {
 
 func (r DeleteTagRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -122,7 +122,7 @@ type OrderTagListRequest struct {
 // "Tags list is empty").
 func (r OrderTagListRequest) Validate() error {
 	if len(r.Changes) == 0 {
-		return errs.NewValidation("Tags list is empty")
+		return &errs.ValidationError{Msg: "Tags list is empty", MsgCode: errs.CodeTagListEmpty}
 	}
 	return nil
 }

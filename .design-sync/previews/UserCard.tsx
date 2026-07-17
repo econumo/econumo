@@ -1,22 +1,17 @@
 import { UserCard } from 'web'
 
-// Offline-safe avatar: SVG data URI ending in '#' so the component's
-// appended `?s=100` lands in the URL fragment and is ignored.
-const makeAvatar = (initials: string, bg: string) =>
-  `data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="${bg}"/><text x="100" y="112" font-family="Roboto, Arial, sans-serif" font-size="76" font-weight="500" fill="#ffffff" text-anchor="middle">${initials}</text></svg>`,
-  )}#`
-
+// user.avatar is the app's "<icon>:<color>" value (Material glyph + color
+// slug), rendered by the embedded UserAvatar — never an image URL.
 const anna = {
   name: 'Anna Kovaleva',
   email: 'anna.kovaleva@fastmail.com',
-  avatar: makeAvatar('AK', '#BD51CF'),
+  avatar: 'owl:teal',
 }
 
 const james = {
   name: 'James Middleton-Fairbanks',
   email: 'james.middleton.fairbanks@googlemail.com',
-  avatar: makeAvatar('JM', '#2E7D32'),
+  avatar: 'rocket_launch:sky',
 }
 
 export const Sidebar = () => (
@@ -32,6 +27,12 @@ export const ProfileWithLogout = () => (
         Logout
       </button>
     </UserCard>
+  </div>
+)
+
+export const AvatarOpensPicker = () => (
+  <div className="w-96 px-1 py-3">
+    <UserCard user={james} size="lg" onAvatarClick={() => {}} avatarLabel="Change avatar" />
   </div>
 )
 

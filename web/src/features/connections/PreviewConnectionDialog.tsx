@@ -62,13 +62,13 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
   const section = (kind: 'accounts' | 'budgets', items: SharedItem[]) => (
     <section className="flex flex-col gap-1">
       <p className="text-xs font-medium uppercase text-muted-foreground">
-        {t(`modules.connections.modals.preview_connection.${kind}`)}
+        {t(`connections.modals.preview_connection.${kind}`)}
       </p>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t(`modules.connections.modals.preview_connection.${kind}_empty`)}</p>
+        <p className="text-sm text-muted-foreground">{t(`connections.modals.preview_connection.${kind}_empty`)}</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">{t('modules.connections.modals.preview_connection.tap_to_manage')}</p>
+          <p className="text-xs text-muted-foreground">{t('connections.modals.preview_connection.tap_to_manage')}</p>
           <ul className="flex flex-col">
             {items.map((item) => (
               <li key={item.id}>
@@ -86,10 +86,10 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
                     <span className="truncate text-sm">{item.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {item.ownedByMe
-                        ? t(`modules.connections.modals.preview_connection.your_${kind === 'budgets' ? 'budget' : 'account'}`)
-                        : t('modules.connections.modals.preview_connection.shared_with_you')}
+                        ? t(`connections.modals.preview_connection.your_${kind === 'budgets' ? 'budget' : 'account'}`)
+                        : t('connections.modals.preview_connection.shared_with_you')}
                       {' · '}
-                      {t(`modules.connections.${kind}.roles.${item.role}`)}
+                      {t(`connections.${kind}.roles.${item.role}`)}
                     </span>
                   </span>
                   <span title={item.owner.name}>
@@ -112,10 +112,10 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
           {section('accounts', sharedAccounts)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onClose}>
-              {t('elements.button.ok.label')}
+              {t('common.button.ok.label')}
             </Button>
             <Button type="button" variant="destructive" onClick={() => onDelete(other.id)}>
-              {t('elements.button.delete.label')}
+              {t('common.button.delete.label')}
             </Button>
           </div>
         </div>

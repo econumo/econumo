@@ -15,11 +15,11 @@ export function ShareEntryList({ kind, entries, onPick }: ShareEntryListProps) {
 
   const roleText = (entry: ShareEntry): string => {
     if (!entry.role) {
-      return t(`modules.connections.${kind}.roles.no_access`)
+      return t(`connections.${kind}.roles.no_access`)
     }
-    const label = t(`modules.connections.${kind}.roles.${entry.role}`)
+    const label = t(`connections.${kind}.roles.${entry.role}`)
     if (kind === 'budgets' && entry.isAccepted === false) {
-      return `${label} – ${t('modules.connections.modals.share_access.not_accepted')}`
+      return `${label} – ${t('connections.modals.share_access.not_accepted')}`
     }
     return label
   }

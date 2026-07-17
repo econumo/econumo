@@ -26,7 +26,7 @@ export function CoinLoader({ label }: { label?: string }) {
       {/* the wrapper already carries the descriptive label for screen readers */}
       {/* pl compensates the trailing letter-spacing so the word sits optically centered */}
       <span aria-hidden="true" className="animate-pulse pt-3 pl-[0.3em] text-xs tracking-[0.3em] text-muted-foreground/70 uppercase motion-reduce:animate-none">
-        {t('elements.loader.label')}
+        {t('common.loader.label')}
       </span>
     </div>
   )

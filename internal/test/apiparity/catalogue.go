@@ -213,6 +213,7 @@ func init() {
 		return []Call{
 			{Label: "update-name", Method: "POST", Path: "/api/v1/user/update-name", Auth: "owner", Body: map[string]any{"name": "Renamed"}},
 			{Label: "update-report-period", Method: "POST", Path: "/api/v1/user/update-report-period", Auth: "owner", Body: map[string]any{"value": "monthly"}},
+			{Label: "update-language", Method: "POST", Path: "/api/v1/user/update-language", Auth: "owner", Body: map[string]any{"language": "ru"}},
 			{Label: "read-after-update", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner", Body: map[string]any{}},
 		}
 	}})

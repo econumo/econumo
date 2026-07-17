@@ -153,7 +153,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 	}
 	for _, t := range tags {
 		if t.Name == name && !t.ID.Equal(exceptID) {
-			return errs.NewValidation("Tag already exists.")
+			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
 		}
 	}
 	return nil
@@ -166,7 +166,10 @@ func newTagName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {
 		return "", errs.NewValidation("Tag name must be 3-64 characters",
-			errs.FieldError{Key: "name", Message: "Tag name must be 3-64 characters"})
+			errs.FieldError{
+				Key: "name", Message: "Tag name must be 3-64 characters", Code: errs.CodeTagNameLength,
+				Params: map[string]any{"min": 3, "max": 64},
+			})
 	}
 	return v, nil
 }

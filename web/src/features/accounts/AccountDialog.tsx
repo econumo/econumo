@@ -85,20 +85,20 @@ export function AccountDialog() {
   const validate = (): boolean => {
     const next: { name?: string; balance?: string } = {}
     if (!isNotEmpty(name)) {
-      next.name = t('elements.validation.required_field')
+      next.name = t('common.validation.required_field')
     } else if (!isValidAccountName(name)) {
-      next.name = t('elements.form.account.name.validation.invalid_name')
+      next.name = t('accounts.form.name.validation.invalid_name')
     }
     if (!isNotEmpty(balance)) {
-      next.balance = t('elements.validation.required_field')
+      next.balance = t('common.validation.required_field')
     } else if (!isValidFormula(balance)) {
-      next.balance = t('elements.validation.invalid_formula')
+      next.balance = t('common.validation.invalid_formula')
     } else {
       const evaluated = evaluateFormula(sanitizeInput(balance) + '=')
       if (!isValidNumber(evaluated)) {
-        next.balance = t('elements.validation.invalid_number')
+        next.balance = t('common.validation.invalid_number')
       } else if (!isValidDecimalNumber(evaluated)) {
-        next.balance = t('elements.validation.invalid_decimal_number')
+        next.balance = t('common.validation.invalid_decimal_number')
       }
     }
     setErrors(next)
@@ -148,14 +148,14 @@ export function AccountDialog() {
       caps
       fullScreen
       onOpenChange={(o) => !o && close()}
-      title={isNew ? t('modals.account.create_form.header') : t('modals.account.update_form.header')}
+      title={isNew ? t('accounts.modal.create_form.header') : t('accounts.modal.update_form.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={close}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="account-dialog-form" disabled={pending}>
-            {isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
+            {isNew ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -171,22 +171,22 @@ export function AccountDialog() {
           void submit()
         }}
       >
-        <CardField label={t('elements.form.account.name.label')} htmlFor="account-name" error={errors.name}>
+        <CardField label={t('accounts.form.name.label')} htmlFor="account-name" error={errors.name}>
           <Input
             id="account-name"
             className={cardFieldControlClass}
             maxLength={64}
-            placeholder={t('elements.form.account.name.placeholder')}
+            placeholder={t('accounts.form.name.placeholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </CardField>
 
-        <CardField label={t('elements.form.account.balance.label')} htmlFor="account-balance" error={errors.balance}>
+        <CardField label={t('accounts.form.balance.label')} htmlFor="account-balance" error={errors.balance}>
           <CalculatorInput
             id="account-balance"
             className={cardFieldControlClass}
-            placeholder={t('elements.form.account.balance.placeholder')}
+            placeholder={t('accounts.form.balance.placeholder')}
             value={balance}
             onChange={setBalance}
           />
@@ -196,11 +196,11 @@ export function AccountDialog() {
         <button
           type="button"
           className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
-          title={t('elements.form.account.currency.label')}
+          title={t('accounts.form.currency.label')}
           onClick={() => setCurrencyOpen(true)}
         >
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('elements.form.account.currency.label')}</span>
+            <span className="text-[11px] text-muted-foreground">{t('accounts.form.currency.label')}</span>
             <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
@@ -210,11 +210,11 @@ export function AccountDialog() {
           <button
             type="button"
             className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
-            title={t('pages.settings.accounts.list_actions.access')}
+            title={t('settings.accounts.list_actions.access')}
             onClick={() => setShareOpen(true)}
           >
             <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[11px] text-muted-foreground">{t('pages.settings.accounts.list_actions.access')}</span>
+              <span className="text-[11px] text-muted-foreground">{t('settings.accounts.list_actions.access')}</span>
               {liveAccount.sharedAccess.length > 0 ? (
                 <span className="flex items-center -space-x-2 pt-0.5">
                   <UserAvatar avatar={liveAccount.owner.avatar} size="sm" className="size-7" />
@@ -229,14 +229,14 @@ export function AccountDialog() {
         ) : null}
 
         <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <Label>{t('modals.account.form.icon.label')}</Label>
-          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modals.account.form.icon.label')} />
+          <Label>{t('accounts.modal.form.icon.label')}</Label>
+          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('accounts.modal.form.icon.label')} />
         </div>
       </form>
 
       <CurrencyPickerDialog
         open={currencyOpen}
-        title={t('elements.form.account.currency.label')}
+        title={t('accounts.form.currency.label')}
         value={currencyId}
         onClose={() => setCurrencyOpen(false)}
         onPick={setCurrencyId}
