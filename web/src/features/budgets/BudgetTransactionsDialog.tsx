@@ -40,7 +40,7 @@ interface BudgetTransactionsDialogProps {
 }
 
 export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTransactionsDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const { data: currencies = [] } = useCurrencies()
   const { data: user } = useUserData()
@@ -132,7 +132,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
         ? t('accounts.page.transaction_list.today')
         : isYesterday(day)
           ? t('accounts.page.transaction_list.yesterday')
-          : formatDayHeading(day)
+          : formatDayHeading(day, i18n.language)
       rows.push({ kind: 'sep', key: `sep-${day}`, label })
     }
     rows.push({ kind: 'tx', key: tx.id, tx })

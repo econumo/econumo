@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MONTHS_AROUND, periodRange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 
@@ -6,6 +7,7 @@ const EXTEND_STEP = 12
 const EDGE_THRESHOLD_PX = 300
 
 export function PeriodStrip({ startedAt }: { startedAt: string | null }) {
+  const { i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -15,7 +17,7 @@ export function PeriodStrip({ startedAt }: { startedAt: string | null }) {
 
   const [extend, setExtend] = useState({ before: 0, after: 0 })
 
-  const items = periodRange(selectedDate, startedAt, MONTHS_AROUND + extend.before, MONTHS_AROUND + extend.after)
+  const items = periodRange(selectedDate, startedAt, MONTHS_AROUND + extend.before, MONTHS_AROUND + extend.after, i18n.language)
 
   useLayoutEffect(() => {
     activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' })

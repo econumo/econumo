@@ -23,14 +23,14 @@ export type DailyListEntry =
   | { kind: 'separator'; day: string; label: 'today' | 'yesterday' | 'date' }
   | { kind: 'transaction'; transaction: ViewTransaction }
 
-export function separatorText(entry: { day: string; label: 'today' | 'yesterday' | 'date' }, t: (key: string) => string): string {
+export function separatorText(entry: { day: string; label: 'today' | 'yesterday' | 'date' }, t: (key: string) => string, lang = 'en'): string {
   if (entry.label === 'today') {
     return t('accounts.page.transaction_list.today')
   }
   if (entry.label === 'yesterday') {
     return t('accounts.page.transaction_list.yesterday')
   }
-  return formatDayHeading(entry.day)
+  return formatDayHeading(entry.day, lang)
 }
 
 // Mirrors the Vue transactions-store search haystack: amounts, @author,

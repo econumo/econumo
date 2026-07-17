@@ -64,7 +64,7 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
 }
 
 export function AccountPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { id } = useParams()
@@ -222,7 +222,7 @@ export function AccountPage() {
           {(entry) =>
             entry.kind === 'separator' ? (
             <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-              {separatorText(entry, t)}
+              {separatorText(entry, t, i18n.language)}
             </div>
           ) : (
             // The whole row is one hover/tap surface (like the settings lists):

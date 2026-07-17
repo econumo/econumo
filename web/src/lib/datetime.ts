@@ -32,8 +32,13 @@ function ordinal(day: number): string {
   }
 }
 
-export function formatDayHeading(day: string): string {
+export function formatDayHeading(day: string, lang = 'en'): string {
   const d = parseDateTime(day)
+  // the "1st July 2026" ordinal style only exists in English; other languages
+  // get their locale's own full-date form (ru: "1 июля 2026 г.")
+  if (lang !== 'en') {
+    return new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'long', year: 'numeric' }).format(d)
+  }
   const month = new Intl.DateTimeFormat('en', { month: 'long' }).format(d)
   return `${ordinal(d.getDate())} ${month} ${d.getFullYear()}`
 }
