@@ -48,7 +48,7 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req model.CreateT
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 
 		if uerr := s.ensureNameUnique(ctx, ownerID, name, vo.Id{}); uerr != nil {

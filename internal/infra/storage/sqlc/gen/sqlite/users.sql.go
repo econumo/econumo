@@ -27,9 +27,23 @@ FROM users
 WHERE id = ?
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
+type GetUserByIDRow struct {
+	ID         string
+	Identifier string
+	Email      string
+	Name       string
+	Avatar     string
+	Password   string
+	Salt       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsActive   bool
+	Algorithm  string
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Identifier,
@@ -52,9 +66,23 @@ FROM users
 WHERE identifier = ?
 `
 
-func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (User, error) {
+type GetUserByIdentifierRow struct {
+	ID         string
+	Identifier string
+	Email      string
+	Name       string
+	Avatar     string
+	Password   string
+	Salt       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsActive   bool
+	Algorithm  string
+}
+
+func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByIdentifier, identifier)
-	var i User
+	var i GetUserByIdentifierRow
 	err := row.Scan(
 		&i.ID,
 		&i.Identifier,
@@ -132,6 +160,20 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserLanguage = `-- name: UpdateUserLanguage :exec
+UPDATE users SET language = ? WHERE id = ?
+`
+
+type UpdateUserLanguageParams struct {
+	Language string
+	ID       string
+}
+
+func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserLanguage, arg.Language, arg.ID)
+	return err
 }
 
 const upsertUser = `-- name: UpsertUser :exec

@@ -14,10 +14,10 @@
 {"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"pets:teal","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"completed"},{"name":"budget","value":"b0000000-0000-0000-0000-000000000001"},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly"}}}
 
 == err:update-avatar-blank POST /api/v1/user/update-avatar [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"color":["This value should not be blank."],"icon":["This value should not be blank."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"color":["This value should not be blank."],"icon":["This value should not be blank."]},"errorCodes":{"color":[{"code":"common.is_blank"}],"icon":[{"code":"common.is_blank"}]}}
 
 == err:update-avatar-bad-values POST /api/v1/user/update-avatar [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"color":["The value you selected is not a valid choice."],"icon":["This value is not valid."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"color":["The value you selected is not a valid choice."],"icon":["This value is not valid."]},"errorCodes":{"color":[{"code":"common.invalid_choice"}],"icon":[{"code":"common.invalid_format"}]}}
 
 == update-password POST /api/v1/user/update-password [owner] -> 200
 {"success":true,"message":"","data":{}}

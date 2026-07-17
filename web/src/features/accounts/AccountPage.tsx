@@ -67,7 +67,7 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
 }
 
 export function AccountPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { id } = useParams()
@@ -132,7 +132,7 @@ export function AccountPage() {
       {isCompact ? (
         <>
           <header className="flex items-center gap-3">
-            <Button type="button" variant="ghost" size="icon" aria-label="back" title={t('elements.button.back.label')} onClick={() => navigate(RouterPage.HOME)}>
+            <Button type="button" variant="ghost" size="icon" aria-label="back" title={t('common.button.back.label')} onClick={() => navigate(RouterPage.HOME)}>
               <ChevronLeft className="size-5" />
             </Button>
             <EntityIcon name={account.icon} className="text-2xl text-muted-foreground" />
@@ -152,8 +152,8 @@ export function AccountPage() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={t('pages.account.toolbar.settings')}
-                title={t('pages.account.toolbar.settings')}
+                aria-label={t('accounts.page.toolbar.settings')}
+                title={t('accounts.page.toolbar.settings')}
                 onClick={() => openAccountModal({ account })}
               >
                 <Settings2 className="size-5" />
@@ -161,8 +161,8 @@ export function AccountPage() {
             ) : null}
           </header>
           <Input
-            aria-label={t('pages.account.toolbar.search')}
-            placeholder={t('pages.account.toolbar.search')}
+            aria-label={t('accounts.page.toolbar.search')}
+            placeholder={t('accounts.page.toolbar.search')}
             className="border-0 bg-econumo-card shadow-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -192,12 +192,12 @@ export function AccountPage() {
                   variant="ghost"
                   size="sm"
                   className="uppercase tracking-wide text-muted-foreground"
-                  aria-label={t('pages.account.toolbar.settings')}
-                  title={t('pages.account.toolbar.settings')}
+                  aria-label={t('accounts.page.toolbar.settings')}
+                  title={t('accounts.page.toolbar.settings')}
                   onClick={() => openAccountModal({ account })}
                 >
                   <Settings2 className="size-4" />
-                  <span className="hidden sm:inline">{t('pages.account.toolbar.settings')}</span>
+                  <span className="hidden sm:inline">{t('accounts.page.toolbar.settings')}</span>
                 </Button>
               ) : null}
             </div>
@@ -206,17 +206,17 @@ export function AccountPage() {
             {canChangeTransaction ? (
               <Button
                 type="button"
-                aria-label={t('pages.account.transaction_list.action.add_transaction')}
+                aria-label={t('accounts.page.transaction_list.action.add_transaction')}
                 onClick={() => openTransactionModal({ type: 'expense' })}
               >
-                {t('pages.account.transaction_list.action.add_transaction')}
+                {t('accounts.page.transaction_list.action.add_transaction')}
               </Button>
             ) : (
               <span />
             )}
             <Input
-              aria-label={t('pages.account.toolbar.search')}
-              placeholder={t('pages.account.toolbar.search')}
+              aria-label={t('accounts.page.toolbar.search')}
+              placeholder={t('accounts.page.toolbar.search')}
               className="w-60 border-0 bg-econumo-card shadow-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -230,7 +230,7 @@ export function AccountPage() {
           {(entry) =>
             entry.kind === 'separator' ? (
             <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-              {separatorText(entry, t)}
+              {separatorText(entry, t, i18n.language)}
             </div>
           ) : (
             // The whole row is one hover/tap surface (like the settings lists):
@@ -266,22 +266,22 @@ export function AccountPage() {
                     {entry.transaction.recurring ? (
                       <>
                         <DropdownMenuItem onSelect={() => openRecurringModal({ recurring: entry.transaction.recurring })}>
-                          {t('elements.button.edit.label')}
+                          {t('common.button.edit.label')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="destructive"
                           onSelect={() => setRecurringDeleteTarget(entry.transaction.recurring ?? null)}
                         >
-                          {t('elements.button.delete.label')}
+                          {t('common.button.delete.label')}
                         </DropdownMenuItem>
                       </>
                     ) : (
                       <>
                         <DropdownMenuItem onSelect={() => editTransaction(entry.transaction)}>
-                          {t('elements.button.edit.label')}
+                          {t('common.button.edit.label')}
                         </DropdownMenuItem>
                         <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(entry.transaction)}>
-                          {t('elements.button.delete.label')}
+                          {t('common.button.delete.label')}
                         </DropdownMenuItem>
                       </>
                     )}
@@ -299,11 +299,11 @@ export function AccountPage() {
           <Button
             type="button"
             className="h-11 w-full"
-            title={t('pages.account.transaction_list.action.add_transaction')}
+            title={t('accounts.page.transaction_list.action.add_transaction')}
             onClick={() => openTransactionModal({ type: 'expense' })}
           >
             <Plus className="size-4" />
-            {t('pages.account.transaction_list.action.add_transaction')}
+            {t('accounts.page.transaction_list.action.add_transaction')}
           </Button>
         </footer>
       ) : null}
@@ -335,9 +335,9 @@ export function AccountPage() {
             deleteTransaction.mutate(deleteTarget.id, { onSettled: () => setDeleteTarget(null) })
           }
         }}
-        question={t('pages.account.delete_transaction_modal.question')}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('accounts.page.delete_transaction_modal.question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
@@ -377,9 +377,9 @@ export function AccountPage() {
             deleteRecurring.mutate(recurringDeleteTarget.id, { onSettled: () => setRecurringDeleteTarget(null) })
           }
         }}
-        question={t('pages.settings.recurring.delete_question')}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('settings.recurring.delete_question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </div>

@@ -88,14 +88,14 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const validate = (): boolean => {
     const next: Record<string, string> = {}
     if (!isNotEmpty(form.amount)) {
-      next.amount = t('elements.validation.required_field')
+      next.amount = t('common.validation.required_field')
     } else if (!isValidFormula(form.amount)) {
-      next.amount = t('elements.validation.invalid_formula')
+      next.amount = t('common.validation.invalid_formula')
     } else if (Number.isNaN(evaluatedNumber(form.amount))) {
-      next.amount = t('elements.validation.invalid_number')
+      next.amount = t('common.validation.invalid_number')
     }
     if (isTransfer && !form.accountRecipientId) {
-      next.accountRecipientId = t('elements.validation.required_field')
+      next.accountRecipientId = t('common.validation.required_field')
     }
     setErrors(next)
     return Object.keys(next).length === 0
@@ -119,7 +119,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   }
 
   const pending = createRecurring.isPending || updateRecurring.isPending
-  const title = form.isNew ? t('modals.recurring.create_form.header') : t('modals.recurring.update_form.header')
+  const title = form.isNew ? t('recurring.modal.create_form.header') : t('recurring.modal.update_form.header')
 
   return (
     <ResponsiveDialog
@@ -132,10 +132,10 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="recurring-dialog-form" disabled={pending}>
-            {form.isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
+            {form.isNew ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -161,7 +161,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
               }`}
               onClick={() => setType(type)}
             >
-              {t(`modals.transaction.transaction_type.${type}`)}
+              {t(`transactions.modal.transaction_type.${type}`)}
             </button>
           ))}
         </div>
@@ -179,12 +179,12 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           ) : null}
           <div className={amountCardInputClass}>
             <Label htmlFor="rt-amount" className="sr-only">
-              {t('modals.transaction.form.amount.label')}
+              {t('transactions.modal.form.amount.label')}
             </Label>
             <CalculatorInput
               id="rt-amount"
               autoFocus
-              placeholder={t('modals.transaction.form.amount.label')}
+              placeholder={t('transactions.modal.form.amount.label')}
               value={form.amount}
               onChange={(amount) => patch({ amount })}
             />
@@ -194,7 +194,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
 
         {isTransfer ? (
           <div className="flex flex-col gap-2">
-            <SelectCard label={t('modals.transaction.form.from.label')}>
+            <SelectCard label={t('transactions.modal.form.from.label')}>
               <EntitySelect
                 aria-label="from account"
                 value={form.accountId}
@@ -202,7 +202,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                 options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
               />
             </SelectCard>
-            <SelectCard label={t('modals.transaction.form.to.label')} error={errors.accountRecipientId}>
+            <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
               <EntitySelect
                 aria-label="to account"
                 value={form.accountRecipientId}
@@ -213,18 +213,18 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           </div>
         ) : (
           <>
-            <SelectCard label={t('modals.transaction.form.category.label')}>
+            <SelectCard label={t('transactions.modal.form.category.label')}>
               <EntitySelect
-                aria-label={t('modals.transaction.form.category.label')}
+                aria-label={t('transactions.modal.form.category.label')}
                 value={form.categoryId}
                 onChange={(id) => patch({ categoryId: id })}
                 options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
               />
             </SelectCard>
 
-            <SelectCard label={t(`modals.transaction.form.payee.${form.type}`)}>
+            <SelectCard label={t(`transactions.modal.form.payee.${form.type}`)}>
               <EntitySelect
-                aria-label={t(`modals.transaction.form.payee.${form.type}`)}
+                aria-label={t(`transactions.modal.form.payee.${form.type}`)}
                 value={form.payeeId}
                 onChange={(id) => patch({ payeeId: id })}
                 options={currentPayees.map((p) => ({ value: p.id, label: p.name }))}
@@ -233,9 +233,9 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             </SelectCard>
 
             {isExpense ? (
-              <SelectCard label={t('pages.account.preview_transaction_modal.tags.label')}>
+              <SelectCard label={t('accounts.page.preview_transaction_modal.tags.label')}>
                 <EntitySelect
-                  aria-label={t('pages.account.preview_transaction_modal.tags.label')}
+                  aria-label={t('accounts.page.preview_transaction_modal.tags.label')}
                   value={form.tagId}
                   onChange={(id) => patch({ tagId: id })}
                   options={currentTags.map((tg) => ({ value: tg.id, label: tg.name }))}
@@ -246,16 +246,16 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           </>
         )}
 
-        <CardField label={t('modals.recurring.form.schedule.label')} htmlFor="rt-schedule">
+        <CardField label={t('recurring.modal.form.schedule.label')} htmlFor="rt-schedule">
           <div className="[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
             <Select value={form.schedule} onValueChange={(v) => patch({ schedule: v as RecurringSchedule })}>
-              <SelectTrigger id="rt-schedule" aria-label={t('modals.recurring.form.schedule.label')} className="w-full">
+              <SelectTrigger id="rt-schedule" aria-label={t('recurring.modal.form.schedule.label')} className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {SCHEDULE_ORDER.map((schedule) => (
                   <SelectItem key={schedule} value={schedule}>
-                    {t(`modals.recurring.schedule.${schedule}`)}
+                    {t(`recurring.schedule.${schedule}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -263,12 +263,12 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           </div>
         </CardField>
 
-        <CardField label={t('modals.recurring.form.next_payment.label')}>
+        <CardField label={t('recurring.modal.form.next_payment.label')}>
           <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                aria-label={t('modals.recurring.form.next_payment.label')}
+                aria-label={t('recurring.modal.form.next_payment.label')}
                 className="w-full text-left text-sm"
               >
                 {dayKey(form.nextPaymentAt)}
@@ -290,11 +290,11 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           </Popover>
         </CardField>
 
-        <CardField label={t('modals.transaction.form.description.label')} htmlFor="rt-description">
+        <CardField label={t('transactions.modal.form.description.label')} htmlFor="rt-description">
           <Textarea
             id="rt-description"
             className={`${cardFieldControlClass} min-h-16 resize-none`}
-            placeholder={t('modals.transaction.form.description.placeholder')}
+            placeholder={t('transactions.modal.form.description.placeholder')}
             value={form.description}
             onChange={(e) => patch({ description: e.target.value })}
           />

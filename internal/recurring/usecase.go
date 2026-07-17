@@ -29,7 +29,7 @@ func NewService(repo Repository, accounts AccountResolver, grants AccountGrants,
 func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id) error {
 	owner, err := s.accounts.AccountOwner(ctx, accountID)
 	if err != nil {
-		return errs.NewValidation("account.account.not_available")
+		return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
 	}
 	if owner.Equal(userID) {
 		return nil
@@ -41,7 +41,7 @@ func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id)
 	if ok {
 		return nil
 	}
-	return errs.NewValidation("account.account.not_available")
+	return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
 }
 
 func parseType(alias string) (model.TransactionType, error) {
@@ -53,7 +53,7 @@ func parseType(alias string) (model.TransactionType, error) {
 	case "transfer":
 		return model.TransactionTypeTransfer, nil
 	}
-	return 0, errs.NewValidation("Validation failed", errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+	return 0, errs.NewValidation("Validation failed", errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 }
 
 func toResult(rt *model.RecurringTransaction) model.RecurringTransactionResult {

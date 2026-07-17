@@ -53,6 +53,23 @@ it('Escape closes the dialog (outside clicks stay blocked via onInteractOutside)
   await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
 })
 
+it('Escape with a picker open closes the picker, not the dialog', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await user.click(screen.getByRole('combobox', { name: 'Category' }))
+  expect(await screen.findByRole('option', { name: 'Food' })).toBeInTheDocument()
+
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('option', { name: 'Food' })).not.toBeInTheDocument())
+  expect(useUiStore.getState().transactionModal).not.toBeNull()
+
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+})
+
 it('clicking anywhere on a select card (label/padding) opens the picker', async () => {
   const user = userEvent.setup()
   renderDialog()
@@ -290,14 +307,13 @@ it('creates a category on the fly and selects it', async () => {
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
   await user.click(screen.getByRole('combobox', { name: 'Category' }))
-  // the modal popover hides the rest of the dialog from the a11y tree while
-  // open; the search input autofocuses, so type into the focused element
+  // the picker is the field itself: typing filters in place
   await user.keyboard('Books')
   await user.click(await screen.findByText(/Add «Books»/))
   await waitFor(() => expect(created).toBeDefined())
   expect(created!.name).toBe('Books')
   expect(created!.type).toBe('expense')
-  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveTextContent('Books'))
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('Books'))
 })
 
 it('posting a recurring template: header + date prefill, submits to post-recurring-transaction (not create-transaction)', async () => {

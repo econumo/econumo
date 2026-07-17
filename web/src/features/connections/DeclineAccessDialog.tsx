@@ -28,10 +28,10 @@ export function DeclineAccessDialog({ open, owner, itemName, onDecline, onClose 
         ) : null}
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="button" variant="destructive" onClick={onDecline}>
-            {t('modules.connections.modals.decline_access.decline_access')}
+            {t('connections.modals.decline_access.decline_access')}
           </Button>
         </div>
       </div>

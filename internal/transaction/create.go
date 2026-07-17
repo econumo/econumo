@@ -46,7 +46,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 		now := s.clock.Now()
 		st, berr := buildState(id, userID, typ, accountID, req.Amount.String(),

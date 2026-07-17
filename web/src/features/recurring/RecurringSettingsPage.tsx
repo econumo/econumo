@@ -28,7 +28,7 @@ export function RecurringSettingsPage() {
   const [selected, setSelected] = useState<RecurringDto | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<RecurringDto | null>(null)
 
-  const scheduleLabel = (rt: RecurringDto) => t(`modals.recurring.schedule.${rt.schedule}`)
+  const scheduleLabel = (rt: RecurringDto) => t(`recurring.schedule.${rt.schedule}`)
   const accountOf = (rt: RecurringDto) => accounts?.find((a) => a.id === rt.accountId)
   const title = (rt: RecurringDto) =>
     rt.description ||
@@ -46,16 +46,16 @@ export function RecurringSettingsPage() {
 
   return (
     <SettingsShell
-      title={t('pages.settings.recurring.header')}
+      title={t('settings.recurring.header')}
       backTo={RouterPage.SETTINGS}
       actions={
         <Button type="button" size="sm" data-testid="recurring-create" onClick={() => openRecurringModal({})}>
-          {t('pages.settings.recurring.create')}
+          {t('settings.recurring.create')}
         </Button>
       }
     >
       {recurring.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-muted-foreground">{t('pages.settings.recurring.empty')}</p>
+        <p className="px-1 py-2 text-sm text-muted-foreground">{t('settings.recurring.empty')}</p>
       ) : (
         recurring.map((rt) => (
           <div
@@ -110,9 +110,9 @@ export function RecurringSettingsPage() {
             deleteRecurring.mutate(deleteTarget.id, { onSettled: () => setDeleteTarget(null) })
           }
         }}
-        question={t('pages.settings.recurring.delete_question')}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('settings.recurring.delete_question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </SettingsShell>

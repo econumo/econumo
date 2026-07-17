@@ -49,4 +49,20 @@ describe('locale and version', () => {
     window.econumoConfig = { VERSION: 'v9.9.9' }
     expect(getVersion()).toBe('v9.9.9')
   })
+
+  it('ignores an unsupported stored locale', () => {
+    // getItem/setItem JSON-encode under the raw 'locale' key (no prefix, see lib/storage.ts)
+    localStorage.setItem('locale', JSON.stringify('de'))
+    expect(locale()).toBe('en')
+  })
+
+  it('detects the first supported language from navigator.languages', () => {
+    vi.stubGlobal('navigator', { ...navigator, languages: ['de-DE', 'ru-RU'], language: 'de-DE' })
+    expect(locale()).toBe('ru')
+  })
+
+  it('falls back to english when nothing is supported', () => {
+    vi.stubGlobal('navigator', { ...navigator, languages: ['de-DE', 'fr-FR'], language: 'de-DE' })
+    expect(locale()).toBe('en')
+  })
 })

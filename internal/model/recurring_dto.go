@@ -166,7 +166,7 @@ func validateNotBlank(checks []blankCheck, extra []errs.FieldError) error {
 	var fields []errs.FieldError
 	for _, c := range checks {
 		if strings.TrimSpace(c.val) == "" {
-			fields = append(fields, errs.FieldError{Key: c.key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			fields = append(fields, errs.FieldError{Key: c.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 	}
 	fields = append(fields, extra...)
@@ -183,12 +183,12 @@ func validateRecurringFields(id, typ, amount, accountID, schedule, nextPaymentAt
 	var extra []errs.FieldError
 	if strings.TrimSpace(schedule) != "" {
 		if _, ok := ParseRecurringSchedule(schedule); !ok {
-			extra = append(extra, errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+			extra = append(extra, errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 		}
 	}
 	if strings.TrimSpace(nextPaymentAt) != "" {
 		if _, err := time.Parse(datetime.Layout, nextPaymentAt); err != nil {
-			extra = append(extra, errs.FieldError{Key: "nextPaymentAt", Message: "This value is not a valid datetime."})
+			extra = append(extra, errs.FieldError{Key: "nextPaymentAt", Message: "This value is not a valid datetime.", Code: errs.CodeInvalidDatetime})
 		}
 	}
 	return validateNotBlank([]blankCheck{

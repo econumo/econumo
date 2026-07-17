@@ -34,7 +34,7 @@ func (s *Service) CreateRecurringTransaction(ctx context.Context, userID vo.Id, 
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 		st.CreatedAt = now
 		created = model.NewRecurringTransaction(st)
@@ -64,18 +64,18 @@ func (s *Service) buildState(typAlias, accountID string, accountRecipID *string,
 	}
 	sched, ok := model.ParseRecurringSchedule(schedule)
 	if !ok {
-		return st, errs.NewValidation("Validation failed", errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+		return st, errs.NewValidation("Validation failed", errs.FieldError{Key: "schedule", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	nextAt, err := time.Parse(datetime.Layout, nextPaymentAt)
 	if err != nil {
-		return st, errs.NewValidation("Validation failed", errs.FieldError{Key: "nextPaymentAt", Message: "This value is not valid.", Code: "INVALID_FORMAT_ERROR"})
+		return st, errs.NewValidation("Validation failed", errs.FieldError{Key: "nextPaymentAt", Message: "This value is not a valid datetime.", Code: errs.CodeInvalidDatetime})
 	}
 	recip, err := parseOptID(accountRecipID)
 	if err != nil {
 		return st, err
 	}
 	if typ.IsTransfer() && recip == nil {
-		return st, errs.NewValidation("Validation failed", errs.FieldError{Key: "accountRecipientId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return st, errs.NewValidation("Validation failed", errs.FieldError{Key: "accountRecipientId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	cat, err := parseOptID(categoryID)
 	if err != nil {

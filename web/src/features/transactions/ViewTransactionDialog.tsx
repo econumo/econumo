@@ -29,7 +29,7 @@ interface ViewTransactionDialogProps {
 export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
   const isTransfer = tx.type === 'transfer'
-  const typeLabel = t(`pages.account.preview_transaction_modal.type.${tx.type}`)
+  const typeLabel = t(`accounts.page.preview_transaction_modal.type.${tx.type}`)
 
   const heroIcon = isTransfer ? 'sync_alt' : tx.category?.icon || 'question_mark'
   const heroName = isTransfer ? typeLabel : (tx.category?.name ?? typeLabel)
@@ -39,7 +39,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   const accountRow = (account: ViewTransaction['account'], amount: number | null) => (
     <span className="flex items-center gap-2 text-sm">
       <EntityIcon name={account?.icon} className="text-base text-muted-foreground" />
-      <span className="flex-1 truncate">{account?.name ?? t('elements.account.name_hidden')}</span>
+      <span className="flex-1 truncate">{account?.name ?? t('accounts.account.name_hidden')}</span>
       <span className="tabular-nums">
         {amount !== null ? moneyFormat(amount, account?.currency ?? fallbackCurrency, { useNativePrecision: false }) : ''}
       </span>
@@ -48,21 +48,21 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
 
   const cards: { label: string; content: React.ReactNode }[] = []
   if (isTransfer) {
-    cards.push({ label: t('pages.account.preview_transaction_modal.sender.label'), content: accountRow(tx.account, tx.amount) })
+    cards.push({ label: t('accounts.page.preview_transaction_modal.sender.label'), content: accountRow(tx.account, tx.amount) })
     cards.push({
-      label: t('pages.account.preview_transaction_modal.recipient.label'),
+      label: t('accounts.page.preview_transaction_modal.recipient.label'),
       content: accountRow(tx.accountRecipient, tx.amountRecipient),
     })
   } else {
     const label =
       tx.type === 'expense'
-        ? t('pages.account.preview_transaction_modal.sender.label')
-        : t('pages.account.preview_transaction_modal.recipient.label')
+        ? t('accounts.page.preview_transaction_modal.sender.label')
+        : t('accounts.page.preview_transaction_modal.recipient.label')
     cards.push({ label, content: accountRow(tx.account, tx.amount) })
   }
   if (tx.description) {
     cards.push({
-      label: t('pages.account.preview_transaction_modal.description.label'),
+      label: t('accounts.page.preview_transaction_modal.description.label'),
       content: <span className="break-words text-sm">{tx.description}</span>,
     })
   }
@@ -71,13 +71,13 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
     // an expense pays TO the payee, an income comes FROM it
     const payeeLabel =
       tx.type === 'expense'
-        ? t('pages.account.preview_transaction_modal.recipient.label')
-        : t('pages.account.preview_transaction_modal.sender.label')
+        ? t('accounts.page.preview_transaction_modal.recipient.label')
+        : t('accounts.page.preview_transaction_modal.sender.label')
     cards.push({ label: payeeLabel, content: <span className="text-sm">{tx.payee.name}</span> })
   }
   if (tx.tag) {
     cards.push({
-      label: t('pages.account.preview_transaction_modal.tags.label'),
+      label: t('accounts.page.preview_transaction_modal.tags.label'),
       content: (
         <span className="flex">
           <Badge variant="secondary">{tx.tag.name}</Badge>
@@ -90,7 +90,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
     <ResponsiveDialog
       open
       onOpenChange={(o) => !o && onClose()}
-      title={t('pages.account.preview_transaction_modal.header')}
+      title={t('accounts.page.preview_transaction_modal.header')}
       hideHeader
       showClose
       dismissible={dismissible}
@@ -102,14 +102,14 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             variant="secondary"
             size="icon"
             className="size-11"
-            aria-label={t('elements.button.cancel.label')}
-            title={t('elements.button.cancel.label')}
+            aria-label={t('common.button.cancel.label')}
+            title={t('common.button.cancel.label')}
             onClick={onClose}
           >
             <ChevronDown className="size-4" />
           </Button>
           <Button type="button" className="flex-1" disabled={!canChange} onClick={onEdit}>
-            {t('elements.button.edit.label')}
+            {t('common.button.edit.label')}
           </Button>
           {onMakeRecurring ? (
             <Button
@@ -118,8 +118,8 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
               size="icon"
               className="size-11"
               disabled={!canChange}
-              aria-label={t('modals.recurring.make_recurring')}
-              title={t('modals.recurring.make_recurring')}
+              aria-label={t('recurring.make_recurring')}
+              title={t('recurring.make_recurring')}
               onClick={onMakeRecurring}
             >
               <Repeat className="size-4" />
@@ -131,8 +131,8 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             size="icon"
             className="size-11"
             disabled={!canChange}
-            aria-label={t('elements.button.delete.label')}
-            title={t('elements.button.delete.label')}
+            aria-label={t('common.button.delete.label')}
+            title={t('common.button.delete.label')}
             onClick={onDelete}
           >
             <Trash2 className="size-4" />

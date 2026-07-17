@@ -96,7 +96,7 @@ export function ApplicationLayout() {
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
   const syncFailing = useSyncFailing()
-  const syncTitle = `${t(syncFailing ? 'pages.settings.sync.failing' : 'pages.settings.sync.menu_item')} — ${lastSyncAt}`
+  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}`
   // constant geometry (-m/p cancel out) so the amber circle appears without
   // nudging the icon
   const syncClass = `-m-1.5 rounded-full p-1.5 ${
@@ -142,7 +142,7 @@ export function ApplicationLayout() {
                   {!isOnboardingCompleted(user) ? (
                     <Link
                       to={RouterPage.ONBOARDING}
-                      title={t('blocks.main.onboarding')}
+                      title={t('common.nav.onboarding')}
                       className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
                     >
                       <Rocket className="size-5" />
@@ -150,7 +150,7 @@ export function ApplicationLayout() {
                   ) : null}
                   <Link
                     to={RouterPage.BUDGET}
-                    title={t('blocks.main.budget')}
+                    title={t('common.nav.budget')}
                     className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
                   >
                     <Wallet className="size-5" />
@@ -161,11 +161,11 @@ export function ApplicationLayout() {
                 <div className={`flex flex-col py-1 ${isCompact ? 'px-4' : 'px-3'}`}>
                   {!isOnboardingCompleted(user) ? (
                     <Link to={RouterPage.ONBOARDING} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
-                      {t('blocks.main.onboarding')}
+                      {t('common.nav.onboarding')}
                     </Link>
                   ) : null}
                   <Link to={RouterPage.BUDGET} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
-                    {t('blocks.main.budget')}
+                    {t('common.nav.budget')}
                   </Link>
                 </div>
               )}
@@ -179,7 +179,7 @@ export function ApplicationLayout() {
             <footer className="flex flex-col items-center gap-4 border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
               <Link
                 to={RouterPage.SETTINGS}
-                title={t('pages.settings.settings.menu_item')}
+                title={t('settings.page.menu_item')}
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Settings className="size-5" />
@@ -202,7 +202,7 @@ export function ApplicationLayout() {
                   <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
                 </div>
                 <Link to={RouterPage.SETTINGS} className="text-xs text-muted-foreground hover:text-foreground">
-                  {t('pages.settings.settings.menu_item')}
+                  {t('settings.page.menu_item')}
                 </Link>
               </div>
               <button
@@ -224,7 +224,7 @@ export function ApplicationLayout() {
         <button
           type="button"
           aria-label="toggle sidebar"
-          title={t(collapsed ? 'blocks.main.expand_menu' : 'blocks.main.collapse_menu')}
+          title={t(collapsed ? 'common.nav.expand_menu' : 'common.nav.collapse_menu')}
           className="w-1.5 shrink-0 cursor-col-resize border-l bg-transparent p-0 hover:bg-accent"
           onClick={toggleCollapsed}
         />
@@ -240,7 +240,7 @@ export function ApplicationLayout() {
       <TransactionDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />
-      <LoadingDialog open={showBootLoader} label={t('modules.app.modal.loading.data_loading')} />
+      <LoadingDialog open={showBootLoader} label={t('common.app.modal.loading.data_loading')} />
       {showLogoutEscape ? <LogoutEscapeButton /> : null}
     </div>
   )

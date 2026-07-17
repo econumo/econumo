@@ -41,3 +41,16 @@ func TestLogAttrsReturnsCopy(t *testing.T) {
 		t.Errorf("snapshot len = %d, want 1 (LogAttrs must return a copy)", len(snapshot))
 	}
 }
+
+func TestLanguageDefaultsToEnglish(t *testing.T) {
+	if got := Language(context.Background()); got != "en" {
+		t.Fatalf("Language() = %q, want en", got)
+	}
+}
+
+func TestLanguageRoundTrip(t *testing.T) {
+	ctx := WithLanguage(context.Background(), "ru")
+	if got := Language(ctx); got != "ru" {
+		t.Fatalf("Language() = %q, want ru", got)
+	}
+}

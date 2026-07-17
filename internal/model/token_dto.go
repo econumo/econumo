@@ -35,7 +35,7 @@ type RevokeSessionRequest struct {
 func (r RevokeSessionRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
 		return errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -73,11 +73,14 @@ type CreatePersonalTokenRequest struct {
 func (r CreatePersonalTokenRequest) Validate() error {
 	var fields []errs.FieldError
 	if n := len([]rune(strings.TrimSpace(r.Name))); n < 1 || n > 64 {
-		fields = append(fields, errs.FieldError{Key: "name", Message: "Token name must be 1-64 characters"})
+		fields = append(fields, errs.FieldError{
+			Key: "name", Message: "Token name must be 1-64 characters", Code: errs.CodeTokenNameLength,
+			Params: map[string]any{"min": 1, "max": 64},
+		})
 	}
 	if r.ExpiresAt != "" {
 		if _, err := time.Parse(datetime.Layout, r.ExpiresAt); err != nil {
-			fields = append(fields, errs.FieldError{Key: "expiresAt", Message: "Invalid expiration date"})
+			fields = append(fields, errs.FieldError{Key: "expiresAt", Message: "Invalid expiration date", Code: errs.CodeTokenInvalidExpirationDate})
 		}
 	}
 	if len(fields) > 0 {
@@ -105,7 +108,7 @@ type RevokePersonalTokenRequest struct {
 func (r RevokePersonalTokenRequest) Validate() error {
 	if strings.TrimSpace(r.Id) == "" {
 		return errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+			errs.FieldError{Key: "id", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }

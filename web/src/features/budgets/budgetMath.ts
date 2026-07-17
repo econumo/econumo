@@ -94,19 +94,20 @@ export function periodRange(
   startedAt: string | null,
   monthsBefore = MONTHS_AROUND,
   monthsAfter = MONTHS_AROUND,
+  lang = 'en',
 ): PeriodItem[] {
   const [y, m] = selectedDate.split('-').map(Number)
   const currentYear = new Date().getFullYear()
   const startMonth = startedAt ? startedAt.slice(0, 7) : null
+  const longMonth = new Intl.DateTimeFormat(lang, { month: 'long' })
+  const shortMonth = new Intl.DateTimeFormat(lang, { month: 'short' })
   const items: PeriodItem[] = []
   for (let offset = -monthsBefore; offset <= monthsAfter; offset++) {
     const d = new Date(y, m - 1 + offset, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-    const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(d)
-    const shortName = new Intl.DateTimeFormat('en', { month: 'short' }).format(d)
     items.push({
       value,
-      label: d.getFullYear() === currentYear ? monthName : `${shortName} ${d.getFullYear()}`,
+      label: d.getFullYear() === currentYear ? longMonth.format(d) : `${shortMonth.format(d)} ${d.getFullYear()}`,
       isActive: offset === 0,
       outsideBudget: startMonth !== null && value.slice(0, 7) < startMonth,
     })

@@ -6,15 +6,20 @@ import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { LanguageDialog } from '@/components/LanguageDialog'
+import { getLocaleOptions } from '@/lib/config'
+import i18n from '@/app/i18n'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
+import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, useUpdateName, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
 import { SettingsShell } from './SettingsShell'
+
 
 export function ProfilePage() {
   const { t } = useTranslation()
@@ -30,6 +35,7 @@ export function ProfilePage() {
   const [nameError, setNameError] = useState<string | null>(null)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [languageOpen, setLanguageOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
   const savedTimer = useRef<number | null>(null)
@@ -59,11 +65,11 @@ export function ProfilePage() {
       return
     }
     if (!isNotEmpty(name)) {
-      setNameError(t('modules.user.form.user.name.validation.required_field'))
+      setNameError(t('user.form.name.validation.required_field'))
       return
     }
     if (!isValidName(name)) {
-      setNameError(t('modules.user.form.user.name.validation.invalid_name'))
+      setNameError(t('user.form.name.validation.invalid_name'))
       return
     }
     setNameError(null)
@@ -74,29 +80,29 @@ export function ProfilePage() {
         if (isAxiosError(error)) {
           const fieldErrors = (error.response?.data as { errors?: Record<string, string[]> } | undefined)?.errors?.name
           if (fieldErrors?.length) {
-            setNameError(fieldErrors.join(' '))
+            setNameError(apiErrorMessage(error))
             return
           }
         }
-        setNameError(t('modules.user.form.user.name.validation.invalid_name'))
+        setNameError(t('user.form.name.validation.invalid_name'))
       },
     })
   }
 
   return (
-    <SettingsShell title={t('modules.user.page.settings.profile.header')} backTo={RouterPage.SETTINGS}>
+    <SettingsShell title={t('user.page.settings.profile.header')} backTo={RouterPage.SETTINGS}>
       {user ? (
         <div className="px-1 py-3">
-          <UserCard user={user} size="lg" onAvatarClick={() => setAvatarOpen(true)} avatarLabel={t('modals.avatar_picker.change')}>
+          <UserCard user={user} size="lg" onAvatarClick={() => setAvatarOpen(true)} avatarLabel={t('user.avatar_picker.change')}>
             <button type="button" className="self-start text-sm text-econumo-magenta underline hover:text-econumo-magenta-dark" onClick={() => setLogoutOpen(true)}>
-              {t('pages.settings.settings.logout')}
+              {t('settings.page.logout')}
             </button>
           </UserCard>
         </div>
       ) : null}
 
       <p className="px-1 pb-1 pt-2 text-xs font-medium uppercase text-muted-foreground">
-        {t('modules.user.page.settings.profile.groups.personal_details')}
+        {t('user.page.settings.profile.groups.personal_details')}
       </p>
       <form
         className="flex max-w-md flex-col gap-4 py-2"
@@ -106,12 +112,12 @@ export function ProfilePage() {
           saveName()
         }}
       >
-        <CardField label={t('modules.user.form.user.name.label')} htmlFor="profile-name" error={nameError}>
+        <CardField label={t('user.form.name.label')} htmlFor="profile-name" error={nameError}>
           <div className="relative">
             <Input
               id="profile-name"
               className={`${cardFieldControlClass} pr-9`}
-              placeholder={t('modules.user.form.user.name.placeholder')}
+              placeholder={t('user.form.name.placeholder')}
               value={name}
               onChange={(e) => {
                 setName(e.target.value)
@@ -132,10 +138,10 @@ export function ProfilePage() {
           </div>
         </CardField>
         {/* read-only: dashed border instead of a fill, muted value, lock mark */}
-        <div className="flex w-full items-center gap-3 rounded-lg border border-dashed px-4 py-2.5" title={t('modules.user.form.user.email.label')}>
+        <div className="flex w-full items-center gap-3 rounded-lg border border-dashed px-4 py-2.5" title={t('user.form.email.label')}>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
             <Label htmlFor="profile-email" className="text-[11px] font-normal text-muted-foreground">
-              {t('modules.user.form.user.email.label')}
+              {t('user.form.email.label')}
             </Label>
             <Input
               id="profile-email"
@@ -143,7 +149,7 @@ export function ProfilePage() {
               disabled
               readOnly
               className="h-auto rounded-none border-0 bg-transparent p-0 text-sm text-muted-foreground shadow-none disabled:bg-transparent disabled:opacity-100 dark:bg-transparent dark:disabled:bg-transparent"
-              placeholder={t('modules.user.form.user.email.placeholder')}
+              placeholder={t('user.form.email.placeholder')}
               value={user?.email ?? ''}
             />
           </div>
@@ -152,50 +158,61 @@ export function ProfilePage() {
       </form>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-        {t('modules.user.page.settings.profile.groups.preferences')}
+        {t('user.page.settings.profile.groups.preferences')}
       </p>
       <button
         type="button"
         className="flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
         onClick={() => setCurrencyOpen(true)}
       >
-        {t('modules.user.page.settings.profile.currency.label')}
+        {t('user.page.settings.profile.currency.label')}
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           {currencies?.find((c) => c.id === currentCurrencyId)?.code ?? ''}
           <ChevronRight className="size-4" />
         </span>
       </button>
+      <button
+        type="button"
+        className="mt-2 flex w-full max-w-md items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        onClick={() => setLanguageOpen(true)}
+      >
+        {t('settings.language.menu_item')}
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {getLocaleOptions().find((o) => o.value === i18n.language)?.label ?? ''}
+          <ChevronRight className="size-4" />
+        </span>
+      </button>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-        {t('modules.user.page.settings.profile.groups.security')}
+        {t('user.page.settings.profile.groups.security')}
       </p>
       <div className="flex max-w-md flex-col gap-2">
         <Link
           to={RouterPage.SETTINGS_CHANGE_PASSWORD}
           className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
         >
-          {t('modules.user.page.settings.profile.change_password.menu_item')}
+          {t('user.page.settings.profile.change_password.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
         <Link
           to={RouterPage.SETTINGS_SESSIONS}
           className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
         >
-          {t('modules.user.page.settings.profile.sessions.menu_item')}
+          {t('user.page.settings.profile.sessions.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
         <Link
           to={RouterPage.SETTINGS_TOKENS}
           className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
         >
-          {t('modules.user.page.settings.profile.tokens.menu_item')}
+          {t('user.page.settings.profile.tokens.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
       </div>
 
       <CurrencyPickerDialog
         open={currencyOpen}
-        title={t('modules.user.page.settings.profile.currency.label')}
+        title={t('user.page.settings.profile.currency.label')}
         value={currentCurrencyId}
         onClose={() => setCurrencyOpen(false)}
         onPick={(id) => {
@@ -206,16 +223,18 @@ export function ProfilePage() {
         }}
       />
 
+      <LanguageDialog open={languageOpen} onClose={() => setLanguageOpen(false)} />
+
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 
       <ConfirmDialog
         open={logoutOpen}
         onClose={() => setLogoutOpen(false)}
         onConfirm={() => navigate(RouterPage.LOGOUT)}
-        title={t('modules.user.modal.sign_out.title')}
-        question={t('modules.user.modal.sign_out.question')}
-        confirmLabel={t('modules.user.modal.sign_out.action.logout')}
-        cancelLabel={t('modules.user.modal.sign_out.action.cancel')}
+        title={t('auth.sign_out.title')}
+        question={t('auth.sign_out.question')}
+        confirmLabel={t('auth.sign_out.action.logout')}
+        cancelLabel={t('auth.sign_out.action.cancel')}
       />
     </SettingsShell>
   )

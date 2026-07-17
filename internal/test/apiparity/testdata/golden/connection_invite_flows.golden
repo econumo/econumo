@@ -2,7 +2,7 @@
 {"success":true,"message":"","data":{"item":{"code":"<invite-code>","expiredAt":"<datetime>"}}}
 
 == err:accept-invite-bad-code POST /api/v1/connection/accept-invite [guest] -> 400
-{"success":false,"message":"ConnectionCode is incorrect","code":400,"errors":{}}
+{"success":false,"message":"ConnectionCode is incorrect","code":400,"errors":{},"messageCode":"connection.invalid_code"}
 
 == delete-invite POST /api/v1/connection/delete-invite [owner] -> 200
 {"success":true,"message":"","data":{}}

@@ -48,7 +48,7 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req model.Creat
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 
 		if uerr := s.ensureNameUnique(txCtx, ownerID, name, vo.Id{}); uerr != nil {

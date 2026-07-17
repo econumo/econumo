@@ -246,6 +246,7 @@ type User struct {
 	UpdatedAt  time.Time
 	IsActive   bool
 	Algorithm  string
+	Language   string
 }
 
 type UsersConnection struct {

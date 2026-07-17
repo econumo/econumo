@@ -79,15 +79,15 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
   }, [targetUserId])
 
   const labels: Record<FieldKey, string> = {
-    account: t('modals.import_csv.fields.account'),
-    date: t('modals.import_csv.fields.date'),
-    amount: t('modals.import_csv.fields.amount'),
-    amountInflow: t('modals.import_csv.fields.amount_inflow'),
-    amountOutflow: t('modals.import_csv.fields.amount_outflow'),
-    category: t('modals.import_csv.fields.category'),
-    description: t('modals.import_csv.fields.description'),
-    payee: t('modals.import_csv.fields.payee'),
-    tag: t('modals.import_csv.fields.tag'),
+    account: t('transactions.import_csv.fields.account'),
+    date: t('transactions.import_csv.fields.date'),
+    amount: t('transactions.import_csv.fields.amount'),
+    amountInflow: t('transactions.import_csv.fields.amount_inflow'),
+    amountOutflow: t('transactions.import_csv.fields.amount_outflow'),
+    category: t('transactions.import_csv.fields.category'),
+    description: t('transactions.import_csv.fields.description'),
+    payee: t('transactions.import_csv.fields.payee'),
+    tag: t('transactions.import_csv.fields.tag'),
   }
 
   const handleFile = async (picked: File | undefined) => {
@@ -121,7 +121,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
       value={value ?? ''}
       onChange={(e) => patchColumns({ [field]: e.target.value === '' ? null : e.target.value } as Partial<ImportSelection['columns']>)}
     >
-      <option value="">{t('modals.import_csv.none')}</option>
+      <option value="">{t('transactions.import_csv.none')}</option>
       {(analysis?.header ?? []).map((column) => (
         <option key={column} value={column}>
           {analysis?.samples[column] ? `${column} ("${analysis.samples[column]}")` : column}
@@ -141,7 +141,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
       value={selection.fixed[field] ?? ''}
       onChange={(e) => patchFixed({ [field]: e.target.value === '' ? null : e.target.value })}
     >
-      <option value="">{t('modals.import_csv.none')}</option>
+      <option value="">{t('transactions.import_csv.none')}</option>
       {items
         .filter((item) => item.ownerUserId === targetUserId)
         .map((item) => (
@@ -158,7 +158,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
       variant="ghost"
       size="icon"
       aria-label={`toggle ${labels[field as FieldKey]} mode`}
-      title={selection.modes[field] === 'csv_column' ? t('modals.import_csv.switch_to_manual') : t('modals.import_csv.switch_to_csv')}
+      title={selection.modes[field] === 'csv_column' ? t('transactions.import_csv.switch_to_manual') : t('transactions.import_csv.switch_to_csv')}
       onClick={() => toggleMode(field, next)}
     >
       <ArrowLeftRight className="size-4" />
@@ -192,25 +192,25 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
   }
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={(o) => !o && !submitting && onClose()} title={t('modals.import_csv.header')}>
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && !submitting && onClose()} title={t('transactions.import_csv.header')}>
       <div className="flex flex-col gap-3">
         {!file ? (
           <div className="flex flex-col gap-1.5">
-            <Input type="file" accept=".csv" aria-label={t('modals.import_csv.file.label')} onChange={(e) => void handleFile(e.target.files?.[0])} />
-            <p className="text-xs text-muted-foreground">{t('modals.import_csv.file.hint')}</p>
+            <Input type="file" accept=".csv" aria-label={t('transactions.import_csv.file.label')} onChange={(e) => void handleFile(e.target.files?.[0])} />
+            <p className="text-xs text-muted-foreground">{t('transactions.import_csv.file.hint')}</p>
           </div>
         ) : (
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
             <Button type="button" variant="secondary" size="sm" onClick={reset}>
-              {t('elements.button.change.label')}
+              {t('common.button.change.label')}
             </Button>
           </div>
         )}
 
         {analysis && analysis.header.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground">{t('modals.import_csv.mapping.description')}</p>
+            <p className="text-xs text-muted-foreground">{t('transactions.import_csv.mapping.description')}</p>
 
             {fieldRow(
               labels.account,
@@ -224,7 +224,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
                   value={selection.fixed.accountId ?? ''}
                   onChange={(e) => patchFixed({ accountId: e.target.value === '' ? null : e.target.value })}
                 >
-                  <option value="">{t('modals.import_csv.none')}</option>
+                  <option value="">{t('transactions.import_csv.none')}</option>
                   {writableAccounts.map((account) => (
                     <option key={account.id} value={account.id}>
                       {`${account.name} (${account.balance} ${account.currency.code})`}
@@ -261,7 +261,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
                   variant="ghost"
                   size="icon"
                   aria-label="toggle amount mode"
-                  title={t('modals.import_csv.amount_mode.switch_to_dual')}
+                  title={t('transactions.import_csv.amount_mode.switch_to_dual')}
                   onClick={() => setSelection((prev) => ({ ...prev, amountMode: 'dual' }))}
                 >
                   <Split className="size-4" />
@@ -278,7 +278,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
                     variant="ghost"
                     size="icon"
                     aria-label="toggle amount mode"
-                    title={t('modals.import_csv.amount_mode.switch_to_single')}
+                    title={t('transactions.import_csv.amount_mode.switch_to_single')}
                     onClick={() => setSelection((prev) => ({ ...prev, amountMode: 'single' }))}
                   >
                     <Split className="size-4" />
@@ -305,7 +305,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
               ) : (
                 <Input
                   aria-label={labels.description}
-                  placeholder={t('modals.import_csv.fields.description_placeholder')}
+                  placeholder={t('transactions.import_csv.fields.description_placeholder')}
                   value={selection.fixed.description}
                   onChange={(e) => patchFixed({ description: e.target.value })}
                 />
@@ -339,10 +339,10 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
 
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" disabled={submitting} onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="button" disabled={!analysis || !selectionValid(selection) || submitting} onClick={() => void handleSubmit()}>
-            {t('elements.button.import.label')}
+            {t('common.button.import.label')}
           </Button>
         </div>
       </div>

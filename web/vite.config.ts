@@ -12,6 +12,7 @@ export default defineConfig({
   envPrefix: ['VITE_', 'ECONUMO_', 'WEBSITE_'],
   server: {
     port: 9000,
+    fs: { allow: ['..'] },
     proxy: {
       '/api': 'http://localhost:8181',
     },

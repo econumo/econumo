@@ -73,6 +73,29 @@ func (s *Service) UpdateReportPeriod(ctx context.Context, userID vo.Id, req mode
 	return &model.UpdateReportPeriodResult{User: cur}, nil
 }
 
+// UpdateLanguage persists the caller's UI language. Write-only: nothing reads
+// it yet; it exists so future background emails can render in the user's
+// language. Deliberately not via mutate/Save (a dedicated UPDATE keeps the
+// column out of the whole-row upsert).
+func (s *Service) UpdateLanguage(ctx context.Context, userID vo.Id, req model.UpdateLanguageRequest) (*model.UpdateLanguageResult, error) {
+	lang, err := newLanguage(req.Language)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.UpdateLanguage(ctx, userID, lang); err != nil {
+		return nil, err
+	}
+	u, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateLanguageResult{User: cur}, nil
+}
+
 // UpdateBudget sets the user's default budget option to the given budget id and
 // returns the refreshed current user. The budget must already exist
 // (existence-only, no ownership/access check); a miss maps to the "Plan not
@@ -110,10 +133,10 @@ func (s *Service) UpdateAvatar(ctx context.Context, userID vo.Id, req model.Upda
 	color := strings.TrimSpace(req.Color)
 	var fields []errs.FieldError
 	if !IsValidAvatarIcon(icon) {
-		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value is not valid.", Code: "INVALID_FORMAT_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
 	}
 	if !IsValidAvatarColor(color) {
-		fields = append(fields, errs.FieldError{Key: "color", Message: "The value you selected is not a valid choice.", Code: "NO_SUCH_CHOICE_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "color", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 	if len(fields) > 0 {
 		return nil, errs.NewValidation("Validation failed", fields...)
