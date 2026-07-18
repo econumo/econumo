@@ -11,11 +11,10 @@ import (
 // OrderCategoryList applies each {id, position} change to the matching category,
 // then returns the full available list.
 //
-// IMPORTANT asymmetry vs tag/payee: reordering iterates the OWNER-ONLY set, so a
-// SHARED category's position is NOT updated — only the user's own categories are.
-// (Tag/payee order, by contrast, reorder the full available set and DO update
-// shared.) The RESPONSE, however, is the full available list (own + shared) via
-// the read view.
+// Reordering iterates the OWNER-ONLY set, so a SHARED category's position is
+// NOT updated — only the user's own categories are (tag/payee order works the
+// same way, see issue #108). The RESPONSE, however, is the full available list
+// (own + shared) via the read view.
 func (s *Service) OrderCategoryList(ctx context.Context, userID vo.Id, req model.OrderCategoryListRequest) (*model.OrderCategoryListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
 	for _, ch := range req.Changes {
