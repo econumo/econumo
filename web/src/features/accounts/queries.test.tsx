@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useAccounts, useCreateAccount, useFolders } from './queries'
+import { useAcceptAccountAccess, useAccounts, useCreateAccount, useFolders } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireUser = { id: 'u1', name: 'Ada', email: 'ada@example.test', avatar: 'face:emerald', options: [] }
@@ -78,6 +78,22 @@ it('create-account with an empty folders cache refetches folders (first-account 
   result.current.create.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: 0, icon: 'wallet', folderId: null })
   await waitFor(() => expect(result.current.create.isSuccess).toBe(true))
   await waitFor(() => expect(folderListHits).toBeGreaterThan(0))
+})
+
+it('accept-access invalidates the transactions cache (pending accounts have their transactions hidden)', async () => {
+  server.use(
+    http.post('*/api/v1/account/accept-access', () =>
+      HttpResponse.json({ success: true, message: '', data: {} }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.transactions, [])
+
+  const { result } = renderHook(() => useAcceptAccountAccess(), { wrapper })
+  result.current.mutate({ accountId: 'a-pending', folderId: 'f1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
 })
 
 it('useAccounts hides an account pending my acceptance, and shows it once accepted', async () => {

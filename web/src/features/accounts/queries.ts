@@ -239,6 +239,8 @@ export function useAcceptAccountAccess() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
+      // the pre-accept cache excludes this account's transactions (pending = no access)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       trackEvent(METRICS.CONNECTION_ACCEPT_ACCOUNT_ACCESS)
     },
   })
