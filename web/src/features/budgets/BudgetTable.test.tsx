@@ -42,17 +42,47 @@ it('renders column headers, folder, default and archived sections with aligned s
   expect(within(essentials).getByText('Food')).toBeInTheDocument()
   await waitFor(() => expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('200.00'))
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('45.50')
+  expect(within(essentials).getByTestId('stat-line')).not.toHaveTextContent('-45.50')
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('354.50')
   const noFolder = screen.getByTestId('budget-folder-Default folder')
   expect(within(noFolder).getByText('Living')).toBeInTheDocument()
-  const archive = screen.getByTestId('budget-folder-Archived')
-  expect(within(archive).getByText('zzz-archived')).toBeInTheDocument()
+  // the only archived element is all-zero, so the whole Archived section hides
+  expect(screen.queryByTestId('budget-folder-Archived')).not.toBeInTheDocument()
 })
 
-it('shows -spent and available+budgeted as a sign-colored pill', async () => {
+it('archived elements with a nonzero number stay listed; all-zero ones hide', async () => {
+  renderTable((budget) => {
+    budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: 7 })
+  })
+  const archive = await screen.findByTestId('budget-folder-Archived')
+  expect(within(archive).getByText('aaa-carry')).toBeInTheDocument()
+  expect(within(archive).queryByText('zzz-archived')).not.toBeInTheDocument()
+})
+
+it('an empty Default folder hides outside edit mode', async () => {
+  renderTable((budget) => {
+    budget.structure.elements[1].folderId = 'bf1'
+  })
+  await screen.findByTestId('budget-folder-Essentials')
+  expect(screen.queryByTestId('budget-folder-Default folder')).not.toBeInTheDocument()
+})
+
+it('edit mode keeps the empty Default folder as a drop target', async () => {
+  renderTable(
+    (budget) => {
+      budget.structure.elements[1].folderId = 'bf1'
+    },
+    { renderFolderActions: () => null } as never,
+  )
+  await screen.findByTestId('budget-folder-Essentials')
+  expect(screen.getByTestId('budget-folder-Default folder')).toBeInTheDocument()
+})
+
+it('shows spent as-is and available+budgeted as a sign-colored pill', async () => {
   renderTable()
   const food = await screen.findByTestId('element-cat-food')
-  await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent('45.50'))
+  // exact match: the wire value is positive and must NOT be rendered negated
+  await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent(/^45\.50$/))
   expect(within(food).getByTestId('cell-available')).toHaveTextContent('354.50')
   expect(within(food).getByTestId('cell-available').className).toContain('text-income')
   expect(within(food).getByTestId('cell-available').className).toContain('rounded-full')
@@ -61,8 +91,8 @@ it('shows -spent and available+budgeted as a sign-colored pill', async () => {
 it('rounds float noise in cells to the currency precision', async () => {
   renderTable((budget) => {
     const food = budget.structure.elements[0]
-    food.spent = -45.4999999934
-    food.budgetSpent = -45.4999999934
+    food.spent = 45.4999999934
+    food.budgetSpent = 45.4999999934
   })
   const food = await screen.findByTestId('element-cat-food')
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent('45.50'))
@@ -126,13 +156,13 @@ it('children show spent and the owner badge only in a multi-user budget', async 
   const user = userEvent.setup()
   renderTable((budget) => {
     budget.meta.access.push({ user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, role: 'user', isAccepted: 1 })
-    budget.structure.elements[1].children[0].spent = -12.5
+    budget.structure.elements[1].children[0].spent = 12.5
     budget.structure.elements[1].children[0].ownerUserId = 'u2'
   })
   const living = await screen.findByTestId('element-env-1')
   await user.click(within(living).getByText('Living'))
   const child = await screen.findByTestId('child-cat-rent')
-  await waitFor(() => expect(within(child).getByTestId('child-spent')).toHaveTextContent('12.50'))
+  await waitFor(() => expect(within(child).getByTestId('child-spent')).toHaveTextContent(/^12\.50$/))
   // the owner name is rendered (revealed on row hover via CSS)
   expect(within(child).getByText('Partner')).toBeInTheDocument()
 })
@@ -167,6 +197,7 @@ it('totals row sums all buckets in the budget currency', async () => {
   expect(totals).toHaveTextContent('Total')
   await waitFor(() => expect(totals).toHaveTextContent('300.00'))
   expect(totals).toHaveTextContent('45.50')
+  expect(totals).not.toHaveTextContent('-45.50')
   expect(totals).toHaveTextContent('554.50')
 })
 
