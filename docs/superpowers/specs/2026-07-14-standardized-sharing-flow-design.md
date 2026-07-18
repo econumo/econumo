@@ -172,8 +172,13 @@ disappears.
   are marked (EyeOff icon + muted text, the accounts-settings convention) —
   accepting into one means the account won't show in the accounts tree.
   Accept commits directly with the selected folder. With zero folders the
-  picker shows "General (will be created)" and omits `folderId`.
-- **Accepting a budget** applies immediately, no extra step.
+  picker shows "General (will be created)" and omits `folderId`. On success
+  the dialog closes and the app navigates to the account's page (its
+  transaction list); the backend already positions the account last in the
+  chosen folder (`position = max + 1`).
+- **Accepting a budget** applies immediately, no extra step. On success it
+  becomes the default budget (`update-default-budget`, same as tapping a
+  budget in settings), the dialog closes, and the app navigates to `/budget`.
 
 ### Entity lists stay clean
 
