@@ -120,6 +120,19 @@ export function scrubbedPage(pathname: string): string {
   return pathname.substring(1).replace(UUID_RE, ':id')
 }
 
+// Same cutoffs as the layout hooks: useIsMobile switches the shell below 768px
+// and useIsCompact goes single-pane below 1024px, so the reported mode matches
+// the layout the user actually saw.
+export function viewMode(width: number = window.innerWidth): 'mobile' | 'tablet' | 'desktop' {
+  if (width < 768) {
+    return 'mobile'
+  }
+  if (width < 1024) {
+    return 'tablet'
+  }
+  return 'desktop'
+}
+
 // PostHog names: the frozen dataLayer prefix+camelCase becomes snake_case,
 // e.g. appUIModalTransactionOpen -> ui_modal_transaction_open.
 export function posthogEventName(metric: string): string {
@@ -157,6 +170,7 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
       self_hosted: host === 'self-hosted',
       locale: locale(),
       version: getVersion(),
+      mode: viewMode(),
       current_url: `https://${host}/${scrubbedPage(window.location.pathname)}`,
     })
   }

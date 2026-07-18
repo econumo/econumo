@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { METRICS, posthogEventName, scrubbedPage, trackEvent } from './metrics'
+import { METRICS, posthogEventName, scrubbedPage, trackEvent, viewMode } from './metrics'
 import { capture } from './analytics'
 
 vi.mock('./analytics', async (importOriginal) => {
@@ -35,6 +35,7 @@ describe('PostHog capture', () => {
       self_hosted: true,
       locale: 'en',
       version: 'dev',
+      mode: 'desktop', // jsdom default viewport is 1024px wide
       current_url: 'https://self-hosted/budgets/:id/details',
     })
   })
@@ -62,6 +63,19 @@ describe('posthogEventName', () => {
     ['appBudgetTransferEnvelopeBudget', 'budget_transfer_envelope_budget'],
   ])('%s -> %s', (metric, expected) => {
     expect(posthogEventName(metric)).toBe(expected)
+  })
+})
+
+describe('viewMode', () => {
+  it.each([
+    [320, 'mobile'],
+    [767, 'mobile'],
+    [768, 'tablet'],
+    [1023, 'tablet'],
+    [1024, 'desktop'],
+    [1920, 'desktop'],
+  ])('%dpx -> %s', (width, expected) => {
+    expect(viewMode(width)).toBe(expected)
   })
 })
 
