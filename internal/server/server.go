@@ -38,6 +38,8 @@ import (
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/port"
+	appsystem "github.com/econumo/econumo/internal/system"
+	handlersystem "github.com/econumo/econumo/internal/system/api"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
@@ -57,6 +59,10 @@ import (
 type Seams struct {
 	Clock   port.Clock
 	Avatars appuser.AvatarPicker
+	// Updates is the release-check service. serve constructs an enabled one and
+	// starts its poller; nil (every test and CLI path) wires a disabled service
+	// that never polls, keeping responses deterministic and hermetic.
+	Updates *appsystem.Service
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -134,6 +140,12 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
 	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, cfg.IsDev())
 
+	updates := seams.Updates
+	if updates == nil {
+		updates = appsystem.NewService(false, appsystem.DefaultFeedURL)
+	}
+	systemHandlers := handlersystem.NewHandlers(updates, cfg.IsDev())
+
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
 	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
@@ -199,6 +211,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		handlertransaction.RegisterAPI(transactionHandlers, userSvc, cfg.IsDev()),
 		handlerconnection.RegisterAPI(connectionHandlers, userSvc, cfg.IsDev()),
 		handlerbudget.RegisterAPI(budgetHandlers, userSvc, cfg.IsDev()),
+		handlersystem.RegisterAPI(systemHandlers, userSvc, cfg.IsDev()),
 		apidoc.RegisterAPI(),
 	)
 

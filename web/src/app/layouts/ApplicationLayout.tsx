@@ -10,8 +10,10 @@ import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UserCard } from '@/components/UserCard'
 import { UserAvatar } from '@/components/UserAvatar'
+import { UpdateNotice } from '@/components/UpdateNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
+import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
@@ -78,6 +80,7 @@ export function ApplicationLayout() {
   const isCompact = useIsCompact()
   const isFullyLoaded = useIsFullyLoaded()
   const { data: user } = useUserData()
+  const update = useAvailableUpdate()
 
   // The blocking loader belongs to the FIRST boot only; once data has been on
   // screen, refetches and cache churn must never re-cover the app (Vue parity).
@@ -202,14 +205,19 @@ export function ApplicationLayout() {
             <div className="flex-1" />
           )}
 
+          {!rail ? <UpdateNotice /> : null}
+
           {rail ? (
             <footer className="flex flex-col items-center gap-4 border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
               <Link
                 to={RouterPage.SETTINGS}
                 title={t('settings.page.menu_item')}
-                className="text-muted-foreground hover:text-foreground"
+                className="relative text-muted-foreground hover:text-foreground"
               >
                 <Settings className="size-5" />
+                {update ? (
+                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" data-testid="update-dot" />
+                ) : null}
               </Link>
               <button
                 type="button"
@@ -228,8 +236,9 @@ export function ApplicationLayout() {
                   <img src={grayLogo} width={125} height={20} alt="" />
                   <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
                 </div>
-                <Link to={RouterPage.SETTINGS} className="text-xs text-muted-foreground hover:text-foreground">
+                <Link to={RouterPage.SETTINGS} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
                   {t('settings.page.menu_item')}
+                  {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
                 </Link>
               </div>
               <button

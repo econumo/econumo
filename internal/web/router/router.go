@@ -112,7 +112,23 @@ func New(deps Deps) http.Handler {
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so
 	// it never shadows the server-side groups.
-	root.Handle("/", spa.Handler(deps.Cfg.SPADir))
+	// Server-owned SPA config keys, merged into the served econumo-config.js so
+	// the .env values reach the frontend (the dist file's static values are the
+	// fallback for separately-hosted SPAs). ANALYTICS and ALLOW_REGISTRATION are
+	// always server truth (the server enforces/owns them); the rest merge only
+	// when explicitly configured, so a file-configured deployment is never
+	// clobbered by a default.
+	overrides := map[string]any{
+		"ANALYTICS":          deps.Cfg.Analytics,
+		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
+	}
+	if deps.Cfg.APIURL != "" {
+		overrides["API_URL"] = deps.Cfg.APIURL
+	}
+	if deps.Cfg.AllowCustomAPI != nil {
+		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI
+	}
+	root.Handle("/", spa.Handler(deps.Cfg.SPADir, overrides))
 
 	return root
 }

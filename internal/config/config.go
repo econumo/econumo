@@ -24,6 +24,8 @@ type Config struct {
 	AllowRegistration bool
 	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
+	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	Analytics         bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -54,6 +56,12 @@ type Config struct {
 
 	// SPA
 	SPADir string // path to web/dist (served directly by the Go binary)
+
+	// Optional SPA config overrides merged into the served econumo-config.js.
+	// Empty/nil = leave the dist file's value (the server does not enforce
+	// these; they only reach the frontend).
+	APIURL         string // ECONUMO_API_URL
+	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
 }
 
 // IsDev reports whether stack traces should be exposed in the 500 envelope.
@@ -69,6 +77,7 @@ func Load() (Config, error) {
 		MailerDSN:              os.Getenv("MAILER_DSN"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),
 		SQLiteBusyTimeout:      getInt("SQLITE_BUSY_TIMEOUT", 0),
+		CheckUpdates:           getBool("ECONUMO_CHECK_UPDATES", true),
 		Port:                   os.Getenv("PORT"),
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
@@ -95,6 +104,27 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
+
+	// Strict parse (unlike the lenient getBool): a typo while trying to
+	// DISABLE analytics must fail at boot, not silently leave it enabled.
+	analytics, err := getBoolStrict("ECONUMO_ANALYTICS", true)
+	if err != nil {
+		return Config{}, err
+	}
+	c.Analytics = analytics
+
+	if v := os.Getenv("ECONUMO_API_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_API_URL: not an absolute http(s) URL: %q", v)
+		}
+		c.APIURL = v
+	}
+	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
+	if err != nil {
+		return Config{}, err
+	}
+	c.AllowCustomAPI = allowCustomAPI
 
 	// Rate-limit values fail at boot on a malformed value (unlike the lenient
 	// getInt), because a typo here would silently disable brute-force protection.
@@ -192,6 +222,33 @@ func getEnv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func getBoolStrict(key string, def bool) (bool, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		return true, nil
+	case "0", "false", "no", "off":
+		return false, nil
+	}
+	return false, fmt.Errorf("%s: invalid boolean %q", key, v)
+}
+
+// getBoolOptional is the tri-state getBoolStrict: nil when the variable is
+// unset/empty, an error on garbage (never a silent fallback).
+func getBoolOptional(key string) (*bool, error) {
+	if v, ok := os.LookupEnv(key); !ok || v == "" {
+		return nil, nil
+	}
+	b, err := getBoolStrict(key, false)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
 }
 
 func getBool(key string, def bool) bool {

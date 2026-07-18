@@ -68,8 +68,8 @@ checkbox can also move the `dev` tag. Everything publishes to
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the nine features (`account`, `budget`, `category`, `connection`,
-`currency`, `payee`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the ten features (`account`, `budget`, `category`, `connection`,
+`currency`, `payee`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -87,7 +87,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, payee, tag, transaction, user); root package holds only
+│   │   │                            currency, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -118,7 +118,9 @@ DTOs those use cases operate on live in the shared `internal/model` package
 
 Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
 per-user persistence shape (it's rates + conversion + admin lookups), so it
-keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`.
+keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
+similar — it's in-memory poller state only (no persistence at all), so it has
+no `repository.go` either.
 
 ### Dependency rule
 
@@ -180,6 +182,17 @@ router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config is read from
 `ECONUMO_VERSION`, inlined by Vite at build time (the Docker build arg of the
 same name sets it per image build, default `dev`). Lint is oxlint, tests are
 vitest (`pnpm test`).
+
+**Product analytics rule:** every new user-facing feature/action MUST fire an
+analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
+`app`-prefixed camelCase names; the PostHog snake_case name derives
+automatically) and call `trackEvent` at the action's success point (mutation
+`onSuccess`; or inside `mutationFn` after the API call for hooks with a dedupe
+short-circuit, e.g. the classification creates). Prefer the shared hook/store
+choke point over per-page call sites so every surface (pages, dialogs, inline
+creates) is covered once. `web/src/lib/metrics-coverage.test.ts` fails the
+suite if a `METRICS` key is never fired; a catalogue key may only be excused
+via its documented `NOT_WIRED` list.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
@@ -280,6 +293,15 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
+- `ECONUMO_CHECK_UPDATES` — daily check for new releases against `econumo.com/releases/latest.json` (single server-side request; result served to the SPA via `get-update-info`). `false` disables it.
+- `ECONUMO_ANALYTICS` — anonymous product analytics from the SPA to PostHog (default `true`).
+  `false` disables it instance-wide. Malformed values fail at boot (strict parse, unlike
+  the other booleans). Server-owned SPA config keys reach the frontend via an
+  `Object.assign(window.econumoConfig, …)` line the SPA handler appends to the served
+  `/econumo-config.js`; the dist file's static values are the fallback for
+  separately-hosted SPAs. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
+  (server truth); `ECONUMO_API_URL` and `ECONUMO_ALLOW_CUSTOM_API` merge `API_URL` /
+  `ALLOW_CUSTOM_API` only when set (unset = keep the dist value).
 - `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders

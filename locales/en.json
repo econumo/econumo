@@ -143,6 +143,10 @@
           "data_loading": "Loading your data"
         }
       }
+    },
+    "update": {
+      "notice": "Econumo {version} is out",
+      "dismiss": "Dismiss"
     }
   },
   "accounts": {
@@ -301,6 +305,9 @@
     "export_csv": {
       "menu_item": "Export CSV",
       "error": "Failed to export transactions"
+    },
+    "update": {
+      "available": "New version {version} available"
     }
   },
   "transactions": {

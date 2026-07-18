@@ -809,6 +809,13 @@ definitions:
           $ref: '#/definitions/model.TransactionResult'
         type: array
     type: object
+  model.GetUpdateInfoResult:
+    properties:
+      url:
+        type: string
+      version:
+        type: string
+    type: object
   model.GetUserDataResult:
     properties:
       user:
@@ -3664,6 +3671,36 @@ paths:
       summary: Update a payee
       tags:
       - Payee
+  /api/v1/system/get-update-info:
+    get:
+      description: Returns the latest Econumo release published on econumo.com (version
+        + release-page URL), or empty strings when unknown. The client compares against
+        its own version.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetUpdateInfoResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the latest published release
+      tags:
+      - System
   /api/v1/tag/archive-tag:
     post:
       consumes:

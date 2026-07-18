@@ -12,6 +12,7 @@ export interface EconumoConfig {
   PAYWALL_ENABLED?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
+  ANALYTICS?: boolean | string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
 }
@@ -124,6 +125,16 @@ export function isRegistrationAllowed(): boolean {
     return allowRegistration
   }
   return allowRegistration === 'true'
+}
+
+export function analyticsEnabled(): boolean {
+  const analytics = window.econumoConfig?.ANALYTICS
+  if (typeof analytics === 'boolean') {
+    return analytics
+  }
+  // Absent or unrecognized fails OPEN (enabled): a stale hand-hosted config
+  // file keeps the enabled-by-default contract.
+  return analytics !== 'false'
 }
 
 export function isPaywallEnabled(): boolean {

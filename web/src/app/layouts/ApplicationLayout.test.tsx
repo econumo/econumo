@@ -8,7 +8,14 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureBudgets, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
+import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
+import { useSidebarStore } from '@/app/uiStore'
 import { ApplicationLayout } from './ApplicationLayout'
+
+const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
+vi.mock('@/hooks/useAvailableUpdate', () => ({
+  useAvailableUpdate: () => mockUpdate.value,
+}))
 
 function mockViewport(compact: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -63,6 +70,10 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
+  mockUpdate.value = null
+  // the sidebar-collapsed flag lives in a module-level zustand store, so it
+  // survives across tests in this file independent of localStorage.clear()
+  useSidebarStore.setState({ collapsed: false })
 })
 
 it('shows the loading gate, then the sidebar tree with folder totals', async () => {
@@ -264,4 +275,44 @@ it('collapsed rail shows the sharing-requests icon button with a count bubble, a
   expect(button).toHaveTextContent('2')
   await user.click(button)
   expect(await screen.findByRole('heading', { name: 'Sharing requests' })).toBeInTheDocument()
+})
+
+it('shows an update dot on the full-footer Settings link when an update is available', async () => {
+  mockViewport(false)
+  mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const settingsLink = screen.getByText('Settings').closest('a')
+  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).toBeInTheDocument()
+})
+
+it('shows no update dot on the full-footer Settings link when no update is available', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const settingsLink = screen.getByText('Settings').closest('a')
+  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).not.toBeInTheDocument()
+})
+
+it('shows an update dot on the icon-rail Settings gear when an update is available', async () => {
+  mockViewport(false)
+  mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  expect(screen.getByTestId('update-dot')).toBeInTheDocument()
+})
+
+it('shows no update dot on the icon-rail Settings gear when no update is available', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('update-dot')).not.toBeInTheDocument()
 })

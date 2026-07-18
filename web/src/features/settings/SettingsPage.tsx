@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
 import { getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
+import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
@@ -14,10 +15,7 @@ import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
-
-// A tagged release (e.g. "v1.2.3") links to its notes; anything else ("dev",
-// a commit sha) has no release page, so it stays plain text.
-const SEMVER = /^v\d+\.\d+\.\d+$/
+import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -55,6 +53,7 @@ export function SettingsPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
   const version = getVersion()
+  const update = useAvailableUpdate()
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -82,6 +81,18 @@ export function SettingsPage() {
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </span>
             </Link>
+          ) : null}
+
+          {update ? (
+            <a
+              href={update.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-4 py-3.5 text-sm font-medium text-primary hover:bg-primary/15"
+            >
+              <span>{t('settings.update.available', { version: update.version })}</span>
+              <ChevronRight className="size-4" />
+            </a>
           ) : null}
 
           <MenuGroup label={t('settings.page.groups.service')}>
