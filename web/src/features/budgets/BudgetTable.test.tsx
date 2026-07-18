@@ -161,6 +161,31 @@ it('the available pill is not a button without onAvailableClick', async () => {
   expect(within(food).queryByRole('button', { name: 'limit Food' })).not.toBeInTheDocument()
 })
 
+it('edit mode reserves the actions column on headers, children, archive rows and totals', async () => {
+  const user = userEvent.setup()
+  renderTable(undefined, {
+    renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} className="size-8" />,
+  })
+  const living = await screen.findByTestId('element-env-1')
+  await user.click(within(living).getByText('Living'))
+  const child = await screen.findByTestId('child-cat-rent')
+  expect(within(child).getByTestId('actions-spacer')).toBeInTheDocument()
+  expect(within(screen.getByTestId('column-headers')).getByTestId('actions-spacer')).toBeInTheDocument()
+  expect(within(screen.getByTestId('budget-totals')).getByTestId('actions-spacer')).toBeInTheDocument()
+  // archive rows carry no per-element actions menu — they pad the slot instead
+  const archive = screen.getByTestId('budget-folder-Archived')
+  expect(within(archive).getAllByTestId('actions-spacer').length).toBeGreaterThan(0)
+})
+
+it('without renderActions no actions-column spacers render', async () => {
+  const user = userEvent.setup()
+  renderTable()
+  const living = await screen.findByTestId('element-env-1')
+  await user.click(within(living).getByText('Living'))
+  await screen.findByTestId('child-cat-rent')
+  expect(screen.queryAllByTestId('actions-spacer')).toHaveLength(0)
+})
+
 it('totals row sums all buckets in the budget currency', async () => {
   renderTable()
   const totals = await screen.findByTestId('budget-totals')
