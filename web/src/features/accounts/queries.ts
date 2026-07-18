@@ -89,6 +89,22 @@ export function useDeleteAccount() {
   })
 }
 
+// delete-account from a non-owner drops only the caller's own access; the
+// server never deletes a shared account, so this is safe to expose as "decline".
+export function useDeclineAccountAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: accountApi.deleteAccount,
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => (prev ?? []).filter((a) => a.id !== id))
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+        (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
+      )
+      trackEvent(METRICS.ACCOUNT_DECLINE_ACCESS)
+    },
+  })
+}
+
 export function useOrderAccounts() {
   const queryClient = useQueryClient()
   return useMutation({

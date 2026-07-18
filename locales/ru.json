@@ -291,6 +291,10 @@
       "delete_account_modal": {
         "question": "Вы уверены, что хотите удалить счёт «{account}»?"
       },
+      "decline_access_modal": {
+        "title": "Отклонить доступ к счёту?",
+        "question": "Вы уверены, что хотите отклонить доступ к счёту «{account}»?"
+      },
       "preview_account_modal": {
         "header": "Информация о счёте"
       }

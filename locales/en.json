@@ -291,6 +291,10 @@
       "delete_account_modal": {
         "question": "Are you sure you want to delete the account “{account}”?"
       },
+      "decline_access_modal": {
+        "title": "Decline access to the account?",
+        "question": "Are you sure you want to decline access to the account “{account}”?"
+      },
       "preview_account_modal": {
         "header": "Account details"
       }
