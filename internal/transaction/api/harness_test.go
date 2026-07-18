@@ -90,6 +90,7 @@ func newHarness(t *testing.T) *harness {
 		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
 		accountrepo.NewAccessRepo("sqlite", txm),
 		server.NewAccountCurrencyLookup(curLookup), server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	txRepo := transactionrepo.NewRepo("sqlite", txm)

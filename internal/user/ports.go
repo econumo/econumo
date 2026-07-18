@@ -5,6 +5,8 @@ package user
 
 import (
 	"context"
+
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CurrencyLookup resolves a currency code to its currency-id (the synthetic
@@ -18,14 +20,17 @@ type CurrencyLookup interface {
 	DefaultCode() string
 }
 
-// BudgetExistence is the minimal budget lookup the update-budget use case needs:
-// confirm a budget id exists before setting it as the user's default. The check
-// is existence-only (no ownership/access check) and a miss maps to the "Plan not
-// found" validation error. The full budget module owns the table; this is the
-// read-only port the user service depends on.
-type BudgetExistence interface {
-	// Exists reports whether a budget with the given id exists.
-	Exists(ctx context.Context, budgetID string) (bool, error)
+// BudgetAccess is the minimal budget lookup the update-budget use case needs:
+// confirm the caller may use a budget before setting it as their default. Access
+// means the caller owns the budget OR holds an accepted share on it; anything
+// else (including a nonexistent budget) maps to the "Plan not found" validation
+// error, so a foreign budget id cannot be stashed as a user's default. The full
+// budget module owns the table; this is the read-only port the user service
+// depends on.
+type BudgetAccess interface {
+	// HasAccess reports whether the user owns or has an accepted share on the
+	// budget.
+	HasAccess(ctx context.Context, userID vo.Id, budgetID string) (bool, error)
 }
 
 // AvatarPicker supplies the avatar value for newly created users. Production

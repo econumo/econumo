@@ -91,22 +91,23 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := NewUserBudgetExistence(cfg.DatabaseDriver, txm)
+	budgetAccess := NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
-			appuser.RateScopeLogin:    cfg.RateLimitLogin,
-			appuser.RateScopeReset:    cfg.RateLimitReset,
-			appuser.RateScopeRemind:   cfg.RateLimitRemind,
-			appuser.RateScopeRegister: cfg.RateLimitRegister,
+			appuser.RateScopeLogin:              cfg.RateLimitLogin,
+			appuser.RateScopeReset:              cfg.RateLimitReset,
+			appuser.RateScopeRemind:             cfg.RateLimitRemind,
+			appuser.RateScopeRegister:           cfg.RateLimitRegister,
+			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
 	}, clk)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
+		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetAccess,
 		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
@@ -156,7 +157,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	// self-sufficient — it no longer references connection.
 	accountAccessRepo := accountrepo.NewAccessRepo(cfg.DatabaseDriver, txm)
 	accountSvc := appaccount.NewService(
-		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, txm, opGuard, clk,
+		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, accountAccessResolver, txm, opGuard, clk,
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
 
@@ -172,6 +173,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		NewBudgetAccountLookup(accountRepo),
 		currencyLookup,
 		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
+		accountAccessResolver,
 		txm, clk,
 	)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
@@ -181,7 +183,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	connectionBudgetRevoker := NewConnectionBudgetRevoker(budgetRepo, budgetSvc)
 	connectionSvc := appconnection.NewService(
 		connectionRepo, connectionInviteRepo, userOwnerLookup,
-		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, txm, clk,
+		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, authLimiter, txm, clk,
 	)
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -23,6 +24,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	"github.com/econumo/econumo/internal/infra/ratelimit"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
@@ -32,6 +34,10 @@ import (
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/router"
 )
+
+// acceptInviteCap is the per-user accept-invite attempt cap the test harness
+// wires into its rate limiter (the production default is 10).
+const acceptInviteCap = 10
 
 const (
 	testDataSalt = "0123456789abcdef"
@@ -95,8 +101,9 @@ func newHarness(t *testing.T) *harness {
 	userOwnerLookup := server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm))
 	accountCurrencyLookup := server.NewAccountCurrencyLookup(currencyrepo.New("sqlite", txm))
 	opGuard := operationrepo.NewGuard("sqlite", txm)
+	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
 	accountSvc := appaccount.NewService(
-		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, txm, opGuard, clock.New(),
+		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, connections, txm, opGuard, clock.New(),
 	)
 	budgetRepo := budgetrepo.NewRepo("sqlite", txm)
 	// Only the slices RemoveMember touches are wired (repo, users, metadata, tx, clock).
@@ -109,15 +116,20 @@ func newHarness(t *testing.T) *harness {
 			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", txm)),
 			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", txm)),
 		),
+		connections,
 		txm, clock.New(),
 	)
+	limiter := ratelimit.New(ratelimit.Config{
+		Limits: map[string]int{appconnection.RateScopeAcceptInvite: acceptInviteCap},
+		Window: time.Hour,
+	}, clock.New())
 	svc := appconnection.NewService(
 		connectionrepo.NewRepo("sqlite", txm),
 		connectionrepo.NewInviteRepo("sqlite", txm),
 		userOwnerLookup,
 		server.NewConnectionAccountAccessRevoker(accountSvc),
 		server.NewConnectionBudgetRevoker(budgetRepo, budgetSvc),
-		txm, clock.New(),
+		limiter, txm, clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlerconnection.NewHandlers(svc, cfg.IsDev())

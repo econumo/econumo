@@ -315,6 +315,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
   max attempts per username/email per window (defaults 5/5/3/5; login and reset count
   only FAILED attempts and clear on success, remind and register count every request).
+  `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
+  authenticated user per window (default `10`; every attempt counts), guarding the short
+  invite code against online brute force.
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope

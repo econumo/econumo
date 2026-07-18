@@ -47,6 +47,9 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	const newPosition = 0
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if eerr := s.requireFreeEnvelopeID(txCtx, envelopeID); eerr != nil {
+			return eerr
+		}
 		// Shift existing same-group (same folder) elements up by one to free
 		// position 0, so the new element is the unique position-0 row in its group
 		// before restoreElementsOrder runs.
@@ -104,6 +107,9 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 		return nil, err
 	}
 	if !s.canUpdate(b, userID) {
+		return nil, accessDenied()
+	}
+	if !b.hasEnvelope(envelopeID) {
 		return nil, accessDenied()
 	}
 	now := s.clock.Now()
@@ -179,6 +185,9 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 		return nil, err
 	}
 	if !s.canDelete(b, userID) {
+		return nil, accessDenied()
+	}
+	if !b.hasEnvelope(envelopeID) {
 		return nil, accessDenied()
 	}
 	now := s.clock.Now()

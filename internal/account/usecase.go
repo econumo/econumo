@@ -36,6 +36,7 @@ type Service struct {
 	currency    CurrencyLookup
 	users       UserLookup
 	access      AccessStore
+	connections Connections
 	tx          port.TxRunner
 	ops         port.OperationGuard
 	clock       port.Clock
@@ -49,6 +50,7 @@ func NewService(
 	access AccessStore,
 	currency CurrencyLookup,
 	users UserLookup,
+	connections Connections,
 	tx port.TxRunner,
 	ops port.OperationGuard,
 	clock port.Clock,
@@ -56,7 +58,7 @@ func NewService(
 	return &Service{
 		accounts: repo, positions: repo, balances: repo,
 		folders: folders, memberships: folders,
-		currency: currency, users: users, access: access, tx: tx, ops: ops, clock: clock,
+		currency: currency, users: users, access: access, connections: connections, tx: tx, ops: ops, clock: clock,
 	}
 }
 

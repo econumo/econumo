@@ -10,6 +10,7 @@ import (
 	appbudget "github.com/econumo/econumo/internal/budget"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -63,6 +64,7 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", db.TX)),
 			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", db.TX)),
 		),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", db.TX)),
 		db.TX, clock.New(),
 	)
 	revoker := server.NewConnectionBudgetRevoker(budgets, budgetSvc)
@@ -141,7 +143,8 @@ func newRevokerAccountSvc(t *testing.T, db *dbtest.DB) *appaccount.Service {
 	curLookup := server.NewAccountCurrencyLookup(currencyrepo.New(db.Engine, txm))
 	userLookup := server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm))
 	opGuard := operationrepo.NewGuard(db.Engine, txm)
-	return appaccount.NewService(repo, folderRepo, accessRepo, curLookup, userLookup, txm, opGuard, clock.New())
+	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm))
+	return appaccount.NewService(repo, folderRepo, accessRepo, curLookup, userLookup, connections, txm, opGuard, clock.New())
 }
 
 // TestConnectionAccountAccessRevoker_RevokeAccessBetween exercises the REAL

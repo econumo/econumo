@@ -60,6 +60,15 @@ func (s *Service) DeleteInvite(ctx context.Context, userID vo.Id, _ model.Delete
 // owner (symmetric users_connections link), clears the code, and returns the
 // redeeming user's full connection list.
 func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.AcceptInviteRequest) (*model.AcceptInviteResult, error) {
+	// The invite code is short, so cap how many codes a caller may try per
+	// window. Every attempt counts (successful accepts are rare, one per invite),
+	// keyed by the caller so one user's guessing can't lock others out.
+	if s.limiter != nil {
+		if lerr := s.limiter.Allow(RateScopeAcceptInvite, userID.String()); lerr != nil {
+			return nil, lerr
+		}
+		s.limiter.Fail(RateScopeAcceptInvite, userID.String())
+	}
 	code, err := model.NewConnectionCode(req.Code)
 	if err != nil {
 		return nil, err

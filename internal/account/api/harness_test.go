@@ -15,6 +15,7 @@ import (
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	"github.com/econumo/econumo/internal/config"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -75,7 +76,8 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	accessRepo := accountrepo.NewAccessRepo("sqlite", txm)
-	svc := appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, txm, opGuard, clk)
+	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
+	svc := appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, connections, txm, opGuard, clk)
 	handlers := handleraccount.NewHandlers(svc, cfg.IsDev())
 
 	h := router.New(router.Deps{
@@ -97,6 +99,8 @@ func seedUsers(t *testing.T, f *fixture.Builder) {
 	} {
 		f.User(fixture.User{ID: u.id, Email: u.email, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 	}
+	// Sharing an account requires a connection between the two users.
+	f.Connect(seedUserID, otherUserID)
 }
 
 func (h *harness) token(t *testing.T) string {

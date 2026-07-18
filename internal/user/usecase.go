@@ -30,7 +30,7 @@ type Service struct {
 	hasher            *auth.PasswordHasher
 	tokens            AccessTokens
 	currency          CurrencyLookup
-	budgets           BudgetExistence
+	budgets           BudgetAccess
 	passwordRequests  PasswordRequests
 	mailer            *mailer.ResetSender
 	avatars           AvatarPicker
@@ -46,7 +46,7 @@ func NewService(
 	hasher *auth.PasswordHasher,
 	tokens AccessTokens,
 	currency CurrencyLookup,
-	budgets BudgetExistence,
+	budgets BudgetAccess,
 	passwordRequests PasswordRequests,
 	mailer *mailer.ResetSender,
 	avatars AvatarPicker,

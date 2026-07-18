@@ -7,9 +7,11 @@ package budget
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -18,21 +20,22 @@ import (
 // param splits into its role interfaces here so every use-case file
 // references the narrowest surface it actually needs.
 type Service struct {
-	budgets   BudgetStore
-	access    AccessStore
-	folders   FolderStore
-	envelopes EnvelopeStore
-	elements  ElementStore
-	limits    LimitStore
-	read      ReadModel
-	convertor Convertor
-	rates     AverageRateLookup
-	users     UserLookup
-	accounts  AccountLookup
-	currency  CurrencyLookup
-	metadata  MetadataLookup
-	tx        port.TxRunner
-	clock     port.Clock
+	budgets     BudgetStore
+	access      AccessStore
+	folders     FolderStore
+	envelopes   EnvelopeStore
+	elements    ElementStore
+	limits      LimitStore
+	read        ReadModel
+	convertor   Convertor
+	rates       AverageRateLookup
+	users       UserLookup
+	accounts    AccountLookup
+	currency    CurrencyLookup
+	metadata    MetadataLookup
+	connections Connections
+	tx          port.TxRunner
+	clock       port.Clock
 
 	// accountOwners is a per-call cache (set fresh per Service is fine; the
 	// Service is constructed once, so guard via a small map populated lazily and
@@ -50,13 +53,14 @@ func NewService(
 	accounts AccountLookup,
 	currency CurrencyLookup,
 	metadata MetadataLookup,
+	connections Connections,
 	tx port.TxRunner,
 	clock port.Clock,
 ) *Service {
 	return &Service{
 		budgets: repo, access: repo, folders: repo, envelopes: repo, elements: repo, limits: repo,
 		read: read, convertor: convertor, rates: rates,
-		users: users, accounts: accounts, currency: currency, metadata: metadata,
+		users: users, accounts: accounts, currency: currency, metadata: metadata, connections: connections,
 		tx: tx, clock: clock, accountOwners: map[string]string{},
 	}
 }
@@ -99,6 +103,58 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 		return nil, err
 	}
 	return &budgetAggregate{budget: b, access: access, excludedAccountIDs: excluded, folders: folders, envelopes: envelopes, elements: elements}, nil
+}
+
+// hasFolder reports whether folderID is one of this budget's folders. Child
+// mutators role-check the request's budget, then reach a folder by its own id;
+// this guards against reaching a folder that belongs to a DIFFERENT budget
+// (the id alone is not authorization).
+func (a *budgetAggregate) hasFolder(folderID vo.Id) bool {
+	for _, f := range a.folders {
+		if f.ID.Equal(folderID) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasEnvelope reports whether envelopeID is one of this budget's envelopes (see
+// hasFolder for why the id alone is insufficient authorization).
+func (a *budgetAggregate) hasEnvelope(envelopeID vo.Id) bool {
+	for _, e := range a.envelopes {
+		if e.ID.Equal(envelopeID) {
+			return true
+		}
+	}
+	return false
+}
+
+// requireFreeFolderID rejects a create whose client-supplied id already exists
+// in ANY budget: the folder upsert is keyed on id, so reusing a foreign id
+// would overwrite that row instead of creating a new one.
+func (s *Service) requireFreeFolderID(ctx context.Context, id vo.Id) error {
+	_, err := s.folders.GetFolder(ctx, id)
+	if err == nil {
+		return accessDenied()
+	}
+	var nf *errs.NotFoundError
+	if errors.As(err, &nf) {
+		return nil
+	}
+	return err
+}
+
+// requireFreeEnvelopeID is the envelope counterpart of requireFreeFolderID.
+func (s *Service) requireFreeEnvelopeID(ctx context.Context, id vo.Id) error {
+	_, err := s.envelopes.GetEnvelope(ctx, id)
+	if err == nil {
+		return accessDenied()
+	}
+	var nf *errs.NotFoundError
+	if errors.As(err, &nf) {
+		return nil
+	}
+	return err
 }
 
 // roleGuest returns the guest role (the read-only "reader" role).

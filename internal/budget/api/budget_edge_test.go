@@ -18,6 +18,8 @@ func (h *harness) seedSecondUser(t *testing.T) string {
 	t.Helper()
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	f.User(fixture.User{ID: secondUserID, Name: "Second User", Avatar: "https://avatar.test/2", Salt: seedSalt})
+	// Sharing a budget requires a connection between the two users.
+	f.Connect(seedUserID, secondUserID)
 	return secondUserID
 }
 

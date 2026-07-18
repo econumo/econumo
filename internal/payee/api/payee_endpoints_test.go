@@ -360,7 +360,10 @@ func TestDeletePayee_RemovesIt(t *testing.T) {
 	}
 }
 
-func TestUpdatePayee_NotOwned_403(t *testing.T) {
+// A payee owned by another user must be indistinguishable from a nonexistent
+// one: both return 400 "Payee not found", so the response can't probe which ids
+// exist.
+func TestUpdatePayee_NotOwned_MaskedAsNotFound(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
@@ -369,19 +372,19 @@ func TestUpdatePayee_NotOwned_403(t *testing.T) {
 	status, env := h.do(t, http.MethodPost, "/api/v1/payee/update-payee", token, map[string]any{
 		"id": payeeID1, "name": "Hijacked",
 	})
-	if status != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
+	if status != http.StatusBadRequest || env.Message != "Payee not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Payee not found\"; body: %s", status, env.Message, env.raw)
 	}
 }
 
-func TestDeletePayee_NotOwned_403(t *testing.T) {
+func TestDeletePayee_NotOwned_MaskedAsNotFound(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
 	h.seedPayee(t, payeeID1, otherUserID, "Theirs", 0, false)
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/payee/delete-payee", token, map[string]any{"id": payeeID1})
-	if status != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
+	if status != http.StatusBadRequest || env.Message != "Payee not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Payee not found\"; body: %s", status, env.Message, env.raw)
 	}
 }

@@ -347,7 +347,10 @@ func TestDeleteCategory_Replace_ReassignsAndRemoves(t *testing.T) {
 	}
 }
 
-func TestUpdateCategory_NotOwned_403(t *testing.T) {
+// A category owned by another user must be indistinguishable from a nonexistent
+// one: both return 400 "Category not found", so the response cannot be used to
+// probe which category ids exist.
+func TestUpdateCategory_NotOwned_MaskedAsNotFound(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
@@ -357,7 +360,15 @@ func TestUpdateCategory_NotOwned_403(t *testing.T) {
 	status, env := h.do(t, http.MethodPost, "/api/v1/category/update-category", token, map[string]any{
 		"id": catID1, "name": "Hijacked", "icon": "local_offer",
 	})
-	if status != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
+	if status != http.StatusBadRequest || env.Message != "Category not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Category not found\"; body: %s", status, env.Message, env.raw)
+	}
+
+	// A totally unknown id returns the SAME response (no enumeration signal).
+	_, missing := h.do(t, http.MethodPost, "/api/v1/category/update-category", token, map[string]any{
+		"id": "c0ffee00-0000-7000-8000-000000000001", "name": "Hijacked", "icon": "local_offer",
+	})
+	if missing.Message != env.Message {
+		t.Fatalf("foreign vs missing message differ: %q vs %q", env.Message, missing.Message)
 	}
 }

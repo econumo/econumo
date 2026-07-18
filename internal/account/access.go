@@ -61,18 +61,28 @@ func (s *Service) GrantAccess(ctx context.Context, userID vo.Id, req model.Grant
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireOwnerAdmin(ctx, userID, accountID); err != nil {
-		return nil, err
-	}
-	acct, err := s.accounts.GetByID(ctx, accountID)
+	// An account may only be shared with a connected user (never with yourself).
+	connected, err := s.connections.AreConnected(ctx, userID, affectedUserID)
 	if err != nil {
 		return nil, err
 	}
-	if acct.IsDeleted {
-		return nil, errs.NewNotFound("Account not found")
+	if !connected {
+		return nil, errs.NewAccessDenied("Access denied")
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// Authorize inside the transaction so the owner/admin check and the grant
+		// write cannot straddle a concurrent revocation.
+		if aerr := s.requireOwnerAdmin(txCtx, userID, accountID); aerr != nil {
+			return aerr
+		}
+		acct, aerr := s.accounts.GetByID(txCtx, accountID)
+		if aerr != nil {
+			return aerr
+		}
+		if acct.IsDeleted {
+			return errs.NewNotFound("Account not found")
+		}
 		grant, gerr := s.access.Get(txCtx, accountID, affectedUserID)
 		if gerr != nil {
 			var nf *errs.NotFoundError
@@ -169,10 +179,12 @@ func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req model.Revo
 	if err != nil {
 		return nil, err
 	}
-	if err := s.requireOwnerAdmin(ctx, userID, accountID); err != nil {
-		return nil, err
-	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// Authorize inside the transaction so the owner/admin check and the
+		// revocation cannot straddle a concurrent change.
+		if aerr := s.requireOwnerAdmin(txCtx, userID, accountID); aerr != nil {
+			return aerr
+		}
 		// Load first so a missing grant surfaces NotFound before cleanup.
 		if _, gerr := s.access.Get(txCtx, accountID, affectedUserID); gerr != nil {
 			return gerr
