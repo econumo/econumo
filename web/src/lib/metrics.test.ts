@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { METRICS, scrubbedPage, trackEvent } from './metrics'
+import { METRICS, posthogEventName, scrubbedPage, trackEvent } from './metrics'
 import { capture } from './analytics'
 
 vi.mock('./analytics', async (importOriginal) => {
@@ -29,14 +29,20 @@ describe('PostHog capture', () => {
     trackEvent(METRICS.TRANSACTION_CREATE, { secret: 'never-sent' })
     expect(capture).toHaveBeenCalledTimes(1)
     const [event, props] = vi.mocked(capture).mock.calls[0]
-    expect(event).toBe('appTransactionCreate')
+    expect(event).toBe('transaction_create')
     expect(props).toEqual({
-      domain: 'self-hosted', // jsdom runs on localhost
-      selfHosted: true,
+      host: 'self-hosted', // jsdom runs on localhost
+      self_hosted: true,
       locale: 'en',
       version: 'dev',
-      page: 'budgets/:id/details',
+      current_url: 'https://self-hosted/budgets/:id/details',
     })
+  })
+
+  it('keeps ui_modal micro-interactions dataLayer-only', () => {
+    trackEvent(METRICS.UI_MODAL_TRANSACTION_CHANGE_AMOUNT)
+    expect(capture).not.toHaveBeenCalled()
+    expect(window.dataLayer).toHaveLength(1)
   })
 
   it('is gated by ANALYTICS=false but the dataLayer push survives', () => {
@@ -44,6 +50,18 @@ describe('PostHog capture', () => {
     trackEvent(METRICS.TRANSACTION_CREATE)
     expect(capture).not.toHaveBeenCalled()
     expect(window.dataLayer).toHaveLength(1)
+  })
+})
+
+describe('posthogEventName', () => {
+  it.each([
+    ['appPageView', 'page_view'],
+    ['appTransactionCreate', 'transaction_create'],
+    ['appUIModalTransactionOpen', 'ui_modal_transaction_open'],
+    ['appApiAccountOrderList', 'api_account_order_list'],
+    ['appBudgetTransferEnvelopeBudget', 'budget_transfer_envelope_budget'],
+  ])('%s -> %s', (metric, expected) => {
+    expect(posthogEventName(metric)).toBe(expected)
   })
 })
 

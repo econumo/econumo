@@ -40,7 +40,7 @@ SDK upgrade or config drift re-enabling autocapture in a finance app.
   `true`), same pattern as `ECONUMO_CHECK_UPDATES`. No per-user UI toggle, no
   DNT handling.
 - **Editions: both, one pipeline.** PostHog is THE product-analytics path for
-  cloud and self-hosted alike, segmented by a `domain` property. liltag/GTM
+  cloud and self-hosted alike, segmented by a `host` property. liltag/GTM
   stays untouched for whatever the cloud edition does with tags.
 - **Edition detection is derived, not the legacy flag.** The existing
   `selfHosted()` in `config.ts` is a localStorage value set by the "use my own
@@ -76,24 +76,37 @@ The only file that knows PostHog exists.
 
 ### Edition / domain derivation (in `analytics.ts`)
 
-- `domain`: `window.location.hostname` when it is `econumo.com` or a
+- `host`: `window.location.hostname` when it is `econumo.com` or a
   subdomain (`hostname === 'econumo.com' || hostname.endsWith('.econumo.com')`);
   otherwise the literal string `"self-hosted"`. A real hostname is only ever
   sent when it is an econumo.com domain; self-hosters' hostnames never leave
   the browser.
-- `selfHosted`: boolean, `domain === 'self-hosted'` — kept alongside as the
+- `self_hosted`: boolean, `host === 'self-hosted'` — kept alongside as the
   natural PostHog filter/breakdown property.
 
 ## Part 2 — Frontend: wiring (`metrics.ts`, `config.ts`)
 
 - `trackEvent()` keeps its `window.dataLayer` push byte-identical, and
-  additionally calls `capture(metric, context)` when `analyticsEnabled()`.
+  additionally calls `capture(...)` when `analyticsEnabled()`.
+- PostHog event names are snake_case, derived from the frozen dataLayer names
+  by `posthogEventName()` (strip the `app` prefix, camelCase → snake_case):
+  `appUIModalTransactionOpen` → `ui_modal_transaction_open`. The dataLayer
+  names themselves never change (GTM/liltag contract).
+- The `appUIModal*` micro-interaction events (modal open/close and per-field
+  change events) are dataLayer-only — never sent to PostHog: they dominate
+  event volume without informing product decisions.
+- `page_view` fires on the initial load and every route (pathname) change, via
+  a pathless `TrackPageViews` root route wrapping the router
+  (`web/src/app/TrackPageViews.tsx`); a ref dedupe absorbs StrictMode's
+  double-mounted effect and same-path renavigation.
 - Event properties (the complete whitelist — nothing else is ever sent):
-  - `domain` / `selfHosted` (derived above),
+  - `host` / `self_hosted` (derived above),
   - `locale` (UI language),
   - `version` (`ECONUMO_VERSION`, Vite-inlined),
-  - `page`: the current path with UUID-looking segments replaced by `:id`
-    (e.g. `budgets/0198…` → `budgets/:id`) so no instance data rides along.
+  - `current_url`: `https://<host>/<path>` with UUID-looking path segments
+    replaced by `:id` (e.g. `https://self-hosted/budgets/:id`). The host part
+    is the derived `host`, NOT the real origin, so self-hosters' hostnames
+    never ride along in the URL.
 - `config.ts`: new `analyticsEnabled(): boolean` returning
   `window.econumoConfig.ANALYTICS !== false` — absent/unknown fails open to
   enabled (a stale hand-hosted config file keeps the default), and the
@@ -138,7 +151,7 @@ The only file that knows PostHog exists.
     `$process_person_profile: false`); flush on threshold / timer / page-hide
     (fake timers, mocked `fetch` + `sendBeacon`); queue cap; silent failure on
     fetch rejection; disabled path short-circuits before queueing.
-  - `metrics.test.ts` additions: UUID-scrubbed `page`; `domain`/`selfHosted`
+  - `metrics.test.ts` additions: UUID-scrubbed `current_url`; `host`/`self_hosted`
     derivation for `econumo.com`, `app.econumo.com`, and a third-party host;
     `ANALYTICS: false` gates the PostHog call but not the dataLayer push.
 - **Backend (Go):**
