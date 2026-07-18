@@ -250,7 +250,9 @@ export function useDeclineAccountAccess() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (accountId: Id) => accountApi.declineAccess(accountId),
-    onSuccess: () => {
+    onSuccess: (_r, accountId) => {
+      // drop it synchronously so the invite disappears before the refetch lands
+      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => (prev ?? []).filter((a) => a.id !== accountId))
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
       trackEvent(METRICS.CONNECTION_DECLINE_ACCOUNT_ACCESS)
     },

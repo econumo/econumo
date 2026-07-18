@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useAcceptAccountAccess, useAccounts, useCreateAccount, useFolders } from './queries'
+import { useAcceptAccountAccess, useAccounts, useCreateAccount, useDeclineAccountAccess, useFolders } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireUser = { id: 'u1', name: 'Ada', email: 'ada@example.test', avatar: 'face:emerald', options: [] }
@@ -94,6 +94,22 @@ it('accept-access invalidates the transactions cache (pending accounts have thei
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
   expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
+})
+
+it('decline-access immediately drops the pending account from the cache', async () => {
+  server.use(
+    http.post('*/api/v1/account/decline-access', () =>
+      HttpResponse.json({ success: true, message: '', data: {} }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [wireAccount, pendingAccount(0)])
+
+  const { result } = renderHook(() => useDeclineAccountAccess(), { wrapper })
+  result.current.mutate('a-pending')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.accounts)!.map((a) => a.id)).toEqual(['a-real'])
 })
 
 it('useAccounts hides an account pending my acceptance, and shows it once accepted', async () => {

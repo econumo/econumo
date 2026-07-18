@@ -333,7 +333,9 @@ export function useDeclineBudgetAccess() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (budgetId: Id) => budgetApi.declineAccess(budgetId),
-    onSuccess: () => {
+    onSuccess: (_r, budgetId) => {
+      // drop it synchronously so the invite disappears before the refetch lands
+      queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => (prev ?? []).filter((b) => b.id !== budgetId))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
       trackEvent(METRICS.BUDGET_DECLINE_ACCESS)
     },
