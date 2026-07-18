@@ -220,6 +220,18 @@ func (u *User) UpdateBudget(budgetID string, now time.Time) {
 	}
 }
 
+// ClearBudget clears the active-budget option when it points at the given
+// budget (access revoked or budget deleted — a stale id would make the client
+// load a budget it can no longer read). Reports whether anything changed.
+func (u *User) ClearBudget(budgetID string, now time.Time) bool {
+	o := u.Option(OptionBudget)
+	if o == nil || o.Value == nil || *o.Value != budgetID {
+		return false
+	}
+	o.setValue(nil, now)
+	return true
+}
+
 // CompleteOnboarding sets the onboarding option to completed.
 func (u *User) CompleteOnboarding(now time.Time) {
 	if o := u.Option(OptionOnboarding); o != nil {

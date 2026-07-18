@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
+import { act } from 'react'
+import { coreHandlers, fixtureBudgets, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -205,5 +206,70 @@ it('/ renders the budget for an onboarded user with a default budget', async () 
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+})
+
+const accessDenied = () =>
+  HttpResponse.json({ success: false, message: 'Access denied', code: 0, errors: [] }, { status: 403 })
+
+it('revoked budget access shows the unavailable state with a way to pick another budget', async () => {
+  server.use(
+    // the revoked budget b1 is gone from the list; b2 remains
+    ...coreHandlers({ user: userWithBudget, budgets: fixtureBudgets.filter((b) => b.id !== 'b1') }),
+    http.get('*/api/v1/budget/get-budget', accessDenied),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByTestId('budget-unavailable')).toBeInTheDocument()
+  expect(screen.queryByTestId('budget-loading')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-empty')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Choose another budget' }))
+  expect(await screen.findByText('BUDGETS LIST')).toBeInTheDocument()
+})
+
+it('a budget that starts failing after a period switch stops the placeholder loader', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget, budgets: fixtureBudgets.filter((b) => b.id !== 'b1') }),
+    http.get('*/api/v1/budget/get-budget', ({ request }) =>
+      new URL(request.url).searchParams.get('date') === '2026-07-01'
+        ? HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })
+        : accessDenied(),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+  // the month switch keeps the July budget as placeholder data while June 403s
+  act(() => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
+  })
+  expect(await screen.findByTestId('budget-unavailable')).toBeInTheDocument()
+  expect(screen.queryByTestId('budget-loading')).not.toBeInTheDocument()
+})
+
+it('revoked access with no remaining budgets falls back to onboarding', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget, budgets: [] }),
+    http.get('*/api/v1/budget/get-budget', accessDenied),
+  )
+  renderPage()
+  expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create a budget' })).toBeInTheDocument())
+})
+
+it('a server error settles into a retryable error state instead of an endless loader', async () => {
+  let failing = true
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () =>
+      failing
+        ? HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })
+        : HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByTestId('budget-error')).toBeInTheDocument()
+  failing = false
+  await user.click(screen.getByRole('button', { name: 'Try again' }))
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
 })
