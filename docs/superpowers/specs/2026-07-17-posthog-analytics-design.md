@@ -69,8 +69,10 @@ The only file that knows PostHog exists.
 - Every event carries `$process_person_profile: false`.
 - Queue capped at ~100 events (oldest dropped); a failed flush is dropped
   silently — no retries, no console noise, analytics can never break the app.
-- Entirely disabled when `import.meta.env.DEV` (local `pnpm dev` must not
-  pollute production data).
+- No build-mode gating: `pnpm dev` sends events like any other build. Local
+  development opts out via the runtime config (`ANALYTICS: false` in
+  `web/public/econumo-config.js`, or `ECONUMO_ANALYTICS=false` when served by
+  the Go binary).
 
 ### Edition / domain derivation (in `analytics.ts`)
 

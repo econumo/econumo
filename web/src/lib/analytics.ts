@@ -29,9 +29,6 @@ export function analyticsDomain(hostname: string = window.location.hostname): st
 }
 
 export function capture(event: string, properties: Record<string, unknown> = {}): void {
-  if (import.meta.env.MODE === 'development') {
-    return
-  }
   queue.push({
     event,
     distinct_id: distinctId,
