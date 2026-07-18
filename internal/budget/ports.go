@@ -19,6 +19,9 @@ type UserLookup interface {
 	CurrencyCode(ctx context.Context, userID string) (string, error)
 	// SetActiveBudget records the user's active budget id.
 	SetActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
+	// ClearActiveBudget clears the user's active-budget option when it points at
+	// the given budget (no-op otherwise) — called when the user loses access.
+	ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 }
 
 // AccountLookup resolves accounts owned by the budget participants + ownership.

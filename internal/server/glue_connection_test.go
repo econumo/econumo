@@ -48,10 +48,16 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	// records to clean.
 	const revokerCatB = "cccccccc-cccc-cccc-cccc-cccccccccccc"
 	f.Category(fixture.Category{ID: revokerCatB, UserID: revokerUserB, Name: "Groceries", Type: 0, Icon: "local_offer"})
+	// userB's active budget points at budgetA; removal must clear it (else their
+	// client keeps requesting a budget that now 403s).
+	activeBudget := revokerBudgetA
+	f.Option(revokerUserB, "budget", &activeBudget)
 
 	budgets := budgetrepo.NewRepo("sqlite", db.TX)
 	budgetSvc := appbudget.NewService(
-		budgets, nil, nil, nil, nil, nil, nil,
+		budgets, nil, nil, nil,
+		server.NewBudgetUserLookup(userrepo.NewRepo("sqlite", db.TX), clock.New()),
+		nil, nil,
 		budgetrepo.NewMetadataLookup(
 			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo("sqlite", db.TX)),
 			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", db.TX)),
@@ -103,6 +109,13 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	}
 	if len(elements) != 0 {
 		t.Errorf("want userB's elements removed, still %d", len(elements))
+	}
+	var optValue *string
+	if err := db.Raw.QueryRow(`SELECT value FROM users_options WHERE user_id = ? AND name = 'budget'`, revokerUserB).Scan(&optValue); err != nil {
+		t.Fatalf("read budget option: %v", err)
+	}
+	if optValue != nil {
+		t.Errorf("want userB's active-budget option cleared, got %q", *optValue)
 	}
 }
 

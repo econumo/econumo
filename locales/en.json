@@ -830,6 +830,14 @@
           "initial_setup": "To create a budget, first add an account and at least one category.",
           "create_account": "Add account"
         },
+        "unavailable": {
+          "header": "Budget unavailable",
+          "no_access": "You no longer have access to this budget. It may have been deleted, or your access was revoked.",
+          "choose_budget": "Choose another budget"
+        },
+        "error": {
+          "retry": "Try again"
+        },
         "settings": {
           "button": "Configure",
           "menu": {

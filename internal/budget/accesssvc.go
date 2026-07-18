@@ -167,7 +167,10 @@ func (s *Service) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) er
 		if err := s.access.DeleteAccess(txCtx, budgetID, memberID); err != nil {
 			return err
 		}
-		return s.removeMemberRecords(txCtx, b, memberID)
+		if err := s.removeMemberRecords(txCtx, b, memberID); err != nil {
+			return err
+		}
+		return s.users.ClearActiveBudget(txCtx, memberID, budgetID)
 	})
 }
 
@@ -192,7 +195,12 @@ func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req model.Revo
 		if derr := s.access.DeleteAccess(txCtx, budgetID, invitedID); derr != nil {
 			return derr
 		}
-		return s.removeMemberRecords(txCtx, b, invitedID)
+		if rerr := s.removeMemberRecords(txCtx, b, invitedID); rerr != nil {
+			return rerr
+		}
+		// A stale active-budget option would make the revoked user's client keep
+		// requesting a budget that now 403s.
+		return s.users.ClearActiveBudget(txCtx, invitedID, budgetID)
 	}); err != nil {
 		return nil, err
 	}
@@ -218,7 +226,10 @@ func (s *Service) DeclineAccess(ctx context.Context, userID vo.Id, req model.Dec
 		}
 		// Pre-handshake budgets may carry seeded elements for a still-pending
 		// member; declining sheds them the same way revoke does.
-		return s.removeMemberRecords(txCtx, b, userID)
+		if rerr := s.removeMemberRecords(txCtx, b, userID); rerr != nil {
+			return rerr
+		}
+		return s.users.ClearActiveBudget(txCtx, userID, budgetID)
 	}); err != nil {
 		return nil, err
 	}

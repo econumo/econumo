@@ -99,9 +99,11 @@ func newHarness(t *testing.T) *harness {
 		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, txm, opGuard, clock.New(),
 	)
 	budgetRepo := budgetrepo.NewRepo("sqlite", txm)
-	// Only the slices RemoveMember touches are wired (repo, metadata, tx, clock).
+	// Only the slices RemoveMember touches are wired (repo, users, metadata, tx, clock).
 	budgetSvc := appbudget.NewService(
-		budgetRepo, nil, nil, nil, nil, nil, nil,
+		budgetRepo, nil, nil, nil,
+		server.NewBudgetUserLookup(userrepo.NewRepo("sqlite", txm), clock.New()),
+		nil, nil,
 		budgetrepo.NewMetadataLookup(
 			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo("sqlite", txm)),
 			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", txm)),

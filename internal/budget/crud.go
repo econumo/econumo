@@ -91,7 +91,20 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.Dele
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.budgets.Delete(txCtx, budgetID)
+		if derr := s.budgets.Delete(txCtx, budgetID); derr != nil {
+			return derr
+		}
+		// Every participant whose active-budget option points here would keep
+		// requesting a budget that now 404s.
+		if cerr := s.users.ClearActiveBudget(txCtx, b.budget.UserID, budgetID); cerr != nil {
+			return cerr
+		}
+		for _, a := range b.access {
+			if cerr := s.users.ClearActiveBudget(txCtx, a.UserID, budgetID); cerr != nil {
+				return cerr
+			}
+		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}
