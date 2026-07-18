@@ -5,6 +5,7 @@
 package spa
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -20,7 +21,7 @@ const indexFile = "index.html"
 // or /_ are never rewritten to index.html (they should be handled by the API /
 // internal routes; if they reach here they 404 honestly rather than masquerade
 // as the SPA shell).
-func Handler(dir string) http.Handler {
+func Handler(dir string, analytics bool) http.Handler {
 	fs := http.FileServer(http.Dir(dir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Clean the request path to prevent directory traversal. path.Clean on
@@ -34,6 +35,14 @@ func Handler(dir string) http.Handler {
 		// API and internal routes must not fall back to the SPA shell.
 		if isReservedPath(cleaned) {
 			http.NotFound(w, r)
+			return
+		}
+
+		// The runtime config is the one templated response: the dist file plus
+		// a server-controlled override line, so the instance's .env genuinely
+		// controls the shipped SPA.
+		if cleaned == "/econumo-config.js" {
+			serveRuntimeConfig(w, r, dir, analytics)
 			return
 		}
 
@@ -66,6 +75,17 @@ func Handler(dir string) http.Handler {
 		setCacheControl(w, "/"+indexFile)
 		http.ServeFile(w, r, filepath.Join(dir, indexFile))
 	})
+}
+
+func serveRuntimeConfig(w http.ResponseWriter, r *http.Request, dir string, analytics bool) {
+	content, err := os.ReadFile(filepath.Join(dir, "econumo-config.js"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	fmt.Fprintf(w, "%s\nwindow.econumoConfig.ANALYTICS = %t;\n", content, analytics)
 }
 
 // setCacheControl picks the caching policy by path. Vite-fingerprinted files

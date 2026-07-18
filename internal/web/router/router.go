@@ -112,7 +112,7 @@ func New(deps Deps) http.Handler {
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so
 	// it never shadows the server-side groups.
-	root.Handle("/", spa.Handler(deps.Cfg.SPADir))
+	root.Handle("/", spa.Handler(deps.Cfg.SPADir, deps.Cfg.Analytics))
 
 	return root
 }
