@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router'
 import { EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -8,8 +9,10 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { Id } from '@/api/types'
+import { RouterPage } from '@/app/router-pages'
 import { useAcceptAccountAccess, useDeclineAccountAccess, useFolders } from '@/features/accounts/queries'
 import { useAcceptBudgetAccess, useDeclineBudgetAccess } from '@/features/budgets/queries'
+import { useUpdateDefaultBudget } from '@/features/user/queries'
 import { usePendingInvites, type PendingInvite } from './pendingInvites'
 
 const NO_FOLDER_OPTION = '__general__'
@@ -21,12 +24,14 @@ interface SharingRequestsDialogProps {
 
 export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { invites } = usePendingInvites()
   const { data: folders } = useFolders()
   const acceptAccount = useAcceptAccountAccess()
   const declineAccount = useDeclineAccountAccess()
   const acceptBudget = useAcceptBudgetAccess()
   const declineBudget = useDeclineBudgetAccess()
+  const updateDefaultBudget = useUpdateDefaultBudget()
 
   const [folderChoices, setFolderChoices] = useState<Record<Id, string>>({})
   const [declineTarget, setDeclineTarget] = useState<PendingInvite | null>(null)
@@ -36,10 +41,24 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
 
   const accept = (invite: PendingInvite) => {
     if (invite.kind === 'budget') {
-      acceptBudget.mutate(invite.id)
+      acceptBudget.mutate(invite.id, {
+        onSuccess: () => {
+          updateDefaultBudget.mutate(invite.id)
+          onClose()
+          navigate(RouterPage.BUDGET)
+        },
+      })
       return
     }
-    acceptAccount.mutate({ accountId: invite.id, folderId: chosenFolder(invite) || undefined })
+    acceptAccount.mutate(
+      { accountId: invite.id, folderId: chosenFolder(invite) || undefined },
+      {
+        onSuccess: () => {
+          onClose()
+          navigate(RouterPage.ACCOUNT(invite.id))
+        },
+      },
+    )
   }
 
   const confirmDecline = () => {

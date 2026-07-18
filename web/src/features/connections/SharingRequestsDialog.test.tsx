@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
@@ -30,9 +31,17 @@ const testFolders = [
 
 function renderDialog(onClose = () => {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter(
+    [
+      { path: '/', element: <SharingRequestsDialog open onClose={onClose} /> },
+      { path: '/account/:id', element: <div>ACCOUNT PAGE</div> },
+      { path: '/budget', element: <div>BUDGET PAGE</div> },
+    ],
+    { initialEntries: ['/'] },
+  )
   render(
     <QueryClientProvider client={queryClient}>
-      <SharingRequestsDialog open onClose={onClose} />
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   )
   return queryClient
@@ -71,13 +80,16 @@ it('account row shows the folder select immediately, preselected to the first fo
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
+  const onClose = vi.fn()
   const user = userEvent.setup()
-  renderDialog()
+  renderDialog(onClose)
   await screen.findByText('Shared cash')
   expect(await screen.findByText('Choose a folder for this account')).toBeInTheDocument()
   await waitFor(() => expect(screen.getByRole('combobox')).toHaveTextContent('General'))
   await user.click(screen.getByRole('button', { name: 'Accept' }))
   await waitFor(() => expect(body).toEqual({ accountId: 'a-pending', folderId: 'f1' }))
+  expect(await screen.findByText('ACCOUNT PAGE')).toBeInTheDocument()
+  expect(onClose).toHaveBeenCalled()
 })
 
 it('accept posts the folder chosen in the select', async () => {
@@ -137,20 +149,29 @@ it('account accept with zero folders shows a disabled general-folder option and 
   await waitFor(() => expect(body).toEqual({ accountId: 'a-pending', folderId: '' }))
 })
 
-it('budget accept posts immediately', async () => {
+it('budget accept posts immediately, sets the default budget and switches to it', async () => {
   let body: unknown
+  let defaultBody: unknown
   server.use(
     ...coreHandlers({ budgets: [pendingBudget] }),
     http.post('*/api/v1/budget/accept-access', async ({ request }) => {
       body = await request.json()
       return HttpResponse.json({ success: true, message: '', data: { items: [] } })
     }),
+    http.post('*/api/v1/user/update-budget', async ({ request }) => {
+      defaultBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { user: { id: 'u1', name: 'Ada', avatar: 'face:emerald', options: [] } } })
+    }),
   )
+  const onClose = vi.fn()
   const user = userEvent.setup()
-  renderDialog()
+  renderDialog(onClose)
   await screen.findByText('Shared budget')
   await user.click(screen.getByRole('button', { name: 'Accept' }))
   await waitFor(() => expect(body).toEqual({ budgetId: 'b-pending' }))
+  await waitFor(() => expect(defaultBody).toEqual({ value: 'b-pending' }))
+  expect(await screen.findByText('BUDGET PAGE')).toBeInTheDocument()
+  expect(onClose).toHaveBeenCalled()
 })
 
 it('account decline confirms then posts accountId', async () => {
