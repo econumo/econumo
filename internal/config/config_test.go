@@ -242,3 +242,38 @@ func TestLoad_Analytics(t *testing.T) {
 		t.Fatal("Load with ECONUMO_ANALYTICS=flase: err = nil, want boot error")
 	}
 }
+
+func TestLoad_SPAOverrides(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.APIURL != "" {
+		t.Fatalf("APIURL default = %q, want empty (leave the dist value)", c.APIURL)
+	}
+	if c.AllowCustomAPI != nil {
+		t.Fatal("AllowCustomAPI default != nil, want nil (leave the dist value)")
+	}
+	t.Setenv("ECONUMO_API_URL", "https://api.example.test")
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.APIURL != "https://api.example.test" {
+		t.Fatalf("APIURL = %q, want %q", c.APIURL, "https://api.example.test")
+	}
+	if c.AllowCustomAPI == nil || *c.AllowCustomAPI {
+		t.Fatal("AllowCustomAPI = nil or true, want false")
+	}
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "maybe")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_ALLOW_CUSTOM_API=maybe: err = nil, want boot error")
+	}
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "true")
+	t.Setenv("ECONUMO_API_URL", "not a url")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with malformed ECONUMO_API_URL: err = nil, want boot error")
+	}
+}

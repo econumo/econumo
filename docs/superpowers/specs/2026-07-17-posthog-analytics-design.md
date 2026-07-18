@@ -108,9 +108,12 @@ The only file that knows PostHog exists.
   (built once at construction; `encoding/json` sorts map keys, so the output
   is deterministic). The router wires `ANALYTICS` and `ALLOW_REGISTRATION` —
   the latter fixes a pre-existing drift where `ECONUMO_ALLOW_REGISTRATION=false`
-  still showed the SPA's Register UI (the static file said `true`). Future
+  still showed the SPA's Register UI (the static file said `true`). Two more
+  keys merge tri-state — `ECONUMO_API_URL` and `ECONUMO_ALLOW_CUSTOM_API`
+  override `API_URL` / `ALLOW_CUSTOM_API` only when explicitly set, so a
+  file-configured deployment is never clobbered by a default. Future
   server-owned keys are one map entry; keys the server does not own
-  (`VERSION`, `PAYWALL_ENABLED`, `ALLOW_CUSTOM_API`, `API_URL`) stay whatever
+  (`VERSION`, `PAYWALL_ENABLED`) stay whatever
   the dist file says. Existing `Cache-Control: no-cache` is kept, so a `.env`
   flip takes effect on the next page load. If the file is missing (broken
   image) the route 404s exactly as today.

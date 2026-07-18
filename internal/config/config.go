@@ -56,6 +56,12 @@ type Config struct {
 
 	// SPA
 	SPADir string // path to web/dist (served directly by the Go binary)
+
+	// Optional SPA config overrides merged into the served econumo-config.js.
+	// Empty/nil = leave the dist file's value (the server does not enforce
+	// these; they only reach the frontend).
+	APIURL         string // ECONUMO_API_URL
+	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
 }
 
 // IsDev reports whether stack traces should be exposed in the 500 envelope.
@@ -106,6 +112,19 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.Analytics = analytics
+
+	if v := os.Getenv("ECONUMO_API_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_API_URL: not an absolute http(s) URL: %q", v)
+		}
+		c.APIURL = v
+	}
+	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
+	if err != nil {
+		return Config{}, err
+	}
+	c.AllowCustomAPI = allowCustomAPI
 
 	// Rate-limit values fail at boot on a malformed value (unlike the lenient
 	// getInt), because a typo here would silently disable brute-force protection.
@@ -217,6 +236,19 @@ func getBoolStrict(key string, def bool) (bool, error) {
 		return false, nil
 	}
 	return false, fmt.Errorf("%s: invalid boolean %q", key, v)
+}
+
+// getBoolOptional is the tri-state getBoolStrict: nil when the variable is
+// unset/empty, an error on garbage (never a silent fallback).
+func getBoolOptional(key string) (*bool, error) {
+	if v, ok := os.LookupEnv(key); !ok || v == "" {
+		return nil, nil
+	}
+	b, err := getBoolStrict(key, false)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
 }
 
 func getBool(key string, def bool) bool {
