@@ -678,6 +678,46 @@ func TestAcceptAccess_MarksAccepted(t *testing.T) {
 	}
 }
 
+func TestAcceptAccess_ReinviteAfterRevoke_SkipsExistingElements(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	other := h.seedSecondUser(t)
+	// The invitee owns a category, so accepting seeds an element for it.
+	const otherCatID = "33333333-3333-3333-3333-333333333333"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: otherCatID, UserID: secondUserID, Name: "Groceries", Type: 0, Icon: "local_offer"})
+
+	grant := func() {
+		if st, e := h.do(t, http.MethodPost, "/api/v1/budget/grant-access", tok, map[string]any{
+			"budgetId": budgetID1, "userId": secondUserID, "role": "user",
+		}); st != http.StatusOK {
+			t.Fatalf("grant-access=%d body=%s", st, e.raw)
+		}
+	}
+	grant()
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/accept-access", other, map[string]any{"budgetId": budgetID1}); st != http.StatusOK {
+		t.Fatalf("first accept-access=%d body=%s", st, e.raw)
+	}
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/revoke-access", tok, map[string]any{
+		"budgetId": budgetID1, "userId": secondUserID,
+	}); st != http.StatusOK {
+		t.Fatalf("revoke-access=%d body=%s", st, e.raw)
+	}
+
+	// Re-invite: the invitee's elements are still in the budget; accepting again
+	// must skip them instead of violating UNIQUE (budget_id, external_id).
+	grant()
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/accept-access", other, map[string]any{"budgetId": budgetID1}); st != http.StatusOK {
+		t.Fatalf("second accept-access=%d body=%s", st, e.raw)
+	}
+	var n int
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id=? AND external_id=?`, budgetID1, otherCatID).Scan(&n)
+	if n != 1 {
+		t.Fatalf("elements for invitee category=%d want 1", n)
+	}
+}
+
 func TestDeclineAccess_RemovesOwnRow(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

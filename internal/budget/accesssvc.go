@@ -79,12 +79,18 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		if serr := s.access.SaveAccess(txCtx, grant); serr != nil {
 			return serr
 		}
-		// Seed the newly-accepted user's category + tag elements.
-		pos, serr := s.seedCategoryElements(txCtx, userID, budgetID, nextElementPosition(b), now)
+		// Seed the newly-accepted user's category + tag elements. Elements may
+		// already exist from an earlier membership (revoke keeps them, and
+		// pre-handshake budgets carry them for pending members) — skip those.
+		existing := make(map[vo.Id]bool, len(b.elements))
+		for _, el := range b.elements {
+			existing[el.ExternalID] = true
+		}
+		pos, serr := s.seedCategoryElements(txCtx, userID, budgetID, nextElementPosition(b), now, existing)
 		if serr != nil {
 			return serr
 		}
-		return s.seedTagElements(txCtx, userID, budgetID, pos, now)
+		return s.seedTagElements(txCtx, userID, budgetID, pos, now, existing)
 	})
 	if err != nil {
 		return nil, err
