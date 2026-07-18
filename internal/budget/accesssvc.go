@@ -114,7 +114,12 @@ func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req model.Revo
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.access.DeleteAccess(txCtx, budgetID, invitedID)
+		if derr := s.access.DeleteAccess(txCtx, budgetID, invitedID); derr != nil {
+			return derr
+		}
+		// A stale active-budget option would make the revoked user's client keep
+		// requesting a budget that now 403s.
+		return s.users.ClearActiveBudget(txCtx, invitedID, budgetID)
 	}); err != nil {
 		return nil, err
 	}
@@ -135,7 +140,10 @@ func (s *Service) DeclineAccess(ctx context.Context, userID vo.Id, req model.Dec
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.access.DeleteAccess(txCtx, budgetID, userID)
+		if derr := s.access.DeleteAccess(txCtx, budgetID, userID); derr != nil {
+			return derr
+		}
+		return s.users.ClearActiveBudget(txCtx, userID, budgetID)
 	}); err != nil {
 		return nil, err
 	}
