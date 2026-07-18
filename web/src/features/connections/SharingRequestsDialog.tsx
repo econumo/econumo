@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -27,23 +28,18 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
   const acceptBudget = useAcceptBudgetAccess()
   const declineBudget = useDeclineBudgetAccess()
 
-  const [expandedId, setExpandedId] = useState<Id | null>(null)
-  const [folderId, setFolderId] = useState<string>('')
+  const [folderChoices, setFolderChoices] = useState<Record<Id, string>>({})
   const [declineTarget, setDeclineTarget] = useState<PendingInvite | null>(null)
 
-  const startAccept = (invite: PendingInvite) => {
+  const defaultFolderId = folders && folders.length > 0 ? folders[0].id : ''
+  const chosenFolder = (invite: PendingInvite) => folderChoices[invite.id] ?? defaultFolderId
+
+  const accept = (invite: PendingInvite) => {
     if (invite.kind === 'budget') {
       acceptBudget.mutate(invite.id)
       return
     }
-    setExpandedId(invite.id)
-    const last = folders && folders.length > 0 ? folders[folders.length - 1] : undefined
-    setFolderId(last ? last.id : '')
-  }
-
-  const confirmAccept = (invite: PendingInvite) => {
-    acceptAccount.mutate({ accountId: invite.id, folderId: folderId || undefined })
-    setExpandedId(null)
+    acceptAccount.mutate({ accountId: invite.id, folderId: chosenFolder(invite) || undefined })
   }
 
   const confirmDecline = () => {
@@ -66,71 +62,66 @@ export function SharingRequestsDialog({ open, onClose }: SharingRequestsDialogPr
         {invites.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('connections.sharing_requests.empty')}</p>
         ) : (
-          invites.map((invite) => {
-            const isExpanded = invite.kind === 'account' && expandedId === invite.id
-            return (
-              <div key={`${invite.kind}-${invite.id}`} className="flex flex-col gap-3 rounded-lg bg-econumo-card p-3">
-                <div className="flex items-center gap-3">
-                  <UserAvatar avatar={invite.owner.avatar} size="md" />
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium">
-                      {t('connections.sharing_requests.invited_you', { name: invite.owner.name })}
-                    </span>
-                    <span className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
-                      <span>{t(`connections.sharing_requests.${invite.kind}`)}</span>
-                      <span>·</span>
-                      <span className="truncate">{invite.name}</span>
-                      <span>·</span>
-                      <span>{t(`connections.${invite.kind}s.roles.${invite.role}`)}</span>
-                    </span>
-                  </div>
+          invites.map((invite) => (
+            <div key={`${invite.kind}-${invite.id}`} className="flex flex-col gap-3 rounded-lg bg-econumo-card p-3">
+              <div className="flex items-center gap-3">
+                <UserAvatar avatar={invite.owner.avatar} size="md" />
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium">
+                    {t('connections.sharing_requests.invited_you', { name: invite.owner.name })}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                    <span>{t(`connections.sharing_requests.${invite.kind}`)}</span>
+                    <span>·</span>
+                    <span className="truncate">{invite.name}</span>
+                    <span>·</span>
+                    <span>{t(`connections.${invite.kind}s.roles.${invite.role}`)}</span>
+                  </span>
                 </div>
-
-                {isExpanded ? (
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor={`sharing-request-folder-${invite.id}`}>
-                      {t('connections.sharing_requests.choose_folder')}
-                    </Label>
-                    <Select value={folderId} onValueChange={setFolderId}>
-                      <SelectTrigger id={`sharing-request-folder-${invite.id}`} className="w-full">
-                        <SelectValue placeholder={t('connections.sharing_requests.general_folder_hint')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {folders && folders.length > 0 ? (
-                          folders.map((folder) => (
-                            <SelectItem key={folder.id} value={folder.id}>
-                              {folder.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value={NO_FOLDER_OPTION} disabled>
-                            {t('connections.sharing_requests.general_folder_hint')}
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <div className={dialogActionsClass}>
-                      <Button type="button" variant="secondary" onClick={() => setExpandedId(null)}>
-                        {t('common.button.cancel.label')}
-                      </Button>
-                      <Button type="button" onClick={() => confirmAccept(invite)}>
-                        {t('common.button.accept.label')}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={dialogActionsClass}>
-                    <Button type="button" variant="destructive" onClick={() => setDeclineTarget(invite)}>
-                      {t('common.button.decline.label')}
-                    </Button>
-                    <Button type="button" onClick={() => startAccept(invite)}>
-                      {t('common.button.accept.label')}
-                    </Button>
-                  </div>
-                )}
               </div>
-            )
-          })
+
+              {invite.kind === 'account' ? (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor={`sharing-request-folder-${invite.id}`}>
+                    {t('connections.sharing_requests.choose_folder')}
+                  </Label>
+                  <Select
+                    value={chosenFolder(invite)}
+                    onValueChange={(value) => setFolderChoices((prev) => ({ ...prev, [invite.id]: value }))}
+                  >
+                    <SelectTrigger id={`sharing-request-folder-${invite.id}`} className="w-full">
+                      <SelectValue placeholder={t('connections.sharing_requests.general_folder_hint')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {folders && folders.length > 0 ? (
+                        folders.map((folder) => (
+                          <SelectItem key={folder.id} value={folder.id}>
+                            <span className={`flex items-center gap-1.5 ${folder.isVisible === 0 ? 'text-muted-foreground' : ''}`}>
+                              {folder.name}
+                              {folder.isVisible === 0 ? <EyeOff className="size-3.5" aria-label="hidden" /> : null}
+                            </span>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value={NO_FOLDER_OPTION} disabled>
+                          {t('connections.sharing_requests.general_folder_hint')}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
+              <div className={dialogActionsClass}>
+                <Button type="button" variant="destructive" onClick={() => setDeclineTarget(invite)}>
+                  {t('common.button.decline.label')}
+                </Button>
+                <Button type="button" onClick={() => accept(invite)}>
+                  {t('common.button.accept.label')}
+                </Button>
+              </div>
+            </div>
+          ))
         )}
       </div>
 

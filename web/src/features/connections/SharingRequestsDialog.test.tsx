@@ -62,7 +62,7 @@ it('lists pending account and budget invites with owner, kind and role', async (
   expect(screen.getByText('Full control')).toBeInTheDocument()
 })
 
-it('account accept reveals a folder select preselected to the last folder, then posts accountId+folderId', async () => {
+it('account row shows the folder select immediately, preselected to the first folder, and accept posts accountId+folderId', async () => {
   let body: unknown
   server.use(
     ...coreHandlers({ accounts: [pendingAccount], folders: testFolders }),
@@ -74,11 +74,47 @@ it('account accept reveals a folder select preselected to the last folder, then 
   const user = userEvent.setup()
   renderDialog()
   await screen.findByText('Shared cash')
-  await user.click(screen.getByRole('button', { name: 'Accept' }))
   expect(await screen.findByText('Choose a folder for this account')).toBeInTheDocument()
-  expect(screen.getByRole('combobox')).toHaveTextContent('Savings')
+  await waitFor(() => expect(screen.getByRole('combobox')).toHaveTextContent('General'))
+  await user.click(screen.getByRole('button', { name: 'Accept' }))
+  await waitFor(() => expect(body).toEqual({ accountId: 'a-pending', folderId: 'f1' }))
+})
+
+it('accept posts the folder chosen in the select', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ accounts: [pendingAccount], folders: testFolders }),
+    http.post('*/api/v1/account/accept-access', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  await screen.findByText('Shared cash')
+  await waitFor(() => expect(screen.getByRole('combobox')).toHaveTextContent('General'))
+  await user.click(screen.getByRole('combobox'))
+  await user.click(await screen.findByRole('option', { name: 'Savings' }))
   await user.click(screen.getByRole('button', { name: 'Accept' }))
   await waitFor(() => expect(body).toEqual({ accountId: 'a-pending', folderId: 'f2' }))
+})
+
+it('marks hidden folders in the folder select', async () => {
+  server.use(
+    ...coreHandlers({
+      accounts: [pendingAccount],
+      folders: [...testFolders, { id: 'f3', name: 'Archive', position: 2, isVisible: 0 }],
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  await screen.findByText('Shared cash')
+  await waitFor(() => expect(screen.getByRole('combobox')).toHaveTextContent('General'))
+  await user.click(screen.getByRole('combobox'))
+  const hidden = await screen.findByRole('option', { name: /Archive/ })
+  expect(hidden.querySelector('[aria-label="hidden"]')).not.toBeNull()
+  const visible = screen.getByRole('option', { name: 'General' })
+  expect(visible.querySelector('[aria-label="hidden"]')).toBeNull()
 })
 
 it('account accept with zero folders shows a disabled general-folder option and omits folderId', async () => {
@@ -93,7 +129,6 @@ it('account accept with zero folders shows a disabled general-folder option and 
   const user = userEvent.setup()
   renderDialog()
   await screen.findByText('Shared cash')
-  await user.click(screen.getByRole('button', { name: 'Accept' }))
   expect(await screen.findByText('Choose a folder for this account')).toBeInTheDocument()
   await user.click(screen.getByRole('combobox'))
   expect(await screen.findByRole('option', { name: 'General (will be created)' })).toHaveAttribute('aria-disabled', 'true')
