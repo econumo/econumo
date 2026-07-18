@@ -74,6 +74,55 @@ func notAvailableCode(msg string) string {
 	return errs.CodeTransactionAccountNotAvailable
 }
 
+// checkReferences authorizes the non-source references a create/update carries
+// (the source account is already checked by the caller). Without this a valid
+// foreign UUID would be enough to touch another user's data:
+//   - a transfer's recipient account needs the SAME write access as the source,
+//     else a caller could inject a leg into a stranger's account (its balance is
+//     SUM(amount_recipient) over that account id);
+//   - an optional category/payee/tag must belong to the CALLER — a caller
+//     categorizes a transaction (even one on a shared account) with their own
+//     entities, so a foreign category/payee/tag id is rejected.
+func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st model.NewState) error {
+	if st.AccountRecipID != nil {
+		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
+			return err
+		}
+	}
+	if st.CategoryID != nil {
+		if err := s.requireOwnedEntity(ctx, userID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
+			return err
+		}
+	}
+	if st.PayeeID != nil {
+		if err := s.requireOwnedEntity(ctx, userID, *st.PayeeID, s.importer.PayeesByOwner); err != nil {
+			return err
+		}
+	}
+	if st.TagID != nil {
+		if err := s.requireOwnedEntity(ctx, userID, *st.TagID, s.importer.TagsByOwner); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// requireOwnedEntity confirms id is among ownerID's entities (the list is
+// owner-scoped, so membership IS the ownership check). A foreign or unknown id
+// yields the frozen item-not-available validation error.
+func (s *Service) requireOwnedEntity(ctx context.Context, ownerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) error {
+	items, err := list(ctx, ownerID)
+	if err != nil {
+		return err
+	}
+	for _, it := range items {
+		if it.ID == id.String() {
+			return nil
+		}
+	}
+	return &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
+}
+
 // checkViewAccess verifies the user may VIEW the account's transactions: owner
 // OR any shared access, else AccessDenied (HTTP 403). The visible-account set
 // already computes own + shared, so membership in it is exactly the access test.

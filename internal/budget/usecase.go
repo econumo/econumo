@@ -101,6 +101,30 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	return &budgetAggregate{budget: b, access: access, excludedAccountIDs: excluded, folders: folders, envelopes: envelopes, elements: elements}, nil
 }
 
+// hasFolder reports whether folderID is one of this budget's folders. Child
+// mutators role-check the request's budget, then reach a folder by its own id;
+// this guards against reaching a folder that belongs to a DIFFERENT budget
+// (the id alone is not authorization).
+func (a *budgetAggregate) hasFolder(folderID vo.Id) bool {
+	for _, f := range a.folders {
+		if f.ID.Equal(folderID) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasEnvelope reports whether envelopeID is one of this budget's envelopes (see
+// hasFolder for why the id alone is insufficient authorization).
+func (a *budgetAggregate) hasEnvelope(envelopeID vo.Id) bool {
+	for _, e := range a.envelopes {
+		if e.ID.Equal(envelopeID) {
+			return true
+		}
+	}
+	return false
+}
+
 // roleGuest returns the guest role (the read-only "reader" role).
 func roleGuest() model.BudgetRole { return model.BudgetRoleGuest }
 

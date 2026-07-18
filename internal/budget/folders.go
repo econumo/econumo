@@ -79,6 +79,9 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req model.Upda
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if !b.hasFolder(folderID) {
+		return nil, accessDenied()
+	}
 	now := s.clock.Now()
 	var updated *model.BudgetFolder
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
@@ -111,6 +114,9 @@ func (s *Service) DeleteFolder(ctx context.Context, userID vo.Id, req model.Dele
 		return nil, err
 	}
 	if !s.canUpdate(b, userID) {
+		return nil, accessDenied()
+	}
+	if !b.hasFolder(folderID) {
 		return nil, accessDenied()
 	}
 	now := s.clock.Now()

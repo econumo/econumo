@@ -106,6 +106,9 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if !b.hasEnvelope(envelopeID) {
+		return nil, accessDenied()
+	}
 	now := s.clock.Now()
 	var position int16
 	var folderID *vo.Id
@@ -179,6 +182,9 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 		return nil, err
 	}
 	if !s.canDelete(b, userID) {
+		return nil, accessDenied()
+	}
+	if !b.hasEnvelope(envelopeID) {
 		return nil, accessDenied()
 	}
 	now := s.clock.Now()
