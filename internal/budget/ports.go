@@ -11,6 +11,13 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// Connections reports whether two users hold a connection link — the
+// precondition for sharing a budget (grant-access may only target a connected
+// user). Satisfied by the connection feature at wiring time.
+type Connections interface {
+	AreConnected(ctx context.Context, a, b vo.Id) (bool, error)
+}
+
 // UserLookup resolves a budget participant's id/name/avatar + their currency code.
 type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)

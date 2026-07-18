@@ -102,14 +102,15 @@ func (s *Service) UpdateLanguage(ctx context.Context, userID vo.Id, req model.Up
 // found" validation error (HTTP 400). The id format is validated tier-1
 // (NotBlank + Uuid).
 func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateActiveBudgetRequest) (*model.UpdateActiveBudgetResult, error) {
-	exists, err := s.budgets.Exists(ctx, req.Value)
+	hasAccess, err := s.budgets.HasAccess(ctx, userID, req.Value)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
+	if !hasAccess {
 		// NewNotFound renders "Plan not found" verbatim at HTTP 400; the errors
 		// {} vs [] shape is a pre-existing cross-cutting envelope divergence, not
-		// specific to this endpoint.
+		// specific to this endpoint. A budget the caller can't access is
+		// indistinguishable from a missing one — a foreign id can't be stashed.
 		return nil, errs.NewNotFound("Plan not found")
 	}
 	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {

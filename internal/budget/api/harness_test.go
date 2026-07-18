@@ -18,6 +18,7 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	domcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -109,6 +110,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 		server.NewBudgetAccountLookup(accountRepo),
 		currencyLookup,
 		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), server.NewBudgetTagMetadataLookup(tagRepo), server.NewBudgetPayeeMetadataLookup(payeeRepo)),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		txm, clk,
 	)
 

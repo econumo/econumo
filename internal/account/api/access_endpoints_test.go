@@ -203,6 +203,35 @@ func TestGrantAccess_Stranger_403(t *testing.T) {
 	assertDenied(t, status, env)
 }
 
+// TestGrantAccess_UnconnectedUser_403: an account may only be shared with a
+// connected user, so granting to a stranger (existing but not connected) is
+// denied.
+func TestGrantAccess_UnconnectedUser_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "0")
+	const strangerID = "44444444-4444-4444-4444-444444444444"
+	h.f.User(fixture.User{ID: strangerID, Email: "stranger@example.test", Name: "Stranger", Avatar: "https://avatar.test/s", Password: "pw", Salt: seedSalt})
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/grant-access", tok, map[string]any{
+		"accountId": acctID, "userId": strangerID, "role": "user",
+	})
+	assertDenied(t, status, env)
+}
+
+// TestGrantAccess_Self_403: a self-grant is never allowed (you are not
+// "connected" to yourself).
+func TestGrantAccess_Self_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "0")
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/grant-access", tok, map[string]any{
+		"accountId": acctID, "userId": seedUserID, "role": "user",
+	})
+	assertDenied(t, status, env)
+}
+
 // TestAcceptAccess_NoPending_403: a caller with no grant at all (pending or
 // otherwise) on the account cannot accept.
 func TestAcceptAccess_NoPending_403(t *testing.T) {

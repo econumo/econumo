@@ -21,6 +21,7 @@ const (
 	attackerBudgetID = "bbbb2222-0000-7000-8000-0000000000a1"
 	victimFolderID   = "bf000000-0000-7000-8000-0000000000f1"
 	victimEnvID      = "eeee2222-0000-7000-8000-0000000000e1"
+	attackerAcctID   = "aaaa9999-0000-7000-8000-0000000000a1"
 )
 
 // seedAttackerBudget adds the second user and a budget they own (seeded
@@ -130,5 +131,86 @@ func TestDeleteEnvelope_ForeignBudget_DeniedAndPreserved(t *testing.T) {
 	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_envelopes WHERE id = ?`, victimEnvID).Scan(&n)
 	if n != 1 {
 		t.Fatalf("victim envelope rows=%d want 1 (deleted across budgets)", n)
+	}
+}
+
+// A client-supplied folder id that already exists (here, in the victim's budget)
+// must not be reusable on create — the upsert would otherwise overwrite the
+// existing row rather than create a new one.
+func TestCreateFolder_ReusedForeignId_DeniedAndUnchanged(t *testing.T) {
+	h := newHarness(t)
+	owner := h.token(t)
+	seedBudget(t, h, owner)
+	seedVictimFolder(t, h, owner)
+	attacker := seedAttackerBudget(t, h)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", attacker, map[string]any{
+		"budgetId": attackerBudgetID, "id": victimFolderID, "name": "Stolen",
+	})
+	assertBudgetDenied(t, status, env)
+
+	var name, budgetID string
+	h.db.QueryRow(`SELECT name, budget_id FROM budgets_folders WHERE id = ?`, victimFolderID).Scan(&name, &budgetID)
+	if name != "Victim Bills" || budgetID != budgetID1 {
+		t.Fatalf("victim folder name=%q budget=%q want %q/%q (overwritten via create)", name, budgetID, "Victim Bills", budgetID1)
+	}
+}
+
+func TestCreateEnvelope_ReusedForeignId_DeniedAndUnchanged(t *testing.T) {
+	h := newHarness(t)
+	owner := h.token(t)
+	seedBudget(t, h, owner)
+	seedVictimEnvelope(t, h, owner)
+	attacker := seedAttackerBudget(t, h)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", attacker, map[string]any{
+		"budgetId": attackerBudgetID, "id": victimEnvID, "name": "Stolen", "icon": "skull",
+		"currencyId": usdID, "categories": []string{},
+	})
+	assertBudgetDenied(t, status, env)
+
+	var name string
+	h.db.QueryRow(`SELECT name FROM budgets_envelopes WHERE id = ?`, victimEnvID).Scan(&name)
+	if name != "Victim Env" {
+		t.Fatalf("victim envelope name=%q want %q (overwritten via create)", name, "Victim Env")
+	}
+}
+
+// A budget may only be shared with a connected user; granting to a stranger
+// (existing but not connected) is denied.
+func TestBudgetGrantAccess_UnconnectedUser_Denied(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	const strangerID = "44444444-4444-4444-4444-444444444444"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.User(fixture.User{ID: strangerID, Name: "Stranger", Avatar: "https://avatar.test/s", Salt: seedSalt})
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/grant-access", tok, map[string]any{
+		"budgetId": budgetID1, "userId": strangerID, "role": "user",
+	})
+	assertBudgetDenied(t, status, env)
+}
+
+// include/exclude-account must require write access to the BUDGET, not just
+// ownership of the account being toggled.
+func TestExcludeAccount_ForeignBudget_Denied(t *testing.T) {
+	h := newHarness(t)
+	owner := h.token(t)
+	seedBudget(t, h, owner) // owner's budgetID1
+	attacker := h.seedSecondUser(t)
+	// The attacker owns an account of their own but has no access to budgetID1.
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Account(fixture.Account{ID: attackerAcctID, UserID: secondUserID, CurrencyID: usdID, Name: "Mine"})
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", attacker, map[string]any{
+		"id": budgetID1, "accountId": attackerAcctID,
+	})
+	assertBudgetDenied(t, status, env)
+
+	var n int
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_excluded_accounts WHERE budget_id = ?`, budgetID1).Scan(&n)
+	if n != 0 {
+		t.Fatalf("excluded-account rows=%d want 0 (wrote to a foreign budget)", n)
 	}
 }

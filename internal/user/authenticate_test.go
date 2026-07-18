@@ -43,7 +43,7 @@ func newAuthEnvFull(t *testing.T) (*appuser.Service, *userrepo.AccessTokenRepo, 
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
 	pwreqs := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
-	budgets := server.NewUserBudgetExistence(db.Engine, db.TX)
+	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, pwreqs, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, false)
 
 	uid, err := svc.AdminCreateUser(context.Background(), "Auth Tester", "auth@econumo.test", "secretpass")

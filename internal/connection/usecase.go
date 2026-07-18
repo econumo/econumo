@@ -18,6 +18,7 @@ type Service struct {
 	users         UserLookup
 	accountAccess AccountAccessRevoker
 	budgetAccess  BudgetAccessRevoker
+	limiter       AttemptLimiter
 	tx            port.TxRunner
 	clock         port.Clock
 }
@@ -33,12 +34,13 @@ func NewService(
 	users UserLookup,
 	accountAccess AccountAccessRevoker,
 	budgetAccess BudgetAccessRevoker,
+	limiter AttemptLimiter,
 	tx port.TxRunner,
 	clock port.Clock,
 ) *Service {
 	return &Service{
 		access: access, invites: invites,
-		users: users, accountAccess: accountAccess, budgetAccess: budgetAccess, tx: tx, clock: clock,
+		users: users, accountAccess: accountAccess, budgetAccess: budgetAccess, limiter: limiter, tx: tx, clock: clock,
 	}
 }
 

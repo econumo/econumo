@@ -33,3 +33,16 @@ type BudgetAccessRevoker interface {
 type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
 }
+
+// AttemptLimiter is the brute-force-protection seam for accept-invite: the
+// invite code is short, so an authenticated caller must not be able to spray
+// guesses. Allow reports whether another attempt may proceed (an
+// *errs.TooManyRequestsError, HTTP 429, when over the cap); Fail records an
+// attempt. A nil limiter disables protection (CLI, tests).
+type AttemptLimiter interface {
+	Allow(scope, key string) error
+	Fail(scope, key string)
+}
+
+// RateScopeAcceptInvite keys the accept-invite limiter config in internal/server.
+const RateScopeAcceptInvite = "accept-invite"

@@ -74,7 +74,7 @@ func TestDeleteConnection_RevokesAccountAndBudgetAccessThenLink(t *testing.T) {
 	budgetRevoker := &recordingBudgetAccessRevoker{}
 	accessRepo := &recordingAccountAccessRepo{}
 
-	s := NewService(accessRepo, nil, nil, accountRevoker, budgetRevoker, stubTx{}, nil)
+	s := NewService(accessRepo, nil, nil, accountRevoker, budgetRevoker, nil, stubTx{}, nil)
 
 	res, err := s.DeleteConnection(context.Background(), userID, model.DeleteConnectionRequest{Id: connectedID.String()})
 	if err != nil {
@@ -102,7 +102,7 @@ func TestDeleteConnection_NilRevokers_SkipsUnwindStillDeletesLink(t *testing.T) 
 
 	// Both revokers nil: delete-connection must not panic, and must still
 	// remove the connection link.
-	s := NewService(accessRepo, nil, nil, nil, nil, stubTx{}, nil)
+	s := NewService(accessRepo, nil, nil, nil, nil, nil, stubTx{}, nil)
 
 	if _, err := s.DeleteConnection(context.Background(), userID, model.DeleteConnectionRequest{Id: connectedID.String()}); err != nil {
 		t.Fatalf("DeleteConnection: %v", err)
@@ -119,7 +119,7 @@ func TestDeleteConnection_AccountRevokerError_PropagatesAndSkipsLinkDelete(t *te
 	accountRevoker := &recordingAccountAccessRevoker{err: sentinel}
 	accessRepo := &recordingAccountAccessRepo{}
 
-	s := NewService(accessRepo, nil, nil, accountRevoker, nil, stubTx{}, nil)
+	s := NewService(accessRepo, nil, nil, accountRevoker, nil, nil, stubTx{}, nil)
 
 	_, err := s.DeleteConnection(context.Background(), userID, model.DeleteConnectionRequest{Id: connectedID.String()})
 	if !errors.Is(err, sentinel) {
@@ -132,7 +132,7 @@ func TestDeleteConnection_AccountRevokerError_PropagatesAndSkipsLinkDelete(t *te
 
 func TestDeleteConnection_Self_ValidationError(t *testing.T) {
 	userID := vo.NewId()
-	s := NewService(&recordingAccountAccessRepo{}, nil, nil, nil, nil, stubTx{}, nil)
+	s := NewService(&recordingAccountAccessRepo{}, nil, nil, nil, nil, nil, stubTx{}, nil)
 	if _, err := s.DeleteConnection(context.Background(), userID, model.DeleteConnectionRequest{Id: userID.String()}); err == nil {
 		t.Fatalf("want validation error deleting oneself")
 	}

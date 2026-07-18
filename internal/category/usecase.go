@@ -67,9 +67,10 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *model
 			return err
 		}
 		if !c.UserID.Equal(userID) {
-			// The 403 envelope message is intentionally EMPTY here (frozen wire
-			// behaviour for the ownership-denied path).
-			return errs.NewAccessDenied("")
+			// Report a category owned by someone else exactly like a missing one
+			// (the same NotFound the repo returns above), so the response can't be
+			// used to probe which category ids exist.
+			return errs.NewNotFound("Category not found")
 		}
 		fn(c, s.clock.Now())
 		if err := s.repo.Save(ctx, c); err != nil {

@@ -10,6 +10,7 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -33,7 +34,8 @@ func newAccessSvc(t *testing.T, db *dbtest.DB) *appaccount.Service {
 	accCur := server.NewAccountCurrencyLookup(curLookup)
 	accUser := server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm))
 	opGuard := operationrepo.NewGuard(db.Engine, txm)
-	return appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, txm, opGuard, clock.New())
+	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm))
+	return appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, connections, txm, opGuard, clock.New())
 }
 
 const (
@@ -50,6 +52,11 @@ func accessFixture(t *testing.T, db *dbtest.DB) (*fixture.Builder, string) {
 	f.User(fixture.User{ID: accessOwnerID, Name: "Owner"})
 	f.User(fixture.User{ID: accessUserBID, Name: "UserB"})
 	f.User(fixture.User{ID: accessUserCID, Name: "UserC"})
+	// Sharing requires a connection; connect the owner to both grantees, and
+	// B<->C (an accepted admin, userB, re-shares to userC in one test).
+	f.Connect(accessOwnerID, accessUserBID)
+	f.Connect(accessOwnerID, accessUserCID)
+	f.Connect(accessUserBID, accessUserCID)
 	acctID := f.Account(fixture.Account{UserID: accessOwnerID, Name: "Shared"})
 	return f, acctID
 }

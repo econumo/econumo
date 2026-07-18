@@ -99,7 +99,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	repo := userrepo.NewSQLiteRepo(txm)
 	readRepo := userrepo.NewReadRepo("sqlite", txm)
 	currency := currencyrepo.New("sqlite", txm)
-	budgets := server.NewUserBudgetExistence("sqlite", txm)
+	budgets := server.NewUserBudgetAccess("sqlite", txm)
 	passwordReqs := userrepo.NewPasswordRequestRepo("sqlite", txm)
 	// Discard mailer — the reset test reads the code from the DB, so email output
 	// is irrelevant here (and we keep it off stdout, unlike the console default).

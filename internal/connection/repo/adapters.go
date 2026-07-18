@@ -31,6 +31,25 @@ func (r *AccountAccessResolver) AccountOwner(ctx context.Context, accountID vo.I
 	return r.access.AccountOwner(ctx, accountID)
 }
 
+// AreConnected reports whether the two users hold a symmetric connection link —
+// the precondition for sharing an account or budget. Same-user is never
+// "connected" (a self-grant is meaningless).
+func (r *AccountAccessResolver) AreConnected(ctx context.Context, a, b vo.Id) (bool, error) {
+	if a.Equal(b) {
+		return false, nil
+	}
+	ids, err := r.access.ConnectedUserIDs(ctx, a)
+	if err != nil {
+		return false, err
+	}
+	for _, id := range ids {
+		if id.Equal(b) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // HasWriteGrant reports whether the user holds an ACCEPTED admin OR user grant
 // on the account — the transaction feature's write-access check (a guest
 // grant, an unaccepted grant, or no grant at all is denied). A missing grant

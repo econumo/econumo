@@ -119,6 +119,26 @@ func TestAcceptInvite_ConnectsUsers(t *testing.T) {
 	}
 }
 
+// TestAcceptInvite_RateLimited: the short invite code must not be brute-forceable
+// — after the per-user cap of attempts in a window, further tries are rejected
+// with 429 (regardless of whether the code was valid).
+func TestAcceptInvite_RateLimited(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t, thirdUserID, thirdEmail)
+
+	// A valid-format (5 hex chars) but nonexistent code — each attempt counts.
+	for i := 0; i < acceptInviteCap; i++ {
+		status, env := h.do(t, http.MethodPost, "/api/v1/connection/accept-invite", tok, map[string]any{"code": "abcde"})
+		if status == http.StatusTooManyRequests {
+			t.Fatalf("hit 429 too early at attempt %d (cap %d); body: %s", i, acceptInviteCap, env.raw)
+		}
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/connection/accept-invite", tok, map[string]any{"code": "abcde"})
+	if status != http.StatusTooManyRequests {
+		t.Fatalf("attempt %d status=%d want 429 (rate limited); body: %s", acceptInviteCap+1, status, env.raw)
+	}
+}
+
 func TestAcceptInvite_BadCodeLength_400(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t, thirdUserID, thirdEmail)

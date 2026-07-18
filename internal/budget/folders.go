@@ -31,6 +31,9 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 	now := s.clock.Now()
 	var created *model.BudgetFolder
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if ferr := s.requireFreeFolderID(txCtx, folderID); ferr != nil {
+			return ferr
+		}
 		// Insert the new folder at position 0 and renumber the existing folders
 		// 1,2,3,... in their current position-ASC order, so the new folder lands at
 		// the FRONT, not appended at the end.

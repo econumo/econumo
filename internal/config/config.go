@@ -33,6 +33,7 @@ type Config struct {
 	RateLimitReset    int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
 	RateLimitRemind   int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
 	RateLimitRegister int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept   int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
 	RateLimitWindow   time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
 	RateLimitGlobal   int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
@@ -137,6 +138,7 @@ func Load() (Config, error) {
 		{&c.RateLimitReset, "ECONUMO_RATE_LIMIT_RESET", 5},
 		{&c.RateLimitRemind, "ECONUMO_RATE_LIMIT_REMIND", 3},
 		{&c.RateLimitRegister, "ECONUMO_RATE_LIMIT_REGISTER", 5},
+		{&c.RateLimitAccept, "ECONUMO_RATE_LIMIT_ACCEPT_INVITE", 10},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)

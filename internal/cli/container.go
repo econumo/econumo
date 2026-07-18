@@ -69,7 +69,7 @@ func newContainer(ctx context.Context) (*container, error) {
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := server.NewUserBudgetExistence(cfg.DatabaseDriver, txm)
+	budgetExistence := server.NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(

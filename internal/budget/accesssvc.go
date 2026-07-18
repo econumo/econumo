@@ -31,6 +31,14 @@ func (s *Service) GrantAccess(ctx context.Context, userID vo.Id, req model.Grant
 	if !s.canShare(b, userID) {
 		return nil, accessDenied()
 	}
+	// A budget may only be shared with a connected user (never with yourself).
+	connected, err := s.connections.AreConnected(ctx, userID, invitedID)
+	if err != nil {
+		return nil, err
+	}
+	if !connected {
+		return nil, accessDenied()
+	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		existing, gerr := s.access.GetAccess(txCtx, budgetID, invitedID)
