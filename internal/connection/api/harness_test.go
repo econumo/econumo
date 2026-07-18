@@ -13,7 +13,9 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appbudget "github.com/econumo/econumo/internal/budget"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
 	appconnection "github.com/econumo/econumo/internal/connection"
 	handlerconnection "github.com/econumo/econumo/internal/connection/api"
@@ -21,7 +23,9 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -94,12 +98,23 @@ func newHarness(t *testing.T) *harness {
 	accountSvc := appaccount.NewService(
 		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, txm, opGuard, clock.New(),
 	)
+	budgetRepo := budgetrepo.NewRepo("sqlite", txm)
+	// Only the slices RemoveMember touches are wired (repo, metadata, tx, clock).
+	budgetSvc := appbudget.NewService(
+		budgetRepo, nil, nil, nil, nil, nil, nil,
+		budgetrepo.NewMetadataLookup(
+			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo("sqlite", txm)),
+			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", txm)),
+			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", txm)),
+		),
+		txm, clock.New(),
+	)
 	svc := appconnection.NewService(
 		connectionrepo.NewRepo("sqlite", txm),
 		connectionrepo.NewInviteRepo("sqlite", txm),
 		userOwnerLookup,
 		server.NewConnectionAccountAccessRevoker(accountSvc),
-		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)),
+		server.NewConnectionBudgetRevoker(budgetRepo, budgetSvc),
 		txm, clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

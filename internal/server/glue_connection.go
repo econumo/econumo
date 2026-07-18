@@ -40,7 +40,12 @@ func (r *ConnectionAccountAccessRevoker) RevokeAccessBetween(ctx context.Context
 type connectionBudgetRepoPort interface {
 	ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, error)
 	ListAccess(ctx context.Context, budgetID vo.Id) ([]*model.BudgetAccess, error)
-	DeleteAccess(ctx context.Context, budgetID, userID vo.Id) error
+}
+
+// budgetMemberRemover is the budget-service slice the revoker needs: drop a
+// member's access AND their seeded records (elements, limits, envelope links).
+type budgetMemberRemover interface {
+	RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error
 }
 
 // ConnectionBudgetRevoker drops budget-sharing between two users in both
@@ -49,13 +54,15 @@ type connectionBudgetRepoPort interface {
 // connection.
 type ConnectionBudgetRevoker struct {
 	budgets connectionBudgetRepoPort
+	remover budgetMemberRemover
 }
 
 var _ appconnection.BudgetAccessRevoker = (*ConnectionBudgetRevoker)(nil)
 
-// NewConnectionBudgetRevoker wires the revoker over the budget repository.
-func NewConnectionBudgetRevoker(budgets connectionBudgetRepoPort) *ConnectionBudgetRevoker {
-	return &ConnectionBudgetRevoker{budgets: budgets}
+// NewConnectionBudgetRevoker wires the revoker over the budget repository
+// (listing) and the budget service (member removal).
+func NewConnectionBudgetRevoker(budgets connectionBudgetRepoPort, remover budgetMemberRemover) *ConnectionBudgetRevoker {
+	return &ConnectionBudgetRevoker{budgets: budgets, remover: remover}
 }
 
 // RevokeBetween removes any budget-access grants shared between users a and b:
@@ -68,9 +75,9 @@ func (r *ConnectionBudgetRevoker) RevokeBetween(ctx context.Context, a, b vo.Id)
 	return r.revokeDirection(ctx, b, a)
 }
 
-// revokeDirection: for each budget in `owner`'s list, if `other` holds access,
-// delete it. ListForUser returns owned + accessible budgets; the DeleteAccess is
-// a no-op when `other` has no row, so this is safe over the full list.
+// revokeDirection: for each budget in `owner`'s list where `other` holds
+// access, remove that membership (access row + the member's seeded records).
+// ListForUser returns owned + accessible budgets.
 func (r *ConnectionBudgetRevoker) revokeDirection(ctx context.Context, owner, other vo.Id) error {
 	budgets, err := r.budgets.ListForUser(ctx, owner)
 	if err != nil {
@@ -83,7 +90,7 @@ func (r *ConnectionBudgetRevoker) revokeDirection(ctx context.Context, owner, ot
 		}
 		for _, acc := range access {
 			if acc.UserID.Equal(other) {
-				if derr := r.budgets.DeleteAccess(ctx, bud.ID, other); derr != nil {
+				if derr := r.remover.RemoveMember(ctx, bud.ID, other); derr != nil {
 					return derr
 				}
 				break

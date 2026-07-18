@@ -678,43 +678,126 @@ func TestAcceptAccess_MarksAccepted(t *testing.T) {
 	}
 }
 
-func TestAcceptAccess_ReinviteAfterRevoke_SkipsExistingElements(t *testing.T) {
+// seedInviteeCategory gives the second user an own category so accepting an
+// invite seeds a budget element for it.
+const otherCatID = "33333333-3333-3333-3333-333333333333"
+
+func seedInviteeCategory(t *testing.T, h *harness) {
+	t.Helper()
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: otherCatID, UserID: secondUserID, Name: "Groceries", Type: 0, Icon: "local_offer"})
+}
+
+func grantSecondUser(t *testing.T, h *harness, tok string) {
+	t.Helper()
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/grant-access", tok, map[string]any{
+		"budgetId": budgetID1, "userId": secondUserID, "role": "user",
+	}); st != http.StatusOK {
+		t.Fatalf("grant-access=%d body=%s", st, e.raw)
+	}
+}
+
+func inviteeElementCount(t *testing.T, h *harness) int {
+	t.Helper()
+	var n int
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id=? AND external_id=?`, budgetID1, otherCatID).Scan(&n)
+	return n
+}
+
+func TestRevokeAccess_RemovesInviteeRecords(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 	other := h.seedSecondUser(t)
-	// The invitee owns a category, so accepting seeds an element for it.
-	const otherCatID = "33333333-3333-3333-3333-333333333333"
-	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
-	f.Category(fixture.Category{ID: otherCatID, UserID: secondUserID, Name: "Groceries", Type: 0, Icon: "local_offer"})
+	seedInviteeCategory(t, h)
 
-	grant := func() {
-		if st, e := h.do(t, http.MethodPost, "/api/v1/budget/grant-access", tok, map[string]any{
-			"budgetId": budgetID1, "userId": secondUserID, "role": "user",
-		}); st != http.StatusOK {
-			t.Fatalf("grant-access=%d body=%s", st, e.raw)
-		}
-	}
-	grant()
+	grantSecondUser(t, h, tok)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/accept-access", other, map[string]any{"budgetId": budgetID1}); st != http.StatusOK {
-		t.Fatalf("first accept-access=%d body=%s", st, e.raw)
+		t.Fatalf("accept-access=%d body=%s", st, e.raw)
 	}
+	if n := inviteeElementCount(t, h); n != 1 {
+		t.Fatalf("elements after accept=%d want 1", n)
+	}
+	// The invitee's category also sits inside an owner envelope.
+	const cleanupEnvID = "44444444-4444-4444-4444-444444444444"
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": cleanupEnvID, "name": "Household", "icon": "wallet",
+		"currencyId": usdID, "categories": []string{otherCatID},
+	}); st != http.StatusOK {
+		t.Fatalf("create-envelope=%d body=%s", st, e.raw)
+	}
+
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/revoke-access", tok, map[string]any{
 		"budgetId": budgetID1, "userId": secondUserID,
 	}); st != http.StatusOK {
 		t.Fatalf("revoke-access=%d body=%s", st, e.raw)
 	}
+	if n := inviteeElementCount(t, h); n != 0 {
+		t.Fatalf("elements after revoke=%d want 0", n)
+	}
+	var links int
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_envelopes_categories WHERE category_id=?`, otherCatID).Scan(&links)
+	if links != 0 {
+		t.Fatalf("envelope-category links after revoke=%d want 0", links)
+	}
 
-	// Re-invite: the invitee's elements are still in the budget; accepting again
-	// must skip them instead of violating UNIQUE (budget_id, external_id).
-	grant()
+	// Re-invite: accepting again re-seeds a fresh element.
+	grantSecondUser(t, h, tok)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/accept-access", other, map[string]any{"budgetId": budgetID1}); st != http.StatusOK {
 		t.Fatalf("second accept-access=%d body=%s", st, e.raw)
 	}
-	var n int
-	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id=? AND external_id=?`, budgetID1, otherCatID).Scan(&n)
-	if n != 1 {
-		t.Fatalf("elements for invitee category=%d want 1", n)
+	if n := inviteeElementCount(t, h); n != 1 {
+		t.Fatalf("elements after re-accept=%d want 1", n)
+	}
+}
+
+// insertInviteeElement plants an element row for the invitee's category
+// directly, simulating a pre-handshake budget where pending members already
+// have seeded elements.
+func insertInviteeElement(t *testing.T, h *harness) {
+	t.Helper()
+	if _, err := h.db.Exec(
+		`INSERT INTO budgets_elements (id, budget_id, external_id, type, created_at, updated_at, position)
+		 VALUES ('55555555-5555-5555-5555-555555555555', ?, ?, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00', 0)`,
+		budgetID1, otherCatID,
+	); err != nil {
+		t.Fatalf("insert grandfathered element: %v", err)
+	}
+}
+
+func TestAcceptAccess_GrandfatheredElements_Skipped(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	other := h.seedSecondUser(t)
+	seedInviteeCategory(t, h)
+	grantSecondUser(t, h, tok)
+	insertInviteeElement(t, h)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/accept-access", other, map[string]any{"budgetId": budgetID1})
+	if status != http.StatusOK {
+		t.Fatalf("accept-access with pre-seeded element=%d body=%s", status, env.raw)
+	}
+	if n := inviteeElementCount(t, h); n != 1 {
+		t.Fatalf("elements after accept=%d want 1 (no duplicate)", n)
+	}
+}
+
+func TestDeclineAccess_RemovesPendingRecords(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	other := h.seedSecondUser(t)
+	seedInviteeCategory(t, h)
+	grantSecondUser(t, h, tok)
+	insertInviteeElement(t, h)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/decline-access", other, map[string]any{"budgetId": budgetID1})
+	if status != http.StatusOK {
+		t.Fatalf("decline-access=%d body=%s", status, env.raw)
+	}
+	if n := inviteeElementCount(t, h); n != 0 {
+		t.Fatalf("elements after decline=%d want 0", n)
 	}
 }
 

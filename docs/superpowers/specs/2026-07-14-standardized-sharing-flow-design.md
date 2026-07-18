@@ -87,6 +87,14 @@ Owner/admin deletes the row, pending or accepted, with today's cleanup
 (folder membership + `accounts_options`). Revoking a pending row is how the
 sharer cancels an invite.
 
+For **budgets**, revoke (and decline, and the delete-connection unwind) also
+removes the member's seeded records from the budget: their category/tag
+elements (limits cascade) and their categories' envelope assignments. Revoke
+is deliberate, so the member's limit history goes with them; re-accepting a
+later invite re-seeds fresh elements. Budget accept stays idempotent
+regardless (it skips already-present `external_id`s) to tolerate
+pre-handshake budgets whose pending members carry grandfathered elements.
+
 ### Unaccepted row = no access
 
 Everywhere the backend currently asks "does this user have an

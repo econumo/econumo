@@ -102,6 +102,75 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 	return &model.AcceptAccessResult{Items: list.Items}, nil
 }
 
+// removeMemberRecords deletes a departing member's seeded records from the
+// budget: their category/tag elements (limits cascade via FK) and their
+// categories' envelope assignments. Runs in the caller's transaction; revoke
+// is deliberate, so the member's limit history goes with them.
+func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, memberID vo.Id) error {
+	owned := map[vo.Id]bool{}
+	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{memberID})
+	if err != nil {
+		return err
+	}
+	for _, c := range cats {
+		id, perr := vo.ParseId(c.ID)
+		if perr != nil {
+			return perr
+		}
+		owned[id] = true
+	}
+	tags, err := s.metadata.TagsByOwners(ctx, []vo.Id{memberID})
+	if err != nil {
+		return err
+	}
+	for _, t := range tags {
+		id, perr := vo.ParseId(t.ID)
+		if perr != nil {
+			return perr
+		}
+		owned[id] = true
+	}
+	for _, el := range b.elements {
+		if el.Type == model.ElementEnvelope || !owned[el.ExternalID] {
+			continue
+		}
+		if derr := s.elements.DeleteElement(ctx, el.ID); derr != nil {
+			return derr
+		}
+	}
+	for _, env := range b.envelopes {
+		catIDs, cerr := s.envelopes.EnvelopeCategoryIDs(ctx, env.ID)
+		if cerr != nil {
+			return cerr
+		}
+		for _, catID := range catIDs {
+			if !owned[catID] {
+				continue
+			}
+			if rerr := s.envelopes.RemoveEnvelopeCategory(ctx, env.ID, catID); rerr != nil {
+				return rerr
+			}
+		}
+	}
+	return nil
+}
+
+// RemoveMember drops a user's access to a budget together with their seeded
+// records, without a permission check — for the composition root (the
+// delete-connection unwind), which has already established authority.
+func (s *Service) RemoveMember(ctx context.Context, budgetID, memberID vo.Id) error {
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return err
+	}
+	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.access.DeleteAccess(txCtx, budgetID, memberID); err != nil {
+			return err
+		}
+		return s.removeMemberRecords(txCtx, b, memberID)
+	})
+}
+
 // RevokeAccess removes a user's access (canShare).
 func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req model.RevokeAccessRequest) (*model.RevokeAccessResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
@@ -120,7 +189,10 @@ func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req model.Revo
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.access.DeleteAccess(txCtx, budgetID, invitedID)
+		if derr := s.access.DeleteAccess(txCtx, budgetID, invitedID); derr != nil {
+			return derr
+		}
+		return s.removeMemberRecords(txCtx, b, invitedID)
 	}); err != nil {
 		return nil, err
 	}
@@ -141,7 +213,12 @@ func (s *Service) DeclineAccess(ctx context.Context, userID vo.Id, req model.Dec
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.access.DeleteAccess(txCtx, budgetID, userID)
+		if derr := s.access.DeleteAccess(txCtx, budgetID, userID); derr != nil {
+			return derr
+		}
+		// Pre-handshake budgets may carry seeded elements for a still-pending
+		// member; declining sheds them the same way revoke does.
+		return s.removeMemberRecords(txCtx, b, userID)
 	}); err != nil {
 		return nil, err
 	}

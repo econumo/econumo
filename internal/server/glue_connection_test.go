@@ -7,14 +7,18 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appbudget "github.com/econumo/econumo/internal/budget"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/model"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -40,9 +44,22 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	f := fixture.New(t, db)
 	seedRevokerUser(t, f, revokerUserA)
 	seedRevokerUser(t, f, revokerUserB)
+	// userB owns a category with a seeded element in budgetA, so RemoveMember has
+	// records to clean.
+	const revokerCatB = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+	f.Category(fixture.Category{ID: revokerCatB, UserID: revokerUserB, Name: "Groceries", Type: 0, Icon: "local_offer"})
 
 	budgets := budgetrepo.NewRepo("sqlite", db.TX)
-	revoker := server.NewConnectionBudgetRevoker(budgets)
+	budgetSvc := appbudget.NewService(
+		budgets, nil, nil, nil, nil, nil, nil,
+		budgetrepo.NewMetadataLookup(
+			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo("sqlite", db.TX)),
+			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", db.TX)),
+			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", db.TX)),
+		),
+		db.TX, clock.New(),
+	)
+	revoker := server.NewConnectionBudgetRevoker(budgets, budgetSvc)
 
 	// userA owns budgetA; userB has an access grant on it.
 	b := &model.Budget{
@@ -58,6 +75,10 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	}
 	if err := budgets.SaveAccess(ctx, access); err != nil {
 		t.Fatalf("SaveAccess: %v", err)
+	}
+	el := model.NewBudgetElement(budgets.NextIdentity(), vo.MustParseId(revokerBudgetA), vo.MustParseId(revokerCatB), model.ElementCategory, nil, nil, 0, revokerFixedTime)
+	if err := budgets.SaveElement(ctx, el); err != nil {
+		t.Fatalf("SaveElement: %v", err)
 	}
 
 	// Sanity: the grant exists.
@@ -75,6 +96,13 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	}
 	if len(list) != 0 {
 		t.Errorf("want budget access revoked, still %d grants", len(list))
+	}
+	elements, err := budgets.ListElements(ctx, vo.MustParseId(revokerBudgetA))
+	if err != nil {
+		t.Fatalf("ListElements after revoke: %v", err)
+	}
+	if len(elements) != 0 {
+		t.Errorf("want userB's elements removed, still %d", len(elements))
 	}
 }
 

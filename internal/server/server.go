@@ -160,10 +160,25 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
 
+	// Budget service is built before connection: delete-connection's unwind
+	// removes budget memberships (access + seeded records) via RemoveMember.
+	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
+	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
+	convertor := appcurrency.NewConvertor(rateProvider)
+	budgetSvc := appbudget.NewService(
+		budgetRepo, budgetReadRepo, convertor, rateProvider,
+		NewBudgetUserLookup(userRepo, clk),
+		NewBudgetAccountLookup(accountRepo),
+		currencyLookup,
+		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
+		txm, clk,
+	)
+	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
+
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
-	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
+	connectionBudgetRevoker := NewConnectionBudgetRevoker(budgetRepo, budgetSvc)
 	connectionSvc := appconnection.NewService(
 		connectionRepo, connectionInviteRepo, userOwnerLookup,
 		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, txm, clk,
@@ -186,20 +201,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
-
-	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
-	convertor := appcurrency.NewConvertor(rateProvider)
-	budgetSvc := appbudget.NewService(
-		budgetRepo, budgetReadRepo, convertor, rateProvider,
-		NewBudgetUserLookup(userRepo, clk),
-		NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
-		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
-		txm, clk,
-	)
-	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
 
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, userSvc, cfg.IsDev()),
