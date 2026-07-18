@@ -183,6 +183,17 @@ router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config is read from
 same name sets it per image build, default `dev`). Lint is oxlint, tests are
 vitest (`pnpm test`).
 
+**Product analytics rule:** every new user-facing feature/action MUST fire an
+analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
+`app`-prefixed camelCase names; the PostHog snake_case name derives
+automatically) and call `trackEvent` at the action's success point (mutation
+`onSuccess`; or inside `mutationFn` after the API call for hooks with a dedupe
+short-circuit, e.g. the classification creates). Prefer the shared hook/store
+choke point over per-page call sites so every surface (pages, dialogs, inline
+creates) is covered once. `web/src/lib/metrics-coverage.test.ts` fails the
+suite if a `METRICS` key is never fired; a catalogue key may only be excused
+via its documented `NOT_WIRED` list.
+
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
 Translations live in two catalogues, `locales/{en,ru}.json`, shared by both

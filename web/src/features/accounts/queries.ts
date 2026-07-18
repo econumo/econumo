@@ -84,6 +84,7 @@ export function useDeleteAccount() {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
         (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
       )
+      trackEvent(METRICS.ACCOUNT_DELETE)
     },
   })
 }
@@ -110,7 +111,10 @@ export function useOrderAccounts() {
         queryClient.setQueryData(queryKeys.accounts, context.previous)
       }
     },
-    onSuccess: (items) => queryClient.setQueryData(queryKeys.accounts, items),
+    onSuccess: (items) => {
+      queryClient.setQueryData(queryKeys.accounts, items)
+      trackEvent(METRICS.ACCOUNT_ORDER_LIST)
+    },
   })
 }
 
@@ -118,7 +122,10 @@ export function useCreateFolder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: accountApi.createFolder,
-    onSuccess: (item) => queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item)),
+    onSuccess: (item) => {
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item))
+      trackEvent(METRICS.ACCOUNT_FOLDER_CREATE)
+    },
   })
 }
 
@@ -126,7 +133,10 @@ export function useUpdateFolder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => accountApi.updateFolder(id, name),
-    onSuccess: (item) => queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item)),
+    onSuccess: (item) => {
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item))
+      trackEvent(METRICS.ACCOUNT_FOLDER_UPDATE)
+    },
   })
 }
 
@@ -151,7 +161,10 @@ export function useOrderFolders() {
         queryClient.setQueryData(queryKeys.folders, context.previous)
       }
     },
-    onSuccess: (items) => queryClient.setQueryData(queryKeys.folders, items),
+    onSuccess: (items) => {
+      queryClient.setQueryData(queryKeys.folders, items)
+      trackEvent(METRICS.ACCOUNT_FOLDER_ORDER_LIST)
+    },
   })
 }
 
@@ -162,6 +175,7 @@ export function useReplaceFolder() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      trackEvent(METRICS.ACCOUNT_FOLDER_REPLACE)
     },
   })
 }
@@ -186,6 +200,7 @@ function useSetFolderVisibility(mutationFn: (id: string) => Promise<void>, isVis
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      trackEvent(isVisible ? METRICS.ACCOUNT_FOLDER_SHOW : METRICS.ACCOUNT_FOLDER_HIDE)
     },
   })
 }

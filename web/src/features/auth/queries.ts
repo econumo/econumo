@@ -22,12 +22,14 @@ export function useRegister() {
   return useMutation({
     mutationFn: ({ email, password, name }: { email: string; password: string; name: string }) =>
       userApi.register(email, password, name),
+    onSuccess: () => trackEvent(METRICS.USER_REGISTRATION),
   })
 }
 
 export function useRemindPassword() {
   return useMutation({
     mutationFn: ({ username }: { username: string }) => userApi.remindPassword(username),
+    onSuccess: () => trackEvent(METRICS.USER_REMIND_PASSWORD),
   })
 }
 
@@ -35,5 +37,6 @@ export function useResetPassword() {
   return useMutation({
     mutationFn: ({ username, code, password }: { username: string; code: string; password: string }) =>
       userApi.resetPassword(username, code, password),
+    onSuccess: () => trackEvent(METRICS.USER_RESET_PASSWORD),
   })
 }

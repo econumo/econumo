@@ -40,7 +40,7 @@ describe('PostHog capture', () => {
   })
 
   it('keeps ui_modal micro-interactions dataLayer-only', () => {
-    trackEvent(METRICS.UI_MODAL_TRANSACTION_CHANGE_AMOUNT)
+    trackEvent(METRICS.UI_MODAL_TRANSACTION_OPEN)
     expect(capture).not.toHaveBeenCalled()
     expect(window.dataLayer).toHaveLength(1)
   })
