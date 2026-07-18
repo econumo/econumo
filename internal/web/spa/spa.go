@@ -5,6 +5,8 @@
 package spa
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -20,8 +22,23 @@ const indexFile = "index.html"
 // or /_ are never rewritten to index.html (they should be handled by the API /
 // internal routes; if they reach here they 404 honestly rather than masquerade
 // as the SPA shell).
-func Handler(dir string) http.Handler {
+func Handler(dir string, overrides map[string]any) http.Handler {
 	fs := http.FileServer(http.Dir(dir))
+
+	// The runtime config is the one templated response: the dist file plus a
+	// merge of the server-owned keys, so the instance's environment genuinely
+	// controls the shipped SPA. Overrides are fixed for the process lifetime,
+	// so the merge line is built once here (encoding/json sorts map keys —
+	// the output is deterministic). Keys the server does not own stay
+	// whatever the dist file says.
+	var configSuffix []byte
+	if len(overrides) > 0 {
+		merged, err := json.Marshal(overrides)
+		if err != nil {
+			panic(fmt.Sprintf("spa: unmarshalable config overrides: %v", err))
+		}
+		configSuffix = fmt.Appendf(nil, "\nObject.assign(window.econumoConfig, %s);\n", merged)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Clean the request path to prevent directory traversal. path.Clean on
 		// an absolute-rooted path collapses ".." segments safely.
@@ -34,6 +51,11 @@ func Handler(dir string) http.Handler {
 		// API and internal routes must not fall back to the SPA shell.
 		if isReservedPath(cleaned) {
 			http.NotFound(w, r)
+			return
+		}
+
+		if cleaned == "/econumo-config.js" && configSuffix != nil {
+			serveRuntimeConfig(w, r, dir, configSuffix)
 			return
 		}
 
@@ -66,6 +88,18 @@ func Handler(dir string) http.Handler {
 		setCacheControl(w, "/"+indexFile)
 		http.ServeFile(w, r, filepath.Join(dir, indexFile))
 	})
+}
+
+func serveRuntimeConfig(w http.ResponseWriter, r *http.Request, dir string, configSuffix []byte) {
+	content, err := os.ReadFile(filepath.Join(dir, "econumo-config.js"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write(content)
+	w.Write(configSuffix)
 }
 
 // setCacheControl picks the caching policy by path. Vite-fingerprinted files

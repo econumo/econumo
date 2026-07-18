@@ -1,4 +1,5 @@
-import { selfHosted, locale } from './config'
+import { analyticsDomain, capture } from './analytics'
+import { analyticsEnabled, getVersion, locale, selfHosted } from './config'
 
 declare global {
   interface Window {
@@ -6,7 +7,8 @@ declare global {
   }
 }
 
-// prefix "app" is required!
+// prefix "app" is required! These are the frozen dataLayer (GTM/liltag) names;
+// PostHog event names derive from them via posthogEventName().
 export const METRICS = {
   PAGE_VIEW: 'appPageView',
   USER_LOGIN: 'appUserLogin',
@@ -36,7 +38,7 @@ export const METRICS = {
   CATEGORY_CREATE: 'appCategoryCreate',
   CATEGORY_UPDATE: 'appCategoryUpdate',
   CATEGORY_ORDER_LIST: 'appCategoryOrderList',
-  CATEGORY_CHANGE_ORDER: 'appAccountChangeOrder',
+  CATEGORY_CHANGE_ORDER: 'appCategoryChangeOrder',
   CATEGORY_DELETE: 'appCategoryDelete',
   CATEGORY_REPLACE: 'appCategoryReplace',
   CATEGORY_ARCHIVE: 'appCategoryArchive',
@@ -57,7 +59,7 @@ export const METRICS = {
   BUDGET_GRANT_ACCESS: 'appBudgetGrantAccess',
   BUDGET_REVOKE_ACCESS: 'appBudgetRevokeAccess',
   BUDGET_ACCEPT_ACCESS: 'appBudgetAcceptAccess',
-  BUDGET_DECLINE_ACCESS: 'appBudgetAcceptAccess',
+  BUDGET_DECLINE_ACCESS: 'appBudgetDeclineAccess',
   BUDGET_FOLDER_CREATE: 'appBudgetFolderCreate',
   BUDGET_FOLDER_DELETE: 'appBudgetFolderDelete',
   BUDGET_FOLDER_UPDATE: 'appBudgetFolderUpdate',
@@ -110,6 +112,24 @@ export const METRICS = {
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
+
+// Route with UUID segments templated to ":id": no instance data may ride
+// along on an analytics event.
+export function scrubbedPage(pathname: string): string {
+  return pathname.substring(1).replace(UUID_RE, ':id')
+}
+
+// PostHog names: the frozen dataLayer prefix+camelCase becomes snake_case,
+// e.g. appUIModalTransactionOpen -> ui_modal_transaction_open.
+export function posthogEventName(metric: string): string {
+  return metric
+    .replace(/^app/, '')
+    .replace(/([A-Z]+)(?=[A-Z][a-z])/g, '$1_')
+    .replace(/([a-z0-9])(?=[A-Z])/g, '$1_')
+    .toLowerCase()
+}
+
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
@@ -126,4 +146,18 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     },
     eventTimestamp: Date.now(),
   })
+  // Per-field/modal micro-interactions stay dataLayer-only: they dominate
+  // event volume without informing any product decision.
+  if (analyticsEnabled() && !metric.startsWith('appUIModal')) {
+    const host = analyticsDomain()
+    // The synthetic "self-hosted" host keeps real hostnames out of the URL;
+    // only econumo.com domains appear verbatim.
+    capture(posthogEventName(metric), {
+      host,
+      self_hosted: host === 'self-hosted',
+      locale: locale(),
+      version: getVersion(),
+      current_url: `https://${host}/${scrubbedPage(window.location.pathname)}`,
+    })
+  }
 }
