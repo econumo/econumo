@@ -109,7 +109,7 @@ func TestUpdatePassword_ShortNew_400(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-password", token, map[string]string{
-		"oldPassword": seedPassword, "newPassword": "ab", // < 4
+		"oldPassword": seedPassword, "newPassword": "ab", // < 8
 	})
 	if status != http.StatusBadRequest {
 		t.Fatalf("update-password short new=%d want 400", status)
@@ -227,7 +227,7 @@ func TestRegisterUser_DuplicateEmail_400(t *testing.T) {
 	h := newHarness(t)
 	// The seed user already exists with seedEmail.
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
-		"email": seedEmail, "password": "hunter2", "name": "Dup",
+		"email": seedEmail, "password": "hunter2pw", "name": "Dup",
 	})
 	if status != http.StatusBadRequest {
 		t.Fatalf("register dup=%d want 400 body=%s", status, env.raw)
@@ -257,7 +257,7 @@ func TestRegisterUser_BlankFields_400(t *testing.T) {
 func TestRegisterUser_BadEmail_400(t *testing.T) {
 	h := newHarness(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
-		"email": "no-at-sign", "password": "hunter2", "name": "Bob",
+		"email": "no-at-sign", "password": "hunter2pw", "name": "Bob",
 	})
 	if status != http.StatusBadRequest {
 		t.Fatalf("register bad email=%d want 400", status)

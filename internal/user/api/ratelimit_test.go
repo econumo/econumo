@@ -196,15 +196,11 @@ func TestResetPassword_SuccessClearsCounter(t *testing.T) {
 	assert429(t, status, env)
 }
 
-// fetchResetCode reads the emailed reset code for the seed user straight from
-// the DB (the test mailer is a no-op).
+// fetchResetCode returns the emitted reset code from the recording mailer (the
+// code is hashed at rest, so the DB no longer holds the plaintext).
 func fetchResetCode(t *testing.T, h *harness) string {
 	t.Helper()
-	var code string
-	if err := h.db.QueryRow(`SELECT code FROM users_password_requests WHERE user_id = ?`, seedUserID).Scan(&code); err != nil {
-		t.Fatalf("read reset code: %v", err)
-	}
-	return code
+	return h.mail.lastResetCode(t)
 }
 
 func registerUser(h *harness, t *testing.T, email string) (int, envelope) {

@@ -26,6 +26,28 @@ func okHandler(ran *bool) http.Handler {
 	})
 }
 
+func TestSecurityHeaders_SetOnResponse(t *testing.T) {
+	var ran bool
+	h := SecurityHeaders(okHandler(&ran))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
+
+	if !ran {
+		t.Fatal("downstream handler did not run")
+	}
+	want := map[string]string{
+		"X-Content-Type-Options":  "nosniff",
+		"X-Frame-Options":         "DENY",
+		"Referrer-Policy":         "strict-origin-when-cross-origin",
+		"Content-Security-Policy": "frame-ancestors 'none'",
+	}
+	for k, v := range want {
+		if got := rec.Header().Get(k); got != v {
+			t.Errorf("header %s = %q, want %q", k, got, v)
+		}
+	}
+}
+
 func TestRequestID_SetsHeaderAndContext(t *testing.T) {
 	var ctxID string
 	h := RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

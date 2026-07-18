@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -26,6 +27,14 @@ func generatePasswordCode() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// HashResetCode maps a reset code to its at-rest storage/lookup key. The
+// plaintext code is emailed to the user; only this sha256 hex is persisted, so a
+// database disclosure does not hand out usable reset codes.
+func HashResetCode(code string) string {
+	sum := sha256.Sum256([]byte(code))
+	return hex.EncodeToString(sum[:])
 }
 
 func isNotFound(err error) bool {
@@ -80,7 +89,7 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 	if err != nil {
 		return nil, err
 	}
-	pr := model.NewPasswordRequest(vo.NewId(), u.ID, code, s.clock.Now())
+	pr := model.NewPasswordRequest(vo.NewId(), u.ID, HashResetCode(code), s.clock.Now())
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
@@ -116,7 +125,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		return nil, err
 	}
 
-	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, strings.TrimSpace(req.Code))
+	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, HashResetCode(strings.TrimSpace(req.Code)))
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeReset, lowered)

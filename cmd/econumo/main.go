@@ -212,6 +212,11 @@ func run(serveArgs []string) error {
 		Addr:              addr(cfg.Port),
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		// A slow or stalled request body must not hold a connection/goroutine
+		// indefinitely. WriteTimeout also bounds slow-client response reads.
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	slog.Info("listening", "addr", srv.Addr)

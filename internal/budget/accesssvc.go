@@ -199,6 +199,20 @@ func (s *Service) RevokeAccess(ctx context.Context, userID vo.Id, req model.Revo
 	if !s.canShare(b, userID) {
 		return nil, accessDenied()
 	}
+	// The owner is not a grantee; revoking their id would run removeMemberRecords
+	// against the owner's own elements/limits. Reject it.
+	if b.budget.UserID.Equal(invitedID) {
+		return nil, accessDenied()
+	}
+	// Require an existing grant before the destructive cleanup, so a revoke for a
+	// user who was never a member is a no-op rather than a silent data wipe.
+	if _, gerr := s.access.GetAccess(ctx, budgetID, invitedID); gerr != nil {
+		var nf *errs.NotFoundError
+		if errors.As(gerr, &nf) {
+			return nil, accessDenied()
+		}
+		return nil, gerr
+	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if derr := s.access.DeleteAccess(txCtx, budgetID, invitedID); derr != nil {
 			return derr

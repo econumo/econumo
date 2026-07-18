@@ -14,6 +14,12 @@ import (
 // maxImportUpload bounds the multipart parse at 10M — a frozen upload-size limit.
 const maxImportUpload = 10 << 20
 
+// maxImportRequest caps the WHOLE multipart request. ParseMultipartForm's arg is
+// only the in-memory threshold (excess spills to temp disk), so without a body
+// cap an attacker could exhaust disk. The margin over maxImportUpload covers the
+// multipart envelope and the small override fields.
+const maxImportRequest = maxImportUpload + (1 << 20)
+
 // ImportTransactionList handles POST /api/v1/transaction/import-transaction-list
 // (auth, multipart/form-data). Form fields: file (CSV upload), mapping (JSON
 // string), and optional overrides accountId/date/categoryId/description/payeeId/
@@ -44,6 +50,9 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Bound the whole request body before parsing so oversized uploads are
+	// rejected instead of spilled to disk.
+	r.Body = http.MaxBytesReader(w, r.Body, maxImportRequest)
 	if err := r.ParseMultipartForm(maxImportUpload); err != nil {
 		httpx.WriteError(w, errs.NewValidation("Validation failed",
 			errs.FieldError{Key: "file", Message: "Please upload a valid CSV file", Code: errs.CodeTransactionInvalidImportFile}), h.dev)

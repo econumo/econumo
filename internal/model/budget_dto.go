@@ -439,7 +439,17 @@ type MoveElementListRequest struct {
 }
 
 func (r MoveElementListRequest) Validate() error {
-	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
+	if err := ValidateBlank(map[string]string{"budgetId": r.BudgetId}); err != nil {
+		return err
+	}
+	var fields []errs.FieldError
+	for _, it := range r.Items {
+		fields = append(fields, validatePositionField("position", it.Position)...)
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
 }
 
 // MoveElementListResult is empty.
@@ -485,6 +495,21 @@ type BudgetTransactionResult struct {
 // GetBudgetTransactionListResult is {items: [...]}.
 type GetBudgetTransactionListResult struct {
 	Items []BudgetTransactionResult `json:"items"`
+}
+
+// Positions are persisted into an int16 column; a value outside this range would
+// wrap silently and corrupt ordering, so it is rejected at the edge.
+const (
+	positionMin = -32768
+	positionMax = 32767
+)
+
+// validatePositionField reports a single out-of-int16-range position.
+func validatePositionField(key string, pos int) []errs.FieldError {
+	if pos < positionMin || pos > positionMax {
+		return []errs.FieldError{{Key: key, Message: "This value is out of range.", Code: errs.CodeOutOfRange}}
+	}
+	return nil
 }
 
 // ValidateBlank returns a ValidationError listing every blank field with the

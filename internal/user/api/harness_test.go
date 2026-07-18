@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -61,6 +62,7 @@ type harness struct {
 	hasher *auth.PasswordHasher
 	tokens *userrepo.AccessTokenRepo
 	clock  fixedClock
+	mail   *recordingMailer
 }
 
 func newHarness(t *testing.T) *harness { return newHarnessWithLimiter(t, nil) }
@@ -101,9 +103,10 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	currency := currencyrepo.New("sqlite", txm)
 	budgets := server.NewUserBudgetAccess("sqlite", txm)
 	passwordReqs := userrepo.NewPasswordRequestRepo("sqlite", txm)
-	// Discard mailer — the reset test reads the code from the DB, so email output
-	// is irrelevant here (and we keep it off stdout, unlike the console default).
-	resetMailer := mailer.NewResetSender(discardMailer{}, "", "")
+	// Recording mailer — reset codes are hashed at rest, so the plaintext is only
+	// available from the email. The reset test reads it from here.
+	rec := &recordingMailer{}
+	resetMailer := mailer.NewResetSender(rec, "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
@@ -119,14 +122,30 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, tokens: tokens, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, tokens: tokens, clock: clk, mail: rec}
 }
 
-// discardMailer drops every message; it keeps the reset test silent (the console
-// default would print to stdout) without re-exposing a no-op transport in prod.
-type discardMailer struct{}
+// recordingMailer captures every sent message so tests can recover the emitted
+// reset code (which is hashed at rest and no longer readable from the DB).
+type recordingMailer struct{ last mailer.Message }
 
-func (discardMailer) Send(context.Context, mailer.Message) error { return nil }
+func (m *recordingMailer) Send(_ context.Context, msg mailer.Message) error {
+	m.last = msg
+	return nil
+}
+
+// resetCodeRe matches the 12-char hex reset code in the rendered email body.
+var resetCodeRe = regexp.MustCompile(`[0-9a-f]{12}`)
+
+// lastResetCode extracts the reset code from the most recently sent email.
+func (m *recordingMailer) lastResetCode(t *testing.T) string {
+	t.Helper()
+	code := resetCodeRe.FindString(m.last.Text)
+	if code == "" {
+		t.Fatalf("no reset code found in email body: %q", m.last.Text)
+	}
+	return code
+}
 
 // seed inserts a known user (with hashed password and encrypted email) plus the
 // four default user options so login and get-user-data work. The budget option

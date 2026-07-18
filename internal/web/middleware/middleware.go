@@ -50,6 +50,24 @@ const (
 // requestIDHeader is the response header carrying the generated id.
 const requestIDHeader = "X-Request-Id"
 
+// SecurityHeaders sets conservative browser-hardening headers on every response
+// (API and the served SPA alike): nosniff, deny framing (bearer tokens live in
+// localStorage, so clickjacking matters), and a tight referrer policy. It sets
+// no resource-restricting CSP — that needs per-deployment origin allowlisting —
+// but `frame-ancestors 'none'` closes the framing hole without touching resource
+// loads. HSTS is intentionally omitted: TLS is terminated by the deployment's
+// proxy, and hardcoding it would break plain-HTTP LAN installs.
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.Set("Content-Security-Policy", "frame-ancestors 'none'")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // RequestID generates a random hex id for each request, sets it on the
 // X-Request-Id response header, and stashes it in the request context.
 func RequestID(next http.Handler) http.Handler {

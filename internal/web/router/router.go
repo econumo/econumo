@@ -130,5 +130,8 @@ func New(deps Deps) http.Handler {
 	}
 	root.Handle("/", spa.Handler(deps.Cfg.SPADir, overrides))
 
-	return root
+	// Browser-hardening headers wrap the WHOLE tree — including the SPA catch-all,
+	// which the per-subtree global chain deliberately skips — so the served HTML
+	// carries them too (framing/clickjacking protection matters most there).
+	return middleware.SecurityHeaders(root)
 }
