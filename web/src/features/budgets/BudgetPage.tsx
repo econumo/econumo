@@ -459,7 +459,7 @@ export function BudgetPage() {
       return (
         <span className="flex items-center gap-1.5 sm:gap-2">
           {plus}
-          <span className="size-9" />
+          <span className="size-8" />
         </span>
       )
     }
@@ -490,34 +490,33 @@ export function BudgetPage() {
     )
   }
 
-  const elementActions = (element: BudgetElementDto) =>
-    editMode ? (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" aria-label={`element actions ${element.name}`}>
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {element.type !== BudgetElementType.ENVELOPE ? (
-            <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
-              {t('budgets.page.budget.structure.element.action.change_currency')}
+  const elementActions = (element: BudgetElementDto) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" aria-label={`element actions ${element.name}`}>
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {element.type !== BudgetElementType.ENVELOPE ? (
+          <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
+            {t('budgets.page.budget.structure.element.action.change_currency')}
+          </DropdownMenuItem>
+        ) : (
+          <>
+            <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
+              {t('common.button.edit.label')}
             </DropdownMenuItem>
-          ) : (
-            <>
-              <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
-                {t('common.button.edit.label')}
+            {canDeleteEnvelope(budget.meta, user?.id) ? (
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget(element)}>
+                {t('common.button.delete.label')}
               </DropdownMenuItem>
-              {canDeleteEnvelope(budget.meta, user?.id) ? (
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget(element)}>
-                  {t('common.button.delete.label')}
-                </DropdownMenuItem>
-              ) : null}
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ) : null
+            ) : null}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
@@ -635,7 +634,7 @@ export function BudgetPage() {
                 renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
                 // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
                 renderFolderActions={editMode ? folderActions : undefined}
-                renderActions={elementActions}
+                renderActions={editMode ? elementActions : undefined}
                 renderBudgetCell={
                   limitsEditable && !editMode && !isCompact
                     ? (element) => (

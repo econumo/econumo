@@ -73,6 +73,12 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
 }
 
 
+/* edit mode appends a w-8 actions button to element rows; every row without
+   one must pad the slot or its amount columns drift out of alignment */
+function ActionsSpacer() {
+  return <span data-testid="actions-spacer" className="w-8 shrink-0" />
+}
+
 function ElementRow({
   element,
   bucket,
@@ -80,6 +86,7 @@ function ElementRow({
   currencies,
   accessById,
   extras,
+  actionsColumn = false,
   hideChildren = false,
 }: {
   element: BudgetElementDto
@@ -88,6 +95,8 @@ function ElementRow({
   currencies: CurrencyDto[]
   accessById: Map<string, UserDto>
   extras: ElementRowExtras
+  /** the table renders an actions column (edit mode): rows without their own actions pad it */
+  actionsColumn?: boolean
   hideChildren?: boolean
 }) {
   const { t } = useTranslation()
@@ -185,7 +194,7 @@ function ElementRow({
           )}
         </span>
         <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
-        {extras.renderActions?.(element, bucket)}
+        {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
       </div>
       {expandable && unfolded ? (
         <ul className="pb-1">
@@ -210,6 +219,7 @@ function ElementRow({
                 </span>
                 <span className="w-20 sm:w-24" />
                 <span className="hidden w-6 sm:block" />
+                {actionsColumn ? <ActionsSpacer /> : null}
               </li>
             )
           })}
@@ -226,6 +236,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const totals = budgetTotals(buckets)
+  const actionsColumn = !!extras.renderActions
   const opts = cellOpts(budgetCurrency)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
 
@@ -244,6 +255,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.spent')}</span>
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.available')}</span>
         <span className="hidden w-6 sm:block" />
+        {actionsColumn ? <ActionsSpacer /> : null}
       </div>
 
       {sections.map((section) => {
@@ -272,6 +284,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                 />
               ) : null}
               {!isArchiveSection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
+              {isArchiveSection && actionsColumn ? <ActionsSpacer /> : null}
             </header>
             {hideContents ? null : section.bucket.elements.length === 0 ? (
               <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
@@ -285,6 +298,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                   currencies={currencies}
                   accessById={accessById}
                   extras={isArchiveSection ? { onSpentClick: extras.onSpentClick } : extras}
+                  actionsColumn={actionsColumn}
                   hideChildren={hideChildren}
                 />
               ))
@@ -308,6 +322,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
         <span className="w-6 text-center text-xs text-muted-foreground">{budgetCurrency?.symbol}</span>
+        {actionsColumn ? <ActionsSpacer /> : null}
       </div>
 
       {/* the phone table hides the budget column, so the totals unfold into
