@@ -101,13 +101,19 @@ The only file that knows PostHog exists.
 
 - `config.Load`: new `ECONUMO_ANALYTICS` env var, default `true`; malformed
   value fails at boot (consistent with the other booleans).
-- SPA handler (`internal/web/spa`): special-case `GET /econumo-config.js` —
-  serve the dist file's content with one appended line:
-  `window.econumoConfig.ANALYTICS = true;` (or `false`), reflecting the env
-  var. Always appended in both states, so behavior is explicit and testable.
-  Existing `Cache-Control: no-cache` is kept, so a `.env` flip takes effect on
-  the next page load. If the file is missing (broken image) the route 404s
-  exactly as today.
+- SPA handler (`internal/web/spa`): `Handler` takes a generic map of
+  server-owned config keys and serves `GET /econumo-config.js` as the dist
+  file plus one merge line,
+  `Object.assign(window.econumoConfig, {"ALLOW_REGISTRATION":…,"ANALYTICS":…});`
+  (built once at construction; `encoding/json` sorts map keys, so the output
+  is deterministic). The router wires `ANALYTICS` and `ALLOW_REGISTRATION` —
+  the latter fixes a pre-existing drift where `ECONUMO_ALLOW_REGISTRATION=false`
+  still showed the SPA's Register UI (the static file said `true`). Future
+  server-owned keys are one map entry; keys the server does not own
+  (`VERSION`, `PAYWALL_ENABLED`, `ALLOW_CUSTOM_API`, `API_URL`) stay whatever
+  the dist file says. Existing `Cache-Control: no-cache` is kept, so a `.env`
+  flip takes effect on the next page load. If the file is missing (broken
+  image) the route 404s exactly as today.
 - Anyone hosting the SPA outside the binary (separate static host + API_URL)
   sets `ANALYTICS: false` directly in their own `econumo-config.js`.
 

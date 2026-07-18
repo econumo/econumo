@@ -37,7 +37,7 @@ func get(t *testing.T, h http.Handler, path string) (int, string) {
 }
 
 func TestSPA_Serving(t *testing.T) {
-	h := Handler(newSPADir(t), true)
+	h := Handler(newSPADir(t), nil)
 
 	cases := []struct {
 		name     string
@@ -76,7 +76,7 @@ func TestSPA_Serving(t *testing.T) {
 // old hashed bundles) long after a deploy. The shell and other non-fingerprinted
 // files must force revalidation; Vite-fingerprinted /assets/ files are immutable.
 func TestSPA_CacheHeaders(t *testing.T) {
-	h := Handler(newSPADir(t), true)
+	h := Handler(newSPADir(t), nil)
 
 	cases := []struct {
 		name string
@@ -102,40 +102,43 @@ func TestSPA_CacheHeaders(t *testing.T) {
 }
 
 func TestSPA_RuntimeConfigOverride(t *testing.T) {
-	for _, tc := range []struct {
-		name      string
-		analytics bool
-		want      string
-	}{
-		{"enabled", true, "window.econumoConfig.ANALYTICS = true;"},
-		{"disabled", false, "window.econumoConfig.ANALYTICS = false;"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			h := Handler(newSPADir(t), tc.analytics)
-			rec := httptest.NewRecorder()
-			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
-			if rec.Code != http.StatusOK {
-				t.Fatalf("status = %d, want 200", rec.Code)
-			}
-			body := rec.Body.String()
-			if !strings.HasPrefix(body, "window.econumoConfig={}") {
-				t.Fatalf("body does not start with the dist config: %q", body)
-			}
-			if !strings.Contains(body, tc.want) {
-				t.Fatalf("body missing %q: %q", tc.want, body)
-			}
-			if got := rec.Header().Get("Cache-Control"); got != "no-cache" {
-				t.Fatalf("Cache-Control = %q, want %q", got, "no-cache")
-			}
-			if got := rec.Header().Get("Content-Type"); got != "text/javascript; charset=utf-8" {
-				t.Fatalf("Content-Type = %q", got)
-			}
-		})
+	h := Handler(newSPADir(t), map[string]any{"ANALYTICS": false, "ALLOW_REGISTRATION": true})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.HasPrefix(body, "window.econumoConfig={}") {
+		t.Fatalf("body does not start with the dist config: %q", body)
+	}
+	// encoding/json sorts map keys, so the merge line is deterministic.
+	want := `Object.assign(window.econumoConfig, {"ALLOW_REGISTRATION":true,"ANALYTICS":false});`
+	if !strings.Contains(body, want) {
+		t.Fatalf("body missing %q: %q", want, body)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-cache" {
+		t.Fatalf("Cache-Control = %q, want %q", got, "no-cache")
+	}
+	if got := rec.Header().Get("Content-Type"); got != "text/javascript; charset=utf-8" {
+		t.Fatalf("Content-Type = %q", got)
+	}
+}
+
+func TestSPA_RuntimeConfigNoOverrides(t *testing.T) {
+	h := Handler(newSPADir(t), nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := rec.Body.String(); got != "window.econumoConfig={}" {
+		t.Fatalf("body = %q, want the dist file verbatim", got)
 	}
 }
 
 func TestSPA_RuntimeConfigMissingFile(t *testing.T) {
-	h := Handler(t.TempDir(), true)
+	h := Handler(t.TempDir(), map[string]any{"ANALYTICS": true})
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
 	if rec.Code != http.StatusNotFound {

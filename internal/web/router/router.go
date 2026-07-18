@@ -112,7 +112,13 @@ func New(deps Deps) http.Handler {
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so
 	// it never shadows the server-side groups.
-	root.Handle("/", spa.Handler(deps.Cfg.SPADir, deps.Cfg.Analytics))
+	// Server-owned SPA config keys, merged into the served econumo-config.js so
+	// the .env values reach the frontend (the dist file's static values are the
+	// fallback for separately-hosted SPAs).
+	root.Handle("/", spa.Handler(deps.Cfg.SPADir, map[string]any{
+		"ANALYTICS":          deps.Cfg.Analytics,
+		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
+	}))
 
 	return root
 }

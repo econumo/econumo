@@ -5,6 +5,7 @@
 package spa
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -21,8 +22,23 @@ const indexFile = "index.html"
 // or /_ are never rewritten to index.html (they should be handled by the API /
 // internal routes; if they reach here they 404 honestly rather than masquerade
 // as the SPA shell).
-func Handler(dir string, analytics bool) http.Handler {
+func Handler(dir string, overrides map[string]any) http.Handler {
 	fs := http.FileServer(http.Dir(dir))
+
+	// The runtime config is the one templated response: the dist file plus a
+	// merge of the server-owned keys, so the instance's environment genuinely
+	// controls the shipped SPA. Overrides are fixed for the process lifetime,
+	// so the merge line is built once here (encoding/json sorts map keys —
+	// the output is deterministic). Keys the server does not own stay
+	// whatever the dist file says.
+	var configSuffix []byte
+	if len(overrides) > 0 {
+		merged, err := json.Marshal(overrides)
+		if err != nil {
+			panic(fmt.Sprintf("spa: unmarshalable config overrides: %v", err))
+		}
+		configSuffix = fmt.Appendf(nil, "\nObject.assign(window.econumoConfig, %s);\n", merged)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Clean the request path to prevent directory traversal. path.Clean on
 		// an absolute-rooted path collapses ".." segments safely.
@@ -38,11 +54,8 @@ func Handler(dir string, analytics bool) http.Handler {
 			return
 		}
 
-		// The runtime config is the one templated response: the dist file plus
-		// a server-controlled override line, so the instance's .env genuinely
-		// controls the shipped SPA.
-		if cleaned == "/econumo-config.js" {
-			serveRuntimeConfig(w, r, dir, analytics)
+		if cleaned == "/econumo-config.js" && configSuffix != nil {
+			serveRuntimeConfig(w, r, dir, configSuffix)
 			return
 		}
 
@@ -77,7 +90,7 @@ func Handler(dir string, analytics bool) http.Handler {
 	})
 }
 
-func serveRuntimeConfig(w http.ResponseWriter, r *http.Request, dir string, analytics bool) {
+func serveRuntimeConfig(w http.ResponseWriter, r *http.Request, dir string, configSuffix []byte) {
 	content, err := os.ReadFile(filepath.Join(dir, "econumo-config.js"))
 	if err != nil {
 		http.NotFound(w, r)
@@ -85,7 +98,8 @@ func serveRuntimeConfig(w http.ResponseWriter, r *http.Request, dir string, anal
 	}
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
-	fmt.Fprintf(w, "%s\nwindow.econumoConfig.ANALYTICS = %t;\n", content, analytics)
+	w.Write(content)
+	w.Write(configSuffix)
 }
 
 // setCacheControl picks the caching policy by path. Vite-fingerprinted files

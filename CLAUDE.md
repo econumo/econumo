@@ -284,9 +284,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `ECONUMO_CHECK_UPDATES` — daily check for new releases against `econumo.com/releases/latest.json` (single server-side request; result served to the SPA via `get-update-info`). `false` disables it.
 - `ECONUMO_ANALYTICS` — anonymous product analytics from the SPA to PostHog (default `true`).
-  `false` disables it instance-wide; the server surfaces the flag by appending a
-  `window.econumoConfig.ANALYTICS = <bool>;` line to the served `/econumo-config.js`.
-  Malformed values fail at boot (strict parse, unlike the other booleans).
+  `false` disables it instance-wide. Malformed values fail at boot (strict parse, unlike
+  the other booleans). Server-owned SPA config keys (currently `ANALYTICS` and
+  `ALLOW_REGISTRATION`) reach the frontend via an `Object.assign(window.econumoConfig, …)`
+  line the SPA handler appends to the served `/econumo-config.js`; the dist file's static
+  values are the fallback for separately-hosted SPAs.
 - `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
