@@ -88,8 +88,9 @@ func newHarness(t *testing.T) *harness {
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
 		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
+		accountrepo.NewAccessRepo("sqlite", txm),
 		server.NewAccountCurrencyLookup(curLookup), server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
-		nil, nil, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
+		txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	txRepo := transactionrepo.NewRepo("sqlite", txm)
 	catRepo := categoryrepo.NewRepo("sqlite", txm)

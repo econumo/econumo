@@ -92,3 +92,37 @@ it('orderAccountList posts the changes array', async () => {
   await accountApi.orderAccountList([{ id: 'a1', folderId: 'f2', position: 3 }])
   expect(body).toEqual({ changes: [{ id: 'a1', folderId: 'f2', position: 3 }] })
 })
+
+it('grant/accept/decline/revoke access post the exact payloads', async () => {
+  const bodies: unknown[] = []
+  server.use(
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
+      bodies.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/account/accept-access', async ({ request }) => {
+      bodies.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/account/decline-access', async ({ request }) => {
+      bodies.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/account/revoke-access', async ({ request }) => {
+      bodies.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  await accountApi.grantAccess({ accountId: 'a1', userId: 'u2', role: 'user' })
+  await accountApi.acceptAccess({ accountId: 'a1' })
+  await accountApi.acceptAccess({ accountId: 'a1', folderId: 'f1' })
+  await accountApi.declineAccess('a1')
+  await accountApi.revokeAccess({ accountId: 'a1', userId: 'u2' })
+  expect(bodies).toEqual([
+    { accountId: 'a1', userId: 'u2', role: 'user' },
+    { accountId: 'a1', folderId: '' },
+    { accountId: 'a1', folderId: 'f1' },
+    { accountId: 'a1' },
+    { accountId: 'a1', userId: 'u2' },
+  ])
+})

@@ -10,7 +10,7 @@ import { PreviewConnectionDialog } from './PreviewConnectionDialog'
 const partner = fixtureConnections[0].user
 
 const sharedAccounts = fixtureAccounts.map((a) =>
-  a.id === 'a1' ? { ...a, sharedAccess: [{ user: partner, role: 'user' }] } : a,
+  a.id === 'a1' ? { ...a, sharedAccess: [{ user: partner, role: 'user', isAccepted: 1 }] } : a,
 )
 const budgetsWithShared = [
   fixtureBudgets[0],
@@ -64,11 +64,11 @@ it('shows empty states without shared items', async () => {
   expect(await screen.findByText('No shared accounts')).toBeInTheDocument()
 })
 
-it('owned account row opens the level dialog; picking a role posts set-account-access', async () => {
+it('owned account row opens the level dialog; picking a role posts grant-access', async () => {
   let body: unknown
   server.use(
     ...coreHandlers({ accounts: sharedAccounts, budgets: budgetsWithShared, connections: fixtureConnections }),
-    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
       body = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),

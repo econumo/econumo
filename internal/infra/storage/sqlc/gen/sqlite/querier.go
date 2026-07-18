@@ -242,12 +242,14 @@ type Querier interface {
 	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
-	// Available accounts: own OR shared via accounts_access, not deleted. Mirrors
-	// AccountRepository::getAvailableForUserId (LEFT JOIN accounts_access, own OR
-	// granted). DISTINCT collapses duplicate rows when multiple grants exist.
-	// ORDER BY pins creation order (id tie-break) so both engines return the same
-	// row order: get-account-list serves this order (reversed) directly, and an
-	// unordered DISTINCT differs between SQLite and PostgreSQL query plans.
+	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted.
+	// A pending (not yet accepted) grant confers no access here -- it only rides
+	// get-account-list as an inert entry appended separately (see
+	// Service.buildAccountList). DISTINCT collapses duplicate rows when multiple
+	// grants exist. ORDER BY pins creation order (id tie-break) so both engines
+	// return the same row order: get-account-list serves this order (reversed)
+	// directly, and an unordered DISTINCT differs between SQLite and PostgreSQL
+	// query plans.
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
@@ -299,6 +301,10 @@ type Querier interface {
 	// The owner's payees ordered by position; used by order-payee-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
+	// Pending grants TO this user (invites awaiting acceptance), excluding grants
+	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
+	// engines return identical row order.
+	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's tags ordered by position; used by order-tag-list (load, apply

@@ -14,7 +14,8 @@
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
-      "expand_menu": "Expand menu"
+      "expand_menu": "Expand menu",
+      "sharing_requests": "Sharing requests"
     },
     "econumo": {
       "label": "Econumo"
@@ -1102,6 +1103,16 @@
           "required_field": "Required field"
         }
       }
+    },
+    "sharing_requests": {
+      "title": "Sharing requests",
+      "empty": "No pending requests",
+      "invited_you": "{name} invited you",
+      "account": "Account",
+      "budget": "Budget",
+      "choose_folder": "Choose a folder for this account",
+      "general_folder_hint": "General (will be created)",
+      "decline_question": "Decline access to \"{name}\"?"
     }
   },
   "errors": {

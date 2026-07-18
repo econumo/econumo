@@ -146,28 +146,43 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	}
 	systemHandlers := handlersystem.NewHandlers(updates, cfg.IsDev())
 
-	// Connection service is built first: the account result embeds sharedAccess[]
-	// and delete-account revokes the caller's own access.
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
 	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
 	userOwnerLookup := NewUserOwnerLookup(userRepo)
-	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
-	connectionFolderPort := NewConnectionFolderPort(folderRepo)
 
-	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
-	connectionSvc := appconnection.NewService(
-		connectionRepo, connectionInviteRepo, connectionFolderPort, accountRepo,
-		userOwnerLookup, connectionBudgetRevoker, txm, clk,
-	)
-	accountSharedLookup := NewConnectionSharedAccessLookup(connectionRepo)
-	accountRevoker := NewConnectionAccessRevoker(connectionRepo, connectionSvc)
+	// Account service is built before connection: delete-connection's unwind
+	// needs it (via ConnectionAccountAccessRevoker), and account is otherwise
+	// self-sufficient — it no longer references connection.
+	accountAccessRepo := accountrepo.NewAccessRepo(cfg.DatabaseDriver, txm)
 	accountSvc := appaccount.NewService(
-		accountRepo, folderRepo, accountCurrencyLookup, userOwnerLookup, accountSharedLookup, accountRevoker, txm, opGuard, clk,
+		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, txm, opGuard, clk,
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
+
+	// Budget service is built before connection: delete-connection's unwind
+	// removes budget memberships (access + seeded records) via RemoveMember.
+	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
+	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
+	convertor := appcurrency.NewConvertor(rateProvider)
+	budgetSvc := appbudget.NewService(
+		budgetRepo, budgetReadRepo, convertor, rateProvider,
+		NewBudgetUserLookup(userRepo, clk),
+		NewBudgetAccountLookup(accountRepo),
+		currencyLookup,
+		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
+		txm, clk,
+	)
+	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
+
+	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
+	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
+	connectionBudgetRevoker := NewConnectionBudgetRevoker(budgetRepo, budgetSvc)
+	connectionSvc := appconnection.NewService(
+		connectionRepo, connectionInviteRepo, userOwnerLookup,
+		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, txm, clk,
+	)
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 
@@ -186,20 +201,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
-
-	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
-	convertor := appcurrency.NewConvertor(rateProvider)
-	budgetSvc := appbudget.NewService(
-		budgetRepo, budgetReadRepo, convertor, rateProvider,
-		NewBudgetUserLookup(userRepo, clk),
-		NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
-		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
-		txm, clk,
-	)
-	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
 
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, userSvc, cfg.IsDev()),

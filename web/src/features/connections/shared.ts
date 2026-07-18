@@ -1,4 +1,4 @@
-import type { AccountDto, AccountRole } from '@/api/dto/account'
+import type { AccountDto } from '@/api/dto/account'
 import type { BudgetMetaDto } from '@/api/dto/budget'
 import type { ConnectionDto } from '@/api/dto/connection'
 import type { UserDto } from '@/api/dto/user'
@@ -45,24 +45,16 @@ export function sharedBudgetsFor(budgets: BudgetMetaDto[], meId: Id, otherId: Id
   return items
 }
 
-export function applyAccountAccess(accounts: AccountDto[], accountId: Id, user: UserDto, role: AccountRole): AccountDto[] {
-  return accounts.map((account) => {
-    if (account.id !== accountId) return account
-    const rest = account.sharedAccess.filter((a) => a.user.id !== user.id)
-    return { ...account, sharedAccess: [...rest, { user, role }] }
-  })
-}
-
-export function removeAccountAccess(accounts: AccountDto[], accountId: Id, userId: Id): AccountDto[] {
-  return accounts.map((account) =>
-    account.id === accountId ? { ...account, sharedAccess: account.sharedAccess.filter((a) => a.user.id !== userId) } : account,
-  )
+/** True when the account is shared TO me and I have not accepted yet. */
+export function isPendingForMe(account: AccountDto, meId: Id | undefined): boolean {
+  if (!meId || account.owner.id === meId) return false
+  return account.sharedAccess.some((a) => a.user.id === meId && a.isAccepted === 0)
 }
 
 export interface ShareEntry {
   user: UserDto
   role: string | null
-  /** budgets only; accounts have no accept step */
+  /** undefined = no accept step for this grant (e.g. the owner row) */
   isAccepted?: boolean
 }
 

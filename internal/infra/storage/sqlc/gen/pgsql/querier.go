@@ -145,9 +145,9 @@ type Querier interface {
 	// here yields the exact decimal — no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
-	// Available accounts: own OR shared via accounts_access, not deleted (see the
-	// sqlite variant, incl. the ORDER BY rationale). $1 is reused for both sides
-	// so the param stays single.
+	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
+	// (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1
+	// is reused for both sides so the param stays single.
 	ListAvailableAccounts(ctx context.Context, userID string) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
@@ -180,6 +180,10 @@ type Querier interface {
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
+	// Pending grants TO this user (invites awaiting acceptance), excluding grants
+	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
+	// engines return identical row order.
+	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)

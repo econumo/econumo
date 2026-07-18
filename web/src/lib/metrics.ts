@@ -86,6 +86,8 @@ export const METRICS = {
   CONNECTION_DELETE: 'appConnectionDelete',
   CONNECTION_UPDATE_ACCOUNT_ACCESS: 'appConnectionUpdateAccountAccess',
   CONNECTION_REVOKE_ACCOUNT_ACCESS: 'appConnectionRevokeAccountAccess',
+  CONNECTION_ACCEPT_ACCOUNT_ACCESS: 'appConnectionAcceptAccountAccess',
+  CONNECTION_DECLINE_ACCOUNT_ACCESS: 'appConnectionDeclineAccountAccess',
   UI_MODAL_ACCOUNT_OPEN: 'appUIModalAccountOpen',
   UI_MODAL_ACCOUNT_CLOSE: 'appUIModalAccountClose',
   UI_MODAL_TRANSACTION_OPEN: 'appUIModalTransactionOpen',

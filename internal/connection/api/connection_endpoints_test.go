@@ -184,122 +184,14 @@ func TestDeleteConnection_Self_400(t *testing.T) {
 	}
 }
 
-func TestSetAccountAccess_GrantsToConnectedUser(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t, ownerUserID, ownerEmail)
-	status, env := h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", tok, map[string]any{
-		"accountId": ownerAccount, "userId": guestUserID, "role": "user",
-	})
-	if status != http.StatusOK {
-		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
-	}
-	// grant row exists with role=1 (user).
-	var role int
-	if err := h.db.QueryRow(`SELECT role FROM accounts_access WHERE account_id=? AND user_id=?`, ownerAccount, guestUserID).Scan(&role); err != nil {
-		t.Fatalf("grant row not found: %v", err)
-	}
-	if role != 1 {
-		t.Fatalf("role=%d want 1 (user)", role)
-	}
-	// guest got an accounts_options row (position seeded) ...
-	var pos int
-	if err := h.db.QueryRow(`SELECT position FROM accounts_options WHERE account_id=? AND user_id=?`, ownerAccount, guestUserID).Scan(&pos); err != nil {
-		t.Fatalf("guest options row not found: %v", err)
-	}
-	// ... and the account was added to the guest's last folder.
-	var n int
-	h.db.QueryRow(`SELECT COUNT(*) FROM accounts_folders WHERE folder_id=? AND account_id=?`, guestFolderID, ownerAccount).Scan(&n)
-	if n != 1 {
-		t.Fatalf("account not added to guest folder (count=%d)", n)
-	}
-}
-
-func TestSetAccountAccess_UpdatesExistingRole(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t, ownerUserID, ownerEmail)
-	h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", tok, map[string]any{"accountId": ownerAccount, "userId": guestUserID, "role": "user"})
-	status, env := h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", tok, map[string]any{"accountId": ownerAccount, "userId": guestUserID, "role": "admin"})
-	if status != http.StatusOK {
-		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
-	}
-	var role int
-	h.db.QueryRow(`SELECT role FROM accounts_access WHERE account_id=? AND user_id=?`, ownerAccount, guestUserID).Scan(&role)
-	if role != 0 {
-		t.Fatalf("role=%d want 0 (admin)", role)
-	}
-}
-
-func TestSetAccountAccess_NonOwner_403(t *testing.T) {
-	h := newHarness(t)
-	// guest does not own the account and has no admin grant -> access denied.
-	tok := h.token(t, guestUserID, guestEmail)
-	status, env := h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", tok, map[string]any{
-		"accountId": ownerAccount, "userId": ownerUserID, "role": "user",
-	})
-	if status != http.StatusForbidden {
-		t.Fatalf("status=%d want 403; body: %s", status, env.raw)
-	}
-}
-
-func TestSetAccountAccess_BadRole_400(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t, ownerUserID, ownerEmail)
-	status, _ := h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", tok, map[string]any{
-		"accountId": ownerAccount, "userId": guestUserID, "role": "superuser",
-	})
-	if status != http.StatusBadRequest {
-		t.Fatalf("status=%d want 400", status)
-	}
-}
-
-func TestSetAccountAccess_Blank_400(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t, ownerUserID, ownerEmail)
-	status, _ := h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", tok, map[string]any{"accountId": "", "userId": "", "role": ""})
-	if status != http.StatusBadRequest {
-		t.Fatalf("status=%d want 400", status)
-	}
-}
-
-func TestRevokeAccountAccess_RemovesGrantAndCleansUp(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t, ownerUserID, ownerEmail)
-	h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", tok, map[string]any{"accountId": ownerAccount, "userId": guestUserID, "role": "user"})
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/connection/revoke-account-access", tok, map[string]any{"accountId": ownerAccount, "userId": guestUserID})
-	if status != http.StatusOK {
-		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
-	}
-	var n int
-	h.db.QueryRow(`SELECT COUNT(*) FROM accounts_access WHERE account_id=? AND user_id=?`, ownerAccount, guestUserID).Scan(&n)
-	if n != 0 {
-		t.Fatalf("grant still present (count=%d)", n)
-	}
-	h.db.QueryRow(`SELECT COUNT(*) FROM accounts_options WHERE account_id=? AND user_id=?`, ownerAccount, guestUserID).Scan(&n)
-	if n != 0 {
-		t.Fatalf("guest options still present (count=%d)", n)
-	}
-	h.db.QueryRow(`SELECT COUNT(*) FROM accounts_folders WHERE folder_id=? AND account_id=?`, guestFolderID, ownerAccount).Scan(&n)
-	if n != 0 {
-		t.Fatalf("account still in guest folder (count=%d)", n)
-	}
-}
-
-func TestRevokeAccountAccess_Missing_400(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t, ownerUserID, ownerEmail)
-	// No grant exists -> domain NotFound, which the error map sends as 400
-	// (documented convention).
-	status, _ := h.do(t, http.MethodPost, "/api/v1/connection/revoke-account-access", tok, map[string]any{"accountId": ownerAccount, "userId": guestUserID})
-	if status != http.StatusBadRequest {
-		t.Fatalf("status=%d want 400 (no grant to revoke)", status)
-	}
-}
+// grant/revoke of account access moved to the account feature (see
+// internal/account/api/access_test.go); shared-account visibility in the
+// connection list is seeded directly here via the fixture.
 
 func TestGetConnectionList_ReflectsSharedAccounts(t *testing.T) {
 	h := newHarness(t)
+	h.f.AccountAccess(ownerAccount, guestUserID, 1) // role=1 (user), accepted
 	ownerTok := h.token(t, ownerUserID, ownerEmail)
-	h.do(t, http.MethodPost, "/api/v1/connection/set-account-access", ownerTok, map[string]any{"accountId": ownerAccount, "userId": guestUserID, "role": "user"})
 
 	// Owner's view: one connection (the guest), zero shared accounts FROM guest's
 	// side (the grant is issued by owner; owner is the account owner, so it shows
@@ -333,5 +225,31 @@ func TestGetConnectionList_NoToken_401(t *testing.T) {
 	status, _ := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", "", nil)
 	if status != http.StatusUnauthorized {
 		t.Fatalf("status=%d want 401", status)
+	}
+}
+
+// A stranger (unconnected, no shares) sees nothing in their connection list.
+func TestGetConnectionList_StrangerSeesNothing(t *testing.T) {
+	h := newHarness(t)
+	// Owner shares an account with the connected guest, creating real connection
+	// data — which the unconnected third user must still never see.
+	h.f.AccountAccess(ownerAccount, guestUserID, 1)
+	thirdTok := h.token(t, thirdUserID, thirdEmail)
+	_, env := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", thirdTok, nil)
+	if items := mustUnmarshal[listResult](t, env.Data).Items; len(items) != 0 {
+		t.Fatalf("stranger connection list = %+v, want empty", items)
+	}
+}
+
+// The owner's connection list never includes the unconnected third user.
+func TestGetConnectionList_OwnerDoesNotSeeStranger(t *testing.T) {
+	h := newHarness(t)
+	h.f.AccountAccess(ownerAccount, guestUserID, 1)
+	ownerTok := h.token(t, ownerUserID, ownerEmail)
+	_, env := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", ownerTok, nil)
+	for _, c := range mustUnmarshal[listResult](t, env.Data).Items {
+		if c.User.ID == thirdUserID {
+			t.Fatalf("owner connection list leaked unconnected third user; body: %s", env.raw)
+		}
 	}
 }

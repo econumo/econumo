@@ -8,12 +8,11 @@ import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto } from '@/api/dto/connection'
 import type { AccountRole } from '@/api/dto/account'
 import type { Id } from '@/api/types'
-import { useAccounts, useDeleteAccount } from '@/features/accounts/queries'
+import { useAccounts, useDeleteAccount, useGrantAccountAccess, useRevokeAccountAccess } from '@/features/accounts/queries'
 import { useBudgets, useDeclineBudgetAccess, useGrantBudgetAccess, useRevokeBudgetAccess } from '@/features/budgets/queries'
 import { useUserData } from '@/features/user/queries'
 import { AccessLevelDialog } from './AccessLevelDialog'
 import { DeclineAccessDialog } from './DeclineAccessDialog'
-import { useRevokeAccountAccess, useSetAccountAccess } from './queries'
 import { sharedAccountsFor, sharedBudgetsFor } from './shared'
 import type { SharedItem } from './shared'
 
@@ -31,7 +30,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const { data: budgets = [] } = useBudgets()
-  const setAccountAccess = useSetAccountAccess()
+  const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
   const grantBudgetAccess = useGrantBudgetAccess()
   const revokeBudgetAccess = useRevokeBudgetAccess()
@@ -129,7 +128,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
         onSelect={(role) => {
           if (!level) return
           if (level.kind === 'accounts') {
-            setAccountAccess.mutate({ accountId: level.item.id, userId: other.id, role: role as AccountRole })
+            grantAccountAccess.mutate({ accountId: level.item.id, userId: other.id, role: role as AccountRole })
           } else {
             grantBudgetAccess.mutate({ budgetId: level.item.id, userId: other.id, role })
           }

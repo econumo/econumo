@@ -35,23 +35,20 @@ type Service struct {
 	memberships FolderMembership
 	currency    CurrencyLookup
 	users       UserLookup
-	shared      SharedAccessLookup
-	revoker     AccessRevoker
+	access      AccessStore
 	tx          port.TxRunner
 	ops         port.OperationGuard
 	clock       port.Clock
 }
 
-// NewService wires the account+folder service. shared/revoker may be nil (no
-// connection module): then sharedAccess[] is always empty and a non-owner delete
-// returns AccessDenied. ops backs create-account's request-id idempotency.
+// NewService wires the account+folder service. ops backs create-account's
+// request-id idempotency.
 func NewService(
 	repo Repository,
 	folders FolderRepository,
+	access AccessStore,
 	currency CurrencyLookup,
 	users UserLookup,
-	shared SharedAccessLookup,
-	revoker AccessRevoker,
 	tx port.TxRunner,
 	ops port.OperationGuard,
 	clock port.Clock,
@@ -59,7 +56,7 @@ func NewService(
 	return &Service{
 		accounts: repo, positions: repo, balances: repo,
 		folders: folders, memberships: folders,
-		currency: currency, users: users, shared: shared, revoker: revoker, tx: tx, ops: ops, clock: clock,
+		currency: currency, users: users, access: access, tx: tx, ops: ops, clock: clock,
 	}
 }
 
@@ -221,23 +218,24 @@ func (s *Service) resolveCurrency(ctx context.Context, cache *accountEmbedCache,
 }
 
 // sharedAccessFor builds the account's sharedAccess[] embed: one entry per
-// accounts_access grant, with the granted user resolved (id/avatar/name). Always
-// returns a non-nil slice (empty when no connection module or no grants).
+// accounts_access grant, with the granted user resolved (id/avatar/name).
+// Always returns a non-nil slice (empty when no grants).
 func (s *Service) sharedAccessFor(ctx context.Context, accountID vo.Id, cache *accountEmbedCache) ([]model.SharedAccess, error) {
 	out := []model.SharedAccess{}
-	if s.shared == nil {
-		return out, nil
-	}
-	grants, err := s.shared.ListByAccount(ctx, accountID)
+	grants, err := s.access.ListByAccount(ctx, accountID)
 	if err != nil {
 		return nil, err
 	}
 	for _, g := range grants {
-		u, uerr := s.resolveOwner(ctx, cache, g.UserID)
+		u, uerr := s.resolveOwner(ctx, cache, g.UserID.String())
 		if uerr != nil {
 			return nil, uerr
 		}
-		out = append(out, model.SharedAccess{User: u, Role: g.Role})
+		accepted := 0
+		if g.IsAccepted {
+			accepted = 1
+		}
+		out = append(out, model.SharedAccess{User: u, Role: g.Role.Alias(), IsAccepted: accepted})
 	}
 	return out, nil
 }
@@ -280,6 +278,26 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 		for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
 			items[i], items[j] = items[j], items[i]
 		}
+	}
+
+	// Pending (not yet accepted) grants received by the user ride the list as
+	// inert placeholder entries — folderId null, position 0, balance "0" — so
+	// the recipient can see and act on the invite. ListAvailable (above) already
+	// excludes pending grants, so this cannot duplicate an entry.
+	pending, err := s.access.ListPendingReceived(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range pending {
+		acct, gerr := s.accounts.GetByID(ctx, g.AccountID)
+		if gerr != nil {
+			return nil, gerr
+		}
+		item, berr := s.buildAccountResult(ctx, userID, acct, "0", nil, nil, cache)
+		if berr != nil {
+			return nil, berr
+		}
+		items = append(items, item)
 	}
 	return items, nil
 }

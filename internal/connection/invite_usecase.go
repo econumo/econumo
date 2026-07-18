@@ -4,7 +4,6 @@ package connection
 
 import (
 	"context"
-	"errors"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -90,9 +89,9 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.Acce
 }
 
 // DeleteConnection disconnects the requesting user from a connected user: it
-// revokes every account-access grant shared between them (both directions),
-// drops any budget access between them (both directions), and removes the
-// symmetric users_connections link.
+// revokes every account-access grant shared between them (both directions, via
+// the account feature's port), drops any budget access between them (both
+// directions), and removes the symmetric users_connections link.
 func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req model.DeleteConnectionRequest) (*model.DeleteConnectionResult, error) {
 	connectedID, err := parseID("id", req.Id)
 	if err != nil {
@@ -103,75 +102,19 @@ func (s *Service) DeleteConnection(ctx context.Context, userID vo.Id, req model.
 	}
 
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		// Revoke account access where the connected user owns an account shared TO
-		// me (received), and where I own an account shared TO the connected user
-		// (issued).
-		received, rerr := s.access.ListReceived(txCtx, userID)
-		if rerr != nil {
-			return rerr
-		}
-		for _, a := range received {
-			owner, oerr := s.access.AccountOwner(txCtx, a.AccountID)
-			if oerr != nil {
-				return oerr
-			}
-			if owner.Equal(connectedID) {
-				if rg := s.revokeGrantTx(txCtx, a.AccountID, a.UserID); rg != nil {
-					return rg
-				}
+		if s.accountAccess != nil {
+			if aerr := s.accountAccess.RevokeAccessBetween(txCtx, userID, connectedID); aerr != nil {
+				return aerr
 			}
 		}
-		issued, ierr := s.access.ListIssued(txCtx, userID)
-		if ierr != nil {
-			return ierr
-		}
-		for _, a := range issued {
-			if a.UserID.Equal(connectedID) {
-				if rg := s.revokeGrantTx(txCtx, a.AccountID, a.UserID); rg != nil {
-					return rg
-				}
-			}
-		}
-
-		// Drop budget access between the two users (both directions), if the budget
-		// module is wired.
 		if s.budgetAccess != nil {
 			if berr := s.budgetAccess.RevokeBetween(txCtx, userID, connectedID); berr != nil {
 				return berr
 			}
 		}
-
-		// Remove the symmetric connection link.
 		return s.access.DeleteConnection(txCtx, userID, connectedID)
 	}); err != nil {
 		return nil, err
 	}
 	return &model.DeleteConnectionResult{}, nil
-}
-
-// revokeGrantTx unwinds one grant (folders + options + the grant row) on the
-// CURRENT transaction context. It is revokeGrant's body without opening its own
-// tx (delete-connection already holds one; nesting would savepoint, so reusing
-// the same tx keeps it all in a single transaction).
-func (s *Service) revokeGrantTx(txCtx context.Context, accountID, affectedUserID vo.Id) error {
-	if _, gerr := s.access.Get(txCtx, accountID, affectedUserID); gerr != nil {
-		var nf *errs.NotFoundError
-		if errors.As(gerr, &nf) {
-			return nil // already gone
-		}
-		return gerr
-	}
-	folderIDs, ferr := s.folders.FoldersContaining(txCtx, affectedUserID, accountID)
-	if ferr != nil {
-		return ferr
-	}
-	for _, fid := range folderIDs {
-		if rerr := s.folders.RemoveAccount(txCtx, fid, accountID); rerr != nil {
-			return rerr
-		}
-	}
-	if oerr := s.access.DeleteOption(txCtx, accountID, affectedUserID); oerr != nil {
-		return oerr
-	}
-	return s.access.Delete(txCtx, accountID, affectedUserID)
 }

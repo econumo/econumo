@@ -14,10 +14,7 @@ import (
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	"github.com/econumo/econumo/internal/config"
-	appconnection "github.com/econumo/econumo/internal/connection"
-	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -77,18 +74,8 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	// Wire the real connection module so sharedAccess[] + the delete-account
-	// non-owner revoke branch are exercised against actual accounts_access rows.
-	connRepo := connectionrepo.NewRepo("sqlite", txm)
-	connSvc := appconnection.NewService(
-		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
-		server.NewConnectionFolderPort(folderRepo), repo,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
-		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
-	)
-	sharedLookup := server.NewConnectionSharedAccessLookup(connRepo)
-	revoker := server.NewConnectionAccessRevoker(connRepo, connSvc)
-	svc := appaccount.NewService(repo, folderRepo, accCur, accUser, sharedLookup, revoker, txm, opGuard, clk)
+	accessRepo := accountrepo.NewAccessRepo("sqlite", txm)
+	svc := appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, txm, opGuard, clk)
 	handlers := handleraccount.NewHandlers(svc, cfg.IsDev())
 
 	h := router.New(router.Deps{

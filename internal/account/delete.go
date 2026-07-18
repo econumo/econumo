@@ -3,6 +3,7 @@ package account
 
 import (
 	"context"
+	"errors"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -11,10 +12,9 @@ import (
 
 // DeleteAccount handles delete-account. Access requires the owner OR any
 // accounts_access grant. The OWNER soft-deletes the account (sets is_deleted); a
-// NON-owner with a grant instead drops their own access via the connection module
-// (RevokeOwnAccess), unwinding their folder memberships + accounts_options.
-// Without a connection module wired, a non-owner gets AccessDenied (403). Returns
-// an empty result ({}).
+// NON-owner with a grant instead drops their own access (RevokeOwnAccess),
+// unwinding their folder memberships + accounts_options. A non-owner with no
+// grant gets AccessDenied (403). Returns an empty result ({}).
 func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req model.DeleteAccountRequest) (*model.DeleteAccountResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -36,19 +36,17 @@ func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req model.Del
 		return &model.DeleteAccountResult{}, nil
 	}
 
-	// Non-owner: must have a grant, then revoke their own access. No connection
-	// module -> AccessDenied.
-	if s.revoker == nil {
-		return nil, errs.NewAccessDenied("Access denied")
+	// Non-owner: must hold a grant (pending counts -- deleting from their side
+	// is a decline), then drop their own access. AccessStore.Get takes
+	// (accountID, userID).
+	if _, gerr := s.access.Get(ctx, id, userID); gerr != nil {
+		var nf *errs.NotFoundError
+		if errors.As(gerr, &nf) {
+			return nil, errs.NewAccessDenied("Access denied")
+		}
+		return nil, gerr
 	}
-	hasAccess, herr := s.revoker.HasAccess(ctx, userID, id)
-	if herr != nil {
-		return nil, herr
-	}
-	if !hasAccess {
-		return nil, errs.NewAccessDenied("Access denied")
-	}
-	if rerr := s.revoker.RevokeOwnAccess(ctx, userID, id); rerr != nil {
+	if rerr := s.RevokeOwnAccess(ctx, userID, id); rerr != nil {
 		return nil, rerr
 	}
 	return &model.DeleteAccountResult{}, nil

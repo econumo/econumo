@@ -13,8 +13,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		mux.Handle("GET /api/v1/connection/get-connection-list", auth(h.GetConnectionList))
-		mux.Handle("POST /api/v1/connection/set-account-access", auth(h.SetAccountAccess))
-		mux.Handle("POST /api/v1/connection/revoke-account-access", auth(h.RevokeAccountAccess))
 
 		mux.Handle("POST /api/v1/connection/generate-invite", auth(h.GenerateInvite))
 		mux.Handle("POST /api/v1/connection/delete-invite", auth(h.DeleteInvite))

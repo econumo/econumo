@@ -18,6 +18,11 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		mux.Handle("GET /api/v1/account/get-account-list", auth(h.GetAccountList))
 		mux.Handle("POST /api/v1/account/order-account-list", auth(h.OrderAccountList))
 
+		mux.Handle("POST /api/v1/account/grant-access", auth(h.GrantAccess))
+		mux.Handle("POST /api/v1/account/accept-access", auth(h.AcceptAccess))
+		mux.Handle("POST /api/v1/account/decline-access", auth(h.DeclineAccess))
+		mux.Handle("POST /api/v1/account/revoke-access", auth(h.RevokeAccess))
+
 		mux.Handle("POST /api/v1/account/create-folder", auth(h.CreateFolder))
 		mux.Handle("POST /api/v1/account/update-folder", auth(h.UpdateFolder))
 		mux.Handle("POST /api/v1/account/hide-folder", auth(h.HideFolder))

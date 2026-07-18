@@ -14,7 +14,8 @@
       "onboarding": "Начало работы",
       "create_account": "Добавить счёт",
       "collapse_menu": "Свернуть меню",
-      "expand_menu": "Развернуть меню"
+      "expand_menu": "Развернуть меню",
+      "sharing_requests": "Входящие запросы"
     },
     "econumo": {
       "label": "Econumo"
@@ -1102,6 +1103,16 @@
           "required_field": "Обязательное поле"
         }
       }
+    },
+    "sharing_requests": {
+      "title": "Входящие запросы",
+      "empty": "Нет ожидающих запросов",
+      "invited_you": "{name} приглашает вас",
+      "account": "Счёт",
+      "budget": "Бюджет",
+      "choose_folder": "Выберите папку для этого счёта",
+      "general_folder_hint": "General (будет создана)",
+      "decline_question": "Отклонить доступ к «{name}»?"
     }
   },
   "errors": {

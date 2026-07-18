@@ -1,7 +1,7 @@
-import { useCallback, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Rocket, Settings, Wallet } from 'lucide-react'
+import { RefreshCw, Rocket, Settings, UserPlus, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
 // so without it the footer logo ships as a separate asset and can 404 where
@@ -21,6 +21,8 @@ import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
+import { usePendingInvites } from '@/features/connections/pendingInvites'
+import { SharingRequestsDialog } from '@/features/connections/SharingRequestsDialog'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
@@ -84,6 +86,9 @@ export function ApplicationLayout() {
   // screen, refetches and cache churn must never re-cover the app (Vue parity).
   // While the persisted cache is being restored the data is transiently
   // undefined — that must not flash the loader either.
+  const { count: pendingCount } = usePendingInvites()
+  const [sharingOpen, setSharingOpen] = useState(false)
+
   const isRestoring = useIsRestoring()
   const hasLoadedOnce = useRef(false)
   if (isFullyLoaded) {
@@ -150,6 +155,19 @@ export function ApplicationLayout() {
                       <Rocket className="size-5" />
                     </Link>
                   ) : null}
+                  {pendingCount > 0 ? (
+                    <button
+                      type="button"
+                      title={t('common.nav.sharing_requests')}
+                      onClick={() => setSharingOpen(true)}
+                      className="relative grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                    >
+                      <UserPlus className="size-5" />
+                      <span className="absolute top-0.5 right-0.5 rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                        {pendingCount}
+                      </span>
+                    </button>
+                  ) : null}
                   <Link
                     to={RouterPage.BUDGET}
                     title={t('common.nav.budget')}
@@ -165,6 +183,16 @@ export function ApplicationLayout() {
                     <Link to={RouterPage.ONBOARDING} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('common.nav.onboarding')}
                     </Link>
+                  ) : null}
+                  {pendingCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setSharingOpen(true)}
+                      className={`flex items-center justify-between rounded-md px-2 py-2 text-left hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}
+                    >
+                      <span>{t('common.nav.sharing_requests')}</span>
+                      <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">{pendingCount}</span>
+                    </button>
                   ) : null}
                   <Link to={RouterPage.BUDGET} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                     {t('common.nav.budget')}
@@ -247,6 +275,7 @@ export function ApplicationLayout() {
       <AccountDialog />
       <TransactionDialog />
       <SwitchAccountPrompt />
+      <SharingRequestsDialog open={sharingOpen} onClose={() => setSharingOpen(false)} />
       <LoadingDialog open={showBootLoader} label={t('common.app.modal.loading.data_loading')} />
       {showLogoutEscape ? <LogoutEscapeButton /> : null}
     </div>

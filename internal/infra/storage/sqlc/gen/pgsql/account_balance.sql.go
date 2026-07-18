@@ -48,7 +48,7 @@ SELECT
     AS TEXT) as balance
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
-WHERE a.is_deleted = false AND (a.user_id = $2 OR aa.user_id = $2)
+WHERE a.is_deleted = false AND (a.user_id = $2 OR (aa.user_id = $2 AND aa.is_accepted = true))
 GROUP BY a.id
 `
 
