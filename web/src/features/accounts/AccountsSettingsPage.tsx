@@ -40,6 +40,7 @@ import {
   useShowFolder,
   useOrderFolders,
   useOrderAccounts,
+  useLeaveSharedAccount,
   useDeleteAccount,
   useGrantAccountAccess,
   useRevokeAccountAccess,
@@ -53,10 +54,12 @@ const COLLAPSED_FOLDERS_KEY = 'settings.accounts.collapsedFolders'
 
 function AccountRow({
   account,
+  isOwner,
   showAccess,
   onMenu,
 }: {
   account: AccountDto
+  isOwner: boolean
   showAccess: boolean
   onMenu: (action: 'edit' | 'delete' | 'view' | 'access') => void
 }) {
@@ -124,7 +127,7 @@ function AccountRow({
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem variant="destructive" onSelect={() => onMenu('delete')}>
-                {t('common.button.delete.label')}
+                {t(isOwner ? 'common.button.delete.label' : 'common.button.decline.label')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -286,11 +289,13 @@ export function AccountsSettingsPage() {
   const orderFolders = useOrderFolders()
   const orderAccounts = useOrderAccounts()
   const deleteAccount = useDeleteAccount()
+  const declineAccountAccess = useLeaveSharedAccount()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<FolderDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<FolderDto | null>(null)
   const [deleteAccountTarget, setDeleteAccountTarget] = useState<AccountDto | null>(null)
+  const [declineAccountTarget, setDeclineAccountTarget] = useState<AccountDto | null>(null)
   const [previewAccount, setPreviewAccount] = useState<AccountDto | null>(null)
   const [accessAccountId, setAccessAccountId] = useState<string | null>(null)
   const [levelTarget, setLevelTarget] = useState<{ accountId: string; entry: ShareEntry } | null>(null)
@@ -473,12 +478,17 @@ export function AccountsSettingsPage() {
                     <AccountRow
                       key={account.id}
                       account={account}
+                      isOwner={account.owner.id === user?.id}
                       showAccess={user ? hasAccountAdminAccess(account, user.id) : false}
                       onMenu={(action) => {
                         if (action === 'edit') {
                           openAccountModal({ account })
                         } else if (action === 'delete') {
-                          setDeleteAccountTarget(account)
+                          if (account.owner.id === user?.id) {
+                            setDeleteAccountTarget(account)
+                          } else {
+                            setDeclineAccountTarget(account)
+                          }
                         } else if (action === 'access') {
                           setAccessAccountId(account.id)
                         } else {
@@ -612,6 +622,21 @@ export function AccountsSettingsPage() {
         destructive
       />
 
+      <ConfirmDialog
+        open={declineAccountTarget !== null}
+        onClose={() => setDeclineAccountTarget(null)}
+        onConfirm={() => {
+          if (declineAccountTarget) {
+            declineAccountAccess.mutate(declineAccountTarget.id, { onSettled: () => setDeclineAccountTarget(null) })
+          }
+        }}
+        title={t('settings.accounts.decline_access_modal.title')}
+        question={t('settings.accounts.decline_access_modal.question', { account: declineAccountTarget?.name ?? '' })}
+        confirmLabel={t('common.button.decline.label')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
+      />
+
       {previewLive ? (
         <ResponsiveDialog
           open
@@ -661,11 +686,15 @@ export function AccountsSettingsPage() {
               type="button"
               variant="destructive"
               onClick={() => {
-                setDeleteAccountTarget(previewLive)
+                if (previewLive.owner.id === user?.id) {
+                  setDeleteAccountTarget(previewLive)
+                } else {
+                  setDeclineAccountTarget(previewLive)
+                }
                 setPreviewAccount(null)
               }}
             >
-              {t('common.button.delete.label')}
+              {t(previewLive.owner.id === user?.id ? 'common.button.delete.label' : 'common.button.decline.label')}
             </Button>
             <Button
               type="button"
