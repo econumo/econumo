@@ -1,4 +1,5 @@
-import { selfHosted, locale } from './config'
+import { analyticsDomain, capture } from './analytics'
+import { analyticsEnabled, getVersion, locale, selfHosted } from './config'
 
 declare global {
   interface Window {
@@ -110,6 +111,14 @@ export const METRICS = {
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
+
+// Route with UUID segments templated to ":id": no instance data may ride
+// along on an analytics event.
+export function scrubbedPage(pathname: string): string {
+  return pathname.substring(1).replace(UUID_RE, ':id')
+}
+
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
@@ -126,4 +135,14 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     },
     eventTimestamp: Date.now(),
   })
+  if (analyticsEnabled()) {
+    const domain = analyticsDomain()
+    capture(metric, {
+      domain,
+      selfHosted: domain === 'self-hosted',
+      locale: locale(),
+      version: getVersion(),
+      page: scrubbedPage(window.location.pathname),
+    })
+  }
 }
