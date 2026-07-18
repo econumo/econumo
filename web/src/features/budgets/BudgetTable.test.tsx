@@ -193,9 +193,15 @@ it('the available pill is not a button without onAvailableClick', async () => {
 
 it('edit mode reserves the actions column on headers, children, archive rows and totals', async () => {
   const user = userEvent.setup()
-  renderTable(undefined, {
-    renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} className="size-8" />,
-  })
+  // seed a nonzero archived element so the Archived section is visible (all-zero archive hides)
+  renderTable(
+    (budget) => {
+      budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: 7 })
+    },
+    {
+      renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} className="size-8" />,
+    },
+  )
   const living = await screen.findByTestId('element-env-1')
   await user.click(within(living).getByText('Living'))
   const child = await screen.findByTestId('child-cat-rent')
