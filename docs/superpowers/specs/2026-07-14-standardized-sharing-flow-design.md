@@ -166,9 +166,13 @@ granted role, Accept / Decline buttons. Decline asks a one-step confirmation.
 When the last request is resolved the modal closes and the sidebar button
 disappears.
 
-- **Accepting an account** expands into a folder picker (recipient's folders
-  from `get-folder-list`, defaulting to the last one). With zero folders it
-  shows "General (will be created)" and omits `folderId`.
+- **Account rows** show the folder picker immediately, inline in the row (no
+  expand step): recipient's folders from `get-folder-list`, defaulting to the
+  first one. Hidden folders (`isVisible: 0`) stay listed and selectable but
+  are marked (EyeOff icon + muted text, the accounts-settings convention) —
+  accepting into one means the account won't show in the accounts tree.
+  Accept commits directly with the selected folder. With zero folders the
+  picker shows "General (will be created)" and omits `folderId`.
 - **Accepting a budget** applies immediately, no extra step.
 
 ### Entity lists stay clean
@@ -210,7 +214,8 @@ modal and sidebar button live in `features/connections/`.
 - **Engine parity:** the enginecompare suite replays the catalogue on
   PostgreSQL; `make test-repo-pgsql` exercises the new pgsql queries.
 - **Frontend (vitest):** `usePendingInvites` count derivation; requests modal
-  (accept account → folder picker → mutation; accept budget direct; decline
+  (account row shows inline folder picker defaulting to the first folder,
+  hidden folders marked; accept account → mutation; accept budget direct; decline
   confirm); sidebar button visibility.
 
 ## Migration & rollout

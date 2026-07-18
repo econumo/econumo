@@ -1641,11 +1641,11 @@ Test `pendingInvites.test.tsx`: renderHook with QueryClientProvider + msw `coreH
 
 - Rows: `UserAvatar owner` + `t('modules.connections.sharing_requests.invited_you', { name: owner.name })`, entity kind label + entity name, role text (reuse the `modules.connections.${kind}s.roles.${role}` keys), and two buttons: Accept (`t('elements.button.accept.label')`) and Decline (`t('elements.button.decline.label')`, destructive).
 - Accept on a BUDGET row: `acceptBudget.mutate(invite.id)`.
-- Accept on an ACCOUNT row: reveal an inline folder `<Select>` (shadcn select — copy the pattern from `AccountDialog.tsx`'s folder picker) listing `useFolders()` items, preselected to the LAST folder; when the user has zero folders show a disabled option `t('...general_folder_hint')`; confirm button calls `acceptAccount.mutate({ accountId: invite.id, folderId: selected || undefined })`.
+- ACCOUNT rows: render an inline folder `<Select>` immediately (shadcn select — copy the pattern from `AccountDialog.tsx`'s folder picker) listing `useFolders()` items, preselected to the FIRST folder; hidden folders (`isVisible === 0`) stay selectable but are marked with `EyeOff` + muted text (the accounts-settings convention); when the user has zero folders show a disabled option `t('...general_folder_hint')`; Accept calls `acceptAccount.mutate({ accountId: invite.id, folderId: selected || undefined })` directly — no expand step.
 - Decline: `ConfirmDialog` with `t('...decline_question', { name: invite.name })`; on confirm, `declineAccount.mutate(invite.id)` or `declineBudget.mutate(invite.id)`.
 - When `invites.length === 0` render `t('...empty')`; auto-close is the parent's concern (Task 11 hides the button; keep the dialog dumb).
 
-Test: render with msw fixtures carrying one pending account (owner `u2`, role `user`) and one pending budget; assert rows render; click account Accept → folder select appears with fixture folders → confirm → assert POST body `{accountId, folderId}` captured via `server.use(http.post('*/api/v1/account/accept-access', ...))`; click budget Accept → assert `*/api/v1/budget/accept-access` called; Decline flows confirm-then-POST. Follow `ConnectionsPage.test.tsx`'s request-capturing style.
+Test: render with msw fixtures carrying one pending account (owner `u2`, role `user`) and one pending budget; assert rows render; the account row shows the folder select immediately (default = first folder, hidden folders marked) → Accept → assert POST body `{accountId, folderId}` captured via `server.use(http.post('*/api/v1/account/accept-access', ...))`; click budget Accept → assert `*/api/v1/budget/accept-access` called; Decline flows confirm-then-POST. Follow `ConnectionsPage.test.tsx`'s request-capturing style.
 
 - [ ] **Step 4: Run + commit**
 
