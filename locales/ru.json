@@ -15,7 +15,7 @@
       "create_account": "Добавить счёт",
       "collapse_menu": "Свернуть меню",
       "expand_menu": "Развернуть меню",
-      "sharing_requests": "Запросы на доступ"
+      "sharing_requests": "Входящие запросы"
     },
     "econumo": {
       "label": "Econumo"
@@ -1105,7 +1105,7 @@
       }
     },
     "sharing_requests": {
-      "title": "Запросы на доступ",
+      "title": "Входящие запросы",
       "empty": "Нет ожидающих запросов",
       "invited_you": "{name} приглашает вас",
       "account": "Счёт",
