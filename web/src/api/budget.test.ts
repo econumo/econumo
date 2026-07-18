@@ -28,8 +28,8 @@ it('get-budget coerces every decimal-string field, null-preserving for balances'
   const food = budget.structure.elements[0]
   expect(food.budgeted).toBe(200)
   expect(food.available).toBe(154.5)
-  expect(food.spent).toBe(-45.5)
-  expect(food.budgetSpent).toBe(-45.5)
+  expect(food.spent).toBe(45.5)
+  expect(food.budgetSpent).toBe(45.5)
   expect(budget.structure.elements[1].children[0].spent).toBe(0)
 })
 

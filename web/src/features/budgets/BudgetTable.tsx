@@ -9,7 +9,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, displayAvailable, displaySpent } from './budgetMath'
+import { budgetTotals, displayAvailable } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
@@ -63,7 +63,7 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
   return (
     <span className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stat-line">
       <span className="hidden w-24 text-right tabular-nums sm:block">{moneyFormat(stats.budgeted, currency, opts)}</span>
-      <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(displaySpent(stats.spent), currency, opts)}</span>
+      <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(stats.spent, currency, opts)}</span>
       <span className={`w-20 text-center tabular-nums sm:w-24 ${available >= 0 ? 'text-income' : 'text-expense'}`}>
         {moneyFormat(available, currency, opts)}
       </span>
@@ -110,11 +110,11 @@ function ElementRow({
         className="w-20 text-center text-[15px] tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline sm:w-24"
         onClick={() => extras.onSpentClick!(target)}
       >
-        {moneyFormat(displaySpent(spent), currency, opts)}
+        {moneyFormat(spent, currency, opts)}
       </button>
     ) : (
       <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">
-        {moneyFormat(displaySpent(spent), currency, opts)}
+        {moneyFormat(spent, currency, opts)}
       </span>
     )
 
@@ -302,7 +302,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
         <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
         <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
-          {moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}
+          {moneyFormat(totals.spent, budgetCurrency, opts)}
         </span>
         <span className="flex w-24 justify-center">
           <AvailablePill available={totals.available} currency={budgetCurrency} />
@@ -323,7 +323,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.spent')}</span>
-          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}</span>
+          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(totals.spent, budgetCurrency, opts)}</span>
         </span>
         <span className="flex items-center justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>

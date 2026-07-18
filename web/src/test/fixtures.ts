@@ -108,7 +108,7 @@ export const fixtureWireBudget = {
     elements: [
       {
         id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: null, isArchived: 0,
-        folderId: 'bf1', position: 0, budgeted: '200', available: '154.5', spent: '-45.5', budgetSpent: '-45.5',
+        folderId: 'bf1', position: 0, budgeted: '200', available: '154.5', spent: '45.5', budgetSpent: '45.5',
         ownerUserId: 'u1', children: [],
       },
       {

@@ -82,7 +82,6 @@ export function budgetTotals(buckets: BudgetBuckets): BucketStats {
   )
 }
 
-export const displaySpent = (spent: number): number => -spent
 export const displayAvailable = (el: { available: number; budgeted: number }): number => el.available + el.budgeted
 
 export interface PeriodItem {
