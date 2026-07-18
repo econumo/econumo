@@ -1,4 +1,4 @@
-import { backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, isPaywallEnabled, getVersion } from './config'
+import { analyticsEnabled, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, isPaywallEnabled, getVersion } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -64,5 +64,19 @@ describe('locale and version', () => {
   it('falls back to english when nothing is supported', () => {
     vi.stubGlobal('navigator', { ...navigator, languages: ['de-DE', 'fr-FR'], language: 'de-DE' })
     expect(locale()).toBe('en')
+  })
+})
+
+describe('analyticsEnabled', () => {
+  it.each([
+    [undefined, true],
+    [true, true],
+    ['true', true],
+    [false, false],
+    ['false', false],
+    ['garbage', true], // unknown fails OPEN: enabled-by-default contract
+  ])('ANALYTICS=%s -> %s', (value, expected) => {
+    window.econumoConfig = { ANALYTICS: value as boolean | string | undefined }
+    expect(analyticsEnabled()).toBe(expected)
   })
 })

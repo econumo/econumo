@@ -4,6 +4,7 @@ window.econumoConfig = {
   LILTAG_CACHE_TTL: 0,
   ALLOW_REGISTRATION: true,
   PAYWALL_ENABLED: false,
+  ANALYTICS: true,
   ALLOW_CUSTOM_API: true,
   VERSION: null,
 };
