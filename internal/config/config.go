@@ -25,6 +25,7 @@ type Config struct {
 	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
 	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	Analytics         bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -97,6 +98,14 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
+
+	// Strict parse (unlike the lenient getBool): a typo while trying to
+	// DISABLE analytics must fail at boot, not silently leave it enabled.
+	analytics, err := getBoolStrict("ECONUMO_ANALYTICS", true)
+	if err != nil {
+		return Config{}, err
+	}
+	c.Analytics = analytics
 
 	// Rate-limit values fail at boot on a malformed value (unlike the lenient
 	// getInt), because a typo here would silently disable brute-force protection.
@@ -194,6 +203,20 @@ func getEnv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func getBoolStrict(key string, def bool) (bool, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		return true, nil
+	case "0", "false", "no", "off":
+		return false, nil
+	}
+	return false, fmt.Errorf("%s: invalid boolean %q", key, v)
 }
 
 func getBool(key string, def bool) bool {

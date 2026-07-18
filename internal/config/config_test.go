@@ -217,3 +217,28 @@ func TestLoad_CheckUpdates(t *testing.T) {
 		t.Fatal("CheckUpdates with ECONUMO_CHECK_UPDATES=false = true, want false")
 	}
 }
+
+func TestLoad_Analytics(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.Analytics {
+		t.Fatal("Analytics default = false, want true")
+	}
+	t.Setenv("ECONUMO_ANALYTICS", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Analytics {
+		t.Fatal("Analytics with ECONUMO_ANALYTICS=false = true, want false")
+	}
+	// Strict parse: a typo while trying to disable analytics fails at boot
+	// rather than silently leaving it enabled.
+	t.Setenv("ECONUMO_ANALYTICS", "flase")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_ANALYTICS=flase: err = nil, want boot error")
+	}
+}
