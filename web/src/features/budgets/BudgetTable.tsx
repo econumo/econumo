@@ -248,9 +248,10 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
 
       {sections.map((section) => {
         if (section.bucket.elements.length === 0 && section.folderIndex === null) {
-          // archive hides when empty; the Default folder stays visible as a drop
-          // target whenever real folders exist (Vue renders it unconditionally)
-          if (section.key === '__archive__' || realFolders.length === 0) {
+          // archive hides when it has nothing to show; the empty Default folder
+          // survives only in edit mode (folder actions present), where it is the
+          // drop target for dragging elements out of folders
+          if (section.key === '__archive__' || realFolders.length === 0 || !renderFolderActions) {
             return null
           }
         }

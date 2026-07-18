@@ -45,8 +45,36 @@ it('renders column headers, folder, default and archived sections with aligned s
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('354.50')
   const noFolder = screen.getByTestId('budget-folder-Default folder')
   expect(within(noFolder).getByText('Living')).toBeInTheDocument()
-  const archive = screen.getByTestId('budget-folder-Archived')
-  expect(within(archive).getByText('zzz-archived')).toBeInTheDocument()
+  // the only archived element is all-zero, so the whole Archived section hides
+  expect(screen.queryByTestId('budget-folder-Archived')).not.toBeInTheDocument()
+})
+
+it('archived elements with a nonzero number stay listed; all-zero ones hide', async () => {
+  renderTable((budget) => {
+    budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: 7 })
+  })
+  const archive = await screen.findByTestId('budget-folder-Archived')
+  expect(within(archive).getByText('aaa-carry')).toBeInTheDocument()
+  expect(within(archive).queryByText('zzz-archived')).not.toBeInTheDocument()
+})
+
+it('an empty Default folder hides outside edit mode', async () => {
+  renderTable((budget) => {
+    budget.structure.elements[1].folderId = 'bf1'
+  })
+  await screen.findByTestId('budget-folder-Essentials')
+  expect(screen.queryByTestId('budget-folder-Default folder')).not.toBeInTheDocument()
+})
+
+it('edit mode keeps the empty Default folder as a drop target', async () => {
+  renderTable(
+    (budget) => {
+      budget.structure.elements[1].folderId = 'bf1'
+    },
+    { renderFolderActions: () => null } as never,
+  )
+  await screen.findByTestId('budget-folder-Essentials')
+  expect(screen.getByTestId('budget-folder-Default folder')).toBeInTheDocument()
 })
 
 it('shows -spent and available+budgeted as a sign-colored pill', async () => {

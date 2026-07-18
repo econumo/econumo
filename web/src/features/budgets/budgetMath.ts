@@ -60,7 +60,12 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): Budge
   const folderless =
     folders.length === 0 ? [...active].sort(byPosition) : active.filter((el) => el.folderId === null).sort(byPosition)
 
-  const archived = elements.filter((el) => el.isArchived === 1).sort((a, b) => a.name.localeCompare(b.name))
+  // archive is read-only history: a row earns its place only if one of its
+  // displayed numbers (budget, spent, available) is nonzero
+  const archived = elements
+    .filter((el) => el.isArchived === 1)
+    .filter((el) => el.budgeted !== 0 || el.spent !== 0 || displayAvailable(el) !== 0)
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   return {
     withFolder,

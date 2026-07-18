@@ -28,13 +28,26 @@ budget.structure.elements = budget.structure.elements.map((el) => ({
 
 const exch = makeBudgetExchange(budget, [usd, eur])
 
-it('buckets: folder, folderless, archived (name-sorted)', () => {
+it('buckets: folder, folderless, archived (all-zero archived rows hidden)', () => {
   const buckets = bucketElements(budget, exch)
   expect(buckets.withFolder).toHaveLength(1)
   expect(buckets.withFolder[0].folder!.name).toBe('Essentials')
   expect(buckets.withFolder[0].elements.map((e) => e.id)).toEqual(['cat-food'])
   expect(buckets.withoutFolder.elements.map((e) => e.id)).toEqual(['env-1'])
-  expect(buckets.archive.elements.map((e) => e.id)).toEqual(['tag-old'])
+  // tag-old has zero budget, spent and available -> nothing to show in archive
+  expect(buckets.archive.elements).toEqual([])
+})
+
+it('archive keeps elements with a nonzero budget, spent or available, name-sorted', () => {
+  const mutated: BudgetDto = JSON.parse(JSON.stringify(budget))
+  const zero = mutated.structure.elements.find((el) => el.id === 'tag-old')!
+  mutated.structure.elements.push(
+    { ...zero, id: 'tag-carry', name: 'ccc-carry', available: 12 },
+    { ...zero, id: 'tag-spent', name: 'aaa-spent', spent: -3 },
+    { ...zero, id: 'tag-limit', name: 'bbb-limit', budgeted: 5, available: -5 },
+  )
+  const buckets = bucketElements(mutated, exch)
+  expect(buckets.archive.elements.map((e) => e.id)).toEqual(['tag-spent', 'tag-limit', 'tag-carry'])
 })
 
 it('zero folders puts every active element into the no-folder bucket', () => {
