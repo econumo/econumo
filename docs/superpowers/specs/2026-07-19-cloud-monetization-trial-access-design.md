@@ -97,6 +97,17 @@ reason": a lapsed user must be able to log in — otherwise they see neither the
 notice, nor the payment link, nor their own data. Why a user is restricted is the
 portal's business; the product does not store it.
 
+### Naming follows the same rule
+
+Identifiers in the product describe **access**, never money. `full_access`, not
+`paid`; `appAccessCtaClick`, not `appBillingCtaClick`; an "Access" settings entry,
+not "Subscription". The same binary serves a self-hosted instance where nobody
+pays for anything, and money-flavoured names would be false there.
+
+Two deliberate exceptions: `errs.PaymentRequired` (the RFC 7231 name for HTTP 402
+— renaming it would obscure where the status comes from) and `BILLING_URL` (SPA
+runtime config naming an external address, not product logic).
+
 ## Data model
 
 Two columns on `users`, migrated for both engines (`sqlite` + `pgsql`):
@@ -357,7 +368,8 @@ apiparity route-coverage guards are untouched; only the golden files change.
 
 - **Banner** when `accessUntil` is within 3 days or has passed. Generic copy
   ("access ends in N days" / "read-only"), CTA to the portal.
-- **Settings entry** "Subscription" → same link.
+- **Settings entry** "Access" → same link. Not "Subscription": core is a one-off
+  purchase, and that word would promise recurring charges that do not exist.
 - **Per-connection CTA** "Pay for <name>" in the connections view, shown when a
   connection's `accessLevel` is read-only or its `accessUntil` is near, using the
   `for=<partner user id>` link above.
@@ -393,9 +405,9 @@ success point per the project analytics rule):
 | `appAccountCreate` | an account is created |
 | `appTransactionCreate` | a transaction is created |
 | `appBudgetView` | the budget page is opened |
-| `appBillingBannerShow` | the trial/read-only banner renders |
-| `appBillingCtaClick` | the portal CTA is clicked |
-| `appBillingPartnerCtaClick` | the "pay for partner" CTA is clicked |
+| `appAccessBannerShow` | the trial/read-only banner renders |
+| `appAccessCtaClick` | the portal CTA is clicked |
+| `appAccessPartnerCtaClick` | the "pay for partner" CTA is clicked |
 | `appAccessReadonlyBlocked` | a 402 is received |
 
 "First account" and "first transaction" need no separate events — they are the
@@ -417,15 +429,21 @@ The property is `accessState`, with three values rather than the raw
 | value | condition |
 |---|---|
 | `trial` | effective `full` and `accessUntil` is set |
-| `paid` | effective `full` and `accessUntil` is NULL |
+| `full_access` | effective `full` and `accessUntil` is NULL |
 | `readonly` | effective `readonly` |
 
-The raw column cannot distinguish a trial from a lifetime purchase, and that is
-precisely the distinction the funnel is about. It is registered as a super
-property (not a person property) so each event records the state at the time it
-fired: with person-on-events, person properties reflect ingestion-time values,
-which would blur the trial→paid transition this analysis exists to measure. It is
-re-registered on login and whenever `get-user-data` returns.
+The raw column cannot distinguish time-limited access from permanent access, and
+that is precisely the distinction the funnel is about.
+
+`full_access` rather than `paid`: the product describes access, never money. A
+self-hosted instance emits `full_access` for every user, where `paid` would be a
+lie — and the same code path serves both editions.
+
+It is registered as a super property (not a person property) so each event records
+the state at the time it fired: with person-on-events, person properties reflect
+ingestion-time values, which would blur the `trial` → `full_access` transition
+this analysis exists to measure. It is re-registered on login and whenever
+`get-user-data` returns.
 
 `web/src/lib/metrics-coverage.test.ts` enforces that every key is actually fired.
 
@@ -510,5 +528,5 @@ The same binary serves a self-hosted user (all defaults) and the cloud.
   when `BILLING_URL` is empty; a 402 response flips the client into read-only; the
   per-connection CTA appears only for a read-only or near-expiry connection and
   builds the `for=<user id>` link; `accessState` is registered as a super property
-  and resolves to `trial` / `paid` / `readonly` correctly.
+  and resolves to `trial` / `full_access` / `readonly` correctly.
 - Regenerate the apiparity goldens and inspect the diff.
