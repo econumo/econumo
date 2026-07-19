@@ -1,15 +1,16 @@
 import type { CurrencyDto, CurrencyRateDto } from '@/api/dto/currency'
+import { div, isZero, mul, normalize, round } from '@/lib/decimal'
 
-// Port of the Vue useCurrency().exchange: convert through the base currency,
-// falling back to the unconverted amount whenever a rate or currency is missing.
+// Convert through the base currency, falling back to the unconverted amount
+// whenever a rate or currency is missing (or a rate is zero).
 export function exchange(
   fromCurrencyId: string,
   toCurrencyId: string,
-  amount: number | string,
+  amount: string,
   rates: CurrencyRateDto[],
   currencies: CurrencyDto[],
-): number {
-  const parsedAmount = parseFloat(amount.toString())
+): string {
+  const parsedAmount = normalize(amount)
   if (fromCurrencyId === toCurrencyId) {
     return parsedAmount
   }
@@ -22,18 +23,18 @@ export function exchange(
   }
   let result = parsedAmount
   const fromRate = rates.find((r) => r.currencyId === fromCurrencyId)
-  if (fromRate === undefined) {
+  if (fromRate === undefined || isZero(fromRate.rate)) {
     return parsedAmount
   }
   if (fromCurrencyId !== fromRate.baseCurrencyId) {
-    result = result / fromRate.rate
+    result = div(result, fromRate.rate)
   }
   const toRate = rates.find((r) => r.currencyId === toCurrencyId)
   if (toRate === undefined) {
     return parsedAmount
   }
   if (toCurrencyId !== toRate.baseCurrencyId) {
-    result = result * toRate.rate
+    result = mul(result, toRate.rate)
   }
-  return Number(result.toFixed(toCurrency.fractionDigits))
+  return round(result, toCurrency.fractionDigits)
 }

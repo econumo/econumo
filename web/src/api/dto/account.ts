@@ -21,8 +21,8 @@ export interface AccountDto {
   name: string
   position: number
   currency: CurrencyDto
-  /** wire: decimal string, coerced */
-  balance: number
+  /** decimal string (wire format, kept verbatim) */
+  balance: string
   type: AccountType
   icon: string
   sharedAccess: AccountAccessDto[]

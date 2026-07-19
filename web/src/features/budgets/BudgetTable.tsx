@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
+import { cmp } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
@@ -44,12 +45,12 @@ const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   maxPrecision: currency?.fractionDigits ?? 2,
 })
 
-function AvailablePill({ available, currency, testId }: { available: number; currency: CurrencyDto | undefined; testId?: string }) {
+function AvailablePill({ available, currency, testId }: { available: string; currency: CurrencyDto | undefined; testId?: string }) {
   return (
     <span
       data-testid={testId}
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-        available >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
+        cmp(available, '0') >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
       }`}
     >
       {moneyFormat(available, currency, cellOpts(currency))}
@@ -64,7 +65,7 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
     <span className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stat-line">
       <span className="hidden w-24 text-right tabular-nums sm:block">{moneyFormat(stats.budgeted, currency, opts)}</span>
       <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(stats.spent, currency, opts)}</span>
-      <span className={`w-20 text-center tabular-nums sm:w-24 ${available >= 0 ? 'text-income' : 'text-expense'}`}>
+      <span className={`w-20 text-center tabular-nums sm:w-24 ${cmp(available, '0') >= 0 ? 'text-income' : 'text-expense'}`}>
         {moneyFormat(available, currency, opts)}
       </span>
       {hideSymbol ? null : <span className="hidden w-6 text-center sm:block">{currency?.symbol}</span>}
@@ -110,7 +111,7 @@ function ElementRow({
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
 
-  const spentCell = (target: BudgetTransactionsTarget, spent: number) =>
+  const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
       <button
         type="button"

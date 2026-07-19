@@ -49,7 +49,7 @@ type CreateAccountRequest struct {
 	Id         string        `json:"id"`
 	Name       string        `json:"name"`
 	CurrencyId string        `json:"currencyId"`
-	Balance    vo.FlexString `json:"balance"`
+	Balance    vo.FlexString `json:"balance" swaggertype:"string"`
 	Icon       string        `json:"icon"`
 	FolderId   string        `json:"folderId"`
 }
@@ -88,7 +88,7 @@ type CreateAccountResult struct {
 type UpdateAccountRequest struct {
 	Id         string        `json:"id"`
 	Name       string        `json:"name"`
-	Balance    vo.FlexString `json:"balance"`
+	Balance    vo.FlexString `json:"balance" swaggertype:"string"`
 	Icon       string        `json:"icon"`
 	CurrencyId *string       `json:"currencyId"`
 	UpdatedAt  string        `json:"updatedAt"`

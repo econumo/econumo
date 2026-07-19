@@ -9,8 +9,8 @@ export interface CreateTransactionDto {
   type: TransactionType
   accountId: Id
   accountRecipientId: Id | null
-  amount: number
-  amountRecipient: number | null
+  amount: string
+  amountRecipient: string | null
   categoryId: Id | null
   description: string
   payeeId: Id | null

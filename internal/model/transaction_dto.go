@@ -31,13 +31,14 @@ type TransactionResult struct {
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
-// are vo.FlexString: the frontend posts them as JSON numbers, the contract treats
-// them as decimal strings, and FlexString accepts either (see its doc).
+// are vo.FlexString: the contract treats these as decimal strings, but FlexString
+// keeps accepting the deprecated JSON-number form from third-party clients (see
+// vo.FlexString's doc).
 type CreateTransactionRequest struct {
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`
-	Amount             vo.FlexString  `json:"amount"`
-	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	Amount             vo.FlexString  `json:"amount" swaggertype:"string"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient" swaggertype:"string"`
 	AccountId          string         `json:"accountId"`
 	AccountRecipientId *string        `json:"accountRecipientId"`
 	CategoryId         *string        `json:"categoryId"`
@@ -77,8 +78,8 @@ type CreateTransactionResult struct {
 type UpdateTransactionRequest struct {
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`
-	Amount             vo.FlexString  `json:"amount"`
-	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	Amount             vo.FlexString  `json:"amount" swaggertype:"string"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient" swaggertype:"string"`
 	AccountId          string         `json:"accountId"`
 	AccountRecipientId *string        `json:"accountRecipientId"`
 	CategoryId         *string        `json:"categoryId"`

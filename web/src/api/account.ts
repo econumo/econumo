@@ -2,37 +2,16 @@ import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type { AccountDto, AccountItemDto, AccountRole } from './dto/account'
 import type { FolderDto } from './dto/folder'
-import type { TransactionDto } from './dto/transaction'
 
 interface Envelope<T> {
   data: T
-}
-
-// Responses carry money as decimal strings; coerce to numbers like the Vue stores did.
-export function coerceAccount(raw: AccountDto): AccountDto {
-  return { ...raw, balance: Number(raw.balance) }
-}
-
-export function coerceTransaction(raw: TransactionDto): TransactionDto {
-  return {
-    ...raw,
-    amount: Number(raw.amount),
-    amountRecipient: raw.amountRecipient === null || raw.amountRecipient === undefined ? null : Number(raw.amountRecipient),
-  }
-}
-
-function coerceAccountItem(raw: AccountItemDto): AccountItemDto {
-  return {
-    item: coerceAccount(raw.item),
-    transaction: raw.transaction ? coerceTransaction(raw.transaction) : null,
-  }
 }
 
 export interface CreateAccountForm {
   id: Id
   name: string
   currencyId: Id
-  balance: number
+  balance: string
   icon: string
   folderId: Id | null
 }
@@ -40,7 +19,7 @@ export interface CreateAccountForm {
 export interface UpdateAccountForm {
   id: Id
   name: string
-  balance: number
+  balance: string
   icon: string
   currencyId: Id
   updatedAt: string
@@ -54,17 +33,17 @@ export interface AccountPositionChange {
 
 export async function getAccountList(): Promise<AccountDto[]> {
   const response = await api.get<Envelope<{ items: AccountDto[] }>>(apiUrl('/api/v1/account/get-account-list'))
-  return response.data.data.items.map(coerceAccount)
+  return response.data.data.items
 }
 
 export async function createAccount(form: CreateAccountForm): Promise<AccountItemDto> {
   const response = await api.post<Envelope<AccountItemDto>>(apiUrl('/api/v1/account/create-account'), form)
-  return coerceAccountItem(response.data.data)
+  return response.data.data
 }
 
 export async function updateAccount(form: UpdateAccountForm): Promise<AccountItemDto> {
   const response = await api.post<Envelope<AccountItemDto>>(apiUrl('/api/v1/account/update-account'), form)
-  return coerceAccountItem(response.data.data)
+  return response.data.data
 }
 
 export async function deleteAccount(id: Id): Promise<void> {
@@ -73,7 +52,7 @@ export async function deleteAccount(id: Id): Promise<void> {
 
 export async function orderAccountList(changes: AccountPositionChange[]): Promise<AccountDto[]> {
   const response = await api.post<Envelope<{ items: AccountDto[] }>>(apiUrl('/api/v1/account/order-account-list'), { changes })
-  return response.data.data.items.map(coerceAccount)
+  return response.data.data.items
 }
 
 export async function getFolderList(): Promise<FolderDto[]> {

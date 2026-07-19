@@ -29,6 +29,7 @@ func Handle[Req any, Res any](w http.ResponseWriter, r *http.Request, dev bool,
 		httpx.WriteError(w, err, dev)
 		return
 	}
+	warnNumericAmounts(r, &req)
 	res, err := call(r.Context(), userID, req)
 	if err != nil {
 		httpx.WriteError(w, err, dev)
@@ -63,6 +64,7 @@ func HandlePublic[Req any, Res any](w http.ResponseWriter, r *http.Request, dev 
 		httpx.WriteError(w, err, dev)
 		return
 	}
+	warnNumericAmounts(r, &req)
 	res, err := call(r.Context(), req)
 	if err != nil {
 		httpx.WriteError(w, err, dev)

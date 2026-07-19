@@ -1,4 +1,4 @@
-import { initialFormState, buildPayload, accountOptions, categoryOptions, canChangeAccountData } from './useTransactionForm'
+import { initialFormState, buildPayload, evaluatedAmount, accountOptions, categoryOptions, canChangeAccountData } from './useTransactionForm'
 import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 
@@ -10,7 +10,7 @@ const other = { id: 'u2', avatar: '', name: 'Bob' }
 
 const account = (over: Partial<AccountDto>): AccountDto => ({
   id: 'a1', owner, folderId: 'f1', name: 'Cash', position: 0, currency: usd,
-  balance: 0, type: 1, icon: 'wallet', sharedAccess: [], ...over,
+  balance: '0', type: 1, icon: 'wallet', sharedAccess: [], ...over,
 })
 
 afterEach(() => vi.useRealTimers())
@@ -29,7 +29,7 @@ it('creation defaults: v7 id, now date, expense type, route account', () => {
 it('edit seeds all fields from the transaction, amounts unformatted', () => {
   const tx: TransactionDto = {
     id: 't1', author: owner, type: 'expense', accountId: 'a1', accountRecipientId: null,
-    amount: 1234.5, amountRecipient: null, categoryId: 'cat1', description: 'x', payeeId: 'p1', tagId: null,
+    amount: '1234.5', amountRecipient: null, categoryId: 'cat1', description: 'x', payeeId: 'p1', tagId: null,
     date: '2026-07-01 10:00:00',
   }
   const state = initialFormState({ transaction: tx }, [account({})], null)
@@ -42,7 +42,7 @@ it('edit seeds all fields from the transaction, amounts unformatted', () => {
 it('payload nulls the right fields per type and evaluates formulas', () => {
   const base = initialFormState({}, [account({})], 'a1')
   const expense = buildPayload({ ...base, type: 'expense', amount: '5+5', categoryId: 'cat1', payeeId: 'p1', tagId: 'tag1', accountRecipientId: 'a2', amountRecipient: '99' })
-  expect(expense.amount).toBe(10)
+  expect(expense.amount).toBe('10')
   expect(expense.accountRecipientId).toBeNull()
   expect(expense.amountRecipient).toBeNull()
   expect(expense.categoryId).toBe('cat1')
@@ -52,10 +52,32 @@ it('payload nulls the right fields per type and evaluates formulas', () => {
   expect(transfer.payeeId).toBeNull()
   expect(transfer.tagId).toBeNull()
   expect(transfer.accountRecipientId).toBe('a2')
-  expect(transfer.amountRecipient).toBe(9)
+  expect(transfer.amountRecipient).toBe('9')
 
   const sameCurrencyTransfer = buildPayload({ ...base, type: 'transfer', amount: '10', accountRecipientId: 'a2', amountRecipient: '' })
-  expect(sameCurrencyTransfer.amountRecipient).toBe(10)
+  expect(sameCurrencyTransfer.amountRecipient).toBe('10')
+})
+
+it('posts large plain amounts verbatim', () => {
+  const base = initialFormState({}, [account({})], 'a1')
+  const form = { ...base, amount: '12345678901234567.89', type: 'expense' as const }
+  expect(buildPayload(form).amount).toBe('12345678901234567.89')
+})
+
+it('posts large negative plain amounts verbatim', () => {
+  expect(evaluatedAmount('-12345678901234567.89')).toBe('-12345678901234567.89')
+})
+
+it('sanitizes comma-decimal recipient amounts before normalizing', () => {
+  const base = initialFormState({}, [account({})], 'a1')
+  const transfer = buildPayload({ ...base, type: 'transfer', amount: '10', accountRecipientId: 'a2', amountRecipient: '9,99' })
+  expect(transfer.amountRecipient).toBe('9.99')
+})
+
+it('falls back to the primary amount when the recipient amount is unparseable', () => {
+  const base = initialFormState({}, [account({})], 'a1')
+  const transfer = buildPayload({ ...base, type: 'transfer', amount: '10', accountRecipientId: 'a2', amountRecipient: 'garbage' })
+  expect(transfer.amountRecipient).toBe('10')
 })
 
 it('creation offers only accounts in visible folders; edit offers all', () => {

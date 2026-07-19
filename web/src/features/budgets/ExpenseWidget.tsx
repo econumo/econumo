@@ -22,7 +22,7 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
   const period = `${t(`common.date.month_short.${MONTH_KEYS[m - 1]}`)} ${y}`
 
   const exchangeFn = makeBudgetExchange(budget, currencies)
-  const rate = currencyId !== budget.meta.currencyId ? exchangeFn(budget.meta.currencyId, currencyId, 1) : null
+  const rate = currencyId !== budget.meta.currencyId ? exchangeFn(budget.meta.currencyId, currencyId, '1') : null
 
   return (
     <section className="flex w-full max-w-sm flex-col gap-2 rounded-md border p-3" data-testid="expense-widget">

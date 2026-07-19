@@ -36,7 +36,7 @@ beforeEach(() => {
   window.econumoConfig = {}
 })
 
-it('getAccountList unwraps the envelope and coerces balance strings to numbers', async () => {
+it('getAccountList unwraps the envelope and passes decimal strings through', async () => {
   server.use(
     http.get('*/api/v1/account/get-account-list', () =>
       HttpResponse.json({ success: true, message: '', data: { items: [wireAccount] } }),
@@ -44,10 +44,20 @@ it('getAccountList unwraps the envelope and coerces balance strings to numbers',
   )
   const items = await accountApi.getAccountList()
   expect(items).toHaveLength(1)
-  expect(items[0].balance).toBe(100.5)
+  expect(items[0].balance).toBe('100.5')
 })
 
-it('createAccount returns {item, transaction} with coerced amounts', async () => {
+it('passes large balances through without precision loss', async () => {
+  server.use(
+    http.get('*/api/v1/account/get-account-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [{ ...wireAccount, balance: '12345678901234567.89' }] } }),
+    ),
+  )
+  const items = await accountApi.getAccountList()
+  expect(items[0].balance).toBe('12345678901234567.89')
+})
+
+it('createAccount returns {item, transaction} with decimal strings passed through', async () => {
   let body: unknown
   server.use(
     http.post('*/api/v1/account/create-account', async ({ request }) => {
@@ -55,10 +65,10 @@ it('createAccount returns {item, transaction} with coerced amounts', async () =>
       return HttpResponse.json({ success: true, message: '', data: { item: wireAccount, transaction: wireCorrection } })
     }),
   )
-  const result = await accountApi.createAccount({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: 100.5, icon: 'account_balance', folderId: null })
-  expect(body).toEqual({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: 100.5, icon: 'account_balance', folderId: null })
-  expect(result.item.balance).toBe(100.5)
-  expect(result.transaction?.amount).toBe(100.5)
+  const result = await accountApi.createAccount({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: '100.5', icon: 'account_balance', folderId: null })
+  expect(body).toEqual({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: '100.5', icon: 'account_balance', folderId: null })
+  expect(result.item.balance).toBe('100.5')
+  expect(result.transaction?.amount).toBe('100.5')
 })
 
 it('createAccount passes through a null correction transaction', async () => {
@@ -67,7 +77,7 @@ it('createAccount passes through a null correction transaction', async () => {
       HttpResponse.json({ success: true, message: '', data: { item: wireAccount, transaction: null } }),
     ),
   )
-  const result = await accountApi.createAccount({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: 0, icon: 'x', folderId: 'f1' })
+  const result = await accountApi.createAccount({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: '0', icon: 'x', folderId: 'f1' })
   expect(result.transaction).toBeNull()
 })
 

@@ -5,27 +5,34 @@ import (
 	"encoding/json"
 )
 
-// FlexString is a string that decodes from JSON as either a string OR a number.
+// FlexString is a decimal-string request field that decodes from JSON as either
+// a string OR a number.
 //
-// Existing web clients send money fields (amount, amountRecipient, balance, the
-// budget limit) as JSON numbers — it runs Number(...) over them before posting —
-// while the API contract treats those fields as normalized decimal strings. The
-// frozen contract was set when scalars deserialized leniently, so a numeric body
-// Just Worked; Go's strict encoding/json rejects a number decoded into a plain
-// string field. FlexString restores the lenient behavior.
+// The frozen wire contract treats money fields (amount, amountRecipient,
+// balance, the budget limit) as normalized decimal strings, but it was set when
+// scalars deserialized leniently, so numeric bodies were always accepted and
+// third-party clients may still send them. FlexString keeps that leniency and
+// records which form arrived (FromNumber), so the HTTP edge can log the
+// deprecated numeric form without rejecting it.
 //
 // A JSON number is captured VERBATIM (its source bytes), not via float parsing,
-// so no precision is lost — "123.45" stays "123.45". The captured value flows
-// into NewDecimal downstream, which already normalizes plain and scientific
-// forms to the canonical decimal shape.
-type FlexString string
+// so no precision is lost — 123.45 stays "123.45". The captured value flows
+// into NewDecimal downstream, which normalizes plain and scientific forms.
+type FlexString struct {
+	value      string
+	fromNumber bool
+}
+
+// NewFlexString builds a FlexString holding s (for tests and fixtures).
+func NewFlexString(s string) FlexString { return FlexString{value: s} }
 
 // UnmarshalJSON accepts a JSON string, a JSON number, or null (-> ""). For a
-// quoted string the quotes are stripped; any other scalar is captured verbatim.
+// quoted string the quotes are stripped; any other scalar is captured verbatim
+// and flagged as numeric.
 func (s *FlexString) UnmarshalJSON(b []byte) error {
 	b = bytes.TrimSpace(b)
+	*s = FlexString{}
 	if len(b) == 0 || string(b) == "null" {
-		*s = ""
 		return nil
 	}
 	if b[0] == '"' {
@@ -33,23 +40,29 @@ func (s *FlexString) UnmarshalJSON(b []byte) error {
 		if err := json.Unmarshal(b, &str); err != nil {
 			return err
 		}
-		*s = FlexString(str)
+		s.value = str
 		return nil
 	}
-	// JSON number (or other bare scalar) — keep the literal as-is.
-	*s = FlexString(b)
+	s.value = string(b)
+	s.fromNumber = true
 	return nil
 }
 
-// String returns the underlying string.
-func (s FlexString) String() string { return string(s) }
+// MarshalJSON renders the canonical form: always a JSON string.
+func (s FlexString) MarshalJSON() ([]byte, error) { return json.Marshal(s.value) }
 
-// StrPtr dereferences a *FlexString to a *string, preserving nil. Convenient
-// for passing an optional FlexString field where a *string is expected.
+// String returns the underlying string.
+func (s FlexString) String() string { return s.value }
+
+// FromNumber reports whether the value decoded from a JSON number (the
+// deprecated lenient form) rather than a string.
+func (s FlexString) FromNumber() bool { return s.fromNumber }
+
+// StrPtr dereferences a *FlexString to a *string, preserving nil.
 func (s *FlexString) StrPtr() *string {
 	if s == nil {
 		return nil
 	}
-	v := string(*s)
+	v := s.value
 	return &v
 }

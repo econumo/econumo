@@ -52,7 +52,7 @@ it('renders column headers, folder, default and archived sections with aligned s
 
 it('archived elements with a nonzero number stay listed; all-zero ones hide', async () => {
   renderTable((budget) => {
-    budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: 7 })
+    budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: '7' })
   })
   const archive = await screen.findByTestId('budget-folder-Archived')
   expect(within(archive).getByText('aaa-carry')).toBeInTheDocument()
@@ -91,8 +91,8 @@ it('shows spent as-is and available+budgeted as a sign-colored pill', async () =
 it('rounds float noise in cells to the currency precision', async () => {
   renderTable((budget) => {
     const food = budget.structure.elements[0]
-    food.spent = 45.4999999934
-    food.budgetSpent = 45.4999999934
+    food.spent = '45.4999999934'
+    food.budgetSpent = '45.4999999934'
   })
   const food = await screen.findByTestId('element-cat-food')
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent('45.50'))
@@ -156,7 +156,7 @@ it('children show spent and the owner badge only in a multi-user budget', async 
   const user = userEvent.setup()
   renderTable((budget) => {
     budget.meta.access.push({ user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, role: 'user', isAccepted: 1 })
-    budget.structure.elements[1].children[0].spent = 12.5
+    budget.structure.elements[1].children[0].spent = '12.5'
     budget.structure.elements[1].children[0].ownerUserId = 'u2'
   })
   const living = await screen.findByTestId('element-env-1')
@@ -196,7 +196,7 @@ it('edit mode reserves the actions column on headers, children, archive rows and
   // seed a nonzero archived element so the Archived section is visible (all-zero archive hides)
   renderTable(
     (budget) => {
-      budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: 7 })
+      budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: '7' })
     },
     {
       renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} className="size-8" />,

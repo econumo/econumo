@@ -132,7 +132,7 @@ it('creates an expense with the exact payload shape', async () => {
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.type).toBe('expense')
   expect(body!.accountId).toBe('a1')
-  expect(body!.amount).toBe(9.99)
+  expect(body!.amount).toBe('9.99')
   expect(body!.categoryId).toBe('cat-food')
   expect(body!.accountRecipientId).toBeNull()
   expect(body!.amountRecipient).toBeNull()
@@ -227,9 +227,9 @@ it('editing a same-currency transfer amount re-syncs the recipient amount', asyn
   await user.type(amount, '25')
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
-  expect(body!.amount).toBe(25)
+  expect(body!.amount).toBe('25')
   // the recipient side must follow the edited amount, not keep the old one
-  expect(body!.amountRecipient).toBe(25)
+  expect(body!.amountRecipient).toBe('25')
 })
 
 it('editing a transfer re-syncs the recipient amount when the destination account changes', async () => {
@@ -255,7 +255,7 @@ it('editing a transfer re-syncs the recipient amount when the destination accoun
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.accountRecipientId).toBe('a3')
-  expect(body!.amountRecipient).toBe(9)
+  expect(body!.amountRecipient).toBe('9')
 })
 
 it('cross-currency transfer prefills the converted recipient amount and prompts to switch', async () => {
@@ -285,7 +285,7 @@ it('cross-currency transfer prefills the converted recipient amount and prompts 
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.type).toBe('transfer')
   expect(body!.accountRecipientId).toBe('a3')
-  expect(body!.amountRecipient).toBe(90)
+  expect(body!.amountRecipient).toBe('90')
   expect(body!.categoryId).toBeNull()
   await waitFor(() => expect(useUiStore.getState().switchAccountPrompt).toBe('a3'))
 })

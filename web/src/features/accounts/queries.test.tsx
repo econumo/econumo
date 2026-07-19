@@ -53,7 +53,7 @@ it('create-account upserts the item and inserts the opening-balance transaction'
   queryClient.setQueryData(queryKeys.folders, [{ id: 'f1', name: 'General', position: 0, isVisible: 1 }])
 
   const { result } = renderHook(() => useCreateAccount(), { wrapper })
-  result.current.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: 100.5, icon: 'wallet', folderId: 'f1' })
+  result.current.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: '100.5', icon: 'wallet', folderId: 'f1' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.accounts)!.map((a) => a.id)).toEqual(['a-real'])
@@ -75,7 +75,7 @@ it('create-account with an empty folders cache refetches folders (first-account 
   queryClient.setQueryData(queryKeys.folders, [])
   // an active useFolders observer, so invalidation triggers a refetch
   const { result } = renderHook(() => ({ create: useCreateAccount(), folders: useFolders() }), { wrapper })
-  result.current.create.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: 0, icon: 'wallet', folderId: null })
+  result.current.create.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: '0', icon: 'wallet', folderId: null })
   await waitFor(() => expect(result.current.create.isSuccess).toBe(true))
   await waitFor(() => expect(folderListHits).toBeGreaterThan(0))
 })

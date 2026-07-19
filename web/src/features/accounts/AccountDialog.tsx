@@ -24,6 +24,7 @@ import type { ShareEntry } from '@/features/connections/shared'
 import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
 import { useConnections } from '@/features/connections/queries'
 import { UserAvatar } from '@/components/UserAvatar'
+import { evaluatedAmount } from '../transactions/useTransactionForm'
 import { useAccounts, useCreateAccount, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
 
 export function AccountDialog() {
@@ -109,14 +110,14 @@ export function AccountDialog() {
     if (!validate() || !currencyId) {
       return
     }
-    const numericBalance = Number(evaluateFormula(sanitizeInput(balance) + '='))
+    const balanceAmount = evaluatedAmount(balance)
     try {
       if (isNew) {
         await createAccount.mutateAsync({
           id: uuidv7(),
           name,
           currencyId,
-          balance: numericBalance,
+          balance: balanceAmount,
           icon,
           folderId: params.folderId ?? null,
         })
@@ -124,7 +125,7 @@ export function AccountDialog() {
         await updateAccount.mutateAsync({
           id: account.id,
           name,
-          balance: numericBalance,
+          balance: balanceAmount,
           icon,
           currencyId,
           updatedAt: formatDateTime(new Date()),

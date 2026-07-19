@@ -1,11 +1,12 @@
 import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
+import { abs, add, cmp, div } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 
 export interface BucketStats {
-  budgeted: number
-  spent: number
-  available: number
+  budgeted: string
+  spent: string
+  available: string
 }
 
 export interface FolderBucket {
@@ -20,7 +21,7 @@ export interface BudgetBuckets {
   archive: FolderBucket
 }
 
-type ExchangeFn = (fromCurrencyId: string, toCurrencyId: string, amount: number) => number
+type ExchangeFn = (fromCurrencyId: string, toCurrencyId: string, amount: string) => string
 
 export function makeBudgetExchange(budget: BudgetDto, currencies: CurrencyDto[]): ExchangeFn {
   // budget math uses the period-scoped rates embedded in the response
@@ -28,18 +29,20 @@ export function makeBudgetExchange(budget: BudgetDto, currencies: CurrencyDto[])
   return (from, to, amount) => exchange(from, to, amount, rates, currencies)
 }
 
-// Port of the Vue folder-bucket stats: budgeted/available exchanged into the
-// budget currency; spent uses budgetSpent (already budget-currency, no exchange).
+// Folder-bucket stats: budgeted/available exchanged into the budget currency;
+// spent uses budgetSpent (already budget-currency, no exchange).
 export function bucketStats(elements: BudgetElementDto[], budget: BudgetDto, exchangeFn: ExchangeFn): BucketStats {
   const base = budget.meta.currencyId
-  const stats: BucketStats = { budgeted: 0, spent: 0, available: 0 }
+  let budgeted = '0'
+  let spent = '0'
+  let available = '0'
   for (const el of elements) {
     const from = el.currencyId ?? base
-    stats.budgeted += exchangeFn(from, base, el.budgeted)
-    stats.spent += el.budgetSpent
-    stats.available += exchangeFn(from, base, el.available + el.budgeted)
+    budgeted = add(budgeted, exchangeFn(from, base, el.budgeted))
+    spent = add(spent, el.budgetSpent)
+    available = add(available, exchangeFn(from, base, add(el.available, el.budgeted)))
   }
-  return stats
+  return { budgeted, spent, available }
 }
 
 export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): BudgetBuckets {
@@ -64,7 +67,7 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): Budge
   // displayed numbers (budget, spent, available) is nonzero
   const archived = elements
     .filter((el) => el.isArchived === 1)
-    .filter((el) => el.budgeted !== 0 || el.spent !== 0 || displayAvailable(el) !== 0)
+    .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0)
     .sort((a, b) => a.name.localeCompare(b.name))
 
   return {
@@ -77,12 +80,12 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): Budge
 export function budgetTotals(buckets: BudgetBuckets): BucketStats {
   const all = [...buckets.withFolder.map((b) => b.stats), buckets.withoutFolder.stats, buckets.archive.stats]
   return all.reduce(
-    (acc, s) => ({ budgeted: acc.budgeted + s.budgeted, spent: acc.spent + s.spent, available: acc.available + s.available }),
-    { budgeted: 0, spent: 0, available: 0 },
+    (acc, s) => ({ budgeted: add(acc.budgeted, s.budgeted), spent: add(acc.spent, s.spent), available: add(acc.available, s.available) }),
+    { budgeted: '0', spent: '0', available: '0' },
   )
 }
 
-export const displayAvailable = (el: { available: number; budgeted: number }): number => el.available + el.budgeted
+export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
 
 export interface PeriodItem {
   value: string
@@ -120,30 +123,30 @@ export function periodRange(
 }
 
 export interface WidgetMath {
-  spent: number
-  total: number
+  spent: string
+  total: string
+  /** ratio for the progress bar; float precision is fine for a CSS width */
   progress: number
   overspent: boolean
 }
 
-// Port of BudgetExpenseWidget: nulls count as zero; negative exchange/holdings
-// fold into spent, positive into total.
+// nulls count as zero; negative exchange/holdings fold into spent, positive into total.
 export function widgetMath(balance: BudgetBalanceDto | undefined): WidgetMath {
-  const n = (v: number | null | undefined) => Number(v ?? 0)
+  const n = (v: string | null | undefined) => v ?? '0'
   const expenses = n(balance?.expenses)
   const exchanges = n(balance?.exchanges)
   const holdings = n(balance?.holdings)
   const startBalance = n(balance?.startBalance)
   const income = n(balance?.income)
 
-  let spent = Math.abs(expenses)
-  if (exchanges < 0) spent += Math.abs(exchanges)
-  if (holdings < 0) spent += Math.abs(holdings)
+  let spent = abs(expenses)
+  if (cmp(exchanges, '0') < 0) spent = add(spent, abs(exchanges))
+  if (cmp(holdings, '0') < 0) spent = add(spent, abs(holdings))
 
-  let total = Math.abs(startBalance + income)
-  if (exchanges > 0) total += exchanges
-  if (holdings > 0) total += holdings
+  let total = abs(add(startBalance, income))
+  if (cmp(exchanges, '0') > 0) total = add(total, exchanges)
+  if (cmp(holdings, '0') > 0) total = add(total, holdings)
 
-  const progress = total <= 0 ? 0 : Math.max(0, Math.min(spent / total, 1))
-  return { spent, total, progress, overspent: spent > total }
+  const progress = cmp(total, '0') <= 0 ? 0 : Math.max(0, Math.min(Number(div(spent, total)), 1))
+  return { spent, total, progress, overspent: cmp(spent, total) > 0 }
 }

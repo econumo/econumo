@@ -9,6 +9,7 @@ import type { OpenTransactionParams } from '@/app/uiStore'
 import { formatDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { evaluateFormula, sanitizeInput } from '@/lib/calculator'
+import { normalize, tryNormalize } from '@/lib/decimal'
 
 export interface TransactionFormState {
   id: Id
@@ -25,7 +26,7 @@ export interface TransactionFormState {
   date: string
 }
 
-const seedAmount = (value: number | null | undefined, account: AccountDto | undefined): string => {
+const seedAmount = (value: string | null | undefined, account: AccountDto | undefined): string => {
   if (value === null || value === undefined) {
     return ''
   }
@@ -68,18 +69,30 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
   }
 }
 
-export const evaluatedNumber = (raw: string): number => Number(evaluateFormula(sanitizeInput(raw) + '='))
+// Plain decimal input skips the float-backed calculator so large amounts keep
+// every digit; only actual formulas ("5+5") go through evaluation.
+export const evaluatedAmount = (raw: string): string => {
+  const sanitized = sanitizeInput(raw)
+  if (/^-?\d+(\.\d+)?$/.test(sanitized)) {
+    return normalize(sanitized)
+  }
+  return normalize(evaluateFormula(sanitized + '='))
+}
 
 export function buildPayload(form: TransactionFormState): CreateTransactionDto {
   const isTransfer = form.type === 'transfer'
-  const amount = evaluatedNumber(form.amount)
+  const amount = evaluatedAmount(form.amount)
   return {
     id: form.id,
     type: form.type,
     accountId: form.accountId as Id,
     accountRecipientId: isTransfer ? form.accountRecipientId : null,
     amount,
-    amountRecipient: isTransfer ? (form.amountRecipient === '' ? amount : Number(form.amountRecipient)) : null,
+    amountRecipient: isTransfer
+      ? form.amountRecipient === ''
+        ? amount
+        : (tryNormalize(sanitizeInput(form.amountRecipient)) ?? amount)
+      : null,
     categoryId: isTransfer ? null : form.categoryId,
     description: form.description || '',
     payeeId: isTransfer ? null : form.payeeId,
@@ -127,18 +140,18 @@ export function useTransactionForm(params: OpenTransactionParams, accounts: Acco
     amount: string,
     from: AccountDto | undefined,
     to: AccountDto | undefined,
-    exchangeFn: (fromId: string, toId: string, amount: number) => number,
+    exchangeFn: (fromId: string, toId: string, amount: string) => string,
   ): string => {
-    if (!to || !from || amount === '' || Number.isNaN(Number(amount))) {
+    if (!to || !from || amount === '' || tryNormalize(amount) === null) {
       return amount
     }
     if (from.currency.id === to.currency.id) {
       return amount
     }
-    return String(exchangeFn(from.currency.id, to.currency.id, Number(amount)))
+    return exchangeFn(from.currency.id, to.currency.id, normalize(amount))
   }
 
-  const swapAccounts = (exchangeFn: (fromId: string, toId: string, amount: number) => number) => {
+  const swapAccounts = (exchangeFn: (fromId: string, toId: string, amount: string) => string) => {
     patch({
       accountId: form.accountRecipientId,
       accountRecipientId: form.accountId,
