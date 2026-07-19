@@ -80,11 +80,20 @@ gets at least one fully closed month (29–62 days depending on registration dat
 Not designed here, but agreed, so the next iteration starts from it rather than
 re-litigating:
 
-- **Delete the data, keep a tombstone row in `users`** carrying the id and a
-  `deleted_at` date. The reason is not foreign keys in the abstract — it is *other
-  people's data*: transactions the departing user authored in a partner's shared
-  account stay with the partner, and dropping the row would leave that history
-  with an unresolvable author. The tombstone renders as "Deleted user".
+- **Delete the data, keep a tombstone row in `users`.** The reason is not foreign
+  keys in the abstract — it is *other people's data*: transactions the departing
+  user authored in a partner's shared account stay with the partner, and dropping
+  the row would leave that history with an unresolvable author. The tombstone
+  renders as "Deleted user".
+- **The tombstone is `is_active = false` plus a new `deleted_at` column.** Reusing
+  `is_active` keeps the login path unchanged (it already refuses inactive users);
+  `deleted_at` is what distinguishes a deletion from a ban. `user:activate` must
+  refuse a row with `deleted_at` set, or a ban-reversal command becomes an
+  undelete. In practice the scrubbed email already makes the row unreachable by
+  the email-keyed commands, but the guard should be explicit rather than
+  incidental.
+- **Accounts the departing user owned and had shared are deleted**, not
+  transferred. They are the owner's records and go with the owner.
 - **The identifying fields must be cleared, not retained** — email, name, avatar,
   password hash. Keeping the email would both defeat the point of deletion and
   permanently block that address from re-registering, since the user identifier is
@@ -94,10 +103,14 @@ re-litigating:
   every other user operation. Being irreversible, it should require an explicit
   confirmation argument rather than deleting on sight.
 
-Two questions deliberately left open for that design: what happens to accounts the
-departing user *owned* and had shared with others (deleted, or transferred to a
-remaining participant), and whether the tombstone reuses `is_active = false` or
-needs a state of its own.
+One consequence of deleting shared accounts needs handling in that design rather
+than discovering it in production: **the other participants' own entries go too.**
+If Alex owns "Family budget" and Sam has been recording transactions in it for a
+year, Alex's deletion destroys Sam's year of work, and Sam finds out by the
+account vanishing. The decision stands — the account is Alex's record — but it
+cannot be silent. At minimum the deletion confirmation must name the collateral
+("3 people share 2 of these accounts and will lose them"), and notifying the
+participants is worth considering.
 
 **The constraint on this spec:** deletion will be a `POST`, and a lapsed user is
 exactly who most wants to leave. When it lands it **must** be added to the
