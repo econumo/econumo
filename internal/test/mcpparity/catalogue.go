@@ -46,6 +46,44 @@ func init() {
 		{Label: "list-connections", RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_connections","arguments":{}}}`},
 	}})
 
+	// reference_tools_write REST-seeds one category/tag/payee per domain,
+	// CAPTURING each REST response's minted entity id (create-category/-tag/-payee
+	// treat the body's "id" as an OPERATION id only, per
+	// internal/{category,tag,payee}/create.go — the entity always gets a fresh
+	// server-minted UUIDv7, unlike create-budget), then substitutes that id
+	// (%s) into the update/set-archived RPC calls for the SAME domain before the
+	// next seed step overwrites the single capture slot. Each domain's
+	// create_* MCP call stands alone (its response only carries the new id
+	// inside the normalized-away structuredContent, so there's no capture
+	// mechanism for chaining further off it — same reasoning as the
+	// "transactions" scenario above). Ends with one domain-error path
+	// (create_category with a too-short name).
+	register(Scenario{Name: "reference_tools_write", Steps: []Step{
+		{Label: "seed-category", Method: "POST", Path: "/api/v1/category/create-category", CaptureID: true,
+			Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000d1", "name": "MCP Write Category", "type": "expense", "icon": "tag"}},
+		{Label: "create-category", RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_category","arguments":{"name":"MCP New Category","type":"expense","icon":"coffee"}}}`},
+		{Label: "update-category", RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"update_category","arguments":{"id":"%s","name":"MCP Category Renamed","icon":"star"}}}`},
+		{Label: "set-category-archived", RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"set_category_archived","arguments":{"id":"%s","archived":true}}}`},
+
+		{Label: "seed-tag", Method: "POST", Path: "/api/v1/tag/create-tag", CaptureID: true,
+			Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000d1", "name": "MCP Write Tag"}},
+		{Label: "create-tag", RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_tag","arguments":{"name":"MCP New Tag"}}}`},
+		{Label: "update-tag", RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_tag","arguments":{"id":"%s","name":"MCP Tag Renamed"}}}`},
+		{Label: "set-tag-archived", RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"set_tag_archived","arguments":{"id":"%s","archived":true}}}`},
+
+		{Label: "seed-payee", Method: "POST", Path: "/api/v1/payee/create-payee", CaptureID: true,
+			Body: map[string]any{"id": "20000000-0000-0000-0000-0000000000d1", "name": "MCP Write Payee"}},
+		{Label: "create-payee", RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"create_payee","arguments":{"name":"MCP New Payee"}}}`},
+		{Label: "update-payee", RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"update_payee","arguments":{"id":"%s","name":"MCP Payee Renamed"}}}`},
+		{Label: "set-payee-archived", RPC: `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"set_payee_archived","arguments":{"id":"%s","archived":true}}}`},
+
+		{Label: "list-categories", RPC: `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"list_categories","arguments":{}}}`},
+		{Label: "list-tags", RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_tags","arguments":{}}}`},
+		{Label: "list-payees", RPC: `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"list_payees","arguments":{}}}`},
+
+		{Label: "create-category-short-name", RPC: `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"create_category","arguments":{"name":"ab","type":"expense"}}}`},
+	}})
+
 	// budget REST-creates a budget then drives get_budget for a valid and an
 	// invalid month. Unlike category/tag/payee/account/transaction,
 	// create-budget honors the client-supplied id verbatim (it isn't an

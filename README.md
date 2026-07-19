@@ -128,8 +128,17 @@ it doesn't expire on inactivity like a session does. Point your client at
 | `delete_transaction` | delete a transaction |
 | `list_accounts` | accounts with type, currency, archived flag, and current balance |
 | `list_categories` | expense/income categories |
+| `create_category` | create a category (name, type, optional icon) |
+| `update_category` | rename a category or change its icon |
+| `set_category_archived` | archive/unarchive a category — there is no delete |
 | `list_tags` | tags |
+| `create_tag` | create a tag |
+| `update_tag` | rename a tag |
+| `set_tag_archived` | archive/unarchive a tag — there is no delete |
 | `list_payees` | payees |
+| `create_payee` | create a payee |
+| `update_payee` | rename a payee |
+| `set_payee_archived` | archive/unarchive a payee — there is no delete |
 | `list_currencies` | currency codes + rates vs. the instance base currency |
 | `list_budgets` | the user's budgets (id, name, currency) |
 | `get_user` | the current user's profile (id, name, email, avatar, base currency) |

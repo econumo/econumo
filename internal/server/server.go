@@ -240,9 +240,9 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	)
 
 	mcpRegister := webmcp.Compose(
-		categorymcp.Register(categoryReadSvc),
-		tagmcp.Register(tagReadSvc),
-		payeemcp.Register(payeeReadSvc),
+		categorymcp.Register(categoryReadSvc, categorySvc),
+		tagmcp.Register(tagReadSvc, tagSvc),
+		payeemcp.Register(payeeReadSvc, payeeSvc),
 		accountmcp.Register(accountSvc),
 		currencymcp.Register(currencyReadSvc),
 		budgetmcp.Register(budgetSvc),
