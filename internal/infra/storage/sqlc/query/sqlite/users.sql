@@ -1,10 +1,10 @@
 -- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
 FROM users
 WHERE id = ?;
 
 -- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
 FROM users
 WHERE identifier = ?;
 
@@ -19,8 +19,8 @@ INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorith
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
@@ -30,7 +30,9 @@ ON CONFLICT (id) DO UPDATE SET
     salt       = excluded.salt,
     algorithm  = excluded.algorithm,
     updated_at = excluded.updated_at,
-    is_active  = excluded.is_active;
+    is_active  = excluded.is_active,
+    access_level = excluded.access_level,
+    access_until = excluded.access_until;
 
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = ? WHERE id = ?;

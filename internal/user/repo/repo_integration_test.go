@@ -36,7 +36,8 @@ func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *dbtest.DB) {
 func newTestUser(id vo.Id, identifier, email, name, avatar, password, salt string, isActive bool,
 	createdAt, updatedAt time.Time, opts []model.UserOption) *model.User {
 	return &model.User{ID: id, Identifier: identifier, Email: email, Name: name, Avatar: avatar,
-		Password: password, Salt: salt, IsActive: isActive, CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
+		Password: password, Salt: salt, IsActive: isActive, AccessLevel: model.AccessLevelFull,
+		CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
 }
 
 func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
@@ -307,6 +308,53 @@ func TestUserRepo_AlgorithmRoundTrip(t *testing.T) {
 	}
 	if legacy.Algorithm != model.AlgorithmSHA512 {
 		t.Errorf("legacy Algorithm = %q, want %q", legacy.Algorithm, model.AlgorithmSHA512)
+	}
+}
+
+func TestUserRepo_AccessRoundTrip(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	u := newTestUser(vo.MustParseId(userA), identA, "enc-email", "Alice", "https://av/a",
+		"hash", "salt-a", true, fixedTime, fixedTime, nil)
+	u.SetAccess(model.AccessLevelReadonly, &until, u.UpdatedAt)
+
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.AccessLevel != model.AccessLevelReadonly {
+		t.Fatalf("level: got %q want readonly", got.AccessLevel)
+	}
+	if got.AccessUntil == nil || !got.AccessUntil.Equal(until) {
+		t.Fatalf("until: got %v want %v", got.AccessUntil, until)
+	}
+}
+
+func TestUserRepo_AccessDefaultsToFullWithNoExpiry(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	u := newTestUser(vo.MustParseId(userA), identA, "enc-email", "Alice", "https://av/a",
+		"hash", "salt-a", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.AccessLevel != model.AccessLevelFull {
+		t.Fatalf("level: got %q want full", got.AccessLevel)
+	}
+	if got.AccessUntil != nil {
+		t.Fatalf("until: got %v want nil", got.AccessUntil)
 	}
 }
 
