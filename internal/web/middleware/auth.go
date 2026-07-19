@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -17,7 +18,7 @@ import (
 // Defining it here keeps the middleware from hard-depending on the concrete
 // type, so tests (and any future authenticator) can substitute their own.
 type TokenAuthenticator interface {
-	Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, err error)
+	Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, level model.AccessLevel, err error)
 }
 
 // ctxKeyUserID is the context key under which the authenticated user id is
@@ -50,7 +51,7 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 				httpx.WriteError(w, errs.NewUnauthorized("Access token not found"), dev)
 				return
 			}
-			userID, tokenID, err := authn.Authenticate(r.Context(), token)
+			userID, tokenID, _, err := authn.Authenticate(r.Context(), token)
 			if err != nil {
 				var ue *errs.UnauthorizedError
 				if !errors.As(err, &ue) {

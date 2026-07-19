@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -279,11 +280,16 @@ func TestLocationFromCtx_AbsentIsUTC(t *testing.T) {
 type stubAuthn struct {
 	userID  vo.Id
 	tokenID vo.Id
+	level   model.AccessLevel
 	err     error
 }
 
-func (s stubAuthn) Authenticate(_ context.Context, token string) (vo.Id, vo.Id, error) {
-	return s.userID, s.tokenID, s.err
+func (s stubAuthn) Authenticate(_ context.Context, token string) (vo.Id, vo.Id, model.AccessLevel, error) {
+	level := s.level
+	if level == "" {
+		level = model.AccessLevelFull
+	}
+	return s.userID, s.tokenID, level, s.err
 }
 
 var (

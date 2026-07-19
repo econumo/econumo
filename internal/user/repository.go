@@ -54,6 +54,14 @@ type AccessTokens interface {
 	// path behind every authenticated request.
 	GetByHash(ctx context.Context, hash string) (*model.AccessToken, error)
 
+	// GetByHashWithAccess is GetByHash plus the owning user's stored access
+	// level and expiry, joined in the same round trip. Authenticate uses this
+	// (not GetByHash) so it can report the caller's effective access level
+	// without a second query; unlike the is_active deactivation shortcut (see
+	// admin.go), an expired trial must NOT revoke sessions, so this cannot be
+	// skipped the way the is_active join is.
+	GetByHashWithAccess(ctx context.Context, hash string) (*model.AccessToken, model.AccessLevel, *time.Time, error)
+
 	// GetByID loads one row (logout / revoke-by-id paths).
 	GetByID(ctx context.Context, id vo.Id) (*model.AccessToken, error)
 
