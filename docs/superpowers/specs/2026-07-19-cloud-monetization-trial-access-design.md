@@ -60,11 +60,13 @@ gets at least one fully closed month (29–62 days depending on registration dat
 
 ## Non-goals
 
-- **Account deletion.** It does not exist in the product (no endpoint, no
-  cascades). It is needed — a restricted user must be able to leave — but it is a
-  separate design: cascades across ten features, shared accounts, connections,
-  token revocation. It does not block this work: a restricted user can still log
-  in and export via CSV.
+- **Account deletion.** A "delete my user and all related data" endpoint does not
+  exist in the product today (no endpoint, no cascades). It is **the planned next
+  iteration** and gets its own design: cascades across ten features, shared
+  accounts, connections, token revocation, and the question of what happens to
+  accounts other people were sharing. It does not block this work — a restricted
+  user can still log in and export via CSV — but shipping a paywall without an
+  exit is only acceptable as a temporary state.
 - **The payment portal itself.** It lives in a private repository. This spec
   fixes only the contract between it and the product.
 - **Trial abuse.** A new email buys a new trial. Accepted; the portal can address
@@ -216,24 +218,82 @@ renders its own copy and the portal owns all billing wording.
 The pricing model is: *I pay for myself; if I see the value for my partner, I pay
 for them too.*
 
-The product implements **none of this**. Enforcement stays per caller; the portal
-charges one Stripe customer and issues two independent `set-access` calls. No
-household, seat, or discount concept enters the product.
+The product implements **no** household, seat, or discount concept. Enforcement
+stays per caller; the portal charges one Stripe customer and issues independent
+`set-access` calls for each beneficiary.
 
-The only product-side requirement is letting the SPA initiate a purchase on
-behalf of a specific connection:
+`POST /admin/set-access` accepts **either** `userId` or `email`: the portal uses
+`email` for self-purchases (it has the Stripe customer's address) and `userId`
+when one user pays for another. `model.UserResult` — the person embed in
+`GetConnectionListResult` — carries only `id`, `avatar`, and `name`, so a partner
+is only ever addressable by id from the client side.
+
+### Seeing who needs paying for
+
+`ConnectionResult` gains the connected user's effective access state, so the
+connections page can show "your partner is read-only" and offer to pay for them:
+
+```go
+type ConnectionResult struct {
+    User           UserResult            `json:"user"`
+    SharedAccounts []AccountAccessResult `json:"sharedAccounts"`
+    AccessLevel    string                `json:"accessLevel"`
+    AccessUntil    string                `json:"accessUntil"` // "" when NULL
+}
+```
+
+**Deliberately on `ConnectionResult`, not on the shared `UserResult` embed.**
+`UserResult` is embedded in six places — including transaction author
+(`internal/model/transaction_dto.go:20`, `internal/model/account_dto.go:129`) —
+and transaction lists are the heaviest responses in the product. Putting two
+fields on every author of every row costs real bytes for data that is needed on
+exactly one page, and would broadcast payment status far wider than the
+connections view.
+
+Exposing a connection's access state to the people they share finances with is an
+intentional disclosure: they already see each other's accounts and transactions,
+and the whole point is to let one of them fix the other's lapsed access.
+
+### Handing off to the portal
+
+The link carries a **signed identity assertion**, not data. Anything the SPA puts
+in a URL is forgeable by whoever operates the browser, so a bare `uid` cannot be
+trusted the moment the portal starts *displaying* status rather than just taking
+money — a forged id would expose another person's payment state.
+
+The product mints a short-lived handoff token:
 
 ```
-${BILLING_URL}?uid=<my user id>&email=<my email>&for=<partner user id>
+payload = {uid, exp}                     // exp = now + 10 minutes
+sig     = HMAC-SHA256("billing-handoff:v1" || payload, ECONUMO_ADMIN_TOKEN)
+link    = ${BILLING_URL}?t=<base64url(payload)>.<base64url(sig)>[&for=<user id>]
 ```
 
-**Keyed by user id, not email.** `model.UserResult` — the user embed in
-`GetConnectionListResult` — carries only `id`, `avatar`, and `name`. The SPA does
-not know a partner's email address and should not be given it.
+**No new secret.** The portal already holds `ECONUMO_ADMIN_TOKEN` to authenticate
+against the admin listener; the `billing-handoff:v1` prefix gives domain
+separation so a handoff signature cannot be replayed as anything else. Stateless,
+no storage, verification is a few lines on the portal side.
 
-Consequently `POST /admin/set-access` accepts **either** `userId` or `email`: the
-portal uses `email` for self-purchases (it has the Stripe customer's address) and
-`userId` when one user pays for another.
+The portal then fetches everything it needs server-side (see
+`GET /admin/user-context`). **No email, name, or access state ever travels through
+the browser.**
+
+`for` is a **preselection hint only** — it authorizes nothing, since the portal
+already knows the visitor from the signature and already has their full context:
+
+| link | portal shows |
+|---|---|
+| `?t=…` | self preselected |
+| `?t=…&for=<own id>` | identical — a legal value, not a special case |
+| `?t=…&for=<partner id>` | that partner preselected |
+
+The portal validates `for` against the `user-context` it fetched (self or one of
+the connections); anything else is ignored and falls back to self. A forged `for`
+at worst pays for someone the user is already connected to.
+
+Hygiene: the token is read-only (it grants no writes), lives 10 minutes, and the
+portal exchanges it for its own session and strips it from the URL so it does not
+persist in history or `Referer`.
 
 ## Contract with the payment portal
 
@@ -263,8 +323,15 @@ Responses use the same `httpx` envelope as the public API.
 |---|---|---|
 | `POST /admin/set-access` | `{"userId": "…"}` **or** `{"email": "…"}`, plus `"level": "full\|readonly"` and `"until": "2027-01-01 00:00:00" \| null` | sets the two columns |
 | `GET /admin/expiring-users?days=3` | — | `[{"id","email","name","accessUntil"}]` — everyone whose access expires within N days |
+| `GET /admin/user-context?userId=…` | — | `{user: {id,name,email,accessLevel,accessUntil}, connections: [{id,name,email,accessLevel,accessUntil}, …]}` |
 
 Supplying both `userId` and `email`, or neither, is a validation error.
+
+`user-context` is what the portal calls after verifying a handoff token. It keeps
+the connection graph — and the authorization rules behind it — in the product,
+rather than duplicating "who may see whom" in a second system. The portal renders
+the visitor plus their connections with each one's access state, so a user can
+arrive on a bare link and choose whom to pay for on the spot.
 
 `expiring-users` is how the portal knows whom to email; it decides what to send
 and remembers what it already sent, in its own database. When per-feature
@@ -291,8 +358,10 @@ apiparity route-coverage guards are untouched; only the golden files change.
 - **Banner** when `accessUntil` is within 3 days or has passed. Generic copy
   ("access ends in N days" / "read-only"), CTA to the portal.
 - **Settings entry** "Subscription" → same link.
-- **Per-connection CTA** "Pay for <name>" in the connections view, using the
+- **Per-connection CTA** "Pay for <name>" in the connections view, shown when a
+  connection's `accessLevel` is read-only or its `accessUntil` is near, using the
   `for=<partner user id>` link above.
+- **Handoff token** minted server-side and appended to every billing link.
 - **`BILLING_URL`** is read from `econumo-config.js` (empty by default). Empty →
   no banner, no settings entry, no per-connection CTA, no link. A self-hosted
   build shows no trace of billing.
@@ -334,6 +403,30 @@ first occurrence per person in PostHog. `appBudgetView` after a month boundary i
 the proxy for reaching the moment of value, which is the hypothesis this trial
 boundary rests on.
 
+### Access state on every event
+
+Every product event carries the caller's access state, so any funnel can be split
+by it without a join. This is registered once as a PostHog **super property**
+rather than added at each call site — a per-call-site attribute would be forgotten
+on the next new event, and the metrics-coverage test cannot catch a missing
+property.
+
+The property is `accessState`, with three values rather than the raw
+`access_level`:
+
+| value | condition |
+|---|---|
+| `trial` | effective `full` and `accessUntil` is set |
+| `paid` | effective `full` and `accessUntil` is NULL |
+| `readonly` | effective `readonly` |
+
+The raw column cannot distinguish a trial from a lifetime purchase, and that is
+precisely the distinction the funnel is about. It is registered as a super
+property (not a person property) so each event records the state at the time it
+fired: with person-on-events, person properties reflect ingestion-time values,
+which would blur the trial→paid transition this analysis exists to measure. It is
+re-registered on login and whenever `get-user-data` returns.
+
 `web/src/lib/metrics-coverage.test.ts` enforces that every key is actually fired.
 
 ## Retiring the demo instance
@@ -365,19 +458,29 @@ The same binary serves a self-hosted user (all defaults) and the cloud.
    listener. Nothing about it is cloud-specific — `set-access` is as
    business-neutral as the existing `user:deactivate`.
 2. **Trial abuse** — a new email buys a new trial. Not addressed.
-3. **A forged `uid`/`for` in the billing link** at worst lets someone pay for
-   another person's account. There is no harm, and neither value is a secret.
-4. **The month-boundary hypothesis is unproven.** The trial length rests on
+3. **A forged `for` in the billing link** at worst lets someone pay for a person
+   they are already connected to. Identity itself is not forgeable — it comes from
+   the signed handoff token, not the URL parameters.
+4. **`ECONUMO_ADMIN_TOKEN` serves two roles** — bearer credential for the admin
+   listener and HMAC key for handoff tokens. Domain separation
+   (`billing-handoff:v1`) prevents cross-purpose signature reuse. The alternative
+   is a separate `ECONUMO_BILLING_SECRET`, rejected to avoid a fourth billing
+   variable; revisit if the portal ever needs to rotate one without the other.
+5. **A handoff token can leak via history or `Referer`.** Bounded by a 10-minute
+   TTL and by granting read-only billing context, never writes; the portal strips
+   it from the URL on arrival.
+6. **The month-boundary hypothesis is unproven.** The trial length rests on
    "value arrives at the first closed month", which is currently a belief, not a
    measurement. The analytics above exist to test it; expect to revisit the
    boundary once there is data.
-5. **Demo shutdown loses users.** Some of the ~248 weekly actives will not
+7. **Demo shutdown loses users.** Some of the ~248 weekly actives will not
    re-register in production. The cost is low — demo accounts already expire
    after seven days, so nobody loses durable data — and a split funnel costs more
    than the churn.
-6. **Golden files change** (two new fields in `login-user` / `get-user-data`).
-   Regenerate with `UPDATE_GOLDEN=1` and read the diff — a golden change means
-   observable behavior changed.
+8. **Golden files change** — two new fields in `login-user` / `get-user-data`,
+   two more in `get-connection-list` / `accept-invite`. Regenerate with
+   `UPDATE_GOLDEN=1` and read the diff; a golden change means observable behavior
+   changed.
 
 ## Testing
 
@@ -393,9 +496,19 @@ The same binary serves a self-hosted user (all defaults) and the cloud.
   The migration backfills existing rows to `full` / NULL.
 - Admin listener: no token or no port → not started; wrong bearer → 401;
   `set-access` by `userId` and by `email` both round-trip; both-or-neither is a
-  validation error; `expiring-users` returns the right window.
+  validation error; `expiring-users` returns the right window; `user-context`
+  returns the caller plus exactly their connections, with each one's effective
+  level, and 404s on an unknown user id.
+- Handoff token: a freshly minted token verifies; a token past `exp` is rejected;
+  a tampered payload is rejected; a signature made with a different key is
+  rejected; a signature made over the same payload *without* the
+  `billing-handoff:v1` prefix is rejected (domain separation holds).
+- Connections: `get-connection-list` and `accept-invite` carry `accessLevel` /
+  `accessUntil` per connection, and `accessUntil` is `""` when NULL.
 - CLI: `user:set-access` variants, alongside the existing command tests.
 - Frontend (vitest): banner appears within the window and while read-only, hidden
   when `BILLING_URL` is empty; a 402 response flips the client into read-only; the
-  per-connection CTA builds the `for=<user id>` link.
+  per-connection CTA appears only for a read-only or near-expiry connection and
+  builds the `for=<user id>` link; `accessState` is registered as a super property
+  and resolves to `trial` / `paid` / `readonly` correctly.
 - Regenerate the apiparity goldens and inspect the diff.
