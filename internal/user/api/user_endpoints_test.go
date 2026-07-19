@@ -158,7 +158,7 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
 		"email":    "fresh@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 		"name":     "Fresh",
 	})
 	if status != http.StatusOK {
@@ -192,7 +192,7 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 	// + encrypted email + identifier were all written correctly).
 	st2, env2 := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
 		"username": "fresh@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 	})
 	if st2 != http.StatusOK {
 		t.Fatalf("login after register: status = %d; body: %s", st2, env2.raw)
@@ -209,7 +209,7 @@ func TestRegisterUser_DoesNotAutoConnect(t *testing.T) {
 
 	if st, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
 		"email":    "second@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 		"name":     "Second",
 	}); st != http.StatusOK {
 		t.Fatalf("register status = %d; body: %s", st, env.raw)

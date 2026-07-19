@@ -15,20 +15,34 @@ package apiparity
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	appuser "github.com/econumo/econumo/internal/user"
 )
+
+// recordingMailer captures sent messages so a scenario can recover the emitted
+// reset code (hashed at rest, so no longer readable from the DB).
+type recordingMailer struct{ last mailer.Message }
+
+func (m *recordingMailer) Send(_ context.Context, msg mailer.Message) error {
+	m.last = msg
+	return nil
+}
+
+var resetCodeRe = regexp.MustCompile(`[0-9a-f]{12}`)
 
 // ignoredDataSalt is set on cfg.DataSalt but the seeded fixture is plaintext
 // (WithCrypto("")). The login + parity scenarios still pass, which asserts that
@@ -54,6 +68,7 @@ type Harness struct {
 	engine string
 	clock  fixedClock
 	db     *dbtest.DB
+	mail   *recordingMailer
 	minted map[string]string // userID -> raw session token minted by Token()
 }
 
@@ -85,18 +100,31 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 
 	Seed(t, db)
 
+	rec := &recordingMailer{}
 	handler := server.BuildAPI(cfg, db.Raw, server.Seams{
 		Clock:   clk,
 		Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar),
+		Mailer:  rec,
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Harness{srv: srv, engine: db.Engine, clock: clk, db: db, minted: map[string]string{}}
+	return &Harness{srv: srv, engine: db.Engine, clock: clk, db: db, mail: rec, minted: map[string]string{}}
 }
 
 // Engine reports which engine ("sqlite" | "postgresql") this harness runs over.
 func (h *Harness) Engine() string { return h.engine }
+
+// LastResetCode returns the reset code from the most recently emailed message.
+// Reset codes are hashed at rest, so the plaintext is only recoverable here.
+func (h *Harness) LastResetCode(t *testing.T) string {
+	t.Helper()
+	code := resetCodeRe.FindString(h.mail.last.Text)
+	if code == "" {
+		t.Fatalf("no reset code found in email body: %q", h.mail.last.Text)
+	}
+	return code
+}
 
 // Token returns a live session token for a seeded user: the fixed fixture
 // tokens for owner/guest, or (for any other user a test seeds itself) a

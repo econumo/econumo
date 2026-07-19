@@ -28,10 +28,9 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if err != nil {
 		return nil, err
 	}
-	if !s.canRead(b, userID) {
-		return nil, accessDenied()
-	}
-	if b.budget.Name != req.Name && !s.canUpdate(b, userID) {
+	// Any field change (name, currency, excluded accounts) requires edit rights;
+	// a read-only guest must not alter budget metadata.
+	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
 

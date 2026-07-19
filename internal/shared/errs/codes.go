@@ -12,6 +12,7 @@ const (
 	CodeInvalidEmail       = "common.invalid_email"
 	CodeTooLong            = "common.too_long"
 	CodeTooShort           = "common.too_short"
+	CodeOutOfRange         = "common.out_of_range"
 	CodeTooManyAttempts    = "common.too_many_attempts"
 	CodeInvalidCredentials = "auth.invalid_credentials"
 
@@ -85,6 +86,7 @@ var AllCodes = []string{
 	CodeInvalidEmail,
 	CodeTooLong,
 	CodeTooShort,
+	CodeOutOfRange,
 	CodeTooManyAttempts,
 	CodeInvalidCredentials,
 

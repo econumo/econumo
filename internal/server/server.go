@@ -63,6 +63,10 @@ type Seams struct {
 	// starts its poller; nil (every test and CLI path) wires a disabled service
 	// that never polls, keeping responses deterministic and hermetic.
 	Updates *appsystem.Service
+	// Mailer overrides the reset-email transport. nil wires the config-derived
+	// transport (console default / Resend); tests inject a recording transport to
+	// capture the emitted reset code, which is no longer readable from the DB.
+	Mailer mailer.Mailer
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -94,7 +98,11 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	budgetAccess := NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
-	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
+	mailTransport := seams.Mailer
+	if mailTransport == nil {
+		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
+	}
+	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
 			appuser.RateScopeLogin:              cfg.RateLimitLogin,

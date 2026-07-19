@@ -69,6 +69,14 @@ type LoginResult struct {
 // register-user
 // ---------------------------------------------------------------------------
 
+// Password length policy for newly-set passwords (register, update, reset).
+// Login is intentionally exempt so pre-existing short passwords still work; the
+// upper bound caps the plaintext fed to Argon2id.
+const (
+	PasswordMinLen = 8
+	PasswordMaxLen = 128
+)
+
 // RegisterRequest is the register request body.
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -76,12 +84,12 @@ type RegisterRequest struct {
 	Name     string `json:"name"`
 }
 
-// Validate enforces: email NotBlank+Email+max256, password NotBlank+min4,
+// Validate enforces: email NotBlank+Email+max256, password NotBlank+len 8..128,
 // name NotBlank+len 3..20.
 func (r RegisterRequest) Validate() error {
 	var fields []errs.FieldError
 	fields = append(fields, validateEmailField("email", r.Email, 256)...)
-	fields = append(fields, validateMinLenField("password", r.Password, 4)...)
+	fields = append(fields, validateLenRangeField("password", r.Password, PasswordMinLen, PasswordMaxLen)...)
 	fields = append(fields, validateLenRangeField("name", r.Name, 3, 20)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -216,13 +224,13 @@ type UpdatePasswordRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
-// Validate enforces oldPassword NotBlank, newPassword NotBlank + min4.
+// Validate enforces oldPassword NotBlank, newPassword NotBlank + len 8..128.
 func (r UpdatePasswordRequest) Validate() error {
 	var fields []errs.FieldError
 	if r.OldPassword == "" {
 		fields = append(fields, errs.FieldError{Key: "oldPassword", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
-	fields = append(fields, validateMinLenField("newPassword", r.NewPassword, 4)...)
+	fields = append(fields, validateLenRangeField("newPassword", r.NewPassword, PasswordMinLen, PasswordMaxLen)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
@@ -329,14 +337,14 @@ type ResetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
-// Validate enforces username NotBlank+Email, code NotBlank, password NotBlank+min4.
+// Validate enforces username NotBlank+Email, code NotBlank, password NotBlank+len 8..128.
 func (r ResetPasswordRequest) Validate() error {
 	var fields []errs.FieldError
 	fields = append(fields, validateEmailField("username", r.Username, 0)...)
 	if strings.TrimSpace(r.Code) == "" {
 		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
-	fields = append(fields, validateMinLenField("password", r.Password, 4)...)
+	fields = append(fields, validateLenRangeField("password", r.Password, PasswordMinLen, PasswordMaxLen)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
@@ -373,16 +381,6 @@ func validateEmailField(key, v string, maxLen int) []errs.FieldError {
 	}
 	if maxLen > 0 && len([]rune(v)) > maxLen {
 		return []errs.FieldError{{Key: key, Message: "This value is too long.", Code: errs.CodeTooLong}}
-	}
-	return nil
-}
-
-func validateMinLenField(key, v string, minLen int) []errs.FieldError {
-	if v == "" {
-		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: errs.CodeIsBlank}}
-	}
-	if len([]rune(v)) < minLen {
-		return []errs.FieldError{{Key: key, Message: "This value is too short.", Code: errs.CodeTooShort}}
 	}
 	return nil
 }

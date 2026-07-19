@@ -35,7 +35,7 @@ it('shows the exact validation messages', async () => {
   renderPage()
   await user.click(screen.getByRole('button', { name: 'Change password' }))
   expect(await screen.findByText('Enter current password')).toBeInTheDocument()
-  expect(screen.getByText('Password must be at least 4 characters')).toBeInTheDocument()
+  expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
   expect(screen.getByText('Required field')).toBeInTheDocument()
 
   await user.type(screen.getByLabelText('Current password'), 'samepass')

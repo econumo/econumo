@@ -179,6 +179,13 @@ func (r OrderAccountListRequest) Validate() error {
 	if len(r.Changes) == 0 {
 		return &errs.ValidationError{Msg: "Accounts list is empty", MsgCode: errs.CodeAccountListEmpty}
 	}
+	var fields []errs.FieldError
+	for _, c := range r.Changes {
+		fields = append(fields, validatePositionField("position", c.Position)...)
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
 	return nil
 }
 

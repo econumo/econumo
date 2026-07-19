@@ -498,7 +498,7 @@
         "placeholder": "Password",
         "validation": {
           "required_field": "Required field",
-          "invalid_password": "Password must be at least 4 characters"
+          "invalid_password": "Password must be at least 8 characters"
         }
       },
       "password_retry": {
@@ -1124,6 +1124,7 @@
       "invalid_email": "This value is not a valid email address.",
       "too_long": "This value is too long.",
       "too_short": "This value is too short.",
+      "out_of_range": "This value is out of range.",
       "too_many_attempts": "Too many attempts. Try again later.",
       "operation_locked": "Operation is locked",
       "invalid_datetime_format": "Invalid date format, expected Y-m-d H:i:s",
