@@ -127,6 +127,43 @@ it('configure menu enters edit mode; folder create posts with a v7 id', async ()
   expect(String(body!.id)).toMatch(/^[0-9a-f-]{36}$/)
 })
 
+it('guest role: the Budget details menu item is disabled', async () => {
+  const guestBudget = {
+    ...fixtureWireBudget,
+    meta: {
+      ...fixtureWireBudget.meta,
+      ownerUserId: 'u9',
+      access: [
+        { user: { id: 'u9', avatar: 'face:sky', name: 'Owner' }, role: 'owner', isAccepted: 1 },
+        { user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'guest', isAccepted: 1 },
+      ],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  expect(await screen.findByRole('menuitem', { name: 'Budget details' })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('menuitem', { name: 'Edit structure' })).toHaveAttribute('aria-disabled', 'true')
+})
+
+it('owner role: the Budget details menu item opens the edit dialog', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  const item = await screen.findByRole('menuitem', { name: 'Budget details' })
+  expect(item).not.toHaveAttribute('aria-disabled', 'true')
+  await user.click(item)
+  expect(await screen.findByRole('heading', { name: 'Edit budget' })).toBeInTheDocument()
+})
+
 it('deleting an empty folder asks for confirmation before posting', async () => {
   let body: Record<string, unknown> | undefined
   const budgetWithEmptyFolder = {
