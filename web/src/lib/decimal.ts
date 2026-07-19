@@ -48,8 +48,7 @@ export function tryNormalize(raw: string): string | null {
 
 export function normalize(v: Numeric): string {
   // big(v) already truncates at scale 8; no need to truncate again.
-  // Note: -0 collapses to 0 during truncation (deliberate divergence from backend's
-  // wire contract preservation, since the UI never renders -0 to users).
+  // Note: -0 collapses to 0 during truncation (matching backend vo normalization).
   return toPlain(big(v))
 }
 
