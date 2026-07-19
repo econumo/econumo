@@ -226,12 +226,27 @@ trace of billing) | `end-of-next-month` (cloud).
 
 `middleware.Auth` already resolves the bearer token against the DB on every
 request. `TokenAuthenticator.Authenticate` is extended to return the caller's
-effective access level alongside the user id and token id — one extra column on a
-query that already joins `users`, so no extra round trip:
+effective access level alongside the user id and token id:
 
 ```go
 Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, level model.AccessLevel, err error)
 ```
+
+**This costs a join on the hot path, and that is unavoidable.** Today
+`Authenticate` (`internal/user/authenticate.go:12`) reads `access_tokens` only and
+never touches `users` — a deliberate minimalism documented at
+`internal/user/admin.go:90-93`: per-request auth needs no `is_active` join because
+deactivating a user revokes their tokens. That trick does not extend to access
+level: an expired trial must **not** revoke sessions, since a lapsed user has to
+keep logging in to see the notice and pay. So `GetAccessTokenByHash` grows a join
+onto `users` for `access_level` and `access_until`. It stays a single round trip,
+but it is a new join where there was none, on the most frequently executed query
+in the product.
+
+The rule itself lives **inside `middleware.Auth`**, matching on `r.Method` and
+`r.URL.Path`. `Auth` is applied per route by each feature's `RegisterAPI`, but it
+is one implementation, so the rule is written once and no feature package is
+edited.
 
 The middleware then applies a single rule:
 
