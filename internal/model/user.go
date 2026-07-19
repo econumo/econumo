@@ -7,6 +7,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -91,18 +92,20 @@ type Header struct {
 // exported for direct read access; all writes after construction go through the
 // mutators.
 type User struct {
-	ID         vo.Id
-	Identifier string // md5(lower(email)+salt) — the auth lookup key
-	Email      string // AES-encrypted ciphertext (opaque here)
-	Name       string
-	Avatar     string
-	Password   string // hash produced by the scheme in Algorithm (see CLAUDE.md)
-	Salt       string // sha1(random) hex, 40 chars (unused by argon2id hashes)
-	Algorithm  string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
-	IsActive   bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	Options    []UserOption
+	ID          vo.Id
+	Identifier  string // md5(lower(email)+salt) — the auth lookup key
+	Email       string // AES-encrypted ciphertext (opaque here)
+	Name        string
+	Avatar      string
+	Password    string // hash produced by the scheme in Algorithm (see CLAUDE.md)
+	Salt        string // sha1(random) hex, 40 chars (unused by argon2id hashes)
+	Algorithm   string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
+	IsActive    bool
+	AccessLevel AccessLevel
+	AccessUntil *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Options     []UserOption
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
@@ -110,17 +113,18 @@ type User struct {
 // salt. Options are seeded separately via SeedDefaultOptions.
 func NewUser(id vo.Id, identifier, encryptedEmail, name, avatar, passwordHash, salt string, now time.Time) *User {
 	return &User{
-		ID:         id,
-		Identifier: identifier,
-		Email:      encryptedEmail,
-		Name:       name,
-		Avatar:     avatar,
-		Password:   passwordHash,
-		Salt:       salt,
-		Algorithm:  AlgorithmArgon2id,
-		IsActive:   true,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:          id,
+		Identifier:  identifier,
+		Email:       encryptedEmail,
+		Name:        name,
+		Avatar:      avatar,
+		Password:    passwordHash,
+		Salt:        salt,
+		Algorithm:   AlgorithmArgon2id,
+		IsActive:    true,
+		AccessLevel: AccessLevelFull,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 }
 
@@ -267,4 +271,38 @@ func equalStrPtr(a, b *string) bool {
 	default:
 		return *a == *b
 	}
+}
+
+type AccessLevel string
+
+const (
+	AccessLevelFull     AccessLevel = "full"
+	AccessLevelReadonly AccessLevel = "readonly"
+)
+
+func ParseAccessLevel(s string) (AccessLevel, error) {
+	switch AccessLevel(s) {
+	case AccessLevelFull:
+		return AccessLevelFull, nil
+	case AccessLevelReadonly:
+		return AccessLevelReadonly, nil
+	default:
+		return "", fmt.Errorf("unknown access level %q (want full or readonly)", s)
+	}
+}
+
+// EffectiveAccessLevel collapses the stored level and expiry against the clock.
+// No job "expires" users: an elapsed access_until IS read-only, so no row can be
+// left stale by a run that did not happen.
+func (u *User) EffectiveAccessLevel(now time.Time) AccessLevel {
+	if u.AccessUntil != nil && !now.Before(*u.AccessUntil) {
+		return AccessLevelReadonly
+	}
+	return u.AccessLevel
+}
+
+func (u *User) SetAccess(level AccessLevel, until *time.Time, now time.Time) {
+	u.AccessLevel = level
+	u.AccessUntil = until
+	u.UpdatedAt = now
 }
