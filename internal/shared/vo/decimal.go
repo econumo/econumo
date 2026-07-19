@@ -329,12 +329,9 @@ func normalizeDecimal(num string) string {
 		num = "0" + num
 	}
 
-	// A leading "-" is PRESERVED even when the magnitude is zero: only the literal
-	// inputs "" and "0" are caught by the early return (before sign handling), so a
-	// stored "-0" / "-0.00000000" normalizes to "-0"
-	// (not "0"). SQLite's SUM() yields "-0" for some netted-to-zero account
-	// balances, and the API emits that byte-for-byte. Do NOT suppress the sign.
-	if negative {
+	// A zero magnitude drops the sign: SQLite's SUM() yields "-0" for some
+	// netted-to-zero account balances, and the API must emit an unsigned "0".
+	if negative && num != "0" {
 		return "-" + num
 	}
 	return num

@@ -1,4 +1,4 @@
-import { isValidHttpUrl, isValidEmail, isValidName, isValidPassword, isNotEmpty, isValidRecoveryCode, isValidDecimalNumber } from './validation'
+import { isValidHttpUrl, isValidEmail, isValidName, isValidPassword, isNotEmpty, isValidRecoveryCode, isValidDecimalNumber, isValidFormula } from './validation'
 
 it('validates http(s) urls only', () => {
   expect(isValidHttpUrl('https://a.test')).toBe(true)
@@ -26,6 +26,25 @@ it('treats empty as valid decimal and enforces up to 8 fraction digits', () => {
   expect(isValidDecimalNumber('')).toBe(true)
   expect(isValidDecimalNumber('-12.12345678')).toBe(true)
   expect(isValidDecimalNumber('1.123456789')).toBe(false)
+})
+
+it('isValidFormula accepts numbers and formulas', () => {
+  expect(isValidFormula('10.50')).toBe(true)
+  expect(isValidFormula('-5')).toBe(true)
+  expect(isValidFormula('9,99')).toBe(true)
+  expect(isValidFormula('5+5')).toBe(true)
+  expect(isValidFormula('5 + 5*2')).toBe(true)
+  expect(isValidFormula('5+5=')).toBe(true)
+  expect(isValidFormula('')).toBe(true)
+})
+
+it('isValidFormula rejects text that is not a number or formula', () => {
+  expect(isValidFormula('abc')).toBe(false)
+  expect(isValidFormula('12abc')).toBe(false)
+  expect(isValidFormula('$5')).toBe(false)
+  expect(isValidFormula('...')).toBe(false)
+  expect(isValidFormula('=')).toBe(false)
+  expect(isValidFormula('5+')).toBe(false)
 })
 
 it('isNotEmpty rejects empty string and null', () => {

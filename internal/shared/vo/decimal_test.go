@@ -26,12 +26,11 @@ func TestNewDecimal_Normalize(t *testing.T) {
 		{"0", "0"},
 		{"0.00000000", "0"},
 		{"0.0", "0"},
-		// negative-zero PRESERVES the sign: "-0" stays "-0". Only the literal ""
-		// and "0" inputs collapse to "0" (caught before sign handling). SQLite
-		// SUM() emits "-0" for some netted-to-zero balances and the API surfaces
-		// that, so this must match byte-for-byte.
-		{"-0", "-0"},
-		{"-0.00000000", "-0"},
+		// negative zero collapses to unsigned "0": SQLite's SUM() emits "-0" for
+		// some netted-to-zero balances and the API must never surface a signed zero.
+		{"-0", "0"},
+		{"-0.00000000", "0"},
+		{"-0.0", "0"},
 		// negatives keep the sign.
 		{"-12.34000000", "-12.34"},
 		{"-0.50000000", "-0.5"},
