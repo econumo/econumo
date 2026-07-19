@@ -59,10 +59,15 @@ func Handler(dir string, overrides map[string]any) http.Handler {
 			return
 		}
 
-		// Map the cleaned URL path onto a filesystem path within dir. filepath
-		// .Clean + the leading-slash trim keep us anchored under dir.
-		rel := strings.TrimPrefix(cleaned, "/")
-		fsPath := filepath.Join(dir, filepath.FromSlash(rel))
+		// Map the cleaned URL path onto a filesystem path within dir. path.Clean
+		// already collapsed any ".." against the leading "/", but resolvePath
+		// re-asserts containment so the file lookup can never escape dir even if
+		// the cleaning above is later weakened.
+		fsPath, ok := resolvePath(dir, cleaned)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
 
 		if fileExists(fsPath) {
 			setCacheControl(w, cleaned)
@@ -123,6 +128,20 @@ func setCacheControl(w http.ResponseWriter, cleaned string) {
 func isReservedPath(p string) bool {
 	return p == "/api" || strings.HasPrefix(p, "/api/") ||
 		p == "/_" || strings.HasPrefix(p, "/_/")
+}
+
+// resolvePath maps a cleaned, slash-rooted URL path onto a filesystem path and
+// reports whether the result is genuinely contained in dir. Containment is
+// checked with filepath.Rel rather than a string prefix, so a sibling directory
+// sharing dir's name prefix (dist vs dist-other) cannot pass.
+func resolvePath(dir, cleaned string) (string, bool) {
+	rel := strings.TrimPrefix(cleaned, "/")
+	candidate := filepath.Join(dir, filepath.FromSlash(rel))
+	inside, err := filepath.Rel(dir, candidate)
+	if err != nil || inside == ".." || strings.HasPrefix(inside, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return candidate, true
 }
 
 // fileExists reports whether name is an existing regular file (not a

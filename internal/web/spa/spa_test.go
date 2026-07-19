@@ -145,3 +145,39 @@ func TestSPA_RuntimeConfigMissingFile(t *testing.T) {
 		t.Fatalf("status = %d, want 404", rec.Code)
 	}
 }
+
+// resolvePath is the containment boundary for static-file lookups: nothing it
+// approves may fall outside dir, however the URL path is spelled.
+func TestResolvePath_StaysInsideDir(t *testing.T) {
+	dir := t.TempDir()
+
+	for _, cleaned := range []string{"/", "/index.html", "/assets/app.js", "/a/b/c.png"} {
+		got, ok := resolvePath(dir, cleaned)
+		if !ok {
+			t.Errorf("resolvePath(%q) rejected a legitimate path", cleaned)
+			continue
+		}
+		if rel, err := filepath.Rel(dir, got); err != nil || strings.HasPrefix(rel, "..") {
+			t.Errorf("resolvePath(%q) = %q, which escapes %q", cleaned, got, dir)
+		}
+	}
+
+	// Paths that resolve outside dir must be refused outright.
+	for _, cleaned := range []string{"/..", "/../etc/passwd", "/../../root/.ssh/id_rsa"} {
+		if got, ok := resolvePath(dir, cleaned); ok {
+			t.Errorf("resolvePath(%q) = %q, want rejection", cleaned, got)
+		}
+	}
+}
+
+// A sibling directory sharing dir's name prefix must not read as "inside" it.
+func TestResolvePath_RejectsPrefixSibling(t *testing.T) {
+	base := t.TempDir()
+	dir := filepath.Join(base, "dist")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := resolvePath(dir, "/../dist-evil/secret.txt"); ok {
+		t.Errorf("resolvePath escaped into a prefix sibling: %q", got)
+	}
+}

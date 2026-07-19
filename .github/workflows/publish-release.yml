@@ -35,6 +35,8 @@ jobs:
   create-tag:
     name: Create Git Tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # pushes the release tag
     outputs:
       version: ${{ steps.set.outputs.version }}
       tags: ${{ steps.set.outputs.tags }}
@@ -52,13 +54,22 @@ jobs:
 
       - name: Compute image tags
         id: set
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          PUSH_LATEST: ${{ github.event.inputs.push_latest }}
+          PUSH_DEV: ${{ github.event.inputs.push_dev }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          # The version is a dispatch input: reject anything that is not a plain
+          # vX.Y.Z tag before it reaches git or a docker tag.
+          if ! printf '%s' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid version '$VERSION' (expected vX.Y.Z)"
+            exit 1
+          fi
           TAGS="${IMAGE}:${VERSION}"
-          if [ "${{ github.event.inputs.push_latest }}" = "true" ]; then
+          if [ "$PUSH_LATEST" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:latest"
           fi
-          if [ "${{ github.event.inputs.push_dev }}" = "true" ]; then
+          if [ "$PUSH_DEV" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:dev"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -71,8 +82,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Create and push tag
+        env:
+          TAG: ${{ steps.set.outputs.version }}
         run: |
-          TAG="${{ github.event.inputs.version }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "::error::Tag $TAG already exists"
             exit 1
