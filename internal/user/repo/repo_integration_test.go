@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -306,5 +307,20 @@ func TestUserRepo_AlgorithmRoundTrip(t *testing.T) {
 	}
 	if legacy.Algorithm != model.AlgorithmSHA512 {
 		t.Errorf("legacy Algorithm = %q, want %q", legacy.Algorithm, model.AlgorithmSHA512)
+	}
+}
+
+func TestUserSchema_HasAccessColumns(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+
+	var level string
+	var until *time.Time
+	err := db.Raw.QueryRowContext(ctx,
+		db.Rebind(`SELECT access_level, access_until FROM users WHERE id = ?`),
+		"00000000-0000-0000-0000-000000000000",
+	).Scan(&level, &until)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("access columns not queryable: %v", err)
 	}
 }
