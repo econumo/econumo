@@ -243,6 +243,31 @@ func TestLoad_Analytics(t *testing.T) {
 	}
 }
 
+func TestLoad_Trial(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Trial != "none" {
+		t.Fatal("Trial default = " + c.Trial + ", want none")
+	}
+	t.Setenv("ECONUMO_TRIAL", "end-of-next-month")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Trial != "end-of-next-month" {
+		t.Fatal("Trial with ECONUMO_TRIAL=end-of-next-month = " + c.Trial + ", want end-of-next-month")
+	}
+	// Strict parse: a typo while enabling trials fails at boot
+	// rather than silently disabling trials.
+	t.Setenv("ECONUMO_TRIAL", "weekly")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_TRIAL=weekly: err = nil, want boot error")
+	}
+}
+
 func TestLoad_SPAOverrides(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	c, err := Load()
