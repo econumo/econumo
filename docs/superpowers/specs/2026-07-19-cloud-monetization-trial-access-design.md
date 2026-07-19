@@ -332,6 +332,10 @@ against the admin listener; the `billing-handoff:v1` prefix gives domain
 separation so a handoff signature cannot be replayed as anything else. Stateless,
 no storage, verification is a few lines on the portal side.
 
+The SPA never assembles this link itself — it calls
+`POST /api/v1/user/create-billing-link` and follows the returned `url`, so the
+signing key never leaves the server and the token is always freshly minted.
+
 The portal then fetches everything it needs server-side (see
 `GET /admin/user-context`). **No email, name, or access state ever travels through
 the browser.**
@@ -439,8 +443,22 @@ Read-only by construction — it takes no other arguments and changes nothing.
 ## What the SPA sees
 
 Two new fields on `CurrentUserResult` (returned by both `login-user` and
-`get-user-data`): `accessLevel` and `accessUntil`. **No new routes** — the
-apiparity route-coverage guards are untouched; only the golden files change.
+`get-user-data`): `accessLevel` and `accessUntil`.
+
+One new route: **`POST /api/v1/user/create-billing-link`** → `{"url": "…"}`,
+which mints a fresh handoff token and returns the assembled portal URL. It takes
+an optional `for` (a user id) and returns 400 when `BILLING_URL` is unset.
+
+The token is minted per click rather than carried on `CurrentUserResult`: it
+lives 10 minutes, `get-user-data` is cached by TanStack Query, and a user opening
+Settings half an hour after login would otherwise arrive at the portal with an
+expired assertion. "The payment link is broken" is the worst possible place for
+that failure.
+
+This means the apiparity guards *do* move — the scenario catalogue and the
+scanned-route count both grow by one, and a scenario plus golden must be added
+for the new route. Every other change here is additive to existing payloads and
+touches only golden content.
 
 - **Banner** when `accessUntil` is within 3 days or has passed. Generic copy
   ("access ends in N days" / "read-only"), CTA to the portal.
@@ -571,10 +589,11 @@ The same binary serves a self-hosted user (all defaults) and the cloud.
    re-register in production. The cost is low — demo accounts already expire
    after seven days, so nobody loses durable data — and a split funnel costs more
    than the churn.
-8. **Golden files change** — two new fields in `login-user` / `get-user-data`,
-   two more in `get-connection-list` / `accept-invite`. Regenerate with
-   `UPDATE_GOLDEN=1` and read the diff; a golden change means observable behavior
-   changed.
+8. **Golden files and route guards change** — two new fields in `login-user` /
+   `get-user-data`, two more in `get-connection-list` / `accept-invite`, and one
+   new route (`create-billing-link`) that grows the apiparity scenario and
+   scanned-route counts. Regenerate with `UPDATE_GOLDEN=1` and read the diff; a
+   golden change means observable behavior changed.
 
 ## Testing
 
