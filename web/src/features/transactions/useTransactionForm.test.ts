@@ -103,6 +103,6 @@ it('categories filter by type, owner and archived flag', () => {
 it('canChangeAccountData: owner or shared admin only', () => {
   expect(canChangeAccountData(account({}), 'u1')).toBe(true)
   expect(canChangeAccountData(account({ owner: other }), 'u1')).toBe(false)
-  expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'admin' }] }), 'u1')).toBe(true)
-  expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'user' }] }), 'u1')).toBe(false)
+  expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'admin', isAccepted: 1 }] }), 'u1')).toBe(true)
+  expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'user', isAccepted: 1 }] }), 'u1')).toBe(false)
 })

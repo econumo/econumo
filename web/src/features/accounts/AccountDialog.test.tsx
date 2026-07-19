@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureConnections, fixtureOwner } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import { AccountDialog } from './AccountDialog'
@@ -130,4 +130,50 @@ it('edit mode seeds the raw balance and posts updatedAt in Y-m-d H:i:s', async (
   expect(body!.id).toBe(account.id)
   expect(body!.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
   expect(body!.currencyId).toBe('cur-usd')
+})
+
+it('edit mode shows the access row for the owner; the share flow posts the grant', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    ...coreHandlers({ connections: fixtureConnections }),
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
+
+  await screen.findByText('Edit account')
+  await user.click(await screen.findByRole('button', { name: /Access control/ }))
+  // ShareAccessDialog: the connection appears with its current (no) access
+  await user.click(await screen.findByRole('button', { name: /Partner/ }))
+  // AccessLevelDialog: grant admin
+  await user.click(await screen.findByRole('button', { name: 'Full control' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body).toMatchObject({ accountId: 'a1', userId: 'u2', role: 'admin' })
+})
+
+it('create mode has no access row', async () => {
+  renderDialog()
+  useUiStore.getState().openAccountModal({ folderId: 'f1' })
+  await screen.findByText('New account')
+  await screen.findByRole('button', { name: /Currency/ })
+  expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
+})
+
+it('edit mode hides the access row from a non-admin member', async () => {
+  const foreign = {
+    ...fixtureAccounts[0],
+    id: 'a-foreign',
+    owner: { id: 'u2', avatar: 'pets:sky', name: 'Partner' },
+    sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 1 }],
+  }
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, foreign], connections: fixtureConnections }))
+  renderDialog()
+  useUiStore.getState().openAccountModal({ account: foreign as unknown as AccountDto })
+  await screen.findByText('Edit account')
+  await screen.findByRole('button', { name: /Currency/ })
+  expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
 })

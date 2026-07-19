@@ -48,10 +48,10 @@ type LoginRequest struct {
 func (r LoginRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Username) == "" {
-		fields = append(fields, errs.FieldError{Key: "username", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "username", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if r.Password == "" {
-		fields = append(fields, errs.FieldError{Key: "password", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "password", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -59,7 +59,7 @@ func (r LoginRequest) Validate() error {
 	return nil
 }
 
-// LoginResult is the login response: a JWT plus the current user.
+// LoginResult is the login response: an opaque session token plus the current user.
 type LoginResult struct {
 	Token string            `json:"token"`
 	User  CurrentUserResult `json:"user"`
@@ -69,6 +69,14 @@ type LoginResult struct {
 // register-user
 // ---------------------------------------------------------------------------
 
+// Password length policy for newly-set passwords (register, update, reset).
+// Login is intentionally exempt so pre-existing short passwords still work; the
+// upper bound caps the plaintext fed to Argon2id.
+const (
+	PasswordMinLen = 8
+	PasswordMaxLen = 128
+)
+
 // RegisterRequest is the register request body.
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -76,12 +84,12 @@ type RegisterRequest struct {
 	Name     string `json:"name"`
 }
 
-// Validate enforces: email NotBlank+Email+max256, password NotBlank+min4,
+// Validate enforces: email NotBlank+Email+max256, password NotBlank+len 8..128,
 // name NotBlank+len 3..20.
 func (r RegisterRequest) Validate() error {
 	var fields []errs.FieldError
 	fields = append(fields, validateEmailField("email", r.Email, 256)...)
-	fields = append(fields, validateMinLenField("password", r.Password, 4)...)
+	fields = append(fields, validateLenRangeField("password", r.Password, PasswordMinLen, PasswordMaxLen)...)
 	fields = append(fields, validateLenRangeField("name", r.Name, 3, 20)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -148,7 +156,7 @@ type UpdateCurrencyRequest struct {
 // the service via the value-object constructor — tier 2).
 func (r UpdateCurrencyRequest) Validate() error {
 	if strings.TrimSpace(r.Currency) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "currency", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "currency", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
@@ -172,13 +180,37 @@ type UpdateReportPeriodRequest struct {
 // service via the value-object constructor — tier 2).
 func (r UpdateReportPeriodRequest) Validate() error {
 	if strings.TrimSpace(r.Value) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	return nil
 }
 
 // UpdateReportPeriodResult is the update-report-period response.
 type UpdateReportPeriodResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
+// update-language
+// ---------------------------------------------------------------------------
+
+// UpdateLanguageRequest is the update-language request body. Membership in the
+// supported-language set is checked in the feature (tier-2), like ReportPeriod.
+type UpdateLanguageRequest struct {
+	Language string `json:"language"`
+}
+
+// Validate enforces NotBlank (the supported-language invariant is checked in
+// the service — tier 2).
+func (r UpdateLanguageRequest) Validate() error {
+	if strings.TrimSpace(r.Language) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "language", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// UpdateLanguageResult is the update-language response.
+type UpdateLanguageResult struct {
 	User CurrentUserResult `json:"user"`
 }
 
@@ -192,13 +224,13 @@ type UpdatePasswordRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
-// Validate enforces oldPassword NotBlank, newPassword NotBlank + min4.
+// Validate enforces oldPassword NotBlank, newPassword NotBlank + len 8..128.
 func (r UpdatePasswordRequest) Validate() error {
 	var fields []errs.FieldError
 	if r.OldPassword == "" {
-		fields = append(fields, errs.FieldError{Key: "oldPassword", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "oldPassword", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
-	fields = append(fields, validateMinLenField("newPassword", r.NewPassword, 4)...)
+	fields = append(fields, validateLenRangeField("newPassword", r.NewPassword, PasswordMinLen, PasswordMaxLen)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
@@ -233,16 +265,48 @@ type UpdateActiveBudgetRequest struct {
 // (-> "Plan not found") is tier 2, in the service.
 func (r UpdateActiveBudgetRequest) Validate() error {
 	if strings.TrimSpace(r.Value) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if _, err := vo.ParseId(r.Value); err != nil {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value is not a valid UUID.", Code: "INVALID_UUID_ERROR"})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "value", Message: "This value is not a valid UUID.", Code: errs.CodeInvalidUUID})
 	}
 	return nil
 }
 
 // UpdateActiveBudgetResult is the user update-budget response.
 type UpdateActiveBudgetResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
+// update-avatar
+// ---------------------------------------------------------------------------
+
+// UpdateAvatarRequest is the update-avatar request body. Icon is a Material
+// ligature name; color must be one of the avatar color slugs (tier-2, in the
+// service).
+type UpdateAvatarRequest struct {
+	Icon  string `json:"icon"`
+	Color string `json:"color"`
+}
+
+// Validate enforces NotBlank on both fields; format/choice checks are tier 2.
+func (r UpdateAvatarRequest) Validate() error {
+	var fields []errs.FieldError
+	if strings.TrimSpace(r.Icon) == "" {
+		fields = append(fields, errs.FieldError{Key: "icon", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(r.Color) == "" {
+		fields = append(fields, errs.FieldError{Key: "color", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// UpdateAvatarResult is the update-avatar response.
+type UpdateAvatarResult struct {
 	User CurrentUserResult `json:"user"`
 }
 
@@ -273,14 +337,14 @@ type ResetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
-// Validate enforces username NotBlank+Email, code NotBlank, password NotBlank+min4.
+// Validate enforces username NotBlank+Email, code NotBlank, password NotBlank+len 8..128.
 func (r ResetPasswordRequest) Validate() error {
 	var fields []errs.FieldError
 	fields = append(fields, validateEmailField("username", r.Username, 0)...)
 	if strings.TrimSpace(r.Code) == "" {
-		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
-	fields = append(fields, validateMinLenField("password", r.Password, 4)...)
+	fields = append(fields, validateLenRangeField("password", r.Password, PasswordMinLen, PasswordMaxLen)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
@@ -310,37 +374,27 @@ type LogoutResult struct {
 // see CLAUDE.md.
 func validateEmailField(key, v string, maxLen int) []errs.FieldError {
 	if strings.TrimSpace(v) == "" {
-		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"}}
+		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: errs.CodeIsBlank}}
 	}
 	if !looksLikeEmail(v) {
-		return []errs.FieldError{{Key: key, Message: "This value is not a valid email address.", Code: "INVALID_EMAIL_ERROR"}}
+		return []errs.FieldError{{Key: key, Message: "This value is not a valid email address.", Code: errs.CodeInvalidEmail}}
 	}
 	if maxLen > 0 && len([]rune(v)) > maxLen {
-		return []errs.FieldError{{Key: key, Message: "This value is too long.", Code: "TOO_LONG_ERROR"}}
-	}
-	return nil
-}
-
-func validateMinLenField(key, v string, minLen int) []errs.FieldError {
-	if v == "" {
-		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"}}
-	}
-	if len([]rune(v)) < minLen {
-		return []errs.FieldError{{Key: key, Message: "This value is too short.", Code: "TOO_SHORT_ERROR"}}
+		return []errs.FieldError{{Key: key, Message: "This value is too long.", Code: errs.CodeTooLong}}
 	}
 	return nil
 }
 
 func validateLenRangeField(key, v string, minLen, maxLen int) []errs.FieldError {
 	if strings.TrimSpace(v) == "" {
-		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"}}
+		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: errs.CodeIsBlank}}
 	}
 	n := len([]rune(v))
 	if n < minLen {
-		return []errs.FieldError{{Key: key, Message: "This value is too short.", Code: "TOO_SHORT_ERROR"}}
+		return []errs.FieldError{{Key: key, Message: "This value is too short.", Code: errs.CodeTooShort}}
 	}
 	if n > maxLen {
-		return []errs.FieldError{{Key: key, Message: "This value is too long.", Code: "TOO_LONG_ERROR"}}
+		return []errs.FieldError{{Key: key, Message: "This value is too long.", Code: errs.CodeTooLong}}
 	}
 	return nil
 }

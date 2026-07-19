@@ -17,21 +17,20 @@ import (
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
-	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
 const (
 	testDataSalt = "0123456789abcdef"
 
-	seedUserID    = "11111111-1111-1111-1111-111111111111"
-	seedEmail     = "user@example.test"
-	seedName      = "Seed User"
-	seedSalt      = "0000000000000000000000000000000000000001"
-	seedAvatarURL = "https://avatar.test/x"
+	seedUserID = "11111111-1111-1111-1111-111111111111"
+	seedEmail  = "user@example.test"
+	seedName   = "Seed User"
+	seedSalt   = "0000000000000000000000000000000000000001"
+	seedAvatar = "https://avatar.test/x"
 
 	usdID = "cccccccc-0000-0000-0000-0000000000us"
 	eurID = "cccccccc-0000-0000-0000-0000000000eu"
@@ -45,7 +44,6 @@ func (c fixedClock) Now() time.Time { return c.t }
 type harness struct {
 	srv   *httptest.Server
 	db    *sql.DB
-	jwt   *jwt.JWT
 	clock fixedClock
 	f     *fixture.Builder
 }
@@ -56,15 +54,10 @@ func newHarness(t *testing.T) *harness {
 	tdb := dbtest.NewSQLite(t)
 	db := tdb.Raw
 
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
 	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
-	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatarURL, Password: "pw", Salt: seedSalt})
+	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 
 	readRepo := currencyrepo.NewReadRepo("sqlite", tdb.TX)
 
@@ -75,12 +68,12 @@ func newHarness(t *testing.T) *harness {
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handlercurrency.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
+		RegisterAPI: handlercurrency.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, jwt: jwtSvc, clock: clk, f: f}
+	return &harness{srv: srv, db: db, clock: clk, f: f}
 }
 
 // resetCurrencies clears the currencies + rates tables so a test controls the
@@ -140,11 +133,8 @@ func (h *harness) do(t *testing.T, method, path, token string) (int, envelope) {
 
 func (h *harness) issueToken(t *testing.T) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(seedUserID, seedEmail, h.clock.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
-	}
-	return tok
+	// authstub: the bearer token IS the user id string.
+	return seedUserID
 }
 
 type envelope struct {

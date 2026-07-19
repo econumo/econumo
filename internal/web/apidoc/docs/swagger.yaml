@@ -55,7 +55,7 @@ definitions:
           type: array
         type: object
       message:
-        example: JWT Token not found
+        example: Access token not found
         type: string
       success:
         example: false
@@ -72,6 +72,15 @@ definitions:
         items:
           $ref: '#/definitions/model.MetaResult'
         type: array
+    type: object
+  model.AcceptAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      folderId:
+        type: string
+    type: object
+  model.AcceptAccountAccessResult:
     type: object
   model.AcceptInviteRequest:
     properties:
@@ -450,6 +459,26 @@ definitions:
       item:
         $ref: '#/definitions/model.PayeeResult'
     type: object
+  model.CreatePersonalTokenRequest:
+    properties:
+      expiresAt:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreatePersonalTokenResult:
+    properties:
+      createdAt:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      token:
+        type: string
+    type: object
   model.CreateTagRequest:
     properties:
       accountId:
@@ -564,6 +593,13 @@ definitions:
         type: string
     type: object
   model.DeclineAccessResult:
+    type: object
+  model.DeclineAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+    type: object
+  model.DeclineAccountAccessResult:
     type: object
   model.DeleteAccountRequest:
     properties:
@@ -773,6 +809,13 @@ definitions:
           $ref: '#/definitions/model.TransactionResult'
         type: array
     type: object
+  model.GetUpdateInfoResult:
+    properties:
+      url:
+        type: string
+      version:
+        type: string
+    type: object
   model.GetUserDataResult:
     properties:
       user:
@@ -793,6 +836,17 @@ definitions:
         items:
           $ref: '#/definitions/model.MetaResult'
         type: array
+    type: object
+  model.GrantAccountAccessRequest:
+    properties:
+      accountId:
+        type: string
+      role:
+        type: string
+      userId:
+        type: string
+    type: object
+  model.GrantAccountAccessResult:
     type: object
   model.HideFolderRequest:
     properties:
@@ -1027,6 +1081,20 @@ definitions:
       updatedAt:
         type: string
     type: object
+  model.PersonalTokenItem:
+    properties:
+      createdAt:
+        type: string
+      expiresAt:
+        description: null = never expires
+        type: string
+      id:
+        type: string
+      lastUsedAt:
+        type: string
+      name:
+        type: string
+    type: object
   model.PositionChange:
     properties:
       id:
@@ -1100,16 +1168,35 @@ definitions:
     type: object
   model.RevokeAccountAccessResult:
     type: object
-  model.SetAccountAccessRequest:
+  model.RevokeOtherSessionsResult:
+    type: object
+  model.RevokePersonalTokenRequest:
     properties:
-      accountId:
-        type: string
-      role:
-        type: string
-      userId:
+      id:
         type: string
     type: object
-  model.SetAccountAccessResult:
+  model.RevokePersonalTokenResult:
+    type: object
+  model.RevokeSessionRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.RevokeSessionResult:
+    type: object
+  model.SessionItem:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      isCurrent:
+        type: boolean
+      lastUsedAt:
+        type: string
+      userAgent:
+        description: '"" when the login sent no User-Agent'
+        type: string
     type: object
   model.SetLimitRequest:
     properties:
@@ -1126,6 +1213,8 @@ definitions:
     type: object
   model.SharedAccess:
     properties:
+      isAccepted:
+        type: integer
       role:
         type: string
       user:
@@ -1269,6 +1358,18 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.UpdateAvatarRequest:
+    properties:
+      color:
+        type: string
+      icon:
+        type: string
+    type: object
+  model.UpdateAvatarResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   model.UpdateBudgetFolderRequest:
     properties:
       budgetId:
@@ -1357,6 +1458,16 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
+    type: object
+  model.UpdateLanguageRequest:
+    properties:
+      language:
+        type: string
+    type: object
+  model.UpdateLanguageResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
     type: object
   model.UpdateNameRequest:
     properties:
@@ -1457,6 +1568,48 @@ info:
   title: Econumo API
   version: 1.0.0
 paths:
+  /api/v1/account/accept-access:
+    post:
+      consumes:
+      - application/json
+      description: Accepts a pending account-access grant, placing the account in
+        the given folder (or a newly created default folder when the caller has none).
+      parameters:
+      - description: Accept account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AcceptAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AcceptAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Accept account access
+      tags:
+      - Account
   /api/v1/account/create-account:
     post:
       consumes:
@@ -1539,6 +1692,47 @@ paths:
       security:
       - Bearer: []
       summary: Create a folder
+      tags:
+      - Account
+  /api/v1/account/decline-access:
+    post:
+      consumes:
+      - application/json
+      description: Removes the caller's own grant on an account, pending or accepted.
+      parameters:
+      - description: Decline account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeclineAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeclineAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Decline account access
       tags:
       - Account
   /api/v1/account/delete-account:
@@ -1637,6 +1831,48 @@ paths:
       security:
       - Bearer: []
       summary: Get the folder list
+      tags:
+      - Account
+  /api/v1/account/grant-access:
+    post:
+      consumes:
+      - application/json
+      description: Grants or updates a connected user's role on an account you own
+        or administer. New grants are pending until accepted.
+      parameters:
+      - description: Grant account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.GrantAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GrantAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Grant account access
       tags:
       - Account
   /api/v1/account/hide-folder:
@@ -1804,6 +2040,47 @@ paths:
       security:
       - Bearer: []
       summary: Replace a folder
+      tags:
+      - Account
+  /api/v1/account/revoke-access:
+    post:
+      consumes:
+      - application/json
+      description: Removes a connected user's grant on an account you own or administer.
+      parameters:
+      - description: Revoke account access request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokeAccountAccessRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeAccountAccessResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke account access
       tags:
       - Account
   /api/v1/account/show-folder:
@@ -3057,89 +3334,6 @@ paths:
       summary: List connections
       tags:
       - Connection
-  /api/v1/connection/revoke-account-access:
-    post:
-      consumes:
-      - application/json
-      description: Removes a connected user's grant on an account you own or administer.
-      parameters:
-      - description: Revoke account access request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.RevokeAccountAccessRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.RevokeAccountAccessResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Revoke account access
-      tags:
-      - Connection
-  /api/v1/connection/set-account-access:
-    post:
-      consumes:
-      - application/json
-      description: Grants or updates a connected user's role on an account you own
-        or administer.
-      parameters:
-      - description: Set account access request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.SetAccountAccessRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.SetAccountAccessResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Set account access
-      tags:
-      - Connection
   /api/v1/currency/get-currency-list:
     get:
       description: Returns all currencies ordered by ISO code. The name is the English
@@ -3477,6 +3671,36 @@ paths:
       summary: Update a payee
       tags:
       - Payee
+  /api/v1/system/get-update-info:
+    get:
+      description: Returns the latest Econumo release published on econumo.com (version
+        + release-page URL), or empty strings when unknown. The client compares against
+        its own version.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetUpdateInfoResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the latest published release
+      tags:
+      - System
   /api/v1/tag/archive-tag:
     post:
       consumes:
@@ -4056,6 +4280,48 @@ paths:
       summary: Complete onboarding
       tags:
       - User
+  /api/v1/user/create-personal-token:
+    post:
+      consumes:
+      - application/json
+      description: Creates a personal access token. The token value is returned once
+        and never again.
+      parameters:
+      - description: Create personal token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreatePersonalTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreatePersonalTokenResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a personal access token
+      tags:
+      - User
   /api/v1/user/get-option-list:
     get:
       description: 'Returns the authenticated user''s raw persisted options ({items:
@@ -4083,6 +4349,68 @@ paths:
       security:
       - Bearer: []
       summary: Get option list
+      tags:
+      - User
+  /api/v1/user/get-personal-token-list:
+    get:
+      description: Returns the authenticated user's live personal access tokens (without
+        token material).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.PersonalTokenItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List personal access tokens
+      tags:
+      - User
+  /api/v1/user/get-session-list:
+    get:
+      description: Returns the authenticated user's live sessions; isCurrent marks
+        the presenting one.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.SessionItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List sessions
       tags:
       - User
   /api/v1/user/get-user-data:
@@ -4117,8 +4445,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticates a user by username/password and returns a JWT plus
-        the current user.
+      description: Authenticates a user by username/password and returns an opaque
+        access token plus the current user.
       parameters:
       - description: Login request
         in: body
@@ -4142,6 +4470,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
@@ -4151,8 +4483,7 @@ paths:
       - User
   /api/v1/user/logout-user:
     post:
-      description: Stateless logout; returns an empty success envelope (JWT is not
-        invalidated server-side).
+      description: Revokes the presenting session token.
       produces:
       - application/json
       responses:
@@ -4211,6 +4542,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
@@ -4250,6 +4585,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
@@ -4290,11 +4629,170 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
       summary: Reset password
+      tags:
+      - User
+  /api/v1/user/revoke-other-sessions:
+    post:
+      description: Revokes all the authenticated user's sessions except the presenting
+        one. Returns an empty success envelope.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeOtherSessionsResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke other sessions
+      tags:
+      - User
+  /api/v1/user/revoke-personal-token:
+    post:
+      consumes:
+      - application/json
+      description: Revokes one of the authenticated user's personal access tokens.
+        Returns an empty success envelope.
+      parameters:
+      - description: Revoke personal token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokePersonalTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokePersonalTokenResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke a personal access token
+      tags:
+      - User
+  /api/v1/user/revoke-session:
+    post:
+      consumes:
+      - application/json
+      description: Revokes one of the authenticated user's sessions. Returns an empty
+        success envelope.
+      parameters:
+      - description: Revoke session request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokeSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeSessionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke a session
+      tags:
+      - User
+  /api/v1/user/update-avatar:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's avatar (Material icon name + color
+        slug) and returns the refreshed user.
+      parameters:
+      - description: Update avatar request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAvatarRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateAvatarResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update avatar
       tags:
       - User
   /api/v1/user/update-budget:
@@ -4381,6 +4879,48 @@ paths:
       summary: Update currency
       tags:
       - User
+  /api/v1/user/update-language:
+    post:
+      consumes:
+      - application/json
+      description: Updates the authenticated user's UI language preference and returns
+        the refreshed user.
+      parameters:
+      - description: Update language request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateLanguageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateLanguageResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update language
+      tags:
+      - User
   /api/v1/user/update-name:
     post:
       consumes:
@@ -4428,7 +4968,7 @@ paths:
       consumes:
       - application/json
       description: Changes the authenticated user's password after verifying the old
-        one. Returns an empty success envelope.
+        one; other sessions are signed out. Returns an empty success envelope.
       parameters:
       - description: Update password request
         in: body
@@ -4509,7 +5049,7 @@ paths:
       - User
 securityDefinitions:
   Bearer:
-    description: 'JWT bearer token. Format: "Bearer <token>".'
+    description: 'Opaque access token. Format: "Bearer <token>".'
     in: header
     name: Authorization
     type: apiKey

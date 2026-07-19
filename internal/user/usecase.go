@@ -5,7 +5,6 @@ package user
 
 import (
 	"context"
-	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
@@ -14,10 +13,10 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -29,12 +28,14 @@ type Service struct {
 	tx                port.TxRunner
 	encode            *auth.EncodeService
 	hasher            *auth.PasswordHasher
-	jwt               *jwt.JWT
+	tokens            AccessTokens
 	currency          CurrencyLookup
-	budgets           BudgetExistence
+	budgets           BudgetAccess
 	passwordRequests  PasswordRequests
 	mailer            *mailer.ResetSender
+	avatars           AvatarPicker
 	clock             port.Clock
+	limiter           AttemptLimiter
 	allowRegistration bool
 }
 
@@ -43,12 +44,14 @@ func NewService(
 	tx port.TxRunner,
 	encode *auth.EncodeService,
 	hasher *auth.PasswordHasher,
-	jwtSvc *jwt.JWT,
+	tokens AccessTokens,
 	currency CurrencyLookup,
-	budgets BudgetExistence,
+	budgets BudgetAccess,
 	passwordRequests PasswordRequests,
 	mailer *mailer.ResetSender,
+	avatars AvatarPicker,
 	clock port.Clock,
+	limiter AttemptLimiter,
 	allowRegistration bool,
 ) *Service {
 	return &Service{
@@ -56,20 +59,33 @@ func NewService(
 		tx:                tx,
 		encode:            encode,
 		hasher:            hasher,
-		jwt:               jwtSvc,
+		tokens:            tokens,
 		currency:          currency,
 		budgets:           budgets,
 		passwordRequests:  passwordRequests,
 		mailer:            mailer,
+		avatars:           avatars,
 		clock:             clock,
+		limiter:           limiter,
 		allowRegistration: allowRegistration,
 	}
 }
 
-// Logout is stateless (JWT); nothing to invalidate server-side.
-func (s *Service) Logout(ctx context.Context) (*model.LogoutResult, error) {
-	_ = ctx
-	// The "test" literal is a frozen wire constant clients depend on (see LogoutResult).
+// Logout revokes the presenting session. The "test" literal is a frozen wire
+// constant clients depend on (see LogoutResult).
+func (s *Service) Logout(ctx context.Context, tokenID vo.Id) (*model.LogoutResult, error) {
+	t, err := s.tokens.GetByID(ctx, tokenID)
+	if err != nil {
+		if _, ok := errs.AsNotFound(err); ok {
+			// Already gone: logout is idempotent.
+			return &model.LogoutResult{Result: "test"}, nil
+		}
+		return nil, err
+	}
+	t.Revoke(s.clock.Now())
+	if err := s.tokens.Update(ctx, t); err != nil {
+		return nil, err
+	}
 	return &model.LogoutResult{Result: "test"}, nil
 }
 
@@ -134,7 +150,7 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		Id:           u.ID.String(),
 		Name:         u.Name,
 		Email:        email,
-		Avatar:       u.AvatarURL,
+		Avatar:       u.Avatar,
 		Options:      options,
 		Currency:     code,
 		ReportPeriod: u.ReportPeriod(),
@@ -147,7 +163,7 @@ func newCurrencyCode(v string) (string, error) {
 	c := strings.ToUpper(strings.TrimSpace(v))
 	if len([]rune(c)) != 3 {
 		return "", errs.NewValidation("CurrencyCode is incorrect",
-			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect"})
+			errs.FieldError{Key: "currency", Message: "CurrencyCode is incorrect", Code: errs.CodeInvalidCurrencyCode})
 	}
 	return c, nil
 }
@@ -156,9 +172,21 @@ func newCurrencyCode(v string) (string, error) {
 func newReportPeriod(v string) (string, error) {
 	if v != model.DefaultReportPeriod {
 		return "", errs.NewValidation("ReportPeriod is incorrect",
-			errs.FieldError{Key: "value", Message: "ReportPeriod is incorrect"})
+			errs.FieldError{Key: "value", Message: "ReportPeriod is incorrect", Code: errs.CodeUserReportPeriodInvalid})
 	}
 	return v, nil
+}
+
+// newLanguage enforces the language invariant: must be a member of
+// i18n.Supported.
+func newLanguage(v string) (string, error) {
+	for _, lang := range i18n.Supported {
+		if v == lang {
+			return v, nil
+		}
+	}
+	return "", errs.NewValidation("Language is incorrect",
+		errs.FieldError{Key: "language", Message: "Language is incorrect", Code: errs.CodeUserLanguageInvalid})
 }
 
 // newSalt generates a salt as sha1(10 random bytes) -> 40 hex chars. See
@@ -172,9 +200,23 @@ func newSalt() (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-// md5Hex returns hex(md5(v)) — the gravatar hash: the plain md5 of the
-// lowercased email. See CLAUDE.md.
-func md5Hex(v string) string {
-	sum := md5.Sum([]byte(v))
-	return hex.EncodeToString(sum[:])
+// allowAttempt / failAttempt / clearAttempt guard the optional limiter (nil in
+// the CLI and most tests), mirroring the nil-mailer pattern in RemindPassword.
+func (s *Service) allowAttempt(scope, key string) error {
+	if s.limiter == nil {
+		return nil
+	}
+	return s.limiter.Allow(scope, key)
+}
+
+func (s *Service) failAttempt(scope, key string) {
+	if s.limiter != nil {
+		s.limiter.Fail(scope, key)
+	}
+}
+
+func (s *Service) clearAttempt(scope, key string) {
+	if s.limiter != nil {
+		s.limiter.Clear(scope, key)
+	}
 }

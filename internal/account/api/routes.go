@@ -7,16 +7,21 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-func RegisterAPI(h *Handlers, verifier middleware.TokenVerifier, dev bool) router.RegisterAPI {
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		jwt := middleware.JWT(verifier, dev)
-		auth := func(fn http.HandlerFunc) http.Handler { return jwt(fn) }
+		authMw := middleware.Auth(authn, dev)
+		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		mux.Handle("POST /api/v1/account/create-account", auth(h.CreateAccount))
 		mux.Handle("POST /api/v1/account/update-account", auth(h.UpdateAccount))
 		mux.Handle("POST /api/v1/account/delete-account", auth(h.DeleteAccount))
 		mux.Handle("GET /api/v1/account/get-account-list", auth(h.GetAccountList))
 		mux.Handle("POST /api/v1/account/order-account-list", auth(h.OrderAccountList))
+
+		mux.Handle("POST /api/v1/account/grant-access", auth(h.GrantAccess))
+		mux.Handle("POST /api/v1/account/accept-access", auth(h.AcceptAccess))
+		mux.Handle("POST /api/v1/account/decline-access", auth(h.DeclineAccess))
+		mux.Handle("POST /api/v1/account/revoke-access", auth(h.RevokeAccess))
 
 		mux.Handle("POST /api/v1/account/create-folder", auth(h.CreateFolder))
 		mux.Handle("POST /api/v1/account/update-folder", auth(h.UpdateFolder))

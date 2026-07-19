@@ -1,9 +1,14 @@
 package api_test
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
+
+	appuser "github.com/econumo/econumo/internal/user"
 )
 
 type loginResult struct {
@@ -33,16 +38,17 @@ func TestLoginUser_Success(t *testing.T) {
 	if res.Token == "" {
 		t.Fatal("expected a non-empty token")
 	}
-	// The token must verify against the real public key and carry the user id.
-	claims, err := h.jwt.Verify(res.Token)
+	// The opaque token must have the session prefix and authenticate against the
+	// access_tokens store as the seeded user.
+	if !strings.HasPrefix(res.Token, "eco_ses_") {
+		t.Fatalf("token %q must start with eco_ses_", res.Token)
+	}
+	row, err := h.tokens.GetByHash(context.Background(), appuser.HashAccessToken(res.Token))
 	if err != nil {
-		t.Fatalf("verify issued token: %v", err)
+		t.Fatalf("session row for issued token: %v", err)
 	}
-	if claims.ID != seedUserID {
-		t.Fatalf("token id = %q, want %q", claims.ID, seedUserID)
-	}
-	if claims.Username != seedEmail {
-		t.Fatalf("token username = %q, want %q", claims.Username, seedEmail)
+	if row.UserID.String() != seedUserID {
+		t.Fatalf("session user = %q, want %q", row.UserID, seedUserID)
 	}
 	// User shape.
 	if res.User.ID != seedUserID {
@@ -152,7 +158,7 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
 		"email":    "fresh@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 		"name":     "Fresh",
 	})
 	if status != http.StatusOK {
@@ -186,7 +192,7 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 	// + encrypted email + identifier were all written correctly).
 	st2, env2 := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
 		"username": "fresh@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 	})
 	if st2 != http.StatusOK {
 		t.Fatalf("login after register: status = %d; body: %s", st2, env2.raw)
@@ -203,7 +209,7 @@ func TestRegisterUser_DoesNotAutoConnect(t *testing.T) {
 
 	if st, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
 		"email":    "second@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 		"name":     "Second",
 	}); st != http.StatusOK {
 		t.Fatalf("register status = %d; body: %s", st, env.raw)
@@ -367,5 +373,42 @@ func TestUpdateReportPeriod_WritesReportPeriodOption(t *testing.T) {
 	}
 	if res.User.Currency != "USD" {
 		t.Fatalf("deprecated currency field = %q, want USD; body: %s", res.User.Currency, env.raw)
+	}
+}
+
+func TestUpdateLanguage_Success(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-language", token, map[string]string{
+		"language": "ru",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+	if !bytes.Contains(env.Data, []byte(`"user"`)) {
+		t.Fatalf("expected \"user\" in data; body: %s", env.raw)
+	}
+	var got string
+	if err := h.db.QueryRowContext(context.Background(), "SELECT language FROM users WHERE id = ?", seedUserID).Scan(&got); err != nil {
+		t.Fatalf("read back language: %v", err)
+	}
+	if got != "ru" {
+		t.Fatalf("persisted language = %q, want ru", got)
+	}
+}
+
+func TestUpdateLanguage_Unsupported_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-language", token, map[string]string{
+		"language": "xx",
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
+	}
+	if !bytes.Contains(env.raw, []byte("user.language_invalid")) {
+		t.Fatalf("expected user.language_invalid in body: %s", env.raw)
 	}
 }

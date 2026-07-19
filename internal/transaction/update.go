@@ -15,7 +15,7 @@ func parseSpentAt(v string) (time.Time, error) {
 	t, err := time.Parse(datetime.Layout, v)
 	if err != nil {
 		return time.Time{}, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "date", Message: "Invalid date format, expected Y-m-d H:i:s"})
+			errs.FieldError{Key: "date", Message: "Invalid date format, expected Y-m-d H:i:s", Code: errs.CodeInvalidDatetimeFormat})
 	}
 	return t, nil
 }
@@ -53,12 +53,24 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 		if gerr != nil {
 			return gerr
 		}
+		// The row being mutated must ALSO be on an account the caller may write to
+		// — otherwise a valid transaction UUID plus any account the caller owns
+		// would let them overwrite and relocate a stranger's transaction.
+		if aerr := s.checkWriteAccess(ctx, userID, t.AccountID, "transaction.transaction.not_available"); aerr != nil {
+			return aerr
+		}
 		now := s.clock.Now()
 		st, berr := buildState(id, userID, typ, accountID, req.Amount.String(),
 			req.AmountRecipient.StrPtr(), req.AccountRecipientId, req.CategoryId, req.PayeeId, req.TagId,
 			description, spentAt, now)
 		if berr != nil {
 			return berr
+		}
+		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
+			return nerr
+		}
+		if rerr := s.checkReferences(ctx, userID, st); rerr != nil {
+			return rerr
 		}
 		t.Update(st, now)
 		if serr := s.repo.Save(ctx, t); serr != nil {

@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { AccountDto, AccountItemDto } from './dto/account'
+import type { AccountDto, AccountItemDto, AccountRole } from './dto/account'
 import type { FolderDto } from './dto/folder'
 
 interface Envelope<T> {
@@ -85,4 +85,20 @@ export async function showFolder(id: Id): Promise<void> {
 export async function orderFolderList(changes: { id: Id; position: number }[]): Promise<FolderDto[]> {
   const response = await api.post<Envelope<{ items: FolderDto[] }>>(apiUrl('/api/v1/account/order-folder-list'), { changes })
   return response.data.data.items
+}
+
+export async function grantAccess(form: { accountId: Id; userId: Id; role: AccountRole }): Promise<void> {
+  await api.post(apiUrl('/api/v1/account/grant-access'), form)
+}
+
+export async function acceptAccess(form: { accountId: Id; folderId?: Id }): Promise<void> {
+  await api.post(apiUrl('/api/v1/account/accept-access'), { accountId: form.accountId, folderId: form.folderId ?? '' })
+}
+
+export async function declineAccess(accountId: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/account/decline-access'), { accountId })
+}
+
+export async function revokeAccess(form: { accountId: Id; userId: Id }): Promise<void> {
+  await api.post(apiUrl('/api/v1/account/revoke-access'), form)
 }

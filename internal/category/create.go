@@ -68,7 +68,7 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req model.Cr
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 
 		count, cerr := s.repo.CountByOwner(ctx, ownerID)

@@ -1,6 +1,6 @@
 import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
-import { abs, add, cmp, div, sub } from '@/lib/decimal'
+import { abs, add, cmp, div } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 
 export interface BucketStats {
@@ -63,7 +63,12 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): Budge
   const folderless =
     folders.length === 0 ? [...active].sort(byPosition) : active.filter((el) => el.folderId === null).sort(byPosition)
 
-  const archived = elements.filter((el) => el.isArchived === 1).sort((a, b) => a.name.localeCompare(b.name))
+  // archive is read-only history: a row earns its place only if one of its
+  // displayed numbers (budget, spent, available) is nonzero
+  const archived = elements
+    .filter((el) => el.isArchived === 1)
+    .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0)
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   return {
     withFolder,
@@ -80,7 +85,6 @@ export function budgetTotals(buckets: BudgetBuckets): BucketStats {
   )
 }
 
-export const displaySpent = (spent: string): string => sub('0', spent)
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
 
 export interface PeriodItem {
@@ -97,19 +101,20 @@ export function periodRange(
   startedAt: string | null,
   monthsBefore = MONTHS_AROUND,
   monthsAfter = MONTHS_AROUND,
+  lang = 'en',
 ): PeriodItem[] {
   const [y, m] = selectedDate.split('-').map(Number)
   const currentYear = new Date().getFullYear()
   const startMonth = startedAt ? startedAt.slice(0, 7) : null
+  const longMonth = new Intl.DateTimeFormat(lang, { month: 'long' })
+  const shortMonth = new Intl.DateTimeFormat(lang, { month: 'short' })
   const items: PeriodItem[] = []
   for (let offset = -monthsBefore; offset <= monthsAfter; offset++) {
     const d = new Date(y, m - 1 + offset, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-    const monthName = new Intl.DateTimeFormat('en', { month: 'long' }).format(d)
-    const shortName = new Intl.DateTimeFormat('en', { month: 'short' }).format(d)
     items.push({
       value,
-      label: d.getFullYear() === currentYear ? monthName : `${shortName} ${d.getFullYear()}`,
+      label: d.getFullYear() === currentYear ? longMonth.format(d) : `${shortMonth.format(d)} ${d.getFullYear()}`,
       isActive: offset === 0,
       outsideBudget: startMonth !== null && value.slice(0, 7) < startMonth,
     })

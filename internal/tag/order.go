@@ -7,48 +7,38 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// OrderTagList applies each {id, position} change to the matching tag in the
-// user's AVAILABLE set (own + shared via account access), saving those that
-// actually changed, then returns the full ordered list. A SHARED tag's position
-// is updated too: the changes are restricted to the available id set (an id the
-// user has no access to is ignored), then each is loaded via GetByID (not
-// owner-scoped) and persisted.
+// OrderTagList applies each {id, position} change to the matching tag, then
+// returns the full available list.
+//
+// Reordering is OWNER-ONLY (mirrors category): the changes iterate the caller's
+// own tags, so a SHARED tag's position is never updated — a sharee, guest
+// included, cannot rewrite the owner's global ordering (issue #108); shared ids
+// in the changes list are silently ignored. The RESPONSE, however, is the full
+// available list (own + shared) via the read view.
 func (s *Service) OrderTagList(ctx context.Context, userID vo.Id, req model.OrderTagListRequest) (*model.OrderTagListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
-	order := make([]string, 0, len(req.Changes))
 	for _, ch := range req.Changes {
 		id, err := vo.ParseId(ch.Id)
 		if err != nil {
 			return nil, err
-		}
-		if _, seen := positions[id.String()]; !seen {
-			order = append(order, id.String())
 		}
 		positions[id.String()] = int16(ch.Position)
 	}
 
 	var items []model.TagResult
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		avail, err := s.read.TagListView(ctx, userID.String())
+		tags, err := s.repo.ListByOwner(ctx, userID)
 		if err != nil {
 			return err
 		}
-		available := make(map[string]struct{}, len(avail))
-		for _, r := range avail {
-			available[r.ID] = struct{}{}
-		}
 		now := s.clock.Now()
-		for _, idStr := range order {
-			if _, ok := available[idStr]; !ok {
-				continue // not accessible to this user — ignore
-			}
-			id, _ := vo.ParseId(idStr)
-			t, gerr := s.repo.GetByID(ctx, id)
-			if gerr != nil {
-				return gerr
+		for _, t := range tags {
+			pos, ok := positions[t.ID.String()]
+			if !ok {
+				continue
 			}
 			before := t.Position
-			t.UpdatePosition(positions[idStr], now)
+			t.UpdatePosition(pos, now)
 			if t.Position != before {
 				if serr := s.repo.Save(ctx, t); serr != nil {
 					return serr

@@ -12,11 +12,23 @@ func init() {
 			// Field name is "value" (a budget id) — frozen quirk.
 			{Label: "update-budget", Method: "POST", Path: "/api/v1/user/update-budget", Auth: "owner",
 				Body: map[string]any{"value": Budget}},
-			// JWT is stateless: token stays usable after both of these.
+			{Label: "update-avatar", Method: "POST", Path: "/api/v1/user/update-avatar", Auth: "owner",
+				Body: map[string]any{"icon": "pets", "color": "teal"}},
+			// Pins the tier-1 blank envelope and the tier-2 format/choice envelope.
+			{Label: "err:update-avatar-blank", Method: "POST", Path: "/api/v1/user/update-avatar", Auth: "owner",
+				Body: map[string]any{"icon": "", "color": ""}},
+			{Label: "err:update-avatar-bad-values", Method: "POST", Path: "/api/v1/user/update-avatar", Auth: "owner",
+				Body: map[string]any{"icon": "Not-Valid", "color": "neon"}},
+			// update-password spares the presenting session (only OTHER sessions are
+			// revoked), so the owner token keeps working here.
 			{Label: "update-password", Method: "POST", Path: "/api/v1/user/update-password", Auth: "owner",
 				Body: map[string]any{"oldPassword": SeedPassword, "newPassword": "new-secret-pw"}},
-			{Label: "logout-user", Method: "POST", Path: "/api/v1/user/logout-user", Auth: "owner"}, // pins the frozen {"result":"test"} quirk
 			{Label: "get-user-data-after", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
+			// Logout revokes the presenting session (DB-backed tokens) — a subsequent
+			// call with the same token must 401 with the frozen envelope. Also pins
+			// the frozen {"result":"test"} quirk.
+			{Label: "logout-user", Method: "POST", Path: "/api/v1/user/logout-user", Auth: "owner"},
+			{Label: "err:get-user-data-after-logout", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
 		}
 	}})
 
@@ -38,6 +50,49 @@ func init() {
 			// ResetPasswordRequest also requires "username" (NotBlank+Email) alongside code/password.
 			{Label: "err:reset-password-bad-code", Method: "POST", Path: "/api/v1/user/reset-password", Auth: "",
 				Body: map[string]any{"username": OwnerEmail, "code": "00000000-0000-0000-0000-000000000000", "password": "irrelevant-pw"}},
+		}
+	}})
+}
+
+func init() {
+	register(Scenario{Name: "user_sessions", Calls: func() []Call {
+		return []Call{
+			// The seeded owner session is the only one -> a single isCurrent row.
+			{Label: "get-session-list", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "owner"},
+			// A second login mints a second session (its raw token stays inside the
+			// login response; datetimes + UUIDv7 ids are redacted by the normalizer).
+			{Label: "login-second-session", Method: "POST", Path: "/api/v1/user/login-user", Auth: "",
+				Body: map[string]any{"username": OwnerEmail, "password": SeedPassword}},
+			{Label: "get-session-list-two", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "owner"},
+			{Label: "revoke-other-sessions", Method: "POST", Path: "/api/v1/user/revoke-other-sessions", Auth: "owner"},
+			{Label: "get-session-list-after-revoke", Method: "GET", Path: "/api/v1/user/get-session-list", Auth: "owner"},
+			// Foreign session id -> the domain-not-found envelope (400), and the
+			// owner's session survives the attempt.
+			{Label: "err:revoke-session-foreign", Method: "POST", Path: "/api/v1/user/revoke-session", Auth: "guest",
+				Body: map[string]any{"id": OwnerSessionID}},
+			{Label: "err:revoke-session-blank", Method: "POST", Path: "/api/v1/user/revoke-session", Auth: "owner",
+				Body: map[string]any{"id": ""}},
+			{Label: "revoke-session-current", Method: "POST", Path: "/api/v1/user/revoke-session", Auth: "guest",
+				Body: map[string]any{"id": GuestSessionID}},
+			{Label: "err:guest-after-self-revoke", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "guest"},
+		}
+	}})
+}
+
+func init() {
+	register(Scenario{Name: "user_personal_tokens", Calls: func() []Call {
+		return []Call{
+			{Label: "create-personal-token", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "CI export", "expiresAt": ""}},
+			{Label: "create-personal-token-expiring", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "Short lived", "expiresAt": "2030-01-01 00:00:00"}},
+			{Label: "get-personal-token-list", Method: "GET", Path: "/api/v1/user/get-personal-token-list", Auth: "owner"},
+			{Label: "err:create-personal-token-past", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "Expired", "expiresAt": "2020-01-01 00:00:00"}},
+			{Label: "err:create-personal-token-blank-name", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "", "expiresAt": ""}},
+			{Label: "err:revoke-personal-token-unknown", Method: "POST", Path: "/api/v1/user/revoke-personal-token", Auth: "owner",
+				Body: map[string]any{"id": "00000000-0000-0000-0000-000000000009"}},
 		}
 	}})
 }

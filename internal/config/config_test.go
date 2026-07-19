@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 )
 
 func TestDriverFromURL(t *testing.T) {
@@ -76,22 +77,6 @@ func TestParseMailerDSN(t *testing.T) {
 	}
 }
 
-func TestResolveProjectDir(t *testing.T) {
-	wd, _ := os.Getwd()
-	cases := []struct {
-		in, want string
-	}{
-		{"%kernel.project_dir%/config/jwt/.secret.public.pem", wd + "/config/jwt/.secret.public.pem"},
-		{"/var/www/config/jwt/public.pem", "/var/www/config/jwt/public.pem"}, // no placeholder -> unchanged
-		{"", ""},
-	}
-	for _, c := range cases {
-		if got := ResolveProjectDir(c.in); got != c.want {
-			t.Errorf("ResolveProjectDir(%q) = %q, want %q", c.in, got, c.want)
-		}
-	}
-}
-
 func TestGetStringList(t *testing.T) {
 	const key = "ECONUMO_TEST_STRING_LIST"
 	def := []string{"d"}
@@ -129,6 +114,67 @@ func TestGetStringList(t *testing.T) {
 	}
 }
 
+func TestLoad_RateLimitDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RateLimitLogin != 5 || c.RateLimitReset != 5 || c.RateLimitRemind != 3 || c.RateLimitRegister != 5 {
+		t.Fatalf("per-endpoint defaults = %d/%d/%d/%d, want 5/5/3/5",
+			c.RateLimitLogin, c.RateLimitReset, c.RateLimitRemind, c.RateLimitRegister)
+	}
+	if c.RateLimitWindow != 15*time.Minute {
+		t.Fatalf("window = %v, want 15m", c.RateLimitWindow)
+	}
+	if c.RateLimitGlobal != 60 {
+		t.Fatalf("global = %d, want 60", c.RateLimitGlobal)
+	}
+}
+
+func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_RATE_LIMIT_LOGIN", "10")
+	t.Setenv("ECONUMO_RATE_LIMIT_RESET", "0") // 0 = disabled
+	t.Setenv("ECONUMO_RATE_LIMIT_REMIND", "7")
+	t.Setenv("ECONUMO_RATE_LIMIT_REGISTER", "8")
+	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
+	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.RateLimitLogin != 10 || c.RateLimitReset != 0 || c.RateLimitRemind != 7 || c.RateLimitRegister != 8 {
+		t.Fatalf("overrides not applied: %+v", c)
+	}
+	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 {
+		t.Fatalf("window/global overrides not applied: %v / %d", c.RateLimitWindow, c.RateLimitGlobal)
+	}
+}
+
+func TestLoad_RateLimitBadValuesFailBoot(t *testing.T) {
+	cases := []struct {
+		name string
+		key  string
+		bad  string
+	}{
+		{"LOGIN_non-numeric", "ECONUMO_RATE_LIMIT_LOGIN", "five"},
+		{"GLOBAL_negative", "ECONUMO_RATE_LIMIT_GLOBAL", "-1"},
+		{"WINDOW_unparseable", "ECONUMO_RATE_LIMIT_WINDOW", "15minutes"},
+		{"WINDOW_zero", "ECONUMO_RATE_LIMIT_WINDOW", "0"},
+		{"WINDOW_negative", "ECONUMO_RATE_LIMIT_WINDOW", "-5m"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv(tc.key, tc.bad)
+			if _, err := Load(); err == nil {
+				t.Fatalf("Load() with %s=%q succeeded, want boot error", tc.key, tc.bad)
+			}
+		})
+	}
+}
+
 func TestLoadLogLevel(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 
@@ -150,5 +196,84 @@ func TestLoadLogLevel(t *testing.T) {
 	}
 	if cfg.LogLevel != "debug" {
 		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
+}
+
+func TestLoad_CheckUpdates(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.CheckUpdates {
+		t.Fatal("CheckUpdates default = false, want true")
+	}
+	t.Setenv("ECONUMO_CHECK_UPDATES", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.CheckUpdates {
+		t.Fatal("CheckUpdates with ECONUMO_CHECK_UPDATES=false = true, want false")
+	}
+}
+
+func TestLoad_Analytics(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.Analytics {
+		t.Fatal("Analytics default = false, want true")
+	}
+	t.Setenv("ECONUMO_ANALYTICS", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Analytics {
+		t.Fatal("Analytics with ECONUMO_ANALYTICS=false = true, want false")
+	}
+	// Strict parse: a typo while trying to disable analytics fails at boot
+	// rather than silently leaving it enabled.
+	t.Setenv("ECONUMO_ANALYTICS", "flase")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_ANALYTICS=flase: err = nil, want boot error")
+	}
+}
+
+func TestLoad_SPAOverrides(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.APIURL != "" {
+		t.Fatalf("APIURL default = %q, want empty (leave the dist value)", c.APIURL)
+	}
+	if c.AllowCustomAPI != nil {
+		t.Fatal("AllowCustomAPI default != nil, want nil (leave the dist value)")
+	}
+	t.Setenv("ECONUMO_API_URL", "https://api.example.test")
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.APIURL != "https://api.example.test" {
+		t.Fatalf("APIURL = %q, want %q", c.APIURL, "https://api.example.test")
+	}
+	if c.AllowCustomAPI == nil || *c.AllowCustomAPI {
+		t.Fatal("AllowCustomAPI = nil or true, want false")
+	}
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "maybe")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_ALLOW_CUSTOM_API=maybe: err = nil, want boot error")
+	}
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "true")
+	t.Setenv("ECONUMO_API_URL", "not a url")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with malformed ECONUMO_API_URL: err = nil, want boot error")
 	}
 }

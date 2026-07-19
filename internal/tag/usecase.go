@@ -61,7 +61,9 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *model
 			return err
 		}
 		if !t.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned tag as not-found (matching the repo above), so
+			// the response can't probe which tag ids exist.
+			return errs.NewNotFound("Tag not found")
 		}
 		fn(t, s.clock.Now())
 		if err := s.repo.Save(ctx, t); err != nil {
@@ -93,7 +95,9 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 			return err
 		}
 		if !t.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned tag as not-found (matching the repo above), so
+			// the response can't probe which tag ids exist.
+			return errs.NewNotFound("Tag not found")
 		}
 		if ferr := fn(txCtx, t, s.clock.Now()); ferr != nil {
 			return ferr
@@ -153,7 +157,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 	}
 	for _, t := range tags {
 		if t.Name == name && !t.ID.Equal(exceptID) {
-			return errs.NewValidation("Tag already exists.")
+			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
 		}
 	}
 	return nil
@@ -166,7 +170,10 @@ func newTagName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {
 		return "", errs.NewValidation("Tag name must be 3-64 characters",
-			errs.FieldError{Key: "name", Message: "Tag name must be 3-64 characters"})
+			errs.FieldError{
+				Key: "name", Message: "Tag name must be 3-64 characters", Code: errs.CodeTagNameLength,
+				Params: map[string]any{"min": 3, "max": 64},
+			})
 	}
 	return v, nil
 }

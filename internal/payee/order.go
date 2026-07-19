@@ -7,46 +7,38 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// OrderPayeeList applies each {id, position} change to the matching payee in the
-// user's AVAILABLE set (own + shared via account access), saving those that
-// changed, then returns the full ordered list. A SHARED payee's position is
-// updated too.
+// OrderPayeeList applies each {id, position} change to the matching payee, then
+// returns the full available list.
+//
+// Reordering is OWNER-ONLY (mirrors category): the changes iterate the caller's
+// own payees, so a SHARED payee's position is never updated — a sharee, guest
+// included, cannot rewrite the owner's global ordering (issue #108); shared ids
+// in the changes list are silently ignored. The RESPONSE, however, is the full
+// available list (own + shared) via the read view.
 func (s *Service) OrderPayeeList(ctx context.Context, userID vo.Id, req model.OrderPayeeListRequest) (*model.OrderPayeeListResult, error) {
 	positions := make(map[string]int16, len(req.Changes))
-	order := make([]string, 0, len(req.Changes))
 	for _, ch := range req.Changes {
 		id, err := vo.ParseId(ch.Id)
 		if err != nil {
 			return nil, err
-		}
-		if _, seen := positions[id.String()]; !seen {
-			order = append(order, id.String())
 		}
 		positions[id.String()] = int16(ch.Position)
 	}
 
 	var items []model.PayeeResult
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		avail, err := s.read.PayeeListView(txCtx, userID.String())
+		payees, err := s.repo.ListByOwner(txCtx, userID)
 		if err != nil {
 			return err
 		}
-		available := make(map[string]struct{}, len(avail))
-		for _, r := range avail {
-			available[r.ID] = struct{}{}
-		}
 		now := s.clock.Now()
-		for _, idStr := range order {
-			if _, ok := available[idStr]; !ok {
+		for _, p := range payees {
+			pos, ok := positions[p.ID.String()]
+			if !ok {
 				continue
 			}
-			id, _ := vo.ParseId(idStr)
-			p, gerr := s.repo.GetByID(txCtx, id)
-			if gerr != nil {
-				return gerr
-			}
 			before := p.Position
-			p.UpdatePosition(positions[idStr], now)
+			p.UpdatePosition(pos, now)
 			if p.Position != before {
 				if serr := s.repo.Save(txCtx, p); serr != nil {
 					return serr

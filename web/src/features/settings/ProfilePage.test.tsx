@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -6,6 +6,8 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
+import { recordPathname, resetNavTracking } from '@/lib/navigation'
+import i18n from '@/app/i18n'
 import { ProfilePage } from './ProfilePage'
 
 function mockViewport(compact = false) {
@@ -18,6 +20,7 @@ function renderWithHistory(initialEntries: string[], initialIndex: number) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
+      { path: '/', element: <div>HOME ROUTE</div> },
       { path: '/account/:id', element: <div>ACCOUNT ROUTE</div> },
       { path: '/settings', element: <div>SETTINGS HUB ROUTE</div> },
       { path: '/settings/profile', element: <ProfilePage /> },
@@ -54,22 +57,36 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockViewport()
+  resetNavTracking()
 })
 
-it('mobile back returns to the previous url', async () => {
+it('mobile back returns to the settings hub when the user came from it', async () => {
   mockViewport(true)
   const user = userEvent.setup()
-  renderWithHistory(['/account/a1', '/settings/profile'], 1)
-  await user.click(await screen.findByRole('button', { name: 'back' }))
-  expect(await screen.findByText('ACCOUNT ROUTE')).toBeInTheDocument()
-})
-
-it('mobile back falls back to the settings hub on a deep link', async () => {
-  mockViewport(true)
-  const user = userEvent.setup()
-  renderWithHistory(['/settings/profile'], 0)
+  recordPathname('/settings')
+  recordPathname('/settings/profile')
+  renderWithHistory(['/settings', '/settings/profile'], 1)
   await user.click(await screen.findByRole('button', { name: 'back' }))
   expect(await screen.findByText('SETTINGS HUB ROUTE')).toBeInTheDocument()
+})
+
+it('mobile back falls back to the main screen when the origin is any other page', async () => {
+  mockViewport(true)
+  const user = userEvent.setup()
+  recordPathname('/account/a1')
+  recordPathname('/settings/profile')
+  renderWithHistory(['/account/a1', '/settings/profile'], 1)
+  await user.click(await screen.findByRole('button', { name: 'back' }))
+  expect(await screen.findByText('HOME ROUTE')).toBeInTheDocument()
+})
+
+it('mobile back falls back to the main screen on a deep link', async () => {
+  mockViewport(true)
+  const user = userEvent.setup()
+  recordPathname('/settings/profile')
+  renderWithHistory(['/settings/profile'], 0)
+  await user.click(await screen.findByRole('button', { name: 'back' }))
+  expect(await screen.findByText('HOME ROUTE')).toBeInTheDocument()
 })
 
 it('saves the name on blur and updates the cache', async () => {
@@ -114,7 +131,13 @@ it('surfaces server field errors under the name input', async () => {
   server.use(
     http.post('*/api/v1/user/update-name', () =>
       HttpResponse.json(
-        { success: false, message: 'Form validation error', code: 400, errors: { name: ['This value is too long.'] } },
+        {
+          success: false,
+          message: 'Form validation error',
+          code: 400,
+          errors: { name: ['This value is too long.'] },
+          errorCodes: { name: [{ code: 'common.too_long' }] },
+        },
         { status: 400 },
       ),
     ),
@@ -152,6 +175,29 @@ it('changing the default currency posts the code and updates the cache', async (
     const cached = queryClient.getQueryData<typeof fixtureUser>(queryKeys.user)!
     expect(cached.options.find((o) => o.name === 'currency_id')!.value).toBe('cur-eur')
   })
+})
+
+it('Language row opens a dialog to switch locale and closes on pick', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Language'))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('English')).toBeInTheDocument()
+  await user.click(within(dialog).getByText('Русский'))
+  await screen.findByText('Язык')
+  expect(document.documentElement.lang).toBe('ru')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  // restore for later tests in this file
+  await i18n.changeLanguage('en')
+  document.documentElement.lang = 'en'
+})
+
+it('clicking the avatar opens the avatar picker dialog', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Change avatar' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Choose your avatar')).toBeInTheDocument()
 })
 
 it('email is readonly; logout confirm has the exact copy and navigates', async () => {

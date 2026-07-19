@@ -9,4 +9,4 @@ SELECT DISTINCT a.id AS id, a.name AS name, c.code AS currency_code
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 JOIN currencies c ON c.id = a.currency_id
-WHERE a.is_deleted = 0 AND (a.user_id = ? OR aa.user_id = ?);
+WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1));

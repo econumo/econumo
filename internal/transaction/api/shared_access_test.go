@@ -47,6 +47,18 @@ func sharedCreateReq(id, amount string) map[string]any {
 	return map[string]any{"id": id, "type": "expense", "amount": amount, "accountId": sharedAcctID, "categoryId": catID, "date": "2024-03-01 10:00:00", "description": "shared"}
 }
 
+// shareAccountPending seeds a second user who owns sharedAcctID and grants the
+// seed user a PENDING (not yet accepted) role on it — an unaccepted invite
+// confers no access, so it must behave like no grant at all.
+func (h *harness) shareAccountPending(t *testing.T, role int) {
+	t.Helper()
+	txm := backend.NewTxManager(h.db)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	f.User(fixture.User{ID: ownerTwoID, Email: ownerTwoEmail, Name: "Owner Two", Avatar: "https://avatar.test/o2", Password: "pw", Salt: ownerTwoSalt})
+	f.Account(fixture.Account{ID: sharedAcctID, UserID: ownerTwoID, CurrencyID: usdID, Name: "Shared"})
+	f.AccountAccessPending(sharedAcctID, seedUserID, role)
+}
+
 func TestCreateTransaction_SharedAccount_AdminRole_Succeeds(t *testing.T) {
 	h := newHarness(t)
 	h.shareAccount(t, roleAdmin, true)
@@ -105,6 +117,34 @@ func TestGetTransactionList_SharedAccount_GuestCanView(t *testing.T) {
 	}
 	if !env.Success {
 		t.Fatalf("success=false, want true for a guest with view access; body: %s", env.raw)
+	}
+}
+
+// TestCreateTransaction_SharedAccount_PendingUserRole_Denied: an otherwise
+// write-capable role (user) confers NO access while the grant is pending — the
+// invite must be accepted first. Regression guard against checking only the
+// role and ignoring is_accepted.
+func TestCreateTransaction_SharedAccount_PendingUserRole_Denied(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccountPending(t, roleUser)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
+	assertValidationDenied(t, status, env, "account.account.not_available")
+}
+
+// TestGetTransactionList_SharedAccount_PendingGrant_NotVisible: a pending grant
+// (any role) does not add the account to the visible set, so requesting it
+// explicitly is 403 — same as no grant at all.
+func TestGetTransactionList_SharedAccount_PendingGrant_NotVisible(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccountPending(t, roleUser)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+sharedAcctID, tok, nil)
+	if status != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 (pending grant confers no view access); body: %s", status, env.raw)
+	}
+	if env.Success {
+		t.Fatalf("success=true, want false for a pending grant; body: %s", env.raw)
 	}
 }
 

@@ -48,9 +48,9 @@ export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAcco
   return (
     <div className="flex flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5">
       <span className="flex items-baseline justify-between">
-        <Label className="text-[11px] font-normal text-muted-foreground">{t('modules.budget.modal.budget_form.accounts')}</Label>
+        <Label className="text-[11px] font-normal text-muted-foreground">{t('budgets.modal.budget_form.accounts')}</Label>
         <span className="text-[11px] text-muted-foreground">
-          {t('modules.budget.modal.budget_form.accounts_included', {
+          {t('budgets.modal.budget_form.accounts_included', {
             count: String(accounts.length - excluded.size),
             total: String(accounts.length),
           })}
@@ -60,8 +60,8 @@ export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAcco
         <span className="mt-1 flex items-center gap-2 rounded-md bg-background px-2.5 py-1.5">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <input
-            aria-label={t('pages.account.toolbar.search')}
-            placeholder={t('pages.account.toolbar.search')}
+            aria-label={t('accounts.page.toolbar.search')}
+            placeholder={t('accounts.page.toolbar.search')}
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -72,12 +72,12 @@ export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAcco
         {visible.map((account) => row(account, false))}
         {hidden.length > 0 ? (
           <li className="pt-2 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground" data-testid="hidden-accounts-heading">
-            {t('modules.budget.modal.budget_form.accounts_hidden')}
+            {t('budgets.modal.budget_form.accounts_hidden')}
           </li>
         ) : null}
         {hidden.map((account) => row(account, true))}
         {visible.length === 0 && hidden.length === 0 ? (
-          <li className="py-2 text-sm text-muted-foreground">{t('blocks.list.list_empty')}</li>
+          <li className="py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</li>
         ) : null}
       </ul>
     </div>

@@ -25,12 +25,11 @@ import (
 
 	"github.com/econumo/econumo/internal/cli"
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/system"
 
 	"github.com/joho/godotenv"
 
@@ -166,9 +165,9 @@ func run(serveArgs []string) error {
 			"cannot authenticate until you run `econumo data:remove-salt`, then unset ECONUMO_DATA_SALT")
 	}
 
-	// Server-only requirements (the CLI path validated via config.Load does not
-	// need these). PORT is never defaulted so the bound port is never an implicit
-	// surprise; the JWT public key is needed to verify auth tokens.
+	// Server-only requirement (the CLI path validated via config.Load does not
+	// need it). PORT is never defaulted so the bound port is never an implicit
+	// surprise.
 	if cfg.Port == "" {
 		return errors.New("PORT is required")
 	}
@@ -205,26 +204,19 @@ func run(serveArgs []string) error {
 	}
 	slog.Info("migrations applied", "backend", be.Name())
 
-	// Generate the JWT keypair on first boot if it is missing (no keys are
-	// committed or baked into the image). force=false: an existing keypair is left
-	// untouched so a restart never invalidates issued tokens. Persist the key
-	// directory on a volume to keep tokens valid across restarts. Same path the
-	// jwt:generate CLI command uses.
-	passphrase, _, err := jwt.EnsureKeypair(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, cfg.JWTPassphrase, false)
-	if err != nil {
-		return err
-	}
-	jwtSvc, err := jwt.New(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, passphrase)
-	if err != nil {
-		return err
-	}
-
-	handler := server.BuildAPI(cfg, db, jwtSvc, clock.New())
+	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
+	handler := server.BuildAPI(cfg, db, server.Seams{Updates: updates})
+	updates.StartPolling(ctx)
 
 	srv := &http.Server{
 		Addr:              addr(cfg.Port),
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
+		// A slow or stalled request body must not hold a connection/goroutine
+		// indefinitely. WriteTimeout also bounds slow-client response reads.
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	slog.Info("listening", "addr", srv.Addr)

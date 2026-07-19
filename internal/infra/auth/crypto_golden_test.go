@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	"github.com/econumo/econumo/internal/model"
 )
 
 // vectors holds the golden fixtures from testdata/vectors.json that lock the
@@ -49,14 +51,14 @@ func TestPasswordHasher_MatchesGoldenVectors(t *testing.T) {
 		t.Fatal("no password vectors")
 	}
 	for _, tc := range v.PasswordHasher {
-		got := h.Hash(tc.Password, tc.Salt)
+		got := h.HashSHA512(tc.Password, tc.Salt)
 		if got != tc.Hash {
-			t.Errorf("Hash(%q,%q)\n got=%s\nwant=%s", tc.Password, tc.Salt, got, tc.Hash)
+			t.Errorf("HashSHA512(%q,%q)\n got=%s\nwant=%s", tc.Password, tc.Salt, got, tc.Hash)
 		}
-		if !h.Verify(tc.Hash, tc.Password, tc.Salt) {
+		if !h.Verify(model.AlgorithmSHA512, tc.Hash, tc.Password, tc.Salt) {
 			t.Errorf("Verify failed for password %q", tc.Password)
 		}
-		if h.Verify(tc.Hash, tc.Password+"x", tc.Salt) {
+		if h.Verify(model.AlgorithmSHA512, tc.Hash, tc.Password+"x", tc.Salt) {
 			t.Errorf("Verify wrongly accepted bad password for %q", tc.Password)
 		}
 	}

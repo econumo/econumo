@@ -47,6 +47,15 @@ func (s *Service) toggleAccount(ctx context.Context, userID vo.Id, rawBudget, ra
 	if !owner.Equal(userID) {
 		return model.MetaResult{}, accessDenied()
 	}
+	// The caller must also have write access to the budget itself — otherwise a
+	// user could toggle excluded-account rows on a budget they cannot even read.
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return model.MetaResult{}, err
+	}
+	if !s.canUpdate(b, userID) {
+		return model.MetaResult{}, accessDenied()
+	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if exclude {
 			return s.budgets.ExcludeAccount(txCtx, budgetID, accountID)
@@ -55,7 +64,7 @@ func (s *Service) toggleAccount(ctx context.Context, userID vo.Id, rawBudget, ra
 	}); err != nil {
 		return model.MetaResult{}, err
 	}
-	b, err := s.loadAggregate(ctx, budgetID)
+	b, err = s.loadAggregate(ctx, budgetID)
 	if err != nil {
 		return model.MetaResult{}, err
 	}
@@ -86,7 +95,7 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		// elementId on the wire is the element's EXTERNAL id (category/tag/envelope).
-		el, gerr := s.elements.GetElementByExternal(txCtx, budgetID, elementID)
+		el, gerr := s.getElementSelfHeal(txCtx, budgetID, elementID, now)
 		if gerr != nil {
 			return gerr
 		}
@@ -127,15 +136,15 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 		return nil, model.ValidateBlank(map[string]string{"period": ""}) // invalid-date guard
 	}
 
-	// elementId on the wire is the EXTERNAL id; resolve to the budget element.
-	element, err := s.elements.GetElementByExternal(ctx, budgetID, externalID)
-	if err != nil {
-		return nil, err
-	}
-	elementID := element.ID
-
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// elementId on the wire is the EXTERNAL id; resolve to the budget element.
+		element, gerr := s.getElementSelfHeal(txCtx, budgetID, externalID, now)
+		if gerr != nil {
+			return gerr
+		}
+		elementID := element.ID
+
 		existing, gerr := s.limits.GetLimit(txCtx, elementID, period)
 		hasExisting := gerr == nil
 		if gerr != nil {
@@ -162,4 +171,24 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 		return nil, err
 	}
 	return &model.SetLimitResult{}, nil
+}
+
+// getElementSelfHeal resolves a wire (external) element id to its budget
+// element, backfilling a missing budget_elements row. Rows are seeded at
+// create-budget and maintained by restoreElementsOrder, which runs only on
+// structure mutations — so a tag/category created after the budget has no row
+// yet, even though get-budget already shows it (visibility is computed from
+// spending/limits, not element rows). On a miss, restore the element order
+// (which creates rows for every participant entity) and retry once; an id that
+// is no participant entity at all still resolves to "BudgetElement not found".
+func (s *Service) getElementSelfHeal(ctx context.Context, budgetID, externalID vo.Id, now time.Time) (*model.BudgetElement, error) {
+	el, err := s.elements.GetElementByExternal(ctx, budgetID, externalID)
+	var nf *errs.NotFoundError
+	if err == nil || !errors.As(err, &nf) {
+		return el, err
+	}
+	if rerr := s.restoreElementsOrder(ctx, budgetID, now); rerr != nil {
+		return nil, rerr
+	}
+	return s.elements.GetElementByExternal(ctx, budgetID, externalID)
 }

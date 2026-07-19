@@ -14,7 +14,7 @@ export function FailDialog({ open, onClose, title, description }: FailDialogProp
   return (
     <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title} description={description}>
       <Button className="w-full h-11" onClick={onClose}>
-        {t('elements.button.ok.label')}
+        {t('common.button.ok.label')}
       </Button>
     </ResponsiveDialog>
   )

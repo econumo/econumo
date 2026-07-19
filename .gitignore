@@ -19,3 +19,16 @@ coverage.out
 
 # Playwright MCP browser-session artifacts (screenshots/snapshots from agent runs)
 .playwright-mcp/
+
+# Claude Code local state (personal permission approvals + agent scratch worktrees);
+# shared config like .claude/settings.json would still be committed.
+.claude/settings.local.json
+.claude/worktrees/
+.claude/launch.json
+
+# design-sync machine state (staged scripts, build output, caches)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

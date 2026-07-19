@@ -38,8 +38,8 @@ it('logs in and stores the token', async () => {
   renderLogin()
   // a previous user's persisted finances must not survive a new sign-in
   localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
-  await user.type(screen.getByLabelText(/e-?mail/i), 'ada@example.test')
-  await user.type(screen.getByLabelText(/password/i), 'secret')
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'secret')
   await user.click(screen.getByRole('button', { name: /sign in/i }))
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
   expect(localStorage.getItem('token')).toBe('jwt')
@@ -54,10 +54,52 @@ it('shows the failure dialog on invalid credentials', async () => {
   )
   const user = userEvent.setup()
   renderLogin()
-  await user.type(screen.getByLabelText(/e-?mail/i), 'ada@example.test')
-  await user.type(screen.getByLabelText(/password/i), 'wrong')
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'wrong')
   await user.click(screen.getByRole('button', { name: /sign in/i }))
   expect(await screen.findByRole('dialog')).toBeInTheDocument()
+})
+
+it('stores the email immediately when the box is checked with an email typed', async () => {
+  const user = userEvent.setup()
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.click(screen.getByLabelText('Remember me'))
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('ada@example.test'))
+})
+
+it('keeps the stored email in sync while typing with the box checked', async () => {
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByLabelText('Remember me'))
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('ada@example.test'))
+  await user.type(screen.getByLabelText('Email'), '.io')
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('ada@example.test.io'))
+})
+
+it('prefills the email and checks the box when an email is remembered', () => {
+  localStorage.setItem('rememberedEmail', JSON.stringify('ada@example.test'))
+  renderLogin()
+  expect(screen.getByLabelText('Email')).toHaveValue('ada@example.test')
+  expect(screen.getByLabelText('Remember me')).toBeChecked()
+})
+
+it('forgets the remembered email as soon as the box is unchecked', async () => {
+  localStorage.setItem('rememberedEmail', JSON.stringify('ada@example.test'))
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByLabelText('Remember me'))
+  expect(localStorage.getItem('rememberedEmail')).toBeNull()
+  await user.type(screen.getByLabelText('Email'), 'x')
+  expect(localStorage.getItem('rememberedEmail')).toBeNull()
+})
+
+it('does not store the email while typing with the box unchecked', async () => {
+  const user = userEvent.setup()
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  expect(localStorage.getItem('rememberedEmail')).toBeNull()
 })
 
 it('shows the session-expired notice when reason=expired', () => {
@@ -65,14 +107,52 @@ it('shows the session-expired notice when reason=expired', () => {
   expect(screen.getByText(/session has expired/i)).toBeInTheDocument()
 })
 
-it('hides the self-hosted section when custom API is not allowed', () => {
-  window.econumoConfig = { ALLOW_CUSTOM_API: 'false' }
+it('stores the server address as it is typed', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
   renderLogin()
-  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  const host = screen.getByLabelText('Server address')
+  await user.clear(host)
+  await user.type(host, 'https://my.box.test')
+  expect(localStorage.getItem('backendHost')).toBe(JSON.stringify('https://my.box.test'))
 })
 
-it('shows the self-hosted section when custom API is allowed', () => {
-  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+it('hides the custom-server option when custom API is not allowed', () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'false' }
   renderLogin()
-  expect(screen.getByRole('checkbox')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /custom server/i })).not.toBeInTheDocument()
+})
+
+it('persists the collapse and clears the server address', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  localStorage.setItem('selfHosted', 'true')
+  localStorage.setItem('backendHost', JSON.stringify('https://old.example.test'))
+  const user = userEvent.setup()
+  renderLogin()
+  expect(screen.getByLabelText('Server address')).toHaveValue('https://old.example.test')
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(localStorage.getItem('selfHosted')).toBe('false')
+  expect(localStorage.getItem('backendHost')).toBeNull()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.getByLabelText('Server address')).toHaveValue(window.location.origin)
+})
+
+it('prefills the current origin when expanding with no custom server configured', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.getByLabelText('Server address')).toHaveValue(window.location.origin)
+})
+
+it('reveals the server address field through the custom-server disclosure', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
+  renderLogin()
+  expect(screen.queryByLabelText('Server address')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.getByLabelText('Server address')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.queryByLabelText('Server address')).not.toBeInTheDocument()
 })

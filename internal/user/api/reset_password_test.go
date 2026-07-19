@@ -20,13 +20,19 @@ func TestRemindAndResetPassword(t *testing.T) {
 		t.Fatalf("remind status = %d; body: %s", st, env.raw)
 	}
 
-	// 2. Read the generated code from users_password_requests.
-	var code string
-	if err := h.db.QueryRow(`SELECT code FROM users_password_requests WHERE user_id = ?`, seedUserID).Scan(&code); err != nil {
-		t.Fatalf("read reset code: %v", err)
-	}
+	// 2. Recover the generated code from the email (it is hashed at rest, so the
+	//    DB no longer holds the plaintext).
+	code := h.mail.lastResetCode(t)
 	if len(code) != 12 {
 		t.Fatalf("code = %q, want 12 chars", code)
+	}
+	// The stored code is the sha256 hex of the emailed code, never the plaintext.
+	var stored string
+	if err := h.db.QueryRow(`SELECT code FROM users_password_requests WHERE user_id = ?`, seedUserID).Scan(&stored); err != nil {
+		t.Fatalf("read stored reset code: %v", err)
+	}
+	if stored == code {
+		t.Fatal("reset code stored in plaintext; want a hash")
 	}
 
 	// 3. Wrong code -> validation error (400), generic message.
@@ -41,6 +47,15 @@ func TestRemindAndResetPassword(t *testing.T) {
 		"username": seedEmail, "code": code, "password": "newpass123",
 	}); st != http.StatusOK {
 		t.Fatalf("reset status = %d; body: %s", st, env.raw)
+	}
+
+	// The reset rehashed the account to argon2id (issue #64).
+	var alg string
+	if err := h.db.QueryRow(`SELECT algorithm FROM users WHERE id = ?`, seedUserID).Scan(&alg); err != nil {
+		t.Fatalf("read algorithm: %v", err)
+	}
+	if alg != "argon2id" {
+		t.Errorf("algorithm after reset = %q, want argon2id", alg)
 	}
 
 	// 5. New password works; old one does not.

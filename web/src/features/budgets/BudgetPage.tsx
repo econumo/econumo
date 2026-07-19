@@ -9,14 +9,18 @@ import { getChangedPositions } from '@/lib/ordering'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { Check, ChevronLeft, FolderPlus, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
+import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useLongPress } from '@/hooks/useLongPress'
+import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type { BudgetElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
@@ -30,6 +34,7 @@ import { useCategories } from '@/features/classifications/queries'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import {
   useBudget,
+  useBudgets,
   useSetLimit,
   useCreateEnvelope,
   useUpdateEnvelope,
@@ -41,6 +46,7 @@ import {
   useMoveElements,
   useChangeElementCurrency,
   canConfigureBudget,
+  canEditBudget,
   canUpdateLimits,
   canDeleteEnvelope,
 } from './queries'
@@ -173,7 +179,9 @@ export function BudgetPage() {
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
   // data (isPlaceholderData) while the new one loads
-  const { data: budget, isPending, isPlaceholderData, isFetching } = useBudget()
+  const { data: budget, isPending, isPlaceholderData, isFetching, isError, error, refetch } = useBudget()
+  const { data: budgetList } = useBudgets()
+  const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
@@ -206,6 +214,12 @@ export function BudgetPage() {
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+
+  // Per budget AND period: the table remounts on route changes and month
+  // switches; only the same month of the same budget gets its spot back.
+  // Also shields against modal-induced resets (full-screen envelope form /
+  // set-limit drawer on phones).
+  const tableScrollRef = useScrollMemory(`budget:${budget?.meta.id ?? ''}:${selectedDate}`)
 
   // Every month switch surfaces the loader for a beat: cache hits (persisted
   // months, local fetches) resolve in a frame or two, which reads as "nothing
@@ -260,38 +274,70 @@ export function BudgetPage() {
   }, [budget, serverBuckets, dragArrangement, currencies])
 
   const configure = budget ? canConfigureBudget(budget.meta, user?.id) : false
+  const editDetails = budget ? canEditBudget(budget.meta, user?.id) : false
   const limitsEditable = budget ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
-      return t('modules.budget.form.budget.folder_name.validation.required_field')
+      return t('budgets.form.budget.folder_name.validation.required_field')
     }
     if (!isValidBudgetFolderName(value)) {
-      return t('modules.budget.form.budget.folder_name.validation.invalid_name')
+      return t('budgets.form.budget.folder_name.validation.invalid_name')
     }
     return null
   }
 
-  if (!isPending && !budget) {
+  // The default budget can 403/404 while still being the stored option: access
+  // was revoked or the budget deleted. keepPreviousData would otherwise pin
+  // isPlaceholderData forever (the fetch never succeeds), so the error must be
+  // handled before the loader branches below.
+  const errorStatus = isAxiosError(error) ? error.response?.status : undefined
+  const budgetUnavailable = isError && (errorStatus === 403 || errorStatus === 404)
+
+  // Unresolved list counts as "has budgets": the budgets page is the recovery
+  // surface either way; only a confirmed-empty list falls to onboarding below.
+  if (budgetUnavailable && (budgetList === undefined || budgetList.length > 0)) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-unavailable">
+        <h1 className="text-xl font-semibold">{t('budgets.page.budget.unavailable.header')}</h1>
+        <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.unavailable.no_access')}</p>
+        <Button type="button" onClick={() => navigate(RouterPage.SETTINGS_BUDGETS)}>
+          {t('budgets.page.budget.unavailable.choose_budget')}
+        </Button>
+      </div>
+    )
+  }
+  if (isError && !budgetUnavailable) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-error">
+        <p className="max-w-md text-sm text-muted-foreground">{t('common.app.error')}</p>
+        <Button type="button" onClick={() => void refetch()}>
+          {t('budgets.page.budget.error.retry')}
+        </Button>
+      </div>
+    )
+  }
+
+  if (!isPending && (!budget || budgetUnavailable)) {
     // no default budget — the onboarding empty state (Vue's BudgetOnboarding)
     const hasAccounts = accounts.length > 0
     const hasCategories = categories.length > 0
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-empty">
-        <h1 className="text-xl font-semibold">{t('modules.budget.page.budget.empty.header')}</h1>
-        <p className="text-sm text-muted-foreground">{t('modules.budget.page.budget.empty.no_budget')}</p>
+        <h1 className="text-xl font-semibold">{t('budgets.page.budget.empty.header')}</h1>
+        <p className="text-sm text-muted-foreground">{t('budgets.page.budget.empty.no_budget')}</p>
         {hasAccounts && hasCategories ? (
           <>
-            <p className="max-w-md text-sm text-muted-foreground">{t('modules.budget.page.budget.empty.description')}</p>
+            <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.description')}</p>
             <Button type="button" onClick={() => setCreateBudgetOpen(true)}>
-              {t('modules.budget.page.budget.empty.create_budget')}
+              {t('budgets.page.budget.empty.create_budget')}
             </Button>
           </>
         ) : (
           <>
-            <p className="max-w-md text-sm text-muted-foreground">{t('modules.budget.page.budget.empty.initial_setup')}</p>
+            <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.empty.initial_setup')}</p>
             <Button type="button" onClick={() => openAccountModal({ folderId: null })}>
-              {t('modules.budget.page.budget.empty.create_account')}
+              {t('budgets.page.budget.empty.create_account')}
             </Button>
           </>
         )}
@@ -312,8 +358,9 @@ export function BudgetPage() {
   if (!budget || !buckets) {
     // cold load only — month switches keep the previous period via keepPreviousData
     return isPending ? (
-      <div className="flex h-full items-center justify-center" data-testid="budget-loading">
-        <CoinLoader label={t('modules.app.modal.loading.data_loading')} />
+      <div className="relative flex h-full items-center justify-center" data-testid="budget-loading">
+        <CoinLoader label={t('common.app.modal.loading.data_loading')} />
+        {showLogoutEscape ? <LogoutEscapeButton placement="container" /> : null}
       </div>
     ) : null
   }
@@ -395,7 +442,7 @@ export function BudgetPage() {
     if (!editMode) {
       return null
     }
-    const name = bucket.folder?.name ?? t('modules.budget.page.budget.structure.no_folder')
+    const name = bucket.folder?.name ?? t('budgets.page.budget.structure.no_folder')
     const plus = (
       <Button
         type="button"
@@ -403,7 +450,7 @@ export function BudgetPage() {
         size="icon"
         className="size-6"
         aria-label={`create envelope ${name}`}
-        title={t('modules.budget.modal.create_envelope_form.header')}
+        title={t('budgets.modal.create_envelope_form.header')}
         onClick={() => setEnvelopeDialog({ open: true, envelope: null, folderId: bucket.folder?.id ?? null })}
       >
         <Plus className="size-4" />
@@ -414,7 +461,7 @@ export function BudgetPage() {
       return (
         <span className="flex items-center gap-1.5 sm:gap-2">
           {plus}
-          <span className="size-9" />
+          <span className="size-8" />
         </span>
       )
     }
@@ -429,14 +476,14 @@ export function BudgetPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => setRenameFolder({ id: bucket.folder!.id, name: bucket.folder!.name })}>
-              {t('elements.button.edit.label')}
+              {t('common.button.edit.label')}
             </DropdownMenuItem>
             {bucket.elements.length === 0 ? (
               <DropdownMenuItem
                 variant="destructive"
                 onSelect={() => setDeleteFolderTarget({ id: bucket.folder!.id, name: bucket.folder!.name })}
               >
-                {t('modules.budget.page.budget.structure.action.delete_folder')}
+                {t('budgets.page.budget.structure.action.delete_folder')}
               </DropdownMenuItem>
             ) : null}
           </DropdownMenuContent>
@@ -445,34 +492,33 @@ export function BudgetPage() {
     )
   }
 
-  const elementActions = (element: BudgetElementDto) =>
-    editMode ? (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" aria-label={`element actions ${element.name}`}>
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {element.type !== BudgetElementType.ENVELOPE ? (
-            <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
-              {t('modules.budget.page.budget.structure.element.action.change_currency')}
+  const elementActions = (element: BudgetElementDto) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" aria-label={`element actions ${element.name}`}>
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {element.type !== BudgetElementType.ENVELOPE ? (
+          <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
+            {t('budgets.page.budget.structure.element.action.change_currency')}
+          </DropdownMenuItem>
+        ) : (
+          <>
+            <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
+              {t('common.button.edit.label')}
             </DropdownMenuItem>
-          ) : (
-            <>
-              <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
-                {t('elements.button.edit.label')}
+            {canDeleteEnvelope(budget.meta, user?.id) ? (
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget(element)}>
+                {t('common.button.delete.label')}
               </DropdownMenuItem>
-              {canDeleteEnvelope(budget.meta, user?.id) ? (
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget(element)}>
-                  {t('elements.button.delete.label')}
-                </DropdownMenuItem>
-              ) : null}
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ) : null
+            ) : null}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
@@ -508,7 +554,7 @@ export function BudgetPage() {
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
             <Check className="size-4" />
-            {t('modules.budget.page.budget.settings.menu.edit_structure_done')}
+            {t('budgets.page.budget.settings.menu.edit_structure_done')}
           </Button>
         ) : (
           <DropdownMenu>
@@ -518,21 +564,21 @@ export function BudgetPage() {
                 variant="ghost"
                 size="sm"
                 className="uppercase tracking-wide text-muted-foreground"
-                aria-label={t('modules.budget.page.budget.settings.button')}
+                aria-label={t('budgets.page.budget.settings.button')}
               >
                 <Settings2 className="size-4" />
-                <span className="hidden sm:inline">{t('modules.budget.page.budget.settings.button')}</span>
+                <span className="hidden sm:inline">{t('budgets.page.budget.settings.button')}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setUpdateBudgetOpen(true)}>
-                {t('modules.budget.page.budget.settings.menu.edit')}
+              <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
+                {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
-                {t('modules.budget.page.budget.settings.menu.edit_structure')}
+                {t('budgets.page.budget.settings.menu.edit_structure')}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => navigate(RouterPage.SETTINGS_BUDGETS)}>
-                {t('modules.budget.page.budget.settings.menu.budget_list')}
+                {t('budgets.page.budget.settings.menu.budget_list')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -545,7 +591,7 @@ export function BudgetPage() {
         <div>
           <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
             <FolderPlus className="size-4" />
-            {t('modules.budget.page.budget.structure.action.create_folder')}
+            {t('budgets.page.budget.structure.action.create_folder')}
           </Button>
         </div>
       ) : null}
@@ -554,13 +600,13 @@ export function BudgetPage() {
         // month switch in flight — the strip stays put, the stale table is
         // replaced by the loader until the new period lands
         <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
-          <CoinLoader label={t('modules.app.modal.loading.data_loading')} />
+          <CoinLoader label={t('common.app.modal.loading.data_loading')} />
         </div>
       ) : (
         <>
           {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
             <DndContext
               sensors={sensors}
               collisionDetection={preferRowCollisions}
@@ -590,7 +636,7 @@ export function BudgetPage() {
                 renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
                 // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
                 renderFolderActions={editMode ? folderActions : undefined}
-                renderActions={elementActions}
+                renderActions={editMode ? elementActions : undefined}
                 renderBudgetCell={
                   limitsEditable && !editMode && !isCompact
                     ? (element) => (
@@ -647,11 +693,11 @@ export function BudgetPage() {
         open={createFolderOpen}
         onClose={() => setCreateFolderOpen(false)}
         onSubmit={(name) => createFolder.mutate({ budgetId: budget.meta.id, id: uuidv7(), name }, { onSuccess: () => setCreateFolderOpen(false) })}
-        title={t('modules.budget.modal.create_folder_form.header')}
-        inputLabel={t('modules.budget.form.budget.folder_name.label')}
+        title={t('budgets.modal.create_folder_form.header')}
+        inputLabel={t('budgets.form.budget.folder_name.label')}
         validate={folderNameValidator}
-        submitLabel={t('elements.button.create.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={t('common.button.create.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
 
       <PromptDialog
@@ -662,12 +708,12 @@ export function BudgetPage() {
             updateFolder.mutate({ budgetId: budget.meta.id, id: renameFolder.id, name }, { onSuccess: () => setRenameFolder(null) })
           }
         }}
-        title={t('modules.budget.modal.update_folder_form.header')}
-        inputLabel={t('modules.budget.form.budget.folder_name.label')}
+        title={t('budgets.modal.update_folder_form.header')}
+        inputLabel={t('budgets.form.budget.folder_name.label')}
         initialValue={renameFolder?.name ?? ''}
         validate={folderNameValidator}
-        submitLabel={t('elements.button.update.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={t('common.button.update.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
 
       <EnvelopeDialog
@@ -699,10 +745,10 @@ export function BudgetPage() {
             deleteEnvelope.mutate({ budgetId: budget.meta.id, id: deleteEnvelopeTarget.id }, { onSettled: () => setDeleteEnvelopeTarget(null) })
           }
         }}
-        title={t('modules.budget.modal.delete_envelope.header')}
-        question={t('modules.budget.modal.delete_envelope.question')}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('budgets.modal.delete_envelope.header')}
+        question={t('budgets.modal.delete_envelope.question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
@@ -714,10 +760,10 @@ export function BudgetPage() {
             deleteFolder.mutate({ budgetId: budget.meta.id, id: deleteFolderTarget.id }, { onSettled: () => setDeleteFolderTarget(null) })
           }
         }}
-        title={t('modules.budget.modal.delete_folder.header')}
-        question={t('modules.budget.modal.delete_folder.question', { name: deleteFolderTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('budgets.modal.delete_folder.header')}
+        question={t('budgets.modal.delete_folder.question', { name: deleteFolderTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
@@ -725,7 +771,7 @@ export function BudgetPage() {
       {currencyTarget ? (
         <CurrencyPickerDialog
           open
-          title={t('modules.budget.modal.change_element_currency_form.header')}
+          title={t('budgets.modal.change_element_currency_form.header')}
           value={currencyTarget.currencyId ?? budget.meta.currencyId}
           onClose={() => setCurrencyTarget(null)}
           onPick={(currencyId) => {

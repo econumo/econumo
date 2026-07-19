@@ -62,11 +62,11 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 				return serr
 			}
 		}
-		pos, serr := s.seedCategoryElements(txCtx, userID, budgetID, 0, now)
+		pos, serr := s.seedCategoryElements(txCtx, userID, budgetID, 0, now, nil)
 		if serr != nil {
 			return serr
 		}
-		if serr := s.seedTagElements(txCtx, userID, budgetID, pos, now); serr != nil {
+		if serr := s.seedTagElements(txCtx, userID, budgetID, pos, now, nil); serr != nil {
 			return serr
 		}
 		return s.users.SetActiveBudget(txCtx, userID, budgetID)
@@ -89,8 +89,10 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 
 // seedCategoryElements creates a budget element for each non-income category of
 // the user; archived categories get the unset position, others get an
-// incrementing position. Returns the next free position.
-func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time) (int, error) {
+// incrementing position. Ids in skip already have an element in the budget
+// (accept after an earlier membership) and are left untouched. Returns the
+// next free position.
+func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time, skip map[vo.Id]bool) (int, error) {
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{userID})
 	if err != nil {
 		return startPos, err
@@ -100,14 +102,17 @@ func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.
 		if c.IsIncome {
 			continue
 		}
+		extID, perr := vo.ParseId(c.ID)
+		if perr != nil {
+			return pos, perr
+		}
+		if skip[extID] {
+			continue
+		}
 		position := model.PositionUnset
 		if !c.IsArchived {
 			position = pos
 			pos++
-		}
-		extID, perr := vo.ParseId(c.ID)
-		if perr != nil {
-			return pos, perr
 		}
 		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, int16(position), now)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {
@@ -118,22 +123,25 @@ func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.
 }
 
 // seedTagElements creates a budget element for each tag of the user (archived ->
-// unset position).
-func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time) error {
+// unset position). Ids in skip are left untouched, as in seedCategoryElements.
+func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time, skip map[vo.Id]bool) error {
 	tags, err := s.metadata.TagsByOwners(ctx, []vo.Id{userID})
 	if err != nil {
 		return err
 	}
 	pos := startPos
 	for _, t := range tags {
+		extID, perr := vo.ParseId(t.ID)
+		if perr != nil {
+			return perr
+		}
+		if skip[extID] {
+			continue
+		}
 		position := model.PositionUnset
 		if !t.IsArchived {
 			position = pos
 			pos++
-		}
-		extID, perr := vo.ParseId(t.ID)
-		if perr != nil {
-			return perr
 		}
 		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementTag, nil, nil, int16(position), now)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {

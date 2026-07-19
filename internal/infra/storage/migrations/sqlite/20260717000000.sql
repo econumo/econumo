@@ -1,0 +1,2 @@
+-- No-op counterpart of the pgsql migration: SQLite's dynamic typing stores the
+-- 64-char sha256 reset code without a schema change.

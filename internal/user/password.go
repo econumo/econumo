@@ -4,6 +4,7 @@ package user
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -28,6 +29,14 @@ func generatePasswordCode() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+// HashResetCode maps a reset code to its at-rest storage/lookup key. The
+// plaintext code is emailed to the user; only this sha256 hex is persisted, so a
+// database disclosure does not hand out usable reset codes.
+func HashResetCode(code string) string {
+	sum := sha256.Sum256([]byte(code))
+	return hex.EncodeToString(sum[:])
+}
+
 func isNotFound(err error) bool {
 	var nf *errs.NotFoundError
 	return errors.As(err, &nf)
@@ -35,15 +44,24 @@ func isNotFound(err error) bool {
 
 // UpdatePassword verifies the old password then stores the new hash. A wrong
 // old password yields a ValidationError -> 400 ("Password is not correct").
-func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
+// On success every OTHER session is revoked (the presenting one —
+// currentTokenID — survives); PATs are untouched.
+func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentTokenID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
 	_, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
-		if !s.hasher.Verify(u.Password, req.OldPassword, u.Salt) {
-			return errs.NewValidation("Password is not correct")
+		if !s.hasher.Verify(u.Algorithm, u.Password, req.OldPassword, u.Salt) {
+			return &errs.ValidationError{Msg: "Password is not correct", MsgCode: errs.CodeUserPasswordIncorrect}
 		}
-		u.UpdatePassword(s.hasher.Hash(req.NewPassword, u.Salt), now)
+		newHash, herr := s.hasher.Hash(req.NewPassword)
+		if herr != nil {
+			return herr
+		}
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
 		return nil
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := s.revokeSessions(ctx, userID, currentTokenID, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	return &model.UpdatePasswordResult{}, nil
@@ -54,6 +72,11 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, req model.Up
 // (returns success) to avoid account enumeration.
 func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRequest) (*model.RemindPasswordResult, error) {
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
+	if err := s.allowAttempt(RateScopeRemind, lowered); err != nil {
+		return nil, err
+	}
+	s.failAttempt(RateScopeRemind, lowered) // every remind sends an email, so every request counts
+
 	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
 	if err != nil {
 		if isNotFound(err) {
@@ -66,7 +89,7 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 	if err != nil {
 		return nil, err
 	}
-	pr := model.NewPasswordRequest(vo.NewId(), u.ID, code, s.clock.Now())
+	pr := model.NewPasswordRequest(vo.NewId(), u.ID, HashResetCode(code), s.clock.Now())
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
@@ -90,27 +113,37 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 // validation error; an expired code yields the frozen "The code is expired".
 func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequest) (*model.ResetPasswordResult, error) {
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
+	if err := s.allowAttempt(RateScopeReset, lowered); err != nil {
+		return nil, err
+	}
 	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
 	if err != nil {
 		if isNotFound(err) {
-			return nil, errs.NewValidation("Reset password error")
+			s.failAttempt(RateScopeReset, lowered)
+			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
 
-	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, strings.TrimSpace(req.Code))
+	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, HashResetCode(strings.TrimSpace(req.Code)))
 	if err != nil {
 		if isNotFound(err) {
-			return nil, errs.NewValidation("Reset password error")
+			s.failAttempt(RateScopeReset, lowered)
+			return nil, &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		return nil, err
 	}
 	if pr.IsExpired(s.clock.Now()) {
-		return nil, errs.NewValidation("The code is expired")
+		s.failAttempt(RateScopeReset, lowered)
+		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserResetCodeExpired}
 	}
 
+	newHash, herr := s.hasher.Hash(req.Password)
+	if herr != nil {
+		return nil, herr
+	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(req.Password, u.Salt), s.clock.Now())
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
@@ -118,5 +151,11 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	}); err != nil {
 		return nil, err
 	}
+	// The reset flow has no presenting session, so ALL sessions are revoked —
+	// whoever holds the account's email owns the account now.
+	if err := s.revokeSessions(ctx, u.ID, vo.Id{}, s.clock.Now()); err != nil {
+		return nil, err
+	}
+	s.clearAttempt(RateScopeReset, lowered)
 	return &model.ResetPasswordResult{}, nil
 }

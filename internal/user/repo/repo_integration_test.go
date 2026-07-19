@@ -32,9 +32,9 @@ func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *dbtest.DB) {
 	return userrepo.NewRepo(db.Engine, db.TX), userrepo.NewReadRepo(db.Engine, db.TX), db
 }
 
-func newTestUser(id vo.Id, identifier, email, name, avatarURL, password, salt string, isActive bool,
+func newTestUser(id vo.Id, identifier, email, name, avatar, password, salt string, isActive bool,
 	createdAt, updatedAt time.Time, opts []model.UserOption) *model.User {
-	return &model.User{ID: id, Identifier: identifier, Email: email, Name: name, AvatarURL: avatarURL,
+	return &model.User{ID: id, Identifier: identifier, Email: email, Name: name, Avatar: avatar,
 		Password: password, Salt: salt, IsActive: isActive, CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
 }
 
@@ -59,7 +59,7 @@ func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
 	if got.Identifier != identA || got.Email != "enc-email" || got.Name != "Alice" {
 		t.Errorf("fields mismatch: %q %q %q", got.Identifier, got.Email, got.Name)
 	}
-	if got.AvatarURL != "https://av/a" || got.Password != "hash" || got.Salt != "salt-a" || !got.IsActive {
+	if got.Avatar != "https://av/a" || got.Password != "hash" || got.Salt != "salt-a" || !got.IsActive {
 		t.Errorf("auth/avatar mismatch: %+v", got)
 	}
 	if !got.CreatedAt.Equal(fixedTime) {
@@ -99,7 +99,7 @@ func TestUserRepo_GetHeaderByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetHeaderByID: %v", err)
 	}
-	if h.ID != userA || h.Name != "Alice" || h.AvatarURL != "https://av/a" {
+	if h.ID != userA || h.Name != "Alice" || h.Avatar != "https://av/a" {
 		t.Errorf("header mismatch: %+v", h)
 	}
 
@@ -198,7 +198,7 @@ func TestUserReadRepo_Views(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UserView: %v", err)
 	}
-	if uv.ID != userA || uv.Email != "enc" || uv.Name != "Alice" || uv.AvatarURL != "https://av" {
+	if uv.ID != userA || uv.Email != "enc" || uv.Name != "Alice" || uv.Avatar != "https://av" {
 		t.Errorf("UserView mismatch: %+v", uv)
 	}
 
@@ -227,5 +227,84 @@ func TestUserReadRepo_CurrencyIDByCode(t *testing.T) {
 	}
 	if id != "dffc2a06-6f29-4704-8575-31709adee926" {
 		t.Errorf("want seeded USD id, got %q", id)
+	}
+}
+
+func TestUserRepo_UpdateLanguage(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	if err := repo.UpdateLanguage(ctx, vo.MustParseId(userA), "ru"); err != nil {
+		t.Fatalf("UpdateLanguage: %v", err)
+	}
+	var got string
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT language FROM users WHERE id = ?`), userA).Scan(&got); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if got != "ru" {
+		t.Errorf("language = %q, want ru", got)
+	}
+
+	// A missing id affects 0 rows and returns nil (no NotFound mapping).
+	if err := repo.UpdateLanguage(ctx, vo.NewId(), "fr"); err != nil {
+		t.Errorf("UpdateLanguage(missing id): %v, want nil", err)
+	}
+}
+
+func TestUserRepo_UpdateLanguage_DefaultsToEnglish(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	var got string
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(`SELECT language FROM users WHERE id = ?`), userA).Scan(&got); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if got != "en" {
+		t.Errorf("default language = %q, want en", got)
+	}
+}
+
+func TestUserRepo_AlgorithmRoundTrip(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	u := newTestUser(
+		vo.MustParseId(userA), identA, "enc-email", "Alice", "https://av/a",
+		"hash", "salt-a", true, fixedTime, fixedTime, nil,
+	)
+	u.Algorithm = model.AlgorithmArgon2id
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, vo.MustParseId(userA))
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Algorithm != model.AlgorithmArgon2id {
+		t.Errorf("Algorithm = %q, want %q", got.Algorithm, model.AlgorithmArgon2id)
+	}
+
+	// A row inserted without an explicit algorithm gets the sha512 default.
+	if _, err := db.Raw.Exec(db.Rebind(
+		`INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`),
+		userB, "fedcba9876543210fedcba9876543210", "e2", "Bob", "", "h2", "s2", fixedTime, fixedTime); err != nil {
+		t.Fatalf("raw insert: %v", err)
+	}
+	legacy, err := repo.GetByID(ctx, vo.MustParseId(userB))
+	if err != nil {
+		t.Fatalf("GetByID legacy: %v", err)
+	}
+	if legacy.Algorithm != model.AlgorithmSHA512 {
+		t.Errorf("legacy Algorithm = %q, want %q", legacy.Algorithm, model.AlgorithmSHA512)
 	}
 }

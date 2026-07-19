@@ -22,7 +22,6 @@ package enginecompare
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/test/apiparity"
@@ -41,11 +40,15 @@ func TestResetPasswordFlow_PerEngine(t *testing.T) {
 			t.Fatalf("remind status = %d; body: %s", st, body)
 		}
 
-		// 2. The code must actually be persisted — this is the assertion that
-		//    catches "no code being added to the database".
-		code := readResetCode(t, db, apiparity.OwnerID)
+		// 2. A code must actually be persisted (this is the assertion that catches
+		//    "no code being added to the database"); the emitted plaintext is
+		//    recovered from the email, since the code is hashed at rest.
+		if n := countResetCodes(t, db, apiparity.OwnerID); n != 1 {
+			t.Fatalf("issued reset codes = %d, want 1 — was it inserted?", n)
+		}
+		code := h.LastResetCode(t)
 		if len(code) != 12 {
-			t.Fatalf("issued code = %q (len %d), want 12 chars — was it inserted?", code, len(code))
+			t.Fatalf("issued code = %q (len %d), want 12 chars", code, len(code))
 		}
 
 		// 3. A wrong code is rejected (400).
@@ -90,19 +93,6 @@ func TestResetPasswordFlow_PerEngine(t *testing.T) {
 
 	t.Run("sqlite", func(t *testing.T) { run(t, dbtest.NewSQLite(t)) })
 	t.Run("postgresql", func(t *testing.T) { run(t, dbtest.NewPostgres(t)) }) // SKIPs if env unset
-}
-
-// readResetCode returns the single reset code persisted for userID, failing if
-// there is not exactly one. It selects the issued code directly (the test mailer
-// is a no-op, so the wire never carries it).
-func readResetCode(t *testing.T, db *dbtest.DB, userID string) string {
-	t.Helper()
-	var code string
-	q := "SELECT code FROM users_password_requests WHERE user_id = " + placeholder(db, 1)
-	if err := db.Raw.QueryRow(q, userID).Scan(&code); err != nil {
-		t.Fatalf("read reset code (%s): %v", db.Engine, err)
-	}
-	return strings.TrimSpace(code) // CHAR(12) on pgsql is blank-padded if ever shorter
 }
 
 // countResetCodes returns how many reset codes remain for userID.

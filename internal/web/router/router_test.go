@@ -3,10 +3,12 @@ package router_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/config"
@@ -167,5 +169,60 @@ func TestHealthCheck_DBDown_ReportsFalse(t *testing.T) {
 	json.NewDecoder(resp.Body).Decode(&env)
 	if env.Data["database"] {
 		t.Fatalf("database=true want false when Ping errors")
+	}
+}
+
+func readBody(t *testing.T, resp *http.Response) string {
+	t.Helper()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func TestRuntimeConfigOverrides(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	allowCustom := false
+	h := router.New(router.Deps{Cfg: config.Config{
+		SPADir:         dir,
+		Analytics:      true,
+		APIURL:         "https://api.example.test",
+		AllowCustomAPI: &allowCustom,
+	}})
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
+	defer resp.Body.Close()
+	body := readBody(t, resp)
+	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"API_URL":"https://api.example.test"});`
+	if !strings.Contains(body, want) {
+		t.Fatalf("config body missing %q:\n%s", want, body)
+	}
+}
+
+func TestRuntimeConfigOverrides_UnsetKeysNotMerged(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := router.New(router.Deps{Cfg: config.Config{SPADir: dir, Analytics: true}})
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
+	defer resp.Body.Close()
+	body := readBody(t, resp)
+	for _, absent := range []string{"API_URL", "ALLOW_CUSTOM_API"} {
+		if strings.Contains(body, absent) {
+			t.Fatalf("unset key %q must not be merged:\n%s", absent, body)
+		}
+	}
+	if !strings.Contains(body, `"ANALYTICS":true`) {
+		t.Fatalf("ANALYTICS missing:\n%s", body)
 	}
 }

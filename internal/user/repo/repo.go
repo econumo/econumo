@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
@@ -16,11 +17,29 @@ import (
 	"github.com/econumo/econumo/internal/user"
 )
 
+// userRow mirrors the sqlc-generated GetUserByID*Row shape (both dialects):
+// the users SELECTs list columns explicitly and don't include language (it's
+// write-only, see Repository.UpdateLanguage), so sqlc emits per-query row
+// types instead of reusing User; this struct is the common shape both
+// convert to via a plain field-for-field type conversion.
 type (
-	userRow      = sqlitegen.User
-	optionRow    = sqlitegen.UsersOption
-	userParams   = sqlitegen.UpsertUserParams
-	optionParams = sqlitegen.UpsertUserOptionParams
+	userRow struct {
+		ID         string
+		Identifier string
+		Email      string
+		Name       string
+		Avatar     string
+		Password   string
+		Salt       string
+		CreatedAt  time.Time
+		UpdatedAt  time.Time
+		IsActive   bool
+		Algorithm  string
+	}
+	optionRow      = sqlitegen.UsersOption
+	userParams     = sqlitegen.UpsertUserParams
+	optionParams   = sqlitegen.UpsertUserOptionParams
+	languageParams = sqlitegen.UpdateUserLanguageParams
 )
 
 type querier interface {
@@ -31,6 +50,7 @@ type querier interface {
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
+	UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error
 }
 
 type Repo struct {
@@ -86,7 +106,7 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 		}
 		return model.Header{}, err
 	}
-	return model.Header{ID: row.ID, Name: row.Name, AvatarURL: row.AvatarUrl}, nil
+	return model.Header{ID: row.ID, Name: row.Name, Avatar: row.Avatar}, nil
 }
 
 func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*model.User, error) {
@@ -137,9 +157,10 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 		Identifier: u.Identifier,
 		Email:      u.Email,
 		Name:       u.Name,
-		AvatarUrl:  u.AvatarURL,
+		Avatar:     u.Avatar,
 		Password:   u.Password,
 		Salt:       u.Salt,
+		Algorithm:  u.Algorithm,
 		CreatedAt:  u.CreatedAt,
 		UpdatedAt:  u.UpdatedAt,
 		IsActive:   u.IsActive,
@@ -161,6 +182,15 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	return nil
 }
 
+// UpdateLanguage persists the user's last selected UI language, write-only
+// (see user.Repository.UpdateLanguage). A missing id simply affects 0 rows.
+func (r *Repo) UpdateLanguage(ctx context.Context, id vo.Id, language string) error {
+	return r.q.UpdateUserLanguage(ctx, r.db(ctx), languageParams{
+		Language: language,
+		ID:       id.String(),
+	})
+}
+
 func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 	optRows, err := r.q.GetUserOptions(ctx, r.db(ctx), row.ID)
 	if err != nil {
@@ -175,8 +205,8 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 		return nil, err
 	}
 	return &model.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
-		AvatarURL: row.AvatarUrl, Password: row.Password, Salt: row.Salt, IsActive: row.IsActive,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
+		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, Algorithm: row.Algorithm,
+		IsActive: row.IsActive, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 
 func toDomainOptions(rows []optionRow) ([]model.UserOption, error) {

@@ -61,7 +61,9 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *model
 			return err
 		}
 		if !p.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned payee as not-found (matching the repo above), so
+			// the response can't probe which payee ids exist.
+			return errs.NewNotFound("Payee not found")
 		}
 		fn(p, s.clock.Now())
 		if err := s.repo.Save(txCtx, p); err != nil {
@@ -93,7 +95,9 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 			return err
 		}
 		if !p.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned payee as not-found (matching the repo above), so
+			// the response can't probe which payee ids exist.
+			return errs.NewNotFound("Payee not found")
 		}
 		if ferr := fn(txCtx, p, s.clock.Now()); ferr != nil {
 			return ferr
@@ -153,7 +157,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 	}
 	for _, p := range payees {
 		if p.Name == name && !p.ID.Equal(exceptID) {
-			return errs.NewValidation("Payee already exists.")
+			return &errs.ValidationError{Msg: "Payee already exists.", MsgCode: errs.CodePayeeAlreadyExists}
 		}
 	}
 	return nil
@@ -166,7 +170,10 @@ func newPayeeName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {
 		return "", errs.NewValidation("Payee name must be 3-64 characters",
-			errs.FieldError{Key: "name", Message: "Payee name must be 3-64 characters"})
+			errs.FieldError{
+				Key: "name", Message: "Payee name must be 3-64 characters", Code: errs.CodePayeeNameLength,
+				Params: map[string]any{"min": 3, "max": 64},
+			})
 	}
 	return v, nil
 }

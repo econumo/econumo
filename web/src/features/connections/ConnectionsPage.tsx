@@ -1,25 +1,19 @@
 import { useState } from 'react'
-import { isAxiosError } from 'axios'
 import { MoreVertical, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
+import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto, InviteDto } from '@/api/dto/connection'
 import { RouterPage } from '@/app/router-pages'
+import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { GenerateInviteDialog } from './GenerateInviteDialog'
 import { AcceptInviteDialog } from './AcceptInviteDialog'
 import { PreviewConnectionDialog } from './PreviewConnectionDialog'
 import { useAcceptInvite, useConnections, useDeleteConnection, useGenerateInvite } from './queries'
-
-function serverMessage(error: unknown): string {
-  if (isAxiosError(error)) {
-    const message = (error.response?.data as { message?: string } | undefined)?.message
-    if (message) return message
-  }
-  return 'Something went wrong'
-}
 
 export function ConnectionsPage() {
   const { t } = useTranslation()
@@ -41,28 +35,29 @@ export function ConnectionsPage() {
 
   return (
     <SettingsShell
-      title={t('modules.connections.pages.settings.header')}
+      title={t('connections.pages.settings.header')}
       backTo={RouterPage.SETTINGS}
       actions={
         <div className="flex gap-2">
           <Button
             type="button"
             size="sm"
-            aria-label={t('modules.connections.pages.settings.generate_invite')}
-            title={t('modules.connections.pages.settings.generate_invite')}
+            aria-label={t('connections.pages.settings.generate_invite')}
+            title={t('connections.pages.settings.generate_invite')}
             onClick={() => generateInvite.mutate(undefined, { onSuccess: setInvite })}
           >
             <UserPlus className="size-4" />
-            <span className="hidden sm:inline">{t('modules.connections.pages.settings.generate_invite')}</span>
+            <span className="hidden sm:inline">{t('connections.pages.settings.generate_invite')}</span>
           </Button>
           <Button type="button" size="sm" variant="secondary" onClick={openAccept}>
-            {t('modules.connections.pages.settings.accept_invite')}
+            {t('connections.pages.settings.accept_invite')}
           </Button>
         </div>
       }
     >
+      <InfoBox>{t('connections.pages.settings.info')}</InfoBox>
       {connections.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-muted-foreground">{t('blocks.list.list_empty')}</p>
+        <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
       ) : (
         <ul className="flex max-w-md flex-col gap-2">
           {connections.map((connection) => (
@@ -72,7 +67,7 @@ export function ConnectionsPage() {
                 className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 onClick={() => setPreview(connection)}
               >
-                <img src={`${connection.user.avatar}?s=50`} alt={connection.user.name} className="size-10 rounded-full" />
+                <UserAvatar avatar={connection.user.avatar} size="md" />
                 <span className="min-w-0 flex-1 truncate text-sm" title={connection.user.name}>
                   {connection.user.name}
                 </span>
@@ -84,9 +79,9 @@ export function ConnectionsPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setPreview(connection)}>{t('elements.button.view.label')}</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setPreview(connection)}>{t('common.button.view.label')}</DropdownMenuItem>
                   <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(connection)}>
-                    {t('elements.button.delete.label')}
+                    {t('common.button.delete.label')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -118,7 +113,7 @@ export function ConnectionsPage() {
               setAcceptOpen(false)
               setAcceptError(null)
             },
-            onError: (error) => setAcceptError(serverMessage(error)),
+            onError: (error) => setAcceptError(apiErrorMessage(error)),
           })
         }
         onClose={() => setAcceptOpen(false)}
@@ -132,9 +127,9 @@ export function ConnectionsPage() {
             deleteConnection.mutate(deleteTarget.user.id, { onSettled: () => setDeleteTarget(null) })
           }
         }}
-        question={t('modules.connections.modals.delete_connection.question', { name: deleteTarget?.user.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('connections.modals.delete_connection.question', { name: deleteTarget?.user.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
     </SettingsShell>

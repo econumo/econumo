@@ -46,7 +46,7 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model
 			return cerr
 		}
 		if already {
-			return errs.NewValidation("Operation is locked")
+			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 		now := s.clock.Now()
 		st, berr := buildState(id, userID, typ, accountID, req.Amount.String(),
@@ -54,6 +54,12 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model
 			description, spentAt, now)
 		if berr != nil {
 			return berr
+		}
+		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
+			return nerr
+		}
+		if rerr := s.checkReferences(ctx, userID, st); rerr != nil {
+			return rerr
 		}
 		t := model.New(st)
 		if serr := s.repo.Save(ctx, t); serr != nil {

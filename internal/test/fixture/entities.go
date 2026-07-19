@@ -2,6 +2,7 @@ package fixture
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -22,7 +23,7 @@ type User struct {
 	ID       string
 	Email    string // default "user-<id8>@example.test"
 	Name     string // default "User <id4>"
-	Avatar   string
+	Avatar   string // default "diamond:sky"
 	Password string // default "secret-pw" (only meaningful WithCrypto)
 	Salt     string // default 40-char sha1-shaped salt
 	Inactive bool   // default active
@@ -46,6 +47,9 @@ func (b *Builder) User(u User) string {
 	if u.Password == "" {
 		u.Password = "secret-pw"
 	}
+	if u.Avatar == "" {
+		u.Avatar = "diamond:sky"
+	}
 
 	identifier, email, password := u.Email, u.Email, u.Password
 	if b.encode != nil {
@@ -55,7 +59,7 @@ func (b *Builder) User(u User) string {
 			b.t.Fatalf("fixture: encode email: %v", err)
 		}
 		email = enc
-		password = b.hasher.Hash(u.Password, u.Salt)
+		password = b.hasher.HashSHA512(u.Password, u.Salt)
 	} else {
 		// Keep identifier unique without crypto (the column is UNIQUE).
 		identifier = "ident-" + id[:8]
@@ -66,8 +70,8 @@ func (b *Builder) User(u User) string {
 	if u.Inactive {
 		active = "FALSE"
 	}
-	b.insert(`INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, `+active+`)`,
+	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`)`,
 		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now)
 	return id
 }
@@ -268,14 +272,22 @@ func (b *Builder) AccountOption(accountID, userID string, position int) {
 		accountID, userID, position, now, now)
 }
 
-// AccountAccess grants a user access to an account (accounts_access). role is
-// stored verbatim (admin=0, user=1, guest=2) — 0 is a real role, not "unset", so
-// it is NOT coerced.
+// AccountAccess grants a user ACCEPTED access to an account (accounts_access).
+// role is stored verbatim (admin=0, user=1, guest=2) — 0 is a real role, not
+// "unset", so it is NOT coerced.
 func (b *Builder) AccountAccess(accountID, userID string, role int) {
 	b.t.Helper()
 	now := b.now()
-	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		accountID, userID, role, now, now)
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		accountID, userID, role, true, now, now)
+}
+
+// AccountAccessPending grants a user a PENDING (not yet accepted) grant.
+func (b *Builder) AccountAccessPending(accountID, userID string, role int) {
+	b.t.Helper()
+	now := b.now()
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		accountID, userID, role, false, now, now)
 }
 
 // Category describes a categories row.
@@ -517,6 +529,32 @@ func (b *Builder) BudgetAccess(budgetID, userID string, role int, accepted bool)
 	now := b.now()
 	b.insert(`INSERT INTO budgets_access (budget_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
 		budgetID, userID, role, accepted, now, now)
+}
+
+// AccessToken seeds one access_tokens row (a live session or PAT). tokenHash
+// is the sha256 hex of the raw bearer token; expiresAt nil = never expires.
+type AccessToken struct {
+	ID        string
+	UserID    string
+	Kind      string // "session" | "personal"
+	TokenHash string
+	Name      string // PAT label ("" -> NULL)
+	UserAgent string // session UA ("" -> NULL)
+	ExpiresAt *time.Time
+}
+
+func (b *Builder) AccessToken(tk AccessToken) string {
+	b.t.Helper()
+	id := b.orNewID(tk.ID)
+	now := b.now()
+	var exp any
+	if tk.ExpiresAt != nil {
+		exp = *tk.ExpiresAt
+	}
+	b.insert(`INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+		id, tk.UserID, tk.Kind, tk.TokenHash, nullable(tk.Name), nullable(tk.UserAgent), now, now, exp)
+	return id
 }
 
 // nullable returns nil for an empty string (-> SQL NULL), else the string.

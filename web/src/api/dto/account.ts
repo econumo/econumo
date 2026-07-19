@@ -11,6 +11,7 @@ export type AccountRole = 'admin' | 'user' | 'guest'
 export interface AccountAccessDto {
   user: UserDto
   role: AccountRole
+  isAccepted: 0 | 1
 }
 
 export interface AccountDto {

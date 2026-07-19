@@ -64,15 +64,15 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
 
   const submit = () => {
     if (!isNotEmpty(name)) {
-      setError(t('modules.budget.form.budget_envelope.name.validation.required_field'))
+      setError(t('budgets.form.budget_envelope.name.validation.required_field'))
       return
     }
     if (!isValidEnvelopeName(name)) {
-      setError(t('modules.budget.form.budget_envelope.name.validation.invalid_name'))
+      setError(t('budgets.form.budget_envelope.name.validation.invalid_name'))
       return
     }
     if (!currencyId) {
-      setError(t('modules.budget.form.budget_envelope.currency.validation.required_field'))
+      setError(t('budgets.form.budget_envelope.currency.validation.required_field'))
       return
     }
     onSubmit({ name, icon, currencyId, categories: [...selected], isArchived })
@@ -84,14 +84,14 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
       caps
       fullScreen
       onOpenChange={(o) => !o && onClose()}
-      title={isNew ? t('modules.budget.modal.create_envelope_form.header') : t('modules.budget.modal.update_envelope_form.header')}
+      title={isNew ? t('budgets.modal.create_envelope_form.header') : t('budgets.modal.update_envelope_form.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="envelope-dialog-form">
-            {isNew ? t('elements.button.create.label') : t('elements.button.save.label')}
+            {isNew ? t('common.button.create.label') : t('common.button.save.label')}
           </Button>
         </div>
       }
@@ -107,7 +107,7 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
           submit()
         }}
       >
-        <CardField label={t('modules.budget.form.budget_envelope.name.label')} htmlFor="envelope-name" error={error}>
+        <CardField label={t('budgets.form.budget_envelope.name.label')} htmlFor="envelope-name" error={error}>
           <Input
             id="envelope-name"
             className={cardFieldControlClass}
@@ -121,26 +121,26 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
         <button
           type="button"
           className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
-          title={t('modules.budget.form.budget_envelope.currency.label')}
+          title={t('budgets.form.budget_envelope.currency.label')}
           onClick={() => setCurrencyOpen(true)}
         >
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('modules.budget.form.budget_envelope.currency.label')}</span>
+            <span className="text-[11px] text-muted-foreground">{t('budgets.form.budget_envelope.currency.label')}</span>
             <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
         {!isNew ? (
-          <CardField label={t('modules.budget.form.budget_envelope.status.label')} htmlFor="envelope-status">
+          <CardField label={t('budgets.form.budget_envelope.status.label')} htmlFor="envelope-status">
             <div className="[&_button]:h-auto [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
               <Select value={String(isArchived)} onValueChange={(v) => setIsArchived(v === '1' ? 1 : 0)}>
-                <SelectTrigger id="envelope-status" aria-label={t('modules.budget.form.budget_envelope.status.label')} className="w-full">
+                <SelectTrigger id="envelope-status" aria-label={t('budgets.form.budget_envelope.status.label')} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">{t('modules.budget.form.budget_envelope.status.option.active')}</SelectItem>
-                  <SelectItem value="1">{t('modules.budget.form.budget_envelope.status.option.archive')}</SelectItem>
+                  <SelectItem value="0">{t('budgets.form.budget_envelope.status.option.active')}</SelectItem>
+                  <SelectItem value="1">{t('budgets.form.budget_envelope.status.option.archive')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -150,18 +150,18 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
         <div className="flex flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5">
           <span className="flex items-baseline justify-between">
             <Label className="text-[11px] font-normal text-muted-foreground">
-              {t('modules.budget.form.budget_envelope.categories.label')}
+              {t('budgets.form.budget_envelope.categories.label')}
             </Label>
             <span className="text-[11px] text-muted-foreground">
-              {t('modules.budget.form.budget_envelope.categories.selected', { count: String(selected.size) })}
+              {t('budgets.form.budget_envelope.categories.selected', { count: String(selected.size) })}
             </span>
           </span>
           {options.length >= 6 ? (
             <span className="mt-1 flex items-center gap-2 rounded-md bg-background px-2.5 py-1.5">
               <Search className="size-4 shrink-0 text-muted-foreground" />
               <input
-                aria-label={t('pages.account.toolbar.search')}
-                placeholder={t('pages.account.toolbar.search')}
+                aria-label={t('accounts.page.toolbar.search')}
+                placeholder={t('accounts.page.toolbar.search')}
                 className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 value={categorySearch}
                 onChange={(e) => setCategorySearch(e.target.value)}
@@ -200,14 +200,14 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <Label>{t('modules.budget.form.budget_envelope.icon.label')}</Label>
-          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modules.budget.form.budget_envelope.icon.label')} />
+          <Label>{t('budgets.form.budget_envelope.icon.label')}</Label>
+          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('budgets.form.budget_envelope.icon.label')} />
         </div>
       </form>
 
       <CurrencyPickerDialog
         open={currencyOpen}
-        title={t('modules.budget.form.budget_envelope.currency.label')}
+        title={t('budgets.form.budget_envelope.currency.label')}
         value={currencyId}
         onClose={() => setCurrencyOpen(false)}
         onPick={setCurrencyId}

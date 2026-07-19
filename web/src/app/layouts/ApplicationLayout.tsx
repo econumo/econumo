@@ -1,7 +1,7 @@
-import { useRef } from 'react'
+import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Rocket, Settings, Wallet } from 'lucide-react'
+import { RefreshCw, Rocket, Settings, UserPlus, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
 // so without it the footer logo ships as a separate asset and can 404 where
@@ -9,12 +9,20 @@ import { useTranslation } from 'react-i18next'
 import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UserCard } from '@/components/UserCard'
+import { UserAvatar } from '@/components/UserAvatar'
+import { UpdateNotice } from '@/components/UpdateNotice'
 import { econumoPackage } from '@/lib/package'
 import { formatDateTime } from '@/lib/datetime'
+import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useLogoutEscape } from '@/hooks/useLogoutEscape'
+import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
+import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
+import { usePendingInvites } from '@/features/connections/pendingInvites'
+import { SharingRequestsDialog } from '@/features/connections/SharingRequestsDialog'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
@@ -24,6 +32,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { useCurrencies, useCurrencyRates } from '@/features/currencies/queries'
 import { useUserData, isOnboardingCompleted } from '@/features/user/queries'
 import { useBudgets } from '@/features/budgets/queries'
+import { recordPathname } from '@/lib/navigation'
 
 function useIsFullyLoaded() {
   const queries = [
@@ -41,6 +50,17 @@ function useIsFullyLoaded() {
   return queries.every((q) => q.data !== undefined)
 }
 
+// A background refresh that isn't succeeding — mid-retry after failures, or
+// settled in error with stale data on screen — must be visible: the sync icon
+// becomes an amber warning until the next successful fetch clears it.
+function useSyncFailing(): boolean {
+  const cache = useQueryClient().getQueryCache()
+  return useSyncExternalStore(
+    useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]),
+    () => cache.getAll().some((q) => q.state.status === 'error' || q.state.fetchFailureCount > 0),
+  )
+}
+
 // lastSyncAt = the oldest fetch among the core lists (Vue takes the min of the
 // *LoadedAt stamps); shown in the sync button's tooltip.
 function useLastSyncAt(): string {
@@ -53,15 +73,22 @@ function useLastSyncAt(): string {
 export function ApplicationLayout() {
   const { t } = useTranslation()
   const location = useLocation()
+  // Recorded during render (idempotent per pathname) so children mounting in
+  // this same pass can already read their origin via previousPathname().
+  recordPathname(location.pathname)
   const queryClient = useQueryClient()
   const isCompact = useIsCompact()
   const isFullyLoaded = useIsFullyLoaded()
   const { data: user } = useUserData()
+  const update = useAvailableUpdate()
 
   // The blocking loader belongs to the FIRST boot only; once data has been on
   // screen, refetches and cache churn must never re-cover the app (Vue parity).
   // While the persisted cache is being restored the data is transiently
   // undefined — that must not flash the loader either.
+  const { count: pendingCount } = usePendingInvites()
+  const [sharingOpen, setSharingOpen] = useState(false)
+
   const isRestoring = useIsRestoring()
   const hasLoadedOnce = useRef(false)
   if (isFullyLoaded) {
@@ -69,18 +96,30 @@ export function ApplicationLayout() {
   }
   const showBootLoader = !isFullyLoaded && !hasLoadedOnce.current && !isRestoring
 
+  const showLogoutEscape = useLogoutEscape(showBootLoader)
+
   const showSidebar = !isCompact || location.pathname === '/'
   const showWorkspace = !isCompact || location.pathname !== '/'
   const isFetching = useIsFetching() > 0
   const lastSyncAt = useLastSyncAt()
+  const syncFailing = useSyncFailing()
+  const syncTitle = `${t(syncFailing ? 'settings.sync.failing' : 'settings.sync.menu_item')} — ${lastSyncAt}`
+  // constant geometry (-m/p cancel out) so the amber circle appears without
+  // nudging the icon
+  const syncClass = `-m-1.5 rounded-full p-1.5 ${
+    syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
+  }`
   const { collapsed, toggleCollapsed } = useSidebarStore()
+  // compact unmounts the whole sidebar on navigation — going back must land
+  // on the same spot in the account list
+  const sidebarScrollRef = useScrollMemory('sidebar-accounts')
   // Icon-rail mode is desktop-only; compact keeps the full-width home sidebar.
   const rail = collapsed && !isCompact
 
   const userBlock = user ? (
     rail ? (
       <Link to={RouterPage.SETTINGS_PROFILE} className="mt-3 flex justify-center px-2 py-3" title={user.name}>
-        <img src={`${user.avatar}?s=100`} alt={user.name} className="size-10 rounded-xl" />
+        <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
       </Link>
     ) : (
       <Link to={RouterPage.SETTINGS_PROFILE} className={`flex px-4 py-4 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
@@ -103,22 +142,35 @@ export function ApplicationLayout() {
           {user && !isCompact ? userBlock : null}
 
           {isFullyLoaded || hasLoadedOnce.current ? (
-            <div className="flex-1 overflow-y-auto scrollbar-none">
+            <div ref={sidebarScrollRef} className="flex-1 overflow-y-auto scrollbar-none">
               {user && isCompact ? userBlock : null}
               {rail ? (
                 <div className="flex flex-col items-center gap-1 py-1">
                   {!isOnboardingCompleted(user) ? (
                     <Link
                       to={RouterPage.ONBOARDING}
-                      title={t('blocks.main.onboarding')}
+                      title={t('common.nav.onboarding')}
                       className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
                     >
                       <Rocket className="size-5" />
                     </Link>
                   ) : null}
+                  {pendingCount > 0 ? (
+                    <button
+                      type="button"
+                      title={t('common.nav.sharing_requests')}
+                      onClick={() => setSharingOpen(true)}
+                      className="relative grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                    >
+                      <UserPlus className="size-5" />
+                      <span className="absolute top-0.5 right-0.5 rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+                        {pendingCount}
+                      </span>
+                    </button>
+                  ) : null}
                   <Link
                     to={RouterPage.BUDGET}
-                    title={t('blocks.main.budget')}
+                    title={t('common.nav.budget')}
                     className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
                   >
                     <Wallet className="size-5" />
@@ -129,11 +181,21 @@ export function ApplicationLayout() {
                 <div className={`flex flex-col py-1 ${isCompact ? 'px-4' : 'px-3'}`}>
                   {!isOnboardingCompleted(user) ? (
                     <Link to={RouterPage.ONBOARDING} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
-                      {t('blocks.main.onboarding')}
+                      {t('common.nav.onboarding')}
                     </Link>
                   ) : null}
+                  {pendingCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setSharingOpen(true)}
+                      className={`flex items-center justify-between rounded-md px-2 py-2 text-left hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}
+                    >
+                      <span>{t('common.nav.sharing_requests')}</span>
+                      <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">{pendingCount}</span>
+                    </button>
+                  ) : null}
                   <Link to={RouterPage.BUDGET} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
-                    {t('blocks.main.budget')}
+                    {t('common.nav.budget')}
                   </Link>
                 </div>
               )}
@@ -143,20 +205,25 @@ export function ApplicationLayout() {
             <div className="flex-1" />
           )}
 
+          {!rail ? <UpdateNotice /> : null}
+
           {rail ? (
             <footer className="flex flex-col items-center gap-4 border-t px-2 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
               <Link
                 to={RouterPage.SETTINGS}
-                title={t('pages.settings.settings.menu_item')}
-                className="text-muted-foreground hover:text-foreground"
+                title={t('settings.page.menu_item')}
+                className="relative text-muted-foreground hover:text-foreground"
               >
                 <Settings className="size-5" />
+                {update ? (
+                  <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-primary" data-testid="update-dot" />
+                ) : null}
               </Link>
               <button
                 type="button"
                 aria-label="sync"
-                title={`${t('pages.settings.sync.menu_item')} — ${lastSyncAt}`}
-                className="text-muted-foreground hover:text-foreground"
+                title={syncTitle}
+                className={syncClass}
                 onClick={() => void queryClient.invalidateQueries()}
               >
                 <RefreshCw className={`size-5 ${isFetching ? 'animate-spin' : ''}`} />
@@ -169,15 +236,16 @@ export function ApplicationLayout() {
                   <img src={grayLogo} width={125} height={20} alt="" />
                   <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
                 </div>
-                <Link to={RouterPage.SETTINGS} className="text-xs text-muted-foreground hover:text-foreground">
-                  {t('pages.settings.settings.menu_item')}
+                <Link to={RouterPage.SETTINGS} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                  {t('settings.page.menu_item')}
+                  {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
                 </Link>
               </div>
               <button
                 type="button"
                 aria-label="sync"
-                title={`${t('pages.settings.sync.menu_item')} — ${lastSyncAt}`}
-                className="text-muted-foreground hover:text-foreground"
+                title={syncTitle}
+                className={syncClass}
                 onClick={() => void queryClient.invalidateQueries()}
               >
                 <RefreshCw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
@@ -192,7 +260,7 @@ export function ApplicationLayout() {
         <button
           type="button"
           aria-label="toggle sidebar"
-          title={t(collapsed ? 'blocks.main.expand_menu' : 'blocks.main.collapse_menu')}
+          title={t(collapsed ? 'common.nav.expand_menu' : 'common.nav.collapse_menu')}
           className="w-1.5 shrink-0 cursor-col-resize border-l bg-transparent p-0 hover:bg-accent"
           onClick={toggleCollapsed}
         />
@@ -207,7 +275,9 @@ export function ApplicationLayout() {
       <AccountDialog />
       <TransactionDialog />
       <SwitchAccountPrompt />
-      <LoadingDialog open={showBootLoader} label={t('modules.app.modal.loading.data_loading')} />
+      <SharingRequestsDialog open={sharingOpen} onClose={() => setSharingOpen(false)} />
+      <LoadingDialog open={showBootLoader} label={t('common.app.modal.loading.data_loading')} />
+      {showLogoutEscape ? <LogoutEscapeButton /> : null}
     </div>
   )
 }

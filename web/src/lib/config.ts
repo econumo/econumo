@@ -1,4 +1,4 @@
-import { getItem, setItem } from './storage'
+import { getItem, removeItem, setItem } from './storage'
 
 export interface LocaleOption {
   value: string
@@ -12,6 +12,7 @@ export interface EconumoConfig {
   PAYWALL_ENABLED?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
+  ANALYTICS?: boolean | string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
 }
@@ -52,24 +53,51 @@ export function backendHost(value?: string): string {
   return value
 }
 
+export function clearBackendHost(): void {
+  removeItem('backendHost')
+}
+
+export function rememberedEmail(value?: string): string {
+  if (value === undefined) {
+    return (getItem('rememberedEmail') as string | null) ?? ''
+  }
+  setItem('rememberedEmail', value)
+  return value
+}
+
+export function clearRememberedEmail(): void {
+  removeItem('rememberedEmail')
+}
+
 export function isHttps(): boolean {
   return window.location.protocol === 'https:'
 }
 
 export function locale(value?: string): string {
+  const supported = new Set(getLocaleOptions().map((o) => o.value))
   if (value === undefined) {
     const stored = getItem('locale')
-    if (stored) {
-      return stored as string
+    if (typeof stored === 'string' && supported.has(stored)) {
+      return stored
     }
-    return (navigator.language || 'en').split('-')[0] || 'en'
+    const candidates = navigator.languages?.length ? navigator.languages : [navigator.language]
+    for (const tag of candidates) {
+      const primary = (tag || '').toLowerCase().split('-')[0]
+      if (supported.has(primary)) {
+        return primary
+      }
+    }
+    return 'en'
   }
   setItem('locale', value)
   return value
 }
 
 export function getLocaleOptions(): LocaleOption[] {
-  return [{ value: 'en', label: 'English', short: 'Eng' }]
+  return [
+    { value: 'en', label: 'English', short: 'EN' },
+    { value: 'ru', label: 'Русский', short: 'РУ' },
+  ]
 }
 
 export function getWebsiteUrl(): string {
@@ -97,6 +125,16 @@ export function isRegistrationAllowed(): boolean {
     return allowRegistration
   }
   return allowRegistration === 'true'
+}
+
+export function analyticsEnabled(): boolean {
+  const analytics = window.econumoConfig?.ANALYTICS
+  if (typeof analytics === 'boolean') {
+    return analytics
+  }
+  // Absent or unrecognized fails OPEN (enabled): a stale hand-hosted config
+  // file keeps the enabled-by-default contract.
+  return analytics !== 'false'
 }
 
 export function isPaywallEnabled(): boolean {

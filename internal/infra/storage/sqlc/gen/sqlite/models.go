@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+type AccessToken struct {
+	ID         string
+	UserID     string
+	Kind       string
+	TokenHash  string
+	Name       *string
+	UserAgent  *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+}
+
 type Account struct {
 	ID         string
 	CurrencyID string
@@ -21,11 +34,12 @@ type Account struct {
 }
 
 type AccountsAccess struct {
-	AccountID string
-	UserID    string
-	Role      int16
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	AccountID  string
+	UserID     string
+	Role       int16
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsAccepted bool
 }
 
 type AccountsFolder struct {
@@ -208,12 +222,14 @@ type User struct {
 	Identifier string
 	Email      string
 	Name       string
-	AvatarUrl  string
+	Avatar     string
 	Password   string
 	Salt       string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	IsActive   bool
+	Algorithm  string
+	Language   string
 }
 
 type UsersConnection struct {

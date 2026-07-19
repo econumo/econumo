@@ -18,8 +18,8 @@ type Id struct {
 // NewId generates a new time-ordered (UUIDv7) Id. The v7 timestamp prefix keeps
 // B-tree index inserts local instead of scattering like random v4, giving
 // consistent index growth. Existing rows keep their original (mostly v4) ids —
-// only newly created ids are v7, which is safe because ids are the JWT claim and
-// FK targets that must not change for existing data. Falls back to v4 only if
+// only newly created ids are v7, which is safe because ids are FK targets held
+// by clients that must not change for existing data. Falls back to v4 only if
 // the OS entropy source fails (NewV7 error), which is effectively never.
 func NewId() Id {
 	if u, err := uuid.NewV7(); err == nil {
@@ -33,7 +33,7 @@ func NewId() Id {
 func ParseId(s string) (Id, error) {
 	u, err := uuid.Parse(s)
 	if err != nil {
-		return Id{}, errs.NewValidation("invalid id")
+		return Id{}, &errs.ValidationError{Msg: "invalid id", MsgCode: errs.CodeInvalidID}
 	}
 	// Normalize to canonical lowercase string form.
 	return Id{value: u.String()}, nil

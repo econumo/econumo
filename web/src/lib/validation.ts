@@ -58,7 +58,7 @@ export function isValidBudgetName(value: string): boolean {
 }
 
 export function isValidPassword(value: string): boolean {
-  return value.length >= 4
+  return value.length >= 8 && value.length <= 128
 }
 
 export function isValidBudgetFolderName(value: string): boolean {

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { CardField } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import { moneyFormat } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import type { ViewTransaction } from './useAccountTransactions'
@@ -26,7 +27,7 @@ interface ViewTransactionDialogProps {
 export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
   const isTransfer = tx.type === 'transfer'
-  const typeLabel = t(`pages.account.preview_transaction_modal.type.${tx.type}`)
+  const typeLabel = t(`accounts.page.preview_transaction_modal.type.${tx.type}`)
 
   const heroIcon = isTransfer ? 'sync_alt' : tx.category?.icon || 'question_mark'
   const heroName = isTransfer ? typeLabel : (tx.category?.name ?? typeLabel)
@@ -36,7 +37,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   const accountRow = (account: ViewTransaction['account'], amount: string | null) => (
     <span className="flex items-center gap-2 text-sm">
       <EntityIcon name={account?.icon} className="text-base text-muted-foreground" />
-      <span className="flex-1 truncate">{account?.name ?? t('elements.account.name_hidden')}</span>
+      <span className="flex-1 truncate">{account?.name ?? t('accounts.account.name_hidden')}</span>
       <span className="tabular-nums">
         {amount !== null ? moneyFormat(amount, account?.currency ?? fallbackCurrency, { useNativePrecision: false }) : ''}
       </span>
@@ -45,21 +46,21 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
 
   const cards: { label: string; content: React.ReactNode }[] = []
   if (isTransfer) {
-    cards.push({ label: t('pages.account.preview_transaction_modal.sender.label'), content: accountRow(tx.account, tx.amount) })
+    cards.push({ label: t('accounts.page.preview_transaction_modal.sender.label'), content: accountRow(tx.account, tx.amount) })
     cards.push({
-      label: t('pages.account.preview_transaction_modal.recipient.label'),
+      label: t('accounts.page.preview_transaction_modal.recipient.label'),
       content: accountRow(tx.accountRecipient, tx.amountRecipient),
     })
   } else {
     const label =
       tx.type === 'expense'
-        ? t('pages.account.preview_transaction_modal.sender.label')
-        : t('pages.account.preview_transaction_modal.recipient.label')
+        ? t('accounts.page.preview_transaction_modal.sender.label')
+        : t('accounts.page.preview_transaction_modal.recipient.label')
     cards.push({ label, content: accountRow(tx.account, tx.amount) })
   }
   if (tx.description) {
     cards.push({
-      label: t('pages.account.preview_transaction_modal.description.label'),
+      label: t('accounts.page.preview_transaction_modal.description.label'),
       content: <span className="break-words text-sm">{tx.description}</span>,
     })
   }
@@ -68,13 +69,13 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
     // an expense pays TO the payee, an income comes FROM it
     const payeeLabel =
       tx.type === 'expense'
-        ? t('pages.account.preview_transaction_modal.recipient.label')
-        : t('pages.account.preview_transaction_modal.sender.label')
+        ? t('accounts.page.preview_transaction_modal.recipient.label')
+        : t('accounts.page.preview_transaction_modal.sender.label')
     cards.push({ label: payeeLabel, content: <span className="text-sm">{tx.payee.name}</span> })
   }
   if (tx.tag) {
     cards.push({
-      label: t('pages.account.preview_transaction_modal.tags.label'),
+      label: t('accounts.page.preview_transaction_modal.tags.label'),
       content: (
         <span className="flex">
           <Badge variant="secondary">{tx.tag.name}</Badge>
@@ -87,7 +88,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
     <ResponsiveDialog
       open
       onOpenChange={(o) => !o && onClose()}
-      title={t('pages.account.preview_transaction_modal.header')}
+      title={t('accounts.page.preview_transaction_modal.header')}
       hideHeader
       showClose
       dismissible={dismissible}
@@ -99,14 +100,14 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             variant="secondary"
             size="icon"
             className="size-11"
-            aria-label={t('elements.button.cancel.label')}
-            title={t('elements.button.cancel.label')}
+            aria-label={t('common.button.cancel.label')}
+            title={t('common.button.cancel.label')}
             onClick={onClose}
           >
             <ChevronDown className="size-4" />
           </Button>
           <Button type="button" className="flex-1" disabled={!canChange} onClick={onEdit}>
-            {t('elements.button.edit.label')}
+            {t('common.button.edit.label')}
           </Button>
           <Button
             type="button"
@@ -114,8 +115,8 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             size="icon"
             className="size-11"
             disabled={!canChange}
-            aria-label={t('elements.button.delete.label')}
-            title={t('elements.button.delete.label')}
+            aria-label={t('common.button.delete.label')}
+            title={t('common.button.delete.label')}
             onClick={onDelete}
           >
             <Trash2 className="size-4" />
@@ -128,12 +129,10 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         <span className="relative grid size-14 place-items-center rounded-full bg-econumo-card">
           <EntityIcon name={heroIcon} className="text-3xl text-[#666666]" />
           {isShared && tx.author ? (
-            <img
-              src={`${tx.author.avatar}?s=30`}
-              alt={tx.author.name}
-              title={tx.author.name}
-              className="absolute -bottom-1 -right-1.5 size-6 rounded-full border-2 border-background"
-            />
+            // the tooltip is the only place the preview names the author (no Author row)
+            <span title={tx.author.name} className="absolute -bottom-1 -right-1.5">
+              <UserAvatar avatar={tx.author.avatar} size="xs" className="size-6 border-2 border-background" />
+            </span>
           ) : null}
         </span>
         <span className="mt-1 max-w-full truncate text-base font-medium" title={heroName}>

@@ -15,7 +15,7 @@ SELECT DISTINCT a.id AS id, a.name AS name, c.code AS currency_code
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
 JOIN currencies c ON c.id = a.currency_id
-WHERE a.is_deleted = false AND (a.user_id = $1 OR aa.user_id = $1)
+WHERE a.is_deleted = false AND (a.user_id = $1 OR (aa.user_id = $1 AND aa.is_accepted = true))
 `
 
 type ListExportAccountsForUserRow struct {

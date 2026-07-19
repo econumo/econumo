@@ -41,17 +41,17 @@ it('registers and navigates to the login page', async () => {
   renderPage()
   await user.type(screen.getByLabelText('Name'), 'Ada')
   await user.type(screen.getByLabelText('Email'), 'ada@example.test')
-  await user.type(screen.getByLabelText('Password'), 'secret1')
-  await user.type(screen.getByLabelText('Confirm password'), 'secret1')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.type(screen.getByLabelText('Confirm password'), 'secret12')
   await user.click(screen.getByRole('button', { name: /sign up/i }))
   expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
-  expect(body).toEqual({ email: 'ada@example.test', password: 'secret1', name: 'Ada' })
+  expect(body).toEqual({ email: 'ada@example.test', password: 'secret12', name: 'Ada' })
 })
 
 it('rejects mismatched password retry', async () => {
   const user = userEvent.setup()
   renderPage()
-  await user.type(screen.getByLabelText('Password'), 'secret1')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
   await user.type(screen.getByLabelText('Confirm password'), 'different')
   await user.click(screen.getByRole('button', { name: /sign up/i }))
   expect(await screen.findByText('Passwords do not match')).toBeInTheDocument()
@@ -62,4 +62,27 @@ it('shows the paywall instead of the form when enabled', () => {
   renderPage()
   expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument()
   expect(screen.getByRole('link')).toHaveAttribute('href', 'https://pay.econumo.com/cloud/')
+})
+
+it('persists the collapse and clears the server address', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  localStorage.setItem('selfHosted', 'true')
+  localStorage.setItem('backendHost', JSON.stringify('https://old.example.test'))
+  const user = userEvent.setup()
+  renderPage()
+  expect(screen.getByLabelText('Server address')).toHaveValue('https://old.example.test')
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(localStorage.getItem('selfHosted')).toBe('false')
+  expect(localStorage.getItem('backendHost')).toBeNull()
+})
+
+it('stores the server address as it is typed', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  const host = screen.getByLabelText('Server address')
+  await user.clear(host)
+  await user.type(host, 'https://my.box.test')
+  expect(localStorage.getItem('backendHost')).toBe(JSON.stringify('https://my.box.test'))
 })

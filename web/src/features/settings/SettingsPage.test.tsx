@@ -4,7 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
+import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { SettingsPage } from './SettingsPage'
+
+const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
+vi.mock('@/hooks/useAvailableUpdate', () => ({
+  useAvailableUpdate: () => mockUpdate.value,
+}))
 
 function mockViewport(compact: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -36,6 +42,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
+  mockUpdate.value = null
 })
 
 it('renders the menu rows with exact labels and navigates', async () => {
@@ -45,24 +52,38 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(await screen.findByText('Settings')).toBeInTheDocument()
   // Full sync moved to the sidebar footer refresh button
   expect(screen.queryByText('Full sync')).not.toBeInTheDocument()
-  // grouped menu; currency moved to the profile page, so with a single locale
-  // there is no Preferences group at all
+  // grouped menu; currency moved to the profile page
   expect(screen.getByText('Finances')).toBeInTheDocument()
   expect(screen.getByText('Classification')).toBeInTheDocument()
   expect(screen.getByText('Data')).toBeInTheDocument()
-  expect(screen.queryByText('Preferences')).not.toBeInTheDocument()
   expect(screen.queryByText('Default currency')).not.toBeInTheDocument()
   expect(screen.getByText('Shared access')).toBeInTheDocument()
   expect(screen.getByText('Accounts')).toBeInTheDocument()
   expect(screen.getByText('Payees')).toBeInTheDocument()
-  // language group hidden with a single locale
-  expect(screen.queryByText('User Interface')).not.toBeInTheDocument()
-  expect(screen.queryByText('Language')).not.toBeInTheDocument()
-
   await user.click(screen.getByText('Budgets'))
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
 })
 
+it('shows a plain version label for non-release builds', async () => {
+  window.econumoConfig = { VERSION: 'dev' }
+  renderPage()
+  const label = await screen.findByText('Econumo dev')
+  expect(label.tagName).toBe('SPAN')
+})
+
+it('links a semver version to its release notes page', async () => {
+  window.econumoConfig = { VERSION: 'v1.2.3' }
+  renderPage()
+  const label = await screen.findByText('Econumo v1.2.3')
+  expect(label).toHaveAttribute('href', 'https://econumo.com/releases/v1.2.3/')
+})
+
+it('links to the API docs', async () => {
+  window.econumoConfig = { API_URL: 'https://api.example.test' }
+  renderPage()
+  const link = await screen.findByRole('link', { name: 'API' })
+  expect(link).toHaveAttribute('href', 'https://api.example.test/api/doc')
+})
 
 it('Import CSV and Export CSV rows open their dialogs', async () => {
   server.use(...coreHandlers())
@@ -70,4 +91,20 @@ it('Import CSV and Export CSV rows open their dialogs', async () => {
   renderPage()
   await user.click(await screen.findByText('Import CSV'))
   expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
+})
+
+it('shows the new-version menu row above the Finances group when an update is available', async () => {
+  mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
+  renderPage()
+  const link = await screen.findByRole('link', { name: /v9\.9\.9/ })
+  expect(link).toHaveAttribute('href', 'https://econumo.com/releases/v9.9.9/')
+  expect(link).toHaveAttribute('target', '_blank')
+  const finances = screen.getByText('Finances')
+  expect(link.compareDocumentPosition(finances) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('shows no new-version link when no update is available', async () => {
+  renderPage()
+  expect(await screen.findByText('Settings')).toBeInTheDocument()
+  expect(screen.queryByText(/New version/)).not.toBeInTheDocument()
 })

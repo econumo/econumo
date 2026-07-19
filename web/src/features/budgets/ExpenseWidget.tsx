@@ -19,7 +19,7 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
 
   const [y, m] = selectedDate.split('-').map(Number)
-  const period = `${t(`elements.date.month_short.${MONTH_KEYS[m - 1]}`)} ${y}`
+  const period = `${t(`common.date.month_short.${MONTH_KEYS[m - 1]}`)} ${y}`
 
   const exchangeFn = makeBudgetExchange(budget, currencies)
   const rate = currencyId !== budget.meta.currencyId ? exchangeFn(budget.meta.currencyId, currencyId, '1') : null
@@ -27,7 +27,7 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
   return (
     <section className="flex w-full max-w-sm flex-col gap-2 rounded-md border p-3" data-testid="expense-widget">
       <header className="flex items-baseline justify-between text-sm font-medium">
-        {t('modules.budget.modal.expense_widget.header')}
+        {t('budgets.modal.expense_widget.header')}
         <span className="text-xs font-normal text-muted-foreground">{period}</span>
       </header>
       <div className="flex items-baseline justify-between text-sm">
@@ -42,7 +42,7 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
       />
       {rate !== null && budgetCurrency && currency ? (
         <p className="text-xs text-muted-foreground">
-          {t('modules.budget.modal.expense_widget.conversion_rate', {
+          {t('budgets.modal.expense_widget.conversion_rate', {
             period,
             defaultCurrency: budgetCurrency.code,
             rate: String(rate),

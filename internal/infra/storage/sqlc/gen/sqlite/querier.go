@@ -22,6 +22,7 @@ type Querier interface {
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	// New-tag position = count of the owner's existing tags.
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
+	DeleteAccessToken(ctx context.Context, id string) error
 	DeleteAccountAccess(ctx context.Context, arg DeleteAccountAccessParams) error
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
 	DeleteBudget(ctx context.Context, id string) error
@@ -35,6 +36,7 @@ type Querier interface {
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
+	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
@@ -51,6 +53,8 @@ type Querier interface {
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByIdentifier(ctx context.Context, identifier string) (int64, error)
+	GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error)
+	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
 	// to connected users; users_connections is the symmetric user link. Roles are
 	// admin=0, user=1, guest=2.
@@ -183,8 +187,8 @@ type Querier interface {
 	// category/payee/tag (non-transfers). Listing filters by account id sets the
 	// app layer computes (excluding deleted/hidden-folder accounts).
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
-	GetUserByID(ctx context.Context, id string) (User, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
+	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
@@ -202,6 +206,11 @@ type Querier interface {
 	// write concerns visibly distinct.
 	// The user's display fields for get-user-data / the login response user object.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
+	// Access-token queries (access_tokens): login sessions + personal access
+	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
+	// time.Time), not in SQL, to avoid engine date-format differences; the
+	// list/get queries return raw rows.
+	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	// Idempotently create one direction of the symmetric users_connections link.
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create
@@ -224,6 +233,7 @@ type Querier interface {
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
+	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to
@@ -232,12 +242,14 @@ type Querier interface {
 	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
-	// Available accounts: own OR shared via accounts_access, not deleted. Mirrors
-	// AccountRepository::getAvailableForUserId (LEFT JOIN accounts_access, own OR
-	// granted). DISTINCT collapses duplicate rows when multiple grants exist.
-	// ORDER BY pins creation order (id tie-break) so both engines return the same
-	// row order: get-account-list serves this order (reversed) directly, and an
-	// unordered DISTINCT differs between SQLite and PostgreSQL query plans.
+	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted.
+	// A pending (not yet accepted) grant confers no access here -- it only rides
+	// get-account-list as an inert entry appended separately (see
+	// Service.buildAccountList). DISTINCT collapses duplicate rows when multiple
+	// grants exist. ORDER BY pins creation order (id tie-break) so both engines
+	// return the same row order: get-account-list serves this order (reversed)
+	// directly, and an unordered DISTINCT differs between SQLite and PostgreSQL
+	// query plans.
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
@@ -289,6 +301,10 @@ type Querier interface {
 	// The owner's payees ordered by position; used by order-payee-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
+	// Pending grants TO this user (invites awaiting acceptance), excluding grants
+	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
+	// engines return identical row order.
+	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's tags ordered by position; used by order-tag-list (load, apply
@@ -306,6 +322,8 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error

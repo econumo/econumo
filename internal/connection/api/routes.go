@@ -7,14 +7,12 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-func RegisterAPI(h *Handlers, verifier middleware.TokenVerifier, dev bool) router.RegisterAPI {
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		jwt := middleware.JWT(verifier, dev)
-		auth := func(fn http.HandlerFunc) http.Handler { return jwt(fn) }
+		authMw := middleware.Auth(authn, dev)
+		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		mux.Handle("GET /api/v1/connection/get-connection-list", auth(h.GetConnectionList))
-		mux.Handle("POST /api/v1/connection/set-account-access", auth(h.SetAccountAccess))
-		mux.Handle("POST /api/v1/connection/revoke-account-access", auth(h.RevokeAccountAccess))
 
 		mux.Handle("POST /api/v1/connection/generate-invite", auth(h.GenerateInvite))
 		mux.Handle("POST /api/v1/connection/delete-invite", auth(h.DeleteInvite))

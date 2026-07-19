@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -20,11 +21,11 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -59,11 +60,16 @@ type harness struct {
 	tdb    *dbtest.DB
 	encode *auth.EncodeService
 	hasher *auth.PasswordHasher
-	jwt    *jwt.JWT
+	tokens *userrepo.AccessTokenRepo
 	clock  fixedClock
+	mail   *recordingMailer
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessWithLimiter(t, nil) }
+
+// newHarnessWithLimiter lets rate-limit tests inject a tight limiter; every
+// other test keeps the nil (disabled) default.
+func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harness {
 	t.Helper()
 	ctx := context.Background()
 
@@ -82,11 +88,6 @@ func newHarness(t *testing.T) *harness {
 
 	encode := auth.NewEncodeService(testDataSalt)
 	hasher := auth.NewPasswordHasher()
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
 	// Use a near-now issuance time so tokens verify (the JWT verifier checks exp
 	// against the real wall clock). Truncated to the second to match the
 	// integer-timestamp JWT claims.
@@ -100,33 +101,51 @@ func newHarness(t *testing.T) *harness {
 	repo := userrepo.NewSQLiteRepo(txm)
 	readRepo := userrepo.NewReadRepo("sqlite", txm)
 	currency := currencyrepo.New("sqlite", txm)
-	budgets := server.NewUserBudgetExistence("sqlite", txm)
+	budgets := server.NewUserBudgetAccess("sqlite", txm)
 	passwordReqs := userrepo.NewPasswordRequestRepo("sqlite", txm)
-	// Discard mailer — the reset test reads the code from the DB, so email output
-	// is irrelevant here (and we keep it off stdout, unlike the console default).
-	resetMailer := mailer.NewResetSender(discardMailer{}, "", "")
+	// Recording mailer — reset codes are hashed at rest, so the plaintext is only
+	// available from the email. The reset test reads it from here.
+	rec := &recordingMailer{}
+	resetMailer := mailer.NewResetSender(rec, "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
-	svc := appuser.NewService(repo, txm, encode, hasher, jwtSvc, currency, budgets, passwordReqs, resetMailer, clk, cfg.AllowRegistration)
+	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
+	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration)
 	readSvc := appuser.NewReadService(readRepo, encode)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleruser.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
+		RegisterAPI: handleruser.RegisterAPI(handlers, svc, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, jwt: jwtSvc, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, tokens: tokens, clock: clk, mail: rec}
 }
 
-// discardMailer drops every message; it keeps the reset test silent (the console
-// default would print to stdout) without re-exposing a no-op transport in prod.
-type discardMailer struct{}
+// recordingMailer captures every sent message so tests can recover the emitted
+// reset code (which is hashed at rest and no longer readable from the DB).
+type recordingMailer struct{ last mailer.Message }
 
-func (discardMailer) Send(context.Context, mailer.Message) error { return nil }
+func (m *recordingMailer) Send(_ context.Context, msg mailer.Message) error {
+	m.last = msg
+	return nil
+}
+
+// resetCodeRe matches the 12-char hex reset code in the rendered email body.
+var resetCodeRe = regexp.MustCompile(`[0-9a-f]{12}`)
+
+// lastResetCode extracts the reset code from the most recently sent email.
+func (m *recordingMailer) lastResetCode(t *testing.T) string {
+	t.Helper()
+	code := resetCodeRe.FindString(m.last.Text)
+	if code == "" {
+		t.Fatalf("no reset code found in email body: %q", m.last.Text)
+	}
+	return code
+}
 
 // seed inserts a known user (with hashed password and encrypted email) plus the
 // four default user options so login and get-user-data work. The budget option
@@ -207,13 +226,26 @@ func (h *harness) do(t *testing.T, method, path, token string, body any) (int, e
 	return resp.StatusCode, env
 }
 
+// issueToken seeds a live session row for the seeded user and returns its raw
+// bearer token (unique per call; the hash is what lands in access_tokens).
 func (h *harness) issueToken(t *testing.T) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(seedUserID, seedEmail, h.clock.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
+	return h.issueTokenFor(t, seedUserID)
+}
+
+func (h *harness) issueTokenFor(t *testing.T, userID string) string {
+	t.Helper()
+	raw := "eco_ses_" + vo.NewId().String()
+	now := h.clock.Now()
+	exp := now.Add(appuser.SessionTTL)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
+		TokenHash: appuser.HashAccessToken(raw), CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
-	return tok
+	if err := h.tokens.Insert(context.Background(), tok); err != nil {
+		t.Fatalf("seed session: %v", err)
+	}
+	return raw
 }
 
 type envelope struct {

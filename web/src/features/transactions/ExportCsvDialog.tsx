@@ -7,6 +7,7 @@ import { FailDialog } from '@/components/FailDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
 import { downloadBlob, localDateStamp } from '@/lib/download'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { exportTransactionList } from '@/api/transaction'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
@@ -40,6 +41,7 @@ export function ExportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
     setPending(true)
     try {
       const blob = await exportTransactionList(selected)
+      trackEvent(METRICS.TRANSACTION_EXPORT)
       downloadBlob(blob, `transactions-${localDateStamp()}.csv`)
       onClose()
     } catch {
@@ -51,10 +53,10 @@ export function ExportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <>
-      <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('modules.export_csv.modal.export_csv_form.header')}>
+      <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={t('transactions.export_csv.export_csv_form.header')}>
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">{t('modules.export_csv.modal.export_csv_form.accounts')}</p>
+            <p className="text-sm font-medium">{t('transactions.export_csv.export_csv_form.accounts')}</p>
             <Button
               type="button"
               variant="ghost"
@@ -62,8 +64,8 @@ export function ExportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
               onClick={() => setSelected(allSelected ? [] : accounts.map((a) => a.id))}
             >
               {allSelected
-                ? t('modules.export_csv.modal.export_csv_form.deselect_all')
-                : t('modules.export_csv.modal.export_csv_form.select_all')}
+                ? t('transactions.export_csv.export_csv_form.deselect_all')
+                : t('transactions.export_csv.export_csv_form.select_all')}
             </Button>
           </div>
           <ul className="flex max-h-80 flex-col gap-1 overflow-y-auto">
@@ -87,10 +89,10 @@ export function ExportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
           </ul>
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onClose}>
-              {t('elements.button.cancel.label')}
+              {t('common.button.cancel.label')}
             </Button>
             <Button type="button" disabled={selected.length === 0 || pending} onClick={() => void handleExport()}>
-              {t('elements.button.export.label')}
+              {t('common.button.export.label')}
             </Button>
           </div>
         </div>
@@ -99,8 +101,8 @@ export function ExportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
       <FailDialog
         open={failed}
         onClose={() => setFailed(false)}
-        title={t('pages.settings.export_csv.menu_item')}
-        description={t('pages.settings.export_csv.error')}
+        title={t('settings.export_csv.menu_item')}
+        description={t('settings.export_csv.error')}
       />
     </>
   )

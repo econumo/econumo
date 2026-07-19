@@ -3,10 +3,8 @@
 #   End users (published image):  docker compose pull && docker compose up -d
 #   Developers (build from src):  docker compose up -d --build   (or `make docker-up`)
 #
-# Config lives in .env (copy .env.example). Two named volumes hold everything
-# mutable — `db` for the sqlite database (/app/var/db) and `jwt` for the
-# auto-generated JWT keypair + passphrase (/app/var/jwt) — so data and logins
-# survive recreation.
+# Config lives in .env (copy .env.example). The `db` named volume holds the
+# sqlite database (/app/var/db).
 services:
   econumo:
     image: ghcr.io/econumo/econumo:latest
@@ -21,7 +19,6 @@ services:
       - "8181:80"
     volumes:
       - db:/app/var/db
-      - jwt:/app/var/jwt
       # Override the SPA runtime config by mounting your own file:
       #- ./econumo-config.js:/app/spa/econumo-config.js:ro
     restart: unless-stopped
@@ -57,5 +54,4 @@ services:
 
 volumes:
   db:
-  jwt:
   # pgdata:   # uncomment together with the postgres service above

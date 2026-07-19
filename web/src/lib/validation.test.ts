@@ -12,11 +12,12 @@ it('validates emails loosely (anything@anything)', () => {
   expect(isValidEmail('nope')).toBe(false)
 })
 
-it('validates name 2-64, password >= 4, recovery code length 12', () => {
+it('validates name 2-64, password 8-128, recovery code length 12', () => {
   expect(isValidName('ab')).toBe(true)
   expect(isValidName('a')).toBe(false)
-  expect(isValidPassword('1234')).toBe(true)
-  expect(isValidPassword('123')).toBe(false)
+  expect(isValidPassword('12345678')).toBe(true)
+  expect(isValidPassword('1234567')).toBe(false)
+  expect(isValidPassword('a'.repeat(129))).toBe(false)
   expect(isValidRecoveryCode('123456789012')).toBe(true)
   expect(isValidRecoveryCode('123')).toBe(false)
 })

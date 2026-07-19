@@ -4,15 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto } from '@/api/dto/connection'
 import type { AccountRole } from '@/api/dto/account'
 import type { Id } from '@/api/types'
-import { useAccounts, useDeleteAccount } from '@/features/accounts/queries'
+import { useAccounts, useDeleteAccount, useGrantAccountAccess, useRevokeAccountAccess } from '@/features/accounts/queries'
 import { useBudgets, useDeclineBudgetAccess, useGrantBudgetAccess, useRevokeBudgetAccess } from '@/features/budgets/queries'
 import { useUserData } from '@/features/user/queries'
 import { AccessLevelDialog } from './AccessLevelDialog'
 import { DeclineAccessDialog } from './DeclineAccessDialog'
-import { useRevokeAccountAccess, useSetAccountAccess } from './queries'
 import { sharedAccountsFor, sharedBudgetsFor } from './shared'
 import type { SharedItem } from './shared'
 
@@ -30,7 +30,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const { data: budgets = [] } = useBudgets()
-  const setAccountAccess = useSetAccountAccess()
+  const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
   const grantBudgetAccess = useGrantBudgetAccess()
   const revokeBudgetAccess = useRevokeBudgetAccess()
@@ -61,13 +61,13 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
   const section = (kind: 'accounts' | 'budgets', items: SharedItem[]) => (
     <section className="flex flex-col gap-1">
       <p className="text-xs font-medium uppercase text-muted-foreground">
-        {t(`modules.connections.modals.preview_connection.${kind}`)}
+        {t(`connections.modals.preview_connection.${kind}`)}
       </p>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t(`modules.connections.modals.preview_connection.${kind}_empty`)}</p>
+        <p className="text-sm text-muted-foreground">{t(`connections.modals.preview_connection.${kind}_empty`)}</p>
       ) : (
         <>
-          <p className="text-xs text-muted-foreground">{t('modules.connections.modals.preview_connection.tap_to_manage')}</p>
+          <p className="text-xs text-muted-foreground">{t('connections.modals.preview_connection.tap_to_manage')}</p>
           <ul className="flex flex-col">
             {items.map((item) => (
               <li key={item.id}>
@@ -85,13 +85,15 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
                     <span className="truncate text-sm">{item.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {item.ownedByMe
-                        ? t(`modules.connections.modals.preview_connection.your_${kind === 'budgets' ? 'budget' : 'account'}`)
-                        : t('modules.connections.modals.preview_connection.shared_with_you')}
+                        ? t(`connections.modals.preview_connection.your_${kind === 'budgets' ? 'budget' : 'account'}`)
+                        : t('connections.modals.preview_connection.shared_with_you')}
                       {' · '}
-                      {t(`modules.connections.${kind}.roles.${item.role}`)}
+                      {t(`connections.${kind}.roles.${item.role}`)}
                     </span>
                   </span>
-                  <img src={`${item.owner.avatar}?s=30`} alt={item.owner.name} className="size-5 rounded-full" />
+                  <span title={item.owner.name}>
+                    <UserAvatar avatar={item.owner.avatar} size="xs" />
+                  </span>
                 </button>
               </li>
             ))}
@@ -109,10 +111,10 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
           {section('accounts', sharedAccounts)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onClose}>
-              {t('elements.button.ok.label')}
+              {t('common.button.ok.label')}
             </Button>
             <Button type="button" variant="destructive" onClick={() => onDelete(other.id)}>
-              {t('elements.button.delete.label')}
+              {t('common.button.delete.label')}
             </Button>
           </div>
         </div>
@@ -126,7 +128,7 @@ export function PreviewConnectionDialog({ open, connection, onDelete, onClose }:
         onSelect={(role) => {
           if (!level) return
           if (level.kind === 'accounts') {
-            setAccountAccess.mutate({ accountId: level.item.id, userId: other.id, role: role as AccountRole })
+            grantAccountAccess.mutate({ accountId: level.item.id, userId: other.id, role: role as AccountRole })
           } else {
             grantBudgetAccess.mutate({ budgetId: level.item.id, userId: other.id, role })
           }

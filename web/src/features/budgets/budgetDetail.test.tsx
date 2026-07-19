@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget as wireBudget } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { useBudget, useSetLimit, useOrderBudgetFolders, canUpdateLimits } from './queries'
+import { useBudget, useSetLimit, useOrderBudgetFolders, canUpdateLimits, canEditBudget } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
 
@@ -111,6 +111,20 @@ it('order-folders patches folder positions optimistically and rolls back on erro
   // rolled back
   const cached = queryClient.getQueryData<BudgetDto>(key)!
   expect(cached.structure.folders.find((f) => f.id === 'bf1')?.position).toBe(0)
+})
+
+it('canEditBudget mirrors backend canUpdate: owner|admin|user yes, guest/pending/stranger no', () => {
+  const withRole = (role: string, isAccepted: 0 | 1 = 1) =>
+    ({
+      ...wireBudget.meta,
+      access: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role, isAccepted }],
+    }) as unknown as BudgetMetaDto
+  expect(canEditBudget(withRole('owner'), 'u1')).toBe(true)
+  expect(canEditBudget(withRole('admin'), 'u1')).toBe(true)
+  expect(canEditBudget(withRole('user'), 'u1')).toBe(true)
+  expect(canEditBudget(withRole('guest'), 'u1')).toBe(false)
+  expect(canEditBudget(withRole('user', 0), 'u1')).toBe(false)
+  expect(canEditBudget(withRole('user'), 'stranger')).toBe(false)
 })
 
 it('canUpdateLimits requires an accepted editing role and the period at/after start', () => {

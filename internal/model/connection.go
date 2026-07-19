@@ -30,7 +30,8 @@ func RoleFromAlias(alias string) (Role, error) {
 		}
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "role", Message: "AccountRole with alias " + alias + " not exists", Code: "VALIDATION_ERROR",
+		Key: "role", Message: "AccountRole with alias " + alias + " not exists", Code: errs.CodeConnectionInvalidRoleAlias,
+		Params: map[string]any{"alias": alias},
 	})
 }
 
@@ -49,22 +50,31 @@ func (r Role) Int16() int16 { return int16(r) }
 // exported for direct read access; the only write after construction goes
 // through UpdateRole.
 type AccountAccess struct {
-	AccountID vo.Id
-	UserID    vo.Id
-	Role      Role
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	AccountID  vo.Id
+	UserID     vo.Id
+	Role       Role
+	IsAccepted bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
-// NewAccountAccess creates a fresh grant (CreatedAt == UpdatedAt == now).
+// NewAccountAccess creates a fresh PENDING grant (CreatedAt == UpdatedAt == now).
 func NewAccountAccess(accountID, userID vo.Id, role Role, now time.Time) *AccountAccess {
-	return &AccountAccess{AccountID: accountID, UserID: userID, Role: role, CreatedAt: now, UpdatedAt: now}
+	return &AccountAccess{AccountID: accountID, UserID: userID, Role: role, IsAccepted: false, CreatedAt: now, UpdatedAt: now}
 }
 
 // UpdateRole changes the role, bumping UpdatedAt only when it actually changes.
 func (a *AccountAccess) UpdateRole(role Role, now time.Time) {
 	if a.Role != role {
 		a.Role = role
+		a.UpdatedAt = now
+	}
+}
+
+// Accept marks a pending grant accepted, bumping UpdatedAt only on the transition.
+func (a *AccountAccess) Accept(now time.Time) {
+	if !a.IsAccepted {
+		a.IsAccepted = true
 		a.UpdatedAt = now
 	}
 }

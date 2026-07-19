@@ -6,7 +6,6 @@ package user
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/econumo/econumo/internal/model"
@@ -24,8 +23,8 @@ func (s *Service) AdminCreateUser(ctx context.Context, name, email, password str
 	return u.ID, nil
 }
 
-// AdminChangeEmail changes a user's email (identifier, ciphertext, avatar),
-// looked up by the current email.
+// AdminChangeEmail changes a user's email (identifier, ciphertext), looked up
+// by the current email. The avatar is left unchanged.
 func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail string) error {
 	u, err := s.userByEmail(ctx, oldEmail)
 	if err != nil {
@@ -40,7 +39,7 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 			return err
 		}
 		if exists {
-			return errs.NewValidation("User already exists")
+			return &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 		}
 	}
 
@@ -48,25 +47,32 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 	if err != nil {
 		return err
 	}
-	avatarURL := fmt.Sprintf("https://www.gravatar.com/avatar/%s", md5Hex(loweredNew))
 
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdateEmail(newIdentifier, encryptedEmail, avatarURL, s.clock.Now())
+		u.UpdateEmail(newIdentifier, encryptedEmail, s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }
 
-// AdminChangePassword sets a user's password (hashed with the user's salt),
-// looked up by email.
+// AdminChangePassword sets a user's password, rehashed with the current
+// algorithm (argon2id), looked up by email. All the user's sessions are
+// revoked (there is no presenting session on the CLI path); PATs survive.
 func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(s.hasher.Hash(newPassword, u.Salt), s.clock.Now())
+	newHash, herr := s.hasher.Hash(newPassword)
+	if herr != nil {
+		return herr
+	}
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		return s.repo.Save(ctx, u)
-	})
+	}); err != nil {
+		return err
+	}
+	return s.revokeSessions(ctx, u.ID, vo.Id{}, s.clock.Now())
 }
 
 // AdminActivate marks the user active, looked up by email.
@@ -81,16 +87,22 @@ func (s *Service) AdminActivate(ctx context.Context, email string) error {
 	})
 }
 
-// AdminDeactivate marks the user inactive, looked up by email.
+// AdminDeactivate marks the user inactive, looked up by email, and revokes
+// EVERY credential (sessions AND personal tokens) — this is why per-request
+// authentication needs no is_active join: a deactivated user simply has no
+// live tokens left.
 func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.Deactivate(s.clock.Now())
 		return s.repo.Save(ctx, u)
-	})
+	}); err != nil {
+		return err
+	}
+	return s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
 }
 
 // userByEmail resolves a user from a plaintext email via the md5 identifier

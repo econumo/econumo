@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"database/sql"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -49,9 +48,6 @@ func cliEnv(t *testing.T) {
 	}
 
 	t.Setenv("DATABASE_URL", "sqlite://"+dbPath)
-	t.Setenv("ECONUMO_JWT_PRIVATE_KEY_PATH", filepath.Join(dir, "jwt", "private.pem"))
-	t.Setenv("ECONUMO_JWT_PUBLIC_KEY_PATH", filepath.Join(dir, "jwt", "public.pem"))
-	t.Setenv("ECONUMO_JWT_PASSPHRASE", "test-pass")
 }
 
 // TestUserCommandLifecycle drives the user management commands end to end
@@ -92,50 +88,6 @@ func TestUserCreateUsageError(t *testing.T) {
 	cliEnv(t)
 	if got := Run([]string{"user:create", "only-one-arg"}); got != 1 {
 		t.Fatalf("user:create with wrong arity = %d, want 1", got)
-	}
-}
-
-func TestJwtGenerate(t *testing.T) {
-	cliEnv(t)
-	if got := Run([]string{"jwt:generate"}); got != 0 {
-		t.Fatalf("jwt:generate = %d, want 0", got)
-	}
-	privPath := os.Getenv("ECONUMO_JWT_PRIVATE_KEY_PATH")
-	pubPath := os.Getenv("ECONUMO_JWT_PUBLIC_KEY_PATH")
-	if _, err := os.Stat(privPath); err != nil {
-		t.Errorf("private key not written: %v", err)
-	}
-	if _, err := os.Stat(pubPath); err != nil {
-		t.Errorf("public key not written: %v", err)
-	}
-
-	// Re-running without --force is a no-op success (skip-if-present), and the
-	// key files must be untouched.
-	before, err := os.ReadFile(privPath)
-	if err != nil {
-		t.Fatalf("read private key: %v", err)
-	}
-	if got := Run([]string{"jwt:generate"}); got != 0 {
-		t.Fatalf("jwt:generate (skip) = %d, want 0", got)
-	}
-	after, err := os.ReadFile(privPath)
-	if err != nil {
-		t.Fatalf("re-read private key: %v", err)
-	}
-	if string(before) != string(after) {
-		t.Error("jwt:generate without --force regenerated the key")
-	}
-
-	// --force regenerates it.
-	if got := Run([]string{"jwt:generate", "--force"}); got != 0 {
-		t.Fatalf("jwt:generate --force = %d, want 0", got)
-	}
-	regenerated, err := os.ReadFile(privPath)
-	if err != nil {
-		t.Fatalf("re-read private key after --force: %v", err)
-	}
-	if string(before) == string(regenerated) {
-		t.Error("jwt:generate --force did not regenerate the key")
 	}
 }
 
@@ -231,5 +183,31 @@ func TestMissingDatabaseURL(t *testing.T) {
 	t.Setenv("DATABASE_URL", "")
 	if got := Run([]string{"user:create", "X", "x@example.test", "pw"}); got != 1 {
 		t.Fatalf("Run with empty DATABASE_URL = %d, want 1", got)
+	}
+}
+
+func TestTokenPurge(t *testing.T) {
+	cliEnv(t)
+	if got := Run([]string{"user:create", "Purge Tester", "purge@example.test", "secretpass"}); got != 0 {
+		t.Fatalf("user:create = %d, want 0", got)
+	}
+	// Fresh DB: nothing dead to purge, but the command must succeed with the
+	// default retention and with an explicit day count.
+	if got := Run([]string{"token:purge"}); got != 0 {
+		t.Fatalf("token:purge = %d, want 0", got)
+	}
+	if got := Run([]string{"token:purge", "0"}); got != 0 {
+		t.Fatalf("token:purge 0 = %d, want 0", got)
+	}
+	// Usage errors (extra args / non-numeric / negative days) exit 1, like
+	// every in-command usage error (2 is reserved for unknown commands).
+	for _, args := range [][]string{
+		{"token:purge", "7", "extra"},
+		{"token:purge", "soon"},
+		{"token:purge", "-1"},
+	} {
+		if got := Run(args); got != 1 {
+			t.Fatalf("Run(%v) = %d, want 1", args, got)
+		}
 	}
 }

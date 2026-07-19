@@ -2,9 +2,10 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
+import { act } from 'react'
+import { coreHandlers, fixtureBudgets, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -62,6 +63,32 @@ it('renders the full budget page: strip, chips, table, totals', async () => {
   expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
 })
 
+it('the cold-load spinner grows a logout escape after three seconds when the backend never answers', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', async () => {
+      await delay('infinite')
+      return HttpResponse.error()
+    }),
+  )
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    renderPage()
+    expect(await screen.findByTestId('budget-loading')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Log out' })).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(3000)
+    const link = await screen.findByRole('link', { name: 'Log out' })
+    expect(link).toHaveAttribute('href', '/logout')
+    expect(screen.getByText(/Having trouble\?/)).toBeInTheDocument()
+    // anchored inside the loader area (not the viewport) so it centers under
+    // the spinner next to the sidebar, without shifting layout
+    expect(link.closest('div')?.className).toContain('absolute')
+    expect(screen.getByTestId('budget-loading').className).toContain('relative')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('toggling a currency chip mounts the expense widget', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -98,6 +125,43 @@ it('configure menu enters edit mode; folder create posts with a v7 id', async ()
   expect(body!.budgetId).toBe('b1')
   expect(body!.name).toBe('Fun')
   expect(String(body!.id)).toMatch(/^[0-9a-f-]{36}$/)
+})
+
+it('guest role: the Budget details menu item is disabled', async () => {
+  const guestBudget = {
+    ...fixtureWireBudget,
+    meta: {
+      ...fixtureWireBudget.meta,
+      ownerUserId: 'u9',
+      access: [
+        { user: { id: 'u9', avatar: 'face:sky', name: 'Owner' }, role: 'owner', isAccepted: 1 },
+        { user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'guest', isAccepted: 1 },
+      ],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  expect(await screen.findByRole('menuitem', { name: 'Budget details' })).toHaveAttribute('aria-disabled', 'true')
+  expect(screen.getByRole('menuitem', { name: 'Edit structure' })).toHaveAttribute('aria-disabled', 'true')
+})
+
+it('owner role: the Budget details menu item opens the edit dialog', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  const item = await screen.findByRole('menuitem', { name: 'Budget details' })
+  expect(item).not.toHaveAttribute('aria-disabled', 'true')
+  await user.click(item)
+  expect(await screen.findByRole('heading', { name: 'Edit budget' })).toBeInTheDocument()
 })
 
 it('deleting an empty folder asks for confirmation before posting', async () => {
@@ -179,5 +243,70 @@ it('/ renders the budget for an onboarded user with a default budget', async () 
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+})
+
+const accessDenied = () =>
+  HttpResponse.json({ success: false, message: 'Access denied', code: 0, errors: [] }, { status: 403 })
+
+it('revoked budget access shows the unavailable state with a way to pick another budget', async () => {
+  server.use(
+    // the revoked budget b1 is gone from the list; b2 remains
+    ...coreHandlers({ user: userWithBudget, budgets: fixtureBudgets.filter((b) => b.id !== 'b1') }),
+    http.get('*/api/v1/budget/get-budget', accessDenied),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByTestId('budget-unavailable')).toBeInTheDocument()
+  expect(screen.queryByTestId('budget-loading')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-empty')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Choose another budget' }))
+  expect(await screen.findByText('BUDGETS LIST')).toBeInTheDocument()
+})
+
+it('a budget that starts failing after a period switch stops the placeholder loader', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget, budgets: fixtureBudgets.filter((b) => b.id !== 'b1') }),
+    http.get('*/api/v1/budget/get-budget', ({ request }) =>
+      new URL(request.url).searchParams.get('date') === '2026-07-01'
+        ? HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })
+        : accessDenied(),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+  // the month switch keeps the July budget as placeholder data while June 403s
+  act(() => {
+    useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
+  })
+  expect(await screen.findByTestId('budget-unavailable')).toBeInTheDocument()
+  expect(screen.queryByTestId('budget-loading')).not.toBeInTheDocument()
+})
+
+it('revoked access with no remaining budgets falls back to onboarding', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget, budgets: [] }),
+    http.get('*/api/v1/budget/get-budget', accessDenied),
+  )
+  renderPage()
+  expect(await screen.findByTestId('budget-empty')).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Create a budget' })).toBeInTheDocument())
+})
+
+it('a server error settles into a retryable error state instead of an endless loader', async () => {
+  let failing = true
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () =>
+      failing
+        ? HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })
+        : HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByTestId('budget-error')).toBeInTheDocument()
+  failing = false
+  await user.click(screen.getByRole('button', { name: 'Try again' }))
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
 })

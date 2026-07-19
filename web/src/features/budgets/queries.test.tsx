@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureBudgets, fixtureOwner } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { useBudgets, useCreateBudget, useDeleteBudget } from './queries'
+import { useBudgets, useCreateBudget, useDeclineBudgetAccess, useDeleteBudget } from './queries'
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -71,6 +71,21 @@ it('create dedupes by own name without hitting the API', async () => {
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(hits).toBe(0)
   expect(result.current.data!.id).toBe('b1')
+})
+
+it('decline immediately drops the budget from the cache', async () => {
+  server.use(
+    http.post('*/api/v1/budget/decline-access', () =>
+      HttpResponse.json({ success: true, message: '', data: {} }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+  const declined = fixtureBudgets[0].id
+  const { result } = renderHook(() => useDeclineBudgetAccess(), { wrapper })
+  result.current.mutate(declined)
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.budgets)!.map((b) => b.id)).not.toContain(declined)
 })
 
 it('delete removes from the cache and invalidates budget + user', async () => {

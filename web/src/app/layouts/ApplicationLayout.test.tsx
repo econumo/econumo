@@ -6,9 +6,16 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureBudgets, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { QUERY_CACHE_KEY, refreshRestoredQueries } from '@/lib/queryPersist'
+import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
+import { useSidebarStore } from '@/app/uiStore'
 import { ApplicationLayout } from './ApplicationLayout'
+
+const mockUpdate = vi.hoisted(() => ({ value: null as AvailableUpdate | null }))
+vi.mock('@/hooks/useAvailableUpdate', () => ({
+  useAvailableUpdate: () => mockUpdate.value,
+}))
 
 function mockViewport(compact: boolean) {
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -63,6 +70,10 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   server.use(...coreHandlers())
+  mockUpdate.value = null
+  // the sidebar-collapsed flag lives in a module-level zustand store, so it
+  // survives across tests in this file independent of localStorage.clear()
+  useSidebarStore.setState({ collapsed: false })
 })
 
 it('shows the loading gate, then the sidebar tree with folder totals', async () => {
@@ -112,6 +123,60 @@ it('a reload with a persisted cache skips the boot loader and refreshes in the b
   await waitFor(() => expect(accountFetches).toBeGreaterThan(coldBootFetches))
 })
 
+it('the boot loader grows a logout escape after three seconds when the backend is unreachable', async () => {
+  mockViewport(false)
+  server.use(http.get('*/api/*', () => HttpResponse.error()))
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    renderShell('/')
+    expect(screen.getByText('Loading your data')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Log out' })).not.toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(3000)
+    const link = await screen.findByRole('link', { name: 'Log out' })
+    expect(link).toHaveAttribute('href', '/logout')
+    // the escape floats at the bottom of the screen so its appearance never
+    // shifts the loader
+    expect(screen.getByText(/Having trouble\?/)).toBeInTheDocument()
+    expect(link.closest('div')?.className).toContain('fixed')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('no logout escape appears once the app has loaded', async () => {
+  mockViewport(false)
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    renderShell('/')
+    expect(await screen.findByText('Cash')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(screen.queryByRole('link', { name: 'Log out' })).not.toBeInTheDocument()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('the sync icon turns into an amber warning while background refreshes fail, and recovers on success', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const syncButton = screen.getByRole('button', { name: 'sync' })
+  expect(syncButton.title).toContain('Full sync')
+  expect(syncButton.className).not.toContain('amber')
+
+  server.use(http.get('*/api/*', () => HttpResponse.error()))
+  await user.click(syncButton)
+  await waitFor(() => expect(syncButton.title).toContain("Can't reach the server"))
+  expect(syncButton.className).toContain('amber')
+
+  server.resetHandlers()
+  server.use(...coreHandlers())
+  await user.click(syncButton)
+  await waitFor(() => expect(syncButton.title).toContain('Full sync'))
+  expect(syncButton.className).not.toContain('amber')
+})
+
 it('desktop shows sidebar and workspace together', async () => {
   mockViewport(false)
   renderShell('/account/a1')
@@ -133,7 +198,7 @@ it('desktop divider click collapses the sidebar to an icon rail and back', async
   expect(screen.queryByText('Budget')).not.toBeInTheDocument()
   // the account is still reachable as an icon button, avatar still shown
   expect(screen.getByRole('button', { name: 'Cash' })).toBeInTheDocument()
-  expect(screen.getByAltText('Ada')).toBeInTheDocument()
+  expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', fixtureUser.avatar)
 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
   expect(await screen.findByText('Cash')).toBeInTheDocument()
@@ -152,4 +217,102 @@ it('compact viewport hides the sidebar on content routes', async () => {
   renderShell('/account/a1')
   await waitFor(() => expect(screen.getByTestId('workspace')).toBeInTheDocument())
   expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
+})
+
+const fixtureOtherOwner = { id: 'u2', avatar: 'pets:sky', name: 'Bob' }
+
+// One pending account invite + one pending budget invite for the current
+// user (u1) — two invites owned by someone else, count === 2.
+const pendingAccount = {
+  id: 'a-pending', owner: fixtureOtherOwner, folderId: null, name: 'Shared Cash', position: 0,
+  currency: fixtureAccounts[0].currency, balance: '10', type: 1, icon: 'wallet',
+  sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 0 }],
+}
+const pendingBudget = {
+  id: 'b-pending', ownerUserId: fixtureOtherOwner.id, name: 'Shared Budget', startedAt: '2026-01-01 00:00:00',
+  currencyId: fixtureAccounts[0].currency.id,
+  access: [
+    { user: fixtureOtherOwner, role: 'owner', isAccepted: 1 },
+    { user: fixtureOwner, role: 'user', isAccepted: 0 },
+  ],
+}
+
+it('shows a sharing-requests button above the Budget link when invites are pending, and clicking it opens the dialog', async () => {
+  mockViewport(false)
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, pendingAccount], budgets: [...fixtureBudgets, pendingBudget] }))
+  const user = userEvent.setup()
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  const button = screen.getByRole('button', { name: /Sharing requests/ })
+  expect(button).toHaveTextContent('2')
+  const budgetLink = screen.getByRole('link', { name: 'Budget' })
+  // eslint-disable-next-line no-bitwise
+  expect(button.compareDocumentPosition(budgetLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  await user.click(button)
+  expect(await screen.findByRole('heading', { name: 'Sharing requests' })).toBeInTheDocument()
+})
+
+it('hides the sharing-requests button when there are no pending invites', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Sharing requests/ })).not.toBeInTheDocument()
+})
+
+it('collapsed rail shows the sharing-requests icon button with a count bubble, and clicking it opens the dialog', async () => {
+  mockViewport(false)
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, pendingAccount], budgets: [...fixtureBudgets, pendingBudget] }))
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Budget')).not.toBeInTheDocument()
+
+  const button = screen.getByTitle('Sharing requests')
+  expect(button).toHaveTextContent('2')
+  await user.click(button)
+  expect(await screen.findByRole('heading', { name: 'Sharing requests' })).toBeInTheDocument()
+})
+
+it('shows an update dot on the full-footer Settings link when an update is available', async () => {
+  mockViewport(false)
+  mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const settingsLink = screen.getByText('Settings').closest('a')
+  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).toBeInTheDocument()
+})
+
+it('shows no update dot on the full-footer Settings link when no update is available', async () => {
+  mockViewport(false)
+  renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  const settingsLink = screen.getByText('Settings').closest('a')
+  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).not.toBeInTheDocument()
+})
+
+it('shows an update dot on the icon-rail Settings gear when an update is available', async () => {
+  mockViewport(false)
+  mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  expect(screen.getByTestId('update-dot')).toBeInTheDocument()
+})
+
+it('shows no update dot on the icon-rail Settings gear when no update is available', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('update-dot')).not.toBeInTheDocument()
 })

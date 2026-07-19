@@ -28,14 +28,18 @@ import (
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
+	appsystem "github.com/econumo/econumo/internal/system"
+	handlersystem "github.com/econumo/econumo/internal/system/api"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
@@ -49,12 +53,36 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
+// Seams are BuildAPI's injectable sources of nondeterminism. The zero value
+// wires production defaults (real clock, random avatar picker); tests override
+// them so responses stay byte-stable (golden files, engine comparison).
+type Seams struct {
+	Clock   port.Clock
+	Avatars appuser.AvatarPicker
+	// Updates is the release-check service. serve constructs an enabled one and
+	// starts its poller; nil (every test and CLI path) wires a disabled service
+	// that never polls, keeping responses deterministic and hermetic.
+	Updates *appsystem.Service
+	// Mailer overrides the reset-email transport. nil wires the config-derived
+	// transport (console default / Resend); tests inject a recording transport to
+	// capture the emitted reset code, which is no longer readable from the DB.
+	Mailer mailer.Mailer
+}
+
 // BuildAPI wires every resource module over the given (already opened+migrated)
-// database and returns the full HTTP handler. The caller owns the DB, jwtSvc and
-// clk so tests can inject deterministic ones and point at either engine; the
-// engine is read from cfg.DatabaseDriver, which selects the per-engine sqlc query
-// adapters in every repository constructor.
-func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) http.Handler {
+// database and returns the full HTTP handler. The caller owns the DB and the
+// seams (clock, avatar picker) so tests can inject deterministic ones and point
+// at either engine; the engine is read from cfg.DatabaseDriver, which selects
+// the per-engine sqlc query adapters in every repository constructor.
+func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
+	clk := seams.Clock
+	if clk == nil {
+		clk = clock.New()
+	}
+	avatars := seams.Avatars
+	if avatars == nil {
+		avatars = appuser.NewRandomAvatarPicker()
+	}
 	txm := backend.NewTxManager(db)
 
 	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
@@ -65,14 +93,30 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := NewUserBudgetExistence(cfg.DatabaseDriver, txm)
+	budgetAccess := NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
-	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
+	mailTransport := seams.Mailer
+	if mailTransport == nil {
+		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
+	}
+	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	authLimiter := ratelimit.New(ratelimit.Config{
+		Limits: map[string]int{
+			appuser.RateScopeLogin:              cfg.RateLimitLogin,
+			appuser.RateScopeReset:              cfg.RateLimitReset,
+			appuser.RateScopeRemind:             cfg.RateLimitRemind,
+			appuser.RateScopeRegister:           cfg.RateLimitRegister,
+			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
+		},
+		Window: cfg.RateLimitWindow,
+		Global: cfg.RateLimitGlobal,
+	}, clk)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, jwtSvc, currencyLookup, budgetExistence,
-		passwordReqRepo, resetMailer, clk, cfg.AllowRegistration,
+		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetAccess,
+		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
@@ -105,28 +149,50 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
 	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, cfg.IsDev())
 
-	// Connection service is built first: the account result embeds sharedAccess[]
-	// and delete-account revokes the caller's own access.
+	updates := seams.Updates
+	if updates == nil {
+		updates = appsystem.NewService(false, appsystem.DefaultFeedURL)
+	}
+	systemHandlers := handlersystem.NewHandlers(updates, cfg.IsDev())
+
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
 	accountCurrencyLookup := NewAccountCurrencyLookup(currencyLookup)
 	userOwnerLookup := NewUserOwnerLookup(userRepo)
-	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
-	connectionFolderPort := NewConnectionFolderPort(folderRepo)
 
-	connectionBudgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	connectionBudgetRevoker := NewConnectionBudgetRevoker(connectionBudgetRepo)
-	connectionSvc := appconnection.NewService(
-		connectionRepo, connectionInviteRepo, connectionFolderPort, accountRepo,
-		userOwnerLookup, connectionBudgetRevoker, txm, clk,
-	)
-	accountSharedLookup := NewConnectionSharedAccessLookup(connectionRepo)
-	accountRevoker := NewConnectionAccessRevoker(connectionRepo, connectionSvc)
+	// Account service is built before connection: delete-connection's unwind
+	// needs it (via ConnectionAccountAccessRevoker), and account is otherwise
+	// self-sufficient — it no longer references connection.
+	accountAccessRepo := accountrepo.NewAccessRepo(cfg.DatabaseDriver, txm)
 	accountSvc := appaccount.NewService(
-		accountRepo, folderRepo, accountCurrencyLookup, userOwnerLookup, accountSharedLookup, accountRevoker, txm, opGuard, clk,
+		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, accountAccessResolver, txm, opGuard, clk,
 	)
 	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
+
+	// Budget service is built before connection: delete-connection's unwind
+	// removes budget memberships (access + seeded records) via RemoveMember.
+	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
+	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
+	convertor := appcurrency.NewConvertor(rateProvider)
+	budgetSvc := appbudget.NewService(
+		budgetRepo, budgetReadRepo, convertor, rateProvider,
+		NewBudgetUserLookup(userRepo, clk),
+		NewBudgetAccountLookup(accountRepo),
+		currencyLookup,
+		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
+		accountAccessResolver,
+		txm, clk,
+	)
+	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
+
+	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
+	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
+	connectionBudgetRevoker := NewConnectionBudgetRevoker(budgetRepo, budgetSvc)
+	connectionSvc := appconnection.NewService(
+		connectionRepo, connectionInviteRepo, userOwnerLookup,
+		NewConnectionAccountAccessRevoker(accountSvc), connectionBudgetRevoker, authLimiter, txm, clk,
+	)
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 
@@ -146,37 +212,25 @@ func BuildAPI(cfg config.Config, db *sql.DB, jwtSvc *jwt.JWT, clk port.Clock) ht
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
 
-	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
-	convertor := appcurrency.NewConvertor(rateProvider)
-	budgetSvc := appbudget.NewService(
-		budgetRepo, budgetReadRepo, convertor, rateProvider,
-		NewBudgetUserLookup(userRepo, clk),
-		NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
-		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
-		txm, clk,
-	)
-	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
-
 	registerAPI := router.Compose(
-		handleruser.RegisterAPI(userHandlers, jwtSvc, cfg.IsDev()),
-		handlercategory.RegisterAPI(categoryHandlers, jwtSvc, cfg.IsDev()),
-		handlertag.RegisterAPI(tagHandlers, jwtSvc, cfg.IsDev()),
-		handlerpayee.RegisterAPI(payeeHandlers, jwtSvc, cfg.IsDev()),
-		handlercurrency.RegisterAPI(currencyHandlers, jwtSvc, cfg.IsDev()),
-		handleraccount.RegisterAPI(accountHandlers, jwtSvc, cfg.IsDev()),
-		handlertransaction.RegisterAPI(transactionHandlers, jwtSvc, cfg.IsDev()),
-		handlerconnection.RegisterAPI(connectionHandlers, jwtSvc, cfg.IsDev()),
-		handlerbudget.RegisterAPI(budgetHandlers, jwtSvc, cfg.IsDev()),
+		handleruser.RegisterAPI(userHandlers, userSvc, cfg.IsDev()),
+		handlercategory.RegisterAPI(categoryHandlers, userSvc, cfg.IsDev()),
+		handlertag.RegisterAPI(tagHandlers, userSvc, cfg.IsDev()),
+		handlerpayee.RegisterAPI(payeeHandlers, userSvc, cfg.IsDev()),
+		handlercurrency.RegisterAPI(currencyHandlers, userSvc, cfg.IsDev()),
+		handleraccount.RegisterAPI(accountHandlers, userSvc, cfg.IsDev()),
+		handlertransaction.RegisterAPI(transactionHandlers, userSvc, cfg.IsDev()),
+		handlerconnection.RegisterAPI(connectionHandlers, userSvc, cfg.IsDev()),
+		handlerbudget.RegisterAPI(budgetHandlers, userSvc, cfg.IsDev()),
+		handlersystem.RegisterAPI(systemHandlers, userSvc, cfg.IsDev()),
 		apidoc.RegisterAPI(),
 	)
 
 	return router.New(router.Deps{
-		Cfg:         cfg,
-		DB:          pinger{db},
-		RegisterAPI: registerAPI,
+		Cfg:                cfg,
+		DB:                 pinger{db},
+		RegisterAPI:        registerAPI,
+		SupportedLanguages: i18n.Supported,
 	})
 }
 

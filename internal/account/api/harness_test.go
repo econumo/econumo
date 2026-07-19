@@ -8,26 +8,22 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	"github.com/econumo/econumo/internal/config"
-	appconnection "github.com/econumo/econumo/internal/connection"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/shared/port"
+	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/router"
 )
@@ -51,7 +47,6 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
-	jwt *jwt.JWT
 	f   *fixture.Builder
 }
 
@@ -67,12 +62,6 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	tdb := dbtest.NewSQLite(t)
 	db := tdb.Raw
 
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("jwt: %v", err)
-	}
-
 	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
 	seedUsers(t, f)
 	f.Folder(fixture.Folder{ID: seedFolderID, UserID: seedUserID, Name: "Main", Position: 0})
@@ -86,29 +75,20 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	// Wire the real connection module so sharedAccess[] + the delete-account
-	// non-owner revoke branch are exercised against actual accounts_access rows.
-	connRepo := connectionrepo.NewRepo("sqlite", txm)
-	connSvc := appconnection.NewService(
-		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
-		server.NewConnectionFolderPort(folderRepo), repo,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
-		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
-	)
-	sharedLookup := server.NewConnectionSharedAccessLookup(connRepo)
-	revoker := server.NewConnectionAccessRevoker(connRepo, connSvc)
-	svc := appaccount.NewService(repo, folderRepo, accCur, accUser, sharedLookup, revoker, txm, opGuard, clk)
+	accessRepo := accountrepo.NewAccessRepo("sqlite", txm)
+	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
+	svc := appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, connections, txm, opGuard, clk)
 	handlers := handleraccount.NewHandlers(svc, cfg.IsDev())
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleraccount.RegisterAPI(handlers, jwtSvc, cfg.IsDev()),
+		RegisterAPI: handleraccount.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, jwt: jwtSvc, f: f}
+	return &harness{srv: srv, db: db, f: f}
 }
 
 func seedUsers(t *testing.T, f *fixture.Builder) {
@@ -119,15 +99,14 @@ func seedUsers(t *testing.T, f *fixture.Builder) {
 	} {
 		f.User(fixture.User{ID: u.id, Email: u.email, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 	}
+	// Sharing an account requires a connection between the two users.
+	f.Connect(seedUserID, otherUserID)
 }
 
 func (h *harness) token(t *testing.T) string {
 	t.Helper()
-	tok, err := h.jwt.Issue(seedUserID, seedEmail, time.Now())
-	if err != nil {
-		t.Fatalf("issue token: %v", err)
-	}
-	return tok
+	// authstub: the bearer token IS the user id string.
+	return seedUserID
 }
 
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {

@@ -29,6 +29,13 @@ const (
 	OnboardingCompleted = "completed"
 )
 
+// Password-hash algorithm markers stored in users.algorithm. sha512 is the
+// legacy scheme (see CLAUDE.md); argon2id is written by every new hash.
+const (
+	AlgorithmSHA512   = "sha512"
+	AlgorithmArgon2id = "argon2id"
+)
+
 // persistedOptions are the option names that exist as users_options rows, in
 // the order they are seeded at registration. CurrencyID is intentionally absent
 // (it is computed in the result, never stored).
@@ -73,9 +80,9 @@ func (o *UserOption) setValue(value *string, now time.Time) {
 // (id, name, avatar) — no options, no credentials. Owner/author embeds use it so
 // they need only a single user-row query rather than hydrating the full aggregate.
 type Header struct {
-	ID        string
-	Name      string
-	AvatarURL string
+	ID     string
+	Name   string
+	Avatar string
 }
 
 // User is the user aggregate root. Strings that are encrypted at rest (Email)
@@ -88,9 +95,10 @@ type User struct {
 	Identifier string // md5(lower(email)+salt) — the auth lookup key
 	Email      string // AES-encrypted ciphertext (opaque here)
 	Name       string
-	AvatarURL  string
-	Password   string // sha512, 500 iterations, base64-encoded (see CLAUDE.md)
-	Salt       string // sha1(random) hex, 40 chars
+	Avatar     string
+	Password   string // hash produced by the scheme in Algorithm (see CLAUDE.md)
+	Salt       string // sha1(random) hex, 40 chars (unused by argon2id hashes)
+	Algorithm  string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
 	IsActive   bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -98,17 +106,18 @@ type User struct {
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
-// already computed identifier, encrypted email, avatar URL, password hash and
+// already computed identifier, encrypted email, avatar value, password hash and
 // salt. Options are seeded separately via SeedDefaultOptions.
-func NewUser(id vo.Id, identifier, encryptedEmail, name, avatarURL, passwordHash, salt string, now time.Time) *User {
+func NewUser(id vo.Id, identifier, encryptedEmail, name, avatar, passwordHash, salt string, now time.Time) *User {
 	return &User{
 		ID:         id,
 		Identifier: identifier,
 		Email:      encryptedEmail,
 		Name:       name,
-		AvatarURL:  avatarURL,
+		Avatar:     avatar,
 		Password:   passwordHash,
 		Salt:       salt,
+		Algorithm:  AlgorithmArgon2id,
 		IsActive:   true,
 		CreatedAt:  now,
 		UpdatedAt:  now,
@@ -147,6 +156,11 @@ func (u *User) UpdateName(name string, now time.Time) {
 	u.UpdatedAt = now
 }
 
+func (u *User) UpdateAvatar(avatar string, now time.Time) {
+	u.Avatar = avatar
+	u.UpdatedAt = now
+}
+
 // Activate marks the account active, bumping UpdatedAt only when the state
 // actually changes so a no-op activate leaves the row untouched.
 func (u *User) Activate(now time.Time) {
@@ -167,19 +181,19 @@ func (u *User) Deactivate(now time.Time) {
 	u.UpdatedAt = now
 }
 
-// UpdatePassword replaces the stored password hash. The caller hashes the
-// plaintext using this user's salt first.
-func (u *User) UpdatePassword(passwordHash string, now time.Time) {
+// UpdatePassword replaces the stored password hash and records which algorithm
+// produced it. The caller hashes the plaintext first.
+func (u *User) UpdatePassword(passwordHash, algorithm string, now time.Time) {
 	u.Password = passwordHash
+	u.Algorithm = algorithm
 	u.UpdatedAt = now
 }
 
-// UpdateEmail replaces the encrypted email, identifier and avatar URL together,
-// all derived by the service.
-func (u *User) UpdateEmail(identifier, encryptedEmail, avatarURL string, now time.Time) {
+// UpdateEmail replaces the encrypted email and identifier together, both
+// derived by the service.
+func (u *User) UpdateEmail(identifier, encryptedEmail string, now time.Time) {
 	u.Identifier = identifier
 	u.Email = encryptedEmail
-	u.AvatarURL = avatarURL
 	u.UpdatedAt = now
 }
 
@@ -204,6 +218,18 @@ func (u *User) UpdateBudget(budgetID string, now time.Time) {
 		v := budgetID
 		o.setValue(&v, now)
 	}
+}
+
+// ClearBudget clears the active-budget option when it points at the given
+// budget (access revoked or budget deleted — a stale id would make the client
+// load a budget it can no longer read). Reports whether anything changed.
+func (u *User) ClearBudget(budgetID string, now time.Time) bool {
+	o := u.Option(OptionBudget)
+	if o == nil || o.Value == nil || *o.Value != budgetID {
+		return false
+	}
+	o.setValue(nil, now)
+	return true
 }
 
 // CompleteOnboarding sets the onboarding option to completed.

@@ -1,0 +1,47 @@
+name: Web tests
+
+# Guards the React SPA on every push + PR: oxlint, the tsc type-check
+# (neither oxlint nor vitest type-checks), and the vitest suite.
+# locales/ is included because the SPA imports the shared catalogues.
+on:
+    push:
+        paths:
+            - "web/**"
+            - "locales/**"
+            - ".github/workflows/web-tests.yml"
+    pull_request:
+        paths:
+            - "web/**"
+            - "locales/**"
+            - ".github/workflows/web-tests.yml"
+
+permissions:
+    contents: read
+
+jobs:
+    test:
+        name: Lint + type-check + vitest
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: web
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  package_json_file: web/package.json
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 26
+                  cache: pnpm
+                  cache-dependency-path: web/pnpm-lock.yaml
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+            - name: Lint (oxlint)
+              run: pnpm lint
+            - name: Type-check (tsc -b)
+              run: pnpm exec tsc -b
+            # jsdom tests are load-sensitive on shared runners; give them
+            # headroom over vitest's 5s default so CI doesn't flake.
+            - name: Tests (vitest)
+              run: pnpm test --testTimeout=15000

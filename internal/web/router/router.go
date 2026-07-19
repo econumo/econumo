@@ -9,12 +9,12 @@
 //	/api/...          (*)    -> API groups, wrapped in the global chain; the
 //	                            module-supplied RegisterAPI seam attaches the
 //	                            public group (login/register/remind/reset, plus
-//	                            /api/doc) and the authenticated group (JWT) here
+//	                            /api/doc) and the authenticated group here
 //	/                 (*)    -> SPA file server with index.html fallback
 //
-// The JWT auth middleware itself is built in the user module and is applied by
+// The auth middleware itself is built in the user module and is applied by
 // the API registration func to the authenticated sub-group — the router only
-// supplies the global chain (requestid -> recover -> cors -> timezone).
+// supplies the global chain (requestid -> recover -> cors -> timezone -> language).
 package router
 
 import (
@@ -28,7 +28,7 @@ import (
 // RegisterAPI is the seam through which resource modules attach their routes.
 // It is called with the API mux (whose patterns are relative to "/api", e.g.
 // "POST /api/v1/category/create-category") so a module can register both its
-// public and authenticated endpoints. The user module supplies the JWT
+// public and authenticated endpoints. The user module supplies the token
 // middleware and decides which handlers are wrapped with it; the router does
 // not impose auth itself.
 //
@@ -65,6 +65,12 @@ type Deps struct {
 	// until the resource modules are wired (Phase 2+), in which case only the
 	// health-check and SPA are served.
 	RegisterAPI RegisterAPI
+
+	// SupportedLanguages lists the Accept-Language tags the Language middleware
+	// recognizes (e.g. i18n.Supported from the composition root). The router
+	// stays decoupled from the translation catalogue package; nil disables
+	// language resolution (every request defaults to "en").
+	SupportedLanguages []string
 }
 
 // New builds the root http.Handler from deps.
@@ -73,16 +79,17 @@ func New(deps Deps) http.Handler {
 
 	// Global middleware chain applied to the server-side route groups
 	// (internal + API). Order is outer -> inner: requestid -> accesslog ->
-	// recover -> cors -> timezone. (JWT is added per-group inside RegisterAPI by
-	// the user module — see package doc.) AccessLog sits inside RequestID (so the
-	// request_id is in context) and outside Recover (so it observes the 500 that
-	// Recover writes for a panic).
+	// recover -> cors -> timezone -> language. (auth is added per-group inside
+	// RegisterAPI by the user module — see package doc.) AccessLog sits inside
+	// RequestID (so the request_id is in context) and outside Recover (so it
+	// observes the 500 that Recover writes for a panic).
 	global := middleware.Chain(
 		middleware.RequestID,
 		middleware.AccessLog,
 		middleware.Recover(deps.Cfg.IsDev()),
 		middleware.CORS(deps.Cfg.CORSAllowedOrigins),
 		middleware.Timezone,
+		middleware.Language(deps.SupportedLanguages),
 	)
 
 	// Health check. Registered directly on root; the GET /health pattern is more
@@ -94,7 +101,7 @@ func New(deps Deps) http.Handler {
 	// router wraps the whole subtree in the global chain. Public vs
 	// authenticated grouping happens inside RegisterAPI (the public group:
 	// login/register/remind-password/reset-password + /api/doc + /api/doc.json;
-	// the authenticated group: the rest, behind the JWT middleware supplied by
+	// the authenticated group: the rest, behind the auth middleware supplied by
 	// the user module).
 	apiMux := http.NewServeMux()
 	if deps.RegisterAPI != nil {
@@ -105,7 +112,26 @@ func New(deps Deps) http.Handler {
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so
 	// it never shadows the server-side groups.
-	root.Handle("/", spa.Handler(deps.Cfg.SPADir))
+	// Server-owned SPA config keys, merged into the served econumo-config.js so
+	// the .env values reach the frontend (the dist file's static values are the
+	// fallback for separately-hosted SPAs). ANALYTICS and ALLOW_REGISTRATION are
+	// always server truth (the server enforces/owns them); the rest merge only
+	// when explicitly configured, so a file-configured deployment is never
+	// clobbered by a default.
+	overrides := map[string]any{
+		"ANALYTICS":          deps.Cfg.Analytics,
+		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
+	}
+	if deps.Cfg.APIURL != "" {
+		overrides["API_URL"] = deps.Cfg.APIURL
+	}
+	if deps.Cfg.AllowCustomAPI != nil {
+		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI
+	}
+	root.Handle("/", spa.Handler(deps.Cfg.SPADir, overrides))
 
-	return root
+	// Browser-hardening headers wrap the WHOLE tree — including the SPA catch-all,
+	// which the per-subtree global chain deliberately skips — so the served HTML
+	// carries them too (framing/clickjacking protection matters most there).
+	return middleware.SecurityHeaders(root)
 }

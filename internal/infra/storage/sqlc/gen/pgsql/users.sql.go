@@ -22,56 +22,86 @@ func (q *Queries) ExistsUserByIdentifier(ctx context.Context, identifier string)
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
 FROM users
 WHERE id = $1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
+type GetUserByIDRow struct {
+	ID         string
+	Identifier string
+	Email      string
+	Name       string
+	Avatar     string
+	Password   string
+	Salt       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsActive   bool
+	Algorithm  string
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Identifier,
 		&i.Email,
 		&i.Name,
-		&i.AvatarUrl,
+		&i.Avatar,
 		&i.Password,
 		&i.Salt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsActive,
+		&i.Algorithm,
 	)
 	return i, err
 }
 
 const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
 FROM users
 WHERE identifier = $1
 `
 
-func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (User, error) {
+type GetUserByIdentifierRow struct {
+	ID         string
+	Identifier string
+	Email      string
+	Name       string
+	Avatar     string
+	Password   string
+	Salt       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsActive   bool
+	Algorithm  string
+}
+
+func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserByIdentifier, identifier)
-	var i User
+	var i GetUserByIdentifierRow
 	err := row.Scan(
 		&i.ID,
 		&i.Identifier,
 		&i.Email,
 		&i.Name,
-		&i.AvatarUrl,
+		&i.Avatar,
 		&i.Password,
 		&i.Salt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsActive,
+		&i.Algorithm,
 	)
 	return i, err
 }
 
 const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type InsertUserParams struct {
@@ -79,9 +109,10 @@ type InsertUserParams struct {
 	Identifier string
 	Email      string
 	Name       string
-	AvatarUrl  string
+	Avatar     string
 	Password   string
 	Salt       string
+	Algorithm  string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	IsActive   bool
@@ -93,9 +124,10 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 		arg.Identifier,
 		arg.Email,
 		arg.Name,
-		arg.AvatarUrl,
+		arg.Avatar,
 		arg.Password,
 		arg.Salt,
+		arg.Algorithm,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.IsActive,
@@ -130,16 +162,31 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const updateUserLanguage = `-- name: UpdateUserLanguage :exec
+UPDATE users SET language = $1 WHERE id = $2
+`
+
+type UpdateUserLanguageParams struct {
+	Language string
+	ID       string
+}
+
+func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserLanguage, arg.Language, arg.ID)
+	return err
+}
+
 const upsertUser = `-- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar_url, password, salt, created_at, updated_at, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
     name       = excluded.name,
-    avatar_url = excluded.avatar_url,
+    avatar = excluded.avatar,
     password   = excluded.password,
     salt       = excluded.salt,
+    algorithm  = excluded.algorithm,
     updated_at = excluded.updated_at,
     is_active  = excluded.is_active
 `
@@ -149,9 +196,10 @@ type UpsertUserParams struct {
 	Identifier string
 	Email      string
 	Name       string
-	AvatarUrl  string
+	Avatar     string
 	Password   string
 	Salt       string
+	Algorithm  string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	IsActive   bool
@@ -163,9 +211,10 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 		arg.Identifier,
 		arg.Email,
 		arg.Name,
-		arg.AvatarUrl,
+		arg.Avatar,
 		arg.Password,
 		arg.Salt,
+		arg.Algorithm,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.IsActive,

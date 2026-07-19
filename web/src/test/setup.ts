@@ -1,4 +1,11 @@
 import '@testing-library/jest-dom/vitest'
+import axios from 'axios'
+
+// Under jsdom axios picks its XHR adapter, and msw's XHR interceptor never
+// delivers the response when the request body is FormData (the promise hangs
+// forever). Route axios through the fetch adapter, which msw handles fine.
+// Must run before api/client.ts calls axios.create(), which snapshots defaults.
+axios.defaults.adapter = 'fetch'
 
 // Node >= 25 defines an experimental global `localStorage` (unusable without
 // --localstorage-file), so vitest's jsdom environment skips copying jsdom's
@@ -35,6 +42,13 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
     unobserve() {}
     disconnect() {}
   }
+}
+
+// jsdom has no Pointer Capture API; Radix Select's trigger calls it on pointerdown.
+if (typeof Element !== 'undefined' && !Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false
+  Element.prototype.setPointerCapture = () => {}
+  Element.prototype.releasePointerCapture = () => {}
 }
 
 // Imported dynamically so the storage rebind above runs first (i18n reads the

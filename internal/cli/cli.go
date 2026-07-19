@@ -1,5 +1,5 @@
 // Package cli is the command-line shell for the econumo binary: the operational
-// management commands (user, currency, jwt, data), named with a `resource:action`
+// management commands (user, currency, data), named with a `resource:action`
 // scheme. The cmd/econumo binary routes a non-flag first argument here, so
 // `econumo <resource>:<action>` runs a command.
 package cli
@@ -17,18 +17,14 @@ import (
 type command struct {
 	name    string
 	summary string
-	// noContainer marks a command that does NOT need the DB-backed service
-	// container (e.g. jwt:generate, a setup step that may run before a database
-	// exists): Run passes it a nil container and never opens the database.
-	noContainer bool
-	run         func(ctx context.Context, c *container, args []string) error
+	run     func(ctx context.Context, c *container, args []string) error
 }
 
 func commandList() []command {
 	var cs []command
 	cs = append(cs, userCommands()...)
 	cs = append(cs, currencyCommands()...)
-	cs = append(cs, setupCommands()...)
+	cs = append(cs, tokenCommands()...)
 	return cs
 }
 
@@ -56,16 +52,12 @@ func Run(args []string) int {
 
 	ctx := context.Background()
 
-	var c *container
-	if !cmd.noContainer {
-		var err error
-		c, err = newContainer(ctx)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "error:", err)
-			return 1
-		}
-		defer c.Close()
+	c, err := newContainer(ctx)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		return 1
 	}
+	defer c.Close()
 
 	slog.Debug("cli: running command", "command", name, "args", args[1:])
 	if err := cmd.run(ctx, c, args[1:]); err != nil {

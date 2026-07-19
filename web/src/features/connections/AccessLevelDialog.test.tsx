@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { AccessLevelDialog } from './AccessLevelDialog'
 import { DeclineAccessDialog } from './DeclineAccessDialog'
 
-const partner = { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }
+const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
 
 beforeEach(() => {
   window.econumoConfig = {}

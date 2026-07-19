@@ -57,12 +57,12 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   const submit = () => {
     const next: { name?: string; currency?: string } = {}
     if (!isNotEmpty(name)) {
-      next.name = t('modules.budget.form.budget.name.validation.required_field')
+      next.name = t('budgets.form.budget.name.validation.required_field')
     } else if (!isValidBudgetName(name)) {
-      next.name = t('modules.budget.form.budget.name.validation.invalid_name')
+      next.name = t('budgets.form.budget.name.validation.invalid_name')
     }
     if (!currencyId) {
-      next.currency = t('modules.budget.form.budget_envelope.currency.validation.required_field')
+      next.currency = t('budgets.form.budget_envelope.currency.validation.required_field')
     }
     setErrors(next)
     if (Object.keys(next).length > 0 || !currencyId) {
@@ -77,13 +77,13 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
       caps
       fullScreen
       onOpenChange={(o) => !o && onClose()}
-      title={t('modules.budget.page.settings.create_modal.header')}
+      title={t('budgets.page.settings.create_modal.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="budget-create-form">{t('elements.button.create.label')}</Button>
+          <Button type="submit" form="budget-create-form">{t('common.button.create.label')}</Button>
         </div>
       }
     >
@@ -96,12 +96,12 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
           submit()
         }}
       >
-        <CardField label={t('modules.budget.form.budget.name.label')} htmlFor="budget-name" error={errors.name}>
+        <CardField label={t('budgets.form.budget.name.label')} htmlFor="budget-name" error={errors.name}>
           <Input
             id="budget-name"
             className={cardFieldControlClass}
             maxLength={64}
-            placeholder={t('modules.budget.form.budget.name.placeholder')}
+            placeholder={t('budgets.form.budget.name.placeholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -111,11 +111,11 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
         <button
           type="button"
           className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
-          title={t('modules.budget.form.budget_envelope.currency.label')}
+          title={t('budgets.form.budget_envelope.currency.label')}
           onClick={() => setCurrencyOpen(true)}
         >
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('modules.budget.form.budget_envelope.currency.label')}</span>
+            <span className="text-[11px] text-muted-foreground">{t('budgets.form.budget_envelope.currency.label')}</span>
             <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
@@ -127,7 +127,7 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
 
       <CurrencyPickerDialog
         open={currencyOpen}
-        title={t('modules.budget.form.budget_envelope.currency.label')}
+        title={t('budgets.form.budget_envelope.currency.label')}
         value={currencyId}
         onClose={() => setCurrencyOpen(false)}
         onPick={setCurrencyId}

@@ -26,7 +26,7 @@ export function LimitEditor({ element, currency, onCommit }: LimitEditorProps) {
   const commit = () => {
     const result = limitAmountFromInput(value)
     if (!result.ok) {
-      setError(t('elements.validation.invalid_formula'))
+      setError(t('common.validation.invalid_formula'))
       return
     }
     onCommit(result.amount)
@@ -59,13 +59,13 @@ export function LimitEditor({ element, currency, onCommit }: LimitEditorProps) {
           }}
         >
           {/* the transaction dialog's amount card: label inside, borderless oversized input */}
-          <CardField label={t('modules.budget.form.budget_limit.limit.label')} htmlFor={`limit-${element.id}`} error={error}>
+          <CardField label={t('budgets.form.budget_limit.limit.label')} htmlFor={`limit-${element.id}`} error={error}>
             <div className={amountCardInputClass}>
               <CalculatorInput id={`limit-${element.id}`} autoFocus value={value} onChange={setValue} />
             </div>
           </CardField>
           <Button type="submit" size="sm">
-            {t('elements.button.save.label')}
+            {t('common.button.save.label')}
           </Button>
         </form>
       </PopoverContent>

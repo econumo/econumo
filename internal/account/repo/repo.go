@@ -26,6 +26,7 @@ import (
 type (
 	accountRow        = sqlitegen.Account
 	optionRow         = sqlitegen.AccountsOption
+	accessRow         = sqlitegen.AccountsAccess
 	upsertAccountP    = sqlitegen.UpsertAccountParams
 	getOptionP        = sqlitegen.GetAccountOptionParams
 	upsertOptionP     = sqlitegen.UpsertAccountOptionParams
@@ -235,5 +236,21 @@ func hydrateAccount(row accountRow) (*model.Account, error) {
 		ID: id, UserID: userID, CurrencyID: currencyID, Name: row.Name,
 		Type: model.AccountType(row.Type), Icon: row.Icon, IsDeleted: row.IsDeleted,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
+}
+
+// hydrateAccess reconstitutes an AccountAccess grant from a row.
+func hydrateAccess(row accessRow) (*model.AccountAccess, error) {
+	accountID, err := vo.ParseId(row.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	userID, err := vo.ParseId(row.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.AccountAccess{
+		AccountID: accountID, UserID: userID, Role: model.Role(row.Role),
+		IsAccepted: row.IsAccepted, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
 }

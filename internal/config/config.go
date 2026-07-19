@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Config is the fully-resolved application configuration.
@@ -23,6 +24,18 @@ type Config struct {
 	AllowRegistration bool
 	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
+	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	Analytics         bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
+
+	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
+	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
+	RateLimitLogin    int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset    int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind   int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept   int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitWindow   time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitGlobal   int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend).
@@ -31,11 +44,6 @@ type Config struct {
 	MailAPIKey   string // transport credential (the Resend API key)
 	MailFrom     string // from query param
 	MailReplyTo  string // reply_to query param
-
-	// Auth / JWT
-	JWTPrivateKeyPath string
-	JWTPublicKeyPath  string
-	JWTPassphrase     string
 
 	// HTTP
 	Port               string   // PORT: HTTP listen port ("8181" or ":8181"); required, no default
@@ -49,6 +57,12 @@ type Config struct {
 
 	// SPA
 	SPADir string // path to web/dist (served directly by the Go binary)
+
+	// Optional SPA config overrides merged into the served econumo-config.js.
+	// Empty/nil = leave the dist file's value (the server does not enforce
+	// these; they only reach the frontend).
+	APIURL         string // ECONUMO_API_URL
+	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
 }
 
 // IsDev reports whether stack traces should be exposed in the 500 envelope.
@@ -64,21 +78,13 @@ func Load() (Config, error) {
 		MailerDSN:              os.Getenv("MAILER_DSN"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),
 		SQLiteBusyTimeout:      getInt("SQLITE_BUSY_TIMEOUT", 0),
-		JWTPrivateKeyPath:      getEnv("ECONUMO_JWT_PRIVATE_KEY_PATH", "var/jwt/private.pem"),
-		JWTPublicKeyPath:       getEnv("ECONUMO_JWT_PUBLIC_KEY_PATH", "var/jwt/public.pem"),
-		JWTPassphrase:          os.Getenv("ECONUMO_JWT_PASSPHRASE"),
+		CheckUpdates:           getBool("ECONUMO_CHECK_UPDATES", true),
 		Port:                   os.Getenv("PORT"),
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
 		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist"),
 	}
-
-	// Some legacy .env files carry the "%kernel.project_dir%" placeholder in their
-	// JWT key paths; expand it to the working directory so such a .env works here
-	// unchanged.
-	c.JWTPublicKeyPath = ResolveProjectDir(c.JWTPublicKeyPath)
-	c.JWTPrivateKeyPath = ResolveProjectDir(c.JWTPrivateKeyPath)
 
 	if c.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
@@ -100,10 +106,57 @@ func Load() (Config, error) {
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
 
-	// PORT and the JWT public key are required by the HTTP server only and are
-	// validated at server startup; they are intentionally NOT required here because
-	// config.Load is also the CLI's composition entry point, and those commands
-	// neither bind a port nor issue JWTs. Only DATABASE_URL is universally required.
+	// Strict parse (unlike the lenient getBool): a typo while trying to
+	// DISABLE analytics must fail at boot, not silently leave it enabled.
+	analytics, err := getBoolStrict("ECONUMO_ANALYTICS", true)
+	if err != nil {
+		return Config{}, err
+	}
+	c.Analytics = analytics
+
+	if v := os.Getenv("ECONUMO_API_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_API_URL: not an absolute http(s) URL: %q", v)
+		}
+		c.APIURL = v
+	}
+	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
+	if err != nil {
+		return Config{}, err
+	}
+	c.AllowCustomAPI = allowCustomAPI
+
+	// Rate-limit values fail at boot on a malformed value (unlike the lenient
+	// getInt), because a typo here would silently disable brute-force protection.
+	for _, p := range []struct {
+		dst *int
+		key string
+		def int
+	}{
+		{&c.RateLimitLogin, "ECONUMO_RATE_LIMIT_LOGIN", 5},
+		{&c.RateLimitReset, "ECONUMO_RATE_LIMIT_RESET", 5},
+		{&c.RateLimitRemind, "ECONUMO_RATE_LIMIT_REMIND", 3},
+		{&c.RateLimitRegister, "ECONUMO_RATE_LIMIT_REGISTER", 5},
+		{&c.RateLimitAccept, "ECONUMO_RATE_LIMIT_ACCEPT_INVITE", 10},
+		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
+	} {
+		n, err := getIntStrict(p.key, p.def)
+		if err != nil {
+			return Config{}, err
+		}
+		*p.dst = n
+	}
+	window, werr := getDurationStrict("ECONUMO_RATE_LIMIT_WINDOW", 15*time.Minute)
+	if werr != nil {
+		return Config{}, werr
+	}
+	c.RateLimitWindow = window
+
+	// PORT is required by the HTTP server only and is validated at server
+	// startup; it is intentionally NOT required here because config.Load is also
+	// the CLI's composition entry point, and those commands never bind a port.
+	// Only DATABASE_URL is universally required.
 	return c, nil
 }
 
@@ -166,31 +219,38 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 	}
 }
 
-// projectDirPlaceholder is the legacy "%kernel.project_dir%" placeholder some
-// .env files still carry in their JWT key paths (e.g.
-// "%kernel.project_dir%/config/jwt/private.pem").
-const projectDirPlaceholder = "%kernel.project_dir%"
-
-// ResolveProjectDir expands the legacy "%kernel.project_dir%" placeholder in a
-// path to the process working directory (the app root — /app in the Docker
-// image), so JWT key paths from such a .env resolve here. A path without the
-// placeholder is returned unchanged.
-func ResolveProjectDir(path string) string {
-	if !strings.Contains(path, projectDirPlaceholder) {
-		return path
-	}
-	wd, err := os.Getwd()
-	if err != nil || wd == "" {
-		wd = "."
-	}
-	return strings.ReplaceAll(path, projectDirPlaceholder, wd)
-}
-
 func getEnv(key, def string) string {
 	if v, ok := os.LookupEnv(key); ok && v != "" {
 		return v
 	}
 	return def
+}
+
+func getBoolStrict(key string, def bool) (bool, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		return true, nil
+	case "0", "false", "no", "off":
+		return false, nil
+	}
+	return false, fmt.Errorf("%s: invalid boolean %q", key, v)
+}
+
+// getBoolOptional is the tri-state getBoolStrict: nil when the variable is
+// unset/empty, an error on garbage (never a silent fallback).
+func getBoolOptional(key string) (*bool, error) {
+	if v, ok := os.LookupEnv(key); !ok || v == "" {
+		return nil, nil
+	}
+	b, err := getBoolStrict(key, false)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
 }
 
 func getBool(key string, def bool) bool {
@@ -240,4 +300,30 @@ func getInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+// getIntStrict is getInt with a hard failure on malformed or negative input,
+// for settings where a silent fallback would be a security downgrade.
+func getIntStrict(key string, def int) (int, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("%s %q is not a non-negative integer", key, v)
+	}
+	return n, nil
+}
+
+func getDurationStrict(key string, def time.Duration) (time.Duration, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("%s %q is not a positive Go duration (e.g. \"15m\")", key, v)
+	}
+	return d, nil
 }

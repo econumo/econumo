@@ -6,8 +6,10 @@ package apiparity
 import (
 	"testing"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	appuser "github.com/econumo/econumo/internal/user"
 )
 
 const (
@@ -40,6 +42,17 @@ const (
 	ElementFood   = "e0000000-0000-0000-0000-000000000001"
 
 	SeedPassword = "secret-pw"
+
+	// Raw seeded bearer tokens (43-char payloads: "owner-seed-token-" is 17
+	// chars + 26 zeros — deliberately NOT random so both engines seed identical
+	// rows). Their sha256 goes into access_tokens.
+	OwnerToken = "eco_ses_owner-seed-token-00000000000000000000000000"
+	GuestToken = "eco_ses_guest-seed-token-00000000000000000000000000"
+
+	// Seeded session row ids (fixed, non-v7 so they survive normalization —
+	// scenarios reference them, e.g. err:revoke-session-foreign).
+	OwnerSessionID = "55555555-5555-5555-5555-555555555555"
+	GuestSessionID = "66666666-6666-6666-6666-666666666666"
 )
 
 // Seed seeds an identical, cross-module fixture into the given engine via the
@@ -59,6 +72,15 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.DefaultOptions(OwnerID)
 	f.User(fixture.User{ID: GuestID, Email: GuestEmail, Name: "User " + GuestID[:4], Password: SeedPassword})
 	f.DefaultOptions(GuestID)
+
+	// Live sessions for both users: the harness presents OwnerToken/GuestToken
+	// as bearer tokens, which resolve to these rows.
+	ownerExp := ClockTime.Add(appuser.SessionTTL)
+	guestExp := ownerExp
+	f.AccessToken(fixture.AccessToken{ID: OwnerSessionID, UserID: OwnerID, Kind: model.TokenKindSession,
+		TokenHash: appuser.HashAccessToken(OwnerToken), UserAgent: "apiparity", ExpiresAt: &ownerExp})
+	f.AccessToken(fixture.AccessToken{ID: GuestSessionID, UserID: GuestID, Kind: model.TokenKindSession,
+		TokenHash: appuser.HashAccessToken(GuestToken), UserAgent: "apiparity", ExpiresAt: &guestExp})
 	f.Connect(OwnerID, GuestID)
 
 	// Folders.

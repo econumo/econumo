@@ -89,3 +89,22 @@ func TestAccountAccess_UpdateRole_OnlyBumpsOnChange(t *testing.T) {
 		t.Fatalf("role change: %d / %v", a.Role, a.UpdatedAt)
 	}
 }
+
+func TestAccountAccess_Accept(t *testing.T) {
+	now := time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)
+	later := now.Add(time.Hour)
+	a := NewAccountAccess(
+		mustID(t, "aaaa1111-0000-0000-0000-0000000000a1"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), RoleUser, now)
+	if a.IsAccepted {
+		t.Fatal("new grant must be pending")
+	}
+	a.Accept(later)
+	if !a.IsAccepted || !a.UpdatedAt.Equal(later) {
+		t.Fatalf("accept: IsAccepted=%v UpdatedAt=%v", a.IsAccepted, a.UpdatedAt)
+	}
+	a.Accept(later.Add(time.Hour))
+	if !a.UpdatedAt.Equal(later) {
+		t.Fatal("second accept must not bump UpdatedAt")
+	}
+}

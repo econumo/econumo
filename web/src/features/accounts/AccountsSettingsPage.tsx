@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EntityIcon } from '@/components/EntityIcon'
+import { UserAvatar } from '@/components/UserAvatar'
 import { InfoBox } from '@/components/InfoBox'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -24,9 +25,10 @@ import type { FolderDto } from '@/api/dto/folder'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
 import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
+import { ShareEntryList } from '@/features/connections/ShareEntryList'
 import type { ShareEntry } from '@/features/connections/shared'
 import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
-import { useConnections, useRevokeAccountAccess, useSetAccountAccess } from '@/features/connections/queries'
+import { useConnections } from '@/features/connections/queries'
 import { useUserData } from '@/features/user/queries'
 import {
   useAccounts,
@@ -38,7 +40,10 @@ import {
   useShowFolder,
   useOrderFolders,
   useOrderAccounts,
+  useLeaveSharedAccount,
   useDeleteAccount,
+  useGrantAccountAccess,
+  useRevokeAccountAccess,
 } from './queries'
 import type { FolderBucket } from './accountOrdering'
 import { bucketsFromAccounts, moveAccount, buildAccountChanges } from './accountOrdering'
@@ -49,10 +54,12 @@ const COLLAPSED_FOLDERS_KEY = 'settings.accounts.collapsedFolders'
 
 function AccountRow({
   account,
+  isOwner,
   showAccess,
   onMenu,
 }: {
   account: AccountDto
+  isOwner: boolean
   showAccess: boolean
   onMenu: (action: 'edit' | 'delete' | 'view' | 'access') => void
 }) {
@@ -88,9 +95,13 @@ function AccountRow({
         </span>
         {account.sharedAccess.length > 0 ? (
           <span className="flex items-center -space-x-2" data-testid={`shared-avatars-${account.name}`}>
-            <img src={`${account.owner.avatar}?s=50`} alt={account.owner.name} className="size-7 rounded-full ring-2 ring-background" />
+            <span title={account.owner.name}>
+              <UserAvatar avatar={account.owner.avatar} size="sm" className="size-7 ring-2 ring-background" />
+            </span>
             {account.sharedAccess.map((entry) => (
-              <img key={entry.user.id} src={`${entry.user.avatar}?s=50`} alt={entry.user.name} className="size-7 rounded-full ring-2 ring-background" />
+              <span key={entry.user.id} title={entry.user.name}>
+                <UserAvatar avatar={entry.user.avatar} size="sm" className="size-7 ring-2 ring-background" />
+              </span>
             ))}
           </span>
         ) : null}
@@ -109,14 +120,14 @@ function AccountRow({
             </DropdownMenuTrigger>
             {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onSelect={() => onMenu('edit')}>{t('elements.button.edit.label')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onMenu('edit')}>{t('common.button.edit.label')}</DropdownMenuItem>
               {showAccess ? (
                 <DropdownMenuItem onSelect={() => onMenu('access')}>
-                  {t('pages.settings.accounts.list_actions.access')}
+                  {t('settings.accounts.list_actions.access')}
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem variant="destructive" onSelect={() => onMenu('delete')}>
-                {t('elements.button.delete.label')}
+                {t(isOwner ? 'common.button.delete.label' : 'common.button.decline.label')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -201,7 +212,7 @@ function FolderSection({
           variant="ghost"
           size="icon"
           aria-label={`toggle folder ${folder.name}`}
-          title={t('pages.settings.accounts.folder_toggle')}
+          title={t('settings.accounts.folder_toggle')}
           onClick={(e) => {
             e.stopPropagation()
             onToggleCollapse()
@@ -235,17 +246,17 @@ function FolderSection({
           </DropdownMenuTrigger>
           {/* portaled content still bubbles React clicks to the header — don't reopen the menu */}
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            {index > 0 ? <DropdownMenuItem onSelect={() => onAction('up')}>{t('elements.button.up.label')}</DropdownMenuItem> : null}
+            {index > 0 ? <DropdownMenuItem onSelect={() => onAction('up')}>{t('common.button.up.label')}</DropdownMenuItem> : null}
             {index < total - 1 ? (
-              <DropdownMenuItem onSelect={() => onAction('down')}>{t('elements.button.down.label')}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onAction('down')}>{t('common.button.down.label')}</DropdownMenuItem>
             ) : null}
-            <DropdownMenuItem onSelect={() => onAction('rename')}>{t('elements.button.edit.label')}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onAction('rename')}>{t('common.button.edit.label')}</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onAction(folder.isVisible === 1 ? 'hide' : 'show')}>
-              {folder.isVisible === 1 ? t('elements.button.hide.label') : t('elements.button.show.label')}
+              {folder.isVisible === 1 ? t('common.button.hide.label') : t('common.button.show.label')}
             </DropdownMenuItem>
             {index > 0 ? (
               <DropdownMenuItem variant="destructive" onSelect={() => onAction('delete')}>
-                {t('elements.button.delete.label')}
+                {t('common.button.delete.label')}
               </DropdownMenuItem>
             ) : null}
           </DropdownMenuContent>
@@ -267,7 +278,7 @@ export function AccountsSettingsPage() {
   const { data: user } = useUserData()
   const { data: connections = [] } = useConnections()
   const openAccountModal = useUiStore((s) => s.openAccountModal)
-  const setAccountAccess = useSetAccountAccess()
+  const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
 
   const createFolder = useCreateFolder()
@@ -278,17 +289,22 @@ export function AccountsSettingsPage() {
   const orderFolders = useOrderFolders()
   const orderAccounts = useOrderAccounts()
   const deleteAccount = useDeleteAccount()
+  const declineAccountAccess = useLeaveSharedAccount()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<FolderDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<FolderDto | null>(null)
   const [deleteAccountTarget, setDeleteAccountTarget] = useState<AccountDto | null>(null)
+  const [declineAccountTarget, setDeclineAccountTarget] = useState<AccountDto | null>(null)
   const [previewAccount, setPreviewAccount] = useState<AccountDto | null>(null)
   const [accessAccountId, setAccessAccountId] = useState<string | null>(null)
-  const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
+  const [levelTarget, setLevelTarget] = useState<{ accountId: string; entry: ShareEntry } | null>(null)
 
   // read the live cache copy so optimistic grant/revoke updates show immediately
   const accessAccount = accessAccountId ? accounts.find((a) => a.id === accessAccountId) ?? null : null
+  const previewLive = previewAccount ? accounts.find((a) => a.id === previewAccount.id) ?? previewAccount : null
+
+  const previewEntries = user && previewLive ? buildShareEntries(connections, previewLive.sharedAccess, user.id, previewLive.owner.id) : []
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -332,10 +348,10 @@ export function AccountsSettingsPage() {
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
-      return t('elements.form.account.folder.validation.empty_name')
+      return t('accounts.form.folder.validation.empty_name')
     }
     if (!isValidFolderName(value)) {
-      return t('elements.form.account.folder.validation.error_name_length')
+      return t('accounts.form.folder.validation.error_name_length')
     }
     return null
   }
@@ -411,20 +427,20 @@ export function AccountsSettingsPage() {
 
   return (
     <SettingsShell
-      title={t('pages.settings.accounts.header')}
+      title={t('settings.accounts.header')}
       backTo={RouterPage.SETTINGS}
       actions={
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           <FolderPlus className="size-4" />
-          <span className="hidden sm:inline">{t('pages.settings.accounts.create_folder')}</span>
+          <span className="hidden sm:inline">{t('settings.accounts.create_folder')}</span>
         </Button>
       }
     >
-      <InfoBox>{t('pages.settings.accounts.info')}</InfoBox>
+      <InfoBox>{t('settings.accounts.info')}</InfoBox>
 
       {accounts.length === 0 ? (
         <button type="button" className="px-1 py-2 text-sm text-primary underline" onClick={() => openAccountModal({ folderId: folders[0]?.id ?? null })}>
-          {t('pages.settings.accounts.list_empty_create')} {t('pages.settings.accounts.list_empty_new_account')}
+          {t('settings.accounts.list_empty_create')} {t('settings.accounts.list_empty_new_account')}
         </button>
       ) : null}
 
@@ -462,12 +478,17 @@ export function AccountsSettingsPage() {
                     <AccountRow
                       key={account.id}
                       account={account}
+                      isOwner={account.owner.id === user?.id}
                       showAccess={user ? hasAccountAdminAccess(account, user.id) : false}
                       onMenu={(action) => {
                         if (action === 'edit') {
                           openAccountModal({ account })
                         } else if (action === 'delete') {
-                          setDeleteAccountTarget(account)
+                          if (account.owner.id === user?.id) {
+                            setDeleteAccountTarget(account)
+                          } else {
+                            setDeclineAccountTarget(account)
+                          }
                         } else if (action === 'access') {
                           setAccessAccountId(account.id)
                         } else {
@@ -508,36 +529,36 @@ export function AccountsSettingsPage() {
       </DndContext>
 
       <ShareAccessDialog
-        open={accessAccount !== null && levelEntry === null}
+        open={accessAccount !== null && levelTarget === null}
         title={accessAccount?.name ?? ''}
         kind="accounts"
         entries={accessAccount && user ? buildShareEntries(connections, accessAccount.sharedAccess, user.id, accessAccount.owner.id) : []}
         onPick={(entry) => {
-          if (entry.role !== 'owner') {
-            setLevelEntry(entry)
+          if (entry.role !== 'owner' && accessAccountId) {
+            setLevelTarget({ accountId: accessAccountId, entry })
           }
         }}
         onClose={() => setAccessAccountId(null)}
       />
 
       <AccessLevelDialog
-        open={levelEntry !== null}
+        open={levelTarget !== null}
         kind="accounts"
-        user={levelEntry?.user ?? null}
-        role={levelEntry?.role ?? null}
+        user={levelTarget?.entry.user ?? null}
+        role={levelTarget?.entry.role ?? null}
         onSelect={(role) => {
-          if (levelEntry && accessAccountId) {
-            setAccountAccess.mutate({ accountId: accessAccountId, userId: levelEntry.user.id, role })
+          if (levelTarget) {
+            grantAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id, role })
           }
-          setLevelEntry(null)
+          setLevelTarget(null)
         }}
         onRevoke={() => {
-          if (levelEntry && accessAccountId) {
-            revokeAccountAccess.mutate({ accountId: accessAccountId, userId: levelEntry.user.id })
+          if (levelTarget) {
+            revokeAccountAccess.mutate({ accountId: levelTarget.accountId, userId: levelTarget.entry.user.id })
           }
-          setLevelEntry(null)
+          setLevelTarget(null)
         }}
-        onClose={() => setLevelEntry(null)}
+        onClose={() => setLevelTarget(null)}
       />
 
       <PromptDialog
@@ -546,11 +567,11 @@ export function AccountsSettingsPage() {
         onSubmit={(name) => {
           createFolder.mutate(name, { onSuccess: () => setCreateOpen(false) })
         }}
-        title={t('pages.settings.accounts.create_folder_modal.header')}
-        inputLabel={t('elements.form.account.folder.label')}
+        title={t('settings.accounts.create_folder_modal.header')}
+        inputLabel={t('accounts.form.folder.label')}
         validate={folderNameValidator}
-        submitLabel={t('elements.button.create.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={t('common.button.create.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
 
       <PromptDialog
@@ -561,12 +582,12 @@ export function AccountsSettingsPage() {
             updateFolder.mutate({ id: renameTarget.id, name }, { onSuccess: () => setRenameTarget(null) })
           }
         }}
-        title={t('pages.settings.accounts.update_folder_modal.header')}
-        inputLabel={t('elements.form.account.folder.label')}
+        title={t('settings.accounts.update_folder_modal.header')}
+        inputLabel={t('accounts.form.folder.label')}
         initialValue={renameTarget?.name ?? ''}
         validate={folderNameValidator}
-        submitLabel={t('elements.button.update.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        submitLabel={t('common.button.update.label')}
+        cancelLabel={t('common.button.cancel.label')}
       />
 
       <ConfirmDialog
@@ -580,10 +601,10 @@ export function AccountsSettingsPage() {
             }
           }
         }}
-        title={t('pages.settings.accounts.delete_folder_modal.title')}
-        question={t('pages.settings.accounts.delete_folder_modal.question', { folder: deleteFolderTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        title={t('settings.accounts.delete_folder_modal.title')}
+        question={t('settings.accounts.delete_folder_modal.question', { folder: deleteFolderTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
@@ -595,46 +616,94 @@ export function AccountsSettingsPage() {
             deleteAccount.mutate(deleteAccountTarget.id, { onSettled: () => setDeleteAccountTarget(null) })
           }
         }}
-        question={t('pages.settings.accounts.delete_account_modal.question', { account: deleteAccountTarget?.name ?? '' })}
-        confirmLabel={t('elements.button.delete.label')}
-        cancelLabel={t('elements.button.cancel.label')}
+        question={t('settings.accounts.delete_account_modal.question', { account: deleteAccountTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
         destructive
       />
 
-      {previewAccount ? (
+      <ConfirmDialog
+        open={declineAccountTarget !== null}
+        onClose={() => setDeclineAccountTarget(null)}
+        onConfirm={() => {
+          if (declineAccountTarget) {
+            declineAccountAccess.mutate(declineAccountTarget.id, { onSettled: () => setDeclineAccountTarget(null) })
+          }
+        }}
+        title={t('settings.accounts.decline_access_modal.title')}
+        question={t('settings.accounts.decline_access_modal.question', { account: declineAccountTarget?.name ?? '' })}
+        confirmLabel={t('common.button.decline.label')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
+      />
+
+      {previewLive ? (
         <ResponsiveDialog
           open
           onOpenChange={(o) => !o && setPreviewAccount(null)}
-          title={t('pages.settings.accounts.preview_account_modal.header')}
+          title={t('settings.accounts.preview_account_modal.header')}
         >
           <div className="flex items-center gap-3">
-            <EntityIcon name={previewAccount.icon} className="text-2xl text-muted-foreground" />
+            <EntityIcon name={previewLive.icon} className="text-2xl text-muted-foreground" />
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-medium">{previewAccount.name}</span>
+              <span className="truncate text-sm font-medium">{previewLive.name}</span>
               <span className="text-xs text-muted-foreground">
-                {moneyFormat(previewAccount.balance, previewAccount.currency, { useNativePrecision: false })}
+                {moneyFormat(previewLive.balance, previewLive.currency, { useNativePrecision: false })}
               </span>
             </span>
           </div>
+          {user && hasAccountAdminAccess(previewLive, user.id) ? (
+            <div className="mt-4 flex flex-col gap-1">
+              <span className="text-[11px] text-muted-foreground">{t('settings.accounts.list_actions.access')}</span>
+              {previewEntries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('connections.modals.share_access.list_empty')}</p>
+              ) : (
+                <ShareEntryList
+                  kind="accounts"
+                  entries={previewEntries}
+                  onPick={(entry) => {
+                    if (entry.role !== 'owner') {
+                      setLevelTarget({ accountId: previewLive.id, entry })
+                    }
+                  }}
+                />
+              )}
+            </div>
+          ) : previewLive.sharedAccess.length > 0 ? (
+            <div className="mt-4 flex flex-col gap-1">
+              <span className="text-[11px] text-muted-foreground">{t('settings.accounts.list_actions.access')}</span>
+              <ShareEntryList
+                kind="accounts"
+                entries={[
+                  { user: previewLive.owner, role: 'owner' },
+                  ...previewLive.sharedAccess.map((a) => ({ user: a.user, role: a.role, isAccepted: a.isAccepted === 1 })),
+                ]}
+              />
+            </div>
+          ) : null}
           <div className={`mt-4 ${dialogActionsClass}`}>
             <Button
               type="button"
               variant="destructive"
               onClick={() => {
-                setDeleteAccountTarget(previewAccount)
+                if (previewLive.owner.id === user?.id) {
+                  setDeleteAccountTarget(previewLive)
+                } else {
+                  setDeclineAccountTarget(previewLive)
+                }
                 setPreviewAccount(null)
               }}
             >
-              {t('elements.button.delete.label')}
+              {t(previewLive.owner.id === user?.id ? 'common.button.delete.label' : 'common.button.decline.label')}
             </Button>
             <Button
               type="button"
               onClick={() => {
-                openAccountModal({ account: previewAccount })
+                openAccountModal({ account: previewLive })
                 setPreviewAccount(null)
               }}
             >
-              {t('elements.button.edit.label')}
+              {t('common.button.edit.label')}
             </Button>
           </div>
         </ResponsiveDialog>

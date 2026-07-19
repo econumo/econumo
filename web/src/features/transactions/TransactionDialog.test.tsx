@@ -52,6 +52,23 @@ it('Escape closes the dialog (outside clicks stay blocked via onInteractOutside)
   await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
 })
 
+it('Escape with a picker open closes the picker, not the dialog', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  await user.click(screen.getByRole('combobox', { name: 'Category' }))
+  expect(await screen.findByRole('option', { name: 'Food' })).toBeInTheDocument()
+
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('option', { name: 'Food' })).not.toBeInTheDocument())
+  expect(useUiStore.getState().transactionModal).not.toBeNull()
+
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(useUiStore.getState().transactionModal).toBeNull())
+})
+
 it('clicking anywhere on a select card (label/padding) opens the picker', async () => {
   const user = userEvent.setup()
   renderDialog()
@@ -59,6 +76,37 @@ it('clicking anywhere on a select card (label/padding) opens the picker', async 
   await screen.findByRole('heading', { name: 'Add transaction' })
   await user.click(screen.getByText('Category'))
   expect(await screen.findByPlaceholderText('Search or enter a new name')).toBeInTheDocument()
+})
+
+it('Tab from the amount goes to the next field, not the calculator keypad', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  const amount = await screen.findByLabelText('Amount')
+  amount.focus()
+  await user.tab()
+  expect(screen.getByRole('combobox', { name: 'Category' })).toHaveFocus()
+  await user.tab({ shift: true })
+  expect(amount).toHaveFocus()
+})
+
+it('tag chips are keyboard-reachable and toggle with Enter and Space', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'expense' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  const chip = await screen.findByRole('checkbox', { name: 'vacation' })
+  screen.getByRole('combobox', { name: 'Recipient' }).focus()
+  await user.tab()
+  expect(chip).toHaveFocus()
+
+  await user.keyboard('{Enter}')
+  expect(chip).toHaveAttribute('aria-checked', 'true')
+  await user.keyboard(' ')
+  expect(chip).toHaveAttribute('aria-checked', 'false')
 })
 
 it('creates an expense with the exact payload shape', async () => {
@@ -157,6 +205,59 @@ it('editing a transfer allows changing the sender account', async () => {
   expect(body!.accountRecipientId).toBe('a3')
 })
 
+it('editing a same-currency transfer amount re-syncs the recipient amount', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a2' }), accounts: fixtureAccounts },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a2', amount: '9.99', amountRecipient: '9.99', categoryId: null }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  const amount = screen.getByLabelText('Amount')
+  await user.clear(amount)
+  await user.type(amount, '25')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.amount).toBe('25')
+  // the recipient side must follow the edited amount, not keep the old one
+  expect(body!.amountRecipient).toBe('25')
+})
+
+it('editing a transfer re-syncs the recipient amount when the destination account changes', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a3' }), accounts: fixtureAccounts },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a2', amount: '10', amountRecipient: '10', categoryId: null }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  // USD -> EUR at rate 0.9: the old same-currency recipient amount must not survive
+  await user.click(screen.getByRole('combobox', { name: 'to account' }))
+  await user.click(await screen.findByText(/Euro Stash/))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.accountRecipientId).toBe('a3')
+  expect(body!.amountRecipient).toBe('9')
+})
+
 it('cross-currency transfer prefills the converted recipient amount and prompts to switch', async () => {
   let body: Record<string, unknown> | undefined
   server.use(
@@ -205,12 +306,11 @@ it('creates a category on the fly and selects it', async () => {
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
   await user.click(screen.getByRole('combobox', { name: 'Category' }))
-  // the modal popover hides the rest of the dialog from the a11y tree while
-  // open; the search input autofocuses, so type into the focused element
+  // the picker is the field itself: typing filters in place
   await user.keyboard('Books')
   await user.click(await screen.findByText(/Add «Books»/))
   await waitFor(() => expect(created).toBeDefined())
   expect(created!.name).toBe('Books')
   expect(created!.type).toBe('expense')
-  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveTextContent('Books'))
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('Books'))
 })

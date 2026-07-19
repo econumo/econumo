@@ -19,15 +19,23 @@ type FieldError struct {
 	// Message is the human-readable, already-translated message. The exact
 	// strings are frozen (see CLAUDE.md) and asserted by the test suite.
 	Message string
-	// Code is an optional error code string carried in errors[].
+	// Code is a catalogue key under errors.* in locales/*.json (e.g.
+	// "category.name_length"), the machine-readable, additive sibling of
+	// Message. Every emitted code must be registered in AllCodes (codes.go);
+	// the i18ntest guard asserts a two-way match with the catalogues.
 	Code string
+	// Params carries the message's interpolation values (e.g. {"min":3,"max":64})
+	// for the frontend to substitute into the localized string.
+	Params map[string]any
 }
 
 // ValidationError carries one or more field errors. Maps to HTTP 400 with a
 // populated errors[] array in the envelope.
 type ValidationError struct {
-	Msg    string
-	Fields []FieldError
+	Msg       string
+	MsgCode   string
+	MsgParams map[string]any
+	Fields    []FieldError
 }
 
 func (e *ValidationError) Error() string {
@@ -77,7 +85,8 @@ func NewAccessDenied(msg string) *AccessDeniedError { return &AccessDeniedError{
 
 // UnauthorizedError maps to HTTP 401 (missing/invalid credentials or token).
 type UnauthorizedError struct {
-	Msg string
+	Msg  string
+	Code string
 }
 
 func (e *UnauthorizedError) Error() string {
@@ -120,6 +129,30 @@ func AsAccessDenied(err error) (*AccessDeniedError, bool) {
 // AsUnauthorized reports whether err is (or wraps) an *UnauthorizedError.
 func AsUnauthorized(err error) (*UnauthorizedError, bool) {
 	var v *UnauthorizedError
+	if errors.As(err, &v) {
+		return v, true
+	}
+	return nil, false
+}
+
+// TooManyRequestsError maps to HTTP 429 (a rate-limited auth attempt).
+type TooManyRequestsError struct {
+	Msg string
+}
+
+func (e *TooManyRequestsError) Error() string {
+	if e.Msg != "" {
+		return e.Msg
+	}
+	return "too many requests"
+}
+
+// NewTooManyRequests builds a TooManyRequestsError.
+func NewTooManyRequests(msg string) *TooManyRequestsError { return &TooManyRequestsError{Msg: msg} }
+
+// AsTooManyRequests reports whether err is (or wraps) a *TooManyRequestsError.
+func AsTooManyRequests(err error) (*TooManyRequestsError, bool) {
+	var v *TooManyRequestsError
 	if errors.As(err, &v) {
 		return v, true
 	}

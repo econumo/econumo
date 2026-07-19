@@ -50,7 +50,7 @@ func NewService(
 func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id, notAvailableMsg string) error {
 	owner, err := s.accounts.AccountOwner(ctx, accountID)
 	if err != nil {
-		return errs.NewValidation(notAvailableMsg)
+		return &errs.ValidationError{Msg: notAvailableMsg, MsgCode: notAvailableCode(notAvailableMsg)}
 	}
 	if owner.Equal(userID) {
 		return nil
@@ -62,7 +62,65 @@ func (s *Service) checkWriteAccess(ctx context.Context, userID, accountID vo.Id,
 	if ok {
 		return nil
 	}
-	return errs.NewValidation(notAvailableMsg)
+	return &errs.ValidationError{Msg: notAvailableMsg, MsgCode: notAvailableCode(notAvailableMsg)}
+}
+
+// notAvailableCode maps checkWriteAccess's two frozen notAvailableMsg literals
+// to their catalogue codes.
+func notAvailableCode(msg string) string {
+	if msg == "transaction.transaction.not_available" {
+		return errs.CodeTransactionItemNotAvailable
+	}
+	return errs.CodeTransactionAccountNotAvailable
+}
+
+// checkReferences authorizes the non-source references a create/update carries
+// (the source account is already checked by the caller). Without this a valid
+// foreign UUID would be enough to touch another user's data:
+//   - a transfer's recipient account needs the SAME write access as the source,
+//     else a caller could inject a leg into a stranger's account (its balance is
+//     SUM(amount_recipient) over that account id);
+//   - an optional category/payee/tag must belong to the CALLER — a caller
+//     categorizes a transaction (even one on a shared account) with their own
+//     entities, so a foreign category/payee/tag id is rejected.
+func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st model.NewState) error {
+	if st.AccountRecipID != nil {
+		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
+			return err
+		}
+	}
+	if st.CategoryID != nil {
+		if err := s.requireOwnedEntity(ctx, userID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
+			return err
+		}
+	}
+	if st.PayeeID != nil {
+		if err := s.requireOwnedEntity(ctx, userID, *st.PayeeID, s.importer.PayeesByOwner); err != nil {
+			return err
+		}
+	}
+	if st.TagID != nil {
+		if err := s.requireOwnedEntity(ctx, userID, *st.TagID, s.importer.TagsByOwner); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// requireOwnedEntity confirms id is among ownerID's entities (the list is
+// owner-scoped, so membership IS the ownership check). A foreign or unknown id
+// yields the frozen item-not-available validation error.
+func (s *Service) requireOwnedEntity(ctx context.Context, ownerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) error {
+	items, err := list(ctx, ownerID)
+	if err != nil {
+		return err
+	}
+	for _, it := range items {
+		if it.ID == id.String() {
+			return nil
+		}
+	}
+	return &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
 }
 
 // checkViewAccess verifies the user may VIEW the account's transactions: owner
@@ -176,7 +234,7 @@ func buildState(
 		// Non-transfer requires a category.
 		if categoryID == nil || *categoryID == "" {
 			return st, errs.NewValidation("Validation failed",
-				errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: "IS_BLANK_ERROR"})
+				errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
 		cid, err := vo.ParseId(*categoryID)
 		if err != nil {
@@ -201,6 +259,39 @@ func buildState(
 	return st, nil
 }
 
+// normalizeTransferAmounts enforces the transfer amount-recipient invariants
+// before persisting. The recipient account's balance is SUM(amount_recipient)
+// and the reporting queries classify an exchange leg via
+// amount != amount_recipient, so a stale or missing client value silently
+// corrupts both. Same-currency transfers therefore always store
+// amount_recipient = amount; cross-currency transfers must carry an explicit
+// amountRecipient (the received amount is client-authoritative — the user's
+// actual rate, not ours — so defaulting would fabricate it). No-op for
+// non-transfers and for transfers without a recipient account.
+func (s *Service) normalizeTransferAmounts(ctx context.Context, st *model.NewState) error {
+	if !st.Type.IsTransfer() || st.AccountRecipID == nil {
+		return nil
+	}
+	srcCur, err := s.accounts.AccountCurrency(ctx, st.AccountID)
+	if err != nil {
+		return err
+	}
+	dstCur, err := s.accounts.AccountCurrency(ctx, *st.AccountRecipID)
+	if err != nil {
+		return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
+	}
+	if srcCur.Equal(dstCur) {
+		amount := st.Amount
+		st.AmountRecipient = &amount
+		return nil
+	}
+	if st.AmountRecipient == nil {
+		return errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "amountRecipient", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
 // parseType maps the wire alias to the domain TransactionType.
 func parseType(alias string) (model.TransactionType, error) {
 	switch alias {
@@ -212,6 +303,6 @@ func parseType(alias string) (model.TransactionType, error) {
 		return model.TransactionTypeTransfer, nil
 	default:
 		return 0, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: "INVALID_CHOICE_ERROR"})
+			errs.FieldError{Key: "type", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
 	}
 }

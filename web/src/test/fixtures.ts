@@ -4,7 +4,7 @@ export const fixtureUser = {
   id: 'u1',
   name: 'Ada',
   email: 'ada@example.test',
-  avatar: 'https://avatars.test/ada',
+  avatar: 'face:emerald',
   options: [
     { name: 'currency', value: 'USD' },
     { name: 'currency_id', value: 'cur-usd' },
@@ -16,7 +16,7 @@ export const fixtureUser = {
   reportPeriod: 'monthly',
 }
 
-export const fixtureOwner = { id: 'u1', avatar: 'https://avatars.test/ada', name: 'Ada' }
+export const fixtureOwner = { id: 'u1', avatar: 'face:emerald', name: 'Ada' }
 
 export const fixtureUsd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 export const fixtureEur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -108,7 +108,7 @@ export const fixtureWireBudget = {
     elements: [
       {
         id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: null, isArchived: 0,
-        folderId: 'bf1', position: 0, budgeted: '200', available: '154.5', spent: '-45.5', budgetSpent: '-45.5',
+        folderId: 'bf1', position: 0, budgeted: '200', available: '154.5', spent: '45.5', budgetSpent: '45.5',
         ownerUserId: 'u1', children: [],
       },
       {
@@ -127,7 +127,7 @@ export const fixtureWireBudget = {
 }
 
 export const fixtureConnections = [
-  { user: { id: 'u2', avatar: 'https://avatars.test/partner', name: 'Partner' }, sharedAccounts: [] },
+  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, sharedAccounts: [] },
 ]
 
 const envelope = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
@@ -159,5 +159,6 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/currency/get-currency-rate-list', () => envelope({ items: data.rates })),
     http.get('*/api/v1/user/get-user-data', () => envelope({ user: data.user })),
     http.get('*/api/v1/budget/get-budget-list', () => envelope({ items: data.budgets })),
+    http.get('*/api/v1/system/get-update-info', () => envelope({ version: 'v0.0.0', url: 'https://econumo.com/releases/v0.0.0/' })),
   ]
 }

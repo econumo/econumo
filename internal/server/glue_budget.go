@@ -219,7 +219,7 @@ func (l *BudgetUserLookup) GetOwner(ctx context.Context, userID string) (model.O
 	if err != nil {
 		return model.OwnerView{}, err
 	}
-	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.AvatarURL}, nil
+	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.Avatar}, nil
 }
 
 // CurrencyCode returns the user's default currency code (the currency option).
@@ -245,5 +245,18 @@ func (l *BudgetUserLookup) SetActiveBudget(ctx context.Context, userID, budgetID
 		return err
 	}
 	u.UpdateBudget(budgetID.String(), l.clock.Now())
+	return l.users.Save(ctx, u)
+}
+
+// ClearActiveBudget clears the user's active-budget option when it points at
+// the given budget.
+func (l *BudgetUserLookup) ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error {
+	u, err := l.users.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !u.ClearBudget(budgetID.String(), l.clock.Now()) {
+		return nil
+	}
 	return l.users.Save(ctx, u)
 }

@@ -67,9 +67,10 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(c *model
 			return err
 		}
 		if !c.UserID.Equal(userID) {
-			// The 403 envelope message is intentionally EMPTY here (frozen wire
-			// behaviour for the ownership-denied path).
-			return errs.NewAccessDenied("")
+			// Report a category owned by someone else exactly like a missing one
+			// (the same NotFound the repo returns above), so the response can't be
+			// used to probe which category ids exist.
+			return errs.NewNotFound("Category not found")
 		}
 		fn(c, s.clock.Now())
 		if err := s.repo.Save(ctx, c); err != nil {
@@ -128,7 +129,10 @@ func newCategoryName(v string) (string, error) {
 	n := len([]rune(v))
 	if n < 3 || n > 64 {
 		return "", errs.NewValidation("Category name must be 3-64 characters",
-			errs.FieldError{Key: "name", Message: "Category name must be 3-64 characters"})
+			errs.FieldError{
+				Key: "name", Message: "Category name must be 3-64 characters", Code: errs.CodeCategoryNameLength,
+				Params: map[string]any{"min": 3, "max": 64},
+			})
 	}
 	return v, nil
 }
@@ -137,7 +141,7 @@ func newCategoryName(v string) (string, error) {
 func newIcon(v string) (string, error) {
 	if v == "" {
 		return "", errs.NewValidation("Icon value must not be empty",
-			errs.FieldError{Key: "icon", Message: "Icon value must not be empty"})
+			errs.FieldError{Key: "icon", Message: "Icon value must not be empty", Code: errs.CodeIconRequired})
 	}
 	return v, nil
 }
@@ -148,7 +152,7 @@ func newCategoryType(alias string) (model.CategoryType, error) {
 	typ, ok := model.TypeFromAlias(alias)
 	if !ok {
 		return 0, errs.NewValidation("CategoryType not exists",
-			errs.FieldError{Key: "type", Message: "CategoryType not exists"})
+			errs.FieldError{Key: "type", Message: "CategoryType not exists", Code: errs.CodeCategoryTypeInvalid})
 	}
 	return typ, nil
 }

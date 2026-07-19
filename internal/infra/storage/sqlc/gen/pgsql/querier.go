@@ -19,6 +19,7 @@ type Querier interface {
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
+	DeleteAccessToken(ctx context.Context, id string) error
 	DeleteAccountAccess(ctx context.Context, arg DeleteAccountAccessParams) error
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
 	DeleteBudget(ctx context.Context, id string) error
@@ -30,6 +31,7 @@ type Querier interface {
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
+	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
@@ -39,6 +41,8 @@ type Querier interface {
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByIdentifier(ctx context.Context, identifier string) (bool, error)
+	GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error)
+	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
 	// grants to connected users; users_connections is the symmetric user link.
 	// Roles are admin=0, user=1, guest=2.
@@ -105,8 +109,8 @@ type Querier interface {
 	// Write + read queries for the transaction module (PostgreSQL: $N placeholders).
 	// See the sqlite variant for documentation.
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
-	GetUserByID(ctx context.Context, id string) (User, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (User, error)
+	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
+	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
@@ -117,6 +121,9 @@ type Querier interface {
 	// Read-model queries for the user module (CQRS read side). See the sqlite
 	// variant for rationale. Postgres uses $N placeholders.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
+	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
+	// liveness is evaluated in the app layer, not SQL.
+	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.
@@ -129,6 +136,7 @@ type Querier interface {
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
+	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to
@@ -137,9 +145,9 @@ type Querier interface {
 	// here yields the exact decimal — no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
-	// Available accounts: own OR shared via accounts_access, not deleted (see the
-	// sqlite variant, incl. the ORDER BY rationale). $1 is reused for both sides
-	// so the param stays single.
+	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
+	// (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1
+	// is reused for both sides so the param stays single.
 	ListAvailableAccounts(ctx context.Context, userID string) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
@@ -172,6 +180,10 @@ type Querier interface {
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
+	// Pending grants TO this user (invites awaiting acceptance), excluding grants
+	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
+	// engines return identical row order.
+	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
@@ -183,6 +195,8 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error

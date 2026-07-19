@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/lib/apiError'
 import { buildCsvText, chunkRows, parseCsv, remapRow } from '@/lib/csv'
 import type { ImportResultDto } from '@/api/transaction'
 
@@ -184,8 +185,7 @@ export async function runImport(
       }
     } catch (error) {
       failed += chunk.length
-      const message = error instanceof Error ? error.message : String(error)
-      addError(`Chunk ${i + 1} failed: ${message}`, [])
+      addError(`Chunk ${i + 1} failed: ${apiErrorMessage(error)}`, [])
     }
     onProgress?.(i + 1, chunks.length)
   }

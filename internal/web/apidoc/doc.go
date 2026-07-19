@@ -18,7 +18,7 @@
 // @securityDefinitions.apikey Bearer
 // @in                         header
 // @name                       Authorization
-// @description                JWT bearer token. Format: "Bearer <token>".
+// @description                Opaque access token. Format: "Bearer <token>".
 //
 // Recursive scan of the package roots: swag descends into every subdirectory of
 // ../handler (handler/<module>) and ../../app (app/<module>), so a NEW module's
@@ -45,10 +45,10 @@ type JsonResponseError struct {
 	Errors  map[string][]string `json:"errors"`
 }
 
-// JsonResponseUnauthorized is the 401 envelope (missing/invalid JWT).
+// JsonResponseUnauthorized is the 401 envelope (missing/invalid access token).
 type JsonResponseUnauthorized struct {
 	Success bool                `json:"success" example:"false"`
-	Message string              `json:"message" example:"JWT Token not found"`
+	Message string              `json:"message" example:"Access token not found"`
 	Code    int                 `json:"code" example:"0"`
 	Errors  map[string][]string `json:"errors"`
 }

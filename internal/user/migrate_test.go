@@ -10,10 +10,8 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/jwt"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
-	"github.com/econumo/econumo/internal/test/testkeys"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
@@ -27,14 +25,10 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo("sqlite", db.TX)
 	lookup := currencyrepo.New("sqlite", db.TX)
-	budgets := server.NewUserBudgetExistence("sqlite", db.TX)
-	// Login issues a JWT; reuse the embedded test keypair.
-	priv, pub := testkeys.Paths(t)
-	jwtSvc, err := jwt.New(priv, pub, testkeys.Passphrase)
-	if err != nil {
-		t.Fatalf("NewJWT: %v", err)
-	}
-	svc := appuser.NewService(repo, db.TX, enc, hasher, jwtSvc, lookup, budgets, nil, nil, clock.New(), false)
+	budgets := server.NewUserBudgetAccess("sqlite", db.TX)
+	// Login mints an opaque session token backed by the access_tokens table.
+	tokens := userrepo.NewAccessTokenRepo("sqlite", db.TX)
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false)
 	return svc, hasher
 }
 
@@ -116,7 +110,7 @@ func TestMigrateThenLoginSaltFree(t *testing.T) {
 
 	// Now authenticate with a SALT-FREE service (post-removal state).
 	saltFreeSvc, _ := newSaltFreeUserSvc(t, db)
-	res, err := saltFreeSvc.Login(ctx, model.LoginRequest{Username: email, Password: password}, clock.New().Now())
+	res, err := saltFreeSvc.Login(ctx, model.LoginRequest{Username: email, Password: password}, "migrate-test", clock.New().Now())
 	if err != nil {
 		t.Fatalf("login after migration (salt removed): %v", err)
 	}

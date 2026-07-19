@@ -18,8 +18,14 @@ import { isNotEmpty, isValidAccountName, isValidDecimalNumber, isValidFormula, i
 import { useUiStore } from '@/app/uiStore'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
+import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
+import type { ShareEntry } from '@/features/connections/shared'
+import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
+import { useConnections } from '@/features/connections/queries'
+import { UserAvatar } from '@/components/UserAvatar'
 import { evaluatedAmount } from '../transactions/useTransactionForm'
-import { useCreateAccount, useUpdateAccount } from './queries'
+import { useAccounts, useCreateAccount, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
 
 export function AccountDialog() {
   const { t } = useTranslation()
@@ -29,6 +35,10 @@ export function AccountDialog() {
   const { data: currencies } = useCurrencies()
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
+  const { data: accounts } = useAccounts()
+  const { data: connections = [] } = useConnections({ enabled: !!params?.account })
+  const grantAccountAccess = useGrantAccountAccess()
+  const revokeAccountAccess = useRevokeAccountAccess()
 
   const account = params?.account
   const isNew = !account
@@ -39,6 +49,8 @@ export function AccountDialog() {
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [icon, setIcon] = useState(defaultAccountIcon)
   const [errors, setErrors] = useState<{ name?: string; balance?: string }>({})
+  const [shareOpen, setShareOpen] = useState(false)
+  const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
 
   useEffect(() => {
     if (!params) {
@@ -61,6 +73,8 @@ export function AccountDialog() {
       setCurrencyId(userCurrencyId(user))
       setIcon(defaultAccountIcon)
     }
+    setShareOpen(false)
+    setLevelEntry(null)
     setErrors({})
     // re-seed whenever the dialog opens with new params
   }, [params, user])
@@ -72,20 +86,20 @@ export function AccountDialog() {
   const validate = (): boolean => {
     const next: { name?: string; balance?: string } = {}
     if (!isNotEmpty(name)) {
-      next.name = t('elements.validation.required_field')
+      next.name = t('common.validation.required_field')
     } else if (!isValidAccountName(name)) {
-      next.name = t('elements.form.account.name.validation.invalid_name')
+      next.name = t('accounts.form.name.validation.invalid_name')
     }
     if (!isNotEmpty(balance)) {
-      next.balance = t('elements.validation.required_field')
+      next.balance = t('common.validation.required_field')
     } else if (!isValidFormula(balance)) {
-      next.balance = t('elements.validation.invalid_formula')
+      next.balance = t('common.validation.invalid_formula')
     } else {
       const evaluated = evaluateFormula(sanitizeInput(balance) + '=')
       if (!isValidNumber(evaluated)) {
-        next.balance = t('elements.validation.invalid_number')
+        next.balance = t('common.validation.invalid_number')
       } else if (!isValidDecimalNumber(evaluated)) {
-        next.balance = t('elements.validation.invalid_decimal_number')
+        next.balance = t('common.validation.invalid_decimal_number')
       }
     }
     setErrors(next)
@@ -125,20 +139,24 @@ export function AccountDialog() {
 
   const pending = createAccount.isPending || updateAccount.isPending
 
+  // grant/revoke updates the accounts cache optimistically; read the live copy, not the open-time snapshot
+  const liveAccount = account ? accounts?.find((a) => a.id === account.id) ?? account : undefined
+  const canShare = !isNew && !!user && !!liveAccount && hasAccountAdminAccess(liveAccount, user.id)
+
   return (
     <ResponsiveDialog
       open
       caps
       fullScreen
       onOpenChange={(o) => !o && close()}
-      title={isNew ? t('modals.account.create_form.header') : t('modals.account.update_form.header')}
+      title={isNew ? t('accounts.modal.create_form.header') : t('accounts.modal.update_form.header')}
       footer={
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={close}>
-            {t('elements.button.cancel.label')}
+            {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" form="account-dialog-form" disabled={pending}>
-            {isNew ? t('elements.button.add.label') : t('elements.button.update.label')}
+            {isNew ? t('common.button.add.label') : t('common.button.update.label')}
           </Button>
         </div>
       }
@@ -154,22 +172,22 @@ export function AccountDialog() {
           void submit()
         }}
       >
-        <CardField label={t('elements.form.account.name.label')} htmlFor="account-name" error={errors.name}>
+        <CardField label={t('accounts.form.name.label')} htmlFor="account-name" error={errors.name}>
           <Input
             id="account-name"
             className={cardFieldControlClass}
             maxLength={64}
-            placeholder={t('elements.form.account.name.placeholder')}
+            placeholder={t('accounts.form.name.placeholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </CardField>
 
-        <CardField label={t('elements.form.account.balance.label')} htmlFor="account-balance" error={errors.balance}>
+        <CardField label={t('accounts.form.balance.label')} htmlFor="account-balance" error={errors.balance}>
           <CalculatorInput
             id="account-balance"
             className={cardFieldControlClass}
-            placeholder={t('elements.form.account.balance.placeholder')}
+            placeholder={t('accounts.form.balance.placeholder')}
             value={balance}
             onChange={setBalance}
           />
@@ -179,29 +197,87 @@ export function AccountDialog() {
         <button
           type="button"
           className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
-          title={t('elements.form.account.currency.label')}
+          title={t('accounts.form.currency.label')}
           onClick={() => setCurrencyOpen(true)}
         >
           <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="text-[11px] text-muted-foreground">{t('elements.form.account.currency.label')}</span>
+            <span className="text-[11px] text-muted-foreground">{t('accounts.form.currency.label')}</span>
             <span className="truncate text-sm">{currencies?.find((c) => c.id === currencyId)?.code ?? ''}</span>
           </span>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
+        {canShare && liveAccount ? (
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
+            title={t('settings.accounts.list_actions.access')}
+            onClick={() => setShareOpen(true)}
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[11px] text-muted-foreground">{t('settings.accounts.list_actions.access')}</span>
+              {liveAccount.sharedAccess.length > 0 ? (
+                <span className="flex items-center -space-x-2 pt-0.5">
+                  <UserAvatar avatar={liveAccount.owner.avatar} size="sm" className="size-7" />
+                  {liveAccount.sharedAccess.map((entry) => (
+                    <UserAvatar key={entry.user.id} avatar={entry.user.avatar} size="sm" className="size-7" />
+                  ))}
+                </span>
+              ) : null}
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+        ) : null}
+
         <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <Label>{t('modals.account.form.icon.label')}</Label>
-          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('modals.account.form.icon.label')} />
+          <Label>{t('accounts.modal.form.icon.label')}</Label>
+          <IconPicker fill value={icon} onChange={setIcon} aria-label={t('accounts.modal.form.icon.label')} />
         </div>
       </form>
 
       <CurrencyPickerDialog
         open={currencyOpen}
-        title={t('elements.form.account.currency.label')}
+        title={t('accounts.form.currency.label')}
         value={currencyId}
         onClose={() => setCurrencyOpen(false)}
         onPick={setCurrencyId}
       />
+
+      {canShare && liveAccount && user ? (
+        <>
+          <ShareAccessDialog
+            open={shareOpen && levelEntry === null}
+            title={liveAccount.name}
+            kind="accounts"
+            entries={buildShareEntries(connections, liveAccount.sharedAccess, user.id, liveAccount.owner.id)}
+            onPick={(entry) => {
+              if (entry.role !== 'owner') {
+                setLevelEntry(entry)
+              }
+            }}
+            onClose={() => setShareOpen(false)}
+          />
+          <AccessLevelDialog
+            open={levelEntry !== null}
+            kind="accounts"
+            user={levelEntry?.user ?? null}
+            role={levelEntry?.role ?? null}
+            onSelect={(role) => {
+              if (levelEntry) {
+                grantAccountAccess.mutate({ accountId: liveAccount.id, userId: levelEntry.user.id, role })
+              }
+              setLevelEntry(null)
+            }}
+            onRevoke={() => {
+              if (levelEntry) {
+                revokeAccountAccess.mutate({ accountId: liveAccount.id, userId: levelEntry.user.id })
+              }
+              setLevelEntry(null)
+            }}
+            onClose={() => setLevelEntry(null)}
+          />
+        </>
+      ) : null}
     </ResponsiveDialog>
   )
 }
