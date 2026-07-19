@@ -16,7 +16,7 @@ import (
 // AdminCreateUser creates a user regardless of ECONUMO_ALLOW_REGISTRATION and
 // returns the new id.
 func (s *Service) AdminCreateUser(ctx context.Context, name, email, password string) (vo.Id, error) {
-	u, err := s.createUser(ctx, name, email, password)
+	u, err := s.createUser(ctx, name, email, password, false)
 	if err != nil {
 		return vo.Id{}, err
 	}

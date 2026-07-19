@@ -116,7 +116,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetAccess,
-		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
+		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)

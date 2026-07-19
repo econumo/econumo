@@ -24,8 +24,9 @@ type Config struct {
 	AllowRegistration bool
 	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
-	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
-	Analytics         bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
+	CheckUpdates      bool   // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	Analytics         bool   // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
+	Trial             string // ECONUMO_TRIAL: "none" (default) or "end-of-next-month" — grants new registrations full access until the trial ends
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -113,6 +114,11 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.Analytics = analytics
+
+	c.Trial = getEnv("ECONUMO_TRIAL", "none")
+	if c.Trial != "none" && c.Trial != "end-of-next-month" {
+		return Config{}, fmt.Errorf("ECONUMO_TRIAL: invalid value %q (want none or end-of-next-month)", c.Trial)
+	}
 
 	if v := os.Getenv("ECONUMO_API_URL"); v != "" {
 		u, err := url.Parse(v)

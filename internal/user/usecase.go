@@ -37,6 +37,7 @@ type Service struct {
 	clock             port.Clock
 	limiter           AttemptLimiter
 	allowRegistration bool
+	trial             string
 }
 
 func NewService(
@@ -53,6 +54,7 @@ func NewService(
 	clock port.Clock,
 	limiter AttemptLimiter,
 	allowRegistration bool,
+	trial string,
 ) *Service {
 	return &Service{
 		repo:              repo,
@@ -68,6 +70,7 @@ func NewService(
 		clock:             clock,
 		limiter:           limiter,
 		allowRegistration: allowRegistration,
+		trial:             trial,
 	}
 }
 
