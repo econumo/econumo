@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -82,6 +83,22 @@ func TestAddCurrency(t *testing.T) {
 	// Invalid code -> validation error.
 	if _, err := svc.AddCurrency(ctx, "TOOLONG", nil, nil); !isValidationErr(err) {
 		t.Fatalf("AddCurrency(TOOLONG): want validation error, got %v", err)
+	}
+
+	// Out-of-range fraction digits are rejected rather than silently truncated
+	// by the int16 the currencies row stores them in.
+	for _, fd := range []int{-1, math.MaxInt16 + 1, math.MaxInt32} {
+		if _, err := svc.AddCurrency(ctx, "SEK", nil, &fd); !isValidationErr(err) {
+			t.Errorf("AddCurrency(SEK, fd=%d): want validation error, got %v", fd, err)
+		}
+	}
+	// ...and the rejected adds wrote nothing.
+	var n int
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM currencies WHERE code = ?`), "SEK").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("SEK rows after rejected adds = %d, want 0", n)
 	}
 }
 

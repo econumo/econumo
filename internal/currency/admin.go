@@ -5,6 +5,7 @@ package currency
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -98,6 +99,12 @@ func (s *WriteService) UpdateRates(ctx context.Context, rates []model.RateInput)
 	return count, nil
 }
 
+// maxFractionDigits bounds the admin-supplied fraction-digits override. ISO 4217
+// itself tops out at 4, but the override exists to allow higher display
+// precision, so the cap is only tight enough to keep the value well inside the
+// int16 the currencies row stores it in.
+const maxFractionDigits = 18
+
 // AddCurrency creates a currency if its code is not already present. The symbol
 // and (when not overridden) the fraction digits come from the ICU tables.
 // Returns whether a row was created (false = the code already existed).
@@ -115,6 +122,11 @@ func (s *WriteService) AddCurrency(ctx context.Context, code string, name *strin
 	}
 	digits := FractionDigits(c)
 	if fractionDigits != nil {
+		if *fractionDigits < 0 || *fractionDigits > maxFractionDigits {
+			msg := fmt.Sprintf("Fraction digits must be 0-%d", maxFractionDigits)
+			return false, errs.NewValidation(msg,
+				errs.FieldError{Key: "fractionDigits", Message: msg})
+		}
 		digits = *fractionDigits
 	}
 	row := model.CurrencyRow{
