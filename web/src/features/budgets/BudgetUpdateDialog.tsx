@@ -12,7 +12,7 @@ import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData } from '@/features/user/queries'
-import { useUpdateBudgetDetail, canConfigureBudget } from './queries'
+import { useUpdateBudgetDetail, canConfigureBudget, canEditBudget } from './queries'
 import { BudgetAccountsField } from './BudgetAccountsField'
 
 interface BudgetUpdateDialogProps {
@@ -35,6 +35,8 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const [error, setError] = useState<string | null>(null)
 
   const canConfigure = canConfigureBudget(budget.meta, user?.id)
+  // guest (read-only) may open the dialog but must not change anything
+  const canEdit = canEditBudget(budget.meta, user?.id)
 
   useEffect(() => {
     if (open) {
@@ -60,6 +62,9 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   }
 
   const submit = () => {
+    if (!canEdit) {
+      return
+    }
     if (!isNotEmpty(name)) {
       setError(t('budgets.form.budget.name.validation.required_field'))
       return
@@ -89,7 +94,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" form="budget-update-form" disabled={updateBudget.isPending}>
+          <Button type="submit" form="budget-update-form" disabled={!canEdit || updateBudget.isPending}>
             {t('common.button.update.label')}
           </Button>
         </div>
@@ -130,7 +135,9 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
-        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} excluded={excluded} onToggle={toggleAccount} /> : null}
+        {ownAccounts.length > 0 ? (
+          <BudgetAccountsField accounts={ownAccounts} excluded={excluded} disabled={!canEdit} onToggle={toggleAccount} />
+        ) : null}
       </form>
 
       <CurrencyPickerDialog

@@ -13,13 +13,14 @@ interface BudgetAccountsFieldProps {
   accounts: AccountDto[]
   excluded: Set<Id>
   onToggle: (id: Id, included: boolean) => void
+  disabled?: boolean
 }
 
 const SEARCH_THRESHOLD = 6
 
 // Card-style include/exclude account list for the budget forms: searchable,
 // with accounts that live in hidden folders separated below the rest.
-export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAccountsFieldProps) {
+export function BudgetAccountsField({ accounts, excluded, onToggle, disabled = false }: BudgetAccountsFieldProps) {
   const { t } = useTranslation()
   const { data: folders = [] } = useFolders()
   const [search, setSearch] = useState('')
@@ -40,6 +41,7 @@ export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAcco
       <Switch
         aria-label={`include ${account.name}`}
         checked={!excluded.has(account.id)}
+        disabled={disabled}
         onCheckedChange={(checked) => onToggle(account.id, checked === true)}
       />
     </li>
