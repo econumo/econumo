@@ -25,6 +25,8 @@ coverage.out
 .claude/settings.local.json
 .claude/worktrees/
 .claude/launch.json
+# skill-creator eval run outputs (transcripts/grades from a specific run, not shared config)
+.claude/skills/*-workspace/
 
 # design-sync machine state (staged scripts, build output, caches)
 .ds-sync/
