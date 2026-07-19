@@ -157,24 +157,33 @@ Account-balance day-boundary math uses the caller's timezone; the SPA sends
 
 ## Error handling
 
-Two layers, mapped deliberately:
+Two layers, mapped deliberately. Every tool error is `isError: true` whose
+text is a JSON object mirroring the client-facing fields of the REST error
+envelope, so a model receives the same signal the web SPA does:
+
+```json
+{ "message": "<frozen message>", "messageCode": "<catalogue code>" }
+// field validations additionally carry the envelope's per-field maps:
+{ "message": "Form validation error",
+  "errors":     { "name": ["Category name must be 3-64 characters"] },
+  "errorCodes": { "name": [{ "code": "category.name_length",
+                             "params": { "min": 3, "max": 64 } }] } }
+```
 
 - **Domain errors** (the `errs` taxonomy: validation, not-found, access
-  denied) → MCP **tool errors** (`isError: true`) carrying the same
-  human-readable message the REST envelope would; the model can self-correct
-  on genuine validation errors (e.g. an unparsable month string). This does
-  NOT cover an unknown reference id (category/payee/tag/account): that hits a
-  FK constraint at the DB, which is indistinguishable from an infrastructure
-  failure at the edge, so it surfaces as the generic `"Internal error"` tool
-  error below instead of a self-correctable message — REST 500s identically
-  on the same bad id today. A future service-level reference-id validation
-  would improve both edges together.
-- **Infrastructure errors** (DB failure, panics) → a generic `"Internal
-  error"` **tool error**, not a JSON-RPC error response: the SDK's typed
-  handlers can't emit JSON-RPC errors directly, so infra failures are mapped
-  to the same `isError: true` shape as domain errors but with a static
-  message — nothing leaks. `ECONUMO_DEBUG` does NOT add stack traces to MCP
-  responses; the underlying error is logged at ERROR instead.
+  denied) → the envelope-mirroring payload above (`message` + `messageCode`/
+  `messageParams`, plus `errors`/`errorCodes` for field validations). The
+  model can self-correct: a bad month string, and — since the service-level
+  reference-authorization added in the write-endpoint IDOR hardening — an
+  unknown or foreign reference id (category/payee/tag/recipient account) now
+  returns a proper domain validation error with its code
+  (`transaction.item_not_available` / `transaction.account_not_available`)
+  rather than an opaque failure.
+- **Infrastructure errors** (DB failure, panics) → the same payload shape with
+  a static `{"message":"Internal error"}` and no code — the SDK's typed
+  handlers can't emit JSON-RPC errors directly, so infra failures map to the
+  same `isError: true` shape but nothing leaks. `ECONUMO_DEBUG` does NOT add
+  stack traces to MCP responses; the underlying error is logged at ERROR.
 
 ## Logging
 
