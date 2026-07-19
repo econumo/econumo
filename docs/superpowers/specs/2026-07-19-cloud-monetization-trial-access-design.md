@@ -62,11 +62,10 @@ gets at least one fully closed month (29–62 days depending on registration dat
 
 - **Account deletion.** A "delete my user and all related data" endpoint does not
   exist in the product today (no endpoint, no cascades). It is **the planned next
-  iteration** and gets its own design: cascades across ten features, shared
-  accounts, connections, token revocation, and the question of what happens to
-  accounts other people were sharing. It does not block this work — a restricted
+  iteration** and gets its own design. It does not block this work — a restricted
   user can still log in and export via CSV — but shipping a paywall without an
-  exit is only acceptable as a temporary state.
+  exit is only acceptable as a temporary state. See below for the direction
+  already agreed and the one constraint it places on *this* spec.
 - **The payment portal itself.** It lives in a private repository. This spec
   fixes only the contract between it and the product.
 - **Trial abuse.** A new email buys a new trial. Accepted; the portal can address
@@ -75,6 +74,36 @@ gets at least one fully closed month (29–62 days depending on registration dat
   now. The model below states the invariant that keeps them additive later.
 - **Household/seat pricing in the product.** "Pay for your partner" is entirely a
   portal concern — see "Paying for a partner".
+
+### Account deletion: recorded direction
+
+Not designed here, but agreed, so the next iteration starts from it rather than
+re-litigating:
+
+- **Delete the data, keep a tombstone row in `users`** carrying the id and a
+  `deleted_at` date. The reason is not foreign keys in the abstract — it is *other
+  people's data*: transactions the departing user authored in a partner's shared
+  account stay with the partner, and dropping the row would leave that history
+  with an unresolvable author. The tombstone renders as "Deleted user".
+- **The identifying fields must be cleared, not retained** — email, name, avatar,
+  password hash. Keeping the email would both defeat the point of deletion and
+  permanently block that address from re-registering, since the user identifier is
+  `md5(lower(email))`.
+- **All sessions and PATs are revoked** as part of the same transaction.
+- **A CLI counterpart** (`user:delete <email>`) alongside the API endpoint, as with
+  every other user operation. Being irreversible, it should require an explicit
+  confirmation argument rather than deleting on sight.
+
+Two questions deliberately left open for that design: what happens to accounts the
+departing user *owned* and had shared with others (deleted, or transferred to a
+remaining participant), and whether the tombstone reuses `is_active = false` or
+needs a state of its own.
+
+**The constraint on this spec:** deletion will be a `POST`, and a lapsed user is
+exactly who most wants to leave. When it lands it **must** be added to the
+read-only allowlist below — otherwise the 402 rule turns "your access expired"
+into "and you may not leave", which is the trap this spec's non-goal note warns
+about.
 
 ## Core idea: the product knows about access, not about money
 
@@ -209,6 +238,11 @@ restricted user with no special case; CSV import (`POST`) is blocked, correctly.
 Password change is allowed on purpose: it is a security operation, not data.
 Locking a user out of rotating a compromised password would be indefensible.
 `create-personal-token` is *not* allowed — it grants new write-capable credentials.
+
+The account-deletion endpoint joins this list the moment it exists (see "Account
+deletion: recorded direction"). The principle behind the allowlist is that a
+restricted user may always secure their account and leave it — they may not add
+data.
 
 **Enforcement is per caller.** A restricted user cannot write anywhere, including
 into accounts shared with them. A paying user keeps writing into accounts shared
