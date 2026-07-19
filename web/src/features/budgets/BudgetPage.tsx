@@ -46,6 +46,7 @@ import {
   useMoveElements,
   useChangeElementCurrency,
   canConfigureBudget,
+  canEditBudget,
   canUpdateLimits,
   canDeleteEnvelope,
 } from './queries'
@@ -273,6 +274,7 @@ export function BudgetPage() {
   }, [budget, serverBuckets, dragArrangement, currencies])
 
   const configure = budget ? canConfigureBudget(budget.meta, user?.id) : false
+  const editDetails = budget ? canEditBudget(budget.meta, user?.id) : false
   const limitsEditable = budget ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
 
   const folderNameValidator = (value: string): string | null => {
@@ -569,7 +571,7 @@ export function BudgetPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setUpdateBudgetOpen(true)}>
+              <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>

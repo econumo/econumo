@@ -63,6 +63,12 @@ export function canConfigureBudget(meta: BudgetMetaDto | undefined | null, userI
   return role === 'owner' || role === 'admin'
 }
 
+// Mirrors the backend's canUpdate (update-budget): guest is read-only.
+export function canEditBudget(meta: BudgetMetaDto | undefined | null, userId: Id | undefined): boolean {
+  const role = myBudgetRole(meta, userId)
+  return role === 'owner' || role === 'admin' || role === 'user'
+}
+
 export function canUpdateLimits(meta: BudgetMetaDto | undefined | null, userId: Id | undefined, selectedDate: string): boolean {
   const role = myBudgetRole(meta, userId)
   if (!(role === 'owner' || role === 'admin' || role === 'user')) {
