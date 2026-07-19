@@ -111,6 +111,17 @@ func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (G
 	return i, err
 }
 
+const getUserLanguage = `-- name: GetUserLanguage :one
+SELECT language FROM users WHERE id = ?
+`
+
+func (q *Queries) GetUserLanguage(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserLanguage, id)
+	var language string
+	err := row.Scan(&language)
+	return language, err
+}
+
 const getUserTimezone = `-- name: GetUserTimezone :one
 SELECT timezone FROM users WHERE id = ?
 `

@@ -42,3 +42,6 @@ SELECT timezone FROM users WHERE id = $1;
 
 -- name: UpdateUserTimezone :exec
 UPDATE users SET timezone = $1 WHERE id = $2;
+
+-- name: GetUserLanguage :one
+SELECT language FROM users WHERE id = $1;

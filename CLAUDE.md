@@ -224,9 +224,9 @@ above), and `emails` (backend-rendered mail). `{var}` placeholders use the same
 (`web/src/app/i18n.ts`), `getLocaleOptions()` (`web/src/lib/config.ts`),
 and the `languages` list in `internal/test/i18ntest`.
 - **Backend runtime**: `internal/infra/i18n` (`i18n.T(lang, key, params)`) translates
-  server-rendered text — currently just the password-reset email; API error
-  `message`/`errors` strings stay frozen English, never translated here (see
-  above). The `Language` middleware resolves `Accept-Language` to a supported
+  server-rendered text — the password-reset email, and (MCP only — see above) tool-error
+  `message` strings; REST error `message`/`errors` strings stay frozen English, never
+  translated here. The `Language` middleware resolves `Accept-Language` to a supported
   two-letter tag and stashes it in `reqctx`; the middleware chain is
   `requestid -> accesslog -> recover -> cors -> timezone -> language -> [auth]`
   (`internal/web/middleware/middleware.go`).
@@ -242,8 +242,9 @@ and the `languages` list in `internal/test/i18ntest`.
   `Intl.PluralRules` — i18next's own plural suffixes are not used, so all
   plural strings are authored as a single pipe-joined value. The selected
   language is also persisted server-side (`users.language`, default `en` —
-  written by `update-language` and on login from `Accept-Language`; write-only,
-  for future background email rendering).
+  written by `update-language` and on login from `Accept-Language`; read back
+  by the `/mcp` language fallback above, and reserved for future background
+  email rendering).
 - **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
   key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
   frontend-source `t()`-call key coverage against the catalogue, two-way
@@ -366,6 +367,14 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `last_used_at` throttle). MCP clients send no header, so `/mcp` (only) falls back to the
   stored value when none is present; the header always wins when it is present, on both
   edges — REST behavior is unchanged.
+- MCP tool-error `message` text is localized to the caller's language — a deliberate
+  MCP-only divergence from REST (which stays frozen English + code, translated by the
+  SPA). `internal/web/mcp/helpers.go` (`MapErr`) resolves `reqctx.Language(ctx)` and
+  renders any coded message/field message via `i18n.T(lang, "errors."+code, params)`;
+  codes are unaffected. The language itself follows the same fallback pattern as the
+  timezone above: explicit `Accept-Language` header → stored `users.language` → `en`
+  (`languageFallback`, `internal/server/glue_language.go`, installed on `/mcp` next to
+  `timezoneFallback`; `reqctx.IsLanguageExplicit` mirrors `IsLocationExplicit`).
 
 ### Logging
 

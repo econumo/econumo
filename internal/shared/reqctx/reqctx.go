@@ -69,6 +69,15 @@ func IsLocationExplicit(ctx context.Context) bool {
 	return v
 }
 
+// IsLanguageExplicit reports whether the request's language came from the
+// caller (a matched Accept-Language header, via the Language middleware)
+// rather than being unset. The middleware calls WithLanguage only on a match,
+// so "the language key holds a non-empty value" is exactly "explicit header".
+func IsLanguageExplicit(ctx context.Context) bool {
+	lang, ok := ctx.Value(languageKey).(string)
+	return ok && lang != ""
+}
+
 // logAccumulator is a request-scoped, pointer-backed bag of structured log
 // attributes. A single pointer is placed in the context once (by the access-log
 // middleware); every layer that knows something worth logging — the auth

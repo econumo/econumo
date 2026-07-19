@@ -57,6 +57,7 @@ type querier interface {
 	UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error
 	GetUserTimezone(ctx context.Context, db backend.DBTX, id string) (string, error)
 	UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error
+	GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error)
 }
 
 type Repo struct {
@@ -212,6 +213,14 @@ func (r *Repo) GetTimezone(ctx context.Context, id vo.Id) (string, error) {
 
 func (r *Repo) UpdateTimezone(ctx context.Context, id vo.Id, tz string) error {
 	return r.q.UpdateUserTimezone(ctx, r.db(ctx), timezoneParams{Timezone: tz, ID: id.String()})
+}
+
+func (r *Repo) GetLanguage(ctx context.Context, id vo.Id) (string, error) {
+	lang, err := r.q.GetUserLanguage(ctx, r.db(ctx), id.String())
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errs.NewNotFound("User not found")
+	}
+	return lang, err
 }
 
 func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {

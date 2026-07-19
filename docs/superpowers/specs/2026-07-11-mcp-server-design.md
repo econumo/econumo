@@ -159,21 +159,35 @@ Account-balance day-boundary math uses the caller's timezone; the SPA sends
 
 Two layers, mapped deliberately. Every tool error is `isError: true` whose
 text is a JSON object mirroring the client-facing fields of the REST error
-envelope, so a model receives the same signal the web SPA does:
+envelope, so a model receives the same signal the web SPA does — with one
+deliberate divergence: **message text is localized server-side** to the
+caller's language, whereas REST always returns frozen English and leaves
+translation to the SPA (MCP clients are LLMs with no catalogue of their own).
+The resolution chain mirrors the stored-timezone fallback above: explicit
+`Accept-Language` header → stored `users.language` → `en`
+(`languageFallback`, `internal/server/glue_language.go`, installed on `/mcp`
+next to `timezoneFallback`). Codes are unaffected — they stay for machine use
+regardless of language:
 
 ```json
-{ "message": "<frozen message>", "messageCode": "<catalogue code>" }
+{ "message": "<message translated to the caller's language>", "messageCode": "<catalogue code>" }
 // field validations additionally carry the envelope's per-field maps:
 { "message": "Form validation error",
-  "errors":     { "name": ["Category name must be 3-64 characters"] },
+  "errors":     { "name": ["<translated per-field message>"] },
   "errorCodes": { "name": [{ "code": "category.name_length",
                              "params": { "min": 3, "max": 64 } }] } }
 ```
 
 - **Domain errors** (the `errs` taxonomy: validation, not-found, access
   denied) → the envelope-mirroring payload above (`message` + `messageCode`/
-  `messageParams`, plus `errors`/`errorCodes` for field validations). The
-  model can self-correct: a bad month string, and — since the service-level
+  `messageParams`, plus `errors`/`errorCodes` for field validations). Any
+  error/field that carries a catalogue code renders `message` via
+  `i18n.T(lang, "errors."+code, params)` (`internal/web/mcp/helpers.go`,
+  `MapErr`); errors/fields with no code (nothing in the catalogue to look up,
+  e.g. the MCP-internal "month must be YYYY-MM") keep their literal Go-side
+  text unchanged, and not-found/access-denied errors — which carry only a
+  message today, no code — are likewise passed through as-is. The model can
+  self-correct: a bad month string, and — since the service-level
   reference-authorization added in the write-endpoint IDOR hardening — an
   unknown or foreign reference id (category/payee/tag/recipient account) now
   returns a proper domain validation error with its code

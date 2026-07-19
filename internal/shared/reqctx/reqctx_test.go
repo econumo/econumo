@@ -78,3 +78,14 @@ func TestExplicitLocation(t *testing.T) {
 		t.Fatalf("Location = %s, want Europe/Amsterdam", got)
 	}
 }
+
+func TestIsLanguageExplicit(t *testing.T) {
+	ctx := context.Background()
+	if IsLanguageExplicit(ctx) {
+		t.Fatal("empty ctx must not be explicit")
+	}
+	ctx = WithLanguage(ctx, "ru")
+	if !IsLanguageExplicit(ctx) {
+		t.Fatal("WithLanguage must mark explicit")
+	}
+}

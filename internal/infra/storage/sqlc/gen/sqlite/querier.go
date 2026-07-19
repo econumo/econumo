@@ -193,6 +193,7 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
+	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)

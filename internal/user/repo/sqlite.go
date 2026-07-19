@@ -53,3 +53,7 @@ func (sqliteQuerier) GetUserTimezone(ctx context.Context, db backend.DBTX, id st
 func (sqliteQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error {
 	return sqlitegen.New(db).UpdateUserTimezone(ctx, p)
 }
+
+func (sqliteQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).GetUserLanguage(ctx, id)
+}

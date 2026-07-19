@@ -60,3 +60,7 @@ func (pgsqlQuerier) GetUserTimezone(ctx context.Context, db backend.DBTX, id str
 func (pgsqlQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error {
 	return pgsqlgen.New(db).UpdateUserTimezone(ctx, pgsqlgen.UpdateUserTimezoneParams(p))
 }
+
+func (pgsqlQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return pgsqlgen.New(db).GetUserLanguage(ctx, id)
+}

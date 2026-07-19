@@ -8,7 +8,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/web/middleware"
 )
@@ -26,8 +28,11 @@ func UserID(ctx context.Context) (vo.Id, error) {
 
 // errPayload mirrors the client-facing fields of the REST error envelope
 // (internal/web/httpx) so an MCP tool error carries the same signal the web
-// SPA receives: a frozen English message plus the machine-readable code(s).
-// Field validations populate errors/errorCodes exactly as the envelope's
+// SPA receives: a message plus the machine-readable code(s). Unlike REST
+// (frozen English, translated client-side), MapErr renders message text in
+// the caller's language server-side, since MCP clients are LLMs with no
+// catalogue of their own; codes stay for machine use either way. Field
+// validations populate errors/errorCodes exactly as the envelope's
 // errors{}/errorCodes{} maps do.
 type errPayload struct {
 	Message       string               `json:"message"`
@@ -42,23 +47,39 @@ type codeRef struct {
 	Params map[string]any `json:"params,omitempty"`
 }
 
+// formValidationErrorLiteral is the field-validation generic label. The
+// catalogue defines no key for it (checked against locales/en.json), so it
+// stays frozen English rather than inventing a key; i18n.T's missing-key
+// fallback (return the key verbatim) would otherwise leak a dotted key into
+// the message.
+const formValidationErrorLiteral = "Form validation error"
+
 // MapErr shapes a use-case error into MCP tool-error text. Domain errors are
 // surfaced as a JSON object mirroring the REST error envelope (message plus
 // code(s)), so a model receives the same actionable signal the SPA does and
-// can self-correct. Anything else is infrastructure: logged here and replaced
-// with a static message so no internals leak. Typed SDK handlers turn the
-// returned error into an isError tool result whose text is this JSON.
+// can self-correct. Message text is rendered in the caller's language
+// (reqctx.Language) via the shared i18n catalogue, keyed "errors."+code — a
+// deliberate MCP-only divergence from REST, which keeps frozen English and
+// leaves translation to the SPA. Errors with no code (nothing in the
+// catalogue to look up) keep their literal Go-side text unchanged. Anything
+// else is infrastructure: logged here and replaced with a static message so
+// no internals leak. Typed SDK handlers turn the returned error into an
+// isError tool result whose text is this JSON.
 func MapErr(ctx context.Context, err error) error {
 	if err == nil {
 		return nil
 	}
+	lang := reqctx.Language(ctx)
 	if v, ok := errs.AsValidation(err); ok {
 		p := errPayload{Message: v.Msg, MessageCode: v.MsgCode, MessageParams: v.MsgParams}
+		if v.MsgCode != "" {
+			p.Message = i18n.T(lang, "errors."+v.MsgCode, v.MsgParams)
+		}
 		if len(v.Fields) > 0 {
 			// Field-level validation mirrors the envelope: the generic label
 			// plus the actionable per-field errors/errorCodes maps.
-			p.Message = "Form validation error"
-			p.Errors = fieldsToMessages(v.Fields)
+			p.Message = formValidationErrorLiteral
+			p.Errors = fieldsToMessages(lang, v.Fields)
 			p.ErrorCodes = fieldsToCodes(v.Fields)
 		}
 		return structuredErr(ctx, p)
@@ -73,10 +94,14 @@ func MapErr(ctx context.Context, err error) error {
 	return structuredErr(ctx, errPayload{Message: "Internal error"})
 }
 
-func fieldsToMessages(fields []errs.FieldError) map[string][]string {
+func fieldsToMessages(lang string, fields []errs.FieldError) map[string][]string {
 	out := make(map[string][]string, len(fields))
 	for _, f := range fields {
-		out[f.Key] = append(out[f.Key], f.Message)
+		msg := f.Message
+		if f.Code != "" {
+			msg = i18n.T(lang, "errors."+f.Code, f.Params)
+		}
+		out[f.Key] = append(out[f.Key], msg)
 	}
 	return out
 }
