@@ -59,10 +59,11 @@ func currencyCommands() []command {
 				}
 				var fdPtr *int
 				if len(args) == 3 && strings.TrimSpace(args[2]) != "" {
-					fd, err := strconv.Atoi(strings.TrimSpace(args[2]))
+					parsed, err := strconv.ParseInt(strings.TrimSpace(args[2]), 10, 16)
 					if err != nil {
 						return fmt.Errorf("invalid fraction-digits %q: %w", args[2], err)
 					}
+					fd := int(parsed)
 					fdPtr = &fd
 				}
 
