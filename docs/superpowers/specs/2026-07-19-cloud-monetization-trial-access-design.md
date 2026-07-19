@@ -355,10 +355,39 @@ The same use cases stay reachable from the CLI for operations, alongside the
 existing `user:*` commands — both edges call the same service methods:
 
 ```
-user:set-access <email> full never
-user:set-access <email> full 2027-01-01
-user:set-access <email> readonly
+user:set-access <email> <full|readonly> [YYYY-MM-DD]    # date omitted = no expiry
+user:show <email>
 ```
+
+`user:set-access` takes the expiry as an **optional positional**, matching the
+existing commands (`token:purge [days]`, `currency:add <code> [name]
+[fraction-digits]`) rather than introducing a `never` sentinel word. An omitted
+date means `access_until = NULL`, exactly as `"until": null` does on the admin
+endpoint. The date format is `datetime.DateLayout` (`YYYY-MM-DD`), as in
+`currency:update-rates`.
+
+`user:show` is new and closes a real gap: every existing CLI command is a
+mutation, so today an operator can change state but cannot read it back without
+opening the database directly. That is tolerable while the only fields are name
+and email; it stops being tolerable once access level and expiry are the things
+being set. It prints id, name, email, active flag, access level, effective access
+level, and expiry:
+
+```
+$ econumo user:show user@example.test
+Id:              0198f3c1-...
+Name:            Alex
+Email:           user@example.test
+Active:          yes
+Access level:    full
+Access until:    2026-09-01 00:00:00
+Effective:       full
+```
+
+`Effective` is printed alongside the raw column on purpose: the whole model turns
+on `(access_level, access_until, now)` collapsing to one value, and an operator
+debugging "why can this user not write" needs to see the result, not re-derive it.
+Read-only by construction — it takes no other arguments and changes nothing.
 
 ## What the SPA sees
 
@@ -523,7 +552,10 @@ The same binary serves a self-hosted user (all defaults) and the cloud.
   `billing-handoff:v1` prefix is rejected (domain separation holds).
 - Connections: `get-connection-list` and `accept-invite` carry `accessLevel` /
   `accessUntil` per connection, and `accessUntil` is `""` when NULL.
-- CLI: `user:set-access` variants, alongside the existing command tests.
+- CLI: `user:set-access` with and without the date positional, an invalid level, an
+  invalid date, and an unknown email; `user:show` renders every field and prints an
+  `Effective` value that differs from `Access level` once the expiry has passed.
+  Both sit alongside the existing command tests in `internal/cli/commands_test.go`.
 - Frontend (vitest): banner appears within the window and while read-only, hidden
   when `BILLING_URL` is empty; a 402 response flips the client into read-only; the
   per-connection CTA appears only for a read-only or near-expiry connection and
