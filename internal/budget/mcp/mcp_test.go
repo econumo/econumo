@@ -154,3 +154,315 @@ func TestBudgetTools(t *testing.T) {
 		t.Fatalf("list_budgets: expected Household budget, got: %#v", items)
 	}
 }
+
+func TestBudgetTools_BuildFlow(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	folderID := f.Folder(fixture.Folder{UserID: userID})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	f.AccountInFolder(folderID, accountID)
+	f.AccountOption(accountID, userID, 0)
+	categoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+
+	svc := newBudgetService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectBudgetSession(t, ctx, svc)
+
+	createBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "create_budget",
+		Arguments: map[string]any{
+			"name":        "Groceries Budget",
+			"currency_id": fixture.USD,
+			"start_date":  "2024-04-01",
+		},
+	})
+	if err != nil {
+		t.Fatalf("create_budget: transport error: %v", err)
+	}
+	if createBudgetRes.IsError {
+		t.Fatalf("create_budget: unexpected error: %#v", createBudgetRes.Content)
+	}
+	budgetItem, ok := structured(t, createBudgetRes)["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("create_budget: missing item: %#v", structured(t, createBudgetRes))
+	}
+	budgetMeta, ok := budgetItem["meta"].(map[string]any)
+	if !ok {
+		t.Fatalf("create_budget: missing item.meta: %#v", budgetItem)
+	}
+	budgetID, _ := budgetMeta["id"].(string)
+	if budgetID == "" {
+		t.Fatalf("create_budget: empty budget id: %#v", budgetMeta)
+	}
+	if budgetMeta["name"] != "Groceries Budget" {
+		t.Fatalf("create_budget: unexpected name: %#v", budgetMeta)
+	}
+
+	createFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+	})
+	if err != nil {
+		t.Fatalf("create_folder: transport error: %v", err)
+	}
+	if createFolderRes.IsError {
+		t.Fatalf("create_folder: unexpected error: %#v", createFolderRes.Content)
+	}
+	folderItem, ok := structured(t, createFolderRes)["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("create_folder: missing item: %#v", structured(t, createFolderRes))
+	}
+	elementFolderID, _ := folderItem["id"].(string)
+	if elementFolderID == "" {
+		t.Fatalf("create_folder: empty folder id: %#v", folderItem)
+	}
+
+	createEnvelopeRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "create_envelope",
+		Arguments: map[string]any{
+			"budget_id":    budgetID,
+			"name":         "Groceries",
+			"icon":         "cart",
+			"currency_id":  fixture.USD,
+			"folder_id":    elementFolderID,
+			"category_ids": []string{categoryID},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create_envelope: transport error: %v", err)
+	}
+	if createEnvelopeRes.IsError {
+		t.Fatalf("create_envelope: unexpected error: %#v", createEnvelopeRes.Content)
+	}
+	envelopeItem, ok := structured(t, createEnvelopeRes)["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("create_envelope: missing item: %#v", structured(t, createEnvelopeRes))
+	}
+	envelopeID, _ := envelopeItem["id"].(string)
+	if envelopeID == "" {
+		t.Fatalf("create_envelope: empty envelope id: %#v", envelopeItem)
+	}
+	children, ok := envelopeItem["children"].([]any)
+	if !ok || len(children) != 1 {
+		t.Fatalf("create_envelope: expected 1 child category, got: %#v", envelopeItem["children"])
+	}
+	if child, ok := children[0].(map[string]any); !ok || child["id"] != categoryID {
+		t.Fatalf("create_envelope: expected child category %q, got: %#v", categoryID, children[0])
+	}
+
+	setLimitRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "set_limit",
+		Arguments: map[string]any{
+			"budget_id":  budgetID,
+			"element_id": envelopeID,
+			"month":      "2024-04",
+			"amount":     "150.00",
+		},
+	})
+	if err != nil {
+		t.Fatalf("set_limit: transport error: %v", err)
+	}
+	if setLimitRes.IsError {
+		t.Fatalf("set_limit: unexpected error: %#v", setLimitRes.Content)
+	}
+	limitData := structured(t, setLimitRes)
+	if limitData["budget_id"] != budgetID || limitData["element_id"] != envelopeID ||
+		limitData["month"] != "2024-04" || limitData["amount"] != "150.00" {
+		t.Fatalf("set_limit: unexpected confirmation: %#v", limitData)
+	}
+
+	toggleRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "set_budget_account_included",
+		Arguments: map[string]any{
+			"budget_id":  budgetID,
+			"account_id": accountID,
+			"included":   false,
+		},
+	})
+	if err != nil {
+		t.Fatalf("set_budget_account_included: transport error: %v", err)
+	}
+	if toggleRes.IsError {
+		t.Fatalf("set_budget_account_included: unexpected error: %#v", toggleRes.Content)
+	}
+	toggleData := structured(t, toggleRes)
+	if toggleData["budget_id"] != budgetID || toggleData["account_id"] != accountID || toggleData["included"] != false {
+		t.Fatalf("set_budget_account_included: unexpected confirmation: %#v", toggleData)
+	}
+
+	updateFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "update_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "id": elementFolderID, "name": "Bills Renamed"},
+	})
+	if err != nil {
+		t.Fatalf("update_folder: transport error: %v", err)
+	}
+	if updateFolderRes.IsError {
+		t.Fatalf("update_folder: unexpected error: %#v", updateFolderRes.Content)
+	}
+
+	updateEnvelopeRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "update_envelope",
+		Arguments: map[string]any{
+			"budget_id":    budgetID,
+			"id":           envelopeID,
+			"name":         "Groceries Renamed",
+			"icon":         "cart",
+			"currency_id":  fixture.USD,
+			"category_ids": []string{categoryID},
+			"archived":     false,
+		},
+	})
+	if err != nil {
+		t.Fatalf("update_envelope: transport error: %v", err)
+	}
+	if updateEnvelopeRes.IsError {
+		t.Fatalf("update_envelope: unexpected error: %#v", updateEnvelopeRes.Content)
+	}
+
+	// update_budget must NOT silently re-include the account excluded above:
+	// ExcludedAccounts is authoritative on the wire (internal/budget/crud.go), so
+	// the tool must round-trip the current excluded set.
+	updateBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "update_budget",
+		Arguments: map[string]any{
+			"budget_id":   budgetID,
+			"name":        "Groceries Budget Renamed",
+			"currency_id": fixture.USD,
+		},
+	})
+	if err != nil {
+		t.Fatalf("update_budget: transport error: %v", err)
+	}
+	if updateBudgetRes.IsError {
+		t.Fatalf("update_budget: unexpected error: %#v", updateBudgetRes.Content)
+	}
+
+	getRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget",
+		Arguments: map[string]any{"budget_id": budgetID, "month": "2024-04"},
+	})
+	if err != nil {
+		t.Fatalf("get_budget: transport error: %v", err)
+	}
+	if getRes.IsError {
+		t.Fatalf("get_budget: unexpected error: %#v", getRes.Content)
+	}
+	getItem, ok := structured(t, getRes)["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("get_budget: missing item: %#v", structured(t, getRes))
+	}
+	gotMeta, ok := getItem["meta"].(map[string]any)
+	if !ok || gotMeta["name"] != "Groceries Budget Renamed" {
+		t.Fatalf("get_budget: expected renamed budget, got: %#v", getItem["meta"])
+	}
+	filters, ok := getItem["filters"].(map[string]any)
+	if !ok {
+		t.Fatalf("get_budget: missing filters: %#v", getItem)
+	}
+	excluded, ok := filters["excludedAccountsIds"].([]any)
+	if !ok || len(excluded) != 1 || excluded[0] != accountID {
+		t.Fatalf("get_budget: expected account %q to stay excluded after update_budget, got: %#v", accountID, filters["excludedAccountsIds"])
+	}
+	structureData, ok := getItem["structure"].(map[string]any)
+	if !ok {
+		t.Fatalf("get_budget: missing structure: %#v", getItem)
+	}
+	folders, ok := structureData["folders"].([]any)
+	if !ok || len(folders) == 0 {
+		t.Fatalf("get_budget: missing folders: %#v", structureData)
+	}
+	foundFolder := false
+	for _, fo := range folders {
+		if m, ok := fo.(map[string]any); ok && m["id"] == elementFolderID && m["name"] == "Bills Renamed" {
+			foundFolder = true
+		}
+	}
+	if !foundFolder {
+		t.Fatalf("get_budget: renamed folder not found: %#v", folders)
+	}
+	elements, ok := structureData["elements"].([]any)
+	if !ok {
+		t.Fatalf("get_budget: missing elements: %#v", structureData)
+	}
+	foundEnvelope := false
+	for _, el := range elements {
+		m, ok := el.(map[string]any)
+		if !ok || m["id"] != envelopeID {
+			continue
+		}
+		foundEnvelope = true
+		if m["name"] != "Groceries Renamed" {
+			t.Fatalf("get_budget: envelope name mismatch: %#v", m)
+		}
+		if m["budgeted"] != "150.00" && m["budgeted"] != "150" {
+			t.Fatalf("get_budget: expected the set limit to show as budgeted, got: %#v", m["budgeted"])
+		}
+	}
+	if !foundEnvelope {
+		t.Fatalf("get_budget: renamed envelope not found: %#v", elements)
+	}
+}
+
+func TestBudgetTools_SetLimitBeforeStart_IsError(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+
+	svc := newBudgetService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectBudgetSession(t, ctx, svc)
+
+	createBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "create_budget",
+		Arguments: map[string]any{
+			"name":        "Household",
+			"currency_id": fixture.USD,
+			"start_date":  "2024-04-01",
+		},
+	})
+	if err != nil {
+		t.Fatalf("create_budget: transport error: %v", err)
+	}
+	if createBudgetRes.IsError {
+		t.Fatalf("create_budget: unexpected error: %#v", createBudgetRes.Content)
+	}
+	budgetItem, ok := structured(t, createBudgetRes)["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("create_budget: missing item: %#v", structured(t, createBudgetRes))
+	}
+	budgetMeta, ok := budgetItem["meta"].(map[string]any)
+	if !ok {
+		t.Fatalf("create_budget: missing item.meta: %#v", budgetItem)
+	}
+	budgetID, _ := budgetMeta["id"].(string)
+	if budgetID == "" {
+		t.Fatalf("create_budget: empty budget id: %#v", budgetMeta)
+	}
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "set_limit",
+		Arguments: map[string]any{
+			"budget_id":  budgetID,
+			"element_id": "00000000-0000-0000-0000-000000000001",
+			"month":      "2024-01",
+			"amount":     "10.00",
+		},
+	})
+	if err != nil {
+		t.Fatalf("set_limit: transport error: %v", err)
+	}
+	if !res.IsError {
+		t.Fatalf("set_limit: expected isError for a month before the budget start, got: %#v", res)
+	}
+	text, ok := res.Content[0].(*sdk.TextContent)
+	if !ok || strings.TrimSpace(text.Text) == "" {
+		t.Fatalf("set_limit: expected non-empty error text: %#v", res.Content)
+	}
+	for _, leak := range []string{"sql", "driver", "goroutine", "panic", "modernc.org"} {
+		if strings.Contains(strings.ToLower(text.Text), leak) {
+			t.Fatalf("set_limit: error text leaked internals (%q): %s", leak, text.Text)
+		}
+	}
+}

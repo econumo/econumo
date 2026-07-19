@@ -101,6 +101,45 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"junk"}}}`},
 	}})
 
+	// budget_write drives all eight budget create/configure MCP tools end to
+	// end, purely via MCP calls on top of the apiparity fixture (owner's seeded
+	// account + categories). create_budget/create_folder/create_envelope mint
+	// their own entity ids server-side (internal/budget/mcp/mcp.go), unlike the
+	// REST create-* endpoints, so each id is captured out of the tool's
+	// structuredContent (extractMCPID) and threaded into later steps via named
+	// {{vars}} rather than the single-slot %s convention the other scenarios
+	// use — budget_id alone is needed by six later steps, which a single slot
+	// can't hold alongside folder_id/element_id. The update_budget step
+	// exercises the ExcludedAccounts round-trip fix directly: it runs AFTER
+	// set_budget_account_included excludes the owner's account, and the closing
+	// get_budget asserts the exclusion survived the rename (had the tool passed
+	// an empty ExcludedAccounts list, UpdateBudget's authoritative-replace
+	// semantics — internal/budget/crud.go — would have silently re-included it).
+	// Ends with one domain-error path: set_limit for a month before the
+	// budget's start.
+	register(Scenario{Name: "budget_write", Steps: []Step{
+		{Label: "create-budget", CaptureAs: "budget_id", MCPCapturePath: []string{"item", "meta", "id"},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP New Budget","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01"}}}`},
+		{Label: "create-folder", CaptureAs: "folder_id", MCPCapturePath: []string{"item", "id"},
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_folder","arguments":{"budget_id":"{{budget_id}}","name":"Bills"}}}`},
+		{Label: "update-folder",
+			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_folder","arguments":{"budget_id":"{{budget_id}}","id":"{{folder_id}}","name":"Bills Renamed"}}}`},
+		{Label: "create-envelope", CaptureAs: "element_id", MCPCapturePath: []string{"item", "id"},
+			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_envelope","arguments":{"budget_id":"{{budget_id}}","name":"Groceries","icon":"cart","currency_id":"` + apiparity.USD + `","folder_id":"{{folder_id}}","category_ids":["` + apiparity.CatFood + `"]}}}`},
+		{Label: "update-envelope",
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `","` + apiparity.CatSalary + `"],"archived":false}}}`},
+		{Label: "set-limit",
+			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-05","amount":"150.00"}}}`},
+		{Label: "set-budget-account-included",
+			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"set_budget_account_included","arguments":{"budget_id":"{{budget_id}}","account_id":"` + apiparity.OwnerAccount + `","included":false}}}`},
+		{Label: "update-budget",
+			RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"update_budget","arguments":{"budget_id":"{{budget_id}}","name":"MCP New Budget Renamed","currency_id":"` + apiparity.USD + `"}}}`},
+		{Label: "get-budget-after",
+			RPC: `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"{{budget_id}}","month":"2024-05"}}}`},
+		{Label: "set-limit-before-start",
+			RPC: `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-01","amount":"10.00"}}}`},
+	}})
+
 	// transactions REST-seeds a FRESH account (so list_transactions starts
 	// empty rather than inheriting the fixture's two seeded transactions),
 	// captures its minted id, then drives create_transaction / list_transactions

@@ -141,6 +141,14 @@ it doesn't expire on inactivity like a session does. Point your client at
 | `set_payee_archived` | archive/unarchive a payee — there is no delete |
 | `list_currencies` | currency codes + rates vs. the instance base currency |
 | `list_budgets` | the user's budgets (id, name, currency) |
+| `create_budget` | create a budget, seeded with the user's existing categories and tags |
+| `update_budget` | rename a budget or change its currency |
+| `create_folder` | create a folder to group budget envelopes/categories/tags |
+| `update_folder` | rename a budget folder |
+| `create_envelope` | create an envelope grouping one or more categories under a shared limit |
+| `update_envelope` | update an envelope, or archive/unarchive it — there is no delete |
+| `set_limit` | set or clear an envelope/category/tag's limit for one month |
+| `set_budget_account_included` | include or exclude an owned account from a budget's tracked balances |
 | `get_user` | the current user's profile (id, name, email, avatar, base currency) |
 | `list_connections` | users connected to the current user and the accounts they share |
 
