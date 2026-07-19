@@ -563,6 +563,14 @@ import (
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
+// trialNow is fixed so the assertion cannot straddle a month boundary between
+// the service's clock and the test's own time.Now().
+var trialNow = time.Date(2026, 7, 2, 10, 0, 0, 0, time.UTC)
+
+type trialClock struct{}
+
+func (trialClock) Now() time.Time { return trialNow }
+
 func newTrialSvc(t *testing.T, db *dbtest.DB, trial string) (*appuser.Service, *userrepo.Repo, *auth.EncodeService) {
 	t.Helper()
 	enc := auth.NewEncodeService(testSalt)
@@ -572,7 +580,7 @@ func newTrialSvc(t *testing.T, db *dbtest.DB, trial string) (*appuser.Service, *
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, true, trial)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), trialClock{}, nil, true, trial)
 	return svc, repo, enc
 }
 
@@ -597,7 +605,7 @@ func TestRegister_GrantsTrialWhenEnabled(t *testing.T) {
 	if u.AccessUntil == nil {
 		t.Fatal("access_until: got nil, want the start of the month after next")
 	}
-	want := model.TrialEnd(time.Now())
+	want := model.TrialEnd(trialNow) // 2026-09-01 00:00:00 UTC
 	if !u.AccessUntil.Equal(want) {
 		t.Fatalf("access_until: got %v want %v", *u.AccessUntil, want)
 	}
@@ -683,7 +691,7 @@ Append to `internal/user/authenticate_test.go` (`newAuthEnv` returns `(svc, toke
 ```go
 func TestAuthenticate_ReturnsReadonlyWhenAccessLapsed(t *testing.T) {
 	db := dbtest.New(t)
-	svc, tokens, clk, uid := newAuthEnvOn(t, db)
+	svc, tokens, _, uid := newAuthEnvOn(t, db)
 	exp := authT0.Add(appuser.SessionTTL)
 	seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_lapsed", &exp)
 
@@ -693,7 +701,6 @@ func TestAuthenticate_ReturnsReadonlyWhenAccessLapsed(t *testing.T) {
 		past.Format(datetime.Layout), uid.String()); err != nil {
 		t.Fatalf("lapse access: %v", err)
 	}
-	_ = clk
 
 	_, _, level, err := svc.Authenticate(context.Background(), "eco_ses_lapsed")
 	if err != nil {
@@ -1174,14 +1181,12 @@ Append to `internal/user/admin_integration_test.go` (`newUserSvc`, `testSalt`, `
 ```go
 func TestAdminSetAccessAndShow(t *testing.T) {
 	db := dbtest.New(t)
-	svc, enc, _ := newUserSvc(t, db)
+	svc, _, _ := newUserSvc(t, db)
 	ctx := context.Background()
 
 	if _, err := svc.AdminCreateUser(ctx, "Access User", "access@econumo.test", "secretpass"); err != nil {
 		t.Fatalf("AdminCreateUser: %v", err)
 	}
-	_ = enc
-
 	until := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
 	if err := svc.AdminSetAccess(ctx, "access@econumo.test", model.AccessLevelFull, &until); err != nil {
 		t.Fatalf("AdminSetAccess: %v", err)
