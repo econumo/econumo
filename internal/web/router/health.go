@@ -18,7 +18,14 @@ type Pinger interface {
 // OK envelope wrapping {"database": <bool>}. When db is
 // nil the database is reported as healthy (true) — used before a backend is
 // wired so the route is always mountable.
-func healthCheckHandler(db Pinger) http.HandlerFunc {
+//
+// The "admin" key is present only when the admin listener is configured, so a
+// cloud monitor can assert it while a self-hosted /health shows no trace of an
+// admin surface it does not have. Its value is true by construction: serve
+// ties the listeners together (either failing brings the process down), so a
+// served /health implies the admin listener is up. Only the enabled flag is
+// exposed — never the admin address, which a public endpoint must not reveal.
+func healthCheckHandler(db Pinger, adminEnabled bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		dbUp := true
 		if db != nil {
@@ -26,6 +33,10 @@ func healthCheckHandler(db Pinger) http.HandlerFunc {
 				dbUp = false
 			}
 		}
-		httpx.OK(w, map[string]bool{"database": dbUp})
+		data := map[string]bool{"database": dbUp}
+		if adminEnabled {
+			data["admin"] = true
+		}
+		httpx.OK(w, data)
 	}
 }

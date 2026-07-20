@@ -70,6 +70,11 @@ type Config struct {
 	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
 }
 
+// AdminEnabled reports whether the admin listener should run. Load enforces
+// both-or-neither, so checking one variable would suffice; both are checked so
+// this cannot silently widen if that validation ever changes.
+func (c Config) AdminEnabled() bool { return c.AdminPort != "" && c.AdminToken != "" }
+
 // Load reads and validates configuration from the environment.
 func Load() (Config, error) {
 	c := Config{

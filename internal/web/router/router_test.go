@@ -263,3 +263,41 @@ func TestRuntimeConfigOverrides_UnsetKeysNotMerged(t *testing.T) {
 		t.Fatalf("ANALYTICS missing:\n%s", body)
 	}
 }
+
+// The admin section appears only when the listener is configured: a monitor
+// can assert its presence on a cloud deployment, and a self-hosted /health
+// shows no trace of an admin surface it does not have.
+func TestHealthCheck_AdminSectionOnlyWhenEnabled(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "index.html"), []byte("x"), 0o644)
+
+	decode := func(resp *http.Response) map[string]bool {
+		t.Helper()
+		defer resp.Body.Close()
+		var env struct {
+			Data map[string]bool `json:"data"`
+		}
+		json.NewDecoder(resp.Body).Decode(&env)
+		return env.Data
+	}
+
+	h := router.New(router.Deps{Cfg: config.Config{
+		SPADir:     dir,
+		AdminPort:  "9090",
+		AdminToken: strings.Repeat("k", 32),
+	}})
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	data := decode(get(t, srv, http.MethodGet, "/health"))
+	if !data["admin"] {
+		t.Fatalf("data=%v want admin:true when the listener is configured", data)
+	}
+
+	h = router.New(router.Deps{Cfg: config.Config{SPADir: dir}})
+	srv2 := httptest.NewServer(h)
+	defer srv2.Close()
+	data = decode(get(t, srv2, http.MethodGet, "/health"))
+	if _, present := data["admin"]; present {
+		t.Fatalf("data=%v — the admin key must be ABSENT when not configured, not false", data)
+	}
+}

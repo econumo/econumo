@@ -103,7 +103,7 @@ func New(deps Deps) http.Handler {
 	// Health check. Registered directly on root; the GET /health pattern is more
 	// specific than the SPA "/" catch-all, so ServeMux routes it here. Wrapped in
 	// the global chain (recover + requestid + cors apply here too).
-	root.Handle("GET /health", global(healthCheckHandler(deps.DB)))
+	root.Handle("GET /health", global(healthCheckHandler(deps.DB, deps.Cfg.AdminEnabled())))
 
 	// API subtree. Modules register their concrete routes via RegisterAPI; the
 	// router wraps the whole subtree in the global chain. Public vs

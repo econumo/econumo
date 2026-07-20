@@ -327,7 +327,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   audit-logged on its operation line: `set-access` carries `user_id`, the written
   `access_level`/`access_until` AND the `old_*` pair (logged even when the write fails, so
   attempts are recorded); `user-context` carries `user_id` + `connections`; CLI
-  `user:set-access` emits the same `set-access` line. Ids and levels only — never emails. The port accepts a
+  `user:set-access` emits the same `set-access` line. Ids and levels only — never emails.
+  When enabled, `/health` gains an `"admin": true` key (absent otherwise — a self-hosted
+  health body shows no trace; the admin address is never exposed). The port accepts a
   host-qualified value (`127.0.0.1:9090`) to pin the listener to loopback/an internal
   interface on bare-host deployments; a bare port binds all interfaces (the container
   default, where compose controls exposure). Unlike the public API,

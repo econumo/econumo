@@ -227,7 +227,7 @@ func run(serveArgs []string) error {
 	// The admin listener opens only when both variables are configured, so a
 	// self-hosted instance never serves those routes at all. config.Load has
 	// already rejected a half-configured pair.
-	if cfg.AdminPort != "" && cfg.AdminToken != "" {
+	if cfg.AdminEnabled() {
 		adminSrv := newServer(cfg.AdminPort, adminHandler)
 		adminSrv.Addr = adminAddr(cfg.AdminPort)
 		servers = append(servers, adminSrv)
