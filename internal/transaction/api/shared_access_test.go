@@ -21,6 +21,11 @@ const (
 	ownerTwoEmail = "owner2@example.test"
 	ownerTwoSalt  = "0000000000000000000000000000000000000002"
 	sharedAcctID  = "aaaa2222-0000-0000-0000-0000000000a2"
+	// A category/payee owned by the shared account's OWNER (ownerTwo), not by the
+	// caller — this is what the SPA presents on a shared account (its picker
+	// filters to the account owner's entities).
+	ownerCatID   = "cccc2222-0000-0000-0000-0000000000c2"
+	ownerPayeeID = "dddd2222-0000-0000-0000-0000000000d2"
 
 	// roles (admin=0, user=1, guest=2) — matches connection.Role.
 	roleAdmin = 0
@@ -37,6 +42,10 @@ func (h *harness) shareAccount(t *testing.T, role int, grant bool) {
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
 	f.User(fixture.User{ID: ownerTwoID, Email: ownerTwoEmail, Name: "Owner Two", Avatar: "https://avatar.test/o2", Password: "pw", Salt: ownerTwoSalt})
 	f.Account(fixture.Account{ID: sharedAcctID, UserID: ownerTwoID, CurrencyID: usdID, Name: "Shared"})
+	// The owner's own category/payee — the SPA presents these (not the caller's)
+	// when categorizing a transaction on the shared account.
+	f.Category(fixture.Category{ID: ownerCatID, UserID: ownerTwoID, Name: "Owner Food", Type: 0, Icon: "local_offer"})
+	f.Payee(fixture.Payee{ID: ownerPayeeID, UserID: ownerTwoID, Name: "Owner Market"})
 	if grant {
 		f.AccountAccess(sharedAcctID, seedUserID, role)
 	}
@@ -78,6 +87,32 @@ func TestCreateTransaction_SharedAccount_UserRole_Succeeds(t *testing.T) {
 	h.shareAccount(t, roleUser, true)
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[writeResult](t, env.Data)
+	if res.Item.AccountID != sharedAcctID {
+		t.Fatalf("accountId = %q, want shared account %q", res.Item.AccountID, sharedAcctID)
+	}
+}
+
+// TestCreateTransaction_SharedAccount_UsesOwnerCategory_Succeeds reproduces the
+// real shared-account flow: the caller (user-role grantee) categorizes a
+// transaction on the shared account with the ACCOUNT OWNER's category/payee —
+// exactly what the SPA presents there. The reference check must accept entities
+// owned by the account owner, not only the caller's own. Regression guard
+// against the owner-only requireOwnedEntity check that rejected these with
+// transaction.item_not_available.
+func TestCreateTransaction_SharedAccount_UsesOwnerCategory_Succeeds(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, roleUser, true)
+	tok := h.token(t)
+	req := map[string]any{
+		"id": txID1, "type": "expense", "amount": "10", "accountId": sharedAcctID,
+		"categoryId": ownerCatID, "payeeId": ownerPayeeID,
+		"date": "2024-03-01 10:00:00", "description": "shared",
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, req)
 	if status != http.StatusOK {
 		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
 	}
