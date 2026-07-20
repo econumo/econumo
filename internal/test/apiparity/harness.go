@@ -96,6 +96,11 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		RateLimitRegister: 5,
 		RateLimitWindow:   15 * time.Minute,
 		RateLimitGlobal:   60,
+		// Billing configured so create-billing-link pins its SUCCESS shape. The
+		// admin token is the handoff signing key; the assertion it produces is
+		// redacted by handoffRe (its exp is clock-derived).
+		AdminToken: "0123456789abcdef0123456789abcdef",
+		BillingURL: "https://pay.example.test/cloud/",
 	}
 
 	Seed(t, db)

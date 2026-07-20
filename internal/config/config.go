@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -25,6 +26,12 @@ type Config struct {
 	CheckUpdates      bool   // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
 	Analytics         bool   // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
 	Trial             string // ECONUMO_TRIAL: "none" (default) or "end-of-next-month" — grants new registrations full access until the trial ends
+
+	// Admin listener for the payment portal. Both empty on a self-hosted
+	// instance, so the listener never opens and its routes exist on no mux.
+	AdminPort  string // ECONUMO_ADMIN_PORT
+	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
+	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -62,6 +69,16 @@ type Config struct {
 	// these; they only reach the frontend).
 	APIURL         string // ECONUMO_API_URL
 	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
+}
+
+// isLoopbackHost reports whether a URL hostname is loopback ("localhost" or a
+// loopback IP), the only hosts allowed to use plain http for the billing URL.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Load reads and validates configuration from the environment.
@@ -112,6 +129,36 @@ func Load() (Config, error) {
 	c.Trial = getEnv("ECONUMO_TRIAL", "none")
 	if c.Trial != "none" && c.Trial != "end-of-next-month" {
 		return Config{}, fmt.Errorf("ECONUMO_TRIAL: invalid value %q (want none or end-of-next-month)", c.Trial)
+	}
+
+	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
+	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")
+	// Half-configured is operator error, and a listener that silently fails to
+	// open is the failure mode that costs an afternoon to diagnose.
+	if (c.AdminPort == "") != (c.AdminToken == "") {
+		return Config{}, fmt.Errorf("ECONUMO_ADMIN_PORT and ECONUMO_ADMIN_TOKEN must be set together")
+	}
+	// The token is an HMAC key as well as a bearer credential.
+	if c.AdminToken != "" && len(c.AdminToken) < 32 {
+		return Config{}, fmt.Errorf("ECONUMO_ADMIN_TOKEN: must be at least 32 characters")
+	}
+
+	if v := os.Getenv("ECONUMO_BILLING_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL: not an absolute http(s) URL: %q", v)
+		}
+		// Billing links carry the signed handoff token in the query string, and
+		// users' browsers follow them: a remote http portal would expose live
+		// identity assertions in transit. Loopback stays allowed so portal
+		// development against a real backend works.
+		if u.Scheme == "http" && !isLoopbackHost(u.Hostname()) {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL: must be https (billing links carry signed identity tokens); http is allowed only for loopback hosts: %q", v)
+		}
+		if c.AdminToken == "" {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL requires ECONUMO_ADMIN_TOKEN (the handoff signing key)")
+		}
+		c.BillingURL = v
 	}
 
 	if v := os.Getenv("ECONUMO_API_URL"); v != "" {

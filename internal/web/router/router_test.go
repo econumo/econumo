@@ -207,6 +207,7 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 		Analytics:      true,
 		APIURL:         "https://api.example.test",
 		AllowCustomAPI: &allowCustom,
+		BillingURL:     "https://pay.example.test/cloud/",
 	}})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
@@ -214,9 +215,30 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"API_URL":"https://api.example.test"});`
+	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"API_URL":"https://api.example.test","BILLING_URL":"https://pay.example.test/cloud/"});`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
+	}
+}
+
+// BILLING_URL is server truth even when empty (unlike API_URL/ALLOW_CUSTOM_API,
+// which merge only when set): the backend decides whether create-billing-link
+// works, so an empty value must be able to switch the SPA's billing UI OFF
+// rather than leave a stale dist value advertising a portal that cannot mint
+// links.
+func TestRuntimeConfigOverrides_EmptyBillingURLIsMerged(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := router.New(router.Deps{Cfg: config.Config{SPADir: dir}})
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
+	defer resp.Body.Close()
+	if body := readBody(t, resp); !strings.Contains(body, `"BILLING_URL":""`) {
+		t.Fatalf("empty BILLING_URL must still be merged:\n%s", body)
 	}
 }
 

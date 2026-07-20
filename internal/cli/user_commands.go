@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -110,9 +111,21 @@ func userCommands() []command {
 					}
 					until = &d
 				}
-				if err := c.user.AdminSetAccess(ctx, email, level, until); err != nil {
+				u, err := c.user.AdminSetAccess(ctx, email, level, until)
+				if err != nil {
 					return err
 				}
+				// Structured audit line alongside the human stdout print; keyed
+				// by id — log lines never carry emails.
+				untilAttr := ""
+				if until != nil {
+					untilAttr = until.UTC().Format(datetime.Layout)
+				}
+				slog.Info("set-access",
+					"user_id", u.ID.String(),
+					"access_level", string(level),
+					"access_until", untilAttr,
+				)
 				if until == nil {
 					fmt.Printf("Access for %s set to %s with no expiry\n", email, level)
 				} else {

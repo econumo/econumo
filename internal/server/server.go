@@ -15,6 +15,8 @@ import (
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountmcp "github.com/econumo/econumo/internal/account/mcp"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appadmin "github.com/econumo/econumo/internal/admin"
+	handleradmin "github.com/econumo/econumo/internal/admin/api"
 	appbudget "github.com/econumo/econumo/internal/budget"
 	handlerbudget "github.com/econumo/econumo/internal/budget/api"
 	budgetmcp "github.com/econumo/econumo/internal/budget/mcp"
@@ -34,6 +36,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/infra/handoff"
 	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -86,6 +89,15 @@ type Seams struct {
 // at either engine; the engine is read from cfg.DatabaseDriver, which selects
 // the per-engine sqlc query adapters in every repository constructor.
 func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
+	api, _ := Build(cfg, db, seams)
+	return api
+}
+
+// Build wires the service graph once and returns both edges: the public API
+// handler and the private admin handler. They share one set of services rather
+// than each opening its own, and serve decides whether to listen on the admin
+// one (see cfg.AdminPort/AdminToken).
+func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handler) {
 	clk := seams.Clock
 	if clk == nil {
 		clk = clock.New()
@@ -130,7 +142,8 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
-	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk)
+	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
+	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.
@@ -239,6 +252,18 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		apidoc.RegisterAPI(),
 	)
 
+	adminSvc := appadmin.NewService(NewAdminUserAccess(userSvc), connectionRepo, clk)
+	adminMux := http.NewServeMux()
+	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc))(adminMux)
+	// No CORS (never browser-reached) and no timezone/language (nothing here is
+	// user-facing; datetimes are frozen UTC).
+	adminHandler := middleware.Chain(
+		middleware.RequestID,
+		middleware.AccessLog,
+		middleware.Recover,
+		middleware.AdminAuth(cfg.AdminToken),
+	)(adminMux)
+
 	mcpRegister := webmcp.Compose(
 		categorymcp.Register(categoryReadSvc, categorySvc),
 		tagmcp.Register(tagReadSvc, tagSvc),
@@ -261,7 +286,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
 		MCP:                mcpHandler,
-	})
+	}), adminHandler
 }
 
 type pinger struct{ db *sql.DB }

@@ -13,6 +13,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	appuser "github.com/econumo/econumo/internal/user"
@@ -254,7 +255,7 @@ func TestAdminSetAccessAndShow(t *testing.T) {
 		t.Fatalf("AdminCreateUser: %v", err)
 	}
 	until := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
-	if err := svc.AdminSetAccess(ctx, "access@econumo.test", model.AccessLevelFull, &until); err != nil {
+	if _, err := svc.AdminSetAccess(ctx, "access@econumo.test", model.AccessLevelFull, &until); err != nil {
 		t.Fatalf("AdminSetAccess: %v", err)
 	}
 
@@ -272,7 +273,7 @@ func TestAdminSetAccessAndShow(t *testing.T) {
 		t.Fatalf("effective: got %q want full (expiry is in the future)", effective)
 	}
 
-	if err := svc.AdminSetAccess(ctx, "access@econumo.test", model.AccessLevelFull, nil); err != nil {
+	if _, err := svc.AdminSetAccess(ctx, "access@econumo.test", model.AccessLevelFull, nil); err != nil {
 		t.Fatalf("AdminSetAccess clearing expiry: %v", err)
 	}
 	u2, _, err := svc.AdminShowUser(ctx, "access@econumo.test")
@@ -293,7 +294,7 @@ func TestAdminShowUser_EffectiveDiffersOnceExpired(t *testing.T) {
 		t.Fatalf("AdminCreateUser: %v", err)
 	}
 	past := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-	if err := svc.AdminSetAccess(ctx, "lapsed@econumo.test", model.AccessLevelFull, &past); err != nil {
+	if _, err := svc.AdminSetAccess(ctx, "lapsed@econumo.test", model.AccessLevelFull, &past); err != nil {
 		t.Fatalf("AdminSetAccess: %v", err)
 	}
 
@@ -312,7 +313,7 @@ func TestAdminShowUser_EffectiveDiffersOnceExpired(t *testing.T) {
 func TestAdminSetAccess_UnknownEmail(t *testing.T) {
 	db := dbtest.New(t)
 	svc, _, _ := newUserSvc(t, db)
-	err := svc.AdminSetAccess(context.Background(), "nobody@econumo.test", model.AccessLevelReadonly, nil)
+	_, err := svc.AdminSetAccess(context.Background(), "nobody@econumo.test", model.AccessLevelReadonly, nil)
 	if !isNotFound(err) {
 		t.Fatalf("err = %v, want NotFound", err)
 	}
@@ -336,5 +337,39 @@ func TestAdminChangeEmailKeepsAvatar(t *testing.T) {
 	}
 	if u.Avatar != appuser.DefaultAvatar {
 		t.Fatalf("Avatar = %q after email change, want unchanged %q", u.Avatar, appuser.DefaultAvatar)
+	}
+}
+
+// The set-access audit line carries the PRIOR state (so a webhook retry is
+// distinguishable from a real change) and never an email address.
+func TestAdminSetAccessByIDLogsOldStateWithoutPII(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := reqctx.WithLogAttrs(context.Background())
+
+	id, err := svc.AdminCreateUser(ctx, "Audit User", "audit@econumo.test", "secretpass")
+	if err != nil {
+		t.Fatalf("AdminCreateUser: %v", err)
+	}
+	until := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
+	if _, _, err := svc.AdminSetAccessByID(ctx, id, model.AccessLevelReadonly, &until); err != nil {
+		t.Fatalf("AdminSetAccessByID: %v", err)
+	}
+
+	attrs := reqctx.LogAttrs(ctx)
+	got := map[string]string{}
+	for _, a := range attrs {
+		got[a.Key] = a.Value.String()
+	}
+	if got["old_access_level"] != "full" {
+		t.Fatalf("old_access_level = %q, want full (the pre-write value)", got["old_access_level"])
+	}
+	if got["old_access_until"] != "" {
+		t.Fatalf("old_access_until = %q, want empty (was NULL)", got["old_access_until"])
+	}
+	for k, v := range got {
+		if strings.Contains(v, "@") {
+			t.Fatalf("log attr %s=%q leaks an email address", k, v)
+		}
 	}
 }

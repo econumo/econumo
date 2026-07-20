@@ -27,6 +27,15 @@ func init() {
 			// Logout revokes the presenting session (DB-backed tokens) — a subsequent
 			// call with the same token must 401 with the frozen envelope. Also pins
 			// the frozen {"result":"test"} quirk.
+			// Billing link: pins the assembled portal URL (the signed assertion
+			// itself is redacted). "for" preselects a beneficiary and is a hint
+			// only — the portal authorizes it server-side.
+			{Label: "create-billing-link", Method: "POST", Path: "/api/v1/user/create-billing-link", Auth: "owner",
+				Body: map[string]any{}},
+			{Label: "create-billing-link-for", Method: "POST", Path: "/api/v1/user/create-billing-link", Auth: "owner",
+				Body: map[string]any{"for": GuestID}},
+			{Label: "err:create-billing-link-bad-for", Method: "POST", Path: "/api/v1/user/create-billing-link", Auth: "owner",
+				Body: map[string]any{"for": "not-a-uuid"}},
 			{Label: "logout-user", Method: "POST", Path: "/api/v1/user/logout-user", Auth: "owner"},
 			{Label: "err:get-user-data-after-logout", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
 		}

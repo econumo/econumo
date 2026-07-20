@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -300,5 +301,114 @@ func TestLoad_SPAOverrides(t *testing.T) {
 	t.Setenv("ECONUMO_API_URL", "not a url")
 	if _, err = Load(); err == nil {
 		t.Fatal("Load with malformed ECONUMO_API_URL: err = nil, want boot error")
+	}
+}
+
+func TestLoad_AdminRequiresBothOrNeither(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	if _, err := Load(); err == nil {
+		t.Fatal("port without token must fail at boot")
+	}
+}
+
+func TestLoad_AdminTokenMinimumLength(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", "tooshort")
+	if _, err := Load(); err == nil {
+		t.Fatal("a token under 32 chars must fail at boot")
+	}
+}
+
+func TestLoad_AdminBothSet(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AdminPort != "9090" || len(c.AdminToken) != 32 {
+		t.Fatalf("AdminPort=%q AdminToken len=%d", c.AdminPort, len(c.AdminToken))
+	}
+}
+
+func TestLoad_AdminDefaultsEmpty(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AdminPort != "" || c.AdminToken != "" || c.BillingURL != "" {
+		t.Fatalf("want all empty by default, got %q %q %q", c.AdminPort, c.AdminToken, c.BillingURL)
+	}
+}
+
+func TestLoad_BillingURLRequiresAdminToken(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_BILLING_URL", "https://pay.example.test/cloud/")
+	if _, err := Load(); err == nil {
+		t.Fatal("billing URL without an admin token (the HMAC key) must fail at boot")
+	}
+}
+
+func TestLoad_BillingURLMustBeAbsolute(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	t.Setenv("ECONUMO_BILLING_URL", "/cloud")
+	if _, err := Load(); err == nil {
+		t.Fatal("a non-absolute billing URL must fail at boot")
+	}
+}
+
+func TestLoad_BillingURLAccepted(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	t.Setenv("ECONUMO_BILLING_URL", "https://pay.example.test/cloud/")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.BillingURL != "https://pay.example.test/cloud/" {
+		t.Fatalf("BillingURL = %q", c.BillingURL)
+	}
+}
+
+// The billing URL is followed by users' browsers carrying the signed handoff
+// token in the query string; a remote http portal would expose tokens in
+// transit. Loopback stays allowed so portal development against a real
+// backend works.
+func TestLoad_BillingURLRequiresHTTPSForRemoteHosts(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	t.Setenv("ECONUMO_BILLING_URL", "http://pay.example.test/cloud/")
+	if _, err := Load(); err == nil {
+		t.Fatal("a remote http billing URL must fail at boot")
+	}
+}
+
+func TestLoad_BillingURLAllowsLoopbackHTTP(t *testing.T) {
+	for _, v := range []string{
+		"http://localhost:3000/cloud/",
+		"http://127.0.0.1:3000/",
+		"http://[::1]:3000/",
+	} {
+		t.Run(v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+			t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+			t.Setenv("ECONUMO_BILLING_URL", v)
+			c, err := Load()
+			if err != nil {
+				t.Fatalf("loopback http rejected: %v", err)
+			}
+			if c.BillingURL != v {
+				t.Fatalf("BillingURL = %q", c.BillingURL)
+			}
+		})
 	}
 }

@@ -31,6 +31,13 @@ func repoRoot(t *testing.T) string {
 func routeSourceLines(t *testing.T) map[string]string {
 	t.Helper()
 	handlerGlobs := []string{"internal/*/api/routes.go"}
+	// internal/admin registers the PRIVATE admin listener, served by a separate
+	// http.Server and mounted on no public mux — so it has no parity scenario
+	// and no golden, and scanning it would demand both. Excluded explicitly
+	// rather than by naming the file outside the glob, so the reason survives
+	// the next refactor. TestAdminRoutesAreNotOnThePublicMux asserts the
+	// separation actually holds.
+	const excluded = "internal/admin/api/routes.go"
 	routes := map[string]string{}
 	for _, g := range handlerGlobs {
 		files, err := filepath.Glob(filepath.Join(repoRoot(t), g))
@@ -38,6 +45,9 @@ func routeSourceLines(t *testing.T) map[string]string {
 			t.Fatal(err)
 		}
 		for _, f := range files {
+			if rel, rerr := filepath.Rel(repoRoot(t), f); rerr == nil && filepath.ToSlash(rel) == excluded {
+				continue
+			}
 			src, err := os.ReadFile(f)
 			if err != nil {
 				t.Fatal(err)
@@ -71,7 +81,7 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// constant or concatenation) so routePatternRe stops matching it. Update
 	// handlerGlobs for cause (1); for cause (2), keep routes literal or extend
 	// the regex. Raise minRoutes as routes are added — never lower it.
-	const minRoutes = 87
+	const minRoutes = 88
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}
