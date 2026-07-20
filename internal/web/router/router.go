@@ -121,6 +121,11 @@ func New(deps Deps) http.Handler {
 	overrides := map[string]any{
 		"ANALYTICS":          deps.Cfg.Analytics,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
+		// Always server truth, including when empty: the backend is what decides
+		// whether create-billing-link works, so an empty value here must be able
+		// to switch the SPA's billing UI off rather than leave a stale dist value
+		// pointing at a portal the server will not mint links for.
+		"BILLING_URL": deps.Cfg.BillingURL,
 	}
 	if deps.Cfg.APIURL != "" {
 		overrides["API_URL"] = deps.Cfg.APIURL

@@ -68,7 +68,7 @@ checkbox can also move the `dev` tag. Everything publishes to
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the ten features (`account`, `budget`, `category`, `connection`,
+layers. Each of the eleven features (`account`, `admin`, `budget`, `category`, `connection`,
 `currency`, `payee`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
@@ -293,6 +293,18 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   access grant) or `end-of-next-month` (full access until the first of the month
   after next). Malformed values fail at boot. See `user:set-access` / `user:show`
   below and the 402 rule in API conventions for how access is enforced afterward.
+- `ECONUMO_ADMIN_PORT` / `ECONUMO_ADMIN_TOKEN` — the private admin listener the payment
+  portal talks to (`POST /admin/set-access`, `GET /admin/user-context`). A **second**
+  `http.Server`, started by `serve` only when BOTH are set, so a self-hosted instance
+  never serves those routes and they sit on no public mux at all (enforced by
+  `TestAdminRoutesAreNotOnThePublicMux`). Auth is `Authorization: Bearer <ECONUMO_ADMIN_TOKEN>`
+  compared in constant time; the same token is the HMAC key for billing-handoff tokens
+  (minimum 32 characters). A half-configured pair fails at boot. Unlike the public API,
+  this surface returns a real 404 for an unknown user: its consumer is a machine.
+- `ECONUMO_BILLING_URL` — payment portal URL. Empty (default) means
+  `POST /api/v1/user/create-billing-link` returns 400 and the SPA shows no billing UI.
+  Merged into the served `econumo-config.js` as `BILLING_URL`, so one variable drives
+  both halves. Requires `ECONUMO_ADMIN_TOKEN` (the signing key).
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
