@@ -34,6 +34,10 @@ is the launch blocker for `ECONUMO_TRIAL=end-of-next-month` in production.
   read-only banner still renders (it explains why writes fail) but without a
   pay CTA. No Settings "Access" group, no partner CTA, no billing link
   anywhere.
+- **The Settings "Access" group is ephemeral.** It shows for every trial
+  account from day one (upgrade without waiting for the trial to near its
+  end) and for read-only users; it disappears once the user holds
+  `full_access`.
 - **The 402 `messageCode` backend addition (issue #120) stays out of scope** —
   the SPA renders its own localized copy, so a `messageCode` would only
   benefit non-SPA clients.
@@ -139,10 +143,13 @@ keyed on the variant, so trial → readonly fires again).
 ### Settings (`SettingsPage.tsx`)
 
 No sub-page. A new `MenuGroup` labeled **"Access"** (never "Subscription" —
-core is a one-off purchase), rendered only when `billingEnabled`, containing a
-status card in the update-card style:
+core is a one-off purchase), rendered when `billingEnabled` **and the state is
+not `full_access`** — the group is ephemeral: it appears from day one of a
+trial (so a convinced user can upgrade immediately, without waiting for the
+3-day banner) and for read-only users, and disappears entirely once the user
+holds full access. It contains a status card in the update-card style:
 
-- status line: "Trial — access ends {date}" / "Full access" / "Read-only";
+- status line: "Trial — access ends {date}" / "Read-only";
 - a "Manage access" action (`useOpenBillingPortal()`).
 
 Copy keys shared with the banner where possible.
