@@ -186,6 +186,35 @@ func TestMissingDatabaseURL(t *testing.T) {
 	}
 }
 
+func TestUserSetAccessAndShowExitCodes(t *testing.T) {
+	cliEnv(t)
+	if got := Run([]string{"user:create", "Access User", "access@example.test", "secret-pw"}); got != 0 {
+		t.Fatalf("user:create = %d, want 0", got)
+	}
+
+	steps := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{"set-readonly", []string{"user:set-access", "access@example.test", "readonly"}, 0},
+		{"set-full-no-date", []string{"user:set-access", "access@example.test", "full"}, 0},
+		{"set-full-with-date", []string{"user:set-access", "access@example.test", "full", "2027-01-01"}, 0},
+		{"show", []string{"user:show", "access@example.test"}, 0},
+		{"unknown-level", []string{"user:set-access", "access@example.test", "pro"}, 1},
+		{"bad-date", []string{"user:set-access", "access@example.test", "full", "01-01-2027"}, 1},
+		{"unknown-email", []string{"user:set-access", "nobody@example.test", "full"}, 1},
+		{"show-unknown-email", []string{"user:show", "nobody@example.test"}, 1},
+		{"set-access-too-few-args", []string{"user:set-access", "access@example.test"}, 1},
+		{"show-too-many-args", []string{"user:show", "a@example.test", "b"}, 1},
+	}
+	for _, s := range steps {
+		if got := Run(s.args); got != s.want {
+			t.Fatalf("%s: Run(%v) = %d, want %d", s.name, s.args, got, s.want)
+		}
+	}
+}
+
 func TestTokenPurge(t *testing.T) {
 	cliEnv(t)
 	if got := Run([]string{"user:create", "Purge Tester", "purge@example.test", "secretpass"}); got != 0 {

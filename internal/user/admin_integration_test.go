@@ -245,6 +245,79 @@ func TestAdminCreateUserAssignsPickedAvatar(t *testing.T) {
 	}
 }
 
+func TestAdminSetAccessAndShow(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+
+	if _, err := svc.AdminCreateUser(ctx, "Access User", "access@econumo.test", "secretpass"); err != nil {
+		t.Fatalf("AdminCreateUser: %v", err)
+	}
+	until := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := svc.AdminSetAccess(ctx, "access@econumo.test", model.AccessLevelFull, &until); err != nil {
+		t.Fatalf("AdminSetAccess: %v", err)
+	}
+
+	u, effective, err := svc.AdminShowUser(ctx, "access@econumo.test")
+	if err != nil {
+		t.Fatalf("AdminShowUser: %v", err)
+	}
+	if u.AccessLevel != model.AccessLevelFull {
+		t.Fatalf("level: got %q want full", u.AccessLevel)
+	}
+	if u.AccessUntil == nil || !u.AccessUntil.Equal(until) {
+		t.Fatalf("until: got %v want %v", u.AccessUntil, until)
+	}
+	if effective != model.AccessLevelFull {
+		t.Fatalf("effective: got %q want full (expiry is in the future)", effective)
+	}
+
+	if err := svc.AdminSetAccess(ctx, "access@econumo.test", model.AccessLevelFull, nil); err != nil {
+		t.Fatalf("AdminSetAccess clearing expiry: %v", err)
+	}
+	u2, _, err := svc.AdminShowUser(ctx, "access@econumo.test")
+	if err != nil {
+		t.Fatalf("AdminShowUser after clear: %v", err)
+	}
+	if u2.AccessUntil != nil {
+		t.Fatalf("until after clear: got %v want nil", u2.AccessUntil)
+	}
+}
+
+func TestAdminShowUser_EffectiveDiffersOnceExpired(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	ctx := context.Background()
+
+	if _, err := svc.AdminCreateUser(ctx, "Lapsed", "lapsed@econumo.test", "secretpass"); err != nil {
+		t.Fatalf("AdminCreateUser: %v", err)
+	}
+	past := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := svc.AdminSetAccess(ctx, "lapsed@econumo.test", model.AccessLevelFull, &past); err != nil {
+		t.Fatalf("AdminSetAccess: %v", err)
+	}
+
+	u, effective, err := svc.AdminShowUser(ctx, "lapsed@econumo.test")
+	if err != nil {
+		t.Fatalf("AdminShowUser: %v", err)
+	}
+	if u.AccessLevel != model.AccessLevelFull {
+		t.Fatalf("raw level: got %q want full", u.AccessLevel)
+	}
+	if effective != model.AccessLevelReadonly {
+		t.Fatalf("effective: got %q want readonly", effective)
+	}
+}
+
+func TestAdminSetAccess_UnknownEmail(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newUserSvc(t, db)
+	err := svc.AdminSetAccess(context.Background(), "nobody@econumo.test", model.AccessLevelReadonly, nil)
+	if !isNotFound(err) {
+		t.Fatalf("err = %v, want NotFound", err)
+	}
+}
+
 func TestAdminChangeEmailKeepsAvatar(t *testing.T) {
 	db := dbtest.New(t)
 	svc, enc, _ := newUserSvc(t, db)
