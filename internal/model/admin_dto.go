@@ -4,9 +4,6 @@
 package model
 
 import (
-	"time"
-
-	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 )
 
@@ -20,21 +17,13 @@ type AdminSetAccessRequest struct {
 	Until  *string `json:"until"`
 }
 
+// Validate checks presence only. Format checks on level and until live in
+// admin.SetAccess, which needs the parsed values anyway — a single parse site
+// keeps validation and use from drifting apart.
 func (r AdminSetAccessRequest) Validate() error {
-	var fields []errs.FieldError
 	if r.UserId == "" {
-		fields = append(fields, errs.FieldError{Key: "userId", Message: "This value should not be blank."})
-	}
-	if _, err := ParseAccessLevel(r.Level); err != nil {
-		fields = append(fields, errs.FieldError{Key: "level", Message: "Level must be full or readonly"})
-	}
-	if r.Until != nil && *r.Until != "" {
-		if _, err := time.Parse(datetime.Layout, *r.Until); err != nil {
-			fields = append(fields, errs.FieldError{Key: "until", Message: "Until must be formatted as " + datetime.Layout})
-		}
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Form validation error", fields...)
+		return errs.NewValidation("Form validation error",
+			errs.FieldError{Key: "userId", Message: "This value should not be blank."})
 	}
 	return nil
 }

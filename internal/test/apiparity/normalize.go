@@ -20,7 +20,7 @@ var uuidV7Re = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-7[0-9a-fA-F]{3}
 func NormalizeParity(b []byte) string {
 	s := uuidV7Re.ReplaceAllString(string(b), "<generated-uuid>")
 	s = tokenRe.ReplaceAllString(s, "<token>")
-	s = handoffRe.ReplaceAllString(s, "t=<handoff-token>")
+	s = handoffRe.ReplaceAllString(s, "${1}t=<handoff-token>")
 	return inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
 }
 
@@ -39,8 +39,11 @@ var (
 	// handoffRe redacts the billing-handoff assertion in create-billing-link's
 	// URL. Its signature covers an exp derived from the wall clock, so it
 	// differs every run — like the bearer tokens above, and for the same reason.
-	// The rest of the URL (scheme, host, path, for, lang) stays strictly compared.
-	handoffRe = regexp.MustCompile(`t=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`)
+	// The rest of the URL (scheme, host, path, for, lang) stays strictly
+	// compared. Anchored to a query-parameter boundary: without the [?&] a bare
+	// `t=` would also match inside substrings like `format=v1.2` or
+	// `amount=1.5`, silently redacting strictly-compared golden content.
+	handoffRe = regexp.MustCompile(`([?&])t=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`)
 )
 
 // NormalizeGolden makes a response body stable across runs AND engines: the

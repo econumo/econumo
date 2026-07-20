@@ -153,14 +153,23 @@ func (s *Service) AdminUserByID(ctx context.Context, id vo.Id) (*model.User, str
 }
 
 // AdminSetAccessByID is AdminSetAccess keyed by id: an operator running the CLI
-// has an email address, the payment portal has a user id.
-func (s *Service) AdminSetAccessByID(ctx context.Context, id vo.Id, level model.AccessLevel, until *time.Time) error {
+// has an email address, the payment portal has a user id. It returns the user
+// as written (plus the decrypted email) so the caller can build its response
+// without a second read that a concurrent write could have moved past.
+func (s *Service) AdminSetAccessByID(ctx context.Context, id vo.Id, level model.AccessLevel, until *time.Time) (*model.User, string, error) {
 	u, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+	email, err := s.encode.Decode(u.Email)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.SetAccess(level, until, s.clock.Now())
 		return s.repo.Save(ctx, u)
-	})
+	}); err != nil {
+		return nil, "", err
+	}
+	return u, email, nil
 }

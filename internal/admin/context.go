@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -24,6 +25,13 @@ func (s *Service) UserContext(ctx context.Context, userID vo.Id) (*model.AdminUs
 	for _, id := range ids {
 		rec, cerr := s.users.GetUser(ctx, id)
 		if cerr != nil {
+			// A dangling connection (its user row gone — possible once account
+			// deletion ships) must not abort the target user's context: the
+			// portal reads an error here as "no such user, stop retrying" and
+			// would refuse a valid purchase over an unrelated row.
+			if _, ok := errs.AsNotFound(cerr); ok {
+				continue
+			}
 			return nil, cerr
 		}
 		conns = append(conns, s.view(rec))

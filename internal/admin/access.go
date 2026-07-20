@@ -11,7 +11,9 @@ import (
 )
 
 // SetAccess is naturally idempotent — it assigns rather than accumulates — so
-// the portal's retrying Stripe webhook needs no operation guard.
+// the portal's retrying Stripe webhook needs no operation guard. level and
+// until are parsed HERE, not in the DTO's Validate: one parse site means the
+// accepted formats cannot drift between validation and use.
 func (s *Service) SetAccess(ctx context.Context, req model.AdminSetAccessRequest) (*model.AdminUserView, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
@@ -23,20 +25,19 @@ func (s *Service) SetAccess(ctx context.Context, req model.AdminSetAccessRequest
 	}
 	level, err := model.ParseAccessLevel(req.Level)
 	if err != nil {
-		return nil, err
+		return nil, errs.NewValidation("Form validation error",
+			errs.FieldError{Key: "level", Message: "Level must be full or readonly"})
 	}
 	var until *time.Time
 	if req.Until != nil && *req.Until != "" {
 		t, perr := time.ParseInLocation(datetime.Layout, *req.Until, time.UTC)
 		if perr != nil {
-			return nil, perr
+			return nil, errs.NewValidation("Form validation error",
+				errs.FieldError{Key: "until", Message: "Until must be formatted as " + datetime.Layout})
 		}
 		until = &t
 	}
-	if err := s.users.SetAccess(ctx, id, level, until); err != nil {
-		return nil, err
-	}
-	rec, err := s.users.GetUser(ctx, id)
+	rec, err := s.users.SetAccess(ctx, id, level, until)
 	if err != nil {
 		return nil, err
 	}

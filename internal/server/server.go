@@ -240,19 +240,17 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		apidoc.RegisterAPI(),
 	)
 
-	adminSvc := appadmin.NewService(
-		NewAdminUserAccess(userSvc),
-		NewAdminConnections(connectionSvc),
-		clk,
-	)
+	adminSvc := appadmin.NewService(NewAdminUserAccess(userSvc), connectionRepo, clk)
 	adminMux := http.NewServeMux()
-	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc, cfg.IsDev()))(adminMux)
+	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc))(adminMux)
 	// No CORS (never browser-reached) and no timezone/language (nothing here is
-	// user-facing; datetimes are frozen UTC).
+	// user-facing; datetimes are frozen UTC). Recover gets a hard false, not
+	// cfg.IsDev(): this surface never returns stack traces, regardless of
+	// ECONUMO_DEBUG (the handlers enforce the same for handled errors).
 	adminHandler := middleware.Chain(
 		middleware.RequestID,
 		middleware.AccessLog,
-		middleware.Recover(cfg.IsDev()),
+		middleware.Recover(false),
 		middleware.AdminAuth(cfg.AdminToken),
 	)(adminMux)
 

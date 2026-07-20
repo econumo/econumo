@@ -24,7 +24,9 @@ type UserRecord struct {
 
 type UserLookup interface {
 	GetUser(ctx context.Context, id vo.Id) (UserRecord, error)
-	SetAccess(ctx context.Context, id vo.Id, level model.AccessLevel, until *time.Time) error
+	// SetAccess returns the record as written, so the caller's response cannot
+	// diverge from the write under a concurrent update.
+	SetAccess(ctx context.Context, id vo.Id, level model.AccessLevel, until *time.Time) (UserRecord, error)
 }
 
 type ConnectionLookup interface {

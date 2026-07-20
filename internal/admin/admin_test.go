@@ -31,16 +31,16 @@ func (s *stubUsers) GetUser(_ context.Context, id vo.Id) (UserRecord, error) {
 	return u, nil
 }
 
-func (s *stubUsers) SetAccess(_ context.Context, id vo.Id, level model.AccessLevel, until *time.Time) error {
+func (s *stubUsers) SetAccess(_ context.Context, id vo.Id, level model.AccessLevel, until *time.Time) (UserRecord, error) {
 	rec, ok := s.byID[id.String()]
 	if !ok {
-		return errs.NewNotFound("User not found")
+		return UserRecord{}, errs.NewNotFound("User not found")
 	}
 	s.saved[id.String()] = level
 	s.until[id.String()] = until
 	rec.AccessLevel, rec.AccessUntil = level, until
 	s.byID[id.String()] = rec
-	return nil
+	return rec, nil
 }
 
 type stubConns struct{ ids map[string][]vo.Id }
@@ -218,5 +218,27 @@ func TestUserContextNoConnections(t *testing.T) {
 	}
 	if len(res.Connections) != 0 {
 		t.Fatalf("connections = %+v, want empty", res.Connections)
+	}
+}
+
+// A connection whose user row is gone (account deletion is the planned next
+// iteration) must be skipped, not abort the whole context: the portal reads an
+// error here as "no such user" for the TARGET user.
+func TestUserContextSkipsDanglingConnection(t *testing.T) {
+	svc, _, self, partner := newFixture()
+	// A second connection pointing at a user that has no row.
+	svcConns := &stubConns{ids: map[string][]vo.Id{self.String(): {partner, vo.NewId()}}}
+	users := &stubUsers{byID: map[string]UserRecord{
+		self.String():    {ID: self.String(), Name: "Alex", Email: "alex@example.test", AccessLevel: model.AccessLevelFull},
+		partner.String(): {ID: partner.String(), Name: "Sam", Email: "sam@example.test", AccessLevel: model.AccessLevelFull},
+	}, saved: map[string]model.AccessLevel{}, until: map[string]*time.Time{}}
+	svc = NewService(users, svcConns, testClock{})
+
+	res, err := svc.UserContext(context.Background(), self)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Connections) != 1 || res.Connections[0].Id != partner.String() {
+		t.Fatalf("connections = %+v, want just the resolvable partner", res.Connections)
 	}
 }

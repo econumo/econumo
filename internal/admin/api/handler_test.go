@@ -32,14 +32,14 @@ func (s *stubUsers) GetUser(_ context.Context, id vo.Id) (admin.UserRecord, erro
 	return u, nil
 }
 
-func (s *stubUsers) SetAccess(_ context.Context, id vo.Id, level model.AccessLevel, until *time.Time) error {
+func (s *stubUsers) SetAccess(_ context.Context, id vo.Id, level model.AccessLevel, until *time.Time) (admin.UserRecord, error) {
 	rec, ok := s.byID[id.String()]
 	if !ok {
-		return errs.NewNotFound("User not found")
+		return admin.UserRecord{}, errs.NewNotFound("User not found")
 	}
 	rec.AccessLevel, rec.AccessUntil = level, until
 	s.byID[id.String()] = rec
-	return nil
+	return rec, nil
 }
 
 type stubConns struct{ ids map[string][]vo.Id }
@@ -56,7 +56,7 @@ func newMux() http.Handler {
 	}}
 	svc := admin.NewService(users, &stubConns{ids: map[string][]vo.Id{}}, testClock{})
 	mux := http.NewServeMux()
-	adminapi.RegisterAdmin(adminapi.NewHandlers(svc, false))(mux)
+	adminapi.RegisterAdmin(adminapi.NewHandlers(svc))(mux)
 	return mux
 }
 

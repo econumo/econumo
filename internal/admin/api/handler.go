@@ -15,11 +15,10 @@ import (
 
 type Handlers struct {
 	svc *admin.Service
-	dev bool
 }
 
-func NewHandlers(svc *admin.Service, dev bool) *Handlers {
-	return &Handlers{svc: svc, dev: dev}
+func NewHandlers(svc *admin.Service) *Handlers {
+	return &Handlers{svc: svc}
 }
 
 // writeErr maps a not-found to a real 404 before delegating. The public API
@@ -27,12 +26,15 @@ func NewHandlers(svc *admin.Service, dev bool) *Handlers {
 // private and single-consumer, and its consumer is a machine: "no such user,
 // stop retrying" and "your request was malformed" call for different handling,
 // so they get different statuses here.
+//
+// dev is hard-coded false: this surface never returns stack traces, regardless
+// of ECONUMO_DEBUG — there is deliberately no field to wire it differently.
 func (h *Handlers) writeErr(w http.ResponseWriter, err error) {
 	if nf, ok := errs.AsNotFound(err); ok {
 		httpx.Err(w, nf.Error(), 0, nil, http.StatusNotFound)
 		return
 	}
-	httpx.WriteError(w, err, h.dev)
+	httpx.WriteError(w, err, false)
 }
 
 func (h *Handlers) SetAccess(w http.ResponseWriter, r *http.Request) {

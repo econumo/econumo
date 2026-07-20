@@ -229,8 +229,10 @@ func run(serveArgs []string) error {
 	// self-hosted instance never serves those routes at all. config.Load has
 	// already rejected a half-configured pair.
 	if cfg.AdminPort != "" && cfg.AdminToken != "" {
-		servers = append(servers, newServer(cfg.AdminPort, adminHandler))
-		slog.Info("admin listener enabled", "addr", addr(cfg.AdminPort))
+		adminSrv := newServer(cfg.AdminPort, adminHandler)
+		adminSrv.Addr = adminAddr(cfg.AdminPort)
+		servers = append(servers, adminSrv)
+		slog.Info("admin listener enabled", "addr", adminSrv.Addr)
 	}
 
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -252,6 +254,14 @@ func run(serveArgs []string) error {
 	select {
 	case <-sigCtx.Done():
 		slog.Info("shutting down")
+		// A listener failure that raced the signal still decides the exit code:
+		// without this drain, select picking the signal branch would swallow a
+		// buffered bind error and report a clean exit for a server that never
+		// came up.
+		select {
+		case runErr = <-errCh:
+		default:
+		}
 	case runErr = <-errCh:
 		// One listener failing leaves a half-serving binary, which is worse than
 		// exiting: bring the other down too so the supervisor restarts cleanly.
@@ -273,6 +283,19 @@ func addr(port string) string {
 		return port
 	}
 	return ":" + port
+}
+
+// adminAddr additionally accepts a host-qualified value ("127.0.0.1:9090") so
+// the private listener can be pinned to loopback or an internal interface on
+// bare-host deployments; a bare port keeps the all-interfaces default that
+// container deployments rely on. PORT deliberately does not get this: the
+// healthcheck subcommand derives its probe URL from PORT and assumes it is a
+// bare port.
+func adminAddr(v string) string {
+	if strings.Contains(v, ":") && !strings.HasPrefix(v, ":") {
+		return v
+	}
+	return addr(v)
 }
 
 // toMigrateMigrations adapts the backend's []backend.Migration (Version/Up) to
