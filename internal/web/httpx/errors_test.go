@@ -156,7 +156,10 @@ func TestWriteErrorFieldlessMessageCode(t *testing.T) {
 
 func TestWriteError_PaymentRequired(t *testing.T) {
 	rec := httptest.NewRecorder()
-	WriteError(rec, errs.NewPaymentRequired("Read-only access. Write operations are disabled."), false)
+	WriteError(rec, &errs.PaymentRequiredError{
+		Msg:  "Read-only access. Write operations are disabled.",
+		Code: errs.CodeReadonlyAccess,
+	}, false)
 
 	if rec.Code != http.StatusPaymentRequired {
 		t.Fatalf("HTTP status = %d, want 402", rec.Code)
@@ -170,5 +173,15 @@ func TestWriteError_PaymentRequired(t *testing.T) {
 	}
 	if env := decodeEnvelope(t, rec); env.Success {
 		t.Fatalf("success = true, want false")
+	}
+
+	// The code rides on the error value (like UnauthorizedError.Code), so a
+	// code-less 402 keeps the pre-messageCode envelope byte-for-byte.
+	rec = httptest.NewRecorder()
+	WriteError(rec, errs.NewPaymentRequired("Read-only access. Write operations are disabled."), false)
+	body = strings.TrimSpace(rec.Body.String())
+	want = `{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}`
+	if body != want {
+		t.Fatalf("code-less body:\n got %s\nwant %s", body, want)
 	}
 }

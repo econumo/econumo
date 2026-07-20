@@ -91,7 +91,10 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 			// string, or a future third level) must fail closed to read-only
 			// gating, not fall through to unrestricted write access.
 			if level != model.AccessLevelFull && r.Method == http.MethodPost && !ReadonlyAllowedPaths[r.URL.Path] {
-				httpx.WriteError(w, errs.NewPaymentRequired("Read-only access. Write operations are disabled."), dev)
+				httpx.WriteError(w, &errs.PaymentRequiredError{
+					Msg:  "Read-only access. Write operations are disabled.",
+					Code: errs.CodeReadonlyAccess,
+				}, dev)
 				return
 			}
 			ctx := context.WithValue(r.Context(), ctxKeyUserID, userID)

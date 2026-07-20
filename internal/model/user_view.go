@@ -9,12 +9,14 @@ import "time"
 // service collapses them with EffectiveAccessLevel before putting them on the
 // wire.
 //
-// AccessLevel is cast from the stored text rather than strict-parsed (as the
-// auth hot path does in user/repo/accesstoken.go): that path is the enforcement
-// point and rejects an unrecognized level outright, so no request carrying one
-// ever reaches a read model. Should one slip through, EffectiveAccessLevel
-// collapses anything that is not AccessLevelFull to read-only — fail-closed
-// either way.
+// AccessLevel is cast from the stored text rather than strict-parsed. The
+// enforcement points live elsewhere: the auth hot path strict-parses the
+// caller's own level (user/repo/accesstoken.go — an unrecognized value fails
+// the request), and the middleware write gate restricts anything that is not
+// AccessLevelFull. Note that EffectiveAccessLevel does NOT normalize: an
+// unrecognized stored level with no elapsed expiry passes through verbatim, so
+// a read model displaying a level other than the authenticated caller's own
+// (as the connection owner embed does) shows the raw column value.
 type UserViewRow struct {
 	ID          string
 	Email       string

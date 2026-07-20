@@ -69,11 +69,6 @@ const (
 	ReadonlySessionID = "77777777-7777-7777-7777-777777777777"
 )
 
-// ReadonlyAccessUntil is the lapsed trial expiry seeded on the read-only user.
-// A literal past instant (not clock-derived) so both engines persist the same
-// bytes and the value the API echoes back is stable across runs.
-var ReadonlyAccessUntil = time.Date(2020, 1, 15, 10, 30, 0, 0, time.UTC)
-
 // Seed seeds an identical, cross-module fixture into the given engine via the
 // typed fixture builder. It seeds: two connected users (with hashed password +
 // encrypted email so login works) plus an isolated lapsed-trial user, their
@@ -93,11 +88,11 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.User(fixture.User{ID: GuestID, Email: GuestEmail, Name: "User " + GuestID[:4], Password: SeedPassword})
 	f.DefaultOptions(GuestID)
 
-	// Lapsed-trial user: full access that ran out in the past, so every request
-	// it makes is evaluated as read-only. Deliberately NOT connected to the
-	// owner/guest and given no entities, so it stays invisible to every other
-	// scenario's responses.
-	readonlyUntil := ReadonlyAccessUntil
+	// The lapsed-trial user (see ReadonlyID above) is deliberately NOT connected
+	// to the owner/guest and given no entities, so it stays invisible to every
+	// other scenario's responses. The expiry is a literal past instant (not
+	// clock-derived) so the seeded row is identical across runs and engines.
+	readonlyUntil := time.Date(2020, 1, 15, 10, 30, 0, 0, time.UTC)
 	f.User(fixture.User{ID: ReadonlyID, Email: ReadonlyEmail, Name: "User " + ReadonlyID[:4], Password: SeedPassword,
 		AccessLevel: string(model.AccessLevelFull), AccessUntil: &readonlyUntil})
 	f.DefaultOptions(ReadonlyID)

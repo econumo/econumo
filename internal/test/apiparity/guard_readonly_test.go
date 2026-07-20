@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -27,31 +25,23 @@ func TestGuard_ReadonlyAllowedPathsAreRealRoutes(t *testing.T) {
 	}
 }
 
-// publicPostRe matches a POST registration mounted WITHOUT the auth wrapper —
+// publicPostRoutes returns the POST routes mounted WITHOUT the auth wrapper —
 // the public group (login/register/remind/reset). Those never reach the
-// access-level check, so they cannot return 402.
-var publicPostRe = regexp.MustCompile(`mux\.HandleFunc\("POST (/api/v1/[a-z-]+/[a-z-]+)"`)
-
+// access-level check, so they cannot return 402. Classification keys on the
+// registration line lacking "auth(" (the semantic that matters), not on the
+// Handle-vs-HandleFunc spelling, so restyling a single registration cannot
+// silently reclassify it.
 func publicPostRoutes(t *testing.T) map[string]bool {
 	t.Helper()
-	_, thisFile, _, _ := runtime.Caller(0)
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
-	files, err := filepath.Glob(filepath.Join(repoRoot, "internal/*/api/routes.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	public := map[string]bool{}
-	for _, f := range files {
-		src, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, m := range publicPostRe.FindAllStringSubmatch(string(src), -1) {
-			public[m[1]] = true
+	for route, line := range routeSourceLines(t) {
+		path, isPost := strings.CutPrefix(route, "POST ")
+		if isPost && !strings.Contains(line, "auth(") {
+			public[path] = true
 		}
 	}
 	if len(public) == 0 {
-		t.Fatal("public-route scan found nothing — the registration style changed; update publicPostRe")
+		t.Fatal("public-route scan found nothing — the auth-wrapper spelling changed; update publicPostRoutes")
 	}
 	return public
 }
@@ -67,8 +57,7 @@ func publicPostRoutes(t *testing.T) map[string]bool {
 // allowlist) must NOT — a stray annotation there would tell clients to expect a
 // status that endpoint can never return.
 func TestGuard_EveryRestrictedPostDocuments402(t *testing.T) {
-	_, thisFile, _, _ := runtime.Caller(0)
-	specPath := filepath.Join(filepath.Dir(thisFile), "..", "..", "web", "apidoc", "docs", "swagger.json")
+	specPath := filepath.Join(repoRoot(t), "internal", "web", "apidoc", "docs", "swagger.json")
 	raw, err := os.ReadFile(specPath)
 	if err != nil {
 		t.Fatalf("read swagger.json (run `make swagger`): %v", err)
@@ -115,7 +104,7 @@ func TestGuard_EveryRestrictedPostDocuments402(t *testing.T) {
 			strings.Join(undocumented, "\n  "))
 	}
 	if len(missing) > 0 {
-		t.Errorf("restricted POST routes missing `@Failure 402 {object} apidoc.JsonResponseError` (add it, then `make swagger`):\n  %s",
+		t.Errorf("restricted POST routes missing `@Failure 402 {object} apidoc.JsonResponseError` (add it, then `make swagger`) — UNLESS the route is meant to be exempt: public routes are classified by their registration line lacking the auth( wrapper, and allowlisted ones live on middleware.ReadonlyAllowedPaths; fix the registration/allowlist instead of annotating a route that cannot return 402:\n  %s",
 			strings.Join(missing, "\n  "))
 	}
 	if len(unexpected) > 0 {

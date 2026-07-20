@@ -1,9 +1,6 @@
 == get-user-data GET /api/v1/user/get-user-data [readonly] -> 200
 {"success":true,"message":"","data":{"user":{"id":"88888888-8888-8888-8888-888888888888","name":"User 8888","email":"readonly@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"readonly","accessUntil":"<datetime>"}}}
 
-== get-option-list GET /api/v1/user/get-option-list [readonly] -> 200
-{"success":true,"message":"","data":{"items":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null}]}}
-
 == err:create-category POST /api/v1/category/create-category [readonly] -> 402
 {"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{},"messageCode":"common.readonly_access"}
 
