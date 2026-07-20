@@ -150,11 +150,6 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 	cid := currencyID
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})
 
-	accessUntil := ""
-	if u.AccessUntil != nil {
-		accessUntil = u.AccessUntil.Format(datetime.Layout)
-	}
-
 	return model.CurrentUserResult{
 		Id:           u.ID.String(),
 		Name:         u.Name,
@@ -164,7 +159,7 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		Currency:     code,
 		ReportPeriod: u.ReportPeriod(),
 		AccessLevel:  string(u.EffectiveAccessLevel(s.clock.Now())),
-		AccessUntil:  accessUntil,
+		AccessUntil:  datetime.FormatOrEmpty(u.AccessUntil),
 	}, nil
 }
 

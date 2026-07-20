@@ -142,6 +142,8 @@ func (h *Harness) Token(t *testing.T, userID, email string) string {
 		return OwnerToken
 	case GuestID:
 		return GuestToken
+	case ReadonlyID:
+		return ReadonlyToken
 	}
 	if raw, ok := h.minted[userID]; ok {
 		return raw
@@ -210,6 +212,7 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 	t.Helper()
 	ownerTok := h.Token(t, OwnerID, OwnerEmail)
 	guestTok := h.Token(t, GuestID, GuestEmail)
+	readonlyTok := h.Token(t, ReadonlyID, ReadonlyEmail)
 
 	statuses := make([]int, len(calls))
 	bodies := make([][]byte, len(calls))
@@ -220,6 +223,8 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 			tok = ownerTok
 		case "guest":
 			tok = guestTok
+		case "readonly":
+			tok = readonlyTok
 		case "":
 			tok = ""
 		default:

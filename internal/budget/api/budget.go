@@ -22,6 +22,7 @@ var _ = apidoc.JsonResponseError{}
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.CreateBudgetResult}
 // @Failure  400 {object} apidoc.JsonResponseError
 // @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  402 {object} apidoc.JsonResponseError
 // @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/create-budget [post]
@@ -38,6 +39,7 @@ func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    request body model.UpdateBudgetRequest true "Update budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.UpdateBudgetResult}
 // @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  402 {object} apidoc.JsonResponseError
 // @Security Bearer
 // @Router   /api/v1/budget/update-budget [post]
 func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +54,7 @@ func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    request body model.DeleteBudgetRequest true "Delete budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.DeleteBudgetResult}
+// @Failure  402 {object} apidoc.JsonResponseError
 // @Security Bearer
 // @Router   /api/v1/budget/delete-budget [post]
 func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +69,7 @@ func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    request body model.ResetBudgetRequest true "Reset budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.ResetBudgetResult}
+// @Failure  402 {object} apidoc.JsonResponseError
 // @Security Bearer
 // @Router   /api/v1/budget/reset-budget [post]
 func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {

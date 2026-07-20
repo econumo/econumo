@@ -42,6 +42,14 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // Exported so a guard test (internal/test/apiparity) can assert every path
 // here is still a real registered route, catching a route rename that would
 // otherwise leave a lapsed user unable to log out or rotate a password.
+//
+// /mcp is deliberately absent, which 402s a restricted caller off the WHOLE MCP
+// surface — JSON-RPC rides on POST, so even read-only tools are unreachable and
+// the client gets the REST error envelope rather than a JSON-RPC error. That
+// reads like a bug next to the "GET reads are never restricted" rule for REST,
+// and it is not: gating at the transport is the fail-closed choice, since
+// allowlisting /mcp to restore reads would open every write tool at once.
+// Per-tool enforcement is what this would need first.
 var ReadonlyAllowedPaths = map[string]bool{
 	"/api/v1/user/logout-user":           true,
 	"/api/v1/user/revoke-session":        true,
@@ -83,7 +91,10 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 			// string, or a future third level) must fail closed to read-only
 			// gating, not fall through to unrestricted write access.
 			if level != model.AccessLevelFull && r.Method == http.MethodPost && !ReadonlyAllowedPaths[r.URL.Path] {
-				httpx.WriteError(w, errs.NewPaymentRequired("Read-only access. Write operations are disabled."), dev)
+				httpx.WriteError(w, &errs.PaymentRequiredError{
+					Msg:  "Read-only access. Write operations are disabled.",
+					Code: errs.CodeReadonlyAccess,
+				}, dev)
 				return
 			}
 			ctx := context.WithValue(r.Context(), ctxKeyUserID, userID)

@@ -139,10 +139,7 @@ func userCommands() []command {
 				if u.IsActive {
 					active = "yes"
 				}
-				until := ""
-				if u.AccessUntil != nil {
-					until = u.AccessUntil.Format(datetime.Layout)
-				}
+				until := datetime.FormatOrEmpty(u.AccessUntil)
 				fmt.Printf("Id:              %s\n", u.ID.String())
 				fmt.Printf("Name:            %s\n", u.Name)
 				fmt.Printf("Email:           %s\n", u.Email)

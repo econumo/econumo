@@ -205,6 +205,30 @@ func TestAuthenticate_ReturnsReadonlyWhenAccessLapsed(t *testing.T) {
 	}
 }
 
+// The access level joins from the user row, not the token, so a PAT must be
+// restricted exactly like a session when access lapses — PATs survive password
+// changes, making them the likely credential a lapsed user still holds.
+func TestAuthenticate_PATAlsoReadonlyWhenAccessLapsed(t *testing.T) {
+	db := dbtest.New(t)
+	svc, tokens, _, uid := newAuthEnvOn(t, db)
+	seedToken(t, tokens, uid, model.TokenKindPersonal, "eco_pat_lapsed", nil)
+
+	past := authT0.Add(-24 * time.Hour)
+	if _, err := db.Raw.ExecContext(context.Background(),
+		db.Rebind("UPDATE users SET access_until = ? WHERE id = ?"),
+		past.Format(datetime.Layout), uid.String()); err != nil {
+		t.Fatalf("lapse access: %v", err)
+	}
+
+	_, _, level, err := svc.Authenticate(context.Background(), "eco_pat_lapsed")
+	if err != nil {
+		t.Fatalf("Authenticate: %v", err)
+	}
+	if level != model.AccessLevelReadonly {
+		t.Fatalf("level: got %q want readonly", level)
+	}
+}
+
 func TestAuthenticate_ReturnsFullForUnexpiredAccess(t *testing.T) {
 	db := dbtest.New(t)
 	svc, tokens, _, uid := newAuthEnvOn(t, db)

@@ -13,7 +13,7 @@
 //
 // @title                      Econumo API
 // @version                    1.0.0
-// @description                Self-hosted personal finance and budgeting API (Go port).
+// @description                Self-hosted personal finance and budgeting API
 // @BasePath                   /
 // @securityDefinitions.apikey Bearer
 // @in                         header

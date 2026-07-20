@@ -163,7 +163,8 @@ func AsTooManyRequests(err error) (*TooManyRequestsError, bool) {
 // access is read-only. 402 rather than 403 lets a client tell this apart from
 // validation and auth failures with a single status comparison.
 type PaymentRequiredError struct {
-	Msg string
+	Msg  string
+	Code string
 }
 
 func (e *PaymentRequiredError) Error() string {
