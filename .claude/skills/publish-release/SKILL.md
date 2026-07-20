@@ -9,12 +9,13 @@ Releases are cut by the `Publish Release` workflow (`.github/workflows/publish-r
 never by pushing tags or images locally. The workflow's `branch` input selects the source
 branch (`main` by default; a `release/*` branch for hotfixes), and the dispatch itself always
 uses `--ref main` so the workflow definition never comes from a stale branch. The workflow
-does three things in order: auto-creates a `release/vX.Y.Z` branch at the source branch's
-head (the base for future hotfixes to that version) and the annotated git tag on the same
-commit, builds and pushes the multi-arch image to `ghcr.io/econumo/econumo`, and creates the
-GitHub release with auto-generated notes (changelogithub). Your job is to drive it, verify
-each artifact, and then replace the auto-generated notes with notes a human would want to
-read.
+does three things in order: creates the annotated git tag at the source branch's head (a
+release from `main` also leaves a `release/vX.Y.Z` branch at the same commit — the base for
+future hotfixes to that version; a release from a `release/*` source creates no branch,
+because that source is itself the release branch), builds and pushes the multi-arch image
+to `ghcr.io/econumo/econumo`, and creates the GitHub release with auto-generated notes
+(changelogithub). Your job is to drive it, verify each artifact, and then replace the
+auto-generated notes with notes a human would want to read.
 
 Publishing is outward-facing and irreversible in practice (the tag and image are public
 immediately). Only run the dispatch when the user has explicitly asked for a release, and if
@@ -40,26 +41,48 @@ v1.1.1 → v1.1.2), regardless of what has since shipped from main.
 
 ## 2. Prepare the source branch (hotfixes only)
 
-For a normal release there is nothing to prepare — the workflow auto-creates
-`release/vX.Y.Z` at the released commit, so every version leaves a branch behind as the
-base for future fixes.
+For a normal release there is nothing to prepare — releasing from `main` auto-creates
+`release/vX.Y.Z` at the released commit, so every version cut from main leaves a branch
+behind as the base for future fixes.
 
-For a hotfix, the fixes must be on the source branch BEFORE dispatching. Land them on the
-release branch of the version being fixed (`release/vA.B.C`, auto-created when it was
-released) — cherry-pick the fix commits from main onto a working branch and PR it with the
-release branch as the base (or push the cherry-picks directly if the user prefers). If that
-branch doesn't exist (the version predates auto-created release branches), create it from
-the tag first:
+For a hotfix, the workflow creates NO branch (the rule: release branches are only created
+for releases from main) — the new version's branch is prepared by hand. Copy the fixed
+version's release branch to the new version's name, then land the fixes on the copy:
 
 ```bash
-git fetch --tags --quiet
-git push origin 'vA.B.C^{}':refs/heads/release/vA.B.C
+git fetch origin --tags --quiet
+# the new version's branch, copied from the fixed version's release branch:
+git push origin origin/release/vA.B.C:refs/heads/release/vX.Y.Z
+# or, if vA.B.C predates release branches, from its tag:
+git push origin 'vA.B.C^{}':refs/heads/release/vX.Y.Z
 ```
 
-Confirm with `git log origin/release/vA.B.C` that the branch holds exactly the intended
+Land the fixes on `release/vX.Y.Z` — cherry-pick the fix commits from main onto a working
+branch and PR it with that branch as the base (or push the cherry-picks directly if the
+user prefers). The old branch `release/vA.B.C` stays untouched at its released commit, so
+every release branch keeps pointing at exactly what its version shipped.
+
+Confirm with `git log origin/release/vX.Y.Z` that the branch holds exactly the intended
 fixes and nothing else from main. Note the test workflows ignore pushes to `release/**` —
 only the PR route runs tests on the fixes, which is why it is the default; after a direct
 push, run the suites locally before dispatching.
+
+**The fix must reach main too**, or the next release from main regresses the bug. Release
+branches are never merged wholesale into main — they exist to pin what shipped; the fix
+flows back at the commit level. Default direction: the fix lands on main FIRST (normal PR)
+and is cherry-picked onto the release branch, so there is nothing to port back. Only when
+the fix has to be authored on the release branch directly (the code on main has diverged or
+the bug no longer exists there in the same shape) does it need a forward-port: after the
+release, cherry-pick it onto a working branch and PR it into main. Audit that nothing was
+left behind:
+
+```bash
+git log --no-merges --right-only --cherry-pick --oneline main...origin/release/vX.Y.Z
+```
+
+Empty output means every commit on the release branch is patch-equivalent to one on main;
+anything listed still needs a forward-port (or a deliberate decision that main doesn't need
+it — say so in the release notes).
 
 ## 3. Dispatch and watch
 
@@ -67,8 +90,8 @@ push, run the suites locally before dispatching.
 # Normal release (source defaults to main):
 gh workflow run publish-release.yml --ref main -f version=vX.Y.Z -f push_latest=true
 
-# Hotfix (source = the fixed version's release branch):
-gh workflow run publish-release.yml --ref main -f version=vX.Y.Z -f branch=release/vA.B.C
+# Hotfix (source = the NEW version's hand-prepared release branch):
+gh workflow run publish-release.yml --ref main -f version=vX.Y.Z -f branch=release/vX.Y.Z
 ```
 
 - Always dispatch with `--ref main`; the `branch` input (default `main`) is what selects the
@@ -156,15 +179,20 @@ user to adjust the wording, since the notes are public-facing prose.
 v1.1.1 is released, main already carries v1.2.0-bound work, and a bug is found in v1.1.1:
 
 ```bash
-# land the fix on release/v1.1.1 (cherry-pick PR based on it; create the branch
-# from the v1.1.1 tag first only if the release predates auto-created branches), then:
-gh workflow run publish-release.yml --ref main -f version=v1.1.2 -f branch=release/v1.1.1
+# copy the fixed version's branch to the new version's name (from the v1.1.1
+# tag instead if the release predates release branches):
+git fetch origin --tags --quiet
+git push origin origin/release/v1.1.1:refs/heads/release/v1.1.2
+# land the fix on release/v1.1.2 (cherry-pick PR based on it), then:
+gh workflow run publish-release.yml --ref main -f version=v1.1.2 -f branch=release/v1.1.2
 ```
 
-The workflow tags v1.1.2 on the fix commit and auto-creates `release/v1.1.2` there — the
-base for a future v1.1.3. No `push_latest`: `latest` keeps pointing at the newest line, and
-the workflow keeps the GitHub "Latest" badge off the hotfix release. Notes follow the
-normal flow with the range v1.1.1...v1.1.2.
+The workflow tags v1.1.2 at the branch head and creates no new branch — `release/v1.1.2`
+already is the release branch; a future v1.1.3 starts by copying it the same way. No
+`push_latest`: `latest` keeps pointing at the newest line, and the workflow keeps the
+GitHub "Latest" badge off the hotfix release. Notes follow the normal flow with the range
+v1.1.1...v1.1.2. Afterwards, verify the fix is also on main (it normally started there);
+if it was authored on the release branch, forward-port it now — see step 2.
 
 ## Updating notes on an already-published release
 

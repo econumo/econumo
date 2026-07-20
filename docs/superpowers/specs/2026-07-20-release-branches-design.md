@@ -16,21 +16,35 @@ second-class path.
 
 ### Process
 
-1. **Every release auto-creates its `release/vX.Y.Z` branch**: the workflow
-   pushes `release/<version>` at the released commit (skipped when it already
-   exists there; an existing branch at a *different* commit is an error), so
-   every version leaves a branch behind as the base for future fixes. Nothing
-   to prepare for a normal release from `main`.
-2. **Hotfix of an older version**: land the fixes on the fixed version's
-   release branch (`release/vA.B.C`; if the version predates auto-created
-   branches, create it from the tag:
-   `git push origin 'vA.B.C^{}':refs/heads/release/vA.B.C`), then dispatch
-   with `branch=release/vA.B.C` and the bumped `version`. The workflow tags
-   the fix commit and auto-creates the new version's branch there.
+1. **A release from `main` auto-creates its `release/vX.Y.Z` branch**: the
+   workflow pushes `release/<version>` at the released commit (skipped when it
+   already exists there; an existing branch at a *different* commit is an
+   error), so every version cut from main leaves a branch behind as the base
+   for future fixes. Nothing to prepare for a normal release from `main`.
+   A release from any other source branch creates **no** branch — the rule is
+   "create a release branch only when releasing from main; never when the
+   dispatch already names a release branch".
+2. **Hotfix of an older version**: copy the fixed version's release branch to
+   the new version's name
+   (`git push origin origin/release/vA.B.C:refs/heads/release/vX.Y.Z`; if the
+   version predates release branches, from the tag:
+   `git push origin 'vA.B.C^{}':refs/heads/release/vX.Y.Z`), land the fixes on
+   the copy, then dispatch with `branch=release/vX.Y.Z` and the same
+   `version`. The workflow tags the branch head and creates nothing — the old
+   branch stays pinned at exactly what its version shipped.
 3. **Dispatch the workflow from `main`** in all cases. Dispatching from `main`
    means the workflow *definition* always comes from `main`, so hotfix
    branches cut from old tags never run a stale copy of the pipeline; the
    `branch` input alone selects the code being released.
+4. **No fix is lost to a release branch**: release branches are never merged
+   wholesale into `main` — the fix flows back at the commit level. Default
+   direction is main-first (the fix lands on `main`, then is cherry-picked
+   onto the release branch), so there is nothing to port back; a fix authored
+   directly on a release branch is forward-ported to `main` with a cherry-pick
+   PR after the release. Audit for leftovers with
+   `git log --no-merges --right-only --cherry-pick main...release/vX.Y.Z`
+   (patch-equivalence, so cherry-picked commits with different SHAs don't
+   show up as missing).
 
 Release branches are kept after the release; they are the base for future
 fixes to that line.
@@ -41,9 +55,11 @@ fixes to that line.
   `create-tag` job checks out, tags, and the later jobs build. The default
   keeps the pre-existing "release what's on main" flow working unchanged.
 - The `create-tag` job pushes `release/<version>` at the checked-out head
-  before tagging (duplicate-tag check first, then branch, then tag — so a
-  failed tag push can be re-run safely: an existing branch at the same commit
-  is skipped, at a different commit it fails the run).
+  before tagging, but only when the `branch` input is `main` (duplicate-tag
+  check first, then branch, then tag — so a failed tag push can be re-run
+  safely: an existing branch at the same commit is skipped, at a different
+  commit it fails the run). Any other source skips branch creation with a
+  log notice.
 - The old guard ("`latest` only when dispatched from `main`") is **replaced** —
   under the new model releases come from `release/*` branches, so it would
   block every `latest`. New `push_latest` guard, checked in `create-tag`:
@@ -81,9 +97,22 @@ fixes to that line.
   what each branch produced. Revisit if branch count becomes a nuisance.
 - **Manual release-branch creation before every dispatch** (the first
   iteration of this design). Replaced at the user's request by auto-creation
-  inside the workflow: normal releases need no manual step, and every version
-  reliably leaves its branch behind. Hotfix *fixes* still land before dispatch
-  by construction — they go on the fixed version's already-existing branch.
+  inside the workflow for main releases: normal releases need no manual step.
+- **Auto-creating the new version's branch on every release, hotfixes
+  included** (the second iteration: fixes land on the *fixed* version's
+  branch, and the workflow creates `release/<new-version>` at the fix
+  commit). Replaced at the user's request by the create-only-from-main rule:
+  the hotfix branch is a hand-made copy of the old release branch under the
+  new version's name, the workflow only tags it, and old release branches
+  never drift past the commit their version shipped.
+
+- **Merging release branches back into `main`** (git-flow style) to guarantee
+  no fix is lost. Rejected: most hotfix commits are cherry-picks *from* main,
+  so a merge is empty-or-conflicting noise, and a release branch also carries
+  the old line's history, which a merge would entangle with main's. The
+  commit-level flow above (main-first by default, forward-port cherry-pick
+  PR otherwise, patch-equivalence audit) keeps main complete without ever
+  merging a release branch.
 
 ## Not changing
 

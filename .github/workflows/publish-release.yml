@@ -4,9 +4,11 @@ name: Publish Release
 # Dispatch from main (the dispatch ref only selects the workflow DEFINITION);
 # the code that gets tagged and built comes from the "branch" input — main by
 # default, or a release/vX.Y.Z branch for hotfixes of older versions.
-# - Always pushes the version tag (e.g. v1.2.3), and auto-creates a
-#   release/vX.Y.Z branch at the released commit (the base for future hotfixes
-#   to that version) when it does not already exist.
+# - Always pushes the version tag (e.g. v1.2.3). When the source branch is
+#   main, also creates a release/vX.Y.Z branch at the released commit (the
+#   base for future hotfixes to that version). Any other source creates no
+#   branch — a release/* source IS the release branch, prepared by hand
+#   before dispatch (copied from the previous release branch of that line).
 # - Also pushes/moves "latest" only when push_latest is checked AND the source
 #   branch is main or release/* AND the version is the highest released so far
 #   (a hotfix to an old line can never move "latest").
@@ -109,25 +111,33 @@ jobs:
       - name: Create release branch and tag
         env:
           TAG: ${{ steps.set.outputs.version }}
+          BRANCH: ${{ github.event.inputs.branch }}
         run: |
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "::error::Tag $TAG already exists"
             exit 1
           fi
-          # Every release leaves a release/<version> branch at the released
-          # commit — the base for future hotfixes to that version. Created
-          # before the tag so a failed tag push can be re-run safely.
-          BRANCH_REF="refs/heads/release/${TAG}"
-          HEAD_SHA="$(git rev-parse HEAD)"
-          EXISTING="$(git ls-remote origin "$BRANCH_REF" | cut -f1)"
-          if [ -z "$EXISTING" ]; then
-            git push origin "HEAD:${BRANCH_REF}"
-            echo "Created release/${TAG} at ${HEAD_SHA}"
-          elif [ "$EXISTING" = "$HEAD_SHA" ]; then
-            echo "release/${TAG} already exists at ${HEAD_SHA}; skipping creation"
+          # A release from main leaves a release/<version> branch at the
+          # released commit — the base for future hotfixes to that version.
+          # Any other source creates no branch: a release/* source is itself
+          # the release branch, prepared by hand before dispatch. The branch
+          # is created before the tag so a failed tag push can be re-run
+          # safely.
+          if [ "$BRANCH" = "main" ]; then
+            BRANCH_REF="refs/heads/release/${TAG}"
+            HEAD_SHA="$(git rev-parse HEAD)"
+            EXISTING="$(git ls-remote origin "$BRANCH_REF" | cut -f1)"
+            if [ -z "$EXISTING" ]; then
+              git push origin "HEAD:${BRANCH_REF}"
+              echo "Created release/${TAG} at ${HEAD_SHA}"
+            elif [ "$EXISTING" = "$HEAD_SHA" ]; then
+              echo "release/${TAG} already exists at ${HEAD_SHA}; skipping creation"
+            else
+              echo "::error::release/${TAG} already exists at ${EXISTING}, which is not the commit being released (${HEAD_SHA})."
+              exit 1
+            fi
           else
-            echo "::error::release/${TAG} already exists at ${EXISTING}, which is not the commit being released (${HEAD_SHA})."
-            exit 1
+            echo "Source branch '${BRANCH}' is not main; not creating a release branch"
           fi
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
