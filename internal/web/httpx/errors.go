@@ -11,6 +11,7 @@ import (
 //   - *errs.ValidationError  -> 400, errors{} populated (field -> messages)
 //   - *errs.AccessDeniedError -> 403, empty errors
 //   - *errs.UnauthorizedError -> 401, empty errors
+//   - *errs.PaymentRequiredError -> 402, code 402, empty errors
 //   - *errs.TooManyRequestsError -> 429, code 429, empty errors
 //   - *errs.NotFoundError     -> 400 (domain not-found goes through the generic
 //     error envelope; revisit per-endpoint if a test expects 404)
@@ -40,6 +41,10 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 	}
 	if v, ok := errs.AsUnauthorized(err); ok {
 		errCoded(w, v.Error(), 0, nil, nil, v.Code, nil, http.StatusUnauthorized)
+		return
+	}
+	if v, ok := errs.AsPaymentRequired(err); ok {
+		errCoded(w, v.Error(), http.StatusPaymentRequired, nil, nil, "", nil, http.StatusPaymentRequired)
 		return
 	}
 	if v, ok := errs.AsTooManyRequests(err); ok {
