@@ -38,15 +38,13 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			return nil, aerr
 		}
 		if req.PeriodStart != "" && req.PeriodEnd != "" {
-			start, perr := parseFlexible(req.PeriodStart)
-			if perr != nil {
-				return nil, perr
+			if filter.PeriodStart, err = parseFlexible(req.PeriodStart); err != nil {
+				return nil, err
 			}
-			end, perr := parseFlexible(req.PeriodEnd)
-			if perr != nil {
-				return nil, perr
+			if filter.PeriodEnd, err = parseFlexible(req.PeriodEnd); err != nil {
+				return nil, err
 			}
-			list, lerr := s.repo.ListByAccountIDs(ctx, []vo.Id{accountID}, start, end, filter)
+			list, lerr := s.repo.ListByAccountIDs(ctx, []vo.Id{accountID}, filter)
 			if lerr != nil {
 				return nil, lerr
 			}
@@ -54,7 +52,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			break
 		}
 		if hasFilter {
-			list, lerr := s.repo.ListByAccountIDs(ctx, []vo.Id{accountID}, time.Time{}, time.Time{}, filter)
+			list, lerr := s.repo.ListByAccountIDs(ctx, []vo.Id{accountID}, filter)
 			if lerr != nil {
 				return nil, lerr
 			}
@@ -71,16 +69,15 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		if err != nil {
 			return nil, err
 		}
-		var start, end time.Time
 		if req.PeriodStart != "" && req.PeriodEnd != "" {
-			if start, err = parseFlexible(req.PeriodStart); err != nil {
+			if filter.PeriodStart, err = parseFlexible(req.PeriodStart); err != nil {
 				return nil, err
 			}
-			if end, err = parseFlexible(req.PeriodEnd); err != nil {
+			if filter.PeriodEnd, err = parseFlexible(req.PeriodEnd); err != nil {
 				return nil, err
 			}
 		}
-		list, err := s.repo.ListByAccountIDs(ctx, ids, start, end, filter)
+		list, err := s.repo.ListByAccountIDs(ctx, ids, filter)
 		if err != nil {
 			return nil, err
 		}

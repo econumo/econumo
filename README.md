@@ -117,45 +117,10 @@ it doesn't expire on inactivity like a session does. Point your client at
 > — use Claude Code, Claude Desktop, or another client that accepts a static
 > bearer header.
 
-**Tools:**
-
-| Tool | Purpose |
-|---|---|
-| `get_budget` | full monthly budget state (folders/envelopes/categories/tags, limits, spent, available) |
-| `list_transactions` | list transactions, optionally filtered by account, period, and/or classification (uncategorized, category, payee, tag) |
-| `create_transaction` | record an expense, income, or transfer |
-| `update_transaction` | edit an existing transaction |
-| `delete_transaction` | delete a transaction |
-| `bulk_update_transactions` | re-classify (set or clear category/payee/tag on) up to 100 transactions at once, all-or-nothing |
-| `list_accounts` | accounts with type, currency, archived flag, and current balance |
-| `list_categories` | expense/income categories |
-| `create_category` | create a category (name, type, optional icon) |
-| `update_category` | rename a category or change its icon |
-| `set_category_archived` | archive/unarchive a category — there is no delete |
-| `list_tags` | tags |
-| `create_tag` | create a tag |
-| `update_tag` | rename a tag |
-| `set_tag_archived` | archive/unarchive a tag — there is no delete |
-| `list_payees` | payees |
-| `create_payee` | create a payee |
-| `update_payee` | rename a payee |
-| `set_payee_archived` | archive/unarchive a payee — there is no delete |
-| `list_currencies` | currency codes + rates vs. the instance base currency |
-| `list_budgets` | the user's budgets (id, name, currency) |
-| `create_budget` | create a budget, seeded with the user's existing categories and tags |
-| `update_budget` | rename a budget or change its currency |
-| `create_folder` | create a folder to group budget envelopes/categories/tags |
-| `update_folder` | rename a budget folder |
-| `create_envelope` | create an envelope grouping one or more categories under a shared limit |
-| `update_envelope` | update an envelope, or archive/unarchive it — there is no delete |
-| `set_limit` | set or clear an envelope/category/tag's limit for one month |
-| `set_budget_account_included` | include or exclude an owned account from a budget's tracked balances |
-| `get_user` | the current user's profile (id, name, email, avatar, base currency) |
-| `list_connections` | users connected to the current user and the accounts they share |
-
-**Prompts:** `log-expense` (turn a free-text description like "27.50
-groceries at Lidl yesterday, card" into a recorded transaction) and
-`budget-review` (summarize a month's budget, flagging overspent envelopes).
+Once connected, the tools and prompts are self-describing — your MCP client
+lists them. They cover reading and reviewing accounts, budgets and
+transactions; logging and reclassifying transactions; and managing
+categories, tags, payees and budgets (archive-based, no hard delete).
 
 ### Upgrading from v0.x (PHP)
 

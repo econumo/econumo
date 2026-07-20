@@ -179,7 +179,7 @@ func TestTransactionRepo_ListByAccountIDs_PeriodBoundary(t *testing.T) {
 
 	start := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
-	list, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, start, end, model.TransactionFilter{})
+	list, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, model.TransactionFilter{PeriodStart: start, PeriodEnd: end})
 	if err != nil {
 		t.Fatalf("ListByAccountIDs: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestTransactionRepo_ListByAccountIDs_PeriodBoundary(t *testing.T) {
 	}
 
 	// No period -> all three.
-	all, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, time.Time{}, time.Time{}, model.TransactionFilter{})
+	all, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, model.TransactionFilter{})
 	if err != nil {
 		t.Fatalf("ListByAccountIDs no period: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestTransactionRepo_ListByAccountIDs_PeriodBoundary(t *testing.T) {
 	}
 
 	// Empty id set -> nil.
-	none, err := repo.ListByAccountIDs(ctx, nil, start, end, model.TransactionFilter{})
+	none, err := repo.ListByAccountIDs(ctx, nil, model.TransactionFilter{PeriodStart: start, PeriodEnd: end})
 	if err != nil || none != nil {
 		t.Errorf("empty ids should yield nil,nil; got %v, %v", none, err)
 	}
@@ -233,7 +233,7 @@ func TestTransactionRepo_ListByAccountIDs_ClassificationFilters(t *testing.T) {
 
 	ids := []vo.Id{vo.MustParseId(acct1)}
 
-	uncategorized, err := repo.ListByAccountIDs(ctx, ids, time.Time{}, time.Time{}, model.TransactionFilter{Uncategorized: true})
+	uncategorized, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{Uncategorized: true})
 	if err != nil {
 		t.Fatalf("uncategorized filter: %v", err)
 	}
@@ -241,7 +241,7 @@ func TestTransactionRepo_ListByAccountIDs_ClassificationFilters(t *testing.T) {
 		t.Fatalf("uncategorized filter = %#v, want just tx 12", uncategorized)
 	}
 
-	byCategory, err := repo.ListByAccountIDs(ctx, ids, time.Time{}, time.Time{}, model.TransactionFilter{CategoryID: &catA})
+	byCategory, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{CategoryID: &catA})
 	if err != nil {
 		t.Fatalf("category filter: %v", err)
 	}
@@ -249,7 +249,7 @@ func TestTransactionRepo_ListByAccountIDs_ClassificationFilters(t *testing.T) {
 		t.Fatalf("category filter = %#v, want just tx 10", byCategory)
 	}
 
-	byPayee, err := repo.ListByAccountIDs(ctx, ids, time.Time{}, time.Time{}, model.TransactionFilter{PayeeID: &payeeA})
+	byPayee, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{PayeeID: &payeeA})
 	if err != nil {
 		t.Fatalf("payee filter: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestTransactionRepo_ListByAccountIDs_ClassificationFilters(t *testing.T) {
 		t.Fatalf("payee filter = %#v, want just tx 10", byPayee)
 	}
 
-	byTag, err := repo.ListByAccountIDs(ctx, ids, time.Time{}, time.Time{}, model.TransactionFilter{TagID: &tagA})
+	byTag, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{TagID: &tagA})
 	if err != nil {
 		t.Fatalf("tag filter: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestTransactionRepo_ListByAccountIDs_ClassificationFilters(t *testing.T) {
 	}
 
 	// Combined with a period window that excludes everything.
-	empty, err := repo.ListByAccountIDs(ctx, ids, time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2099, 2, 1, 0, 0, 0, 0, time.UTC), model.TransactionFilter{Uncategorized: true})
+	empty, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{PeriodStart: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC), PeriodEnd: time.Date(2099, 2, 1, 0, 0, 0, 0, time.UTC), Uncategorized: true})
 	if err != nil {
 		t.Fatalf("uncategorized+period filter: %v", err)
 	}

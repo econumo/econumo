@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -119,12 +118,12 @@ func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Tra
 }
 
 // ListByAccountIDs returns transactions whose source OR recipient is in
-// accountIDs, optionally bounded by [periodStart, periodEnd) and narrowed by
-// filter. Built by hand (dynamic IN + optional predicates); placeholders
-// differ per engine. filter's zero value appends no classification predicate,
-// so callers that never set it (the account/period-only paths) get exactly
-// today's query.
-func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time, filter model.TransactionFilter) ([]*model.Transaction, error) {
+// accountIDs, bounded by filter.PeriodStart/PeriodEnd (both non-zero) and
+// narrowed by filter's classification fields. Built by hand (dynamic IN +
+// optional predicates); placeholders differ per engine. filter's zero value
+// appends no predicate beyond the accounts, so callers that never set it (the
+// account-only paths) get exactly today's query.
+func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter model.TransactionFilter) ([]*model.Transaction, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -132,7 +131,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 	for i, id := range accountIDs {
 		ids[i] = id.String()
 	}
-	usePeriod := !periodStart.IsZero() && !periodEnd.IsZero()
+	usePeriod := !filter.PeriodStart.IsZero() && !filter.PeriodEnd.IsZero()
 
 	const cols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient"
 	var b strings.Builder
@@ -157,7 +156,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 		b.WriteString(" AND spent_at < ")
 		b.WriteString(placeholders(r.driver, next, 1))
 		next++
-		args = append(args, periodStart, periodEnd)
+		args = append(args, filter.PeriodStart, filter.PeriodEnd)
 	}
 	if filter.Uncategorized {
 		b.WriteString(" AND category_id IS NULL")

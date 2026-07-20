@@ -88,13 +88,16 @@ type NewState struct {
 	UpdatedAt       time.Time
 }
 
-// TransactionFilter narrows a transaction list query by classification,
-// AND-composed with the account/period predicates ListByAccountIDs already
-// applies. The zero value (Uncategorized false, all ids nil) filters nothing
-// — callers on the byte-identical REST path pass it unchanged. Uncategorized
-// and CategoryID are mutually exclusive by construction (the service rejects
-// both being set before building this).
+// TransactionFilter narrows a transaction list query. PeriodStart/PeriodEnd
+// bound spent_at to [start, end) when BOTH are non-zero (a lone bound is
+// ignored); the classification fields (Uncategorized, CategoryID, PayeeID,
+// TagID) AND-compose on top. The zero value filters nothing — callers on the
+// byte-identical REST path pass it unchanged. Uncategorized and CategoryID are
+// mutually exclusive by construction (the service rejects both being set
+// before building this).
 type TransactionFilter struct {
+	PeriodStart   time.Time
+	PeriodEnd     time.Time
 	Uncategorized bool
 	CategoryID    *vo.Id
 	PayeeID       *vo.Id
