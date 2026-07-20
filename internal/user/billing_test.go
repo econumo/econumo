@@ -99,3 +99,22 @@ func TestCreateBillingLinkDisabledWithoutURL(t *testing.T) {
 		t.Fatal("want an error when ECONUMO_BILLING_URL is unset")
 	}
 }
+
+func TestCreateBillingLinkLogsBeneficiary(t *testing.T) {
+	svc := newBillingSvc("https://pay.example.test/cloud/")
+	ctx := reqctx.WithLogAttrs(context.Background())
+	partner := vo.NewId()
+	if _, err := svc.CreateBillingLink(ctx, vo.NewId(),
+		model.CreateBillingLinkRequest{For: partner.String()}); err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, a := range reqctx.LogAttrs(ctx) {
+		if a.Key == "for_user_id" && a.Value.String() == partner.String() {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("for_user_id attr missing — minting a link for a partner must be auditable")
+	}
+}

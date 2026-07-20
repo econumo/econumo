@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -37,6 +38,12 @@ func (s *Service) SetAccess(ctx context.Context, req model.AdminSetAccessRequest
 		}
 		until = &t
 	}
+	// Logged BEFORE the write: a failed attempt must still record what was
+	// attempted, on the WARN/ERROR operation line. The old values are added by
+	// the user service, which has the record in hand.
+	reqctx.AddLogAttr(ctx, "user_id", id.String())
+	reqctx.AddLogAttr(ctx, "access_level", string(level))
+	reqctx.AddLogAttr(ctx, "access_until", formatUntil(until))
 	rec, err := s.users.SetAccess(ctx, id, level, until)
 	if err != nil {
 		return nil, err

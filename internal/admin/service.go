@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"time"
+
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/port"
@@ -17,16 +19,21 @@ func NewService(users UserLookup, conns ConnectionLookup, clk port.Clock) *Servi
 }
 
 func (s *Service) view(r UserRecord) model.AdminUserView {
-	until := ""
-	if r.AccessUntil != nil {
-		until = r.AccessUntil.UTC().Format(datetime.Layout)
-	}
 	return model.AdminUserView{
 		Id:                   r.ID,
 		Name:                 r.Name,
 		Email:                r.Email,
 		AccessLevel:          string(r.AccessLevel),
-		AccessUntil:          until,
+		AccessUntil:          formatUntil(r.AccessUntil),
 		EffectiveAccessLevel: string(model.EffectiveAccessLevel(r.AccessLevel, r.AccessUntil, s.clock.Now())),
 	}
+}
+
+// formatUntil renders a nullable expiry as the wire/log value: the frozen
+// datetime layout, or "" for no expiry.
+func formatUntil(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.UTC().Format(datetime.Layout)
 }

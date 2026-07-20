@@ -3,11 +3,13 @@ package admin
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -240,5 +242,70 @@ func TestUserContextSkipsDanglingConnection(t *testing.T) {
 	}
 	if len(res.Connections) != 1 || res.Connections[0].Id != partner.String() {
 		t.Fatalf("connections = %+v, want just the resolvable partner", res.Connections)
+	}
+}
+
+// attrValue extracts a logged attr by key, or "" when absent.
+func attrValue(attrs []slog.Attr, key string) string {
+	for _, a := range attrs {
+		if a.Key == key {
+			return a.Value.String()
+		}
+	}
+	return ""
+}
+
+// Every admin write must land on the operation log line with the target and
+// the values written — the listener is driven by an unattended webhook, so the
+// log IS the audit trail.
+func TestSetAccessLogsTargetAndValues(t *testing.T) {
+	svc, _, self, _ := newFixture()
+	ctx := reqctx.WithLogAttrs(context.Background())
+	until := "2027-01-01 00:00:00"
+	if _, err := svc.SetAccess(ctx, model.AdminSetAccessRequest{
+		UserId: self.String(), Level: "readonly", Until: &until,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	attrs := reqctx.LogAttrs(ctx)
+	if got := attrValue(attrs, "user_id"); got != self.String() {
+		t.Fatalf("user_id attr = %q, want %q", got, self.String())
+	}
+	if got := attrValue(attrs, "access_level"); got != "readonly" {
+		t.Fatalf("access_level attr = %q", got)
+	}
+	if got := attrValue(attrs, "access_until"); got != until {
+		t.Fatalf("access_until attr = %q, want %q", got, until)
+	}
+}
+
+// A rejected write must still record what was attempted: the WARN line with
+// the attempted values is the evidence trail for a misbehaving portal.
+func TestSetAccessLogsAttemptOnWriteFailure(t *testing.T) {
+	svc, _, _, _ := newFixture()
+	ctx := reqctx.WithLogAttrs(context.Background())
+	unknown := vo.NewId()
+	if _, err := svc.SetAccess(ctx, model.AdminSetAccessRequest{
+		UserId: unknown.String(), Level: "full",
+	}); err == nil {
+		t.Fatal("want error for unknown user")
+	}
+	if got := attrValue(reqctx.LogAttrs(ctx), "user_id"); got != unknown.String() {
+		t.Fatalf("user_id attr = %q — a failed write must still log the attempt", got)
+	}
+}
+
+func TestUserContextLogsTargetAndDisclosure(t *testing.T) {
+	svc, _, self, _ := newFixture()
+	ctx := reqctx.WithLogAttrs(context.Background())
+	if _, err := svc.UserContext(ctx, self); err != nil {
+		t.Fatal(err)
+	}
+	attrs := reqctx.LogAttrs(ctx)
+	if got := attrValue(attrs, "user_id"); got != self.String() {
+		t.Fatalf("user_id attr = %q, want %q", got, self.String())
+	}
+	if got := attrValue(attrs, "connections"); got != "1" {
+		t.Fatalf("connections attr = %q, want 1", got)
 	}
 }

@@ -5,12 +5,14 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // UserContext keeps the connection graph — and the authorization rules behind
 // it — in the product, so the portal never duplicates "who may see whom".
 func (s *Service) UserContext(ctx context.Context, userID vo.Id) (*model.AdminUserContextResult, error) {
+	reqctx.AddLogAttr(ctx, "user_id", userID.String())
 	self, err := s.users.GetUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -36,5 +38,7 @@ func (s *Service) UserContext(ctx context.Context, userID vo.Id) (*model.AdminUs
 		}
 		conns = append(conns, s.view(rec))
 	}
+	// How many connected users' data left the product on this call.
+	reqctx.AddLogAttr(ctx, "connections", len(conns))
 	return &model.AdminUserContextResult{User: s.view(self), Connections: conns}, nil
 }

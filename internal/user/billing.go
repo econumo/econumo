@@ -55,6 +55,9 @@ func (s *BillingService) CreateBillingLink(ctx context.Context, userID vo.Id, re
 				errs.FieldError{Key: "for", Message: "Invalid user id"})
 		}
 		q.Set("for", forID.String())
+		// The operation line already carries the caller; this completes the
+		// audit pair "who minted a payment link for whom".
+		reqctx.AddLogAttr(ctx, "for_user_id", forID.String())
 	}
 	// The SPA sends Accept-Language on every request, so this is the language
 	// the caller is reading right now — fresher than users.language, which is

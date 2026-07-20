@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -107,16 +109,20 @@ func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 }
 
 // AdminSetAccess sets a user's access level and optional expiry, looked up by
-// email. A nil until means the level never expires.
-func (s *Service) AdminSetAccess(ctx context.Context, email string, level model.AccessLevel, until *time.Time) error {
+// email. A nil until means the level never expires. The user is returned so
+// the CLI can log the action keyed by id (log lines carry ids, never emails).
+func (s *Service) AdminSetAccess(ctx context.Context, email string, level model.AccessLevel, until *time.Time) (*model.User, error) {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.SetAccess(level, until, s.clock.Now())
 		return s.repo.Save(ctx, u)
-	})
+	}); err != nil {
+		return nil, err
+	}
+	return u, nil
 }
 
 // AdminShowUser looks up a user by email and returns the raw stored access
@@ -165,6 +171,14 @@ func (s *Service) AdminSetAccessByID(ctx context.Context, id vo.Id, level model.
 	if err != nil {
 		return nil, "", err
 	}
+	// The prior state on the audit line distinguishes a webhook retry (same ->
+	// same) from a real change. Ids and levels only — never the email.
+	reqctx.AddLogAttr(ctx, "old_access_level", string(u.AccessLevel))
+	oldUntil := ""
+	if u.AccessUntil != nil {
+		oldUntil = u.AccessUntil.UTC().Format(datetime.Layout)
+	}
+	reqctx.AddLogAttr(ctx, "old_access_until", oldUntil)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.SetAccess(level, until, s.clock.Now())
 		return s.repo.Save(ctx, u)

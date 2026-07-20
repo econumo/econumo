@@ -323,7 +323,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   never serves those routes and they sit on no public mux at all (enforced by
   `TestAdminRoutesAreNotOnThePublicMux`). Auth is `Authorization: Bearer <ECONUMO_ADMIN_TOKEN>`
   compared in constant time; the same token is the HMAC key for billing-handoff tokens
-  (minimum 32 characters). A half-configured pair fails at boot. The port accepts a
+  (minimum 32 characters). A half-configured pair fails at boot. Every admin action is
+  audit-logged on its operation line: `set-access` carries `user_id`, the written
+  `access_level`/`access_until` AND the `old_*` pair (logged even when the write fails, so
+  attempts are recorded); `user-context` carries `user_id` + `connections`; CLI
+  `user:set-access` emits the same `set-access` line. Ids and levels only — never emails. The port accepts a
   host-qualified value (`127.0.0.1:9090`) to pin the listener to loopback/an internal
   interface on bare-host deployments; a bare port binds all interfaces (the container
   default, where compose controls exposure). Unlike the public API,
