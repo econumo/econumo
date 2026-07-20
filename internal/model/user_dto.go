@@ -415,3 +415,19 @@ func looksLikeEmail(s string) bool {
 	domain := s[at+1:]
 	return strings.Contains(domain, ".") && !strings.HasPrefix(domain, ".") && !strings.HasSuffix(domain, ".")
 }
+
+// CreateBillingLinkRequest optionally preselects a beneficiary. For is a
+// preselection hint only — the portal authorizes it against the connection
+// list it fetches server-side.
+type CreateBillingLinkRequest struct {
+	For string `json:"for"`
+}
+
+// Validate is a no-op: For needs id parsing, which the service does, and
+// checking it here too would report the same failure twice with different
+// wording.
+func (r CreateBillingLinkRequest) Validate() error { return nil }
+
+type CreateBillingLinkResult struct {
+	URL string `json:"url"`
+}

@@ -549,6 +549,15 @@ func TestAuth_ReadonlyAllowlistedWritesPass(t *testing.T) {
 	}
 }
 
+// A read-only user is exactly the person who needs the payment link; a 402
+// here would be a dead end with no way to restore access.
+func TestReadonlyReachesBillingLink(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/create-billing-link", readonlyStub())
+	if !ran || rec.Code == http.StatusPaymentRequired {
+		t.Fatalf("billing link blocked for a read-only user: status %d ran %v", rec.Code, ran)
+	}
+}
+
 func TestAuth_CreatePersonalTokenIsNotAllowlisted(t *testing.T) {
 	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/create-personal-token", readonlyStub())
 	if rec.Code != http.StatusPaymentRequired {

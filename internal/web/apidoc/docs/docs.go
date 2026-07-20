@@ -4593,6 +4593,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/user/create-billing-link": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a payment portal URL carrying a short-lived signed identity assertion. Optionally preselects a beneficiary via \"for\". Returns 400 when the portal is not configured.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Create billing link",
+                "parameters": [
+                    {
+                        "description": "Create billing link request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateBillingLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.CreateBillingLinkResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user/create-personal-token": {
             "post": {
                 "security": [
@@ -6403,6 +6472,22 @@ const docTemplate = `{
                 },
                 "transaction": {
                     "$ref": "#/definitions/model.CorrectionResult"
+                }
+            }
+        },
+        "model.CreateBillingLinkRequest": {
+            "type": "object",
+            "properties": {
+                "for": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateBillingLinkResult": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string"
                 }
             }
         },

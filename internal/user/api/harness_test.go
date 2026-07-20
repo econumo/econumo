@@ -17,6 +17,7 @@ import (
 	"github.com/econumo/econumo/internal/config"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/handoff"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
@@ -112,7 +113,12 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
 	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration, "")
 	readSvc := appuser.NewReadService(readRepo, encode, clk)
-	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
+	billing := appuser.NewBillingService(
+		"https://pay.example.test/cloud/",
+		handoff.NewSigner("0123456789abcdef0123456789abcdef"),
+		clk,
+	)
+	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk, billing)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,

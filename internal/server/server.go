@@ -29,6 +29,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/infra/handoff"
 	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
@@ -119,7 +120,8 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
-	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
+	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
+	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk, billingSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.

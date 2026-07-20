@@ -36,6 +36,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		mux.Handle("POST /api/v1/user/update-name", auth(h.UpdateName))
 		mux.Handle("POST /api/v1/user/update-avatar", auth(h.UpdateAvatar))
 		mux.Handle("POST /api/v1/user/update-password", auth(h.UpdatePassword))
+		mux.Handle("POST /api/v1/user/create-billing-link", auth(h.CreateBillingLink))
 		mux.Handle("POST /api/v1/user/update-report-period", auth(h.UpdateReportPeriod))
 		mux.Handle("POST /api/v1/user/update-language", auth(h.UpdateLanguage))
 		mux.Handle("POST /api/v1/user/complete-onboarding", auth(h.CompleteOnboarding))
