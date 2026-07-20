@@ -28,6 +28,12 @@ type Config struct {
 	Analytics         bool   // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
 	Trial             string // ECONUMO_TRIAL: "none" (default) or "end-of-next-month" — grants new registrations full access until the trial ends
 
+	// Admin listener for the payment portal. Both empty on a self-hosted
+	// instance, so the listener never opens and its routes exist on no mux.
+	AdminPort  string // ECONUMO_ADMIN_PORT
+	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
+	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
+
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
 	RateLimitLogin    int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
@@ -118,6 +124,29 @@ func Load() (Config, error) {
 	c.Trial = getEnv("ECONUMO_TRIAL", "none")
 	if c.Trial != "none" && c.Trial != "end-of-next-month" {
 		return Config{}, fmt.Errorf("ECONUMO_TRIAL: invalid value %q (want none or end-of-next-month)", c.Trial)
+	}
+
+	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
+	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")
+	// Half-configured is operator error, and a listener that silently fails to
+	// open is the failure mode that costs an afternoon to diagnose.
+	if (c.AdminPort == "") != (c.AdminToken == "") {
+		return Config{}, fmt.Errorf("ECONUMO_ADMIN_PORT and ECONUMO_ADMIN_TOKEN must be set together")
+	}
+	// The token is an HMAC key as well as a bearer credential.
+	if c.AdminToken != "" && len(c.AdminToken) < 32 {
+		return Config{}, fmt.Errorf("ECONUMO_ADMIN_TOKEN: must be at least 32 characters")
+	}
+
+	if v := os.Getenv("ECONUMO_BILLING_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL: not an absolute http(s) URL: %q", v)
+		}
+		if c.AdminToken == "" {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL requires ECONUMO_ADMIN_TOKEN (the handoff signing key)")
+		}
+		c.BillingURL = v
 	}
 
 	if v := os.Getenv("ECONUMO_API_URL"); v != "" {
