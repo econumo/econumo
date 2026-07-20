@@ -67,6 +67,14 @@ base for future hotfixes, and `latest` only moves for the highest version
 released so far. See `.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
 
+### Branch naming
+
+- `feature/<slug>` — feature work, and the default for EVERY change that is
+  not a bug fix (chores, docs, refactors, CI, dependency bumps).
+- `bug/<slug>` — bug fixes.
+- `release/vX.Y.Z` — reserved for the release workflow (auto-created at each
+  released commit); never used for development work.
+
 ## Architecture
 
 ### Feature packages (vertical slices)
