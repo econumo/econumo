@@ -3,16 +3,31 @@ name: Web tests
 # Guards the React SPA on every push + PR: oxlint, the tsc type-check
 # (neither oxlint nor vitest type-checks), and the vitest suite.
 # locales/ is included because the SPA imports the shared catalogues.
+# Backend paths are included too: the SPA talks to the API the backend
+# serves, so backend changes also run the frontend suite (the reverse is
+# not true — frontend changes never trigger the Go tests).
 on:
     push:
+        # release/* branches are cut by the publish workflow at already-tested
+        # commits; hotfix changes reach them via pull_request, which still runs.
+        branches-ignore:
+            - "release/**"
         paths:
             - "web/**"
             - "locales/**"
+            - "cmd/**"
+            - "internal/**"
+            - "go.mod"
+            - "go.sum"
             - ".github/workflows/web-tests.yml"
     pull_request:
         paths:
             - "web/**"
             - "locales/**"
+            - "cmd/**"
+            - "internal/**"
+            - "go.mod"
+            - "go.sum"
             - ".github/workflows/web-tests.yml"
 
 permissions:

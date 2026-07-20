@@ -1,11 +1,19 @@
 name: Publish Release
 
 # Publishes the Go backend image to ghcr.io/econumo/econumo ONLY.
-# - Always pushes the version tag (e.g. v1.2.3).
-# - Also pushes/moves "latest" only when push_latest is checked AND the workflow
-#   is dispatched from the main branch.
+# Dispatch from main (the dispatch ref only selects the workflow DEFINITION);
+# the code that gets tagged and built comes from the "branch" input — main by
+# default, or a release/vX.Y.Z branch for hotfixes of older versions.
+# - Always pushes the version tag (e.g. v1.2.3), and auto-creates a
+#   release/vX.Y.Z branch at the released commit (the base for future hotfixes
+#   to that version) when it does not already exist.
+# - Also pushes/moves "latest" only when push_latest is checked AND the source
+#   branch is main or release/* AND the version is the highest released so far
+#   (a hotfix to an old line can never move "latest").
 # - Also pushes/moves "dev" when push_dev is checked (any branch). Unlike
 #   `make publish-dev`, the UI version label is the release version, not "dev".
+# - The GitHub release's "Latest" badge follows push_latest, so an old-line
+#   hotfix published after a newer version is never badged as latest.
 
 on:
   workflow_dispatch:
@@ -13,6 +21,10 @@ on:
       version:
         description: "Version tag to publish (e.g., v1.2.3)"
         required: true
+      branch:
+        description: "Source branch to release from (e.g., release/v1.2.3)"
+        required: false
+        default: "main"
       push_latest:
         description: "Publish Latest"
         required: false
@@ -36,26 +48,22 @@ jobs:
     name: Create Git Tag
     runs-on: ubuntu-latest
     permissions:
-      contents: write # pushes the release tag
+      contents: write # pushes the release tag + release/vX.Y.Z branch
     outputs:
       version: ${{ steps.set.outputs.version }}
       tags: ${{ steps.set.outputs.tags }}
     steps:
-      - name: Guard "latest" to the main branch
-        if: ${{ github.event.inputs.push_latest == 'true' && github.ref_name != 'main' }}
-        run: |
-          echo "::error::'latest' can only be published from the main branch (dispatched from '${{ github.ref_name }}')."
-          exit 1
-
-      - name: Checkout code
+      - name: Checkout source branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.branch }}
           fetch-depth: 0
 
       - name: Compute image tags
         id: set
         env:
           VERSION: ${{ github.event.inputs.version }}
+          BRANCH: ${{ github.event.inputs.branch }}
           PUSH_LATEST: ${{ github.event.inputs.push_latest }}
           PUSH_DEV: ${{ github.event.inputs.push_dev }}
         run: |
@@ -64,6 +72,23 @@ jobs:
           if ! printf '%s' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Invalid version '$VERSION' (expected vX.Y.Z)"
             exit 1
+          fi
+          if [ "$PUSH_LATEST" = "true" ]; then
+            # "latest" must stay on the newest line: only main/release/* sources,
+            # and only a version above every tag released so far — a hotfix to an
+            # older line can never move it.
+            case "$BRANCH" in
+              main | release/*) ;;
+              *)
+                echo "::error::'latest' can only be published from main or a release/* branch (source branch is '$BRANCH')."
+                exit 1
+                ;;
+            esac
+            HIGHEST="$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)"
+            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n%s\n' "$HIGHEST" "$VERSION" | sort -V | tail -n 1)" != "$VERSION" ]; then
+              echo "::error::'latest' requires the highest version: $VERSION is not above the highest existing tag $HIGHEST."
+              exit 1
+            fi
           fi
           TAGS="${IMAGE}:${VERSION}"
           if [ "$PUSH_LATEST" = "true" ]; then
@@ -81,12 +106,27 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create and push tag
+      - name: Create release branch and tag
         env:
           TAG: ${{ steps.set.outputs.version }}
         run: |
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+          # Every release leaves a release/<version> branch at the released
+          # commit — the base for future hotfixes to that version. Created
+          # before the tag so a failed tag push can be re-run safely.
+          BRANCH_REF="refs/heads/release/${TAG}"
+          HEAD_SHA="$(git rev-parse HEAD)"
+          EXISTING="$(git ls-remote origin "$BRANCH_REF" | cut -f1)"
+          if [ -z "$EXISTING" ]; then
+            git push origin "HEAD:${BRANCH_REF}"
+            echo "Created release/${TAG} at ${HEAD_SHA}"
+          elif [ "$EXISTING" = "$HEAD_SHA" ]; then
+            echo "release/${TAG} already exists at ${HEAD_SHA}; skipping creation"
+          else
+            echo "::error::release/${TAG} already exists at ${EXISTING}, which is not the commit being released (${HEAD_SHA})."
             exit 1
           fi
           git tag -a "$TAG" -m "Release $TAG"
@@ -152,3 +192,17 @@ jobs:
         run: npx changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # GitHub badges the newest CREATED release as "Latest" by default, which
+      # would mislabel a hotfix to an older line published after a newer version.
+      - name: Align the "Latest" badge with push_latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-tag.outputs.version }}
+          PUSH_LATEST: ${{ github.event.inputs.push_latest }}
+        run: |
+          if [ "$PUSH_LATEST" = "true" ]; then
+            gh release edit "$TAG" --latest
+          else
+            gh release edit "$TAG" --latest=false
+          fi
