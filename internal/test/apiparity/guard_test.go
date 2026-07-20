@@ -22,6 +22,13 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	_, thisFile, _, _ := runtime.Caller(0)
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..")
 	handlerGlobs := []string{"internal/*/api/routes.go"}
+	// internal/admin registers the PRIVATE admin listener, served by a separate
+	// http.Server and mounted on no public mux — so it has no parity scenario
+	// and no golden, and scanning it would demand both. Excluded explicitly
+	// rather than by naming the file outside the glob, so the reason survives
+	// the next refactor. TestAdminRoutesAreNotOnThePublicMux asserts the
+	// separation actually holds.
+	const excluded = "internal/admin/api/routes.go"
 	routes := map[string]bool{}
 	for _, g := range handlerGlobs {
 		files, err := filepath.Glob(filepath.Join(repoRoot, g))
@@ -29,6 +36,9 @@ func registeredRoutes(t *testing.T) map[string]bool {
 			t.Fatal(err)
 		}
 		for _, f := range files {
+			if rel, rerr := filepath.Rel(repoRoot, f); rerr == nil && filepath.ToSlash(rel) == excluded {
+				continue
+			}
 			src, err := os.ReadFile(f)
 			if err != nil {
 				t.Fatal(err)
