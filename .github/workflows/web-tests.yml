@@ -5,6 +5,10 @@ name: Web tests
 # locales/ is included because the SPA imports the shared catalogues.
 on:
     push:
+        # release/* branches are cut by the publish workflow at already-tested
+        # commits; hotfix changes reach them via pull_request, which still runs.
+        branches-ignore:
+            - "release/**"
         paths:
             - "web/**"
             - "locales/**"

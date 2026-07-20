@@ -60,8 +60,12 @@ make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 (`.github/workflows/publish-release.yml`), not locally; its "Publish Dev"
-checkbox can also move the `dev` tag. Everything publishes to
-`ghcr.io/econumo/econumo` only.
+checkbox can also move the `dev` tag. The workflow's `branch` input selects
+the source branch (default `main`; a `release/*` branch for hotfixes of older
+versions), it auto-creates `release/vX.Y.Z` at every released commit as the
+base for future hotfixes, and `latest` only moves for the highest version
+released so far. See `.claude/skills/publish-release` for the full process.
+Everything publishes to `ghcr.io/econumo/econumo` only.
 
 ## Architecture
 
