@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useCreateTransaction, useDeleteTransaction } from './queries'
+import { useAccountTransactionPager, useCreateTransaction, useDeleteTransaction } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireTx = {
@@ -52,6 +52,47 @@ it('create-transaction replaces the accounts cache and prepends the item', async
   expect(accounts[0].balance).toBe(90.01)
   const txs = queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!
   expect(txs.map((t) => t.id)).toEqual(['t-created', 't-existing'])
+})
+
+const wireAccountKnown = { ...wireAccount, id: 'known' }
+
+describe('useAccountTransactionPager ensure-window gating', () => {
+  it('does not fetch for an accountId absent from the accounts cache (pre-access-check guard)', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/api/v1/transaction/get-transaction-list', () => {
+        calls++
+        return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+      }),
+    )
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.accounts, [wireAccountKnown])
+    queryClient.setQueryData(queryKeys.transactionPages, {})
+
+    renderHook(() => useAccountTransactionPager('unknown-foreign-account'), { wrapper })
+
+    // give any (incorrect) effect-driven fetch a chance to fire
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(calls).toBe(0)
+  })
+
+  it('fetches the first page for a known account missing from the pages map', async () => {
+    let calls = 0
+    server.use(
+      http.get('*/api/v1/transaction/get-transaction-list', () => {
+        calls++
+        return HttpResponse.json({ success: true, message: '', data: { items: [], page: { nextCursor: null, hasMore: false } } })
+      }),
+    )
+    const { queryClient, wrapper } = makeWrapper()
+    // a hidden-folder account: known to the client but absent from the boot pages map
+    queryClient.setQueryData(queryKeys.accounts, [wireAccountKnown])
+    queryClient.setQueryData(queryKeys.transactionPages, {})
+
+    renderHook(() => useAccountTransactionPager('known'), { wrapper })
+
+    await waitFor(() => expect(calls).toBe(1))
+  })
 })
 
 it('delete-transaction removes the item and refreshes accounts', async () => {

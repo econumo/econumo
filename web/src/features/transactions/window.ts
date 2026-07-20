@@ -31,6 +31,17 @@ export function isOlderThan(tx: TxKey, boundary: TxKey): boolean {
   return tx.date < boundary.date || (tx.date === boundary.date && tx.id > boundary.id)
 }
 
+// Extend an account's loaded horizon to include key when key is older than the
+// current boundary, so a backdated write stays visible in place. No-op when the
+// account has no horizon (null oldestLoaded = nothing hidden) or key is already
+// within it.
+export function widenHorizon(state: AccountPageState, key: TxKey): AccountPageState {
+  if (!state.oldestLoaded || !isOlderThan(key, state.oldestLoaded)) {
+    return state
+  }
+  return { ...state, oldestLoaded: key }
+}
+
 export function buildPagesFromBoot(
   items: TransactionDto[],
   accounts: TransactionAccountPageDto[],

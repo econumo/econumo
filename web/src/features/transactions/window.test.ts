@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TransactionDto } from '@/api/dto/transaction'
-import { advancePage, buildPagesFromBoot, isOlderThan, mergeTransactions } from './window'
+import { advancePage, buildPagesFromBoot, isOlderThan, mergeTransactions, widenHorizon } from './window'
 
 const author = { id: 'u1', name: 'U', avatar: 'face:fuchsia' }
 function tx(id: string, date: string, accountId: string, accountRecipientId: string | null = null): TransactionDto {
@@ -48,6 +48,26 @@ describe('mergeTransactions', () => {
       [tx('b', '2026-06-04 10:00:00', 'A'), tx('c', '2026-06-03 10:00:00', 'A')],
     )
     expect(merged.map((t) => t.id).sort()).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('widenHorizon', () => {
+  it('moves the boundary to a key older than the current horizon', () => {
+    const state = { nextCursor: 'c', hasMore: true, oldestLoaded: { date: '2026-06-04 10:00:00', id: 'b' } }
+    const key = { date: '2026-06-01 10:00:00', id: 'z' }
+    expect(widenHorizon(state, key)).toEqual({ ...state, oldestLoaded: key })
+  })
+
+  it('is a no-op when the key is already within the horizon', () => {
+    const state = { nextCursor: 'c', hasMore: true, oldestLoaded: { date: '2026-06-04 10:00:00', id: 'b' } }
+    const key = { date: '2026-06-05 10:00:00', id: 'z' }
+    expect(widenHorizon(state, key)).toBe(state)
+  })
+
+  it('is a no-op when oldestLoaded is null (nothing hidden)', () => {
+    const state = { nextCursor: null, hasMore: false, oldestLoaded: null }
+    const key = { date: '2026-01-01 10:00:00', id: 'z' }
+    expect(widenHorizon(state, key)).toBe(state)
   })
 })
 

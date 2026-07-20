@@ -4,6 +4,7 @@ import * as transactionApi from '@/api/transaction'
 import type { TransactionDto, TransactionItemDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { useAccounts } from '@/features/accounts/queries'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import {
   advancePage,
@@ -12,6 +13,8 @@ import {
   PAGE_LIMIT,
   PER_ACCOUNT_LIMIT,
   type TransactionPagesMap,
+  type TxKey,
+  widenHorizon,
 } from './window'
 
 export function useTransactions() {
@@ -49,8 +52,10 @@ export function useTransactionPages() {
 export function useAccountTransactionPager(accountId: Id | undefined) {
   const queryClient = useQueryClient()
   const { data: pages } = useTransactionPages()
+  const { data: accounts } = useAccounts()
   const state = accountId ? pages?.[accountId] : undefined
   const [isFetching, setIsFetching] = useState(false)
+  const [isError, setIsError] = useState(false)
   const inFlight = useRef(false)
 
   const fetchPage = useCallback(
@@ -60,6 +65,7 @@ export function useAccountTransactionPager(accountId: Id | undefined) {
       }
       inFlight.current = true
       setIsFetching(true)
+      setIsError(false)
       try {
         const res = await transactionApi.getTransactionList({ accountId, limit: PAGE_LIMIT, cursor })
         queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
@@ -69,6 +75,10 @@ export function useAccountTransactionPager(accountId: Id | undefined) {
           const current = prev?.[accountId] ?? { nextCursor: null, hasMore: false, oldestLoaded: null }
           return { ...(prev ?? {}), [accountId]: advancePage(current, res.page, res.items) }
         })
+      } catch {
+        // No toast/logger infra exists in this app; surface via isError and
+        // leave inFlight reset below so the sentinel retries on next intersection.
+        setIsError(true)
       } finally {
         inFlight.current = false
         setIsFetching(false)
@@ -84,14 +94,16 @@ export function useAccountTransactionPager(accountId: Id | undefined) {
   }, [state, fetchPage])
 
   // Ensure-window: an account absent from the map (hidden-folder accounts are
-  // excluded from boot) gets its first page on demand.
+  // excluded from boot) gets its first page on demand. Gated on the account
+  // being known to the client — a foreign/deleted/mistyped id in the route
+  // would otherwise fire a guaranteed-403 fetch on every pages-map change.
   useEffect(() => {
-    if (accountId && pages && !pages[accountId]) {
+    if (accountId && pages && !pages[accountId] && accounts?.some((a) => a.id === accountId)) {
       void fetchPage(undefined)
     }
-  }, [accountId, pages, fetchPage])
+  }, [accountId, pages, accounts, fetchPage])
 
-  return { hasMore: state?.hasMore ?? false, isFetching, fetchNext }
+  return { hasMore: state?.hasMore ?? false, isFetching, isError, fetchNext }
 }
 
 function useApplyTransactionItem() {
@@ -108,6 +120,24 @@ function useApplyTransactionItem() {
       }
       return items.filter((t) => t.id !== result.item.id)
     })
+    if (mode === 'add') {
+      // A backdated create may land older than the account's loaded horizon;
+      // widen it so the new row isn't hidden as if it were unfetched history.
+      const key: TxKey = { date: result.item.date, id: result.item.id }
+      const affected = [result.item.accountId, result.item.accountRecipientId].filter((id): id is string => !!id)
+      queryClient.setQueryData<TransactionPagesMap>(queryKeys.transactionPages, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        let next = prev
+        for (const acc of affected) {
+          if (next[acc]) {
+            next = { ...next, [acc]: widenHorizon(next[acc], key) }
+          }
+        }
+        return next
+      })
+    }
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
   }

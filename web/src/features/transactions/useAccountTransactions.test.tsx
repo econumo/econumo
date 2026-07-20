@@ -117,6 +117,20 @@ describe('useAccountTransactions horizon', () => {
     expect(txIds).toEqual(['new', 'old'])
   })
 
+  it('shows a backdated row once the horizon has been widened to include it', () => {
+    // Simulates the post-create cache state: the new (older) row is prepended
+    // to ['transactions'] and the pages-map horizon widened to its key.
+    const { result } = setupHorizon(
+      [
+        { ...base, id: 'new', date: '2026-06-05 10:00:00', accountId: 'B' },
+        { ...base, id: 'backdated', date: '2026-01-01 10:00:00', accountId: 'B' },
+      ],
+      { B: { nextCursor: 'c', hasMore: true, oldestLoaded: { date: '2026-01-01 10:00:00', id: 'backdated' } } },
+    )
+    const txIds = result.current.filter((e) => e.kind === 'transaction').map((e) => (e.kind === 'transaction' ? e.transaction.id : ''))
+    expect(txIds).toEqual(['new', 'backdated'])
+  })
+
   it('search bypasses the horizon by fetching the full account list on demand', async () => {
     server.use(
       ...coreHandlers({
