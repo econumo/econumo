@@ -30,7 +30,7 @@ var _ = model.GetTagListResult{}
 // @Security    Bearer
 // @Router      /api/v1/tag/order-tag-list [post]
 func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.OrderTagList)
+	endpoint.Handle(w, r, h.svc.OrderTagList)
 }
 
 // GetTagList handles GET /api/v1/tag/get-tag-list (auth). The request has no
@@ -47,5 +47,5 @@ func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/get-tag-list [get]
 func (h *Handlers) GetTagList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetTagList)
+	endpoint.HandleNoBody(w, r, h.read.GetTagList)
 }

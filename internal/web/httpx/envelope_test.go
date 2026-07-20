@@ -101,29 +101,19 @@ func TestAccessDenied_403WithEmptyArrayErrors(t *testing.T) {
 	}
 }
 
-func TestException_NonDevOmitsStackTrace(t *testing.T) {
+func TestException_OmitsStackTrace(t *testing.T) {
 	rec := httptest.NewRecorder()
-	Exception(rec, "boom", "SomeType", "the-stack", false)
+	Exception(rec, "boom", "SomeType")
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status=%d want 500", rec.Code)
 	}
 	var m map[string]any
 	json.Unmarshal(rec.Body.Bytes(), &m)
 	if _, ok := m["stackTrace"]; ok {
-		t.Fatalf("non-dev must omit stackTrace; body=%s", rec.Body.String())
+		t.Fatalf("500 envelope must never carry stackTrace; body=%s", rec.Body.String())
 	}
 	if m["exceptionType"] != "SomeType" {
 		t.Fatalf("exceptionType=%v want SomeType", m["exceptionType"])
-	}
-}
-
-func TestException_DevIncludesStackTrace(t *testing.T) {
-	rec := httptest.NewRecorder()
-	Exception(rec, "boom", "SomeType", "the-stack", true)
-	var m map[string]any
-	json.Unmarshal(rec.Body.Bytes(), &m)
-	if m["stackTrace"] != "the-stack" {
-		t.Fatalf("stackTrace=%v want the-stack (dev)", m["stackTrace"])
 	}
 }
 
@@ -159,7 +149,7 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 		{"access denied", errs.NewAccessDenied("nope"), http.StatusForbidden, "nope", ""},
 		{"unauthorized", errs.NewUnauthorized("no token"), http.StatusUnauthorized, "no token", ""},
 		{"not found", errs.NewNotFound("Plan not found"), http.StatusBadRequest, "Plan not found", ""},
-		{"unknown", errPlain("kaboom"), http.StatusInternalServerError, "Internal Server Error", ""}, // raw error suppressed in prod (dev=false)
+		{"unknown", errPlain("kaboom"), http.StatusInternalServerError, "Internal Server Error", ""}, // raw error suppressed
 		{
 			name:       "too many requests -> 429 envelope",
 			err:        errs.NewTooManyRequests("Too many attempts. Try again later."),
@@ -170,7 +160,7 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			WriteError(context.Background(), rec, c.err, false)
+			WriteError(context.Background(), rec, c.err)
 			if rec.Code != c.wantStatus {
 				t.Fatalf("status=%d want %d; body=%s", rec.Code, c.wantStatus, rec.Body.String())
 			}

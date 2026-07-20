@@ -6301,7 +6301,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Internal Server Error"
                 },
-                "stackTrace": {},
                 "success": {
                     "type": "boolean",
                     "example": false

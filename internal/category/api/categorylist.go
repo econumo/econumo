@@ -30,7 +30,7 @@ var _ = model.GetCategoryListResult{}
 // @Security    Bearer
 // @Router      /api/v1/category/order-category-list [post]
 func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.OrderCategoryList)
+	endpoint.Handle(w, r, h.svc.OrderCategoryList)
 }
 
 // GetCategoryList handles GET /api/v1/category/get-category-list (auth). The
@@ -47,5 +47,5 @@ func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/get-category-list [get]
 func (h *Handlers) GetCategoryList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCategoryList)
+	endpoint.HandleNoBody(w, r, h.read.GetCategoryList)
 }

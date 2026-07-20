@@ -32,5 +32,5 @@ var _ = model.UpdateReportPeriodResult{}
 // @Security    Bearer
 // @Router      /api/v1/user/update-report-period [post]
 func (h *Handlers) UpdateReportPeriod(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateReportPeriod)
+	endpoint.Handle(w, r, h.svc.UpdateReportPeriod)
 }

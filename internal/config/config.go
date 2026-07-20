@@ -13,8 +13,6 @@ import (
 
 // Config is the fully-resolved application configuration.
 type Config struct {
-	Debug bool // ECONUMO_DEBUG: expose stackTrace in the 500 envelope
-
 	// Database
 	DatabaseURL    string // DSN passed to the selected Backend; its scheme picks the engine
 	DatabaseDriver string // "sqlite" | "postgresql" — DERIVED from DatabaseURL's scheme
@@ -66,13 +64,9 @@ type Config struct {
 	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
 }
 
-// IsDev reports whether stack traces should be exposed in the 500 envelope.
-func (c Config) IsDev() bool { return c.Debug }
-
 // Load reads and validates configuration from the environment.
 func Load() (Config, error) {
 	c := Config{
-		Debug:                  getBool("ECONUMO_DEBUG", false),
 		DatabaseURL:            os.Getenv("DATABASE_URL"),
 		CurrencyBase:           getEnv("ECONUMO_CURRENCY_BASE", "USD"),
 		AllowRegistration:      getBool("ECONUMO_ALLOW_REGISTRATION", false),

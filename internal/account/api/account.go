@@ -29,7 +29,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/account/create-account [post]
 func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.CreateAccountRequest) (*model.CreateAccountResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.CreateAccountRequest) (*model.CreateAccountResult, error) {
 		reqctx.AddLogAttr(ctx, "account_id", req.Id)
 		return h.svc.CreateAccount(ctx, userID, req)
 	})
@@ -51,7 +51,7 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/update-account [post]
 func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateAccount)
+	endpoint.Handle(w, r, h.svc.UpdateAccount)
 }
 
 // DeleteAccount handles POST /api/v1/account/delete-account (auth).
@@ -70,7 +70,7 @@ func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/delete-account [post]
 func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteAccount)
+	endpoint.Handle(w, r, h.svc.DeleteAccount)
 }
 
 // GetAccountList handles GET /api/v1/account/get-account-list (auth).
@@ -85,7 +85,7 @@ func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/get-account-list [get]
 func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetAccountList)
+	endpoint.HandleNoBody(w, r, h.svc.GetAccountList)
 }
 
 // OrderAccountList handles POST /api/v1/account/order-account-list (auth).
@@ -104,5 +104,5 @@ func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/order-account-list [post]
 func (h *Handlers) OrderAccountList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.OrderAccountList)
+	endpoint.Handle(w, r, h.svc.OrderAccountList)
 }

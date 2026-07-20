@@ -29,5 +29,5 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/system/get-update-info [get]
 func (h *Handlers) GetUpdateInfo(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetUpdateInfo)
+	endpoint.HandleNoBody(w, r, h.svc.GetUpdateInfo)
 }

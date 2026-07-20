@@ -23,8 +23,8 @@ import (
 // ctx supplies the caller's language (reqctx.Language): message and the
 // per-field errors{} strings are rendered from the errors.* catalogue when the
 // underlying error carries a code; errors without a code keep their literal
-// English text. dev controls whether the 500 path includes a stack trace.
-func WriteError(ctx context.Context, w http.ResponseWriter, err error, dev bool) {
+// English text.
+func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 	recordError(w, err)
 	lang := reqctx.Language(ctx)
 	if v, ok := errs.AsValidation(err); ok {
@@ -63,15 +63,10 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error, dev bool)
 		return
 	}
 	// Unhandled: 500 exception envelope. The real error was already captured to
-	// the access log via recordError above, so the client receives a generic
-	// message — internal detail (DB driver/constraint text, parse internals)
-	// must not leak in production. dev surfaces the real error for local use,
-	// matching the static-message discipline of the panic recovery path.
-	msg := "Internal Server Error"
-	if dev {
-		msg = err.Error()
-	}
-	Exception(w, msg, typeName(err), nil, dev)
+	// the access log via recordError above (it lands on the operation line's
+	// err/err_type fields), so the client receives only a generic message —
+	// internal detail (DB driver/constraint text, parse internals) must not leak.
+	Exception(w, "Internal Server Error", typeName(err))
 }
 
 // fieldsToMap converts the flat field-error list into the wire map shape

@@ -8,9 +8,9 @@ import (
 )
 
 // RegisterAPI mounts the 7 payee endpoints, each wrapped in the auth middleware.
-func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		authMw := middleware.Auth(authn, dev)
+		authMw := middleware.Auth(authn)
 		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		mux.Handle("POST /api/v1/payee/create-payee", auth(h.CreatePayee))

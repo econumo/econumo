@@ -48,7 +48,7 @@ func TestWriteError_ValidationEnvelope(t *testing.T) {
 	err := errs.NewValidation("anything-here-is-ignored",
 		errs.FieldError{Key: "accountId", Message: "This value is not a valid UUID."},
 	)
-	WriteError(context.Background(), rec, err, false)
+	WriteError(context.Background(), rec, err)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("HTTP status = %d, want 400", rec.Code)
@@ -68,36 +68,26 @@ func TestWriteError_ValidationEnvelope(t *testing.T) {
 	}
 }
 
-// TestWriteError_500SuppressesRawErrorInProd locks the security property that
-// an unhandled error's raw text (which can carry DB driver / constraint /
-// internal detail) never reaches the client in production, only under dev.
-func TestWriteError_500SuppressesRawErrorInProd(t *testing.T) {
+// TestWriteError_500SuppressesRawError locks the security property that an
+// unhandled error's raw text (which can carry DB driver / constraint /
+// internal detail) never reaches the client — it goes to the logs only.
+func TestWriteError_500SuppressesRawError(t *testing.T) {
 	secret := errPlainMsg("UNIQUE constraint failed: users.identifier")
 
 	rec := httptest.NewRecorder()
-	WriteError(context.Background(), rec, secret, false) // production
-	var prod struct {
+	WriteError(context.Background(), rec, secret)
+	var got struct {
 		Message string `json:"message"`
 	}
-	json.Unmarshal(rec.Body.Bytes(), &prod)
+	json.Unmarshal(rec.Body.Bytes(), &got)
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status=%d want 500", rec.Code)
 	}
-	if prod.Message != "Internal Server Error" {
-		t.Fatalf("prod message=%q must be the static message, not the raw error", prod.Message)
+	if got.Message != "Internal Server Error" {
+		t.Fatalf("message=%q must be the static message, not the raw error", got.Message)
 	}
 	if strings.Contains(rec.Body.String(), "users.identifier") {
-		t.Fatalf("prod 500 body leaked internal error text: %s", rec.Body.String())
-	}
-
-	rec = httptest.NewRecorder()
-	WriteError(context.Background(), rec, secret, true) // dev
-	var dev struct {
-		Message string `json:"message"`
-	}
-	json.Unmarshal(rec.Body.Bytes(), &dev)
-	if dev.Message != string(secret) {
-		t.Fatalf("dev message=%q want the raw error", dev.Message)
+		t.Fatalf("500 body leaked internal error text: %s", rec.Body.String())
 	}
 }
 
@@ -108,7 +98,7 @@ func (e errPlainMsg) Error() string { return string(e) }
 // TestWriteError_AccessDenied maps to HTTP 403.
 func TestWriteError_AccessDenied(t *testing.T) {
 	rec := httptest.NewRecorder()
-	WriteError(context.Background(), rec, errs.NewAccessDenied("Access is not allowed"), false)
+	WriteError(context.Background(), rec, errs.NewAccessDenied("Access is not allowed"))
 	if rec.Code != http.StatusForbidden {
 		t.Errorf("HTTP status = %d, want 403", rec.Code)
 	}
@@ -123,13 +113,13 @@ func TestWriteErrorTranslatesFieldErrorsInPlace(t *testing.T) {
 			Code: "category.name_length", Params: map[string]any{"min": 3, "max": 64}})
 
 	rec := httptest.NewRecorder()
-	WriteError(context.Background(), rec, codedErr, false) // no language in ctx -> en
+	WriteError(context.Background(), rec, codedErr) // no language in ctx -> en
 	if want := `"errors":{"name":["Category name must be 3-64 characters"]}`; !strings.Contains(rec.Body.String(), want) {
 		t.Errorf("body missing %s\nbody: %s", want, rec.Body.String())
 	}
 
 	rec = httptest.NewRecorder()
-	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec, codedErr, false)
+	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec, codedErr)
 	if want := `"errors":{"name":["Название категории должно содержать от 3 до 64 символов."]}`; !strings.Contains(rec.Body.String(), want) {
 		t.Errorf("body missing %s\nbody: %s", want, rec.Body.String())
 	}
@@ -138,7 +128,7 @@ func TestWriteErrorTranslatesFieldErrorsInPlace(t *testing.T) {
 func TestWriteErrorKeepsLiteralTextWhenNoCode(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec,
-		errs.NewValidation("", errs.FieldError{Key: "name", Message: "msg"}), false)
+		errs.NewValidation("", errs.FieldError{Key: "name", Message: "msg"}))
 	if want := `"errors":{"name":["msg"]}`; !strings.Contains(rec.Body.String(), want) {
 		t.Errorf("code-less field text must stay literal\nbody: %s", rec.Body.String())
 	}
@@ -149,14 +139,14 @@ func TestWriteErrorKeepsLiteralTextWhenNoCode(t *testing.T) {
 func TestWriteErrorKeepsLiteralTextWhenCodeUnknown(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec, errs.NewValidation("",
-		errs.FieldError{Key: "name", Message: "Something is wrong", Code: "no.such.code"}), false)
+		errs.FieldError{Key: "name", Message: "Something is wrong", Code: "no.such.code"}))
 	if want := `"errors":{"name":["Something is wrong"]}`; !strings.Contains(rec.Body.String(), want) {
 		t.Errorf("unknown-code field text must stay literal\nbody: %s", rec.Body.String())
 	}
 
 	rec = httptest.NewRecorder()
 	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec,
-		&errs.UnauthorizedError{Msg: "Something is wrong", Code: "no.such.code"}, false)
+		&errs.UnauthorizedError{Msg: "Something is wrong", Code: "no.such.code"})
 	if !strings.Contains(rec.Body.String(), `"message":"Something is wrong"`) {
 		t.Errorf("unknown-code message must stay literal\nbody: %s", rec.Body.String())
 	}
@@ -165,7 +155,7 @@ func TestWriteErrorKeepsLiteralTextWhenCodeUnknown(t *testing.T) {
 func TestWriteErrorFieldlessMessageTranslated(t *testing.T) {
 	rec := httptest.NewRecorder()
 	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec,
-		&errs.UnauthorizedError{Msg: "Invalid credentials.", Code: "auth.invalid_credentials"}, false)
+		&errs.UnauthorizedError{Msg: "Invalid credentials.", Code: "auth.invalid_credentials"})
 	body := rec.Body.String()
 	if !strings.Contains(body, `"message":"Неверные учётные данные."`) {
 		t.Errorf("message not translated in place\nbody: %s", body)
@@ -173,7 +163,7 @@ func TestWriteErrorFieldlessMessageTranslated(t *testing.T) {
 
 	rec = httptest.NewRecorder()
 	WriteError(context.Background(), rec,
-		&errs.UnauthorizedError{Msg: "Invalid credentials.", Code: "auth.invalid_credentials"}, false)
+		&errs.UnauthorizedError{Msg: "Invalid credentials.", Code: "auth.invalid_credentials"})
 	if !strings.Contains(rec.Body.String(), `"message":"Invalid credentials."`) {
 		t.Errorf("en message must match the historical string\nbody: %s", rec.Body.String())
 	}
@@ -184,7 +174,7 @@ func TestWriteError_PaymentRequired(t *testing.T) {
 	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec, &errs.PaymentRequiredError{
 		Msg:  "Read-only access. Write operations are disabled.",
 		Code: errs.CodeReadonlyAccess,
-	}, false)
+	})
 
 	if rec.Code != http.StatusPaymentRequired {
 		t.Fatalf("HTTP status = %d, want 402", rec.Code)
@@ -202,7 +192,7 @@ func TestWriteError_PaymentRequired(t *testing.T) {
 	// code-less 402 keeps its literal English text in any language.
 	rec = httptest.NewRecorder()
 	WriteError(reqctx.WithLanguage(context.Background(), "ru"), rec,
-		errs.NewPaymentRequired("Read-only access. Write operations are disabled."), false)
+		errs.NewPaymentRequired("Read-only access. Write operations are disabled."))
 	body = strings.TrimSpace(rec.Body.String())
 	want = `{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}`
 	if body != want {

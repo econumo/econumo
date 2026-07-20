@@ -24,7 +24,7 @@ var _ = model.CreateBudgetFolderResult{}
 // @Security Bearer
 // @Router /api/v1/budget/create-folder [post]
 func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreateFolder)
+	endpoint.Handle(w, r, h.svc.CreateFolder)
 }
 
 // UpdateFolder handles POST /api/v1/budget/update-folder.
@@ -39,7 +39,7 @@ func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/update-folder [post]
 func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateFolder)
+	endpoint.Handle(w, r, h.svc.UpdateFolder)
 }
 
 // DeleteFolder handles POST /api/v1/budget/delete-folder.
@@ -54,7 +54,7 @@ func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/delete-folder [post]
 func (h *Handlers) DeleteFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteFolder)
+	endpoint.Handle(w, r, h.svc.DeleteFolder)
 }
 
 // OrderFolderList handles POST /api/v1/budget/order-folder-list.
@@ -69,7 +69,7 @@ func (h *Handlers) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/order-folder-list [post]
 func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.OrderFolderList)
+	endpoint.Handle(w, r, h.svc.OrderFolderList)
 }
 
 // CreateEnvelope handles POST /api/v1/budget/create-envelope.
@@ -84,7 +84,7 @@ func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/create-envelope [post]
 func (h *Handlers) CreateEnvelope(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreateEnvelope)
+	endpoint.Handle(w, r, h.svc.CreateEnvelope)
 }
 
 // UpdateEnvelope handles POST /api/v1/budget/update-envelope.
@@ -99,7 +99,7 @@ func (h *Handlers) CreateEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/update-envelope [post]
 func (h *Handlers) UpdateEnvelope(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateEnvelope)
+	endpoint.Handle(w, r, h.svc.UpdateEnvelope)
 }
 
 // DeleteEnvelope handles POST /api/v1/budget/delete-envelope.
@@ -114,7 +114,7 @@ func (h *Handlers) UpdateEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/delete-envelope [post]
 func (h *Handlers) DeleteEnvelope(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteEnvelope)
+	endpoint.Handle(w, r, h.svc.DeleteEnvelope)
 }
 
 // GrantAccess handles POST /api/v1/budget/grant-access.
@@ -129,7 +129,7 @@ func (h *Handlers) DeleteEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/grant-access [post]
 func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.GrantAccess)
+	endpoint.Handle(w, r, h.svc.GrantAccess)
 }
 
 // AcceptAccess handles POST /api/v1/budget/accept-access.
@@ -144,7 +144,7 @@ func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/accept-access [post]
 func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.AcceptAccess)
+	endpoint.Handle(w, r, h.svc.AcceptAccess)
 }
 
 // RevokeAccess handles POST /api/v1/budget/revoke-access.
@@ -159,7 +159,7 @@ func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/revoke-access [post]
 func (h *Handlers) RevokeAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.RevokeAccess)
+	endpoint.Handle(w, r, h.svc.RevokeAccess)
 }
 
 // DeclineAccess handles POST /api/v1/budget/decline-access.
@@ -174,7 +174,7 @@ func (h *Handlers) RevokeAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/decline-access [post]
 func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeclineAccess)
+	endpoint.Handle(w, r, h.svc.DeclineAccess)
 }
 
 // ExcludeAccount handles POST /api/v1/budget/exclude-account.
@@ -189,7 +189,7 @@ func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/exclude-account [post]
 func (h *Handlers) ExcludeAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ExcludeAccount)
+	endpoint.Handle(w, r, h.svc.ExcludeAccount)
 }
 
 // IncludeAccount handles POST /api/v1/budget/include-account.
@@ -204,7 +204,7 @@ func (h *Handlers) ExcludeAccount(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/include-account [post]
 func (h *Handlers) IncludeAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.IncludeAccount)
+	endpoint.Handle(w, r, h.svc.IncludeAccount)
 }
 
 // ChangeElementCurrency handles POST /api/v1/budget/change-element-currency.
@@ -219,7 +219,7 @@ func (h *Handlers) IncludeAccount(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/change-element-currency [post]
 func (h *Handlers) ChangeElementCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ChangeElementCurrency)
+	endpoint.Handle(w, r, h.svc.ChangeElementCurrency)
 }
 
 // SetLimit handles POST /api/v1/budget/set-limit.
@@ -234,7 +234,7 @@ func (h *Handlers) ChangeElementCurrency(w http.ResponseWriter, r *http.Request)
 // @Security Bearer
 // @Router /api/v1/budget/set-limit [post]
 func (h *Handlers) SetLimit(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.SetLimit)
+	endpoint.Handle(w, r, h.svc.SetLimit)
 }
 
 // MoveElementList handles POST /api/v1/budget/move-element-list.
@@ -249,5 +249,5 @@ func (h *Handlers) SetLimit(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router /api/v1/budget/move-element-list [post]
 func (h *Handlers) MoveElementList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.MoveElementList)
+	endpoint.Handle(w, r, h.svc.MoveElementList)
 }

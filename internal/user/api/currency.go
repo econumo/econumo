@@ -32,5 +32,5 @@ var _ = model.UpdateCurrencyResult{}
 // @Security    Bearer
 // @Router      /api/v1/user/update-currency [post]
 func (h *Handlers) UpdateCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateCurrency)
+	endpoint.Handle(w, r, h.svc.UpdateCurrency)
 }

@@ -9,10 +9,9 @@ import (
 type Handlers struct {
 	svc  *appuser.Service
 	read *appuser.ReadService
-	dev  bool
 	now  port.Clock
 }
 
-func NewHandlers(svc *appuser.Service, read *appuser.ReadService, dev bool, now port.Clock) *Handlers {
-	return &Handlers{svc: svc, read: read, dev: dev, now: now}
+func NewHandlers(svc *appuser.Service, read *appuser.ReadService, now port.Clock) *Handlers {
+	return &Handlers{svc: svc, read: read, now: now}
 }

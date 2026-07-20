@@ -28,5 +28,5 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/user/complete-onboarding [post]
 func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.CompleteOnboarding)
+	endpoint.HandleNoBody(w, r, h.svc.CompleteOnboarding)
 }

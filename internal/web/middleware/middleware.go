@@ -98,39 +98,31 @@ func newRequestID() string {
 	return uuid.NewString()
 }
 
-// Recover catches panics from downstream handlers, logs them with the request
-// id, and writes the frozen 500 exception envelope. The recovered value and
-// stack trace are exposed in the response body only when dev is true.
-func Recover(dev bool) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
-				if rec := recover(); rec != nil {
-					stack := debug.Stack()
-					slog.Error("panic recovered",
-						"request_id", RequestIDFromCtx(r.Context()),
-						"method", r.Method,
-						"path", r.URL.Path,
-						"panic", rec,
-						"stack", string(stack),
-					)
-					// Surface the panic to the access log's operation line too
-					// (the detailed stack stays in the dedicated record above).
-					if lw, ok := w.(*logResponseWriter); ok {
-						lw.SetError(fmt.Errorf("panic: %v", rec))
-					}
-					// stackTrace payload is only surfaced in dev (Exception
-					// honors the dev flag internally).
-					var trace any
-					if dev {
-						trace = string(stack)
-					}
-					httpx.Exception(w, "Internal Server Error", "panic", trace, dev)
+// Recover catches panics from downstream handlers, logs them (with the request
+// id and full stack trace), and writes the frozen 500 exception envelope. The
+// response body never carries the recovered value or stack — logs only.
+func Recover(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				stack := debug.Stack()
+				slog.Error("panic recovered",
+					"request_id", RequestIDFromCtx(r.Context()),
+					"method", r.Method,
+					"path", r.URL.Path,
+					"panic", rec,
+					"stack", string(stack),
+				)
+				// Surface the panic to the access log's operation line too
+				// (the detailed stack stays in the dedicated record above).
+				if lw, ok := w.(*logResponseWriter); ok {
+					lw.SetError(fmt.Errorf("panic: %v", rec))
 				}
-			}()
-			next.ServeHTTP(w, r)
-		})
-	}
+				httpx.Exception(w, "Internal Server Error", "panic")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 // CORS controls cross-origin access via an allowlist (ECONUMO_CORS_ALLOW_ORIGIN). The

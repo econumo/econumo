@@ -34,13 +34,13 @@ type errEnvelope struct {
 }
 
 // exceptionEnvelope is the unhandled-exception response (HTTP 500). It omits
-// the errors[] key and adds exceptionType, plus stackTrace only in dev.
+// the errors[] key and adds exceptionType. Error detail (message, stack) goes
+// to the logs only — never the response body.
 type exceptionEnvelope struct {
 	Success       bool   `json:"success"`
 	Message       string `json:"message"`
 	Code          int    `json:"code"`
 	ExceptionType string `json:"exceptionType,omitempty"`
-	StackTrace    any    `json:"stackTrace,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, httpCode int, payload any) {
@@ -96,14 +96,10 @@ func AccessDenied(w http.ResponseWriter, message string) {
 	})
 }
 
-// Exception writes the 500 exception envelope. stackTrace is included only when
-// dev is true (matching ECONUMO_DEBUG=true behavior).
-func Exception(w http.ResponseWriter, message, exceptionType string, stackTrace any, dev bool) {
-	env := exceptionEnvelope{Success: false, Message: message, Code: 0, ExceptionType: exceptionType}
-	if dev {
-		env.StackTrace = stackTrace
-	}
-	writeJSON(w, http.StatusInternalServerError, env)
+// Exception writes the 500 exception envelope.
+func Exception(w http.ResponseWriter, message, exceptionType string) {
+	writeJSON(w, http.StatusInternalServerError,
+		exceptionEnvelope{Success: false, Message: message, Code: 0, ExceptionType: exceptionType})
 }
 
 // NotImplemented writes the 501 envelope: success:false, code:0, errors:[].

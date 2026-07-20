@@ -330,7 +330,6 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   separately-hosted SPAs. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
   (server truth); `ECONUMO_API_URL` and `ECONUMO_ALLOW_CUSTOM_API` merge `API_URL` /
   `ALLOW_CUSTOM_API` only when set (unset = keep the dist value).
-- `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
   each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
@@ -490,7 +489,7 @@ data unreadable. Most are also asserted by the test suite.
 ### Response envelope (`internal/web/httpx/envelope.go`)
 - Success (200): `{"success": true, "message": "", "data": <payload>}`
 - Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
-- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `ECONUMO_DEBUG=true`.
+- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; error detail (message, stack trace) goes to the server logs only, never the response body.
 - Not implemented (501): `{"success": false, "message": <string>, "code": 0, "errors": []}` — here `errors` is an array `[]` (the lone exception to the object rule).
 - Rate-limited (429): `{"success": false, "message": "Too many attempts. Try again later.", "code": 429, "errors": {}}` — same shape as the handled-error envelope.
 - JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).

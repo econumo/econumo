@@ -107,7 +107,7 @@ The Symfony variables are gone; start from the new
 | v0.x (PHP) | v1.x (Go) | Notes |
 |---|---|---|
 | `DATABASE_DRIVER` + `SQLITE_DATABASE_URL` / `POSTGRES_DATABASE_URL` | `DATABASE_URL` | Set the DSN directly; the scheme picks the engine. |
-| `APP_ENV=dev` | `ECONUMO_DEBUG=true` | Only the dev stack-trace behavior carries over. |
+| `APP_ENV` | _removed_ | Error detail (message, stack trace) goes to the server logs; 500 responses always carry only the generic envelope. |
 | `JWT_PASSPHRASE` | _removed_ | Auth tokens are stored in the database; there are no signing keys. |
 | `CORS_ALLOW_ORIGIN` | `ECONUMO_CORS_ALLOW_ORIGIN` | Empty now means same-domain only. |
 | `ECONUMO_SQLITE_BUSY_TIMEOUT` | `SQLITE_BUSY_TIMEOUT` | Renamed. |

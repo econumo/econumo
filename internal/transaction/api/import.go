@@ -56,13 +56,13 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 	r.Body = http.MaxBytesReader(w, r.Body, maxImportRequest)
 	if err := r.ParseMultipartForm(maxImportUpload); err != nil {
 		httpx.WriteError(r.Context(), w, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "file", Message: "Please upload a valid CSV file", Code: errs.CodeTransactionInvalidImportFile}), h.dev)
+			errs.FieldError{Key: "file", Message: "Please upload a valid CSV file", Code: errs.CodeTransactionInvalidImportFile}))
 		return
 	}
 
 	mapping, merr := parseImportMapping(r.FormValue("mapping"))
 	if merr != nil {
-		httpx.WriteError(r.Context(), w, merr, h.dev)
+		httpx.WriteError(r.Context(), w, merr)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 		defer file.Close()
 		data, rerr := io.ReadAll(io.LimitReader(file, maxImportUpload))
 		if rerr != nil {
-			httpx.WriteError(r.Context(), w, rerr, h.dev)
+			httpx.WriteError(r.Context(), w, rerr)
 			return
 		}
 		req.File = data
@@ -89,7 +89,7 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 
 	res, err := h.svc.ImportTransactionList(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(r.Context(), w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	httpx.OK(w, res)

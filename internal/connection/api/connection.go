@@ -23,7 +23,7 @@ var _ = model.GetConnectionListResult{}
 // @Security    Bearer
 // @Router      /api/v1/connection/get-connection-list [get]
 func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetConnectionList)
+	endpoint.HandleNoBody(w, r, h.svc.GetConnectionList)
 }
 
 // GenerateInvite handles POST /api/v1/connection/generate-invite (auth).
@@ -42,7 +42,7 @@ func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/generate-invite [post]
 func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.GenerateInvite)
+	endpoint.Handle(w, r, h.svc.GenerateInvite)
 }
 
 // DeleteInvite handles POST /api/v1/connection/delete-invite (auth).
@@ -61,7 +61,7 @@ func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-invite [post]
 func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteInvite)
+	endpoint.Handle(w, r, h.svc.DeleteInvite)
 }
 
 // AcceptInvite handles POST /api/v1/connection/accept-invite (auth).
@@ -81,7 +81,7 @@ func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/accept-invite [post]
 func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.AcceptInvite)
+	endpoint.Handle(w, r, h.svc.AcceptInvite)
 }
 
 // DeleteConnection handles POST /api/v1/connection/delete-connection (auth).
@@ -102,5 +102,5 @@ func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-connection [post]
 func (h *Handlers) DeleteConnection(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteConnection)
+	endpoint.Handle(w, r, h.svc.DeleteConnection)
 }

@@ -28,7 +28,7 @@ var _ = model.CreatePayeeResult{}
 // @Security    Bearer
 // @Router      /api/v1/payee/create-payee [post]
 func (h *Handlers) CreatePayee(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreatePayee)
+	endpoint.Handle(w, r, h.svc.CreatePayee)
 }
 
 // UpdatePayee handles POST /api/v1/payee/update-payee (auth).
@@ -47,7 +47,7 @@ func (h *Handlers) CreatePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/update-payee [post]
 func (h *Handlers) UpdatePayee(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdatePayee)
+	endpoint.Handle(w, r, h.svc.UpdatePayee)
 }
 
 // ArchivePayee handles POST /api/v1/payee/archive-payee (auth).
@@ -66,7 +66,7 @@ func (h *Handlers) UpdatePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/archive-payee [post]
 func (h *Handlers) ArchivePayee(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ArchivePayee)
+	endpoint.Handle(w, r, h.svc.ArchivePayee)
 }
 
 // UnarchivePayee handles POST /api/v1/payee/unarchive-payee (auth).
@@ -85,7 +85,7 @@ func (h *Handlers) ArchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/unarchive-payee [post]
 func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UnarchivePayee)
+	endpoint.Handle(w, r, h.svc.UnarchivePayee)
 }
 
 // DeletePayee handles POST /api/v1/payee/delete-payee (auth).
@@ -104,5 +104,5 @@ func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/delete-payee [post]
 func (h *Handlers) DeletePayee(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeletePayee)
+	endpoint.Handle(w, r, h.svc.DeletePayee)
 }

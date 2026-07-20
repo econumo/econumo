@@ -24,7 +24,7 @@ import (
 // @Security    Bearer
 // @Router      /api/v1/user/get-personal-token-list [get]
 func (h *Handlers) GetPersonalTokenList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.ListPersonalTokens)
+	endpoint.HandleNoBody(w, r, h.svc.ListPersonalTokens)
 }
 
 // CreatePersonalToken handles POST /api/v1/user/create-personal-token (auth).
@@ -45,7 +45,7 @@ func (h *Handlers) GetPersonalTokenList(w http.ResponseWriter, r *http.Request) 
 // @Security    Bearer
 // @Router      /api/v1/user/create-personal-token [post]
 func (h *Handlers) CreatePersonalToken(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreatePersonalToken)
+	endpoint.Handle(w, r, h.svc.CreatePersonalToken)
 }
 
 // RevokePersonalToken handles POST /api/v1/user/revoke-personal-token (auth).
@@ -65,7 +65,7 @@ func (h *Handlers) CreatePersonalToken(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/user/revoke-personal-token [post]
 func (h *Handlers) RevokePersonalToken(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.RevokePersonalTokenRequest) (*model.RevokePersonalTokenResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.RevokePersonalTokenRequest) (*model.RevokePersonalTokenResult, error) {
 		reqctx.AddLogAttr(ctx, "token_id", req.Id)
 		return h.svc.RevokePersonalToken(ctx, userID, req)
 	})

@@ -76,15 +76,14 @@ var ReadonlyAllowedPaths = map[string]bool{
 // (via httpx.WriteError on an *errs.UnauthorizedError) and the downstream
 // handler is not called.
 //
-// dev controls only the unhandled-500 path inside httpx.WriteError; the 401
-// path does not expose internals — a non-Unauthorized authenticator error
-// (e.g. the DB being down) is mapped to the generic 401.
-func Auth(authn TokenAuthenticator, dev bool) Middleware {
+// The 401 path does not expose internals — a non-Unauthorized authenticator
+// error (e.g. the DB being down) is mapped to the generic 401.
+func Auth(authn TokenAuthenticator) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, ok := bearerToken(r)
 			if !ok {
-				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"), dev)
+				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"))
 				return
 			}
 			userID, tokenID, level, err := authn.Authenticate(r.Context(), token)
@@ -93,7 +92,7 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 				if !errors.As(err, &ue) {
 					err = errs.NewUnauthorized("Invalid access token")
 				}
-				httpx.WriteError(r.Context(), w, err, dev)
+				httpx.WriteError(r.Context(), w, err)
 				return
 			}
 			ctx := r.Context()
@@ -114,7 +113,7 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 				httpx.WriteError(ctx, w, &errs.PaymentRequiredError{
 					Msg:  "Read-only access. Write operations are disabled.",
 					Code: errs.CodeReadonlyAccess,
-				}, dev)
+				})
 				return
 			}
 			ctx = context.WithValue(ctx, ctxKeyUserID, userID)
@@ -161,13 +160,11 @@ func TokenIDFromCtx(ctx context.Context) (vo.Id, bool) {
 
 // RequireUser pulls the user id placed by the auth middleware; absence is
 // treated as unauthorized (defense in depth — every route is already behind
-// that middleware). The dev flag only gates the 500 exception path inside
-// httpx.WriteError, which this 401 branch never reaches, so it is passed as
-// false unconditionally without changing the emitted envelope.
+// that middleware).
 func RequireUser(w http.ResponseWriter, r *http.Request) (vo.Id, bool) {
 	id, ok := UserIDFromCtx(r.Context())
 	if !ok {
-		httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"), false)
+		httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"))
 		return vo.Id{}, false
 	}
 	return id, true

@@ -31,5 +31,5 @@ var _ = model.UpdateNameResult{}
 // @Security    Bearer
 // @Router      /api/v1/user/update-name [post]
 func (h *Handlers) UpdateName(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateName)
+	endpoint.Handle(w, r, h.svc.UpdateName)
 }

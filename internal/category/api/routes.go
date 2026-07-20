@@ -7,9 +7,9 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		authMw := middleware.Auth(authn, dev)
+		authMw := middleware.Auth(authn)
 		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		mux.Handle("POST /api/v1/category/create-category", auth(h.CreateCategory))

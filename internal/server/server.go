@@ -130,7 +130,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
-	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
+	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.
@@ -140,7 +140,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo, accountAccessResolver)
 	categoryReadSvc := appcategory.NewReadService(categoryReadRepo)
-	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc, cfg.IsDev())
+	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc)
 
 	// Shared operation guard built here, reused by payee/account/transaction.
 	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
@@ -148,23 +148,23 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	tagReadRepo := tagrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo, accountAccessResolver)
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
-	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc, cfg.IsDev())
+	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc)
 
 	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
 	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo, accountAccessResolver)
 	payeeReadSvc := apppayee.NewReadService(payeeReadRepo)
-	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc, cfg.IsDev())
+	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc)
 
 	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
-	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, cfg.IsDev())
+	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc)
 
 	updates := seams.Updates
 	if updates == nil {
 		updates = appsystem.NewService(false, appsystem.DefaultFeedURL)
 	}
-	systemHandlers := handlersystem.NewHandlers(updates, cfg.IsDev())
+	systemHandlers := handlersystem.NewHandlers(updates)
 
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
@@ -178,7 +178,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	accountSvc := appaccount.NewService(
 		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, accountAccessResolver, txm, opGuard, clk,
 	)
-	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
+	accountHandlers := handleraccount.NewHandlers(accountSvc)
 
 	// Budget service is built before connection: delete-connection's unwind
 	// removes budget memberships (access + seeded records) via RemoveMember.
@@ -195,7 +195,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		accountAccessResolver,
 		txm, clk,
 	)
-	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
+	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
 
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
@@ -219,23 +219,23 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	transactionSvc := apptransaction.NewService(
 		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
 	)
-	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
+	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
-	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
+	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
 
 	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
 
 	registerAPI := router.Compose(
-		handleruser.RegisterAPI(userHandlers, authn, cfg.IsDev()),
-		handlercategory.RegisterAPI(categoryHandlers, authn, cfg.IsDev()),
-		handlertag.RegisterAPI(tagHandlers, authn, cfg.IsDev()),
-		handlerpayee.RegisterAPI(payeeHandlers, authn, cfg.IsDev()),
-		handlercurrency.RegisterAPI(currencyHandlers, authn, cfg.IsDev()),
-		handleraccount.RegisterAPI(accountHandlers, authn, cfg.IsDev()),
-		handlertransaction.RegisterAPI(transactionHandlers, authn, cfg.IsDev()),
-		handlerconnection.RegisterAPI(connectionHandlers, authn, cfg.IsDev()),
-		handlerbudget.RegisterAPI(budgetHandlers, authn, cfg.IsDev()),
-		handlersystem.RegisterAPI(systemHandlers, authn, cfg.IsDev()),
+		handleruser.RegisterAPI(userHandlers, authn),
+		handlercategory.RegisterAPI(categoryHandlers, authn),
+		handlertag.RegisterAPI(tagHandlers, authn),
+		handlerpayee.RegisterAPI(payeeHandlers, authn),
+		handlercurrency.RegisterAPI(currencyHandlers, authn),
+		handleraccount.RegisterAPI(accountHandlers, authn),
+		handlertransaction.RegisterAPI(transactionHandlers, authn),
+		handlerconnection.RegisterAPI(connectionHandlers, authn),
+		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),
 	)
 
@@ -251,7 +251,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		transactionmcp.Register(transactionSvc),
 	)
 	mcpHandler := middleware.Chain(
-		middleware.Auth(authn, cfg.IsDev()),
+		middleware.Auth(authn),
 		timezoneFallback(userSvc),
 	)(webmcp.NewHandler(mcpRegister))
 

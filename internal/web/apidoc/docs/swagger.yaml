@@ -28,7 +28,6 @@ definitions:
       message:
         example: Internal Server Error
         type: string
-      stackTrace: {}
       success:
         example: false
         type: boolean

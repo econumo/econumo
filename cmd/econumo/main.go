@@ -153,7 +153,6 @@ func run(serveArgs []string) error {
 	// command line (flags win); -q silences. From here on every log honors it.
 	logging.Setup(cfg.LogLevel, serveArgs)
 	slog.Info("configuration loaded",
-		"debug", cfg.Debug,
 		"database_driver", cfg.DatabaseDriver,
 		"spa_dir", cfg.SPADir,
 	)

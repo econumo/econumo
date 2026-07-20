@@ -16,7 +16,7 @@ import (
 func CtxWithUser(t testing.TB, userID string) context.Context {
 	t.Helper()
 	var ctx context.Context
-	h := middleware.Auth(authstub.Authenticator{}, false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := middleware.Auth(authstub.Authenticator{})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx = r.Context()
 	}))
 	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)

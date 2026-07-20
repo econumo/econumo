@@ -30,7 +30,7 @@ var _ = model.CreateTagResult{}
 // @Security    Bearer
 // @Router      /api/v1/tag/create-tag [post]
 func (h *Handlers) CreateTag(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreateTag)
+	endpoint.Handle(w, r, h.svc.CreateTag)
 }
 
 // UpdateTag handles POST /api/v1/tag/update-tag (auth).
@@ -49,7 +49,7 @@ func (h *Handlers) CreateTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/update-tag [post]
 func (h *Handlers) UpdateTag(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateTag)
+	endpoint.Handle(w, r, h.svc.UpdateTag)
 }
 
 // ArchiveTag handles POST /api/v1/tag/archive-tag (auth).
@@ -68,7 +68,7 @@ func (h *Handlers) UpdateTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/archive-tag [post]
 func (h *Handlers) ArchiveTag(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ArchiveTag)
+	endpoint.Handle(w, r, h.svc.ArchiveTag)
 }
 
 // UnarchiveTag handles POST /api/v1/tag/unarchive-tag (auth).
@@ -87,7 +87,7 @@ func (h *Handlers) ArchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/unarchive-tag [post]
 func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UnarchiveTag)
+	endpoint.Handle(w, r, h.svc.UnarchiveTag)
 }
 
 // DeleteTag handles POST /api/v1/tag/delete-tag (auth).
@@ -106,5 +106,5 @@ func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/tag/delete-tag [post]
 func (h *Handlers) DeleteTag(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteTag)
+	endpoint.Handle(w, r, h.svc.DeleteTag)
 }

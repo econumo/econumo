@@ -32,5 +32,5 @@ var _ = model.UpdateAvatarResult{}
 // @Security    Bearer
 // @Router      /api/v1/user/update-avatar [post]
 func (h *Handlers) UpdateAvatar(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateAvatar)
+	endpoint.Handle(w, r, h.svc.UpdateAvatar)
 }

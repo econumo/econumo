@@ -27,7 +27,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security Bearer
 // @Router   /api/v1/budget/create-budget [post]
 func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreateBudget)
+	endpoint.Handle(w, r, h.svc.CreateBudget)
 }
 
 // UpdateBudget handles POST /api/v1/budget/update-budget.
@@ -43,7 +43,7 @@ func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/update-budget [post]
 func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateBudget)
+	endpoint.Handle(w, r, h.svc.UpdateBudget)
 }
 
 // DeleteBudget handles POST /api/v1/budget/delete-budget.
@@ -58,7 +58,7 @@ func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/delete-budget [post]
 func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteBudget)
+	endpoint.Handle(w, r, h.svc.DeleteBudget)
 }
 
 // ResetBudget handles POST /api/v1/budget/reset-budget.
@@ -73,7 +73,7 @@ func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
 // @Security Bearer
 // @Router   /api/v1/budget/reset-budget [post]
 func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ResetBudget)
+	endpoint.Handle(w, r, h.svc.ResetBudget)
 }
 
 // GetBudget handles GET /api/v1/budget/get-budget.
@@ -94,7 +94,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 	req := model.GetBudgetRequest{Id: r.URL.Query().Get("id"), Date: r.URL.Query().Get("date")}
 	res, err := h.svc.GetBudget(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(r.Context(), w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	httpx.OK(w, res)
@@ -128,7 +128,7 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(r.Context(), w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	httpx.OK(w, res)
@@ -150,5 +150,5 @@ func optQuery(v string) *string {
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget-list [get]
 func (h *Handlers) GetBudgetList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetBudgetList)
+	endpoint.HandleNoBody(w, r, h.svc.GetBudgetList)
 }

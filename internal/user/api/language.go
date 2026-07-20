@@ -32,5 +32,5 @@ var _ = model.UpdateLanguageResult{}
 // @Security    Bearer
 // @Router      /api/v1/user/update-language [post]
 func (h *Handlers) UpdateLanguage(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateLanguage)
+	endpoint.Handle(w, r, h.svc.UpdateLanguage)
 }
