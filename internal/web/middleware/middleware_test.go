@@ -394,6 +394,44 @@ func TestAuth_Valid_PutsIdsInContext(t *testing.T) {
 	}
 }
 
+// stubAuthnWithLanguage additionally implements StoredLanguageResolver.
+type stubAuthnWithLanguage struct {
+	stubAuthn
+	lang string
+}
+
+func (s stubAuthnWithLanguage) StoredLanguage(context.Context, vo.Id) string { return s.lang }
+
+func TestAuth_StoredLanguageFallback(t *testing.T) {
+	langSeen := func(t *testing.T, authn TokenAuthenticator, ctx context.Context) string {
+		t.Helper()
+		var got string
+		h := Auth(authn, false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			got = reqctx.Language(r.Context())
+		}))
+		req := httptest.NewRequest(http.MethodGet, "/x", nil).WithContext(ctx)
+		req.Header.Set("Authorization", "Bearer the.token")
+		h.ServeHTTP(httptest.NewRecorder(), req)
+		return got
+	}
+	authn := stubAuthnWithLanguage{stubAuthn{userID: authTestUserID, tokenID: authTestTokenID}, "ru"}
+
+	if got := langSeen(t, authn, context.Background()); got != "ru" {
+		t.Fatalf("no header: language=%q want stored ru", got)
+	}
+	if got := langSeen(t, authn, reqctx.WithLanguage(context.Background(), "en")); got != "en" {
+		t.Fatalf("explicit header must win: language=%q want en", got)
+	}
+	authn.lang = ""
+	if got := langSeen(t, authn, context.Background()); got != "en" {
+		t.Fatalf("no stored language: language=%q want default en", got)
+	}
+	// A resolver-less authenticator keeps the default without panicking.
+	if got := langSeen(t, stubAuthn{userID: authTestUserID}, context.Background()); got != "en" {
+		t.Fatalf("resolver-less authn: language=%q want en", got)
+	}
+}
+
 func TestAuth_EmptyBearerToken_401(t *testing.T) {
 	h := Auth(stubAuthn{}, false)(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)

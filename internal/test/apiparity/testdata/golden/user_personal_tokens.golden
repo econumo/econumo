@@ -8,10 +8,10 @@
 {"success":true,"message":"","data":[{"id":"<generated-uuid>","name":"CI export","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null},{"id":"<generated-uuid>","name":"Short lived","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":"<datetime>"}]}
 
 == err:create-personal-token-past POST /api/v1/user/create-personal-token [owner] -> 400
-{"success":false,"message":"Expiration date must be in the future","code":400,"errors":{},"messageCode":"token.expiration_in_future"}
+{"success":false,"message":"Expiration date must be in the future","code":400,"errors":{}}
 
 == err:create-personal-token-blank-name POST /api/v1/user/create-personal-token [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Token name must be 1-64 characters"]},"errorCodes":{"name":[{"code":"token.name_length","params":{"max":64,"min":1}}]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"name":["Token name must be 1-64 characters"]}}
 
 == err:revoke-personal-token-unknown POST /api/v1/user/revoke-personal-token [owner] -> 400
 {"success":false,"message":"Token not found","code":0,"errors":{}}

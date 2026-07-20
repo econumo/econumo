@@ -1,9 +1,12 @@
 package httpx
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
 // WriteError maps a domain/service error onto the correct envelope + HTTP
@@ -17,21 +20,24 @@ import (
 //     error envelope; revisit per-endpoint if a test expects 404)
 //   - anything else           -> 500 exception envelope
 //
-// dev controls whether the 500 path includes a stack trace.
-func WriteError(w http.ResponseWriter, err error, dev bool) {
+// ctx supplies the caller's language (reqctx.Language): message and the
+// per-field errors{} strings are rendered from the errors.* catalogue when the
+// underlying error carries a code; errors without a code keep their literal
+// English text. dev controls whether the 500 path includes a stack trace.
+func WriteError(ctx context.Context, w http.ResponseWriter, err error, dev bool) {
 	recordError(w, err)
+	lang := reqctx.Language(ctx)
 	if v, ok := errs.AsValidation(err); ok {
 		// Field-level (form) validation keeps the generic "Form validation error"
 		// label: the actionable detail is the per-field errors{} map, which clients
 		// parse. A FIELDLESS validation error (e.g. "User already exists", "The code
 		// is expired") carries its message as the only signal, so surface that
 		// message instead of masking it behind the generic label.
-		msg := v.Msg
+		msg := translated(lang, v.Msg, v.MsgCode, v.MsgParams)
 		if len(v.Fields) > 0 {
 			msg = "Form validation error"
 		}
-		errCoded(w, msg, http.StatusBadRequest, fieldsToMap(v.Fields), fieldsToCodes(v.Fields),
-			v.MsgCode, v.MsgParams, http.StatusBadRequest)
+		Err(w, msg, http.StatusBadRequest, fieldsToMap(lang, v.Fields), http.StatusBadRequest)
 		return
 	}
 	if v, ok := errs.AsAccessDenied(err); ok {
@@ -40,15 +46,16 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 		return
 	}
 	if v, ok := errs.AsUnauthorized(err); ok {
-		errCoded(w, v.Error(), 0, nil, nil, v.Code, nil, http.StatusUnauthorized)
+		Err(w, translated(lang, v.Msg, v.Code, nil), 0, nil, http.StatusUnauthorized)
 		return
 	}
 	if v, ok := errs.AsPaymentRequired(err); ok {
-		errCoded(w, v.Error(), http.StatusPaymentRequired, nil, nil, v.Code, nil, http.StatusPaymentRequired)
+		Err(w, translated(lang, v.Msg, v.Code, nil), http.StatusPaymentRequired, nil, http.StatusPaymentRequired)
 		return
 	}
 	if v, ok := errs.AsTooManyRequests(err); ok {
-		errCoded(w, v.Error(), http.StatusTooManyRequests, nil, nil, errs.CodeTooManyAttempts, nil, http.StatusTooManyRequests)
+		Err(w, translated(lang, v.Error(), errs.CodeTooManyAttempts, nil),
+			http.StatusTooManyRequests, nil, http.StatusTooManyRequests)
 		return
 	}
 	if v, ok := errs.AsNotFound(err); ok {
@@ -68,31 +75,29 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 }
 
 // fieldsToMap converts the flat field-error list into the wire map shape
-// (field name -> list of messages). Form-wide errors (empty Key) are grouped
-// under the empty string key.
-func fieldsToMap(fields []errs.FieldError) map[string][]string {
+// (field name -> list of messages), rendering each entry in the caller's
+// language when it carries a catalogue code. Form-wide errors (empty Key) are
+// grouped under the empty string key.
+func fieldsToMap(lang string, fields []errs.FieldError) map[string][]string {
 	out := make(map[string][]string, len(fields))
 	for _, f := range fields {
-		out[f.Key] = append(out[f.Key], f.Message)
+		out[f.Key] = append(out[f.Key], translated(lang, f.Message, f.Code, f.Params))
 	}
 	return out
 }
 
-// fieldsToCodes converts the flat field-error list into the wire map shape
-// (field name -> list of {code,params}), skipping fields with no Code (so
-// endpoints that don't set one keep emitting no errorCodes key at all).
-func fieldsToCodes(fields []errs.FieldError) map[string][]CodeRef {
-	var out map[string][]CodeRef
-	for _, f := range fields {
-		if f.Code == "" {
-			continue
-		}
-		if out == nil {
-			out = map[string][]CodeRef{}
-		}
-		out[f.Key] = append(out[f.Key], CodeRef{Code: f.Code, Params: f.Params})
+// translated renders the catalogue text for code in the caller's language
+// (i18n.Lookup itself falls back to English for a language missing the key).
+// An error with no code — or a code absent from every catalogue — keeps its
+// literal English message rather than leaking a dotted key.
+func translated(lang, literal, code string, params map[string]any) string {
+	if code == "" {
+		return literal
 	}
-	return out
+	if msg, ok := i18n.Lookup(lang, "errors."+code, params); ok {
+		return msg
+	}
+	return literal
 }
 
 func typeName(err error) string {

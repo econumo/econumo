@@ -1,32 +1,22 @@
 package server
 
 import (
-	"net/http"
+	"context"
 	"slices"
 
 	"github.com/econumo/econumo/internal/infra/i18n"
-	"github.com/econumo/econumo/internal/shared/reqctx"
-	appuser "github.com/econumo/econumo/internal/user"
-	"github.com/econumo/econumo/internal/web/middleware"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// languageFallback installs the stored UI language for requests that carried
-// no (matching) Accept-Language header, mirroring timezoneFallback. Applied to
-// /mcp only; REST keeps header-or-en with client-side translation.
-func languageFallback(users *appuser.Service) middleware.Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			if !reqctx.IsLanguageExplicit(ctx) {
-				if userID, ok := middleware.UserIDFromCtx(ctx); ok {
-					if lang, err := users.GetLanguage(ctx, userID); err == nil && lang != "" && slices.Contains(i18n.Supported, lang) {
-						ctx = reqctx.WithLanguage(ctx, lang)
-						reqctx.AddLogAttr(ctx, "language", lang)
-						r = r.WithContext(ctx)
-					}
-				}
-			}
-			next.ServeHTTP(w, r)
-		})
+// StoredLanguage implements middleware.StoredLanguageResolver on the wired
+// authenticator decorator: the user's persisted UI language for requests that
+// carried no (supported) Accept-Language header, mirroring the timezone
+// fallback. Only supported tags are returned so an unexpected column value
+// cannot leak into rendering; any lookup failure degrades to "" (header-or-en).
+func (a *timezoneTrackingAuthenticator) StoredLanguage(ctx context.Context, userID vo.Id) string {
+	lang, err := a.users.GetLanguage(ctx, userID)
+	if err != nil || !slices.Contains(i18n.Supported, lang) {
+		return ""
 	}
+	return lang
 }

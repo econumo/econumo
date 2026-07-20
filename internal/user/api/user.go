@@ -36,12 +36,12 @@ var _ = apidoc.JsonResponseError{}
 func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err, h.dev)
 		return
 	}
 	res, err := h.svc.Login(r.Context(), req, r.Header.Get("User-Agent"), h.now.Now())
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err, h.dev)
 		return
 	}
 	// Record the user on this public route's operation log line (login has no

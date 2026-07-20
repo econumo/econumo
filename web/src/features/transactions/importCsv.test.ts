@@ -108,7 +108,7 @@ it('runImport chunks at 500 rows, remaps error rows, and tolerates chunk failure
     if (files.length === 2) {
       throw Object.assign(new Error('Request failed with status code 400'), {
         isAxiosError: true,
-        response: { data: { success: false, message: 'boom', code: 400, errors: {}, messageCode: 'no.such.code' } },
+        response: { data: { success: false, message: 'boom', code: 400, errors: {} } },
       })
     }
     if (files.length === 3) {
