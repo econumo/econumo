@@ -179,7 +179,7 @@ func TestTransactionRepo_ListByAccountIDs_PeriodBoundary(t *testing.T) {
 
 	start := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
-	list, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, start, end)
+	list, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, model.TransactionFilter{PeriodStart: start, PeriodEnd: end})
 	if err != nil {
 		t.Fatalf("ListByAccountIDs: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestTransactionRepo_ListByAccountIDs_PeriodBoundary(t *testing.T) {
 	}
 
 	// No period -> all three.
-	all, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, time.Time{}, time.Time{})
+	all, err := repo.ListByAccountIDs(ctx, []vo.Id{vo.MustParseId(acct1)}, model.TransactionFilter{})
 	if err != nil {
 		t.Fatalf("ListByAccountIDs no period: %v", err)
 	}
@@ -197,9 +197,81 @@ func TestTransactionRepo_ListByAccountIDs_PeriodBoundary(t *testing.T) {
 	}
 
 	// Empty id set -> nil.
-	none, err := repo.ListByAccountIDs(ctx, nil, start, end)
+	none, err := repo.ListByAccountIDs(ctx, nil, model.TransactionFilter{PeriodStart: start, PeriodEnd: end})
 	if err != nil || none != nil {
 		t.Errorf("empty ids should yield nil,nil; got %v, %v", none, err)
+	}
+}
+
+func TestTransactionRepo_ListByAccountIDs_ClassificationFilters(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	catA := vo.MustParseId(f.Category(fixture.Category{UserID: userA, Type: 0}))
+	catB := vo.MustParseId(f.Category(fixture.Category{UserID: userA, Type: 0}))
+	payeeA := vo.MustParseId(f.Payee(fixture.Payee{UserID: userA}))
+	tagA := vo.MustParseId(f.Tag(fixture.Tag{UserID: userA}))
+
+	withCat := func(id string, cat *vo.Id, payee *vo.Id, tag *vo.Id) *model.Transaction {
+		return model.FromState(model.NewState{
+			ID: vo.MustParseId(id), UserID: vo.MustParseId(userA), Type: model.TransactionTypeExpense,
+			AccountID: vo.MustParseId(acct1), Amount: "1.00", Description: "x",
+			CategoryID: cat, PayeeID: payee, TagID: tag,
+			SpentAt: fixedTime, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		})
+	}
+	mustSave := func(tx *model.Transaction) {
+		t.Helper()
+		if err := repo.Save(ctx, tx); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+	}
+
+	mustSave(withCat("7c000000-0000-0000-0000-000000000010", &catA, &payeeA, &tagA))
+	mustSave(withCat("7c000000-0000-0000-0000-000000000011", &catB, nil, nil))
+	mustSave(withCat("7c000000-0000-0000-0000-000000000012", nil, nil, nil))
+
+	ids := []vo.Id{vo.MustParseId(acct1)}
+
+	uncategorized, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{Uncategorized: true})
+	if err != nil {
+		t.Fatalf("uncategorized filter: %v", err)
+	}
+	if len(uncategorized) != 1 || uncategorized[0].ID.String() != "7c000000-0000-0000-0000-000000000012" {
+		t.Fatalf("uncategorized filter = %#v, want just tx 12", uncategorized)
+	}
+
+	byCategory, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{CategoryID: &catA})
+	if err != nil {
+		t.Fatalf("category filter: %v", err)
+	}
+	if len(byCategory) != 1 || byCategory[0].ID.String() != "7c000000-0000-0000-0000-000000000010" {
+		t.Fatalf("category filter = %#v, want just tx 10", byCategory)
+	}
+
+	byPayee, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{PayeeID: &payeeA})
+	if err != nil {
+		t.Fatalf("payee filter: %v", err)
+	}
+	if len(byPayee) != 1 || byPayee[0].ID.String() != "7c000000-0000-0000-0000-000000000010" {
+		t.Fatalf("payee filter = %#v, want just tx 10", byPayee)
+	}
+
+	byTag, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{TagID: &tagA})
+	if err != nil {
+		t.Fatalf("tag filter: %v", err)
+	}
+	if len(byTag) != 1 || byTag[0].ID.String() != "7c000000-0000-0000-0000-000000000010" {
+		t.Fatalf("tag filter = %#v, want just tx 10", byTag)
+	}
+
+	// Combined with a period window that excludes everything.
+	empty, err := repo.ListByAccountIDs(ctx, ids, model.TransactionFilter{PeriodStart: time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC), PeriodEnd: time.Date(2099, 2, 1, 0, 0, 0, 0, time.UTC), Uncategorized: true})
+	if err != nil {
+		t.Fatalf("uncategorized+period filter: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Fatalf("uncategorized+out-of-period filter = %#v, want empty", empty)
 	}
 }
 

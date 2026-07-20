@@ -126,6 +126,10 @@ func (h *Harness) LastResetCode(t *testing.T) string {
 	return code
 }
 
+// URL returns the running server's base URL, for callers (e.g. mcpparity)
+// that need to issue requests outside the REST Call/Replay helpers.
+func (h *Harness) URL() string { return h.srv.URL }
+
 // Token returns a live session token for a seeded user: the fixed fixture
 // tokens for owner/guest, or (for any other user a test seeds itself) a
 // deterministic session minted on first use. Deterministic raw tokens keep

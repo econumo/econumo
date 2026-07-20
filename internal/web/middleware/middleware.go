@@ -191,13 +191,19 @@ func CORS(origins []string) Middleware {
 // invalid header the location defaults to UTC.
 func Timezone(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		loc := time.UTC
+		explicit := false
 		if tz := r.Header.Get("X-Timezone"); tz != "" {
 			if l, err := time.LoadLocation(tz); err == nil {
-				loc = l
+				loc, explicit = l, true
 			}
 		}
-		ctx := reqctx.WithLocation(r.Context(), loc)
+		if explicit {
+			ctx = reqctx.WithExplicitLocation(ctx, loc)
+		} else {
+			ctx = reqctx.WithLocation(ctx, loc)
+		}
 		// Record the resolved timezone as a log dimension. Timezone runs inside
 		// AccessLog, so the pointer accumulator carries it back out to both lines.
 		reqctx.AddLogAttr(ctx, "timezone", loc.String())

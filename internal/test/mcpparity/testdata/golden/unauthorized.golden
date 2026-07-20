@@ -1,0 +1,3 @@
+== initialize-no-auth POST /mcp -> 401
+{"success":false,"message":"Access token not found","code":0,"errors":{}}
+

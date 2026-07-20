@@ -37,11 +37,13 @@ type (
 		Algorithm   string
 		AccessLevel string
 		AccessUntil *time.Time
+		Timezone    string
 	}
 	optionRow      = sqlitegen.UsersOption
 	userParams     = sqlitegen.UpsertUserParams
 	optionParams   = sqlitegen.UpsertUserOptionParams
 	languageParams = sqlitegen.UpdateUserLanguageParams
+	timezoneParams = sqlitegen.UpdateUserTimezoneParams
 )
 
 type querier interface {
@@ -53,6 +55,9 @@ type querier interface {
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
 	UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error
+	GetUserTimezone(ctx context.Context, db backend.DBTX, id string) (string, error)
+	UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error
+	GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error)
 }
 
 type Repo struct {
@@ -196,6 +201,26 @@ func (r *Repo) UpdateLanguage(ctx context.Context, id vo.Id, language string) er
 		Language: language,
 		ID:       id.String(),
 	})
+}
+
+func (r *Repo) GetTimezone(ctx context.Context, id vo.Id) (string, error) {
+	tz, err := r.q.GetUserTimezone(ctx, r.db(ctx), id.String())
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errs.NewNotFound("User not found")
+	}
+	return tz, err
+}
+
+func (r *Repo) UpdateTimezone(ctx context.Context, id vo.Id, tz string) error {
+	return r.q.UpdateUserTimezone(ctx, r.db(ctx), timezoneParams{Timezone: tz, ID: id.String()})
+}
+
+func (r *Repo) GetLanguage(ctx context.Context, id vo.Id) (string, error) {
+	lang, err := r.q.GetUserLanguage(ctx, r.db(ctx), id.String())
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errs.NewNotFound("User not found")
+	}
+	return lang, err
 }
 
 func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {

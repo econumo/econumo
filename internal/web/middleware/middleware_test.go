@@ -591,3 +591,33 @@ func TestChain_OuterToInnerOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestTimezone_MarksExplicit(t *testing.T) {
+	cases := []struct {
+		name, header string
+		wantExplicit bool
+		wantLoc      string
+	}{
+		{"valid header", "Europe/Amsterdam", true, "Europe/Amsterdam"},
+		{"no header", "", false, "UTC"},
+		{"garbage header", "Not/AZone", false, "UTC"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotExplicit bool
+			var gotLoc string
+			h := Timezone(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotExplicit = reqctx.IsLocationExplicit(r.Context())
+				gotLoc = reqctx.Location(r.Context()).String()
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/x", nil)
+			if tc.header != "" {
+				req.Header.Set("X-Timezone", tc.header)
+			}
+			h.ServeHTTP(httptest.NewRecorder(), req)
+			if gotExplicit != tc.wantExplicit || gotLoc != tc.wantLoc {
+				t.Fatalf("explicit=%v loc=%s, want %v/%s", gotExplicit, gotLoc, tc.wantExplicit, tc.wantLoc)
+			}
+		})
+	}
+}
