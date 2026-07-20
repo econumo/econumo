@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -68,6 +69,16 @@ type Config struct {
 	// these; they only reach the frontend).
 	APIURL         string // ECONUMO_API_URL
 	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
+}
+
+// isLoopbackHost reports whether a URL hostname is loopback ("localhost" or a
+// loopback IP), the only hosts allowed to use plain http for the billing URL.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // Load reads and validates configuration from the environment.
@@ -136,6 +147,13 @@ func Load() (Config, error) {
 		u, err := url.Parse(v)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL: not an absolute http(s) URL: %q", v)
+		}
+		// Billing links carry the signed handoff token in the query string, and
+		// users' browsers follow them: a remote http portal would expose live
+		// identity assertions in transit. Loopback stays allowed so portal
+		// development against a real backend works.
+		if u.Scheme == "http" && !isLoopbackHost(u.Hostname()) {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL: must be https (billing links carry signed identity tokens); http is allowed only for loopback hosts: %q", v)
 		}
 		if c.AdminToken == "" {
 			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL requires ECONUMO_ADMIN_TOKEN (the handoff signing key)")

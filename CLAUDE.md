@@ -335,7 +335,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   never serves those routes and they sit on no public mux at all (enforced by
   `TestAdminRoutesAreNotOnThePublicMux`). Auth is `Authorization: Bearer <ECONUMO_ADMIN_TOKEN>`
   compared in constant time; the same token is the HMAC key for billing-handoff tokens
-  (minimum 32 characters). A half-configured pair fails at boot. Every admin action is
+  (minimum 32 characters, and it must be RANDOM — authenticated users see HMAC samples in
+  their billing links, so a guessable passphrase is offline-attackable; generate with
+  `openssl rand -hex 32`). A half-configured pair fails at boot. Every admin action is
   audit-logged on its operation line: `set-access` carries `user_id`, the written
   `access_level`/`access_until` AND the `old_*` pair (logged even when the write fails, so
   attempts are recorded); `user-context` carries `user_id` + `connections`; CLI
@@ -344,7 +346,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   interface on bare-host deployments; a bare port binds all interfaces (the container
   default, where compose controls exposure). Unlike the public API,
   this surface returns a real 404 for an unknown user: its consumer is a machine.
-- `ECONUMO_BILLING_URL` — payment portal URL. Empty (default) means
+- `ECONUMO_BILLING_URL` — payment portal URL (**https required** except loopback hosts —
+  billing links carry signed identity tokens in the query string). Empty (default) means
   `POST /api/v1/user/create-billing-link` returns 400 and the SPA shows no billing UI.
   Merged into the served `econumo-config.js` as `BILLING_URL`, so one variable drives
   both halves. Requires `ECONUMO_ADMIN_TOKEN` (the signing key).

@@ -131,6 +131,13 @@ the same `httpx` envelope as the public API, so the portal parses one format.
 `datetime` layout, UTC. Unknown `userId` returns 404 in the standard envelope;
 an invalid `level` or unparseable `until` returns the validation envelope.
 
+**Ordering is the portal's responsibility.** The portal is the sole writer and
+owns billing state; it derives the CURRENT desired `(level, until)` from its own
+records and asserts it here. The product deliberately keeps no event sequence —
+accepting one would move billing-state ownership across the boundary this design
+exists to hold. A replayed stale request therefore requires either a compromised
+bearer token (full compromise regardless) or a portal bug (fixed in the portal).
+
 **It is already idempotent.** The portal's handoff warns "be idempotent, Stripe
 retries" — this is a set, not an increment, so writing the same `(level, until)`
 twice is indistinguishable from writing it once. No `operation_requests_ids`

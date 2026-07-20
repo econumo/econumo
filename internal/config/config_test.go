@@ -376,3 +376,39 @@ func TestLoad_BillingURLAccepted(t *testing.T) {
 		t.Fatalf("BillingURL = %q", c.BillingURL)
 	}
 }
+
+// The billing URL is followed by users' browsers carrying the signed handoff
+// token in the query string; a remote http portal would expose tokens in
+// transit. Loopback stays allowed so portal development against a real
+// backend works.
+func TestLoad_BillingURLRequiresHTTPSForRemoteHosts(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	t.Setenv("ECONUMO_BILLING_URL", "http://pay.example.test/cloud/")
+	if _, err := Load(); err == nil {
+		t.Fatal("a remote http billing URL must fail at boot")
+	}
+}
+
+func TestLoad_BillingURLAllowsLoopbackHTTP(t *testing.T) {
+	for _, v := range []string{
+		"http://localhost:3000/cloud/",
+		"http://127.0.0.1:3000/",
+		"http://[::1]:3000/",
+	} {
+		t.Run(v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+			t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+			t.Setenv("ECONUMO_BILLING_URL", v)
+			c, err := Load()
+			if err != nil {
+				t.Fatalf("loopback http rejected: %v", err)
+			}
+			if c.BillingURL != v {
+				t.Fatalf("BillingURL = %q", c.BillingURL)
+			}
+		})
+	}
+}
