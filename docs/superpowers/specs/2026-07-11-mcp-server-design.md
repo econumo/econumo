@@ -18,7 +18,12 @@ transactions, and log/edit/delete transactions — "log this expense",
   mutation via MCP in v1.
 - **Auth**: existing opaque bearer tokens (PATs `eco_pat_*` are the intended
   credential; session tokens also pass). No OAuth in v1, so claude.ai web
-  custom connectors (OAuth-only) are out of scope for now.
+  custom connectors (OAuth-only) are out of scope for now. A read-only caller
+  (lapsed trial or manual restriction) loses the endpoint **entirely** — every
+  tool, reads included — because the 402 rule matches `POST` and every JSON-RPC
+  call is one; see the enforcement section of
+  `2026-07-19-cloud-monetization-trial-access-design.md` and the guard in
+  `internal/test/mcpparity/readonly_test.go`.
 - **Implementation**: the official Go SDK
   (`github.com/modelcontextprotocol/go-sdk`, v1.x) — the MCP protocol
   (JSON-RPC lifecycle, capability negotiation, transport) is exactly the

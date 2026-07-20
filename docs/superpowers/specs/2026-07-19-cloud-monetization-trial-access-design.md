@@ -276,6 +276,20 @@ data.
 into accounts shared with them. A paying user keeps writing into accounts shared
 by a restricted user. One person's lapsed payment does not freeze a household.
 
+**MCP is blocked wholesale while read-only — deliberately.** `/mcp` is mounted
+outside `/api` but behind the same `middleware.Auth`, so the rule above catches it
+with no MCP-specific code. Every JSON-RPC call is a `POST /mcp`, and `/mcp` is not
+on the allowlist, so a restricted caller gets the same 402 for *every* tool —
+including read-only ones like `list_accounts`, whose REST equivalents (`GET`) keep
+working.
+
+This asymmetry is intended, not an artifact of the method-based rule. The web app
+stays readable so a lapsed user can see their data and pay; the MCP endpoint is a
+premium surface and goes dark entirely. Restoring read tools would mean gating
+per-tool on the level in the request context, since `ReadonlyAllowedPaths` is
+path-based and cannot see which tool a JSON-RPC body names — do not add that
+without a decision to reverse this one.
+
 **Error envelope (new):** an `errs.PaymentRequired` type mapping to HTTP 402:
 
 ```json
