@@ -1,7 +1,9 @@
 // Package i18n serves backend translations (emails, and any future
-// server-rendered text) from the shared locales/ catalogues. API error
-// messages are NOT translated here — they stay frozen English with additive
-// codes, rendered by the SPA.
+// server-rendered text) from the shared locales/ catalogues. The REST API does
+// NOT translate error messages here — they stay frozen English with additive
+// codes, rendered by the SPA. The MCP edge is the exception: its clients are
+// LLMs with no catalogue, so internal/web/mcp renders error messages in the
+// caller's language via T (see MapErr).
 package i18n
 
 import (

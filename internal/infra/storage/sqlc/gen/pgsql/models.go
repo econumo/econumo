@@ -229,6 +229,7 @@ type User struct {
 	UpdatedAt   time.Time
 	IsActive    bool
 	Algorithm   string
+	Timezone    string
 	Language    string
 	AccessLevel string
 	AccessUntil *time.Time

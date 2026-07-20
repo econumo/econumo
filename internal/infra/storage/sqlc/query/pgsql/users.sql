@@ -1,10 +1,10 @@
 -- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone
 FROM users
 WHERE id = $1;
 
 -- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone
 FROM users
 WHERE identifier = $1;
 
@@ -36,3 +36,12 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = $1 WHERE id = $2;
+
+-- name: GetUserTimezone :one
+SELECT timezone FROM users WHERE id = $1;
+
+-- name: UpdateUserTimezone :exec
+UPDATE users SET timezone = $1 WHERE id = $2;
+
+-- name: GetUserLanguage :one
+SELECT language FROM users WHERE id = $1;

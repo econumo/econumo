@@ -13,19 +13,24 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
+	accountmcp "github.com/econumo/econumo/internal/account/mcp"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appbudget "github.com/econumo/econumo/internal/budget"
 	handlerbudget "github.com/econumo/econumo/internal/budget/api"
+	budgetmcp "github.com/econumo/econumo/internal/budget/mcp"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
+	categorymcp "github.com/econumo/econumo/internal/category/mcp"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
 	appconnection "github.com/econumo/econumo/internal/connection"
 	handlerconnection "github.com/econumo/econumo/internal/connection/api"
+	connectionmcp "github.com/econumo/econumo/internal/connection/mcp"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
+	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -36,20 +41,26 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
+	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/port"
 	appsystem "github.com/econumo/econumo/internal/system"
 	handlersystem "github.com/econumo/econumo/internal/system/api"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
+	tagmcp "github.com/econumo/econumo/internal/tag/mcp"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
+	transactionmcp "github.com/econumo/econumo/internal/transaction/mcp"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
+	usermcp "github.com/econumo/econumo/internal/user/mcp"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/apidoc"
+	webmcp "github.com/econumo/econumo/internal/web/mcp"
+	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -212,25 +223,45 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
 
+	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
+
 	registerAPI := router.Compose(
-		handleruser.RegisterAPI(userHandlers, userSvc, cfg.IsDev()),
-		handlercategory.RegisterAPI(categoryHandlers, userSvc, cfg.IsDev()),
-		handlertag.RegisterAPI(tagHandlers, userSvc, cfg.IsDev()),
-		handlerpayee.RegisterAPI(payeeHandlers, userSvc, cfg.IsDev()),
-		handlercurrency.RegisterAPI(currencyHandlers, userSvc, cfg.IsDev()),
-		handleraccount.RegisterAPI(accountHandlers, userSvc, cfg.IsDev()),
-		handlertransaction.RegisterAPI(transactionHandlers, userSvc, cfg.IsDev()),
-		handlerconnection.RegisterAPI(connectionHandlers, userSvc, cfg.IsDev()),
-		handlerbudget.RegisterAPI(budgetHandlers, userSvc, cfg.IsDev()),
-		handlersystem.RegisterAPI(systemHandlers, userSvc, cfg.IsDev()),
+		handleruser.RegisterAPI(userHandlers, authn, cfg.IsDev()),
+		handlercategory.RegisterAPI(categoryHandlers, authn, cfg.IsDev()),
+		handlertag.RegisterAPI(tagHandlers, authn, cfg.IsDev()),
+		handlerpayee.RegisterAPI(payeeHandlers, authn, cfg.IsDev()),
+		handlercurrency.RegisterAPI(currencyHandlers, authn, cfg.IsDev()),
+		handleraccount.RegisterAPI(accountHandlers, authn, cfg.IsDev()),
+		handlertransaction.RegisterAPI(transactionHandlers, authn, cfg.IsDev()),
+		handlerconnection.RegisterAPI(connectionHandlers, authn, cfg.IsDev()),
+		handlerbudget.RegisterAPI(budgetHandlers, authn, cfg.IsDev()),
+		handlersystem.RegisterAPI(systemHandlers, authn, cfg.IsDev()),
 		apidoc.RegisterAPI(),
 	)
+
+	mcpRegister := webmcp.Compose(
+		categorymcp.Register(categoryReadSvc, categorySvc),
+		tagmcp.Register(tagReadSvc, tagSvc),
+		payeemcp.Register(payeeReadSvc, payeeSvc),
+		accountmcp.Register(accountSvc),
+		currencymcp.Register(currencyReadSvc),
+		budgetmcp.Register(budgetSvc),
+		usermcp.Register(userReadSvc),
+		connectionmcp.Register(connectionSvc),
+		transactionmcp.Register(transactionSvc),
+	)
+	mcpHandler := middleware.Chain(
+		middleware.Auth(authn, cfg.IsDev()),
+		timezoneFallback(userSvc),
+		languageFallback(userSvc),
+	)(webmcp.NewHandler(mcpRegister))
 
 	return router.New(router.Deps{
 		Cfg:                cfg,
 		DB:                 pinger{db},
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
+		MCP:                mcpHandler,
 	})
 }
 
