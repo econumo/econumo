@@ -490,6 +490,82 @@ func TestLanguageMiddleware(t *testing.T) {
 	}
 }
 
+func readonlyStub() stubAuthn {
+	return stubAuthn{userID: authTestUserID, tokenID: authTestTokenID, level: model.AccessLevelReadonly}
+}
+
+func fullStub() stubAuthn {
+	return stubAuthn{userID: authTestUserID, tokenID: authTestTokenID, level: model.AccessLevelFull}
+}
+
+func authRequest(t *testing.T, method, path string, authn stubAuthn) (*httptest.ResponseRecorder, bool) {
+	t.Helper()
+	ran := false
+	h := Auth(authn, false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ran = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	req := httptest.NewRequest(method, path, nil)
+	req.Header.Set("Authorization", "Bearer the.token")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec, ran
+}
+
+func TestAuth_ReadonlyBlocksWrites(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/category/create-category", readonlyStub())
+	if rec.Code != http.StatusPaymentRequired {
+		t.Fatalf("status = %d, want 402", rec.Code)
+	}
+	if ran {
+		t.Fatal("handler ran despite read-only access")
+	}
+	if msg := authMessage(t, rec); msg != "Read-only access. Write operations are disabled." {
+		t.Fatalf("message = %q", msg)
+	}
+}
+
+func TestAuth_ReadonlyAllowsReads(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodGet, "/api/v1/account/get-account-list", readonlyStub())
+	if rec.Code != http.StatusOK || !ran {
+		t.Fatalf("GET should pass: status %d ran %v", rec.Code, ran)
+	}
+}
+
+func TestAuth_ReadonlyAllowlistedWritesPass(t *testing.T) {
+	for _, path := range []string{
+		"/api/v1/user/logout-user",
+		"/api/v1/user/revoke-session",
+		"/api/v1/user/revoke-other-sessions",
+		"/api/v1/user/revoke-personal-token",
+		"/api/v1/user/update-password",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec, ran := authRequest(t, http.MethodPost, path, readonlyStub())
+			if rec.Code != http.StatusOK || !ran {
+				t.Fatalf("allowlisted path blocked: status %d ran %v", rec.Code, ran)
+			}
+		})
+	}
+}
+
+func TestAuth_CreatePersonalTokenIsNotAllowlisted(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/create-personal-token", readonlyStub())
+	if rec.Code != http.StatusPaymentRequired {
+		t.Fatalf("status = %d, want 402 (a PAT mints new write-capable credentials)", rec.Code)
+	}
+	if ran {
+		t.Fatal("handler ran")
+	}
+}
+
+func TestAuth_FullUserWritesPass(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/category/create-category", fullStub())
+	if rec.Code != http.StatusOK || !ran {
+		t.Fatalf("full user blocked: status %d ran %v", rec.Code, ran)
+	}
+}
+
 func TestChain_OuterToInnerOrder(t *testing.T) {
 	var order []string
 	mk := func(name string) Middleware {

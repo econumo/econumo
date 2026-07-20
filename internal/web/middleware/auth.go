@@ -32,6 +32,20 @@ type ctxKeyTokenIDType struct{}
 
 var ctxKeyTokenID ctxKeyTokenIDType
 
+// readonlyAllowedPaths are the POST endpoints a restricted caller may still
+// reach. The principle: a restricted user may always secure their account and
+// leave it, but may not add data. update-password is a security operation, so
+// locking someone out of rotating a compromised password would be indefensible;
+// create-personal-token is excluded because it mints new write-capable
+// credentials. Account deletion joins this list when it exists.
+var readonlyAllowedPaths = map[string]bool{
+	"/api/v1/user/logout-user":           true,
+	"/api/v1/user/revoke-session":        true,
+	"/api/v1/user/revoke-other-sessions": true,
+	"/api/v1/user/revoke-personal-token": true,
+	"/api/v1/user/update-password":       true,
+}
+
 // Auth builds the authentication middleware. It reads the
 // "Authorization: Bearer <token>" header, authenticates the opaque token via
 // authn, and on success stores the user id and the token row id in the request
@@ -51,13 +65,17 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 				httpx.WriteError(w, errs.NewUnauthorized("Access token not found"), dev)
 				return
 			}
-			userID, tokenID, _, err := authn.Authenticate(r.Context(), token)
+			userID, tokenID, level, err := authn.Authenticate(r.Context(), token)
 			if err != nil {
 				var ue *errs.UnauthorizedError
 				if !errors.As(err, &ue) {
 					err = errs.NewUnauthorized("Invalid access token")
 				}
 				httpx.WriteError(w, err, dev)
+				return
+			}
+			if level == model.AccessLevelReadonly && r.Method == http.MethodPost && !readonlyAllowedPaths[r.URL.Path] {
+				httpx.WriteError(w, errs.NewPaymentRequired("Read-only access. Write operations are disabled."), dev)
 				return
 			}
 			ctx := context.WithValue(r.Context(), ctxKeyUserID, userID)
