@@ -34,10 +34,13 @@ is the launch blocker for `ECONUMO_TRIAL=end-of-next-month` in production.
   read-only banner still renders (it explains why writes fail) but without a
   pay CTA. No Settings "Access" group, no partner CTA, no billing link
   anywhere.
-- **The Settings "Access" group is ephemeral.** It shows for every trial
-  account from day one (upgrade without waiting for the trial to near its
-  end) and for read-only users; it disappears once the user holds
-  `full_access`.
+- **One "Billing" group on the main settings page, for everyone.** Rendered
+  whenever `billingEnabled`, regardless of state — a trial user can upgrade
+  from day one without waiting for the 3-day banner, and a paying customer
+  always has a path back to the portal (receipts, paying for a partner). The
+  label is "Billing" by explicit product decision, deviating from the
+  handoff's "Access" suggestion; the original concern was "Subscription"
+  promising recurring charges, which "Billing" does not.
 - **The 402 `messageCode` backend addition (issue #120) stays out of scope** —
   the SPA renders its own localized copy, so a `messageCode` would only
   benefit non-SPA clients.
@@ -142,17 +145,16 @@ keyed on the variant, so trial → readonly fires again).
 
 ### Settings (`SettingsPage.tsx`)
 
-No sub-page. A new `MenuGroup` labeled **"Access"** (never "Subscription" —
-core is a one-off purchase), rendered when `billingEnabled` **and the state is
-not `full_access`** — the group is ephemeral: it appears from day one of a
-trial (so a convinced user can upgrade immediately, without waiting for the
-3-day banner) and for read-only users, and disappears entirely once the user
-holds full access. It contains a status card in the update-card style:
-
-- status line: "Trial — access ends {date}" / "Read-only";
-- a "Manage access" action (`useOpenBillingPortal()`).
-
-Copy keys shared with the banner where possible.
+No sub-page, no profile changes. A single new `MenuGroup` labeled
+**"Billing"** on the main settings page, rendered whenever `billingEnabled`
+(all states — this is every customer's standing path to the portal), placed
+after the existing groups. It contains one `MenuRow`-style action, "Open
+billing portal", that mints the link per click (`useOpenBillingPortal()`,
+firing `METRICS.ACCESS_CTA_CLICK`). For `trial` and `readonly` states the row
+carries a status hint ("Trial — access ends {date}" / "Read-only") so a trial
+user sees the upgrade path from day one; for `full_access` it is just the
+plain row. Copy keys shared with the banner where possible. Self-hosted
+(`BILLING_URL` empty): the group does not exist.
 
 ### Connections (`ConnectionsPage.tsx`)
 
@@ -214,7 +216,7 @@ enforces this:
 | key | name | fires |
 |---|---|---|
 | `ACCESS_BANNER_SHOW` | `appAccessBannerShow` | banner mount, per variant |
-| `ACCESS_CTA_CLICK` | `appAccessCtaClick` | self "Manage access" click (banner or Settings) |
+| `ACCESS_CTA_CLICK` | `appAccessCtaClick` | self portal-open click (banner CTA or Settings billing row) |
 | `ACCESS_PARTNER_CTA_CLICK` | `appAccessPartnerCtaClick` | "Pay for {name}" click |
 | `ACCESS_READONLY_BLOCKED` | `appAccessReadonlyBlocked` | 402 received in the interceptor |
 
@@ -227,8 +229,9 @@ truth.
 
 New top-level `access` namespace in `locales/{en,ru}.json`: banner copy for
 both variants, the days-left pipe-plural (`en` two variants; `ru` three:
-`one | few | many`), Settings labels ("Access", status lines, "Manage
-access"), connection status/"Pay for {name}" copy, and the 402 toast text.
+`one | few | many`), Settings billing copy ("Billing", "Open billing
+portal", status hints), connection status/"Pay for {name}" copy, and the 402
+toast text.
 Key- and placeholder-parity across catalogues is enforced by
 `internal/test/i18ntest` inside `make go-test`.
 
@@ -238,7 +241,8 @@ Key- and placeholder-parity across catalogues is enforced by
   month/DST boundaries; the `""`-means-no-expiry contract; threshold edges
   (3 days, 0 days, past).
 - **Component:** banner variant matrix (state × billingEnabled) + per-session
-  dismissal + metric firing; Settings Access card visibility and content;
+  dismissal + metric firing; Settings Billing group visibility (billing
+  on/off) and status hints per state;
   connections CTA/status visibility matrix; 402 interceptor (toast, user-query
   invalidation, metric, promise still rejects); rewritten RegistrationPage and
   config tests after paywall removal.
