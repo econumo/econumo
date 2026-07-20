@@ -121,6 +121,7 @@ type Querier interface {
 	GetUserPasswordRequestByUserAndCode(ctx context.Context, arg GetUserPasswordRequestByUserAndCodeParams) (UsersPasswordRequest, error)
 	// Read-model queries for the user module (CQRS read side). See the sqlite
 	// variant for rationale. Postgres uses $N placeholders.
+	// See the sqlite variant for rationale on the access columns.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
 	// liveness is evaluated in the app layer, not SQL.

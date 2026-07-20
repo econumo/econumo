@@ -78,12 +78,18 @@ func (o *UserOption) setValue(value *string, now time.Time) {
 }
 
 // Header is a lightweight read projection of a user's public display fields
-// (id, name, avatar) — no options, no credentials. Owner/author embeds use it so
-// they need only a single user-row query rather than hydrating the full aggregate.
+// (id, name, avatar) plus the raw access columns — no options, no credentials.
+// Owner/author embeds use it so they need only a single user-row query rather
+// than hydrating the full aggregate. AccessLevel/AccessUntil are the stored
+// values, not yet collapsed against a clock (see EffectiveAccessLevel); most
+// callers (account/budget/transaction author embeds) ignore them, but the
+// connection list uses them to show a partner's access state.
 type Header struct {
-	ID     string
-	Name   string
-	Avatar string
+	ID          string
+	Name        string
+	Avatar      string
+	AccessLevel AccessLevel
+	AccessUntil *time.Time
 }
 
 // User is the user aggregate root. Strings that are encrypted at rest (Email)
@@ -295,10 +301,17 @@ func ParseAccessLevel(s string) (AccessLevel, error) {
 // No job "expires" users: an elapsed access_until IS read-only, so no row can be
 // left stale by a run that did not happen.
 func (u *User) EffectiveAccessLevel(now time.Time) AccessLevel {
-	if u.AccessUntil != nil && !now.Before(*u.AccessUntil) {
+	return EffectiveAccessLevel(u.AccessLevel, u.AccessUntil, now)
+}
+
+// EffectiveAccessLevel is the free-function form of the same rule, for callers
+// (read-model projections, owner/connection embeds) that carry the level and
+// expiry without hydrating a full User aggregate.
+func EffectiveAccessLevel(level AccessLevel, until *time.Time, now time.Time) AccessLevel {
+	if until != nil && !now.Before(*until) {
 		return AccessLevelReadonly
 	}
-	return u.AccessLevel
+	return level
 }
 
 func (u *User) SetAccess(level AccessLevel, until *time.Time, now time.Time) {

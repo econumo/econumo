@@ -7,6 +7,7 @@ package pgsqlgen
 
 import (
 	"context"
+	"time"
 )
 
 const getUserOptionsView = `-- name: GetUserOptionsView :many
@@ -48,20 +49,23 @@ func (q *Queries) GetUserOptionsView(ctx context.Context, userID string) ([]GetU
 
 const getUserView = `-- name: GetUserView :one
 
-SELECT id, email, name, avatar
+SELECT id, email, name, avatar, access_level, access_until
 FROM users
 WHERE id = $1
 `
 
 type GetUserViewRow struct {
-	ID     string
-	Email  string
-	Name   string
-	Avatar string
+	ID          string
+	Email       string
+	Name        string
+	Avatar      string
+	AccessLevel string
+	AccessUntil *time.Time
 }
 
 // Read-model queries for the user module (CQRS read side). See the sqlite
 // variant for rationale. Postgres uses $N placeholders.
+// See the sqlite variant for rationale on the access columns.
 func (q *Queries) GetUserView(ctx context.Context, id string) (GetUserViewRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserView, id)
 	var i GetUserViewRow
@@ -70,6 +74,8 @@ func (q *Queries) GetUserView(ctx context.Context, id string) (GetUserViewRow, e
 		&i.Email,
 		&i.Name,
 		&i.Avatar,
+		&i.AccessLevel,
+		&i.AccessUntil,
 	)
 	return i, err
 }

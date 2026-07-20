@@ -108,7 +108,10 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 		}
 		return model.Header{}, err
 	}
-	return model.Header{ID: row.ID, Name: row.Name, Avatar: row.Avatar}, nil
+	return model.Header{
+		ID: row.ID, Name: row.Name, Avatar: row.Avatar,
+		AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
+	}, nil
 }
 
 func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*model.User, error) {

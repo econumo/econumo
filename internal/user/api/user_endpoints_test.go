@@ -412,3 +412,20 @@ func TestUpdateLanguage_Unsupported_400(t *testing.T) {
 		t.Fatalf("expected user.language_invalid in body: %s", env.raw)
 	}
 }
+
+func TestGetUserData_CarriesAccessState(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	_, env := h.do(t, http.MethodGet, "/api/v1/user/get-user-data", token, nil)
+	wrapper := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+
+	if wrapper.User.AccessLevel != "full" {
+		t.Fatalf("accessLevel = %q, want full", wrapper.User.AccessLevel)
+	}
+	if wrapper.User.AccessUntil != "" {
+		t.Fatalf("accessUntil = %q, want empty for a user with no expiry", wrapper.User.AccessUntil)
+	}
+}

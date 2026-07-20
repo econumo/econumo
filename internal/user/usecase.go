@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -149,6 +150,11 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 	cid := currencyID
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})
 
+	accessUntil := ""
+	if u.AccessUntil != nil {
+		accessUntil = u.AccessUntil.Format(datetime.Layout)
+	}
+
 	return model.CurrentUserResult{
 		Id:           u.ID.String(),
 		Name:         u.Name,
@@ -157,6 +163,8 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		Options:      options,
 		Currency:     code,
 		ReportPeriod: u.ReportPeriod(),
+		AccessLevel:  string(u.EffectiveAccessLevel(s.clock.Now())),
+		AccessUntil:  accessUntil,
 	}, nil
 }
 

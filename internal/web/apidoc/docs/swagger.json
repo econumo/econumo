@@ -6307,6 +6307,12 @@
         "model.ConnectionResult": {
             "type": "object",
             "properties": {
+                "accessLevel": {
+                    "type": "string"
+                },
+                "accessUntil": {
+                    "type": "string"
+                },
                 "sharedAccounts": {
                     "type": "array",
                     "items": {
@@ -6720,6 +6726,12 @@
         "model.CurrentUserResult": {
             "type": "object",
             "properties": {
+                "accessLevel": {
+                    "type": "string"
+                },
+                "accessUntil": {
+                    "type": "string"
+                },
                 "avatar": {
                     "type": "string"
                 },

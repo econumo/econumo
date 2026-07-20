@@ -208,7 +208,9 @@ type Querier interface {
 	// to the response shape and bypass the domain aggregate. They live separately
 	// from the write queries (users.sql / users_options.sql) to keep the read and
 	// write concerns visibly distinct.
-	// The user's display fields for get-user-data / the login response user object.
+	// The user's display fields for get-user-data / the login response user
+	// object, plus the raw access_level/access_until columns (the service
+	// collapses them against the clock before putting them on the wire).
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	// Access-token queries (access_tokens): login sessions + personal access
 	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
