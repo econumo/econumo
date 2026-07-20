@@ -64,18 +64,7 @@ func (r *AccessTokenRepo) Insert(ctx context.Context, t *model.AccessToken) erro
 	})
 }
 
-func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.AccessToken, error) {
-	row, err := r.q.GetAccessTokenByHash(ctx, r.db(ctx), hash)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errs.NewNotFound("Access token not found")
-		}
-		return nil, err
-	}
-	return accessTokenFromRow(tokenRowFromHashRow(row))
-}
-
-func (r *AccessTokenRepo) GetByHashWithAccess(ctx context.Context, hash string) (*model.AccessToken, model.AccessLevel, *time.Time, error) {
+func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.AccessToken, model.AccessLevel, *time.Time, error) {
 	row, err := r.q.GetAccessTokenByHash(ctx, r.db(ctx), hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

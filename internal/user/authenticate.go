@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Service) Authenticate(ctx context.Context, raw string) (vo.Id, vo.Id, model.AccessLevel, error) {
-	t, level, until, err := s.tokens.GetByHashWithAccess(ctx, HashAccessToken(raw))
+	t, level, until, err := s.tokens.GetByHash(ctx, HashAccessToken(raw))
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			return vo.Id{}, vo.Id{}, "", errs.NewUnauthorized("Invalid access token")
