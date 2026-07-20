@@ -7,6 +7,9 @@
 .env
 /.env.local*
 
+# Go
+.gocache/
+
 # Runtime data (local sqlite db, JWT keypair, logs, cache)
 /var/
 

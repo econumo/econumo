@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EntitySelect } from './EntitySelect'
 
@@ -50,6 +50,16 @@ it('clicking an option selects it', async () => {
   await user.click(combobox())
   await user.click(await screen.findByRole('option', { name: 'Rent' }))
   expect(onChange).toHaveBeenCalledWith('c3')
+})
+
+it('does not cancel touch pointerdown on options so the list can pan', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} />)
+
+  await user.click(combobox())
+  const option = await screen.findByRole('option', { name: 'Food' })
+
+  expect(fireEvent.pointerDown(option, { pointerType: 'touch' })).toBe(true)
 })
 
 it('Escape abandons the search and restores the selected label', async () => {
