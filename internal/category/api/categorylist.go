@@ -25,6 +25,7 @@ var _ = model.GetCategoryListResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderCategoryListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/order-category-list [post]

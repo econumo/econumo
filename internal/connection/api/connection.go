@@ -37,6 +37,7 @@ func (h *Handlers) GetConnectionList(w http.ResponseWriter, r *http.Request) {
 // @Param       request body     model.GenerateInviteRequest false "Generate invite request"
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.GenerateInviteResult}
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/generate-invite [post]
@@ -55,6 +56,7 @@ func (h *Handlers) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 // @Param       request body     model.DeleteInviteRequest false "Delete invite request"
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteInviteResult}
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-invite [post]
@@ -74,6 +76,7 @@ func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.AcceptInviteResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/accept-invite [post]
@@ -94,6 +97,7 @@ func (h *Handlers) AcceptInvite(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteConnectionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/connection/delete-connection [post]
