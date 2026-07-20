@@ -14,6 +14,7 @@ const (
 	CodeTooShort           = "common.too_short"
 	CodeOutOfRange         = "common.out_of_range"
 	CodeTooManyAttempts    = "common.too_many_attempts"
+	CodeReadonlyAccess     = "common.readonly_access"
 	CodeInvalidCredentials = "auth.invalid_credentials"
 
 	// Shared across features (identical English text at more than one call
@@ -88,6 +89,7 @@ var AllCodes = []string{
 	CodeTooShort,
 	CodeOutOfRange,
 	CodeTooManyAttempts,
+	CodeReadonlyAccess,
 	CodeInvalidCredentials,
 
 	CodeOperationLocked,

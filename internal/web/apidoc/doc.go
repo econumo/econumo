@@ -14,6 +14,9 @@
 // @title                      Econumo API
 // @version                    1.0.0
 // @description                Self-hosted personal finance and budgeting API (Go port).
+// @description
+// @description Read-only access: a caller whose access level is "readonly" (trial ended, or no access granted) receives HTTP 402 on EVERY POST endpoint except the account-security allowlist — logout-user, revoke-session, revoke-other-sessions, revoke-personal-token, update-password. GET reads are never restricted.
+// @description The 402 comes from the auth middleware rather than from a handler, so it is not listed per-endpoint below. Envelope: {"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"messageCode":"common.readonly_access","errors":{}}
 // @BasePath                   /
 // @securityDefinitions.apikey Bearer
 // @in                         header

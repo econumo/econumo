@@ -118,11 +118,7 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 	cid := currencyID
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})
 
-	level := model.EffectiveAccessLevel(model.AccessLevel(u.AccessLevel), u.AccessUntil, s.clock.Now())
-	accessUntil := ""
-	if u.AccessUntil != nil {
-		accessUntil = u.AccessUntil.Format(datetime.Layout)
-	}
+	level := model.EffectiveAccessLevel(u.AccessLevel, u.AccessUntil, s.clock.Now())
 
 	return model.CurrentUserResult{
 		Id:           u.ID,
@@ -133,6 +129,6 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 		Currency:     currencyCode,
 		ReportPeriod: reportPeriod,
 		AccessLevel:  string(level),
-		AccessUntil:  accessUntil,
+		AccessUntil:  datetime.FormatOrEmpty(u.AccessUntil),
 	}, nil
 }

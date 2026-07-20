@@ -44,7 +44,7 @@ func WriteError(w http.ResponseWriter, err error, dev bool) {
 		return
 	}
 	if v, ok := errs.AsPaymentRequired(err); ok {
-		errCoded(w, v.Error(), http.StatusPaymentRequired, nil, nil, "", nil, http.StatusPaymentRequired)
+		errCoded(w, v.Error(), http.StatusPaymentRequired, nil, nil, errs.CodeReadonlyAccess, nil, http.StatusPaymentRequired)
 		return
 	}
 	if v, ok := errs.AsTooManyRequests(err); ok {

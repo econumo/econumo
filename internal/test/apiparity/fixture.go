@@ -5,6 +5,7 @@ package apiparity
 
 import (
 	"testing"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -17,6 +18,16 @@ const (
 	OwnerEmail = "owner@example.test"
 	GuestID    = "22222222-2222-2222-2222-222222222222"
 	GuestEmail = "guest@example.test"
+	// A third user whose trial has lapsed: access_level "full" but access_until
+	// in the past, which EffectiveAccessLevel collapses to read-only. Stored as
+	// full-with-expiry rather than a bare "readonly" so the access_until column
+	// itself round-trips through the API on both engines (SQLite DATETIME vs
+	// PostgreSQL TIMESTAMP) — the parity property the 402 scenario exists to pin.
+	//
+	// NOT 3333…: enginecompare's connection-invite test seeds its own third user
+	// at that id on top of this fixture, and the two would collide on users.id.
+	ReadonlyID    = "88888888-8888-8888-8888-888888888888"
+	ReadonlyEmail = "readonly@example.test"
 
 	USD = "dffc2a06-6f29-4704-8575-31709adee926" // seeded by the baseline migration
 
@@ -46,18 +57,27 @@ const (
 	// Raw seeded bearer tokens (43-char payloads: "owner-seed-token-" is 17
 	// chars + 26 zeros — deliberately NOT random so both engines seed identical
 	// rows). Their sha256 goes into access_tokens.
-	OwnerToken = "eco_ses_owner-seed-token-00000000000000000000000000"
-	GuestToken = "eco_ses_guest-seed-token-00000000000000000000000000"
+	OwnerToken    = "eco_ses_owner-seed-token-00000000000000000000000000"
+	GuestToken    = "eco_ses_guest-seed-token-00000000000000000000000000"
+	ReadonlyToken = "eco_ses_readonly-seed-token-00000000000000000000000"
 
 	// Seeded session row ids (fixed, non-v7 so they survive normalization —
 	// scenarios reference them, e.g. err:revoke-session-foreign).
 	OwnerSessionID = "55555555-5555-5555-5555-555555555555"
 	GuestSessionID = "66666666-6666-6666-6666-666666666666"
+
+	ReadonlySessionID = "77777777-7777-7777-7777-777777777777"
 )
+
+// ReadonlyAccessUntil is the lapsed trial expiry seeded on the read-only user.
+// A literal past instant (not clock-derived) so both engines persist the same
+// bytes and the value the API echoes back is stable across runs.
+var ReadonlyAccessUntil = time.Date(2020, 1, 15, 10, 30, 0, 0, time.UTC)
 
 // Seed seeds an identical, cross-module fixture into the given engine via the
 // typed fixture builder. It seeds: two connected users (with hashed password +
-// encrypted email so login works), their default options, folders, an owned
+// encrypted email so login works) plus an isolated lapsed-trial user, their
+// default options, folders, an owned
 // account and a guest-owned account shared to the owner, categories, a tag, a
 // payee, two transactions, and a budget — so every read endpoint returns
 // non-empty data on both engines. Fixed ids are used (the scenarios reference
@@ -73,14 +93,27 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.User(fixture.User{ID: GuestID, Email: GuestEmail, Name: "User " + GuestID[:4], Password: SeedPassword})
 	f.DefaultOptions(GuestID)
 
-	// Live sessions for both users: the harness presents OwnerToken/GuestToken
-	// as bearer tokens, which resolve to these rows.
+	// Lapsed-trial user: full access that ran out in the past, so every request
+	// it makes is evaluated as read-only. Deliberately NOT connected to the
+	// owner/guest and given no entities, so it stays invisible to every other
+	// scenario's responses.
+	readonlyUntil := ReadonlyAccessUntil
+	f.User(fixture.User{ID: ReadonlyID, Email: ReadonlyEmail, Name: "User " + ReadonlyID[:4], Password: SeedPassword,
+		AccessLevel: string(model.AccessLevelFull), AccessUntil: &readonlyUntil})
+	f.DefaultOptions(ReadonlyID)
+
+	// Live sessions for each seeded user: the harness presents the matching
+	// Owner/Guest/Readonly token as a bearer token, resolving to these rows.
 	ownerExp := ClockTime.Add(appuser.SessionTTL)
 	guestExp := ownerExp
 	f.AccessToken(fixture.AccessToken{ID: OwnerSessionID, UserID: OwnerID, Kind: model.TokenKindSession,
 		TokenHash: appuser.HashAccessToken(OwnerToken), UserAgent: "apiparity", ExpiresAt: &ownerExp})
 	f.AccessToken(fixture.AccessToken{ID: GuestSessionID, UserID: GuestID, Kind: model.TokenKindSession,
 		TokenHash: appuser.HashAccessToken(GuestToken), UserAgent: "apiparity", ExpiresAt: &guestExp})
+	// The session itself is live; only the USER's access has lapsed, so the
+	// scenario exercises the 402 path rather than a 401.
+	f.AccessToken(fixture.AccessToken{ID: ReadonlySessionID, UserID: ReadonlyID, Kind: model.TokenKindSession,
+		TokenHash: appuser.HashAccessToken(ReadonlyToken), UserAgent: "apiparity", ExpiresAt: &ownerExp})
 	f.Connect(OwnerID, GuestID)
 
 	// Folders.

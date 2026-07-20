@@ -162,7 +162,9 @@ func TestWriteError_PaymentRequired(t *testing.T) {
 		t.Fatalf("HTTP status = %d, want 402", rec.Code)
 	}
 	body := strings.TrimSpace(rec.Body.String())
-	want := `{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}`
+	// messageCode is additive (omitempty): the frozen message/code/errors trio
+	// is unchanged, and the code lets the SPA render a translated string.
+	want := `{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{},"messageCode":"common.readonly_access"}`
 	if body != want {
 		t.Fatalf("body:\n got %s\nwant %s", body, want)
 	}
