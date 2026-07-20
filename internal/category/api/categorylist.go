@@ -25,11 +25,12 @@ var _ = model.GetCategoryListResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderCategoryListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/order-category-list [post]
 func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.OrderCategoryList)
+	endpoint.Handle(w, r, h.svc.OrderCategoryList)
 }
 
 // GetCategoryList handles GET /api/v1/category/get-category-list (auth). The
@@ -46,5 +47,5 @@ func (h *Handlers) OrderCategoryList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/category/get-category-list [get]
 func (h *Handlers) GetCategoryList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCategoryList)
+	endpoint.HandleNoBody(w, r, h.read.GetCategoryList)
 }

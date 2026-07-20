@@ -118,12 +118,12 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 		handoff.NewSigner("0123456789abcdef0123456789abcdef"),
 		clk,
 	)
-	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk, billing)
+	handlers := handleruser.NewHandlers(svc, readSvc, clk, billing)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleruser.RegisterAPI(handlers, svc, cfg.IsDev()),
+		RegisterAPI: handleruser.RegisterAPI(handlers, svc),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

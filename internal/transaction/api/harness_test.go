@@ -118,8 +118,8 @@ func newHarness(t *testing.T) *harness {
 		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	handlers := handlertransaction.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlertransaction.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
+	handlers := handlertransaction.NewHandlers(svc)
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlertransaction.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db}

@@ -10,9 +10,9 @@ import (
 // RegisterAPI mounts the 21 user endpoints. The public group (login/register/
 // remind/reset) is mounted bare; auth is applied per-handler so the public
 // group stays unauthenticated.
-func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		authMw := middleware.Auth(authn, dev)
+		authMw := middleware.Auth(authn)
 		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		// Public group (no auth).

@@ -95,7 +95,7 @@ func TestRecover_PanicYields500Exception(t *testing.T) {
 	panicking := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("boom")
 	})
-	h := Recover(false)(panicking)
+	h := Recover(panicking)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
 
@@ -112,33 +112,15 @@ func TestRecover_PanicYields500Exception(t *testing.T) {
 	if env["exceptionType"] != "panic" {
 		t.Fatalf("exceptionType=%v want panic", env["exceptionType"])
 	}
-	// Non-dev: no stackTrace key.
+	// The stack goes to the logs only, never the response body.
 	if _, ok := env["stackTrace"]; ok {
-		t.Fatalf("stackTrace present in non-dev mode: %s", rec.Body.String())
-	}
-}
-
-func TestRecover_DevIncludesStackTrace(t *testing.T) {
-	panicking := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic("boom")
-	})
-	h := Recover(true)(panicking)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
-
-	var env map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
-		t.Fatalf("decode body: %v", err)
-	}
-	trace, ok := env["stackTrace"].(string)
-	if !ok || trace == "" {
-		t.Fatalf("dev mode must include a non-empty stackTrace; body: %s", rec.Body.String())
+		t.Fatalf("stackTrace present in 500 body: %s", rec.Body.String())
 	}
 }
 
 func TestRecover_NoPanicPassesThrough(t *testing.T) {
 	var ran bool
-	h := Recover(false)(okHandler(&ran))
+	h := Recover(okHandler(&ran))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if !ran || rec.Code != http.StatusOK {
@@ -309,7 +291,7 @@ func authMessage(t *testing.T, rec *httptest.ResponseRecorder) string {
 
 func TestAuth_MissingHeader_401(t *testing.T) {
 	var ran bool
-	h := Auth(stubAuthn{}, false)(okHandler(&ran))
+	h := Auth(stubAuthn{})(okHandler(&ran))
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/x", nil))
 	if rec.Code != http.StatusUnauthorized {
@@ -324,7 +306,7 @@ func TestAuth_MissingHeader_401(t *testing.T) {
 }
 
 func TestAuth_NonBearerScheme_401(t *testing.T) {
-	h := Auth(stubAuthn{}, false)(okHandler(nil))
+	h := Auth(stubAuthn{})(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	req.Header.Set("Authorization", "Basic abc123")
 	rec := httptest.NewRecorder()
@@ -336,7 +318,7 @@ func TestAuth_NonBearerScheme_401(t *testing.T) {
 
 func TestAuth_AuthenticateUnauthorized_401(t *testing.T) {
 	var ran bool
-	h := Auth(stubAuthn{err: errs.NewUnauthorized("Invalid access token")}, false)(okHandler(&ran))
+	h := Auth(stubAuthn{err: errs.NewUnauthorized("Invalid access token")})(okHandler(&ran))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	req.Header.Set("Authorization", "Bearer eco_ses_dead")
 	rec := httptest.NewRecorder()
@@ -355,7 +337,7 @@ func TestAuth_AuthenticateUnauthorized_401(t *testing.T) {
 // A non-Unauthorized authenticator error (e.g. the DB being down) must not
 // leak internals: it maps to the generic 401 message.
 func TestAuth_InternalError_Generic401(t *testing.T) {
-	h := Auth(stubAuthn{err: errors.New("db is down: secret dsn")}, false)(okHandler(nil))
+	h := Auth(stubAuthn{err: errors.New("db is down: secret dsn")})(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	req.Header.Set("Authorization", "Bearer eco_ses_x")
 	rec := httptest.NewRecorder()
@@ -371,7 +353,7 @@ func TestAuth_InternalError_Generic401(t *testing.T) {
 func TestAuth_Valid_PutsIdsInContext(t *testing.T) {
 	var gotUser, gotToken vo.Id
 	var userPresent, tokenPresent bool
-	h := Auth(stubAuthn{userID: authTestUserID, tokenID: authTestTokenID}, false)(
+	h := Auth(stubAuthn{userID: authTestUserID, tokenID: authTestTokenID})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotUser, userPresent = UserIDFromCtx(r.Context())
 			gotToken, tokenPresent = TokenIDFromCtx(r.Context())
@@ -394,8 +376,46 @@ func TestAuth_Valid_PutsIdsInContext(t *testing.T) {
 	}
 }
 
+// stubAuthnWithLanguage additionally implements StoredLanguageResolver.
+type stubAuthnWithLanguage struct {
+	stubAuthn
+	lang string
+}
+
+func (s stubAuthnWithLanguage) StoredLanguage(context.Context, vo.Id) string { return s.lang }
+
+func TestAuth_StoredLanguageFallback(t *testing.T) {
+	langSeen := func(t *testing.T, authn TokenAuthenticator, ctx context.Context) string {
+		t.Helper()
+		var got string
+		h := Auth(authn)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			got = reqctx.Language(r.Context())
+		}))
+		req := httptest.NewRequest(http.MethodGet, "/x", nil).WithContext(ctx)
+		req.Header.Set("Authorization", "Bearer the.token")
+		h.ServeHTTP(httptest.NewRecorder(), req)
+		return got
+	}
+	authn := stubAuthnWithLanguage{stubAuthn{userID: authTestUserID, tokenID: authTestTokenID}, "ru"}
+
+	if got := langSeen(t, authn, context.Background()); got != "ru" {
+		t.Fatalf("no header: language=%q want stored ru", got)
+	}
+	if got := langSeen(t, authn, reqctx.WithLanguage(context.Background(), "en")); got != "en" {
+		t.Fatalf("explicit header must win: language=%q want en", got)
+	}
+	authn.lang = ""
+	if got := langSeen(t, authn, context.Background()); got != "en" {
+		t.Fatalf("no stored language: language=%q want default en", got)
+	}
+	// A resolver-less authenticator keeps the default without panicking.
+	if got := langSeen(t, stubAuthn{userID: authTestUserID}, context.Background()); got != "en" {
+		t.Fatalf("resolver-less authn: language=%q want en", got)
+	}
+}
+
 func TestAuth_EmptyBearerToken_401(t *testing.T) {
-	h := Auth(stubAuthn{}, false)(okHandler(nil))
+	h := Auth(stubAuthn{})(okHandler(nil))
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
 	req.Header.Set("Authorization", "Bearer    ")
 	rec := httptest.NewRecorder()
@@ -501,7 +521,7 @@ func fullStub() stubAuthn {
 func authRequest(t *testing.T, method, path string, authn stubAuthn) (*httptest.ResponseRecorder, bool) {
 	t.Helper()
 	ran := false
-	h := Auth(authn, false)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := Auth(authn)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ran = true
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -598,5 +618,35 @@ func TestChain_OuterToInnerOrder(t *testing.T) {
 		if order[i] != want[i] {
 			t.Fatalf("order=%v want %v", order, want)
 		}
+	}
+}
+
+func TestTimezone_MarksExplicit(t *testing.T) {
+	cases := []struct {
+		name, header string
+		wantExplicit bool
+		wantLoc      string
+	}{
+		{"valid header", "Europe/Amsterdam", true, "Europe/Amsterdam"},
+		{"no header", "", false, "UTC"},
+		{"garbage header", "Not/AZone", false, "UTC"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotExplicit bool
+			var gotLoc string
+			h := Timezone(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotExplicit = reqctx.IsLocationExplicit(r.Context())
+				gotLoc = reqctx.Location(r.Context()).String()
+			}))
+			req := httptest.NewRequest(http.MethodGet, "/x", nil)
+			if tc.header != "" {
+				req.Header.Set("X-Timezone", tc.header)
+			}
+			h.ServeHTTP(httptest.NewRecorder(), req)
+			if gotExplicit != tc.wantExplicit || gotLoc != tc.wantLoc {
+				t.Fatalf("explicit=%v loc=%s, want %v/%s", gotExplicit, gotLoc, tc.wantExplicit, tc.wantLoc)
+			}
+		})
 	}
 }

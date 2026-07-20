@@ -36,12 +36,12 @@ var _ = apidoc.JsonResponseError{}
 func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var req model.LoginRequest
 	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	res, err := h.svc.Login(r.Context(), req, r.Header.Get("User-Agent"), h.now.Now())
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	// Record the user on this public route's operation log line (login has no
@@ -71,7 +71,7 @@ func (h *Handlers) LoginUser(w http.ResponseWriter, r *http.Request) {
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/register-user [post]
 func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandlePublic(w, r, h.dev, h.svc.Register)
+	endpoint.HandlePublic(w, r, h.svc.Register)
 }
 
 // LogoutUser handles POST /api/v1/user/logout-user (auth). It revokes the
@@ -88,7 +88,7 @@ func (h *Handlers) RegisterUser(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/user/logout-user [post]
 func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, func(ctx context.Context, _ vo.Id) (*model.LogoutResult, error) {
+	endpoint.HandleNoBody(w, r, func(ctx context.Context, _ vo.Id) (*model.LogoutResult, error) {
 		tokenID, _ := middleware.TokenIDFromCtx(ctx)
 		return h.svc.Logout(ctx, tokenID)
 	})
@@ -111,7 +111,7 @@ func (h *Handlers) LogoutUser(w http.ResponseWriter, r *http.Request) {
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/remind-password [post]
 func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandlePublic(w, r, h.dev, h.svc.RemindPassword)
+	endpoint.HandlePublic(w, r, h.svc.RemindPassword)
 }
 
 // ResetPassword handles POST /api/v1/user/reset-password (public). It validates
@@ -130,5 +130,5 @@ func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/reset-password [post]
 func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandlePublic(w, r, h.dev, h.svc.ResetPassword)
+	endpoint.HandlePublic(w, r, h.svc.ResetPassword)
 }

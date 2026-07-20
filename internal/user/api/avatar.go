@@ -27,9 +27,10 @@ var _ = model.UpdateAvatarResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateAvatarResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/user/update-avatar [post]
 func (h *Handlers) UpdateAvatar(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateAvatar)
+	endpoint.Handle(w, r, h.svc.UpdateAvatar)
 }

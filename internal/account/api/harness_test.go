@@ -78,12 +78,12 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	accessRepo := accountrepo.NewAccessRepo("sqlite", txm)
 	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
 	svc := appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, connections, txm, opGuard, clk)
-	handlers := handleraccount.NewHandlers(svc, cfg.IsDev())
+	handlers := handleraccount.NewHandlers(svc)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleraccount.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
+		RegisterAPI: handleraccount.RegisterAPI(handlers, authstub.Authenticator{}),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

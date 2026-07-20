@@ -193,6 +193,7 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
+	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
@@ -204,6 +205,7 @@ type Querier interface {
 	// the secondary key makes SQLite and PostgreSQL agree byte-for-byte.
 	GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error)
 	GetUserPasswordRequestByUserAndCode(ctx context.Context, arg GetUserPasswordRequestByUserAndCodeParams) (UsersPasswordRequest, error)
+	GetUserTimezone(ctx context.Context, id string) (string, error)
 	// Read-model queries for the user module (CQRS read side). These are tailored
 	// to the response shape and bypass the domain aggregate. They live separately
 	// from the write queries (users.sql / users_options.sql) to keep the read and
@@ -316,8 +318,8 @@ type Querier interface {
 	// The owner's tags ordered by position; used by order-tag-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
-	// Transactions on an account (as source or recipient), newest first. Mirrors
-	// TransactionRepository::findByAccountId (orderBy spentAt DESC).
+	// Transactions on an account (as source or recipient), newest first; id is the
+	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
@@ -330,6 +332,7 @@ type Querier interface {
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
+	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error

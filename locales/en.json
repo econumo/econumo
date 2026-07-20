@@ -1126,6 +1126,7 @@
       "too_short": "This value is too short.",
       "out_of_range": "This value is out of range.",
       "too_many_attempts": "Too many attempts. Try again later.",
+      "readonly_access": "Read-only access. Write operations are disabled.",
       "operation_locked": "Operation is locked",
       "invalid_datetime_format": "Invalid date format, expected Y-m-d H:i:s",
       "invalid_datetime": "This value is not a valid datetime.",

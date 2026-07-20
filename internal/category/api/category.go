@@ -25,11 +25,12 @@ var _ = apidoc.JsonResponseError{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/create-category [post]
 func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.CreateCategoryRequest) (*model.CreateCategoryResult, error) {
 		reqctx.AddLogAttr(ctx, "category_id", req.Id)
 		return h.svc.CreateCategory(ctx, userID, req)
 	})
@@ -46,11 +47,12 @@ func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/update-category [post]
 func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.UpdateCategoryRequest) (*model.UpdateCategoryResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.UpdateCategoryRequest) (*model.UpdateCategoryResult, error) {
 		reqctx.AddLogAttr(ctx, "category_id", req.Id)
 		return h.svc.UpdateCategory(ctx, userID, req)
 	})
@@ -67,11 +69,12 @@ func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.ArchiveCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/archive-category [post]
 func (h *Handlers) ArchiveCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ArchiveCategory)
+	endpoint.Handle(w, r, h.svc.ArchiveCategory)
 }
 
 // UnarchiveCategory handles POST /api/v1/category/unarchive-category (auth).
@@ -85,11 +88,12 @@ func (h *Handlers) ArchiveCategory(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UnarchiveCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/unarchive-category [post]
 func (h *Handlers) UnarchiveCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UnarchiveCategory)
+	endpoint.Handle(w, r, h.svc.UnarchiveCategory)
 }
 
 // DeleteCategory handles POST /api/v1/category/delete-category (auth).
@@ -103,11 +107,12 @@ func (h *Handlers) UnarchiveCategory(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteCategoryResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/category/delete-category [post]
 func (h *Handlers) DeleteCategory(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.DeleteCategoryRequest) (*model.DeleteCategoryResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.DeleteCategoryRequest) (*model.DeleteCategoryResult, error) {
 		reqctx.AddLogAttr(ctx, "category_id", req.Id)
 		return h.svc.DeleteCategory(ctx, userID, req)
 	})

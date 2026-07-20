@@ -30,9 +30,8 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
-	// UpdateLanguage persists the user's last selected UI language. Write-only:
-	// nothing reads the column yet (future background email rendering). Kept out
-	// of Save/UpsertUser so profile mutations cannot clobber it.
+	// UpdateLanguage persists the user's last selected UI language. Kept out of
+	// Save/UpsertUser so profile mutations cannot clobber it.
 	UpdateLanguage(ctx context.Context, id vo.Id, language string) error
 
 	// ListIDs returns all user ids (for the optional connect-users flow on
@@ -42,6 +41,17 @@ type Repository interface {
 	// GetOptions loads just the option rows for a user (used by get-option-list,
 	// which does not need the full aggregate).
 	GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error)
+
+	// GetTimezone loads the caller-observed IANA timezone (empty string if never
+	// set). Missing user -> *errs.NotFoundError.
+	GetTimezone(ctx context.Context, id vo.Id) (string, error)
+
+	// UpdateTimezone persists the caller-observed IANA timezone.
+	UpdateTimezone(ctx context.Context, id vo.Id, tz string) error
+
+	// GetLanguage loads the user's last selected UI language (empty string if
+	// never set). Missing user -> *errs.NotFoundError.
+	GetLanguage(ctx context.Context, id vo.Id) (string, error)
 }
 
 // AccessTokens persists opaque bearer credentials (sessions + PATs). Liveness

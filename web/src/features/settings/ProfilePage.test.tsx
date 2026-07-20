@@ -136,7 +136,6 @@ it('surfaces server field errors under the name input', async () => {
           message: 'Form validation error',
           code: 400,
           errors: { name: ['This value is too long.'] },
-          errorCodes: { name: [{ code: 'common.too_long' }] },
         },
         { status: 400 },
       ),

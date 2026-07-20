@@ -28,9 +28,10 @@ var _ = model.UpdateActiveBudgetResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateActiveBudgetResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/user/update-budget [post]
 func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateBudget)
+	endpoint.Handle(w, r, h.svc.UpdateBudget)
 }

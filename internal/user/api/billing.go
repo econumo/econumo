@@ -27,7 +27,7 @@ var _ = model.CreateBillingLinkResult{}
 // @Security    Bearer
 // @Router      /api/v1/user/create-billing-link [post]
 func (h *Handlers) CreateBillingLink(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.billing.CreateBillingLink)
+	endpoint.Handle(w, r, h.billing.CreateBillingLink)
 }
 
 var _ = apidoc.JsonResponseError{}

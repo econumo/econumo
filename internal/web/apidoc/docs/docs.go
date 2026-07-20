@@ -75,6 +75,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -142,6 +148,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -213,6 +225,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -282,6 +300,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -349,6 +373,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -518,6 +548,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -585,6 +621,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -656,6 +698,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -723,6 +771,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -794,6 +848,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -861,6 +921,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -932,6 +998,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -999,6 +1071,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -1070,6 +1148,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1125,6 +1209,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -1174,6 +1264,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -1238,6 +1334,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1293,6 +1395,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -1342,6 +1450,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -1393,6 +1507,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -1442,6 +1562,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -1493,6 +1619,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -1543,6 +1675,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -1592,6 +1730,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -1800,6 +1944,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -1849,6 +1999,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -1900,6 +2056,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -1949,6 +2111,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -2000,6 +2168,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -2050,6 +2224,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -2099,6 +2279,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -2156,6 +2342,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -2206,6 +2398,12 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
                     }
                 }
             }
@@ -2255,6 +2453,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     }
                 }
@@ -2318,6 +2522,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -2389,6 +2599,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2456,6 +2672,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -2576,6 +2798,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2643,6 +2871,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -2714,6 +2948,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2781,6 +3021,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -2852,6 +3098,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2914,6 +3166,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2974,6 +3232,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -3192,6 +3456,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3261,6 +3531,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3328,6 +3604,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -3448,6 +3730,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3517,6 +3805,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3584,6 +3878,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -3704,6 +4004,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3773,6 +4079,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -3840,6 +4152,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -3960,6 +4278,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4027,6 +4351,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -4098,6 +4428,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4167,6 +4503,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4234,6 +4576,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -4466,6 +4814,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4535,6 +4889,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -4582,6 +4942,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -4720,6 +5086,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -5497,6 +5869,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5564,6 +5942,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -5635,6 +6019,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5704,6 +6094,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5771,6 +6167,12 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {
@@ -5911,6 +6313,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5962,7 +6370,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Internal Server Error"
                 },
-                "stackTrace": {},
                 "success": {
                     "type": "boolean",
                     "example": false
@@ -8387,7 +8794,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Econumo API",
-	Description:      "Self-hosted personal finance and budgeting API (Go port).",
+	Description:      "Self-hosted personal finance and budgeting API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

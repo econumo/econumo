@@ -83,12 +83,12 @@ func newHarness(t *testing.T) *harness {
 	accountAccess := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
 	svc := appcategory.NewService(repo, txm, repo, clk, readRepo, accountAccess)
 	readSvc := appcategory.NewReadService(readRepo)
-	handlers := handlercategory.NewHandlers(svc, readSvc, cfg.IsDev())
+	handlers := handlercategory.NewHandlers(svc, readSvc)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handlercategory.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
+		RegisterAPI: handlercategory.RegisterAPI(handlers, authstub.Authenticator{}),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

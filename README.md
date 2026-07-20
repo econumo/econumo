@@ -97,14 +97,9 @@ walkthrough (backup, new image, `.env` mapping, and the gotchas).
 
 ### Next steps
 
-- [How to configure multi-currency support](https://econumo.com/docs/self-hosting/multi-currency/) (Econumo comes preloaded with **USD** only).
-- [How to configure backups](https://econumo.com/docs/self-hosting/backups/).
-- [Useful CLI commands](https://econumo.com/docs/self-hosting/cli-commands/).
-- [How to debug Econumo](https://econumo.com/docs/self-hosting/debug/).
-- [Econumo API](https://econumo.com/docs/api/).
-- [User Guide](https://econumo.com/docs/user-guide/).
-
-For more information please see our [documentation](https://econumo.com/docs/).
+Everything else — self-hosting (multi-currency, backups, CLI commands,
+debugging), the API, MCP, and the user guide — lives in the
+**[Econumo documentation](https://econumo.com/docs)**.
 
 ### Contact
 

@@ -54,15 +54,11 @@ func (s *Service) GetConnectionList(ctx context.Context, userID vo.Id) (*model.G
 		if oerr != nil {
 			return nil, oerr
 		}
-		accessUntil := ""
-		if owner.AccessUntil != nil {
-			accessUntil = owner.AccessUntil.Format(datetime.Layout)
-		}
 		conn := model.ConnectionResult{
 			User:           model.UserResult{Id: owner.ID, Avatar: owner.Avatar, Name: owner.Name},
 			SharedAccounts: []model.AccountAccessResult{},
 			AccessLevel:    string(model.EffectiveAccessLevel(owner.AccessLevel, owner.AccessUntil, s.clock.Now())),
-			AccessUntil:    accessUntil,
+			AccessUntil:    datetime.FormatOrEmpty(owner.AccessUntil),
 		}
 
 		// Dedup by account id, preserving discovery order (received first, then

@@ -96,7 +96,9 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │                             split theirs into role interfaces + a composite for wiring
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
-│   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   │   ├── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   │   └── mcp/ ...................  MCP edge (all nine features have one): tool registration, mirroring
+│   │                                 api/ (see MCP endpoint below; prompts live in internal/web/mcp)
 │   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
 │   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
 │   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
@@ -173,6 +175,19 @@ special: CSV export, multipart import, query-param reads, and login's raw
 `internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
 in `internal/model/<feature>_dto.go`.
 
+### MCP endpoint
+
+`/mcp` is a second, independent HTTP edge — mounted on the root mux next to
+`/health`, outside `/api`, so the REST `apiparity` scanner never sees it (its
+own golden suite, `internal/test/mcpparity/`, owns coverage instead). It's the
+official Go SDK's Streamable HTTP handler in **stateless, JSON-response**
+mode (no SSE, no server-held sessions — every tool call is a sub-second DB
+round trip). Auth is the same bearer-token middleware as REST (PATs are the
+intended credential for MCP clients). Shared edge infra lives in
+`internal/web/mcp/`; each feature that exposes MCP surface registers its own
+tools/prompts from an `internal/<feature>/mcp/` package, composed at
+`server.BuildAPI` exactly like `RegisterAPI`.
+
 ### Frontend architecture (React 19 + Vite)
 
 Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
@@ -209,9 +224,9 @@ above), and `emails` (backend-rendered mail). `{var}` placeholders use the same
 (`web/src/app/i18n.ts`), `getLocaleOptions()` (`web/src/lib/config.ts`),
 and the `languages` list in `internal/test/i18ntest`.
 - **Backend runtime**: `internal/infra/i18n` (`i18n.T(lang, key, params)`) translates
-  server-rendered text — currently just the password-reset email; API error
-  `message`/`errors` strings stay frozen English, never translated here (see
-  above). The `Language` middleware resolves `Accept-Language` to a supported
+  server-rendered text — the password-reset email, and the error `message`/`errors`
+  strings on both edges (REST envelope and MCP tool errors) for errors that carry a
+  catalogue code. The `Language` middleware resolves `Accept-Language` to a supported
   two-letter tag and stashes it in `reqctx`; the middleware chain is
   `requestid -> accesslog -> recover -> cors -> timezone -> language -> [auth]`
   (`internal/web/middleware/middleware.go`).
@@ -219,16 +234,18 @@ and the `languages` list in `internal/test/i18ntest`.
   choice persists in `localStorage` (`locale()` in `web/src/lib/config.ts`) and
   is applied via `LanguageSelector` (`web/src/components/LanguageSelector.tsx`,
   surfaced on auth pages and in Settings). `apiErrorMessage`
-  (`web/src/lib/apiError.ts`) renders a failed response by preferring
-  `messageCode`/`errorCodes` (translated through the catalogue) and falling
-  back to the envelope's frozen `message` for codes the SPA doesn't recognize.
+  (`web/src/lib/apiError.ts`) renders a failed response from the envelope's
+  server-translated strings: the first field error when present (the top-level
+  message is then the generic form label), else `message`; `apiFieldErrors`
+  serves inline per-field form errors.
   `pluralPick` (`web/src/lib/plural.ts`) reads pipe-delimited catalogue values
   (`"one | many"`, Russian `"one | few | many"`) and picks the variant via
   `Intl.PluralRules` — i18next's own plural suffixes are not used, so all
   plural strings are authored as a single pipe-joined value. The selected
   language is also persisted server-side (`users.language`, default `en` —
-  written by `update-language` and on login from `Accept-Language`; write-only,
-  for future background email rendering).
+  written by `update-language` and on login from `Accept-Language`; read back
+  as the stored-language fallback for header-less authenticated requests on
+  both edges, and reserved for future background email rendering).
 - **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
   key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
   frontend-source `t()`-call key coverage against the catalogue, two-way
@@ -265,9 +282,16 @@ Tests live alongside the Go code:
 - `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
   `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
   (the bearer token IS the user id string).
+- `internal/test/mcpparity/` — the MCP counterpart to `apiparity`: a golden-file JSON-RPC
+  scenario catalogue (`initialize`, `tools/list`, `prompts/list`, each tool/prompt)
+  replayed against the real `server.BuildAPI` handler over `/mcp`,
+  normalized the same way as the REST goldens. Runs in the smoke tier and, under
+  `-tags enginecompare`, against both engines. Regenerate goldens with
+  `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
+  as `apiparity`.
 
 Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
-default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
+default 78). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
@@ -321,7 +345,6 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   separately-hosted SPAs. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
   (server truth); `ECONUMO_API_URL` and `ECONUMO_ALLOW_CUSTOM_API` merge `API_URL` /
   `ALLOW_CUSTOM_API` only when set (unset = keep the dist value).
-- `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
   each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
@@ -352,6 +375,23 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   > (`SQLITE_BUSY_TIMEOUT`, `OPEN_EXCHANGE_RATES_TOKEN`).
 - `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
   (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
+  A `users.timezone` column opportunistically persists it: a decorator around
+  `middleware.TokenAuthenticator` (wired once in `server.BuildAPI`) writes the header's
+  value on every authenticated request where it differs from the last value seen for that
+  user (throttled by an in-memory per-user cache, same pattern as the token
+  `last_used_at` throttle). MCP clients send no header, so `/mcp` (only) falls back to the
+  stored value when none is present; the header always wins when it is present, on both
+  edges — REST behavior is unchanged.
+- Error `message`/`errors` text is rendered in the caller's language on BOTH edges:
+  `httpx.WriteError` (REST) and `internal/web/mcp/helpers.go` (`MapErr`) resolve
+  `reqctx.Language(ctx)` and render any coded message/field message via
+  `i18n.T(lang, "errors."+code, params)`; code-less errors keep their literal English.
+  The language follows the same fallback pattern as the timezone above, but on both
+  edges: explicit `Accept-Language` header → stored `users.language` → `en`. The stored
+  fallback runs inside the auth middleware via the optional
+  `middleware.StoredLanguageResolver` capability, implemented by the server's
+  authenticator decorator (`StoredLanguage`, `internal/server/glue_language.go`;
+  `reqctx.IsLanguageExplicit` mirrors `IsLocationExplicit`).
 
 ### Logging
 
@@ -464,18 +504,19 @@ data unreadable. Most are also asserted by the test suite.
 ### Response envelope (`internal/web/httpx/envelope.go`)
 - Success (200): `{"success": true, "message": "", "data": <payload>}`
 - Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
-- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `ECONUMO_DEBUG=true`.
+- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; error detail (message, stack trace) goes to the server logs only, never the response body.
 - Not implemented (501): `{"success": false, "message": <string>, "code": 0, "errors": []}` — here `errors` is an array `[]` (the lone exception to the object rule).
 - Rate-limited (429): `{"success": false, "message": "Too many attempts. Try again later.", "code": 429, "errors": {}}` — same shape as the handled-error envelope.
 - JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
-- **Additive i18n codes** (handled-error envelope only): `errorCodes` (field → `[{code, params}]`,
-  the per-field sibling of `errors`) and `messageCode` + `messageParams` (the fieldless sibling of
-  `message`) — all three `omitempty`, so an endpoint that hasn't been given codes yet serializes
-  exactly as before (goldens stay byte-identical). `code` is a catalogue key under `errors.*` in
-  `locales/{en,ru}.json` (registry: `internal/shared/errs/codes.go`, `AllCodes`); `params` feeds
-  `{var}` placeholder interpolation. The frozen `errors`/`message` strings are unchanged — always
-  English, never translated server-side. Clients render the localized text with the code when
-  present and fall back to the frozen string otherwise (see `apiErrorMessage` below).
+- **Server-rendered error language** (handled-error envelope only): `message` and the per-field
+  `errors` strings are rendered server-side in the caller's language when the underlying error
+  carries a catalogue code (`errors.*` keys in `locales/{en,ru}.json`; registry:
+  `internal/shared/errs/codes.go`, `AllCodes`); errors without a code keep their literal English
+  text. The language is `reqctx.Language`: `Accept-Language` (the SPA sends its selected locale
+  on every request) → the authenticated user's stored `users.language` (resolved in the auth
+  middleware via `middleware.StoredLanguageResolver`) → `en`. The `en` catalogue text matches the
+  historical strings, so English callers see the same wire bytes as before; the envelope carries
+  no separate code/translation fields.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
@@ -495,7 +536,7 @@ data unreadable. Most are also asserted by the test suite.
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
 - `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
-- Validation strings are exact and asserted by clients/tests, e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`).
+- Validation strings are exact per language and asserted by tests in `en` (the default with no `Accept-Language` and no stored preference), e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`); coded errors render from the `errors.*` catalogue in the caller's language (see the envelope section).
 - Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
 - Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're FK targets and held by clients).
 - `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material

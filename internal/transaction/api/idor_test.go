@@ -56,7 +56,7 @@ func TestUpdateTransaction_ForeignTransaction_DeniedAndNotRelocated(t *testing.T
 		"id": victimTx, "type": "expense", "amount": "1.00", "accountId": accountID, "categoryId": catID,
 		"date": "2024-03-02 10:00:00", "description": "stolen",
 	})
-	assertValidationDenied(t, status, env, "transaction.transaction.not_available")
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
 
 	var acct, desc string
 	h.db.QueryRow(`SELECT account_id, description FROM transactions WHERE id = ?`, victimTx).Scan(&acct, &desc)
@@ -74,7 +74,7 @@ func TestCreateTransfer_ForeignRecipient_DeniedAndNoLeg(t *testing.T) {
 	// Source is the attacker's own account; recipient is the victim's.
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", attacker,
 		transferReq(txID1, accountID, sharedAcctID, "10", "10"))
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 
 	var n int
 	h.db.QueryRow(`SELECT COUNT(*) FROM transactions WHERE account_recipient_id = ?`, sharedAcctID).Scan(&n)
@@ -93,7 +93,7 @@ func TestUpdateTransaction_IntoForeignRecipient_Denied(t *testing.T) {
 	created := mustUnmarshal[writeResult](t, cEnv.Data)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok,
 		transferReq(created.Item.ID, accountID, sharedAcctID, "5", "5"))
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 
 	var n int
 	h.db.QueryRow(`SELECT COUNT(*) FROM transactions WHERE account_recipient_id = ?`, sharedAcctID).Scan(&n)
@@ -112,7 +112,7 @@ func TestCreateTransaction_ForeignCategory_Denied(t *testing.T) {
 		"id": txID1, "type": "expense", "amount": "5", "accountId": accountID, "categoryId": foreignCatID,
 		"date": "2024-03-01 10:00:00", "description": "x",
 	})
-	assertValidationDenied(t, status, env, "transaction.transaction.not_available")
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
 }
 
 func TestCreateTransaction_ForeignTag_Denied(t *testing.T) {
@@ -124,7 +124,7 @@ func TestCreateTransaction_ForeignTag_Denied(t *testing.T) {
 		"id": txID1, "type": "expense", "amount": "5", "accountId": accountID, "categoryId": catID, "tagId": foreignTagID,
 		"date": "2024-03-01 10:00:00", "description": "x",
 	})
-	assertValidationDenied(t, status, env, "transaction.transaction.not_available")
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
 }
 
 func TestUpdateTransaction_ForeignPayee_Denied(t *testing.T) {
@@ -137,5 +137,5 @@ func TestUpdateTransaction_ForeignPayee_Denied(t *testing.T) {
 		"id": created.Item.ID, "type": "expense", "amount": "5", "accountId": accountID, "categoryId": catID, "payeeId": foreignPayeeID,
 		"date": "2024-03-02 10:00:00", "description": "x",
 	})
-	assertValidationDenied(t, status, env, "transaction.transaction.not_available")
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
 }

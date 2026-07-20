@@ -13,7 +13,7 @@
 //
 // @title                      Econumo API
 // @version                    1.0.0
-// @description                Self-hosted personal finance and budgeting API (Go port).
+// @description                Self-hosted personal finance and budgeting API
 // @BasePath                   /
 // @securityDefinitions.apikey Bearer
 // @in                         header
@@ -53,12 +53,10 @@ type JsonResponseUnauthorized struct {
 	Errors  map[string][]string `json:"errors"`
 }
 
-// JsonResponseException is the 500 unhandled-exception envelope. stackTrace is
-// present only in dev.
+// JsonResponseException is the 500 unhandled-exception envelope.
 type JsonResponseException struct {
-	Success       bool        `json:"success" example:"false"`
-	Message       string      `json:"message" example:"Internal Server Error"`
-	Code          int         `json:"code" example:"0"`
-	ExceptionType string      `json:"exceptionType,omitempty"`
-	StackTrace    interface{} `json:"stackTrace,omitempty"`
+	Success       bool   `json:"success" example:"false"`
+	Message       string `json:"message" example:"Internal Server Error"`
+	Code          int    `json:"code" example:"0"`
+	ExceptionType string `json:"exceptionType,omitempty"`
 }

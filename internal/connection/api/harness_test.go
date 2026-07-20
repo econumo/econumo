@@ -132,8 +132,8 @@ func newHarness(t *testing.T) *harness {
 		limiter, txm, clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	handlers := handlerconnection.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
+	handlers := handlerconnection.NewHandlers(svc)
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db, f: f}

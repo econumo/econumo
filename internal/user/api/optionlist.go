@@ -28,5 +28,5 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/user/get-option-list [get]
 func (h *Handlers) GetOptionList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetOptionList)
+	endpoint.HandleNoBody(w, r, h.read.GetOptionList)
 }

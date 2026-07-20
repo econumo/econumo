@@ -115,8 +115,8 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	handlers := handlerbudget.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
+	handlers := handlerbudget.NewHandlers(svc)
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db}

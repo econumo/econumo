@@ -131,6 +131,10 @@ func (h *Harness) LastResetCode(t *testing.T) string {
 	return code
 }
 
+// URL returns the running server's base URL, for callers (e.g. mcpparity)
+// that need to issue requests outside the REST Call/Replay helpers.
+func (h *Harness) URL() string { return h.srv.URL }
+
 // Token returns a live session token for a seeded user: the fixed fixture
 // tokens for owner/guest, or (for any other user a test seeds itself) a
 // deterministic session minted on first use. Deterministic raw tokens keep
@@ -143,6 +147,8 @@ func (h *Harness) Token(t *testing.T, userID, email string) string {
 		return OwnerToken
 	case GuestID:
 		return GuestToken
+	case ReadonlyID:
+		return ReadonlyToken
 	}
 	if raw, ok := h.minted[userID]; ok {
 		return raw
@@ -211,6 +217,7 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 	t.Helper()
 	ownerTok := h.Token(t, OwnerID, OwnerEmail)
 	guestTok := h.Token(t, GuestID, GuestEmail)
+	readonlyTok := h.Token(t, ReadonlyID, ReadonlyEmail)
 
 	statuses := make([]int, len(calls))
 	bodies := make([][]byte, len(calls))
@@ -221,6 +228,8 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 			tok = ownerTok
 		case "guest":
 			tok = guestTok
+		case "readonly":
+			tok = readonlyTok
 		case "":
 			tok = ""
 		default:

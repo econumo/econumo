@@ -147,6 +147,21 @@ func TestComposeRegisterAPI_RunsAll(t *testing.T) {
 	}
 }
 
+func TestRouter_MountsMCP(t *testing.T) {
+	var hit bool
+	h := router.New(router.Deps{Cfg: config.Config{}, MCP: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hit = true
+	})})
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader("{}"))
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	if !hit {
+		t.Fatal("POST /mcp did not reach the MCP handler")
+	}
+	// Without a handler the SPA fallback answers; just assert no panic.
+	h = router.New(router.Deps{Cfg: config.Config{}})
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/mcp", nil))
+}
+
 // stubPinger lets the health-check exercise the db-down branch.
 type stubPinger struct{ err error }
 

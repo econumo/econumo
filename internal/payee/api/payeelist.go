@@ -25,11 +25,12 @@ var _ = model.GetPayeeListResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderPayeeListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/payee/order-payee-list [post]
 func (h *Handlers) OrderPayeeList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.OrderPayeeList)
+	endpoint.Handle(w, r, h.svc.OrderPayeeList)
 }
 
 // GetPayeeList handles GET /api/v1/payee/get-payee-list (auth). The request has
@@ -46,5 +47,5 @@ func (h *Handlers) OrderPayeeList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/payee/get-payee-list [get]
 func (h *Handlers) GetPayeeList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetPayeeList)
+	endpoint.HandleNoBody(w, r, h.read.GetPayeeList)
 }

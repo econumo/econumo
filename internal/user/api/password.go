@@ -32,7 +32,7 @@ var _ = apidoc.JsonResponseError{}
 // @Security    Bearer
 // @Router      /api/v1/user/update-password [post]
 func (h *Handlers) UpdatePassword(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
 		tokenID, _ := middleware.TokenIDFromCtx(ctx)
 		return h.svc.UpdatePassword(ctx, userID, tokenID, req)
 	})

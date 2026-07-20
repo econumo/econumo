@@ -13,21 +13,26 @@ import (
 
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
+	accountmcp "github.com/econumo/econumo/internal/account/mcp"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	appadmin "github.com/econumo/econumo/internal/admin"
 	handleradmin "github.com/econumo/econumo/internal/admin/api"
 	appbudget "github.com/econumo/econumo/internal/budget"
 	handlerbudget "github.com/econumo/econumo/internal/budget/api"
+	budgetmcp "github.com/econumo/econumo/internal/budget/mcp"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	appcategory "github.com/econumo/econumo/internal/category"
 	handlercategory "github.com/econumo/econumo/internal/category/api"
+	categorymcp "github.com/econumo/econumo/internal/category/mcp"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
 	appconnection "github.com/econumo/econumo/internal/connection"
 	handlerconnection "github.com/econumo/econumo/internal/connection/api"
+	connectionmcp "github.com/econumo/econumo/internal/connection/mcp"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
+	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -39,20 +44,25 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
+	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/port"
 	appsystem "github.com/econumo/econumo/internal/system"
 	handlersystem "github.com/econumo/econumo/internal/system/api"
 	apptag "github.com/econumo/econumo/internal/tag"
 	handlertag "github.com/econumo/econumo/internal/tag/api"
+	tagmcp "github.com/econumo/econumo/internal/tag/mcp"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
+	transactionmcp "github.com/econumo/econumo/internal/transaction/mcp"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	appuser "github.com/econumo/econumo/internal/user"
 	handleruser "github.com/econumo/econumo/internal/user/api"
+	usermcp "github.com/econumo/econumo/internal/user/mcp"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/apidoc"
+	webmcp "github.com/econumo/econumo/internal/web/mcp"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/router"
 )
@@ -133,7 +143,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
-	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk, billingSvc)
+	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.
@@ -143,7 +153,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo, accountAccessResolver)
 	categoryReadSvc := appcategory.NewReadService(categoryReadRepo)
-	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc, cfg.IsDev())
+	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc)
 
 	// Shared operation guard built here, reused by payee/account/transaction.
 	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
@@ -151,23 +161,23 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	tagReadRepo := tagrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo, accountAccessResolver)
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
-	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc, cfg.IsDev())
+	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc)
 
 	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
 	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo, accountAccessResolver)
 	payeeReadSvc := apppayee.NewReadService(payeeReadRepo)
-	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc, cfg.IsDev())
+	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc)
 
 	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
-	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, cfg.IsDev())
+	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc)
 
 	updates := seams.Updates
 	if updates == nil {
 		updates = appsystem.NewService(false, appsystem.DefaultFeedURL)
 	}
-	systemHandlers := handlersystem.NewHandlers(updates, cfg.IsDev())
+	systemHandlers := handlersystem.NewHandlers(updates)
 
 	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
 	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
@@ -181,7 +191,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	accountSvc := appaccount.NewService(
 		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, accountAccessResolver, txm, opGuard, clk,
 	)
-	accountHandlers := handleraccount.NewHandlers(accountSvc, cfg.IsDev())
+	accountHandlers := handleraccount.NewHandlers(accountSvc)
 
 	// Budget service is built before connection: delete-connection's unwind
 	// removes budget memberships (access + seeded records) via RemoveMember.
@@ -198,7 +208,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		accountAccessResolver,
 		txm, clk,
 	)
-	budgetHandlers := handlerbudget.NewHandlers(budgetSvc, cfg.IsDev())
+	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
 
 	connectionRepo := connectionrepo.NewRepo(cfg.DatabaseDriver, txm)
 	connectionInviteRepo := connectionrepo.NewInviteRepo(cfg.DatabaseDriver, txm)
@@ -222,21 +232,23 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	transactionSvc := apptransaction.NewService(
 		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
 	)
-	transactionHandlers := handlertransaction.NewHandlers(transactionSvc, cfg.IsDev())
+	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
-	connectionHandlers := handlerconnection.NewHandlers(connectionSvc, cfg.IsDev())
+	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
+
+	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
 
 	registerAPI := router.Compose(
-		handleruser.RegisterAPI(userHandlers, userSvc, cfg.IsDev()),
-		handlercategory.RegisterAPI(categoryHandlers, userSvc, cfg.IsDev()),
-		handlertag.RegisterAPI(tagHandlers, userSvc, cfg.IsDev()),
-		handlerpayee.RegisterAPI(payeeHandlers, userSvc, cfg.IsDev()),
-		handlercurrency.RegisterAPI(currencyHandlers, userSvc, cfg.IsDev()),
-		handleraccount.RegisterAPI(accountHandlers, userSvc, cfg.IsDev()),
-		handlertransaction.RegisterAPI(transactionHandlers, userSvc, cfg.IsDev()),
-		handlerconnection.RegisterAPI(connectionHandlers, userSvc, cfg.IsDev()),
-		handlerbudget.RegisterAPI(budgetHandlers, userSvc, cfg.IsDev()),
-		handlersystem.RegisterAPI(systemHandlers, userSvc, cfg.IsDev()),
+		handleruser.RegisterAPI(userHandlers, authn),
+		handlercategory.RegisterAPI(categoryHandlers, authn),
+		handlertag.RegisterAPI(tagHandlers, authn),
+		handlerpayee.RegisterAPI(payeeHandlers, authn),
+		handlercurrency.RegisterAPI(currencyHandlers, authn),
+		handleraccount.RegisterAPI(accountHandlers, authn),
+		handlertransaction.RegisterAPI(transactionHandlers, authn),
+		handlerconnection.RegisterAPI(connectionHandlers, authn),
+		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),
 	)
 
@@ -244,21 +256,36 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	adminMux := http.NewServeMux()
 	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc))(adminMux)
 	// No CORS (never browser-reached) and no timezone/language (nothing here is
-	// user-facing; datetimes are frozen UTC). Recover gets a hard false, not
-	// cfg.IsDev(): this surface never returns stack traces, regardless of
-	// ECONUMO_DEBUG (the handlers enforce the same for handled errors).
+	// user-facing; datetimes are frozen UTC).
 	adminHandler := middleware.Chain(
 		middleware.RequestID,
 		middleware.AccessLog,
-		middleware.Recover(false),
+		middleware.Recover,
 		middleware.AdminAuth(cfg.AdminToken),
 	)(adminMux)
+
+	mcpRegister := webmcp.Compose(
+		categorymcp.Register(categoryReadSvc, categorySvc),
+		tagmcp.Register(tagReadSvc, tagSvc),
+		payeemcp.Register(payeeReadSvc, payeeSvc),
+		accountmcp.Register(accountSvc),
+		currencymcp.Register(currencyReadSvc),
+		budgetmcp.Register(budgetSvc),
+		usermcp.Register(userReadSvc),
+		connectionmcp.Register(connectionSvc),
+		transactionmcp.Register(transactionSvc),
+	)
+	mcpHandler := middleware.Chain(
+		middleware.Auth(authn),
+		timezoneFallback(userSvc),
+	)(webmcp.NewHandler(mcpRegister))
 
 	return router.New(router.Deps{
 		Cfg:                cfg,
 		DB:                 pinger{db},
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
+		MCP:                mcpHandler,
 	}), adminHandler
 }
 

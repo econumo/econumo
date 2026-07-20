@@ -22,11 +22,12 @@ var _ = model.GrantAccountAccessResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.GrantAccountAccessResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/grant-access [post]
 func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.GrantAccess)
+	endpoint.Handle(w, r, h.svc.GrantAccess)
 }
 
 // AcceptAccess handles POST /api/v1/account/accept-access (auth).
@@ -40,11 +41,12 @@ func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.AcceptAccountAccessResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/accept-access [post]
 func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.AcceptAccess)
+	endpoint.Handle(w, r, h.svc.AcceptAccess)
 }
 
 // DeclineAccess handles POST /api/v1/account/decline-access (auth).
@@ -58,11 +60,12 @@ func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.DeclineAccountAccessResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/decline-access [post]
 func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeclineAccess)
+	endpoint.Handle(w, r, h.svc.DeclineAccess)
 }
 
 // RevokeAccess handles POST /api/v1/account/revoke-access (auth).
@@ -76,9 +79,10 @@ func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.RevokeAccountAccessResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/revoke-access [post]
 func (h *Handlers) RevokeAccess(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.RevokeAccess)
+	endpoint.Handle(w, r, h.svc.RevokeAccess)
 }

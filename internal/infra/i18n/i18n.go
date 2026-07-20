@@ -1,7 +1,6 @@
-// Package i18n serves backend translations (emails, and any future
-// server-rendered text) from the shared locales/ catalogues. API error
-// messages are NOT translated here — they stay frozen English with additive
-// codes, rendered by the SPA.
+// Package i18n serves backend translations (emails, and the error
+// message/errors strings on both HTTP edges) from the shared locales/
+// catalogues; see httpx.WriteError and internal/web/mcp's MapErr.
 package i18n
 
 import (
@@ -57,16 +56,28 @@ func flatten(prefix string, node map[string]any, out map[string]string) {
 // languages and missing keys fall back to English; a key absent there too is
 // returned verbatim so the failure is visible rather than silent.
 func T(lang, key string, params map[string]any) string {
+	val, ok := Lookup(lang, key, params)
+	if !ok {
+		return key
+	}
+	return val
+}
+
+// Lookup is T with an explicit miss signal: ok is false when the key exists in
+// neither lang nor the English fallback, so callers that have their own
+// literal text (the error renderers) can use it instead of surfacing the
+// dotted key.
+func Lookup(lang, key string, params map[string]any) (string, bool) {
 	once.Do(load)
 	val, ok := catalogs[lang][key]
 	if !ok {
 		val, ok = catalogs[Supported[0]][key]
 	}
 	if !ok {
-		return key
+		return "", false
 	}
 	for k, v := range params {
 		val = strings.ReplaceAll(val, "{"+k+"}", fmt.Sprint(v))
 	}
-	return val
+	return val, true
 }

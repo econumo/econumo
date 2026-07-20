@@ -19,36 +19,28 @@ type okEnvelope struct {
 	Data    any    `json:"data"`
 }
 
-// CodeRef is one machine-readable error code + its message parameters, the
-// additive sibling of a frozen English message string.
-type CodeRef struct {
-	Code   string         `json:"code"`
-	Params map[string]any `json:"params,omitempty"`
-}
-
 // errEnvelope is the handled-error response. Errors is a map field-name ->
 // messages (see package doc); the key is always present, even when empty.
-// ErrorCodes/MessageCode/MessageParams are the additive machine-readable
-// siblings of Errors/Message and are OMITTED entirely when empty, so
-// untouched endpoints' wire output (and goldens) stay byte-identical.
+// Message and the per-field strings are rendered server-side in the caller's
+// language when the underlying error carries a catalogue code (WriteError);
+// errors without a code keep their literal English text. The en catalogue
+// text matches the historical frozen strings, so English callers see the
+// same wire bytes as before.
 type errEnvelope struct {
-	Success       bool                 `json:"success"`
-	Message       string               `json:"message"`
-	Code          int                  `json:"code"`
-	Errors        map[string][]string  `json:"errors"`
-	ErrorCodes    map[string][]CodeRef `json:"errorCodes,omitempty"`
-	MessageCode   string               `json:"messageCode,omitempty"`
-	MessageParams map[string]any       `json:"messageParams,omitempty"`
+	Success bool                `json:"success"`
+	Message string              `json:"message"`
+	Code    int                 `json:"code"`
+	Errors  map[string][]string `json:"errors"`
 }
 
 // exceptionEnvelope is the unhandled-exception response (HTTP 500). It omits
-// the errors[] key and adds exceptionType, plus stackTrace only in dev.
+// the errors[] key and adds exceptionType. Error detail (message, stack) goes
+// to the logs only — never the response body.
 type exceptionEnvelope struct {
 	Success       bool   `json:"success"`
 	Message       string `json:"message"`
 	Code          int    `json:"code"`
 	ExceptionType string `json:"exceptionType,omitempty"`
-	StackTrace    any    `json:"stackTrace,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, httpCode int, payload any) {
@@ -76,21 +68,13 @@ func Raw(w http.ResponseWriter, payload any) {
 // Err writes an error envelope (default HTTP 400). errors may be nil; it is
 // always serialized as an object ({} when empty) for wire compatibility.
 func Err(w http.ResponseWriter, message string, code int, errors map[string][]string, httpCode int) {
-	errCoded(w, message, code, errors, nil, "", nil, httpCode)
-}
-
-// errCoded writes the error envelope with the additive code fields populated.
-func errCoded(w http.ResponseWriter, message string, code int, errors map[string][]string,
-	errorCodes map[string][]CodeRef, messageCode string, messageParams map[string]any, httpCode int,
-) {
 	if httpCode == 0 {
 		httpCode = http.StatusBadRequest
 	}
 	if errors == nil {
 		errors = map[string][]string{}
 	}
-	writeJSON(w, httpCode, errEnvelope{Success: false, Message: message, Code: code, Errors: errors,
-		ErrorCodes: errorCodes, MessageCode: messageCode, MessageParams: messageParams})
+	writeJSON(w, httpCode, errEnvelope{Success: false, Message: message, Code: code, Errors: errors})
 }
 
 // accessDeniedEnvelope is the 403 response. Its errors field is an empty ARRAY,
@@ -112,14 +96,10 @@ func AccessDenied(w http.ResponseWriter, message string) {
 	})
 }
 
-// Exception writes the 500 exception envelope. stackTrace is included only when
-// dev is true (matching ECONUMO_DEBUG=true behavior).
-func Exception(w http.ResponseWriter, message, exceptionType string, stackTrace any, dev bool) {
-	env := exceptionEnvelope{Success: false, Message: message, Code: 0, ExceptionType: exceptionType}
-	if dev {
-		env.StackTrace = stackTrace
-	}
-	writeJSON(w, http.StatusInternalServerError, env)
+// Exception writes the 500 exception envelope.
+func Exception(w http.ResponseWriter, message, exceptionType string) {
+	writeJSON(w, http.StatusInternalServerError,
+		exceptionEnvelope{Success: false, Message: message, Code: 0, ExceptionType: exceptionType})
 }
 
 // NotImplemented writes the 501 envelope: success:false, code:0, errors:[].
