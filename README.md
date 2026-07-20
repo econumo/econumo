@@ -85,43 +85,6 @@ repository (no external translation platform). To contribute a language, copy
 request — the test suite verifies key and placeholder parity between
 catalogues automatically.
 
-### MCP
-
-Econumo speaks [MCP](https://modelcontextprotocol.io/) natively — the binary
-exposes a Streamable HTTP endpoint at `/mcp` (stateless, JSON responses) so
-Claude Code, Claude Desktop, Cursor, and any other MCP client can read your
-accounts/budgets/transactions and log expenses over the network, no extra
-process required.
-
-Auth reuses the existing bearer tokens: any access token works, but a
-personal access token
-(`Settings → Personal access tokens` in the app) is the intended credential —
-it doesn't expire on inactivity like a session does. Point your client at
-`https://your-econumo.example.com/mcp` with a static `Authorization` header:
-
-```jsonc
-// Claude Code (.mcp.json) / Claude Desktop / Cursor — remote server with a static header:
-{
-  "mcpServers": {
-    "econumo": {
-      "type": "http",
-      "url": "https://your-econumo.example.com/mcp",
-      "headers": { "Authorization": "Bearer eco_pat_..." }
-    }
-  }
-}
-```
-
-> [!NOTE]
-> claude.ai web **custom connectors** require OAuth and aren't supported yet
-> — use Claude Code, Claude Desktop, or another client that accepts a static
-> bearer header.
-
-Once connected, the tools and prompts are self-describing — your MCP client
-lists them. They cover reading and reviewing accounts, budgets and
-transactions; logging and reclassifying transactions; and managing
-categories, tags, payees and budgets (archive-based, no hard delete).
-
 ### Upgrading from v0.x (PHP)
 
 v1.x is a full rewrite — the PHP backend became the Go binary and the Vue.js
@@ -134,14 +97,9 @@ walkthrough (backup, new image, `.env` mapping, and the gotchas).
 
 ### Next steps
 
-- [How to configure multi-currency support](https://econumo.com/docs/self-hosting/multi-currency/) (Econumo comes preloaded with **USD** only).
-- [How to configure backups](https://econumo.com/docs/self-hosting/backups/).
-- [Useful CLI commands](https://econumo.com/docs/self-hosting/cli-commands/).
-- [How to debug Econumo](https://econumo.com/docs/self-hosting/debug/).
-- [Econumo API](https://econumo.com/docs/api/).
-- [User Guide](https://econumo.com/docs/user-guide/).
-
-For more information please see our [documentation](https://econumo.com/docs/).
+Everything else — self-hosting (multi-currency, backups, CLI commands,
+debugging), the API, MCP, and the user guide — lives in the
+**[Econumo documentation](https://econumo.com/docs)**.
 
 ### Contact
 
