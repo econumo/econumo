@@ -62,8 +62,10 @@ Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 (`.github/workflows/publish-release.yml`), not locally; its "Publish Dev"
 checkbox can also move the `dev` tag. The workflow's `branch` input selects
 the source branch (default `main`; a `release/*` branch for hotfixes of older
-versions), it auto-creates `release/vX.Y.Z` at every released commit as the
-base for future hotfixes, and `latest` only moves for the highest version
+versions). A release from `main` auto-creates `release/vX.Y.Z` at the released
+commit as the base for future hotfixes; a hotfix dispatches from a new
+`release/*` branch copied by hand from the fixed version's branch, and the
+workflow then creates no branch. `latest` only moves for the highest version
 released so far. See `.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
 
@@ -72,8 +74,9 @@ Everything publishes to `ghcr.io/econumo/econumo` only.
 - `feature/<slug>` — feature work, and the default for EVERY change that is
   not a bug fix (chores, docs, refactors, CI, dependency bumps).
 - `bug/<slug>` — bug fixes.
-- `release/vX.Y.Z` — reserved for the release workflow (auto-created at each
-  released commit); never used for development work.
+- `release/vX.Y.Z` — reserved for releases (auto-created when releasing from
+  `main`; copied by hand from the previous release branch of the line for
+  hotfixes); never used for development work.
 
 ## Architecture
 
