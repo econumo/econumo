@@ -75,7 +75,6 @@ internal/admin/
   ports.go        consumer-side interfaces: UserLookup, ConnectionLookup
   context.go      the user-context use case
   access.go       the set-access use case
-  handoff/        HMAC mint + verify (billing-handoff:v1)
   api/
     routes.go     RegisterAdmin(mux) — never on the public mux
     handler.go    thin handlers over httpx
@@ -178,6 +177,13 @@ if anyone accumulates dozens of connections.
 
 ## The handoff token
 
+Lives in **`internal/infra/handoff/`**, not in `internal/admin/`. The only minter
+is `create-billing-link`, which belongs to the `user` feature — and a feature may
+never import another feature, so a signer under `internal/admin/` would be
+unreachable from its sole caller. `infra` is the shared leaf that already holds
+the other cryptographic primitives (`infra/auth`: password hashing, AES, the
+identifier hash), which is exactly what this is.
+
 ```
 payload = base64url(JSON{uid, exp})            exp = now + 10 minutes
 sig     = base64url(HMAC-SHA256(key=ECONUMO_ADMIN_TOKEN, msg="billing-handoff:v1" || payload))
@@ -197,6 +203,27 @@ cannot be replayed as anything else. The token is stateless, read-only, and live
 
 Body: optional `for` (a user id). Returns `{"url": "…"}`; 400 when
 `ECONUMO_BILLING_URL` is unset.
+
+The assembled URL carries `lang`, so the portal renders in the language the user
+is already reading:
+
+```
+${ECONUMO_BILLING_URL}?t=<token>[&for=<user id>]&lang=<en|ru>
+```
+
+Sourced from `reqctx.Language(ctx)`, not from `users.language`. The SPA sends
+`Accept-Language: locale()` on every request (`web/src/api/client.ts:14`), so the
+`Language` middleware has already resolved the user's *current* UI choice, and it
+defaults to `en` when absent or unsupported. `users.language` is written at login
+(`internal/user/login.go:59`) and documented as write-only; it is a lagging copy,
+and reading it here would be both staler and a new dependency on a column
+deliberately kept write-only.
+
+Named `lang` rather than `locale` because the value is a two-letter language tag
+from `i18n.Supported`, not a region-qualified locale. It is an unsigned query
+parameter, like `for`: a display preference the user already controls needs no
+tamper protection, and the portal falls back to its own default for a language it
+does not have.
 
 Minted per click rather than carried on `CurrentUserResult`: the token lives 10
 minutes and `get-user-data` is cached by TanStack Query, so a user opening
@@ -272,7 +299,9 @@ query, no migration, and no new engine-comparison surface.
   has passed.
 - **`create-billing-link`:** a read-only caller gets 200, not 402 — the
   regression test for defect 1; 400 when `ECONUMO_BILLING_URL` is unset;
-  malformed `for` rejected; the assembled URL parses and carries both parameters.
+  malformed `for` rejected; the assembled URL parses and carries every parameter;
+  `lang` follows `Accept-Language` and falls back to `en` when the header is
+  absent or names an unsupported language.
 - **Config:** half-configured admin variables fail at boot; a short token fails;
   a non-absolute `ECONUMO_BILLING_URL` fails.
 - **Guards:** the reachability guard proves no `/admin/` path is on
