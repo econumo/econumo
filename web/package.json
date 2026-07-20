@@ -19,7 +19,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource/roboto": "^5.2.10",
-    "@shadcn/react": "^0.2.0",
+    "@shadcn/react": "^0.2.1",
     "@tailwindcss/vite": "^4.3.2",
     "@tanstack/query-sync-storage-persister": "^5.101.2",
     "@tanstack/react-query": "^5.101.2",
