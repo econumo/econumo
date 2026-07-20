@@ -14,6 +14,8 @@ import (
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appadmin "github.com/econumo/econumo/internal/admin"
+	handleradmin "github.com/econumo/econumo/internal/admin/api"
 	appbudget "github.com/econumo/econumo/internal/budget"
 	handlerbudget "github.com/econumo/econumo/internal/budget/api"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
@@ -51,6 +53,7 @@ import (
 	handleruser "github.com/econumo/econumo/internal/user/api"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/apidoc"
+	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -76,6 +79,15 @@ type Seams struct {
 // at either engine; the engine is read from cfg.DatabaseDriver, which selects
 // the per-engine sqlc query adapters in every repository constructor.
 func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
+	api, _ := Build(cfg, db, seams)
+	return api
+}
+
+// Build wires the service graph once and returns both edges: the public API
+// handler and the private admin handler. They share one set of services rather
+// than each opening its own, and serve decides whether to listen on the admin
+// one (see cfg.AdminPort/AdminToken).
+func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handler) {
 	clk := seams.Clock
 	if clk == nil {
 		clk = clock.New()
@@ -228,12 +240,28 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 		apidoc.RegisterAPI(),
 	)
 
+	adminSvc := appadmin.NewService(
+		NewAdminUserAccess(userSvc),
+		NewAdminConnections(connectionSvc),
+		clk,
+	)
+	adminMux := http.NewServeMux()
+	handleradmin.RegisterAdmin(handleradmin.NewHandlers(adminSvc, cfg.IsDev()))(adminMux)
+	// No CORS (never browser-reached) and no timezone/language (nothing here is
+	// user-facing; datetimes are frozen UTC).
+	adminHandler := middleware.Chain(
+		middleware.RequestID,
+		middleware.AccessLog,
+		middleware.Recover(cfg.IsDev()),
+		middleware.AdminAuth(cfg.AdminToken),
+	)(adminMux)
+
 	return router.New(router.Deps{
 		Cfg:                cfg,
 		DB:                 pinger{db},
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
-	})
+	}), adminHandler
 }
 
 type pinger struct{ db *sql.DB }

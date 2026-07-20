@@ -137,3 +137,30 @@ func (s *Service) userByEmail(ctx context.Context, email string) (*model.User, e
 	lowered := strings.ToLower(strings.TrimSpace(email))
 	return s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
 }
+
+// AdminUserByID loads a user by id with the email decrypted, for the admin
+// listener (which addresses users by id, never by email).
+func (s *Service) AdminUserByID(ctx context.Context, id vo.Id) (*model.User, string, error) {
+	u, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, "", err
+	}
+	email, err := s.encode.Decode(u.Email)
+	if err != nil {
+		return nil, "", err
+	}
+	return u, email, nil
+}
+
+// AdminSetAccessByID is AdminSetAccess keyed by id: an operator running the CLI
+// has an email address, the payment portal has a user id.
+func (s *Service) AdminSetAccessByID(ctx context.Context, id vo.Id, level model.AccessLevel, until *time.Time) error {
+	u, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		u.SetAccess(level, until, s.clock.Now())
+		return s.repo.Save(ctx, u)
+	})
+}
