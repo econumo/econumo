@@ -17,9 +17,23 @@ import (
 )
 
 type listInput struct {
-	AccountID   string `json:"account_id,omitempty" jsonschema:"filter by account id (UUID); may be combined with a full period window"`
-	PeriodStart string `json:"period_start,omitempty" jsonschema:"inclusive start, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_end; may be combined with account_id"`
-	PeriodEnd   string `json:"period_end,omitempty" jsonschema:"inclusive end, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_start; may be combined with account_id"`
+	AccountID     string `json:"account_id,omitempty" jsonschema:"filter by account id (UUID); may be combined with a full period window"`
+	PeriodStart   string `json:"period_start,omitempty" jsonschema:"inclusive start, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_end; may be combined with account_id"`
+	PeriodEnd     string `json:"period_end,omitempty" jsonschema:"inclusive end, YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'; must be paired with period_start; may be combined with account_id"`
+	Uncategorized bool   `json:"uncategorized,omitempty" jsonschema:"only transactions with no category set; mutually exclusive with category_id"`
+	CategoryID    string `json:"category_id,omitempty" jsonschema:"only transactions with this category id (UUID)"`
+	PayeeID       string `json:"payee_id,omitempty" jsonschema:"only transactions with this payee id (UUID)"`
+	TagID         string `json:"tag_id,omitempty" jsonschema:"only transactions with this tag id (UUID)"`
+}
+
+type bulkUpdateInput struct {
+	IDs           []string `json:"ids" jsonschema:"transaction ids to reclassify, from list_transactions; at most 100"`
+	CategoryID    string   `json:"category_id,omitempty" jsonschema:"set this category (UUID) on every listed non-transfer transaction"`
+	PayeeID       string   `json:"payee_id,omitempty" jsonschema:"set this payee (UUID)"`
+	TagID         string   `json:"tag_id,omitempty" jsonschema:"set this tag (UUID)"`
+	ClearCategory bool     `json:"clear_category,omitempty" jsonschema:"clear the category instead of setting it; cannot be combined with category_id"`
+	ClearPayee    bool     `json:"clear_payee,omitempty" jsonschema:"clear the payee instead of setting it; cannot be combined with payee_id"`
+	ClearTag      bool     `json:"clear_tag,omitempty" jsonschema:"clear the tag instead of setting it; cannot be combined with tag_id"`
 }
 
 type txFields struct {
@@ -94,9 +108,13 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 					return nil, model.GetTransactionListResult{}, errs.NewValidation("period_start and period_end must be provided together")
 				}
 				res, err := svc.GetTransactionList(ctx, userID, model.TransactionListRequest{
-					AccountId:   in.AccountID,
-					PeriodStart: expand(in.PeriodStart, false),
-					PeriodEnd:   expand(in.PeriodEnd, true),
+					AccountId:     in.AccountID,
+					PeriodStart:   expand(in.PeriodStart, false),
+					PeriodEnd:     expand(in.PeriodEnd, true),
+					Uncategorized: in.Uncategorized,
+					CategoryId:    in.CategoryID,
+					PayeeId:       in.PayeeID,
+					TagId:         in.TagID,
 				})
 				if err != nil {
 					return nil, model.GetTransactionListResult{}, webmcp.MapErr(ctx, err)
@@ -171,6 +189,29 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 				res, err := svc.DeleteTransaction(ctx, userID, model.DeleteTransactionRequest{Id: in.ID})
 				if err != nil {
 					return nil, model.DeleteTransactionResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "bulk_update_transactions",
+			Description: "Re-classify many transactions at once (set or clear category/payee/tag on an explicit list of transaction ids from list_transactions); amounts/dates/accounts are never changed; max 100 per call."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in bulkUpdateInput) (*sdk.CallToolResult, model.BulkUpdateTransactionsResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "bulk_update_transactions")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.BulkUpdateTransactionsResult{}, err
+				}
+				res, err := svc.BulkUpdateTransactions(ctx, userID, model.BulkUpdateTransactionsRequest{
+					Ids:           in.IDs,
+					CategoryId:    strPtr(in.CategoryID),
+					PayeeId:       strPtr(in.PayeeID),
+					TagId:         strPtr(in.TagID),
+					ClearCategory: in.ClearCategory,
+					ClearPayee:    in.ClearPayee,
+					ClearTag:      in.ClearTag,
+				})
+				if err != nil {
+					return nil, model.BulkUpdateTransactionsResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, *res, nil
 			})

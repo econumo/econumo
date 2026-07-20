@@ -119,9 +119,12 @@ func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Tra
 }
 
 // ListByAccountIDs returns transactions whose source OR recipient is in
-// accountIDs, optionally bounded by [periodStart, periodEnd). Built by hand
-// (dynamic IN); placeholders differ per engine.
-func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time) ([]*model.Transaction, error) {
+// accountIDs, optionally bounded by [periodStart, periodEnd) and narrowed by
+// filter. Built by hand (dynamic IN + optional predicates); placeholders
+// differ per engine. filter's zero value appends no classification predicate,
+// so callers that never set it (the account/period-only paths) get exactly
+// today's query.
+func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time, filter model.TransactionFilter) ([]*model.Transaction, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -143,15 +146,38 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 	b.WriteString(in2)
 	b.WriteString("))")
 
-	args := make([]any, 0, len(ids)*2+2)
+	args := make([]any, 0, len(ids)*2+5)
 	args = append(args, ids...)
 	args = append(args, ids...)
+	next := 1 + 2*len(ids)
 	if usePeriod {
 		b.WriteString(" AND spent_at >= ")
-		b.WriteString(placeholders(r.driver, 1+2*len(ids), 1))
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
 		b.WriteString(" AND spent_at < ")
-		b.WriteString(placeholders(r.driver, 2+2*len(ids), 1))
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
 		args = append(args, periodStart, periodEnd)
+	}
+	if filter.Uncategorized {
+		b.WriteString(" AND category_id IS NULL")
+	} else if filter.CategoryID != nil {
+		b.WriteString(" AND category_id = ")
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
+		args = append(args, filter.CategoryID.String())
+	}
+	if filter.PayeeID != nil {
+		b.WriteString(" AND payee_id = ")
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
+		args = append(args, filter.PayeeID.String())
+	}
+	if filter.TagID != nil {
+		b.WriteString(" AND tag_id = ")
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
+		args = append(args, filter.TagID.String())
 	}
 	// Newest first (the transaction-list convention, see ListTransactionsByAccount)
 	// with id as the stable tie-break: without an ORDER BY the row order diverges

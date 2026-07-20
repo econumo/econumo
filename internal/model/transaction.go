@@ -88,6 +88,19 @@ type NewState struct {
 	UpdatedAt       time.Time
 }
 
+// TransactionFilter narrows a transaction list query by classification,
+// AND-composed with the account/period predicates ListByAccountIDs already
+// applies. The zero value (Uncategorized false, all ids nil) filters nothing
+// — callers on the byte-identical REST path pass it unchanged. Uncategorized
+// and CategoryID are mutually exclusive by construction (the service rejects
+// both being set before building this).
+type TransactionFilter struct {
+	Uncategorized bool
+	CategoryID    *vo.Id
+	PayeeID       *vo.Id
+	TagID         *vo.Id
+}
+
 // New constructs a freshly-created transaction (CreatedAt == UpdatedAt). The
 // service has already applied the type-dependent field rules when building the
 // state.

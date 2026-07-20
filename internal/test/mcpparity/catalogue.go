@@ -162,6 +162,44 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"%s","period_start":"2024-04-02","period_end":"2024-04-02"}}}`},
 	}})
 
+	// transaction_review drives the MCP-only richer list_transactions filters
+	// (uncategorized/category/payee/tag) and bulk_update_transactions. It seeds
+	// two fresh accounts (so results are isolated from the base fixture's own
+	// Txn1/Txn2 on OwnerAccount, and a transfer needs a distinct recipient
+	// account), reuses the fixture's already-owned CatFood/PayeeShop/TagWork
+	// (no need to seed fresh reference data), then: creates a categorized
+	// expense and an uncategorized transfer (transfers never carry a category,
+	// per internal/transaction/usecase.go's buildState — the only way to
+	// produce an uncategorized row via the tools), exercises each filter alone,
+	// bulk-sets a tag on the expense, re-lists by tag to confirm, then ends with
+	// bulk_update_transactions rejecting a category on the transfer (the
+	// category-on-transfer invariant bulk enforces that a full update would
+	// have silently dropped instead — see internal/transaction/bulk.go).
+	register(Scenario{Name: "transaction_review", Steps: []Step{
+		{Label: "seed-account-1", CaptureAs: "account1_id", CaptureID: true, Method: "POST", Path: "/api/v1/account/create-account",
+			Body: map[string]any{"id": "a0000000-0000-0000-0000-0000000000c3", "name": "MCP Review Wallet 1", "icon": "wallet", "currencyId": apiparity.USD, "folderId": apiparity.OwnerFolder}},
+		{Label: "seed-account-2", CaptureAs: "account2_id", CaptureID: true, Method: "POST", Path: "/api/v1/account/create-account",
+			Body: map[string]any{"id": "a0000000-0000-0000-0000-0000000000c4", "name": "MCP Review Wallet 2", "icon": "wallet", "currencyId": apiparity.USD, "folderId": apiparity.OwnerFolder}},
+		{Label: "create-expense", CaptureAs: "tx1_id", MCPCapturePath: []string{"item", "id"},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_transaction","arguments":{"type":"expense","amount":"12.50","account_id":"{{account1_id}}","date":"2024-04-02","category_id":"` + apiparity.CatFood + `","payee_id":"` + apiparity.PayeeShop + `"}}}`},
+		{Label: "create-transfer", CaptureAs: "tx2_id", MCPCapturePath: []string{"item", "id"},
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_transaction","arguments":{"type":"transfer","amount":"5.00","account_id":"{{account1_id}}","account_recipient_id":"{{account2_id}}","date":"2024-04-02"}}}`},
+		{Label: "list-by-category",
+			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"{{account1_id}}","category_id":"` + apiparity.CatFood + `"}}}`},
+		{Label: "list-uncategorized",
+			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"{{account1_id}}","uncategorized":true}}}`},
+		{Label: "list-by-payee",
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"{{account1_id}}","payee_id":"` + apiparity.PayeeShop + `"}}}`},
+		{Label: "list-uncategorized-and-category-conflict",
+			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"{{account1_id}}","uncategorized":true,"category_id":"` + apiparity.CatFood + `"}}}`},
+		{Label: "bulk-set-tag",
+			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"bulk_update_transactions","arguments":{"ids":["{{tx1_id}}"],"tag_id":"` + apiparity.TagWork + `"}}}`},
+		{Label: "list-by-tag",
+			RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_transactions","arguments":{"account_id":"{{account1_id}}","tag_id":"` + apiparity.TagWork + `"}}}`},
+		{Label: "bulk-category-on-transfer-error",
+			RPC: `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"bulk_update_transactions","arguments":{"ids":["{{tx2_id}}"],"category_id":"` + apiparity.CatFood + `"}}}`},
+	}})
+
 	register(Scenario{Name: "prompts", Steps: []Step{
 		{Label: "get-log-expense", RPC: `{"jsonrpc":"2.0","id":1,"method":"prompts/get","params":{"name":"log-expense","arguments":{"description":"27.50 groceries at Lidl yesterday"}}}`},
 		{Label: "get-budget-review", RPC: `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"budget-review","arguments":{}}}`},

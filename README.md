@@ -122,10 +122,11 @@ it doesn't expire on inactivity like a session does. Point your client at
 | Tool | Purpose |
 |---|---|
 | `get_budget` | full monthly budget state (folders/envelopes/categories/tags, limits, spent, available) |
-| `list_transactions` | list transactions, optionally filtered by account and period |
+| `list_transactions` | list transactions, optionally filtered by account, period, and/or classification (uncategorized, category, payee, tag) |
 | `create_transaction` | record an expense, income, or transfer |
 | `update_transaction` | edit an existing transaction |
 | `delete_transaction` | delete a transaction |
+| `bulk_update_transactions` | re-classify (set or clear category/payee/tag on) up to 100 transactions at once, all-or-nothing |
 | `list_accounts` | accounts with type, currency, archived flag, and current balance |
 | `list_categories` | expense/income categories |
 | `create_category` | create a category (name, type, optional icon) |

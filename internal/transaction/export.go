@@ -66,7 +66,7 @@ func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accou
 		}
 		ids = append(ids, id)
 	}
-	txs, err := s.repo.ListByAccountIDs(ctx, ids, time.Time{}, time.Time{})
+	txs, err := s.repo.ListByAccountIDs(ctx, ids, time.Time{}, time.Time{}, model.TransactionFilter{})
 	if err != nil {
 		return nil, err
 	}

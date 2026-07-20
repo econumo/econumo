@@ -26,7 +26,9 @@ type Repository interface {
 	ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Transaction, error)
 
 	// ListByAccountIDs returns transactions whose source OR recipient account is in
-	// accountIDs, optionally bounded by [periodStart, periodEnd). With no period,
-	// pass zero times. Used for the user-wide visible-accounts list.
-	ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time) ([]*model.Transaction, error)
+	// accountIDs, optionally bounded by [periodStart, periodEnd) and narrowed by
+	// filter (the zero model.TransactionFilter applies no classification
+	// predicate). With no period, pass zero times. Used for the user-wide
+	// visible-accounts list and for any filtered single-account query.
+	ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time, filter model.TransactionFilter) ([]*model.Transaction, error)
 }

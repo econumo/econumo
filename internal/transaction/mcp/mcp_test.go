@@ -2,6 +2,7 @@ package mcp_test
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -367,6 +368,220 @@ func TestListTransactionsFilters(t *testing.T) {
 	}
 	if id := items3[0].(map[string]any)["id"].(string); id != tx1ID {
 		t.Fatalf("list account+period filter: expected tx1 (%q), got %q", tx1ID, id)
+	}
+}
+
+func TestListTransactionsFilters_Classification(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	accountID2 := f.Account(fixture.Account{UserID: userID})
+	categoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+	otherCategoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+	payeeID := f.Payee(fixture.Payee{UserID: userID})
+	tagID := f.Tag(fixture.Tag{UserID: userID})
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	create := func(categoryID, payeeID, tagID string) string {
+		t.Helper()
+		args := map[string]any{
+			"type":        "expense",
+			"amount":      "10.00",
+			"account_id":  accountID,
+			"date":        "2024-04-01",
+			"category_id": categoryID,
+		}
+		if payeeID != "" {
+			args["payee_id"] = payeeID
+		}
+		if tagID != "" {
+			args["tag_id"] = tagID
+		}
+		res, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "create_transaction", Arguments: args})
+		if err != nil {
+			t.Fatalf("create: transport error: %v", err)
+		}
+		if res.IsError {
+			t.Fatalf("create: unexpected error: %#v", res.Content)
+		}
+		return structured(t, res)["item"].(map[string]any)["id"].(string)
+	}
+
+	classified := create(categoryID, payeeID, tagID)
+	create(otherCategoryID, "", "") // a second transaction so the filters exercise exclusion, not just single-row lists
+
+	// Transfers never carry a category (buildState drops it for transfer type),
+	// so this is the only way to produce an uncategorized transaction via the
+	// tools — non-transfers require a category to be created at all.
+	transferRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "create_transaction", Arguments: map[string]any{
+		"type": "transfer", "amount": "5.00", "account_id": accountID, "date": "2024-04-01",
+		"account_recipient_id": accountID2,
+	}})
+	if err != nil {
+		t.Fatalf("create transfer: transport error: %v", err)
+	}
+	if transferRes.IsError {
+		t.Fatalf("create transfer: unexpected error: %#v", transferRes.Content)
+	}
+	transferID := structured(t, transferRes)["item"].(map[string]any)["id"].(string)
+
+	list := func(args map[string]any) []any {
+		t.Helper()
+		res, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_transactions", Arguments: args})
+		if err != nil {
+			t.Fatalf("list: transport error: %v", err)
+		}
+		if res.IsError {
+			t.Fatalf("list: unexpected error: %#v", res.Content)
+		}
+		return structured(t, res)["items"].([]any)
+	}
+	idsOf := func(items []any) []string {
+		out := make([]string, len(items))
+		for i, it := range items {
+			out[i] = it.(map[string]any)["id"].(string)
+		}
+		return out
+	}
+
+	if got := idsOf(list(map[string]any{"category_id": categoryID})); len(got) != 1 || got[0] != classified {
+		t.Fatalf("category_id filter = %v, want [%s]", got, classified)
+	}
+	if got := idsOf(list(map[string]any{"payee_id": payeeID})); len(got) != 1 || got[0] != classified {
+		t.Fatalf("payee_id filter = %v, want [%s]", got, classified)
+	}
+	if got := idsOf(list(map[string]any{"tag_id": tagID})); len(got) != 1 || got[0] != classified {
+		t.Fatalf("tag_id filter = %v, want [%s]", got, classified)
+	}
+	if got := idsOf(list(map[string]any{"uncategorized": true})); len(got) != 1 || got[0] != transferID {
+		t.Fatalf("uncategorized filter = %v, want [%s]", got, transferID)
+	}
+
+	// uncategorized + category_id contradict.
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_transactions", Arguments: map[string]any{"uncategorized": true, "category_id": categoryID}})
+	if err != nil {
+		t.Fatalf("contradiction: transport error: %v", err)
+	}
+	if !res.IsError {
+		t.Fatalf("contradiction: expected isError, got: %#v", res)
+	}
+}
+
+func TestBulkUpdateTransactions_HappyPath(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	categoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+	newCategoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	create := func() string {
+		t.Helper()
+		res, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "create_transaction", Arguments: map[string]any{
+			"type": "expense", "amount": "10.00", "account_id": accountID, "date": "2024-04-01", "category_id": categoryID,
+		}})
+		if err != nil || res.IsError {
+			t.Fatalf("create: err=%v res=%#v", err, res)
+		}
+		return structured(t, res)["item"].(map[string]any)["id"].(string)
+	}
+	id1, id2 := create(), create()
+
+	bulkRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "bulk_update_transactions",
+		Arguments: map[string]any{
+			"ids":         []string{id1, id2},
+			"category_id": newCategoryID,
+		},
+	})
+	if err != nil {
+		t.Fatalf("bulk: transport error: %v", err)
+	}
+	if bulkRes.IsError {
+		t.Fatalf("bulk: unexpected error: %#v", bulkRes.Content)
+	}
+	if updated, _ := structured(t, bulkRes)["updated"].(float64); updated != 2 {
+		t.Fatalf("bulk: updated = %v, want 2", structured(t, bulkRes)["updated"])
+	}
+
+	listRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_transactions", Arguments: map[string]any{"category_id": newCategoryID}})
+	if err != nil || listRes.IsError {
+		t.Fatalf("list: err=%v res=%#v", err, listRes)
+	}
+	items := structured(t, listRes)["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("list after bulk: got %d items, want 2: %#v", len(items), items)
+	}
+}
+
+func TestBulkUpdateTransactions_ErrorPathLeavesDataUnchanged(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	categoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	createRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "create_transaction", Arguments: map[string]any{
+		"type": "expense", "amount": "10.00", "account_id": accountID, "date": "2024-04-01", "category_id": categoryID,
+	}})
+	if err != nil || createRes.IsError {
+		t.Fatalf("create: err=%v res=%#v", err, createRes)
+	}
+	txID := structured(t, createRes)["item"].(map[string]any)["id"].(string)
+
+	// A foreign/unknown category id rolls back the whole batch (all-or-nothing).
+	bulkRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "bulk_update_transactions",
+		Arguments: map[string]any{
+			"ids":         []string{txID},
+			"category_id": "00000000-0000-0000-0000-000000000000",
+		},
+	})
+	if err != nil {
+		t.Fatalf("bulk: transport error: %v", err)
+	}
+	if !bulkRes.IsError {
+		t.Fatalf("bulk: expected isError, got: %#v", bulkRes)
+	}
+	text, ok := bulkRes.Content[0].(*sdk.TextContent)
+	if !ok || strings.TrimSpace(text.Text) == "" {
+		t.Fatalf("bulk: expected non-empty error text: %#v", bulkRes.Content)
+	}
+	for _, leak := range []string{"sql", "driver", "goroutine", "panic", "modernc.org"} {
+		if strings.Contains(strings.ToLower(text.Text), leak) {
+			t.Fatalf("bulk: error text leaked internals (%q): %s", leak, text.Text)
+		}
+	}
+	var payload map[string]any
+	if uerr := json.Unmarshal([]byte(text.Text), &payload); uerr != nil {
+		t.Fatalf("bulk: error payload not JSON: %v (%q)", uerr, text.Text)
+	}
+	if payload["message"] == "" {
+		t.Fatalf("bulk: empty message in payload: %#v", payload)
+	}
+
+	listRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_transactions", Arguments: map[string]any{}})
+	if err != nil || listRes.IsError {
+		t.Fatalf("list: err=%v res=%#v", err, listRes)
+	}
+	items := structured(t, listRes)["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("list after failed bulk: got %d items, want 1", len(items))
+	}
+	if catID, _ := items[0].(map[string]any)["categoryId"].(string); catID != categoryID {
+		t.Fatalf("list after failed bulk: categoryId = %q, want unchanged %q", catID, categoryID)
 	}
 }
 
