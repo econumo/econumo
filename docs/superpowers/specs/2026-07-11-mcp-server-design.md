@@ -122,7 +122,7 @@ struct type for schema inference even when a tool takes no arguments); output
 schemas are the frozen REST shapes (or, for `list_currencies`, an ad-hoc
 wrapper struct).
 
-**Prompts** — two:
+**Prompts** — four:
 
 - `log-expense` — argument `description` (free text, e.g. "27.50 groceries at
   Lidl yesterday, card"). Template: call `list_accounts`, `list_categories`,
@@ -133,6 +133,27 @@ wrapper struct).
   flag overspent/at-risk envelopes, sample notable transactions via
   `list_transactions`, produce a short structured review in the user's
   language.
+- `budget-setup` — optional argument `name`. Builds a budget from the
+  categories and tags the user already has: survey them, total the last 2-3
+  months via `list_transactions` so limits reflect real spending, then split
+  expense categories into two folders — **Base expenses** (the ones you cannot
+  live without: housing, utilities, groceries, commuting, insurance,
+  healthcare, debt, childcare, essential subscriptions) and **Additional
+  expenses** (everything else). Related categories are grouped into envelopes
+  under those folders, and limits are set per envelope. The split is proposed
+  and confirmed before anything is created; ambiguous categories default to
+  ADDITIONAL and are flagged rather than silently promoted.
+- `budget-update` — optional argument `month` (default: current month). The
+  reconcile counterpart: find categories/tags in no envelope, missing or stale
+  limits, and categories whose real usage no longer matches their group;
+  classify anything new under the same base/additional rule; propose the diff
+  and apply it on approval. Explicitly warns that `update_envelope` replaces an
+  envelope's *full* category set, so existing ids must be resent alongside new
+  ones, and that retiring an envelope means archiving it (there is no delete).
+
+The two structure prompts share one vocabulary — base vs additional — so a user
+can run setup once and reconcile with update thereafter without the model
+reorganizing a layout that already works.
 
 ## Stored user timezone (minimal version)
 

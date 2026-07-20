@@ -137,3 +137,52 @@ func TestPromptsListAndGet(t *testing.T) {
 		t.Fatalf("budget-review prompt missing 'the current month': %s", outJSON)
 	}
 }
+
+// TestBudgetStructurePrompts covers the two prompts that build and reconcile a
+// budget's structure. Beyond rendering, it asserts each names the tools it tells
+// the model to call: a prompt citing a tool that no longer exists still renders
+// fine and only fails in front of a user.
+func TestBudgetStructurePrompts(t *testing.T) {
+	ts := httptest.NewServer(webmcp.NewHandler(webmcp.Compose()))
+	defer ts.Close()
+
+	_, out := rpc(t, ts.URL, `{"jsonrpc":"2.0","id":1,"method":"prompts/list","params":{}}`)
+	listJSON := string(mustJSON(t, out))
+	for _, name := range []string{"budget-setup", "budget-update"} {
+		if !strings.Contains(listJSON, name) {
+			t.Fatalf("prompts/list missing %s: %s", name, listJSON)
+		}
+	}
+
+	// budget-setup with no name: must still render, and must drive the full
+	// create path (survey -> folders -> envelopes -> limits).
+	_, out = rpc(t, ts.URL, `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"budget-setup","arguments":{}}}`)
+	setupJSON := string(mustJSON(t, out))
+	for _, want := range []string{
+		"list_categories", "list_tags", "list_transactions",
+		"create_budget", "create_folder", "create_envelope", "set_limit", "get_budget",
+		"Base expenses", "Additional expenses",
+	} {
+		if !strings.Contains(setupJSON, want) {
+			t.Errorf("budget-setup prompt missing %q", want)
+		}
+	}
+
+	// The supplied name must reach the rendered text.
+	_, out = rpc(t, ts.URL, `{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"budget-setup","arguments":{"name":"Household 2027"}}}`)
+	if named := string(mustJSON(t, out)); !strings.Contains(named, "Household 2027") {
+		t.Errorf("budget-setup prompt dropped the supplied name: %s", named)
+	}
+
+	// budget-update defaults the month and must warn about update_envelope's
+	// replace-the-whole-set semantics, the one footgun in the reconcile path.
+	_, out = rpc(t, ts.URL, `{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"budget-update","arguments":{}}}`)
+	updateJSON := string(mustJSON(t, out))
+	for _, want := range []string{
+		"the current month", "get_budget", "update_envelope", "set_limit", "category_ids",
+	} {
+		if !strings.Contains(updateJSON, want) {
+			t.Errorf("budget-update prompt missing %q", want)
+		}
+	}
+}
