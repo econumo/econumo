@@ -20,7 +20,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/econumo/econumo/internal/cli"
@@ -205,25 +207,62 @@ func run(serveArgs []string) error {
 	slog.Info("migrations applied", "backend", be.Name())
 
 	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
-	handler := server.BuildAPI(cfg, db, server.Seams{Updates: updates})
+	handler, adminHandler := server.Build(cfg, db, server.Seams{Updates: updates})
 	updates.StartPolling(ctx)
 
-	srv := &http.Server{
-		Addr:              addr(cfg.Port),
-		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
-		// A slow or stalled request body must not hold a connection/goroutine
-		// indefinitely. WriteTimeout also bounds slow-client response reads.
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  120 * time.Second,
+	// newServer applies the shared timeouts: a slow or stalled request body must
+	// not hold a connection/goroutine indefinitely, and WriteTimeout also bounds
+	// slow-client response reads.
+	newServer := func(port string, h http.Handler) *http.Server {
+		return &http.Server{
+			Addr:              addr(port),
+			Handler:           h,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
 	}
 
-	slog.Info("listening", "addr", srv.Addr)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	servers := []*http.Server{newServer(cfg.Port, handler)}
+	// The admin listener opens only when both variables are configured, so a
+	// self-hosted instance never serves those routes at all. config.Load has
+	// already rejected a half-configured pair.
+	if cfg.AdminPort != "" && cfg.AdminToken != "" {
+		servers = append(servers, newServer(cfg.AdminPort, adminHandler))
+		slog.Info("admin listener enabled", "addr", addr(cfg.AdminPort))
 	}
-	return nil
+
+	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, len(servers))
+	for _, s := range servers {
+		go func(s *http.Server) {
+			slog.Info("listening", "addr", s.Addr)
+			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(s)
+	}
+
+	var runErr error
+	select {
+	case <-sigCtx.Done():
+		slog.Info("shutting down")
+	case runErr = <-errCh:
+		// One listener failing leaves a half-serving binary, which is worse than
+		// exiting: bring the other down too so the supervisor restarts cleanly.
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for _, s := range servers {
+		_ = s.Shutdown(shutdownCtx)
+	}
+	return runErr
 }
 
 // addr normalizes the configured port (e.g. "8080" or ":8080") into a listen
