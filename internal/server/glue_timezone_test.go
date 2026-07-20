@@ -28,7 +28,7 @@ func newTimezoneTestUserSvc(t *testing.T, db *dbtest.DB) *appuser.Service {
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := NewUserBudgetAccess(db.Engine, db.TX)
-	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false)
+	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, "none")
 }
 
 func TestTimezoneTrackingAuthenticator(t *testing.T) {
@@ -48,7 +48,7 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	}
 
 	ctx := reqctx.WithLocation(context.Background(), time.UTC)
-	if _, _, err := authn.Authenticate(ctx, userID); err != nil {
+	if _, _, _, err := authn.Authenticate(ctx, userID); err != nil {
 		t.Fatal(err)
 	}
 	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "" {
@@ -56,14 +56,14 @@ func TestTimezoneTrackingAuthenticator(t *testing.T) {
 	}
 
 	ctx = reqctx.WithExplicitLocation(context.Background(), loc)
-	if _, _, err := authn.Authenticate(ctx, userID); err != nil {
+	if _, _, _, err := authn.Authenticate(ctx, userID); err != nil {
 		t.Fatal(err)
 	}
 	if tz, _ := userSvc.GetTimezone(context.Background(), uid); tz != "Europe/Amsterdam" {
 		t.Fatalf("timezone = %q, want Europe/Amsterdam", tz)
 	}
 
-	if _, _, err := authn.Authenticate(ctx, "not-a-user-id"); err == nil {
+	if _, _, _, err := authn.Authenticate(ctx, "not-a-user-id"); err == nil {
 		t.Fatal("want auth error")
 	}
 }

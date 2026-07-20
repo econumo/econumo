@@ -6,6 +6,7 @@ import (
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/mcptest"
@@ -22,7 +23,7 @@ func TestGetUserTool(t *testing.T) {
 
 	readRepo := userrepo.NewReadRepo(db.Engine, db.TX)
 	encode := auth.NewEncodeService("")
-	readSvc := appuser.NewReadService(readRepo, encode)
+	readSvc := appuser.NewReadService(readRepo, encode, clock.New())
 
 	srv := sdk.NewServer(&sdk.Implementation{Name: "t", Version: "t"}, nil)
 	usermcp.Register(readSvc)(srv)
