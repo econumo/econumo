@@ -26,13 +26,13 @@ func Handle[Req any, Res any](w http.ResponseWriter, r *http.Request, dev bool,
 	}
 	var req Req
 	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, dev)
+		httpx.WriteError(r.Context(), w, err, dev)
 		return
 	}
 	warnNumericAmounts(r, &req)
 	res, err := call(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(w, err, dev)
+		httpx.WriteError(r.Context(), w, err, dev)
 		return
 	}
 	httpx.OK(w, res)
@@ -48,7 +48,7 @@ func HandleNoBody[Res any](w http.ResponseWriter, r *http.Request, dev bool,
 	}
 	res, err := call(r.Context(), userID)
 	if err != nil {
-		httpx.WriteError(w, err, dev)
+		httpx.WriteError(r.Context(), w, err, dev)
 		return
 	}
 	httpx.OK(w, res)
@@ -61,13 +61,13 @@ func HandlePublic[Req any, Res any](w http.ResponseWriter, r *http.Request, dev 
 ) {
 	var req Req
 	if err := httpx.DecodeValidate(r, &req); err != nil {
-		httpx.WriteError(w, err, dev)
+		httpx.WriteError(r.Context(), w, err, dev)
 		return
 	}
 	warnNumericAmounts(r, &req)
 	res, err := call(r.Context(), req)
 	if err != nil {
-		httpx.WriteError(w, err, dev)
+		httpx.WriteError(r.Context(), w, err, dev)
 		return
 	}
 	httpx.OK(w, res)

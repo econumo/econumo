@@ -94,7 +94,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 	req := model.GetBudgetRequest{Id: r.URL.Query().Get("id"), Date: r.URL.Query().Get("date")}
 	res, err := h.svc.GetBudget(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err, h.dev)
 		return
 	}
 	httpx.OK(w, res)
@@ -128,7 +128,7 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err, h.dev)
 		return
 	}
 	httpx.OK(w, res)

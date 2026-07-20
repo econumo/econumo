@@ -97,7 +97,7 @@ func TestAccessLog_Success_OpAndTransportLines(t *testing.T) {
 func TestAccessLog_ClientError_WarnWithErr(t *testing.T) {
 	recs := captureLogs(t)
 	h := AccessLog(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		httpx.WriteError(w, errs.NewValidation("bad input"), false)
+		httpx.WriteError(r.Context(), w, errs.NewValidation("bad input"), false)
 	}))
 	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, createCategoryPath, nil))
 
@@ -122,7 +122,7 @@ func TestAccessLog_ClientError_WarnWithErr(t *testing.T) {
 func TestAccessLog_ServerError_Error(t *testing.T) {
 	recs := captureLogs(t)
 	h := AccessLog(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		httpx.WriteError(w, errors.New("boom"), false) // unhandled -> 500
+		httpx.WriteError(r.Context(), w, errors.New("boom"), false) // unhandled -> 500
 	}))
 	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, createCategoryPath, nil))
 

@@ -27,3 +27,15 @@ func TestUnknownKeyReturnsKey(t *testing.T) {
 		t.Fatalf("missing-key = %q", got)
 	}
 }
+
+func TestLookupSignalsMiss(t *testing.T) {
+	if got, ok := Lookup("ru", "errors.common.is_blank", nil); !ok || got == "" {
+		t.Fatalf("known key: got %q ok=%v", got, ok)
+	}
+	if got, ok := Lookup("xx", "errors.common.is_blank", nil); !ok || got != "This value should not be blank." {
+		t.Fatalf("unknown language must fall back to English: got %q ok=%v", got, ok)
+	}
+	if _, ok := Lookup("en", "no.such.key", nil); ok {
+		t.Fatal("missing key must report ok=false")
+	}
+}

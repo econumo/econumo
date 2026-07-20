@@ -253,7 +253,6 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	mcpHandler := middleware.Chain(
 		middleware.Auth(authn, cfg.IsDev()),
 		timezoneFallback(userSvc),
-		languageFallback(userSvc),
 	)(webmcp.NewHandler(mcpRegister))
 
 	return router.New(router.Deps{

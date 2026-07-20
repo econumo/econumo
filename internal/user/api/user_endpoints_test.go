@@ -408,8 +408,8 @@ func TestUpdateLanguage_Unsupported_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-	if !bytes.Contains(env.raw, []byte("user.language_invalid")) {
-		t.Fatalf("expected user.language_invalid in body: %s", env.raw)
+	if !bytes.Contains(env.raw, []byte(`"errors":{"language":["Language is incorrect"]}`)) {
+		t.Fatalf("expected language field error in body: %s", env.raw)
 	}
 }
 

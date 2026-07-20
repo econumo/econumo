@@ -38,12 +38,12 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 		PeriodEnd:   q.Get("periodEnd"),
 	}
 	if err := req.Validate(); err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err, h.dev)
 		return
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err, h.dev)
 		return
 	}
 	httpx.OK(w, res)

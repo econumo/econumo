@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -163,14 +164,13 @@ func TestWriteError_StatusMappingMatrix(t *testing.T) {
 			name:       "too many requests -> 429 envelope",
 			err:        errs.NewTooManyRequests("Too many attempts. Try again later."),
 			wantStatus: http.StatusTooManyRequests,
-			wantBody: `{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{},` +
-				`"messageCode":"common.too_many_attempts"}` + "\n",
+			wantBody:   `{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}` + "\n",
 		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			WriteError(rec, c.err, false)
+			WriteError(context.Background(), rec, c.err, false)
 			if rec.Code != c.wantStatus {
 				t.Fatalf("status=%d want %d; body=%s", rec.Code, c.wantStatus, rec.Body.String())
 			}

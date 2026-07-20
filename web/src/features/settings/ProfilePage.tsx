@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronRight, Lock } from 'lucide-react'
-import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
@@ -13,7 +12,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { AvatarPickerDialog } from '@/components/AvatarPickerDialog'
 import { UserCard } from '@/components/UserCard'
-import { apiErrorMessage } from '@/lib/apiError'
+import { apiFieldErrors } from '@/lib/apiError'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -77,12 +76,10 @@ export function ProfilePage() {
       onSuccess: flashSaved,
       onError: (error) => {
         // surface the envelope's field errors (Vue silently swallows these)
-        if (isAxiosError(error)) {
-          const fieldErrors = (error.response?.data as { errors?: Record<string, string[]> } | undefined)?.errors?.name
-          if (fieldErrors?.length) {
-            setNameError(apiErrorMessage(error))
-            return
-          }
+        const fieldErrors = apiFieldErrors(error, 'name')
+        if (fieldErrors?.length) {
+          setNameError(fieldErrors[0])
+          return
         }
         setNameError(t('user.form.name.validation.invalid_name'))
       },

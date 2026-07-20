@@ -25,16 +25,13 @@ func decodeErrPayload(t *testing.T, err error) map[string]any {
 
 func TestMapErrTranslatesCodedMessageToCallerLanguage(t *testing.T) {
 	code := errs.CodeTransactionItemNotAvailable
-	domainErr := &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: code}
+	domainErr := &errs.ValidationError{Msg: "Transaction is not available", MsgCode: code}
 
 	enCtx := reqctx.WithLanguage(context.Background(), "en")
 	enPayload := decodeErrPayload(t, webmcp.MapErr(enCtx, domainErr))
 	wantEn := i18n.T("en", "errors."+code, nil)
 	if enPayload["message"] != wantEn {
 		t.Fatalf("en message = %v, want %q", enPayload["message"], wantEn)
-	}
-	if enPayload["messageCode"] != code {
-		t.Fatalf("en messageCode = %v, want %q", enPayload["messageCode"], code)
 	}
 
 	ruCtx := reqctx.WithLanguage(context.Background(), "ru")
@@ -46,9 +43,6 @@ func TestMapErrTranslatesCodedMessageToCallerLanguage(t *testing.T) {
 	if ruPayload["message"] != wantRu {
 		t.Fatalf("ru message = %v, want %q", ruPayload["message"], wantRu)
 	}
-	if ruPayload["messageCode"] != code {
-		t.Fatalf("ru messageCode = %v, want %q", ruPayload["messageCode"], code)
-	}
 }
 
 func TestMapErrKeepsLiteralMessageWhenNoCode(t *testing.T) {
@@ -58,8 +52,14 @@ func TestMapErrKeepsLiteralMessageWhenNoCode(t *testing.T) {
 	if payload["message"] != "month must be YYYY-MM" {
 		t.Fatalf("message = %v, want literal unchanged", payload["message"])
 	}
-	if _, ok := payload["messageCode"]; ok {
-		t.Fatalf("messageCode present, want omitted for no-code error")
+}
+
+func TestMapErrKeepsLiteralMessageWhenCodeUnknown(t *testing.T) {
+	domainErr := &errs.ValidationError{Msg: "Something is wrong", MsgCode: "no.such.code"}
+	ruCtx := reqctx.WithLanguage(context.Background(), "ru")
+	payload := decodeErrPayload(t, webmcp.MapErr(ruCtx, domainErr))
+	if payload["message"] != "Something is wrong" {
+		t.Fatalf("message = %v, want literal (never the dotted key)", payload["message"])
 	}
 }
 
@@ -79,12 +79,9 @@ func TestMapErrTranslatesFieldMessages(t *testing.T) {
 		t.Fatalf("errors field missing or wrong shape: %v", payload["errors"])
 	}
 	got, ok := errsMap["name"].([]any)
-	if !ok || len(got) != 1 {
-		t.Fatalf("errors[name] = %v", errsMap["name"])
-	}
 	wantRu := i18n.T("ru", "errors.common.is_blank", nil)
-	if got[0] != wantRu {
-		t.Fatalf("field message = %v, want %q", got[0], wantRu)
+	if !ok || len(got) != 1 || got[0] != wantRu {
+		t.Fatalf("errors[name] = %v, want [%q]", errsMap["name"], wantRu)
 	}
 }
 

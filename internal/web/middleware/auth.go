@@ -21,6 +21,16 @@ type TokenAuthenticator interface {
 	Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, level model.AccessLevel, err error)
 }
 
+// StoredLanguageResolver is an optional capability of the wired
+// TokenAuthenticator: it resolves the authenticated user's persisted UI
+// language ("" = none) for requests that carried no supported Accept-Language
+// header, so server-rendered error text follows the user's preference on both
+// edges (REST and /mcp). Implemented by the server's authenticator decorator;
+// test stubs that don't implement it simply get no fallback.
+type StoredLanguageResolver interface {
+	StoredLanguage(ctx context.Context, userID vo.Id) string
+}
+
 // ctxKeyUserID is the context key under which the authenticated user id is
 // stored. It is distinct from the iota-based keys in middleware.go (a separate
 // unexported type) so the two key spaces cannot collide.
@@ -74,7 +84,7 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token, ok := bearerToken(r)
 			if !ok {
-				httpx.WriteError(w, errs.NewUnauthorized("Access token not found"), dev)
+				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"), dev)
 				return
 			}
 			userID, tokenID, level, err := authn.Authenticate(r.Context(), token)
@@ -83,21 +93,31 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 				if !errors.As(err, &ue) {
 					err = errs.NewUnauthorized("Invalid access token")
 				}
-				httpx.WriteError(w, err, dev)
+				httpx.WriteError(r.Context(), w, err, dev)
 				return
+			}
+			ctx := r.Context()
+			// A request with no (supported) Accept-Language falls back to the
+			// user's stored UI language, so error rendering follows the caller's
+			// preference on every authenticated route — including the 402 below.
+			if lr, ok := authn.(StoredLanguageResolver); ok && !reqctx.IsLanguageExplicit(ctx) {
+				if lang := lr.StoredLanguage(ctx, userID); lang != "" {
+					ctx = reqctx.WithLanguage(ctx, lang)
+					reqctx.AddLogAttr(ctx, "language", lang)
+				}
 			}
 			// Checked as "not full" rather than "is readonly": the access-level
 			// domain is expected to widen, and an unrecognized level (empty
 			// string, or a future third level) must fail closed to read-only
 			// gating, not fall through to unrestricted write access.
 			if level != model.AccessLevelFull && r.Method == http.MethodPost && !ReadonlyAllowedPaths[r.URL.Path] {
-				httpx.WriteError(w, &errs.PaymentRequiredError{
+				httpx.WriteError(ctx, w, &errs.PaymentRequiredError{
 					Msg:  "Read-only access. Write operations are disabled.",
 					Code: errs.CodeReadonlyAccess,
 				}, dev)
 				return
 			}
-			ctx := context.WithValue(r.Context(), ctxKeyUserID, userID)
+			ctx = context.WithValue(ctx, ctxKeyUserID, userID)
 			ctx = context.WithValue(ctx, ctxKeyTokenID, tokenID)
 			reqctx.AddLogAttr(ctx, "user_id", userID.String())
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -147,7 +167,7 @@ func TokenIDFromCtx(ctx context.Context) (vo.Id, bool) {
 func RequireUser(w http.ResponseWriter, r *http.Request) (vo.Id, bool) {
 	id, ok := UserIDFromCtx(r.Context())
 	if !ok {
-		httpx.WriteError(w, errs.NewUnauthorized("Access token not found"), false)
+		httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"), false)
 		return vo.Id{}, false
 	}
 	return id, true

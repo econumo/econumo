@@ -127,7 +127,7 @@ func TestCreateTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 	h.shareAccount(t, roleGuest, true)
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 }
 
 func TestCreateTransaction_SharedAccount_NoGrant_Denied(t *testing.T) {
@@ -135,7 +135,7 @@ func TestCreateTransaction_SharedAccount_NoGrant_Denied(t *testing.T) {
 	h.shareAccount(t, 0, false) // account owned by another user, no grant to seed user
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 }
 
 // TestGetTransactionList_SharedAccount_GuestCanView is the positive read-access
@@ -164,7 +164,7 @@ func TestCreateTransaction_SharedAccount_PendingUserRole_Denied(t *testing.T) {
 	h.shareAccountPending(t, roleUser)
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 }
 
 // TestGetTransactionList_SharedAccount_PendingGrant_NotVisible: a pending grant
@@ -252,7 +252,7 @@ func TestUpdateTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 		"id": txID1, "type": "income", "amount": "20", "accountId": sharedAcctID, "categoryId": catID,
 		"date": "2024-03-02 10:00:00", "description": "edited",
 	})
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 }
 
 func TestDeleteTransaction_SharedAccount_UserRole_Succeeds(t *testing.T) {
@@ -277,5 +277,5 @@ func TestDeleteTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 	seededTx := f.Transaction(fixture.Transaction{UserID: ownerTwoID, AccountID: sharedAcctID, CategoryID: catID, Type: 0, Amount: "5.00000000", Description: "owner tx"})
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/delete-transaction", tok, map[string]any{"id": seededTx})
-	assertValidationDenied(t, status, env, "transaction.transaction.not_available")
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
 }
