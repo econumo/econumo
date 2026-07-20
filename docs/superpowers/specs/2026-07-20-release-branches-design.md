@@ -36,6 +36,15 @@ second-class path.
    means the workflow *definition* always comes from `main`, so hotfix
    branches cut from old tags never run a stale copy of the pipeline; the
    `branch` input alone selects the code being released.
+4. **No fix is lost to a release branch**: release branches are never merged
+   wholesale into `main` — the fix flows back at the commit level. Default
+   direction is main-first (the fix lands on `main`, then is cherry-picked
+   onto the release branch), so there is nothing to port back; a fix authored
+   directly on a release branch is forward-ported to `main` with a cherry-pick
+   PR after the release. Audit for leftovers with
+   `git log --no-merges --right-only --cherry-pick main...release/vX.Y.Z`
+   (patch-equivalence, so cherry-picked commits with different SHAs don't
+   show up as missing).
 
 Release branches are kept after the release; they are the base for future
 fixes to that line.
@@ -96,6 +105,14 @@ fixes to that line.
   the hotfix branch is a hand-made copy of the old release branch under the
   new version's name, the workflow only tags it, and old release branches
   never drift past the commit their version shipped.
+
+- **Merging release branches back into `main`** (git-flow style) to guarantee
+  no fix is lost. Rejected: most hotfix commits are cherry-picks *from* main,
+  so a merge is empty-or-conflicting noise, and a release branch also carries
+  the old line's history, which a merge would entangle with main's. The
+  commit-level flow above (main-first by default, forward-port cherry-pick
+  PR otherwise, patch-equivalence audit) keeps main complete without ever
+  merging a release branch.
 
 ## Not changing
 

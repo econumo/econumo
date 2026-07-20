@@ -67,6 +67,23 @@ fixes and nothing else from main. Note the test workflows ignore pushes to `rele
 only the PR route runs tests on the fixes, which is why it is the default; after a direct
 push, run the suites locally before dispatching.
 
+**The fix must reach main too**, or the next release from main regresses the bug. Release
+branches are never merged wholesale into main — they exist to pin what shipped; the fix
+flows back at the commit level. Default direction: the fix lands on main FIRST (normal PR)
+and is cherry-picked onto the release branch, so there is nothing to port back. Only when
+the fix has to be authored on the release branch directly (the code on main has diverged or
+the bug no longer exists there in the same shape) does it need a forward-port: after the
+release, cherry-pick it onto a working branch and PR it into main. Audit that nothing was
+left behind:
+
+```bash
+git log --no-merges --right-only --cherry-pick --oneline main...origin/release/vX.Y.Z
+```
+
+Empty output means every commit on the release branch is patch-equivalent to one on main;
+anything listed still needs a forward-port (or a deliberate decision that main doesn't need
+it — say so in the release notes).
+
 ## 3. Dispatch and watch
 
 ```bash
@@ -174,7 +191,8 @@ The workflow tags v1.1.2 at the branch head and creates no new branch — `relea
 already is the release branch; a future v1.1.3 starts by copying it the same way. No
 `push_latest`: `latest` keeps pointing at the newest line, and the workflow keeps the
 GitHub "Latest" badge off the hotfix release. Notes follow the normal flow with the range
-v1.1.1...v1.1.2.
+v1.1.1...v1.1.2. Afterwards, verify the fix is also on main (it normally started there);
+if it was authored on the release branch, forward-port it now — see step 2.
 
 ## Updating notes on an already-published release
 
