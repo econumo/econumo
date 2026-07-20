@@ -494,7 +494,8 @@ package model
 
 import "time"
 
-// TrialEnd returns the first instant of the month after the registration month.
+// TrialEnd returns the first instant of the month after next, relative to the
+// registration month.
 // The product's moment of value is a closed calendar month (plan against
 // actual), so the trial must span one whole month whatever day it starts on: a
 // fixed day count delivers that to nobody registering early in a month. Taking

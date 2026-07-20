@@ -116,7 +116,10 @@ func userCommands() []command {
 				if until == nil {
 					fmt.Printf("Access for %s set to %s with no expiry\n", email, level)
 				} else {
-					fmt.Printf("Access for %s set to %s until %s\n", email, level, until.Format(datetime.DateLayout))
+					// Access restricts once now >= until (exclusive boundary, same
+					// as TrialEnd), so the resolved instant is printed rather than
+					// the bare date to make that cutoff visible to the operator.
+					fmt.Printf("Access for %s set to %s until %s\n", email, level, until.Format(datetime.Layout))
 				}
 				return nil
 			},
