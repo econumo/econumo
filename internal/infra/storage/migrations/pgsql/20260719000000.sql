@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN access_level TEXT NOT NULL DEFAULT 'full';
+ALTER TABLE users ADD COLUMN access_until TIMESTAMP;

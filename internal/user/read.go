@@ -16,6 +16,8 @@ import (
 
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -34,11 +36,12 @@ type ReadModel interface {
 type ReadService struct {
 	read   ReadModel
 	encode *auth.EncodeService
+	clock  port.Clock
 }
 
 // NewReadService wires the read service.
-func NewReadService(read ReadModel, encode *auth.EncodeService) *ReadService {
-	return &ReadService{read: read, encode: encode}
+func NewReadService(read ReadModel, encode *auth.EncodeService, clock port.Clock) *ReadService {
+	return &ReadService{read: read, encode: encode, clock: clock}
 }
 
 // GetUserData returns the current-user view in one read path: the user row, its
@@ -115,6 +118,12 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 	cid := currencyID
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})
 
+	level := model.EffectiveAccessLevel(model.AccessLevel(u.AccessLevel), u.AccessUntil, s.clock.Now())
+	accessUntil := ""
+	if u.AccessUntil != nil {
+		accessUntil = u.AccessUntil.Format(datetime.Layout)
+	}
+
 	return model.CurrentUserResult{
 		Id:           u.ID,
 		Name:         u.Name,
@@ -123,5 +132,7 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 		Options:      options,
 		Currency:     currencyCode,
 		ReportPeriod: reportPeriod,
+		AccessLevel:  string(level),
+		AccessUntil:  accessUntil,
 	}, nil
 }

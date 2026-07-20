@@ -2,6 +2,8 @@
 // their adapters (not wire DTOs — no JSON tags).
 package model
 
+import "time"
+
 // CurrencyView is the embeddable currency shape an account result needs.
 type CurrencyView struct {
 	ID             string
@@ -12,9 +14,12 @@ type CurrencyView struct {
 }
 
 // OwnerView is the minimal owner shape an account/budget/connection result
-// embeds.
+// embeds. AccessLevel/AccessUntil are the raw stored columns (see
+// model.Header); only the connection list reads them.
 type OwnerView struct {
-	ID     string
-	Name   string
-	Avatar string
+	ID          string
+	Name        string
+	Avatar      string
+	AccessLevel AccessLevel
+	AccessUntil *time.Time
 }

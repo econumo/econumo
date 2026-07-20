@@ -22,23 +22,25 @@ func (q *Queries) ExistsUserByIdentifier(ctx context.Context, identifier string)
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
 FROM users
 WHERE id = ?
 `
 
 type GetUserByIDRow struct {
-	ID         string
-	Identifier string
-	Email      string
-	Name       string
-	Avatar     string
-	Password   string
-	Salt       string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	IsActive   bool
-	Algorithm  string
+	ID          string
+	Identifier  string
+	Email       string
+	Name        string
+	Avatar      string
+	Password    string
+	Salt        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	IsActive    bool
+	Algorithm   string
+	AccessLevel string
+	AccessUntil *time.Time
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -56,28 +58,32 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.UpdatedAt,
 		&i.IsActive,
 		&i.Algorithm,
+		&i.AccessLevel,
+		&i.AccessUntil,
 	)
 	return i, err
 }
 
 const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until
 FROM users
 WHERE identifier = ?
 `
 
 type GetUserByIdentifierRow struct {
-	ID         string
-	Identifier string
-	Email      string
-	Name       string
-	Avatar     string
-	Password   string
-	Salt       string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	IsActive   bool
-	Algorithm  string
+	ID          string
+	Identifier  string
+	Email       string
+	Name        string
+	Avatar      string
+	Password    string
+	Salt        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	IsActive    bool
+	Algorithm   string
+	AccessLevel string
+	AccessUntil *time.Time
 }
 
 func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error) {
@@ -95,6 +101,8 @@ func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (G
 		&i.UpdatedAt,
 		&i.IsActive,
 		&i.Algorithm,
+		&i.AccessLevel,
+		&i.AccessUntil,
 	)
 	return i, err
 }
@@ -177,8 +185,8 @@ func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguage
 }
 
 const upsertUser = `-- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
@@ -188,21 +196,25 @@ ON CONFLICT (id) DO UPDATE SET
     salt       = excluded.salt,
     algorithm  = excluded.algorithm,
     updated_at = excluded.updated_at,
-    is_active  = excluded.is_active
+    is_active  = excluded.is_active,
+    access_level = excluded.access_level,
+    access_until = excluded.access_until
 `
 
 type UpsertUserParams struct {
-	ID         string
-	Identifier string
-	Email      string
-	Name       string
-	Avatar     string
-	Password   string
-	Salt       string
-	Algorithm  string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	IsActive   bool
+	ID          string
+	Identifier  string
+	Email       string
+	Name        string
+	Avatar      string
+	Password    string
+	Salt        string
+	Algorithm   string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	IsActive    bool
+	AccessLevel string
+	AccessUntil *time.Time
 }
 
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
@@ -218,6 +230,8 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.IsActive,
+		arg.AccessLevel,
+		arg.AccessUntil,
 	)
 	return err
 }

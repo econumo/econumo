@@ -27,6 +27,9 @@ type User struct {
 	Password string // default "secret-pw" (only meaningful WithCrypto)
 	Salt     string // default 40-char sha1-shaped salt
 	Inactive bool   // default active
+
+	AccessLevel string     // default "full"
+	AccessUntil *time.Time // default nil (no expiry)
 }
 
 // defaultSalt is a fixed 40-char sha1-shaped salt for seeded users.
@@ -70,9 +73,13 @@ func (b *Builder) User(u User) string {
 	if u.Inactive {
 		active = "FALSE"
 	}
-	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`)`,
-		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now)
+	level := u.AccessLevel
+	if level == "" {
+		level = "full"
+	}
+	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`, ?, ?)`,
+		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now, level, u.AccessUntil)
 	return id
 }
 

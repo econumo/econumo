@@ -158,3 +158,27 @@ func AsTooManyRequests(err error) (*TooManyRequestsError, bool) {
 	}
 	return nil, false
 }
+
+// PaymentRequiredError maps to HTTP 402: the caller is authenticated but their
+// access is read-only. 402 rather than 403 lets a client tell this apart from
+// validation and auth failures with a single status comparison.
+type PaymentRequiredError struct {
+	Msg string
+}
+
+func (e *PaymentRequiredError) Error() string {
+	if e.Msg != "" {
+		return e.Msg
+	}
+	return "payment required"
+}
+
+func NewPaymentRequired(msg string) *PaymentRequiredError { return &PaymentRequiredError{Msg: msg} }
+
+func AsPaymentRequired(err error) (*PaymentRequiredError, bool) {
+	var v *PaymentRequiredError
+	if errors.As(err, &v) {
+		return v, true
+	}
+	return nil, false
+}

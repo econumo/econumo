@@ -6314,6 +6314,12 @@ const docTemplate = `{
         "model.ConnectionResult": {
             "type": "object",
             "properties": {
+                "accessLevel": {
+                    "type": "string"
+                },
+                "accessUntil": {
+                    "type": "string"
+                },
                 "sharedAccounts": {
                     "type": "array",
                     "items": {
@@ -6727,6 +6733,12 @@ const docTemplate = `{
         "model.CurrentUserResult": {
             "type": "object",
             "properties": {
+                "accessLevel": {
+                    "type": "string"
+                },
+                "accessUntil": {
+                    "type": "string"
+                },
                 "avatar": {
                     "type": "string"
                 },

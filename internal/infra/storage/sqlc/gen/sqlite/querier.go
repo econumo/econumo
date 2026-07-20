@@ -53,7 +53,11 @@ type Querier interface {
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByIdentifier(ctx context.Context, identifier string) (int64, error)
-	GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error)
+	// Joins users for access_level/access_until so per-request auth can report
+	// the caller's effective access level in the same round trip. This does NOT
+	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
+	// lapsed user must still authenticate, just read-only.
+	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
 	// to connected users; users_connections is the symmetric user link. Roles are
@@ -204,7 +208,9 @@ type Querier interface {
 	// to the response shape and bypass the domain aggregate. They live separately
 	// from the write queries (users.sql / users_options.sql) to keep the read and
 	// write concerns visibly distinct.
-	// The user's display fields for get-user-data / the login response user object.
+	// The user's display fields for get-user-data / the login response user
+	// object, plus the raw access_level/access_until columns (the service
+	// collapses them against the clock before putting them on the wire).
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	// Access-token queries (access_tokens): login sessions + personal access
 	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go

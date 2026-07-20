@@ -41,7 +41,8 @@ type Querier interface {
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByIdentifier(ctx context.Context, identifier string) (bool, error)
-	GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error)
+	// Joins users for access_level/access_until; see the sqlite sibling for why.
+	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
 	// grants to connected users; users_connections is the symmetric user link.
@@ -120,6 +121,7 @@ type Querier interface {
 	GetUserPasswordRequestByUserAndCode(ctx context.Context, arg GetUserPasswordRequestByUserAndCodeParams) (UsersPasswordRequest, error)
 	// Read-model queries for the user module (CQRS read side). See the sqlite
 	// variant for rationale. Postgres uses $N placeholders.
+	// See the sqlite variant for rationale on the access columns.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
 	// liveness is evaluated in the app layer, not SQL.

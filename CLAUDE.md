@@ -289,6 +289,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   database has unreadable emails / mismatched identifiers, so those users cannot log in (the
   intended push to migrate); `serve` logs a WARN at boot while it is set.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
+- `ECONUMO_TRIAL` — access granted to a newly registered user: `none` (default, no
+  access grant) or `end-of-next-month` (full access until the first of the month
+  after next). Malformed values fail at boot. See `user:set-access` / `user:show`
+  below and the 402 rule in API conventions for how access is enforced afterward.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
@@ -371,6 +375,8 @@ user:change-email <old> <new>
 user:change-password <email> <password>
 user:activate <email>
 user:deactivate <email>
+user:set-access <email> <full|readonly> [YYYY-MM-DD]
+user:show <email>
 currency:update-rates [date]
 currency:add <code> [name] [fraction-digits]
 token:purge [days]
@@ -405,6 +411,10 @@ In the distroless image these run via the binary directly, e.g.
   token row id into the request context (the latter is the "current session" for
   logout/revoke/isCurrent). Public routes (login, register, remind-password,
   reset-password, `/api/doc`, `/api/doc.json`) need no header; everything else does.
+- **Read-only access is enforced at the edge:** a caller whose access level is
+  `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
+  in the middleware's small allowlist (account security actions — logout, session/PAT
+  revocation, password update); `GET` reads are never restricted.
 
 ## Authentication
 

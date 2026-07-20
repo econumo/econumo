@@ -37,7 +37,9 @@ func NewUserOwnerLookup(users userHeaderByID) *UserOwnerLookup {
 	return &UserOwnerLookup{users: users}
 }
 
-// GetOwner resolves the owner (id, name, avatar) for result embeds.
+// GetOwner resolves the owner (id, name, avatar) for result embeds, plus the
+// raw access columns the connection list needs (account/transaction author
+// embeds ignore them).
 func (l *UserOwnerLookup) GetOwner(ctx context.Context, userID string) (model.OwnerView, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
@@ -47,5 +49,8 @@ func (l *UserOwnerLookup) GetOwner(ctx context.Context, userID string) (model.Ow
 	if err != nil {
 		return model.OwnerView{}, err
 	}
-	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.Avatar}, nil
+	return model.OwnerView{
+		ID: h.ID, Name: h.Name, Avatar: h.Avatar,
+		AccessLevel: h.AccessLevel, AccessUntil: h.AccessUntil,
+	}, nil
 }

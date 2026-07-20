@@ -116,9 +116,9 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetAccess,
-		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration,
+		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial,
 	)
-	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc)
+	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, cfg.IsDev(), clk)
 
 	// Shared-account access resolver (account owner + connected-user grant role),

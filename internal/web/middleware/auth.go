@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -17,7 +18,7 @@ import (
 // Defining it here keeps the middleware from hard-depending on the concrete
 // type, so tests (and any future authenticator) can substitute their own.
 type TokenAuthenticator interface {
-	Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, err error)
+	Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, level model.AccessLevel, err error)
 }
 
 // ctxKeyUserID is the context key under which the authenticated user id is
@@ -30,6 +31,24 @@ var ctxKeyUserID ctxKeyUserIDType
 type ctxKeyTokenIDType struct{}
 
 var ctxKeyTokenID ctxKeyTokenIDType
+
+// ReadonlyAllowedPaths are the POST endpoints a restricted caller may still
+// reach. The principle: a restricted user may always secure their account and
+// leave it, but may not add data. update-password is a security operation, so
+// locking someone out of rotating a compromised password would be indefensible;
+// create-personal-token is excluded because it mints new write-capable
+// credentials. Account deletion joins this list when it exists.
+//
+// Exported so a guard test (internal/test/apiparity) can assert every path
+// here is still a real registered route, catching a route rename that would
+// otherwise leave a lapsed user unable to log out or rotate a password.
+var ReadonlyAllowedPaths = map[string]bool{
+	"/api/v1/user/logout-user":           true,
+	"/api/v1/user/revoke-session":        true,
+	"/api/v1/user/revoke-other-sessions": true,
+	"/api/v1/user/revoke-personal-token": true,
+	"/api/v1/user/update-password":       true,
+}
 
 // Auth builds the authentication middleware. It reads the
 // "Authorization: Bearer <token>" header, authenticates the opaque token via
@@ -50,13 +69,21 @@ func Auth(authn TokenAuthenticator, dev bool) Middleware {
 				httpx.WriteError(w, errs.NewUnauthorized("Access token not found"), dev)
 				return
 			}
-			userID, tokenID, err := authn.Authenticate(r.Context(), token)
+			userID, tokenID, level, err := authn.Authenticate(r.Context(), token)
 			if err != nil {
 				var ue *errs.UnauthorizedError
 				if !errors.As(err, &ue) {
 					err = errs.NewUnauthorized("Invalid access token")
 				}
 				httpx.WriteError(w, err, dev)
+				return
+			}
+			// Checked as "not full" rather than "is readonly": the access-level
+			// domain is expected to widen, and an unrecognized level (empty
+			// string, or a future third level) must fail closed to read-only
+			// gating, not fall through to unrestricted write access.
+			if level != model.AccessLevelFull && r.Method == http.MethodPost && !ReadonlyAllowedPaths[r.URL.Path] {
+				httpx.WriteError(w, errs.NewPaymentRequired("Read-only access. Write operations are disabled."), dev)
 				return
 			}
 			ctx := context.WithValue(r.Context(), ctxKeyUserID, userID)

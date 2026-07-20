@@ -32,6 +32,8 @@ type CurrentUserResult struct {
 	Options      []OptionResult `json:"options"`
 	Currency     string         `json:"currency"`
 	ReportPeriod string         `json:"reportPeriod"`
+	AccessLevel  string         `json:"accessLevel"`
+	AccessUntil  string         `json:"accessUntil"`
 }
 
 // ---------------------------------------------------------------------------

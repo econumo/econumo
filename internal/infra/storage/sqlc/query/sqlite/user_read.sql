@@ -4,8 +4,10 @@
 -- write concerns visibly distinct.
 
 -- name: GetUserView :one
--- The user's display fields for get-user-data / the login response user object.
-SELECT id, email, name, avatar
+-- The user's display fields for get-user-data / the login response user
+-- object, plus the raw access_level/access_until columns (the service
+-- collapses them against the clock before putting them on the wire).
+SELECT id, email, name, avatar, access_level, access_until
 FROM users
 WHERE id = ?;
 

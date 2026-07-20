@@ -23,7 +23,7 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 		return nil, &errs.ValidationError{Msg: "Registration disabled", MsgCode: errs.CodeUserRegistrationDisabled}
 	}
 
-	u, err := s.createUser(ctx, req.Name, req.Email, req.Password)
+	u, err := s.createUser(ctx, req.Name, req.Email, req.Password, true)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +41,10 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 // four default options, and persists. It returns the saved aggregate. A
 // duplicate email -> a validation error ("User already exists"). New users are
 // never auto-connected to existing users; connections are created only by
-// accepting an invite.
-func (s *Service) createUser(ctx context.Context, name, email, password string) (*model.User, error) {
+// accepting an invite. Self-service registration grants a trial; accounts an
+// operator creates through the CLI do not — an admin explicitly provisioning
+// a user is trusted access, not a lead to be time-boxed.
+func (s *Service) createUser(ctx context.Context, name, email, password string, grantTrial bool) (*model.User, error) {
 	loweredEmail := strings.ToLower(strings.TrimSpace(email))
 	identifier := s.encode.Hash(loweredEmail)
 
@@ -71,6 +73,10 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 
 	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
+	if grantTrial && s.trial == "end-of-next-month" {
+		until := model.TrialEnd(now)
+		u.SetAccess(model.AccessLevelFull, &until, now)
+	}
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		return s.repo.Save(ctx, u)

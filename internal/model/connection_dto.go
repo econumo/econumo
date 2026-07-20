@@ -17,10 +17,17 @@ type AccountAccessResult struct {
 }
 
 // ConnectionResult is one connected user plus the accounts shared between them
-// and the requesting user.
+// and the requesting user. AccessLevel/AccessUntil describe the CONNECTED
+// user's (not the caller's) payment access state, so the caller can see why a
+// partner's writes might be blocked; they live here rather than on the shared
+// UserResult embed because UserResult also rides on every transaction/account
+// author, and broadcasting payment status that widely would cost real bytes on
+// the heaviest responses in the product for data only the connections view needs.
 type ConnectionResult struct {
 	User           UserResult            `json:"user"`
 	SharedAccounts []AccountAccessResult `json:"sharedAccounts"`
+	AccessLevel    string                `json:"accessLevel"`
+	AccessUntil    string                `json:"accessUntil"`
 }
 
 // GetConnectionListResult is the response: {items: [...]}.

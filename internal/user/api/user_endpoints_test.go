@@ -43,7 +43,7 @@ func TestLoginUser_Success(t *testing.T) {
 	if !strings.HasPrefix(res.Token, "eco_ses_") {
 		t.Fatalf("token %q must start with eco_ses_", res.Token)
 	}
-	row, err := h.tokens.GetByHash(context.Background(), appuser.HashAccessToken(res.Token))
+	row, _, _, err := h.tokens.GetByHash(context.Background(), appuser.HashAccessToken(res.Token))
 	if err != nil {
 		t.Fatalf("session row for issued token: %v", err)
 	}
@@ -410,5 +410,22 @@ func TestUpdateLanguage_Unsupported_400(t *testing.T) {
 	}
 	if !bytes.Contains(env.raw, []byte("user.language_invalid")) {
 		t.Fatalf("expected user.language_invalid in body: %s", env.raw)
+	}
+}
+
+func TestGetUserData_CarriesAccessState(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	_, env := h.do(t, http.MethodGet, "/api/v1/user/get-user-data", token, nil)
+	wrapper := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+
+	if wrapper.User.AccessLevel != "full" {
+		t.Fatalf("accessLevel = %q, want full", wrapper.User.AccessLevel)
+	}
+	if wrapper.User.AccessUntil != "" {
+		t.Fatalf("accessUntil = %q, want empty for a user with no expiry", wrapper.User.AccessUntil)
 	}
 }

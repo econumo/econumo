@@ -153,3 +153,20 @@ func TestWriteErrorFieldlessMessageCode(t *testing.T) {
 		t.Errorf("frozen message changed\nbody: %s", body)
 	}
 }
+
+func TestWriteError_PaymentRequired(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, errs.NewPaymentRequired("Read-only access. Write operations are disabled."), false)
+
+	if rec.Code != http.StatusPaymentRequired {
+		t.Fatalf("HTTP status = %d, want 402", rec.Code)
+	}
+	body := strings.TrimSpace(rec.Body.String())
+	want := `{"success":false,"message":"Read-only access. Write operations are disabled.","code":402,"errors":{}}`
+	if body != want {
+		t.Fatalf("body:\n got %s\nwant %s", body, want)
+	}
+	if env := decodeEnvelope(t, rec); env.Success {
+		t.Fatalf("success = true, want false")
+	}
+}

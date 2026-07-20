@@ -20,6 +20,8 @@ type connItem struct {
 		ID, Avatar, Name string
 	} `json:"user"`
 	SharedAccounts []accessItem `json:"sharedAccounts"`
+	AccessLevel    string       `json:"accessLevel"`
+	AccessUntil    string       `json:"accessUntil"`
 }
 
 type listResult struct {
@@ -271,5 +273,24 @@ func TestGetConnectionList_OwnerDoesNotSeeStranger(t *testing.T) {
 		if c.User.ID == thirdUserID {
 			t.Fatalf("owner connection list leaked unconnected third user; body: %s", env.raw)
 		}
+	}
+}
+
+func TestGetConnectionList_CarriesPartnerAccessState(t *testing.T) {
+	h := newHarness(t)
+	if _, err := h.db.Exec("UPDATE users SET access_until = ? WHERE id = ?",
+		"2020-01-01 00:00:00", guestUserID); err != nil {
+		t.Fatalf("lapse guest access: %v", err)
+	}
+
+	ownerTok := h.token(t, ownerUserID, ownerEmail)
+	_, env := h.do(t, http.MethodGet, "/api/v1/connection/get-connection-list", ownerTok, nil)
+	owl := mustUnmarshal[listResult](t, env.Data)
+
+	if len(owl.Items) != 1 || owl.Items[0].User.ID != guestUserID {
+		t.Fatalf("owner list = %+v, want one connection to guest", owl.Items)
+	}
+	if owl.Items[0].AccessLevel != "readonly" {
+		t.Fatalf("partner accessLevel = %q, want readonly", owl.Items[0].AccessLevel)
 	}
 }

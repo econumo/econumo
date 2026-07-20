@@ -110,8 +110,8 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
-	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration)
-	readSvc := appuser.NewReadService(readRepo, encode)
+	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration, "")
+	readSvc := appuser.NewReadService(readRepo, encode, clk)
 	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
 
 	h := router.New(router.Deps{
@@ -265,6 +265,8 @@ type currentUser struct {
 	Avatar       string `json:"avatar"`
 	Currency     string `json:"currency"`
 	ReportPeriod string `json:"reportPeriod"`
+	AccessLevel  string `json:"accessLevel"`
+	AccessUntil  string `json:"accessUntil"`
 	Options      []struct {
 		Name  string  `json:"name"`
 		Value *string `json:"value"`

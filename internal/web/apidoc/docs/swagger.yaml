@@ -303,6 +303,10 @@ definitions:
     type: object
   model.ConnectionResult:
     properties:
+      accessLevel:
+        type: string
+      accessUntil:
+        type: string
       sharedAccounts:
         items:
           $ref: '#/definitions/model.AccountAccessResult'
@@ -570,6 +574,10 @@ definitions:
     type: object
   model.CurrentUserResult:
     properties:
+      accessLevel:
+        type: string
+      accessUntil:
+        type: string
       avatar:
         type: string
       currency:

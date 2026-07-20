@@ -7,6 +7,7 @@ package user
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -16,7 +17,7 @@ import (
 // AdminCreateUser creates a user regardless of ECONUMO_ALLOW_REGISTRATION and
 // returns the new id.
 func (s *Service) AdminCreateUser(ctx context.Context, name, email, password string) (vo.Id, error) {
-	u, err := s.createUser(ctx, name, email, password)
+	u, err := s.createUser(ctx, name, email, password, false)
 	if err != nil {
 		return vo.Id{}, err
 	}
@@ -103,6 +104,30 @@ func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 		return err
 	}
 	return s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
+}
+
+// AdminSetAccess sets a user's access level and optional expiry, looked up by
+// email. A nil until means the level never expires.
+func (s *Service) AdminSetAccess(ctx context.Context, email string, level model.AccessLevel, until *time.Time) error {
+	u, err := s.userByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		u.SetAccess(level, until, s.clock.Now())
+		return s.repo.Save(ctx, u)
+	})
+}
+
+// AdminShowUser looks up a user by email and returns the raw stored access
+// alongside the effective level (collapsed against now) so an operator gets
+// both the inputs and the answer in one call.
+func (s *Service) AdminShowUser(ctx context.Context, email string) (*model.User, model.AccessLevel, error) {
+	u, err := s.userByEmail(ctx, email)
+	if err != nil {
+		return nil, "", err
+	}
+	return u, u.EffectiveAccessLevel(s.clock.Now()), nil
 }
 
 // userByEmail resolves a user from a plaintext email via the md5 identifier

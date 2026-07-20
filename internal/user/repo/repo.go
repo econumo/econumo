@@ -24,17 +24,19 @@ import (
 // convert to via a plain field-for-field type conversion.
 type (
 	userRow struct {
-		ID         string
-		Identifier string
-		Email      string
-		Name       string
-		Avatar     string
-		Password   string
-		Salt       string
-		CreatedAt  time.Time
-		UpdatedAt  time.Time
-		IsActive   bool
-		Algorithm  string
+		ID          string
+		Identifier  string
+		Email       string
+		Name        string
+		Avatar      string
+		Password    string
+		Salt        string
+		CreatedAt   time.Time
+		UpdatedAt   time.Time
+		IsActive    bool
+		Algorithm   string
+		AccessLevel string
+		AccessUntil *time.Time
 	}
 	optionRow      = sqlitegen.UsersOption
 	userParams     = sqlitegen.UpsertUserParams
@@ -106,7 +108,10 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 		}
 		return model.Header{}, err
 	}
-	return model.Header{ID: row.ID, Name: row.Name, Avatar: row.Avatar}, nil
+	return model.Header{
+		ID: row.ID, Name: row.Name, Avatar: row.Avatar,
+		AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
+	}, nil
 }
 
 func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*model.User, error) {
@@ -153,17 +158,19 @@ func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption
 func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	db := r.db(ctx)
 	if err := r.q.UpsertUser(ctx, db, userParams{
-		ID:         u.ID.String(),
-		Identifier: u.Identifier,
-		Email:      u.Email,
-		Name:       u.Name,
-		Avatar:     u.Avatar,
-		Password:   u.Password,
-		Salt:       u.Salt,
-		Algorithm:  u.Algorithm,
-		CreatedAt:  u.CreatedAt,
-		UpdatedAt:  u.UpdatedAt,
-		IsActive:   u.IsActive,
+		ID:          u.ID.String(),
+		Identifier:  u.Identifier,
+		Email:       u.Email,
+		Name:        u.Name,
+		Avatar:      u.Avatar,
+		Password:    u.Password,
+		Salt:        u.Salt,
+		Algorithm:   u.Algorithm,
+		CreatedAt:   u.CreatedAt,
+		UpdatedAt:   u.UpdatedAt,
+		IsActive:    u.IsActive,
+		AccessLevel: string(u.AccessLevel),
+		AccessUntil: u.AccessUntil,
 	}); err != nil {
 		return err
 	}
@@ -206,7 +213,8 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 	}
 	return &model.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
 		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, Algorithm: row.Algorithm,
-		IsActive: row.IsActive, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
+		IsActive: row.IsActive, AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 
 func toDomainOptions(rows []optionRow) ([]model.UserOption, error) {

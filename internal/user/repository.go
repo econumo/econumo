@@ -51,8 +51,13 @@ type AccessTokens interface {
 	Insert(ctx context.Context, t *model.AccessToken) error
 
 	// GetByHash resolves the sha256 hex of a presented bearer token — the hot
-	// path behind every authenticated request.
-	GetByHash(ctx context.Context, hash string) (*model.AccessToken, error)
+	// path behind every authenticated request — joining the owning user's
+	// stored access level and expiry in the same round trip so Authenticate
+	// can report the caller's effective access level without a second query;
+	// unlike the is_active deactivation shortcut (see admin.go), an expired
+	// trial must NOT revoke sessions, so this join cannot be skipped the way
+	// the is_active one is.
+	GetByHash(ctx context.Context, hash string) (*model.AccessToken, model.AccessLevel, *time.Time, error)
 
 	// GetByID loads one row (logout / revoke-by-id paths).
 	GetByID(ctx context.Context, id vo.Id) (*model.AccessToken, error)
