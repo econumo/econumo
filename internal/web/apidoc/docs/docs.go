@@ -8710,7 +8710,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Econumo API",
-	Description:      "Self-hosted personal finance and budgeting API (Go port).\n\nA 402 on any endpoint means the caller's access is read-only (trial ended, or no access granted); GET reads are never restricted. Every endpoint that can return it is annotated below.",
+	Description:      "Self-hosted personal finance and budgeting API",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

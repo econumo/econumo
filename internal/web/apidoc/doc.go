@@ -13,9 +13,7 @@
 //
 // @title                      Econumo API
 // @version                    1.0.0
-// @description                Self-hosted personal finance and budgeting API (Go port).
-// @description
-// @description A 402 on any endpoint means the caller's access is read-only (trial ended, or no access granted); GET reads are never restricted. Every endpoint that can return it is annotated below.
+// @description                Self-hosted personal finance and budgeting API
 // @BasePath                   /
 // @securityDefinitions.apikey Bearer
 // @in                         header
