@@ -16,7 +16,7 @@ export function useOpenBillingPortal() {
       const tab = window.open('', '_blank')
       mutation.mutate(forUserId, {
         onSuccess: (url) => {
-          trackEvent(forUserId ? METRICS.SUBSCRIPTION_PARTNER_CTA_CLICK : METRICS.SUBSCRIPTION_CTA_CLICK)
+          trackEvent(METRICS.SUBSCRIPTION_CTA_CLICK, { target: forUserId ? 'partner' : 'self' })
           if (tab) {
             tab.location.href = url
           } else {

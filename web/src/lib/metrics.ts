@@ -89,8 +89,6 @@ export const METRICS = {
   CONNECTION_ACCEPT_ACCOUNT_ACCESS: 'appConnectionAcceptAccountAccess',
   CONNECTION_DECLINE_ACCOUNT_ACCESS: 'appConnectionDeclineAccountAccess',
   SUBSCRIPTION_CTA_CLICK: 'appSubscriptionCtaClick',
-  SUBSCRIPTION_PARTNER_CTA_CLICK: 'appSubscriptionPartnerCtaClick',
-  SUBSCRIPTION_READONLY_BLOCKED: 'appSubscriptionReadonlyBlocked',
   SUBSCRIPTION_BANNER_SHOW: 'appSubscriptionBannerShow',
   UI_MODAL_ACCOUNT_OPEN: 'appUIModalAccountOpen',
   UI_MODAL_ACCOUNT_CLOSE: 'appUIModalAccountClose',

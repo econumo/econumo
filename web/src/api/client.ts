@@ -6,7 +6,6 @@ import { backendHost, locale } from '@/lib/config'
 import i18n from '@/app/i18n'
 import { queryClient } from '@/app/queryClient'
 import { queryKeys } from '@/app/queryKeys'
-import { METRICS, trackEvent } from '@/lib/metrics'
 
 export const api = axios.create()
 
@@ -32,7 +31,6 @@ api.interceptors.response.use(
       window.location.assign('/login?reason=expired')
     }
     if (status === 402) {
-      trackEvent(METRICS.SUBSCRIPTION_READONLY_BLOCKED)
       // The 402 envelope message is deliberately product-neutral and carries
       // no messageCode — render our own localized copy. Fixed id: repeated
       // 402s must not stack toasts.

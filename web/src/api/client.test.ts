@@ -86,7 +86,6 @@ it('on 402 fires the metric, toasts once by id, and invalidates the user query',
     ),
   )
   await expect(api.post(apiUrl('/api/v1/category/create-category'), {})).rejects.toThrow()
-  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appSubscriptionReadonlyBlocked' }))
   expect(toast.error).toHaveBeenCalledWith(expect.any(String), { id: 'subscription-readonly' })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['user'] })
   invalidate.mockRestore()
