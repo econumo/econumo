@@ -22,3 +22,34 @@ function parseUtc(s: string): number {
 export function accessDaysLeft(until: string, now: Date = new Date()): number {
   return Math.ceil((parseUtc(until) - now.getTime()) / 86_400_000)
 }
+
+// The one connection the SubscriptionBanner should warn about, if any:
+// read-only beats ending-soon; among ending trials the soonest expiry wins.
+export interface ConnectionAttention {
+  state: 'readonly' | 'trial'
+  name: string
+  daysLeft: number | null
+}
+
+export function worstConnectionAttention(
+  connections: readonly { user: { name: string }; accessLevel: 'full' | 'readonly'; accessUntil: string }[],
+  now: Date = new Date(),
+): ConnectionAttention | null {
+  let trial: ConnectionAttention | null = null
+  for (const c of connections) {
+    const state = deriveAccessState(c.accessLevel, c.accessUntil)
+    if (state === 'trial') {
+      const daysLeft = accessDaysLeft(c.accessUntil, now)
+      if (daysLeft <= 0) {
+        // Elapsed accessUntil: effectively read-only already.
+        return { state: 'readonly', name: c.user.name, daysLeft: null }
+      }
+      if (daysLeft <= 3 && (trial === null || daysLeft < (trial.daysLeft ?? Infinity))) {
+        trial = { state: 'trial', name: c.user.name, daysLeft }
+      }
+    } else if (state === 'readonly') {
+      return { state: 'readonly', name: c.user.name, daysLeft: null }
+    }
+  }
+  return trial
+}
