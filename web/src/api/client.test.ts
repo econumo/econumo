@@ -1,7 +1,11 @@
 import { http, HttpResponse } from 'msw'
+import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { api, apiUrl } from './client'
 import { setToken, getToken } from '@/lib/storage'
+import { queryClient } from '@/app/queryClient'
+
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
@@ -68,4 +72,22 @@ it('does NOT redirect on 401 from login-user (invalid credentials case)', async 
   )
   await expect(api.post(apiUrl('/api/v1/user/login-user'), {})).rejects.toThrow()
   expect(assign).not.toHaveBeenCalled()
+})
+
+it('on 402 fires the metric, toasts once by id, and invalidates the user query', async () => {
+  window.dataLayer = []
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+  server.use(
+    http.post('*/api/v1/category/create-category', () =>
+      HttpResponse.json(
+        { success: false, message: 'Read-only access. Write operations are disabled.', code: 402, errors: {} },
+        { status: 402 },
+      ),
+    ),
+  )
+  await expect(api.post(apiUrl('/api/v1/category/create-category'), {})).rejects.toThrow()
+  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appAccessReadonlyBlocked' }))
+  expect(toast.error).toHaveBeenCalledWith(expect.any(String), { id: 'access-readonly' })
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['user'] })
+  invalidate.mockRestore()
 })

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 // so without it the footer logo ships as a separate asset and can 404 where
 // the header logo (under the cutoff, auto-inlined) still shows.
 import grayLogo from '@/assets/econumo-gray.svg?inline'
+import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
 import { UserCard } from '@/components/UserCard'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -278,6 +279,7 @@ export function ApplicationLayout() {
       <SharingRequestsDialog open={sharingOpen} onClose={() => setSharingOpen(false)} />
       <LoadingDialog open={showBootLoader} label={t('common.app.modal.loading.data_loading')} />
       {showLogoutEscape ? <LogoutEscapeButton /> : null}
+      <Toaster />
     </div>
   )
 }
