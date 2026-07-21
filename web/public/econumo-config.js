@@ -5,6 +5,7 @@ window.econumoConfig = {
   ALLOW_REGISTRATION: true,
   PAYWALL_ENABLED: false,
   ANALYTICS: true,
+  BILLING_URL: '',
   ALLOW_CUSTOM_API: true,
   VERSION: null,
 };

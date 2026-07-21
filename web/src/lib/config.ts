@@ -13,6 +13,7 @@ export interface EconumoConfig {
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
   ANALYTICS?: boolean | string
+  BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
 }
@@ -106,6 +107,12 @@ export function getWebsiteUrl(): string {
 
 export function getVersion(): string {
   return window.econumoConfig?.VERSION || String(import.meta.env.ECONUMO_VERSION ?? 'dev')
+}
+
+// The server merges BILLING_URL unconditionally into the served
+// econumo-config.js (server truth); '' means billing UI is disabled.
+export function getBillingUrl(): string {
+  return window.econumoConfig?.BILLING_URL || ''
 }
 
 export function isCustomApiAllowed(): boolean {
