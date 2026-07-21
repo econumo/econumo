@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import type { AvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { SettingsPage } from './SettingsPage'
 
@@ -107,4 +107,41 @@ it('shows no new-version link when no update is available', async () => {
   renderPage()
   expect(await screen.findByText('Settings')).toBeInTheDocument()
   expect(screen.queryByText(/New version/)).not.toBeInTheDocument()
+})
+
+function utcIn(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
+}
+
+it('hides the Billing group when BILLING_URL is empty', async () => {
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Finances')).toBeInTheDocument()
+  expect(screen.queryByText('Billing')).not.toBeInTheDocument()
+})
+
+it('shows the Billing group with the portal row for full access', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Billing')).toBeInTheDocument()
+  expect(screen.getByText('Open billing portal')).toBeInTheDocument()
+  expect(screen.queryByText(/Trial/)).not.toBeInTheDocument()
+})
+
+it('shows the trial status hint from day one', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(40) } }))
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText(/Trial — access ends/)).toBeInTheDocument()
+})
+
+it('shows the read-only status hint', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
+  mockViewport(false)
+  renderPage()
+  expect(await screen.findByText('Billing')).toBeInTheDocument()
+  expect(await screen.findByText(/^Read-only$/)).toBeInTheDocument()
 })

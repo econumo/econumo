@@ -10,7 +10,9 @@ import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
-import { useUserData } from '@/features/user/queries'
+import { dayKey, formatDayHeading } from '@/lib/datetime'
+import { useUserData, useAccessState } from '@/features/user/queries'
+import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
@@ -45,7 +47,7 @@ function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string;
 }
 
 export function SettingsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
@@ -54,6 +56,8 @@ export function SettingsPage() {
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
   const version = getVersion()
   const update = useAvailableUpdate()
+  const access = useAccessState()
+  const portal = useOpenBillingPortal()
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -111,6 +115,24 @@ export function SettingsPage() {
             <MenuRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
             <MenuRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
           </MenuGroup>
+
+          {access.billingEnabled ? (
+            <MenuGroup label={t('access.settings.group')}>
+              <MenuRow
+                label={t('access.settings.portal')}
+                onClick={() => portal.open()}
+                trailing={
+                  access.state === 'trial' ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {t('access.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
+                    </span>
+                  ) : access.state === 'readonly' ? (
+                    <span className="shrink-0 text-xs text-destructive">{t('access.settings.status.readonly')}</span>
+                  ) : undefined
+                }
+              />
+            </MenuGroup>
+          ) : null}
 
         </div>
       </div>
