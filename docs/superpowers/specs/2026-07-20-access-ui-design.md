@@ -125,8 +125,9 @@ person profiles).
 
 ### Banner (`AccessBanner`, new component)
 
-Mounted once in `ApplicationLayout`, inside `<main>` above `<Outlet/>` — spans
-every authenticated page, survives navigation. Variants from
+Mounted once in `ApplicationLayout`, as the first child of the layout column
+above the sidebar/workspace row — spans every authenticated page (including
+the compact home screen), survives navigation. Variants from
 `useAccessState()`:
 
 - **Trial ending** — shown when `state === 'trial'` && `daysLeft <= 3` &&

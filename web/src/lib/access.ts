@@ -3,11 +3,11 @@
 // same states exist on self-hosted instances where nobody pays anything.
 export type AccessState = 'trial' | 'full_access' | 'readonly'
 
-export function deriveAccessState(level: string, until: string): AccessState {
+export function deriveAccessState(level: 'full' | 'readonly', until: string): AccessState {
   if (level === 'readonly') {
     return 'readonly'
   }
-  return until !== '' ? 'trial' : 'full_access'
+  return until ? 'trial' : 'full_access'
 }
 
 // accessUntil is the frozen wire format "YYYY-MM-DD HH:mm:ss" in UTC —

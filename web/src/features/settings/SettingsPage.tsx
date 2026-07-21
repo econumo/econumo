@@ -120,7 +120,9 @@ export function SettingsPage() {
             <MenuGroup label={t('access.settings.group')}>
               <MenuRow
                 label={t('access.settings.portal')}
-                onClick={() => portal.open()}
+                onClick={() => {
+                  if (!portal.pending) portal.open()
+                }}
                 trailing={
                   access.state === 'trial' ? (
                     <span className="shrink-0 text-xs text-muted-foreground">
@@ -133,7 +135,6 @@ export function SettingsPage() {
               />
             </MenuGroup>
           ) : null}
-
         </div>
       </div>
 

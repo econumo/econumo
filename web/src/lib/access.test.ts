@@ -9,8 +9,12 @@ describe('deriveAccessState', () => {
     // The server collapses an elapsed expiry to readonly before the wire,
     // so a readonly level wins regardless of the date it arrives with.
     ['readonly', '2026-01-01 00:00:00', 'readonly'],
-  ])('level=%s until=%s -> %s', (level, until, want) => {
+  ] as const)('level=%s until=%s -> %s', (level, until, want) => {
     expect(deriveAccessState(level, until)).toBe(want)
+  })
+
+  it('degrades a missing pair (stale persisted cache) to full_access', () => {
+    expect(deriveAccessState(undefined as never, undefined as never)).toBe('full_access')
   })
 })
 
