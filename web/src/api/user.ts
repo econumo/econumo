@@ -70,6 +70,16 @@ export async function completeOnboarding(): Promise<CurrentUserDto> {
   return response.data.data.user
 }
 
+// Minted per click: the handoff token in the URL lives 10 minutes, so the
+// link must never be prefetched or cached.
+export async function createBillingLink(forUserId?: Id): Promise<string> {
+  const response = await api.post<Envelope<{ url: string }>>(
+    apiUrl('/api/v1/user/create-billing-link'),
+    forUserId ? { for: forUserId } : {},
+  )
+  return response.data.data.url
+}
+
 interface Envelope<T> {
   data: T
 }
