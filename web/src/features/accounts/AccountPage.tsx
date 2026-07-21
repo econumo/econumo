@@ -14,7 +14,7 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
-import { useAccessState, useUserData } from '@/features/user/queries'
+import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction } from '@/features/transactions/queries'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
@@ -70,7 +70,6 @@ export function AccountPage() {
   const { id } = useParams()
   const { data: accounts } = useAccounts()
   const { data: user } = useUserData()
-  const { state: accessState } = useAccessState()
   const deleteTransaction = useDeleteTransaction()
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
@@ -89,7 +88,10 @@ export function AccountPage() {
   const myRole = account.sharedAccess.find((access) => access.user.id === user?.id)?.role
   const isOwner = account.owner.id === user?.id
   const canUpdateSettings = isOwner || myRole === 'admin'
-  const canChangeTransaction = (isOwner || myRole === 'admin' || myRole === 'user') && accessState !== 'readonly'
+  // Read-only access does NOT hide write controls: the backend rejects the
+  // write with 402 and the global handler explains why. Only sharing roles
+  // gate the UI.
+  const canChangeTransaction = isOwner || myRole === 'admin' || myRole === 'user'
 
   const canTouchRow = (tx: ViewTransaction): boolean => {
     if (!canChangeTransaction) {

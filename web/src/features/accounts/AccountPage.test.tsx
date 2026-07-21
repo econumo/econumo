@@ -243,12 +243,12 @@ it('compact + shared account: preview hero overlays the author avatar', async ()
   expect(within(dialog).queryByText('Author')).not.toBeInTheDocument()
 })
 
-it('hides the add-transaction actions while the user is read-only', async () => {
+it('keeps the add-transaction actions while the user is read-only (backend guards writes)', async () => {
   mockViewport(false)
   server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
   renderPage()
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Add transaction' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Add transaction' })).toBeInTheDocument()
 })
 
 it('compact viewport: row click opens the preview dialog with details', async () => {
