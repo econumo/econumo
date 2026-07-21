@@ -121,20 +121,20 @@ export function SettingsPage() {
           ) : null}
 
           {access.billingEnabled ? (
-            <MenuGroup label={t('access.settings.group')}>
+            <MenuGroup label={t('subscription.settings.group')}>
               <MenuRow
                 accent={access.state === 'full_access' ? 'hover' : 'rest'}
-                label={t('access.settings.portal')}
+                label={t('subscription.settings.portal')}
                 onClick={() => {
                   if (!portal.pending) portal.open()
                 }}
                 trailing={
                   access.state === 'trial' ? (
                     <span className="shrink-0 text-xs text-primary/80">
-                      {t('access.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
+                      {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
                     </span>
                   ) : access.state === 'readonly' ? (
-                    <span className="shrink-0 text-xs text-destructive">{t('access.settings.status.readonly')}</span>
+                    <span className="shrink-0 text-xs text-destructive">{t('subscription.settings.status.readonly')}</span>
                   ) : undefined
                 }
               />

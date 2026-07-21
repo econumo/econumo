@@ -37,14 +37,14 @@ export function SubscriptionBanner() {
 
   const cta = billingEnabled ? (
     <Button type="button" size="sm" variant="outline" disabled={portal.pending} onClick={() => portal.open()}>
-      {t('access.banner.cta')}
+      {t('subscription.banner.cta')}
     </Button>
   ) : null
 
   if (variant === 'readonly') {
     return (
       <div className="flex items-center gap-3 bg-destructive/10 px-4 py-2 text-sm text-destructive">
-        <span className="min-w-0 flex-1">{t('access.banner.readonly')}</span>
+        <span className="min-w-0 flex-1">{t('subscription.banner.readonly')}</span>
         {cta}
       </div>
     )
@@ -53,12 +53,12 @@ export function SubscriptionBanner() {
   return (
     <div className="flex items-center gap-3 bg-primary/10 px-4 py-2 text-sm text-primary">
       <span className="min-w-0 flex-1">
-        {pluralPick(t('access.banner.trial'), Math.max(daysLeft ?? 0, 0), i18n.language)}
+        {pluralPick(t('subscription.banner.trial'), Math.max(daysLeft ?? 0, 0), i18n.language)}
       </span>
       {cta}
       <button
         type="button"
-        aria-label={t('access.banner.dismiss')}
+        aria-label={t('subscription.banner.dismiss')}
         className="shrink-0 hover:opacity-70"
         onClick={() => {
           localStorage.setItem(DISMISSED_KEY, formatDate(new Date()))

@@ -85,15 +85,15 @@ export function ConnectionsPage() {
                     {connState !== 'full_access' ? (
                       <span className={`truncate text-xs ${connState === 'readonly' ? 'text-destructive' : 'text-muted-foreground'}`}>
                         {connState === 'readonly'
-                          ? t('access.connections.status.readonly')
-                          : pluralPick(t('access.connections.status.ends'), Math.max(connDays ?? 0, 0), i18n.language)}
+                          ? t('subscription.connections.status.readonly')
+                          : pluralPick(t('subscription.connections.status.ends'), Math.max(connDays ?? 0, 0), i18n.language)}
                       </span>
                     ) : null}
                   </span>
                 </button>
                 {billingEnabled && needsAttention ? (
                   <Button type="button" size="sm" variant="secondary" disabled={portal.pending} onClick={() => portal.open(connection.user.id)}>
-                    {t('access.connections.pay_for', { name: connection.user.name })}
+                    {t('subscription.connections.pay_for', { name: connection.user.name })}
                   </Button>
                 ) : null}
                 <DropdownMenu>

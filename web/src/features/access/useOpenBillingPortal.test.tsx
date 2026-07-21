@@ -39,7 +39,7 @@ it('mints a self link per click and points the pre-opened tab at it', async () =
   result.current.open()
   await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc'))
   expect(body).toEqual({})
-  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appAccessCtaClick' }))
+  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appSubscriptionCtaClick' }))
 })
 
 it('sends the partner id as the for hint and fires the partner metric', async () => {
@@ -56,7 +56,7 @@ it('sends the partner id as the for hint and fires the partner metric', async ()
   result.current.open('u2')
   await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc&for=u2'))
   expect(body).toEqual({ for: 'u2' })
-  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appAccessPartnerCtaClick' }))
+  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appSubscriptionPartnerCtaClick' }))
 })
 
 it('closes the pre-opened tab and fires no metric when minting fails', async () => {

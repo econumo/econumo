@@ -32,11 +32,11 @@ api.interceptors.response.use(
       window.location.assign('/login?reason=expired')
     }
     if (status === 402) {
-      trackEvent(METRICS.ACCESS_READONLY_BLOCKED)
+      trackEvent(METRICS.SUBSCRIPTION_READONLY_BLOCKED)
       // The 402 envelope message is deliberately product-neutral and carries
       // no messageCode — render our own localized copy. Fixed id: repeated
       // 402s must not stack toasts.
-      toast.error(i18n.t('access.toast.readonly'), { id: 'access-readonly' })
+      toast.error(i18n.t('subscription.toast.readonly'), { id: 'subscription-readonly' })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
     }
     return Promise.reject(error)
