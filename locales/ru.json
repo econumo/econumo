@@ -659,12 +659,6 @@
         "header": "Регистрация",
         "privacy": {
           "text": "Регистрируясь, вы соглашаетесь с нашей <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Политикой конфиденциальности</a> и <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Условиями использования</a>"
-        },
-        "paywall": {
-          "header": "Готовы начать пользоваться Econumo?",
-          "text": "Нажмите кнопку ниже, чтобы внести единоразовый платёж и начать работу.",
-          "next_steps": "Как только мы получим платёж, мы отправим данные для входа на указанный email.",
-          "action": "Зарегистрироваться"
         }
       }
     }

@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
-import { econumoPackage } from '@/lib/package'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -30,7 +29,6 @@ export function RegistrationPage() {
   const registerMutation = useRegister()
   const [failOpen, setFailOpen] = useState(false)
   const customApiAllowed = config.isCustomApiAllowed()
-  const pkg = econumoPackage()
 
   const { register, handleSubmit, setValue, getValues, watch, formState: { errors } } = useForm<RegistrationForm>({
     mode: 'onTouched',
@@ -75,23 +73,6 @@ export function RegistrationPage() {
       setFailOpen(true)
     }
   })
-
-  if (pkg.isPaywallEnabled) {
-    return (
-      <>
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div dangerouslySetInnerHTML={{ __html: t('auth.page.sign_up.paywall.header') }} />
-          <div dangerouslySetInnerHTML={{ __html: t('auth.page.sign_up.paywall.text') }} />
-          <Button asChild size="lg">
-            <a href={pkg.paywallUrl} target="_blank" rel="noopener noreferrer">
-              {t('auth.page.sign_up.paywall.action')}
-            </a>
-          </Button>
-          <p className="text-sm text-muted-foreground">{t('auth.page.sign_up.paywall.next_steps')}</p>
-        </div>
-      </>
-    )
-  }
 
   return (
     <>

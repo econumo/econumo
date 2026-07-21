@@ -659,12 +659,6 @@
         "header": "Sign up",
         "privacy": {
           "text": "By registering, you agree to our <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Privacy Policy</a> and <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Terms of Service</a>"
-        },
-        "paywall": {
-          "header": "Ready to start using Econumo?",
-          "text": "Make a one-time payment by clicking the button below to get started.",
-          "next_steps": "As soon as we receive your payment, we will send your login credentials to the provided email address.",
-          "action": "Sign up"
         }
       }
     }

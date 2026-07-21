@@ -9,7 +9,6 @@ export interface LocaleOption {
 export interface EconumoConfig {
   API_URL?: string
   ALLOW_REGISTRATION?: boolean | string
-  PAYWALL_ENABLED?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
   ANALYTICS?: boolean | string
@@ -142,15 +141,4 @@ export function analyticsEnabled(): boolean {
   // Absent or unrecognized fails OPEN (enabled): a stale hand-hosted config
   // file keeps the enabled-by-default contract.
   return analytics !== 'false'
-}
-
-export function isPaywallEnabled(): boolean {
-  const paywall = window.econumoConfig?.PAYWALL_ENABLED
-  if (paywall === undefined) {
-    return false
-  }
-  if (typeof paywall === 'boolean') {
-    return paywall
-  }
-  return paywall === 'true'
 }

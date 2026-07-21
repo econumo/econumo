@@ -2,13 +2,12 @@ import { NavLink, Outlet } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { LanguageBadge } from '@/components/LanguageBadge'
 import { isRegistrationAllowed } from '@/lib/config'
-import { econumoPackage } from '@/lib/package'
 import { RouterPage } from '@/app/router-pages'
 import logo from '@/assets/econumo.svg'
 
 export function LoginLayout() {
   const { t } = useTranslation()
-  const registerEnabled = econumoPackage().isPaywallEnabled || isRegistrationAllowed()
+  const registerEnabled = isRegistrationAllowed()
   // segmented control: the inactive tab sits on the gray track, so it reads as
   // "the other option" instead of blending into the form below
   const tabClass = ({ isActive }: { isActive: boolean }) =>
