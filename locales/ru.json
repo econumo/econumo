@@ -1123,7 +1123,7 @@
       "portal": "Управлять подпиской",
       "status": {
         "trial": "Подписка до {date}",
-        "readonly": "Только чтение"
+        "readonly": "Истекла"
       }
     },
     "connections": {

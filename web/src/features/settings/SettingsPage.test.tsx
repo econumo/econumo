@@ -143,5 +143,5 @@ it('shows the read-only status hint', async () => {
   mockViewport(false)
   renderPage()
   expect(await screen.findByText('Billing')).toBeInTheDocument()
-  expect(await screen.findByText(/^Read-only$/)).toBeInTheDocument()
+  expect(await screen.findByText(/^Expired$/)).toBeInTheDocument()
 })

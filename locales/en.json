@@ -1123,7 +1123,7 @@
       "portal": "Manage subscription",
       "status": {
         "trial": "Subscription ends {date}",
-        "readonly": "Read-only"
+        "readonly": "Expired"
       }
     },
     "connections": {
