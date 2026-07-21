@@ -1114,7 +1114,9 @@
       "trial": "Your subscription ends in {count} day | Your subscription ends in {count} days",
       "readonly": "Your account is read-only — you can view and export your data, but not add or change it",
       "cta": "Manage subscription",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "connection_trial": "{name}'s subscription ends in {count} day | {name}'s subscription ends in {count} days",
+      "connection_readonly": "{name}'s subscription has ended — they can view shared accounts but not edit"
     },
     "settings": {
       "group": "Billing",

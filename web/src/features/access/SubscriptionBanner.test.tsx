@@ -94,3 +94,54 @@ it('shows the readonly CTA when billing is enabled', async () => {
   renderBanner()
   expect(await screen.findByRole('button', { name: 'Manage subscription' })).toBeInTheDocument()
 })
+
+function partnerConn(accessLevel: 'full' | 'readonly', accessUntil: string) {
+  return [{ user: { id: 'u2', avatar: 'pets:sky', name: 'Megan' }, accessLevel, accessUntil, sharedAccounts: [] }]
+}
+
+it('warns when a connection trial ends within 3 days, with the partner name', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ connections: partnerConn('full', utcIn(2)) }))
+  renderBanner()
+  expect(await screen.findByText("Megan's subscription ends in 2 days")).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Manage subscription' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument()
+  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appSubscriptionBannerShow' }))
+})
+
+it('shows nothing for a connection trial more than 3 days out', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ connections: partnerConn('full', utcIn(30)) }))
+  renderBanner()
+  await waitFor(() => expect(window.dataLayer).toEqual([]))
+})
+
+it('warns dismissibly when a connection is read-only', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ connections: partnerConn('readonly', '') }))
+  const user = userEvent.setup()
+  renderBanner()
+  expect(await screen.findByText(/Megan's subscription has ended/)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Dismiss' }))
+  expect(screen.queryByText(/Megan's subscription has ended/)).not.toBeInTheDocument()
+  expect(localStorage.getItem('subscriptionBannerDismissedDay')).not.toBeNull()
+})
+
+it('own trial outranks a read-only connection', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(
+    ...coreHandlers({
+      user: { ...fixtureUser, accessUntil: utcIn(2) },
+      connections: partnerConn('readonly', ''),
+    }),
+  )
+  renderBanner()
+  expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
+  expect(screen.queryByText(/Megan's subscription/)).not.toBeInTheDocument()
+})
+
+it('shows no partner variants when billing is disabled', async () => {
+  server.use(...coreHandlers({ connections: partnerConn('readonly', '') }))
+  renderBanner()
+  await waitFor(() => expect(window.dataLayer).toEqual([]))
+})
