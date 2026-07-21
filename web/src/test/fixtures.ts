@@ -5,6 +5,8 @@ export const fixtureUser = {
   name: 'Ada',
   email: 'ada@example.test',
   avatar: 'face:emerald',
+  accessLevel: 'full' as const,
+  accessUntil: '',
   options: [
     { name: 'currency', value: 'USD' },
     { name: 'currency_id', value: 'cur-usd' },
@@ -127,7 +129,7 @@ export const fixtureWireBudget = {
 }
 
 export const fixtureConnections = [
-  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, sharedAccounts: [] },
+  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, accessLevel: 'full' as const, accessUntil: '', sharedAccounts: [] },
 ]
 
 const envelope = (data: unknown) => HttpResponse.json({ success: true, message: '', data })
