@@ -1115,6 +1115,32 @@
       "decline_question": "Decline access to \"{name}\"?"
     }
   },
+  "access": {
+    "banner": {
+      "trial": "Your access ends in {count} day | Your access ends in {count} days",
+      "readonly": "Your account is read-only — you can view and export your data, but not add or change it",
+      "cta": "Manage access",
+      "dismiss": "Dismiss"
+    },
+    "settings": {
+      "group": "Billing",
+      "portal": "Open billing portal",
+      "status": {
+        "trial": "Trial — access ends {date}",
+        "readonly": "Read-only"
+      }
+    },
+    "connections": {
+      "status": {
+        "readonly": "Read-only",
+        "ends": "Access ends in {count} day | Access ends in {count} days"
+      },
+      "pay_for": "Pay for {name}"
+    },
+    "toast": {
+      "readonly": "Read-only access — changes are disabled"
+    }
+  },
   "errors": {
     "common": {
       "is_blank": "This value should not be blank.",
