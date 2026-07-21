@@ -126,6 +126,16 @@ export function posthogEventName(metric: string): string {
     .toLowerCase()
 }
 
+// There is no PostHog SDK and no person profile to hang a super property on
+// (see lib/analytics.ts) — per-event accuracy comes from stamping the state
+// at capture time from this module-level value, refreshed wherever user data
+// lands (login, get-user-data).
+let currentAccessState: string | null = null
+
+export function setAnalyticsAccessState(state: string | null): void {
+  currentAccessState = state
+}
+
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
@@ -155,6 +165,7 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
       version: getVersion(),
       mode: viewMode(),
       current_url: `https://${host}/${scrubbedPage(window.location.pathname)}`,
+      ...(currentAccessState ? { access_state: currentAccessState } : {}),
     })
   }
 }

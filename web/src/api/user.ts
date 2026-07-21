@@ -1,11 +1,15 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
+import { deriveAccessState } from '@/lib/access'
+import { setAnalyticsAccessState } from '@/lib/metrics'
 
 // login-user is the one endpoint that responds with a bare {token, user}
 // body instead of the standard {success, message, data} envelope.
 export async function login(username: string, password: string): Promise<UserLoginItemDto> {
   const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/user/login-user'), { username, password })
+  const { user } = response.data
+  setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   return response.data
 }
 
@@ -44,7 +48,9 @@ export async function updateDefaultBudget(budgetId: Id): Promise<CurrentUserDto>
 
 export async function getUserData(): Promise<CurrentUserDto> {
   const response = await api.get<CurrentUserResponseDto>(apiUrl('/api/v1/user/get-user-data'))
-  return response.data.data.user
+  const user = response.data.data.user
+  setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
+  return user
 }
 
 export async function remindPassword(username: string): Promise<void> {
