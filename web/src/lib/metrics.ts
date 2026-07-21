@@ -91,6 +91,7 @@ export const METRICS = {
   ACCESS_CTA_CLICK: 'appAccessCtaClick',
   ACCESS_PARTNER_CTA_CLICK: 'appAccessPartnerCtaClick',
   ACCESS_READONLY_BLOCKED: 'appAccessReadonlyBlocked',
+  ACCESS_BANNER_SHOW: 'appAccessBannerShow',
   UI_MODAL_ACCOUNT_OPEN: 'appUIModalAccountOpen',
   UI_MODAL_ACCOUNT_CLOSE: 'appUIModalAccountClose',
   UI_MODAL_TRANSACTION_OPEN: 'appUIModalTransactionOpen',
