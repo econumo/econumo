@@ -108,7 +108,7 @@ it('shows no status or pay button for a full-access connection', async () => {
   server.use(...coreHandlers({ connections: fixtureConnections }))
   renderPage()
   expect(await screen.findByText('Partner')).toBeInTheDocument()
-  expect(screen.queryByText(/Read-only|Access ends/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Read-only|Subscription ends/)).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Pay for Partner' })).not.toBeInTheDocument()
 })
 
@@ -116,7 +116,7 @@ it('shows an ends-in status without a pay button for a far-off trial connection'
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(...coreHandlers({ connections: partner({ accessUntil: utcIn(30) }) }))
   renderPage()
-  expect(await screen.findByText('Access ends in 30 days')).toBeInTheDocument()
+  expect(await screen.findByText('Subscription ends in 30 days')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Pay for Partner' })).not.toBeInTheDocument()
 })
 

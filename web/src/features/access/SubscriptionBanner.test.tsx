@@ -4,7 +4,8 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
-import { AccessBanner } from './AccessBanner'
+import { formatDate } from '@/lib/datetime'
+import { SubscriptionBanner } from './SubscriptionBanner'
 
 function utcIn(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
@@ -15,7 +16,7 @@ function renderBanner() {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
-  return render(<AccessBanner />, { wrapper })
+  return render(<SubscriptionBanner />, { wrapper })
 }
 
 beforeEach(() => {
@@ -43,11 +44,34 @@ it('shows the dismissible trial variant inside 3 days, with the CTA, and fires t
   server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
   const user = userEvent.setup()
   renderBanner()
-  expect(await screen.findByText('Your access ends in 2 days')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Manage access' })).toBeInTheDocument()
-  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appAccessBannerShow' }))
+  expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Manage subscription' })).toBeInTheDocument()
+  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appSubscriptionBannerShow' }))
   await user.click(screen.getByRole('button', { name: 'Dismiss' }))
-  expect(screen.queryByText('Your access ends in 2 days')).not.toBeInTheDocument()
+  expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+})
+
+it('keeps the trial variant dismissed for the rest of the day across mounts', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
+  const user = userEvent.setup()
+  const { unmount } = renderBanner()
+  await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
+  unmount()
+  window.dataLayer = []
+  renderBanner()
+  await new Promise((r) => setTimeout(r, 50))
+  expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
+  // No show metric for a banner suppressed by a persisted dismissal
+  expect(window.dataLayer).toEqual([])
+})
+
+it('shows the trial variant again when the dismissal is from a previous day', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  localStorage.setItem('subscriptionBannerDismissedDay', formatDate(new Date(Date.now() - 86_400_000)))
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
+  renderBanner()
+  expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
 })
 
 it('hides the trial variant entirely when billing is disabled', async () => {
@@ -60,7 +84,7 @@ it('shows the permanent readonly variant even without billing, minus the CTA', a
   server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
   renderBanner()
   expect(await screen.findByText(/read-only/)).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Manage access' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Manage subscription' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument()
 })
 
@@ -68,5 +92,5 @@ it('shows the readonly CTA when billing is enabled', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
   renderBanner()
-  expect(await screen.findByRole('button', { name: 'Manage access' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Manage subscription' })).toBeInTheDocument()
 })

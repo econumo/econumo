@@ -125,7 +125,7 @@ it('shows the Billing group with the portal row for full access', async () => {
   mockViewport(false)
   renderPage()
   expect(await screen.findByText('Billing')).toBeInTheDocument()
-  expect(screen.getByText('Open billing portal')).toBeInTheDocument()
+  expect(screen.getByText('Manage subscription')).toBeInTheDocument()
   expect(screen.queryByText(/Trial/)).not.toBeInTheDocument()
 })
 
@@ -134,7 +134,7 @@ it('shows the trial status hint from day one', async () => {
   server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(40) } }))
   mockViewport(false)
   renderPage()
-  expect(await screen.findByText(/Trial — access ends/)).toBeInTheDocument()
+  expect(await screen.findByText(/Subscription ends/)).toBeInTheDocument()
 })
 
 it('shows the read-only status hint', async () => {

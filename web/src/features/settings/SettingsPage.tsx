@@ -29,9 +29,30 @@ function MenuGroup({ label, children }: { label: string; children: React.ReactNo
 }
 
 // Vue renders the hub as light-gray card rows in a narrow column
-function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string; onClick?: () => void; trailing?: React.ReactNode }) {
+function MenuRow({
+  label,
+  to,
+  onClick,
+  trailing,
+  accent,
+}: {
+  label: string
+  to?: string
+  onClick?: () => void
+  trailing?: React.ReactNode
+  // 'hover' tints the row on hover only; 'rest' keeps the accent visible at rest
+  accent?: 'hover' | 'rest'
+}) {
   const inner = (
-    <span className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover">
+    <span
+      className={`flex w-full items-center justify-between gap-2 rounded-lg px-4 py-3.5 text-sm ${
+        accent === 'rest'
+          ? 'bg-primary/10 text-primary hover:bg-primary/15'
+          : accent === 'hover'
+            ? 'bg-econumo-card hover:bg-primary/10 hover:text-primary'
+            : 'bg-econumo-card hover:bg-econumo-hover'
+      }`}
+    >
       <span>{label}</span>
       {trailing ?? <ChevronRight className="size-4 text-muted-foreground" />}
     </span>
@@ -99,6 +120,27 @@ export function SettingsPage() {
             </a>
           ) : null}
 
+          {access.billingEnabled ? (
+            <MenuGroup label={t('access.settings.group')}>
+              <MenuRow
+                accent={access.state === 'full_access' ? 'hover' : 'rest'}
+                label={t('access.settings.portal')}
+                onClick={() => {
+                  if (!portal.pending) portal.open()
+                }}
+                trailing={
+                  access.state === 'trial' ? (
+                    <span className="shrink-0 text-xs text-primary/80">
+                      {t('access.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
+                    </span>
+                  ) : access.state === 'readonly' ? (
+                    <span className="shrink-0 text-xs text-destructive">{t('access.settings.status.readonly')}</span>
+                  ) : undefined
+                }
+              />
+            </MenuGroup>
+          ) : null}
+
           <MenuGroup label={t('settings.page.groups.service')}>
             <MenuRow label={t('settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
             <MenuRow label={t('connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
@@ -116,25 +158,6 @@ export function SettingsPage() {
             <MenuRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
           </MenuGroup>
 
-          {access.billingEnabled ? (
-            <MenuGroup label={t('access.settings.group')}>
-              <MenuRow
-                label={t('access.settings.portal')}
-                onClick={() => {
-                  if (!portal.pending) portal.open()
-                }}
-                trailing={
-                  access.state === 'trial' ? (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {t('access.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
-                    </span>
-                  ) : access.state === 'readonly' ? (
-                    <span className="shrink-0 text-xs text-destructive">{t('access.settings.status.readonly')}</span>
-                  ) : undefined
-                }
-              />
-            </MenuGroup>
-          ) : null}
         </div>
       </div>
 

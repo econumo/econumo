@@ -35,6 +35,9 @@ export default defineConfig({
     fs: { allow: ['..'] },
     proxy: {
       '/api': `http://localhost:${backendPort()}`,
+      // Server-owned SPA config (BILLING_URL, ALLOW_REGISTRATION, ...) is merged
+      // into this file by the Go server; the public/ copy has only dist fallbacks.
+      '/econumo-config.js': `http://localhost:${backendPort()}`,
     },
   },
   test: {

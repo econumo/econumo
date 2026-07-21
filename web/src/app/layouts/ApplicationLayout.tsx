@@ -21,7 +21,7 @@ import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
-import { AccessBanner } from '@/features/access/AccessBanner'
+import { SubscriptionBanner } from '@/features/access/SubscriptionBanner'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { usePendingInvites } from '@/features/connections/pendingInvites'
 import { SharingRequestsDialog } from '@/features/connections/SharingRequestsDialog'
@@ -137,7 +137,7 @@ export function ApplicationLayout() {
     // itself clear of the status bar / rounded corners; the bottom inset is
     // handled per bottom bar so their backgrounds still reach the screen edge.
     <div className="flex h-svh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
-      <AccessBanner />
+      <SubscriptionBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">

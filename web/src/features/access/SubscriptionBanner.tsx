@@ -2,33 +2,36 @@ import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { formatDate } from '@/lib/datetime'
 import { pluralPick } from '@/lib/plural'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from './useOpenBillingPortal'
 
-export function AccessBanner() {
+// Dismissal persists for the local calendar day: the banner stays hidden
+// across reloads and returns the next day (the countdown has moved by then).
+const DISMISSED_KEY = 'subscriptionBannerDismissedDay'
+
+export function SubscriptionBanner() {
   const { t, i18n } = useTranslation()
   const { state, daysLeft, billingEnabled } = useAccessState()
   const portal = useOpenBillingPortal()
-  // Per-session dismissal: component state in the persistent layout — the
-  // banner returns on the next page load or login.
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISSED_KEY) === formatDate(new Date()))
 
   const variant =
     state === 'readonly'
       ? 'readonly'
-      : state === 'trial' && billingEnabled && daysLeft !== null && daysLeft <= 3
+      : state === 'trial' && billingEnabled && daysLeft !== null && daysLeft <= 3 && !dismissed
         ? 'trial'
         : null
 
   useEffect(() => {
     if (variant) {
-      trackEvent(METRICS.ACCESS_BANNER_SHOW, { variant })
+      trackEvent(METRICS.SUBSCRIPTION_BANNER_SHOW, { variant })
     }
   }, [variant])
 
-  if (!variant || (variant === 'trial' && dismissed)) {
+  if (!variant) {
     return null
   }
 
@@ -57,7 +60,10 @@ export function AccessBanner() {
         type="button"
         aria-label={t('access.banner.dismiss')}
         className="shrink-0 hover:opacity-70"
-        onClick={() => setDismissed(true)}
+        onClick={() => {
+          localStorage.setItem(DISMISSED_KEY, formatDate(new Date()))
+          setDismissed(true)
+        }}
       >
         <X className="size-4" />
       </button>
