@@ -6,9 +6,34 @@ import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { getBillingUrl } from '@/lib/config'
+import { accessDaysLeft, deriveAccessState } from '@/lib/access'
+import type { AccessState } from '@/lib/access'
 
 export function useUserData() {
   return useQuery({ queryKey: queryKeys.user, queryFn: getUserData, staleTime: TEN_MINUTES })
+}
+
+export interface AccessStateView {
+  state: AccessState | undefined
+  accessUntil: string
+  daysLeft: number | null
+  billingEnabled: boolean
+}
+
+export function useAccessState(): AccessStateView {
+  const { data: user } = useUserData()
+  const billingEnabled = getBillingUrl() !== ''
+  if (!user) {
+    return { state: undefined, accessUntil: '', daysLeft: null, billingEnabled }
+  }
+  const state = deriveAccessState(user.accessLevel, user.accessUntil)
+  return {
+    state,
+    accessUntil: user.accessUntil,
+    daysLeft: state === 'trial' ? accessDaysLeft(user.accessUntil) : null,
+    billingEnabled,
+  }
 }
 
 export function userOption(user: CurrentUserDto | undefined, name: UserOptions): string | null {
