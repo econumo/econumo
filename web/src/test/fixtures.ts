@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import type { ConnectionDto } from '@/api/dto/connection'
 
 export const fixtureUser = {
   id: 'u1',
@@ -128,8 +129,8 @@ export const fixtureWireBudget = {
   },
 }
 
-export const fixtureConnections = [
-  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, accessLevel: 'full' as const, accessUntil: '', sharedAccounts: [] },
+export const fixtureConnections: ConnectionDto[] = [
+  { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, accessLevel: 'full', accessUntil: '', sharedAccounts: [] },
 ]
 
 const envelope = (data: unknown) => HttpResponse.json({ success: true, message: '', data })

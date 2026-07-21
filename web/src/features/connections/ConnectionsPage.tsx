@@ -9,6 +9,10 @@ import { UserAvatar } from '@/components/UserAvatar'
 import type { ConnectionDto, InviteDto } from '@/api/dto/connection'
 import { RouterPage } from '@/app/router-pages'
 import { apiErrorMessage } from '@/lib/apiError'
+import { accessDaysLeft, deriveAccessState } from '@/lib/access'
+import { pluralPick } from '@/lib/plural'
+import { useAccessState } from '@/features/user/queries'
+import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { GenerateInviteDialog } from './GenerateInviteDialog'
 import { AcceptInviteDialog } from './AcceptInviteDialog'
@@ -16,11 +20,13 @@ import { PreviewConnectionDialog } from './PreviewConnectionDialog'
 import { useAcceptInvite, useConnections, useDeleteConnection, useGenerateInvite } from './queries'
 
 export function ConnectionsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: connections = [] } = useConnections({ poll: true })
   const generateInvite = useGenerateInvite()
   const acceptInvite = useAcceptInvite()
   const deleteConnection = useDeleteConnection()
+  const { billingEnabled } = useAccessState()
+  const portal = useOpenBillingPortal()
 
   const [invite, setInvite] = useState<InviteDto | null>(null)
   const [acceptOpen, setAcceptOpen] = useState(false)
@@ -60,33 +66,52 @@ export function ConnectionsPage() {
         <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
       ) : (
         <ul className="flex max-w-md flex-col gap-2">
-          {connections.map((connection) => (
-            <li key={connection.user.id} className="flex items-center gap-3 rounded-lg bg-econumo-card px-3 py-2 hover:bg-econumo-hover">
-              <button
-                type="button"
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                onClick={() => setPreview(connection)}
-              >
-                <UserAvatar avatar={connection.user.avatar} size="md" />
-                <span className="min-w-0 flex-1 truncate text-sm" title={connection.user.name}>
-                  {connection.user.name}
-                </span>
-              </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon" aria-label={`connection actions ${connection.user.name}`}>
-                    <MoreVertical className="size-4" />
+          {connections.map((connection) => {
+            const connState = deriveAccessState(connection.accessLevel, connection.accessUntil)
+            const connDays = connState === 'trial' ? accessDaysLeft(connection.accessUntil) : null
+            const needsAttention = connState === 'readonly' || (connDays !== null && connDays <= 3)
+            return (
+              <li key={connection.user.id} className="flex items-center gap-3 rounded-lg bg-econumo-card px-3 py-2 hover:bg-econumo-hover">
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  onClick={() => setPreview(connection)}
+                >
+                  <UserAvatar avatar={connection.user.avatar} size="md" />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-sm" title={connection.user.name}>
+                      {connection.user.name}
+                    </span>
+                    {connState !== 'full_access' ? (
+                      <span className={`truncate text-xs ${connState === 'readonly' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {connState === 'readonly'
+                          ? t('access.connections.status.readonly')
+                          : pluralPick(t('access.connections.status.ends'), Math.max(connDays ?? 0, 0), i18n.language)}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+                {billingEnabled && needsAttention ? (
+                  <Button type="button" size="sm" variant="secondary" disabled={portal.pending} onClick={() => portal.open(connection.user.id)}>
+                    {t('access.connections.pay_for', { name: connection.user.name })}
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setPreview(connection)}>{t('common.button.view.label')}</DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(connection)}>
-                    {t('common.button.delete.label')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </li>
-          ))}
+                ) : null}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" aria-label={`connection actions ${connection.user.name}`}>
+                      <MoreVertical className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setPreview(connection)}>{t('common.button.view.label')}</DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(connection)}>
+                      {t('common.button.delete.label')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </li>
+            )
+          })}
         </ul>
       )}
 

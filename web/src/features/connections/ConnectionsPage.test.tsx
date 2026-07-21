@@ -97,6 +97,56 @@ it('accept invite failure keeps the dialog open with the server message', async 
   expect(screen.getByLabelText('Invitation code')).toBeInTheDocument()
 })
 
+function utcIn(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
+}
+
+const partner = (over: Partial<(typeof fixtureConnections)[0]>) => [{ ...fixtureConnections[0], ...over }]
+
+it('shows no status or pay button for a full-access connection', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ connections: fixtureConnections }))
+  renderPage()
+  expect(await screen.findByText('Partner')).toBeInTheDocument()
+  expect(screen.queryByText(/Read-only|Access ends/)).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Pay for Partner' })).not.toBeInTheDocument()
+})
+
+it('shows an ends-in status without a pay button for a far-off trial connection', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  server.use(...coreHandlers({ connections: partner({ accessUntil: utcIn(30) }) }))
+  renderPage()
+  expect(await screen.findByText('Access ends in 30 days')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Pay for Partner' })).not.toBeInTheDocument()
+})
+
+it('shows the pay button for a readonly connection and mints a link with the for hint', async () => {
+  window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+  let body: unknown
+  server.use(
+    ...coreHandlers({ connections: partner({ accessLevel: 'readonly' }) }),
+    http.post('*/api/v1/user/create-billing-link', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { url: 'https://pay.example.test/?t=x&for=u2' } })
+    }),
+  )
+  const tab = { location: { href: '' }, close: vi.fn() }
+  window.open = vi.fn().mockReturnValue(tab)
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText('Read-only')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Pay for Partner' }))
+  await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=x&for=u2'))
+  expect(body).toEqual({ for: 'u2' })
+})
+
+it('shows the status but no pay button when billing is disabled', async () => {
+  server.use(...coreHandlers({ connections: partner({ accessLevel: 'readonly' }) }))
+  renderPage()
+  expect(await screen.findByText('Read-only')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Pay for Partner' })).not.toBeInTheDocument()
+})
+
 it('delete connection confirms with the name and posts the user id', async () => {
   let body: unknown
   server.use(
