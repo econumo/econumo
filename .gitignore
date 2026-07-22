@@ -15,6 +15,7 @@
 
 # Go build/test artifacts
 /econumo
+/release-out/
 coverage.out
 
 # Local dev-machine -> homelab transfer script (contains the homelab host/path).

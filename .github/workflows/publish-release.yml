@@ -1,6 +1,6 @@
 name: Publish Release
 
-# Publishes the Go backend image to ghcr.io/econumo/econumo ONLY.
+# Publishes the Go backend image to ghcr.io/econumo/econumo and attaches single-file linux binaries (SPA embedded) to the GitHub release.
 # Dispatch from main (the dispatch ref only selects the workflow DEFINITION);
 # the code that gets tagged and built comes from the "branch" input — main by
 # default, or a release/vX.Y.Z branch for hotfixes of older versions.
@@ -179,9 +179,60 @@ jobs:
           build-args: |
             ECONUMO_VERSION=${{ needs.create-tag.outputs.version }}
 
+  build-binaries:
+    name: Build Release Binaries
+    needs: create-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-tag.outputs.version }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+
+      # Mirrors the Dockerfile's frontend stage: the SPA build lands in
+      # web/dist, where web/embed.go embeds it into the Go binaries below.
+      - name: Build SPA
+        env:
+          ECONUMO_VERSION: ${{ needs.create-tag.outputs.version }}
+        run: |
+          npm install -g pnpm@11
+          cd web
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binaries
+        env:
+          VERSION: ${{ needs.create-tag.outputs.version }}
+        run: |
+          mkdir -p release-out
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
+              go build -trimpath \
+              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION}" \
+              -o "release-out/econumo-linux-${arch}" ./cmd/econumo
+          done
+          cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: release-out/
+          if-no-files-found: error
+
   create-github-release:
     name: Create GitHub Release
-    needs: [create-tag, publish]
+    needs: [create-tag, publish, build-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -202,6 +253,23 @@ jobs:
         run: npx changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download release binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: release-binaries
+          path: release-out
+
+      - name: Attach binaries to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-tag.outputs.version }}
+        run: |
+          gh release upload "$TAG" \
+            release-out/econumo-linux-amd64 \
+            release-out/econumo-linux-arm64 \
+            release-out/SHA256SUMS \
+            --clobber
 
       # GitHub badges the newest CREATED release as "Latest" by default, which
       # would mislabel a hotfix to an older line published after a newer version.

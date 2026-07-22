@@ -64,14 +64,16 @@ type Config struct {
 	// Integrations
 	OpenExchangeRatesToken string
 
-	// SPA
-	SPADir string // path to web/dist (served directly by the Go binary)
-
-	// Optional SPA config overrides merged into the served econumo-config.js.
-	// Empty/nil = leave the dist file's value (the server does not enforce
-	// these; they only reach the frontend).
-	APIURL         string // ECONUMO_API_URL
-	AllowCustomAPI *bool  // ECONUMO_ALLOW_CUSTOM_API
+	// SPA config overrides merged into the served econumo-config.js (the SPA
+	// itself is always embedded in the binary; only these config values reach
+	// the frontend from the environment). Each key mirrors a window.econumoConfig
+	// key under the ECONUMO_<KEY> name; an empty string / nil pointer leaves the
+	// embedded default in place (the backend value wins only when present).
+	APIURL          string // ECONUMO_API_URL
+	AllowCustomAPI  *bool  // ECONUMO_ALLOW_CUSTOM_API
+	LiltagConfigURL string // ECONUMO_LILTAG_CONFIG_URL: URL the SPA loads liltag config from (empty = embedded liltag-config.json)
+	LiltagCacheTTL  string // ECONUMO_LILTAG_CACHE_TTL: liltag config cache TTL in seconds (empty = embedded default)
+	Version         string // ECONUMO_VERSION: overrides the UI version label (empty = the binary's build version)
 }
 
 // isLoopbackHost reports whether a URL hostname is loopback ("localhost" or a
@@ -98,7 +100,9 @@ func Load() (Config, error) {
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
-		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist"),
+		LiltagConfigURL:        os.Getenv("ECONUMO_LILTAG_CONFIG_URL"),
+		LiltagCacheTTL:         os.Getenv("ECONUMO_LILTAG_CACHE_TTL"),
+		Version:                os.Getenv("ECONUMO_VERSION"),
 	}
 
 	if c.DatabaseURL == "" {
