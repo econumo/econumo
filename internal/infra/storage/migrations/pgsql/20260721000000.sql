@@ -1,4 +1,8 @@
-ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT true NOT NULL;
+ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT false NOT NULL;
+-- Existing users predate verification, so grandfather them in as verified; the
+-- column default stays false so any future insert that forgets the field fails
+-- closed (unverified) rather than open.
+UPDATE users SET email_verified = true;
 
 CREATE TABLE users_email_verifications
 (
