@@ -600,8 +600,8 @@ data unreadable. Most are also asserted by the test suite.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
 - Docker-free: each release attaches single-file linux binaries (SPA embedded)
   + `SHA256SUMS`; reference systemd unit in `deployment/systemd/econumo.service`,
-  walkthrough in the README ("Run without Docker"). `make release-binaries`
-  builds the same artifacts locally.
+  walkthrough in `docs/run-without-docker.md` (linked from the README).
+  `make release-binaries` builds the same artifacts locally.
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
 
