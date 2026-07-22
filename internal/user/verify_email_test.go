@@ -10,6 +10,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
+	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -60,6 +61,30 @@ func newVerifySvcFlag(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled b
 func newVerifySvc(t *testing.T, db *dbtest.DB, cap *captureMailer) *appuser.Service {
 	t.Helper()
 	return newVerifySvcFlag(t, db, cap, true)
+}
+
+// newVerifySvcLimited builds the user service wired with a REAL ratelimit.Limiter
+// capping the verify-email scope at limit attempts per key, mirroring
+// server.BuildAPI's ratelimit.New wiring, so tests can observe the 429 boundary.
+func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit int) *appuser.Service {
+	t.Helper()
+	enc := auth.NewEncodeService("")
+	hasher := auth.NewPasswordHasher()
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	lookup := currencyrepo.New(db.Engine, db.TX)
+	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
+	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
+	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
+	limiter := ratelimit.New(ratelimit.Config{
+		Limits: map[string]int{appuser.RateScopeVerifyEmail: limit},
+		Window: time.Hour,
+		Global: 0,
+	}, clock.New())
+	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets,
+		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
+		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), limiter, true, "", true)
 }
 
 func isVerificationDenied(err error, code string) bool {
@@ -174,6 +199,51 @@ func TestResendVerificationCode(t *testing.T) {
 	}
 	if len(cap.msgs) != sent {
 		t.Fatalf("no-op resends must not send email, got %d new", len(cap.msgs)-sent)
+	}
+}
+
+// TestResendVerificationCodeRateLimitsUnknownUsers proves the enumeration-oracle
+// fix: the verify-email limiter is consumed on EVERY ResendVerificationCode
+// call, before the existence/verified check, so an unknown username hits the
+// same 429 boundary, at the same cap, as a genuine unverified user.
+func TestResendVerificationCodeRateLimitsUnknownUsers(t *testing.T) {
+	db := dbtest.New(t)
+	cap := &captureMailer{}
+	const limit = 2
+	svc := newVerifySvcLimited(t, db, cap, limit)
+	ctx := context.Background()
+
+	if _, err := svc.Register(ctx, model.RegisterRequest{
+		Name: "Real User", Email: "limited@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Unknown username: the first `limit` calls silently succeed (anti-enumeration
+	// response), consuming the limiter; the next call hits the cap with a 429.
+	for i := 0; i < limit; i++ {
+		if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"}); err != nil {
+			t.Fatalf("unknown user call %d: want silent success, got %v", i+1, err)
+		}
+	}
+	_, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"})
+	if _, ok := errs.AsTooManyRequests(err); !ok {
+		t.Fatalf("unknown user: want TooManyRequestsError after %d attempts, got %v", limit, err)
+	}
+
+	// A real unverified user hits the SAME cap, at the SAME attempt count —
+	// proving the limiter no longer treats unknown/verified callers specially.
+	for i := 0; i < limit; i++ {
+		if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "limited@econumo.test"}); err != nil {
+			t.Fatalf("real user call %d: %v", i+1, err)
+		}
+	}
+	_, err = svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "limited@econumo.test"})
+	if _, ok := errs.AsTooManyRequests(err); !ok {
+		t.Fatalf("real user: want TooManyRequestsError after %d attempts, got %v", limit, err)
+	}
+	if len(cap.msgs) != limit {
+		t.Fatalf("real user must have received exactly %d emails (the cap), got %d", limit, len(cap.msgs))
 	}
 }
 

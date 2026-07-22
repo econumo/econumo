@@ -75,12 +75,23 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	return &model.ConfirmEmailResult{}, nil
 }
 
-// ResendVerificationCode force-sends a fresh code to an unverified user.
-// It always reports success — an unknown or already-verified username is a
-// silent no-op — so the route cannot be used for account enumeration; actual
-// sends are capped by the verify-email scope (over-limit -> 429, like remind).
+// ResendVerificationCode force-sends a fresh code to an unverified user. It
+// rate-limits UNCONDITIONALLY, before the existence check — mirroring
+// RemindPassword — so an unknown/already-verified username consumes the
+// verify-email cap exactly like a real unverified user, and hits the same 429
+// once the cap is spent; without this, the limiter would only ever be touched
+// for genuine unverified accounts, letting a caller distinguish "unverified
+// account exists" from "unknown/verified" (an enumeration oracle). It always
+// reports success on a non-send path — an unknown or already-verified
+// username is a silent no-op — so the route cannot be used for account
+// enumeration via the response body either.
 func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVerificationCodeRequest) (*model.ResendVerificationCodeResult, error) {
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
+	if err := s.allowAttempt(RateScopeVerifyEmail, lowered); err != nil {
+		return nil, err
+	}
+	s.failAttempt(RateScopeVerifyEmail, lowered) // every resend counts, like remind
+
 	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
 	if err != nil {
 		if isNotFound(err) {
@@ -95,16 +106,16 @@ func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVe
 	if derr != nil {
 		return nil, derr
 	}
-	if err := s.ensureVerificationCode(ctx, u, email, true, lowered, s.clock.Now()); err != nil {
+	if err := s.issueVerificationCode(ctx, u, email, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	return &model.ResendVerificationCodeResult{}, nil
 }
 
 // ensureVerificationCode sends a fresh code when none is outstanding, the
-// outstanding one expired, or the caller forced a resend. Every send counts
-// toward the verify-email rate cap; a live code is otherwise reused silently
-// so repeated code-less logins cannot spam the mailbox.
+// outstanding one expired, or the caller forced a resend. A send counts
+// toward the verify-email rate cap under limitKey; a live code is otherwise
+// reused silently so repeated code-less logins cannot spam the mailbox.
 func (s *Service) ensureVerificationCode(ctx context.Context, u *model.User, email string, force bool, limitKey string, now time.Time) error {
 	send := force
 	if !send {
@@ -126,6 +137,13 @@ func (s *Service) ensureVerificationCode(ctx context.Context, u *model.User, ema
 		return err
 	}
 	s.failAttempt(RateScopeVerifyEmail, limitKey)
+	return s.issueVerificationCode(ctx, u, email, now)
+}
+
+// issueVerificationCode generates a fresh code, replaces any outstanding row,
+// and emails it. It does NOT rate-limit — callers own that decision (and the
+// accounting), so a real send is never counted twice.
+func (s *Service) issueVerificationCode(ctx context.Context, u *model.User, email string, now time.Time) error {
 	code, err := generatePasswordCode()
 	if err != nil {
 		return err
