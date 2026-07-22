@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check
+.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries
 
 # Default target
 .DEFAULT_GOAL := help
@@ -13,11 +13,14 @@ help:
 	@echo "  make swagger      - Regenerate the OpenAPI docs (internal/web/apidoc/docs)"
 	@echo ""
 	@echo "Frontend (web/):"
-	@echo "  make web-install  - Install web dependencies"
-	@echo "  make web-run      - Start web development server"
-	@echo "  make web-test     - Run web tests"
-	@echo "  make web-lint     - Run web linter"
-	@echo "  make web-bundle   - Bundle web for production"
+	@echo "  make web-install      - Install web dependencies"
+	@echo "  make web-run          - Start web development server"
+	@echo "  make web-test         - Run web tests"
+	@echo "  make web-lint         - Run web linter"
+	@echo "  make web-bundle       - Bundle web for production"
+	@echo ""
+	@echo "Releases:"
+	@echo "  make release-binaries - Cross-compile the downloadable release binaries (SPA embedded)"
 	@echo ""
 	@echo "Suite & stack:"
 	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + frontend"
@@ -53,8 +56,28 @@ web-bundle:
 # pure-Go sqlite/pgx drivers are linked in, matching the production build.
 # Depends on `swagger` so the embedded OpenAPI docs are always regenerated from
 # the current handler annotations before the binary is built.
+# Note: this does NOT build the frontend; the binary embeds whatever is in
+# web/dist (go:embed) — the committed placeholder on a fresh checkout. For live
+# frontend work use the Vite dev server (`make web-run`), which serves the SPA
+# itself and proxies /api here; run `make release-binaries` to embed a freshly
+# built SPA into standalone binaries.
 go-build: swagger
 	CGO_ENABLED=0 go build -o econumo ./cmd/econumo
+
+# Cross-compile the downloadable release binaries exactly as the release
+# workflow does: build the SPA with the version label (embedded via
+# web/embed.go), then linux/amd64 + linux/arm64 binaries (CGO off, version
+# stamped through ldflags) and SHA256SUMS into release-out/. VERSION
+# defaults to dev for local verification of the artifact shape.
+VERSION ?= dev
+RELEASE_LDFLAGS = -s -w -X github.com/econumo/econumo/internal/version.Version=$(VERSION)
+
+release-binaries: swagger
+	cd web && pnpm install --frozen-lockfile && ECONUMO_VERSION=$(VERSION) pnpm run build
+	rm -rf release-out && mkdir -p release-out
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o release-out/econumo-linux-amd64 ./cmd/econumo
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "$(RELEASE_LDFLAGS)" -o release-out/econumo-linux-arm64 ./cmd/econumo
+	cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS
 
 # Run the server locally without Docker. All configuration (PORT, DATABASE_URL, …)
 # comes from ./.env, which the binary auto-loads — copy .env.example to .env first.

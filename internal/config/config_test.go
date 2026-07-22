@@ -304,6 +304,31 @@ func TestLoad_SPAOverrides(t *testing.T) {
 	}
 }
 
+func TestLoad_LiltagAndVersionOverrides(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/econumo-test.sqlite")
+
+	// Unset = empty, so the embedded econumo-config.js defaults stay in place.
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LiltagConfigURL != "" || cfg.LiltagCacheTTL != "" || cfg.Version != "" {
+		t.Fatalf("unset: liltag/version overrides should be empty, got url=%q ttl=%q version=%q",
+			cfg.LiltagConfigURL, cfg.LiltagCacheTTL, cfg.Version)
+	}
+
+	t.Setenv("ECONUMO_LILTAG_CONFIG_URL", "https://cdn.example/liltag.json")
+	t.Setenv("ECONUMO_LILTAG_CACHE_TTL", "3600")
+	t.Setenv("ECONUMO_VERSION", "demo-42")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LiltagConfigURL != "https://cdn.example/liltag.json" || cfg.LiltagCacheTTL != "3600" || cfg.Version != "demo-42" {
+		t.Fatalf("set: got url=%q ttl=%q version=%q", cfg.LiltagConfigURL, cfg.LiltagCacheTTL, cfg.Version)
+	}
+}
+
 func TestLoad_AdminRequiresBothOrNeither(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	t.Setenv("ECONUMO_ADMIN_PORT", "9090")

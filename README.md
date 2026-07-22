@@ -76,6 +76,13 @@ inside the container, e.g.:
 $ docker compose exec econumo /app/econumo user:create "Name" user@example.com password
 ```
 
+### Run without Docker (single binary)
+
+Prefer not to use Docker? Every release also ships self-contained Linux
+binaries with the web UI embedded, runnable under systemd on a single host.
+See [docs/run-without-docker.md](docs/run-without-docker.md) for the full
+walkthrough.
+
 ### Localization
 
 All translations live in [`locales/`](locales/) — one JSON catalogue per
