@@ -218,21 +218,22 @@ type Transaction struct {
 }
 
 type User struct {
-	ID          string
-	Identifier  string
-	Email       string
-	Name        string
-	Avatar      string
-	Password    string
-	Salt        string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	IsActive    bool
-	Algorithm   string
-	Timezone    string
-	Language    string
-	AccessLevel string
-	AccessUntil *time.Time
+	ID            string
+	Identifier    string
+	Email         string
+	Name          string
+	Avatar        string
+	Password      string
+	Salt          string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsActive      bool
+	Algorithm     string
+	Timezone      string
+	Language      string
+	AccessLevel   string
+	AccessUntil   *time.Time
+	EmailVerified bool
 }
 
 type UsersConnection struct {
