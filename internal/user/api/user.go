@@ -30,7 +30,7 @@ var _ = apidoc.JsonResponseError{}
 // @Success     200     {object} model.LoginResult "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login)."
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     403     {object} apidoc.JsonResponseError "Email verification required (ECONUMO_EMAIL_VERIFICATION): retry with the emailed code in the request body."
+// @Failure     403     {object} apidoc.JsonResponseError "Email verification required (ECONUMO_EMAIL_VERIFICATION): confirm via /api/v1/user/confirm-email, then log in again."
 // @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/login-user [post]
@@ -132,4 +132,42 @@ func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/v1/user/reset-password [post]
 func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandlePublic(w, r, h.svc.ResetPassword)
+}
+
+// ConfirmEmail handles POST /api/v1/user/confirm-email (public). It validates
+// the (email, code) pair and marks the email verified; unknown users and bad
+// codes yield the same generic error (anti-enumeration).
+//
+// @Summary     Confirm email
+// @Description Confirms a user's email with the emailed verification code (ECONUMO_EMAIL_VERIFICATION). Returns an empty success envelope.
+// @Tags        User
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.ConfirmEmailRequest true "Confirm email request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ConfirmEmailResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     429     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Router      /api/v1/user/confirm-email [post]
+func (h *Handlers) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
+	endpoint.HandlePublic(w, r, h.svc.ConfirmEmail)
+}
+
+// ResendVerificationCode handles POST /api/v1/user/resend-verification-code
+// (public). It re-sends the verification code to an unverified user, always
+// returning success (anti-enumeration).
+//
+// @Summary     Resend verification code
+// @Description Re-sends the email verification code. Always returns success (anti-enumeration).
+// @Tags        User
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.ResendVerificationCodeRequest true "Resend verification code request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ResendVerificationCodeResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     429     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Router      /api/v1/user/resend-verification-code [post]
+func (h *Handlers) ResendVerificationCode(w http.ResponseWriter, r *http.Request) {
+	endpoint.HandlePublic(w, r, h.svc.ResendVerificationCode)
 }

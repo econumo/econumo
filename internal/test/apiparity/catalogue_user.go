@@ -59,6 +59,13 @@ func init() {
 			// ResetPasswordRequest also requires "username" (NotBlank+Email) alongside code/password.
 			{Label: "err:reset-password-bad-code", Method: "POST", Path: "/api/v1/user/reset-password", Auth: "",
 				Body: map[string]any{"username": OwnerEmail, "code": "00000000-0000-0000-0000-000000000000", "password": "irrelevant-pw"}},
+			// Default config runs flag-off, so the seeded owner is verified:
+			// confirm with any code pins the generic invalid-code envelope, and
+			// resend pins the silent-success (no email side effect) envelope.
+			{Label: "err:confirm-email-bad-code", Method: "POST", Path: "/api/v1/user/confirm-email", Auth: "",
+				Body: map[string]any{"username": OwnerEmail, "code": "000000000000"}},
+			{Label: "resend-verification-code", Method: "POST", Path: "/api/v1/user/resend-verification-code", Auth: "",
+				Body: map[string]any{"username": OwnerEmail}},
 		}
 	}})
 }

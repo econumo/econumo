@@ -10,3 +10,9 @@
 == err:reset-password-bad-code POST /api/v1/user/reset-password [] -> 400
 {"success":false,"message":"Reset password error","code":400,"errors":{}}
 
+== err:confirm-email-bad-code POST /api/v1/user/confirm-email [] -> 400
+{"success":false,"message":"The confirmation code is not valid.","code":400,"errors":{}}
+
+== resend-verification-code POST /api/v1/user/resend-verification-code [] -> 200
+{"success":true,"message":"","data":{}}
+
