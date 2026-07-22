@@ -23,6 +23,7 @@ func (s *Service) view(r UserRecord) model.AdminUserView {
 		Id:                   r.ID,
 		Name:                 r.Name,
 		Email:                r.Email,
+		Avatar:               r.Avatar,
 		AccessLevel:          string(r.AccessLevel),
 		AccessUntil:          formatUntil(r.AccessUntil),
 		EffectiveAccessLevel: string(model.EffectiveAccessLevel(r.AccessLevel, r.AccessUntil, s.clock.Now())),

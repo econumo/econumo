@@ -36,6 +36,7 @@ type AdminUserView struct {
 	Id                   string `json:"id"`
 	Name                 string `json:"name"`
 	Email                string `json:"email"`
+	Avatar               string `json:"avatar"`
 	AccessLevel          string `json:"accessLevel"`
 	AccessUntil          string `json:"accessUntil"`
 	EffectiveAccessLevel string `json:"effectiveAccessLevel"`

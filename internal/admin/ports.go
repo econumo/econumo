@@ -18,6 +18,7 @@ type UserRecord struct {
 	ID          string
 	Name        string
 	Email       string
+	Avatar      string
 	AccessLevel model.AccessLevel
 	AccessUntil *time.Time
 }
