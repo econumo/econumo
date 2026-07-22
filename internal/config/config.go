@@ -26,6 +26,7 @@ type Config struct {
 	CheckUpdates      bool   // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
 	Analytics         bool   // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
 	Trial             string // ECONUMO_TRIAL: "none" (default) or "end-of-next-month" — grants new registrations full access until the trial ends
+	EmailVerification bool   // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
@@ -35,13 +36,15 @@ type Config struct {
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
-	RateLimitLogin    int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
-	RateLimitReset    int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
-	RateLimitRemind   int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
-	RateLimitRegister int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
-	RateLimitAccept   int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
-	RateLimitWindow   time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitGlobal   int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
+	RateLimitLogin        int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset        int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind       int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister     int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept       int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitVerifyEmail  int           // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
+	RateLimitConfirmEmail int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
+	RateLimitWindow       time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitGlobal       int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend).
@@ -66,7 +69,6 @@ type Config struct {
 	// the frontend from the environment). Each key mirrors a window.econumoConfig
 	// key under the ECONUMO_<KEY> name; an empty string / nil pointer leaves the
 	// embedded default in place (the backend value wins only when present).
-	APIURL          string // ECONUMO_API_URL
 	AllowCustomAPI  *bool  // ECONUMO_ALLOW_CUSTOM_API
 	LiltagConfigURL string // ECONUMO_LILTAG_CONFIG_URL: URL the SPA loads liltag config from (empty = embedded liltag-config.json)
 	LiltagCacheTTL  string // ECONUMO_LILTAG_CACHE_TTL: liltag config cache TTL in seconds (empty = embedded default)
@@ -135,6 +137,14 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("ECONUMO_TRIAL: invalid value %q (want none or end-of-next-month)", c.Trial)
 	}
 
+	// Strict parse for the same reason as ECONUMO_ANALYTICS: a typo must fail
+	// at boot, not silently disable (or enable) the verification gate.
+	emailVerification, err := getBoolStrict("ECONUMO_EMAIL_VERIFICATION", false)
+	if err != nil {
+		return Config{}, err
+	}
+	c.EmailVerification = emailVerification
+
 	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
 	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")
 	// Half-configured is operator error, and a listener that silently fails to
@@ -165,13 +175,6 @@ func Load() (Config, error) {
 		c.BillingURL = v
 	}
 
-	if v := os.Getenv("ECONUMO_API_URL"); v != "" {
-		u, err := url.Parse(v)
-		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return Config{}, fmt.Errorf("ECONUMO_API_URL: not an absolute http(s) URL: %q", v)
-		}
-		c.APIURL = v
-	}
 	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
 	if err != nil {
 		return Config{}, err
@@ -190,6 +193,8 @@ func Load() (Config, error) {
 		{&c.RateLimitRemind, "ECONUMO_RATE_LIMIT_REMIND", 3},
 		{&c.RateLimitRegister, "ECONUMO_RATE_LIMIT_REGISTER", 5},
 		{&c.RateLimitAccept, "ECONUMO_RATE_LIMIT_ACCEPT_INVITE", 10},
+		{&c.RateLimitVerifyEmail, "ECONUMO_RATE_LIMIT_VERIFY_EMAIL", 3},
+		{&c.RateLimitConfirmEmail, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL", 5},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)

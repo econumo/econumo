@@ -24,20 +24,21 @@ import (
 // convert to via a plain field-for-field type conversion.
 type (
 	userRow struct {
-		ID          string
-		Identifier  string
-		Email       string
-		Name        string
-		Avatar      string
-		Password    string
-		Salt        string
-		CreatedAt   time.Time
-		UpdatedAt   time.Time
-		IsActive    bool
-		Algorithm   string
-		AccessLevel string
-		AccessUntil *time.Time
-		Timezone    string
+		ID            string
+		Identifier    string
+		Email         string
+		Name          string
+		Avatar        string
+		Password      string
+		Salt          string
+		CreatedAt     time.Time
+		UpdatedAt     time.Time
+		IsActive      bool
+		Algorithm     string
+		AccessLevel   string
+		AccessUntil   *time.Time
+		Timezone      string
+		EmailVerified bool
 	}
 	optionRow      = sqlitegen.UsersOption
 	userParams     = sqlitegen.UpsertUserParams
@@ -163,19 +164,20 @@ func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption
 func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	db := r.db(ctx)
 	if err := r.q.UpsertUser(ctx, db, userParams{
-		ID:          u.ID.String(),
-		Identifier:  u.Identifier,
-		Email:       u.Email,
-		Name:        u.Name,
-		Avatar:      u.Avatar,
-		Password:    u.Password,
-		Salt:        u.Salt,
-		Algorithm:   u.Algorithm,
-		CreatedAt:   u.CreatedAt,
-		UpdatedAt:   u.UpdatedAt,
-		IsActive:    u.IsActive,
-		AccessLevel: string(u.AccessLevel),
-		AccessUntil: u.AccessUntil,
+		ID:            u.ID.String(),
+		Identifier:    u.Identifier,
+		Email:         u.Email,
+		Name:          u.Name,
+		Avatar:        u.Avatar,
+		Password:      u.Password,
+		Salt:          u.Salt,
+		Algorithm:     u.Algorithm,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+		IsActive:      u.IsActive,
+		AccessLevel:   string(u.AccessLevel),
+		AccessUntil:   u.AccessUntil,
+		EmailVerified: u.EmailVerified,
 	}); err != nil {
 		return err
 	}
@@ -238,7 +240,7 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 	}
 	return &model.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
 		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, Algorithm: row.Algorithm,
-		IsActive: row.IsActive, AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
+		IsActive: row.IsActive, EmailVerified: row.EmailVerified, AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 

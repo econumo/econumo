@@ -71,10 +71,12 @@ func newContainer(ctx context.Context) (*container, error) {
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
 	budgetExistence := server.NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
+	emailVerificationRepo := userrepo.NewEmailVerificationRepo(cfg.DatabaseDriver, txm)
 	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
-		passwordReqRepo, resetMailer, appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.Trial,
+		passwordReqRepo, resetMailer, emailVerificationRepo, nil,
+		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.Trial, cfg.EmailVerification,
 	)
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)

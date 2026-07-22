@@ -159,9 +159,6 @@ func New(deps Deps) http.Handler {
 	if deps.SPAVersion != "" {
 		overrides["VERSION"] = deps.SPAVersion
 	}
-	if deps.Cfg.APIURL != "" {
-		overrides["API_URL"] = deps.Cfg.APIURL
-	}
 	if deps.Cfg.AllowCustomAPI != nil {
 		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI
 	}

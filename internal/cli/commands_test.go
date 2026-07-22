@@ -207,6 +207,9 @@ func TestUserSetAccessAndShowExitCodes(t *testing.T) {
 		{"show-unknown-email", []string{"user:show", "nobody@example.test"}, 1},
 		{"set-access-too-few-args", []string{"user:set-access", "access@example.test"}, 1},
 		{"show-too-many-args", []string{"user:show", "a@example.test", "b"}, 1},
+		{"verify-email", []string{"user:verify-email", "access@example.test"}, 0},
+		{"verify-email-unknown", []string{"user:verify-email", "nobody@example.test"}, 1},
+		{"verify-email-too-few-args", []string{"user:verify-email"}, 1},
 	}
 	for _, s := range steps {
 		if got := Run(s.args); got != s.want {

@@ -68,6 +68,10 @@ export function RegistrationPage() {
   const onSubmit = handleSubmit(async ({ name, email, password }) => {
     try {
       await registerMutation.mutateAsync({ email, password, name })
+      // Pre-fill the login form with the address just registered, replacing any
+      // previously remembered email — the next screen is login, and this is the
+      // account the user will sign in with.
+      config.rememberedEmail(email)
       navigate(RouterPage.LOGIN)
     } catch {
       setFailOpen(true)

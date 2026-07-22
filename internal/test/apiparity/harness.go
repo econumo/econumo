@@ -42,7 +42,9 @@ func (m *recordingMailer) Send(_ context.Context, msg mailer.Message) error {
 	return nil
 }
 
-var resetCodeRe = regexp.MustCompile(`[0-9a-f]{12}`)
+// Anchored on the body's marker text so a digit-bearing user name can never be
+// mistaken for the 6-digit code.
+var resetCodeRe = regexp.MustCompile(`code is: (\d{6})`)
 
 // ignoredDataSalt is set on cfg.DataSalt but the seeded fixture is plaintext
 // (WithCrypto("")). The login + parity scenarios still pass, which asserts that
@@ -124,11 +126,11 @@ func (h *Harness) Engine() string { return h.engine }
 // Reset codes are hashed at rest, so the plaintext is only recoverable here.
 func (h *Harness) LastResetCode(t *testing.T) string {
 	t.Helper()
-	code := resetCodeRe.FindString(h.mail.last.Text)
-	if code == "" {
+	m := resetCodeRe.FindStringSubmatch(h.mail.last.Text)
+	if m == nil {
 		t.Fatalf("no reset code found in email body: %q", h.mail.last.Text)
 	}
-	return code
+	return m[1]
 }
 
 // URL returns the running server's base URL, for callers (e.g. mcpparity)

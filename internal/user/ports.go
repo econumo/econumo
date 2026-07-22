@@ -5,6 +5,7 @@ package user
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -51,12 +52,26 @@ type AttemptLimiter interface {
 	Fail(scope, key string)
 	// Clear wipes the key's failure counter after a successful attempt.
 	Clear(scope, key string)
+	// Mark records an event timestamp for the key with no cap check, for scopes
+	// used as a per-key clock rather than a limit.
+	Mark(scope, key string)
+	// LastAttempt reports when the key last recorded an attempt, and whether
+	// any is on record. It answers identically for existing and unknown keys,
+	// which is what lets a cooldown be reported without leaking existence.
+	LastAttempt(scope, key string) (time.Time, bool)
 }
 
 // Rate-limit scopes; the same strings key the limiter config in internal/server.
 const (
-	RateScopeLogin    = "login"
-	RateScopeReset    = "reset"
-	RateScopeRemind   = "remind"
-	RateScopeRegister = "register"
+	RateScopeLogin        = "login"
+	RateScopeReset        = "reset"
+	RateScopeRemind       = "remind"
+	RateScopeRegister     = "register"
+	RateScopeVerifyEmail  = "verify-email"
+	RateScopeConfirmEmail = "confirm-email"
+	// RateScopeVerifySent is a timestamp channel, not a cap: it records when a
+	// verification code was last EMAILED for a username, so the resend cooldown
+	// can be reported identically for real and unknown usernames. It carries no
+	// configured limit, so it never rejects anything itself.
+	RateScopeVerifySent = "verify-email-sent"
 )

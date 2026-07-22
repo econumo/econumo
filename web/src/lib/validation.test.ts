@@ -12,14 +12,18 @@ it('validates emails loosely (anything@anything)', () => {
   expect(isValidEmail('nope')).toBe(false)
 })
 
-it('validates name 2-64, password 8-128, recovery code length 12', () => {
+it('validates name 2-64, password 8-128, recovery code as 6 digits', () => {
   expect(isValidName('ab')).toBe(true)
   expect(isValidName('a')).toBe(false)
   expect(isValidPassword('12345678')).toBe(true)
   expect(isValidPassword('1234567')).toBe(false)
   expect(isValidPassword('a'.repeat(129))).toBe(false)
-  expect(isValidRecoveryCode('123456789012')).toBe(true)
-  expect(isValidRecoveryCode('123')).toBe(false)
+  expect(isValidRecoveryCode('482913')).toBe(true)
+  expect(isValidRecoveryCode('004829')).toBe(true)
+  expect(isValidRecoveryCode('12345')).toBe(false)
+  expect(isValidRecoveryCode('1234567')).toBe(false)
+  expect(isValidRecoveryCode('abcdef')).toBe(false)
+  expect(isValidRecoveryCode('123456789012')).toBe(false)
 })
 
 it('treats empty as valid decimal and enforces up to 8 fraction digits', () => {

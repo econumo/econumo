@@ -74,7 +74,7 @@ export function isNotEmpty(value: string): boolean {
 }
 
 export function isValidRecoveryCode(value: string): boolean {
-  return value.length === 12
+  return /^\d{6}$/.test(value)
 }
 
 export function isValidFormula(value: string): boolean {

@@ -50,6 +50,13 @@ const (
 // requestIDHeader is the response header carrying the generated id.
 const requestIDHeader = "X-Request-Id"
 
+// exposedHeaders are the response headers a cross-origin caller may READ.
+// Browsers hide every other header from JS on a cross-origin response, so a
+// separately-hosted SPA would silently see no Retry-After and fall back to a
+// guessed cooldown. Retry-After is meaningful on 200 (the resend cooldown),
+// 403 (the email-verification handshake) and 429 (the rate-limit cap).
+const exposedHeaders = requestIDHeader + ", Retry-After"
+
 // SecurityHeaders sets conservative browser-hardening headers on every response
 // (API and the served SPA alike): nosniff, deny framing (bearer tokens live in
 // localStorage, so clickjacking matters), and a tight referrer policy. It sets
@@ -166,7 +173,7 @@ func CORS(origins []string) Middleware {
 			if h.Get("Access-Control-Allow-Origin") != "" {
 				h.Set("Access-Control-Allow-Methods", "OPTIONS, POST, GET")
 				h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Timezone, X-Request-Id")
-				h.Set("Access-Control-Expose-Headers", requestIDHeader)
+				h.Set("Access-Control-Expose-Headers", exposedHeaders)
 				h.Set("Access-Control-Max-Age", "3600")
 			}
 			if r.Method == http.MethodOptions {

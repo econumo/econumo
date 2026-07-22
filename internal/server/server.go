@@ -123,17 +123,21 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	budgetAccess := NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
+	emailVerificationRepo := userrepo.NewEmailVerificationRepo(cfg.DatabaseDriver, txm)
 	mailTransport := seams.Mailer
 	if mailTransport == nil {
 		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
 	}
 	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
 			appuser.RateScopeLogin:              cfg.RateLimitLogin,
 			appuser.RateScopeReset:              cfg.RateLimitReset,
 			appuser.RateScopeRemind:             cfg.RateLimitRemind,
 			appuser.RateScopeRegister:           cfg.RateLimitRegister,
+			appuser.RateScopeVerifyEmail:        cfg.RateLimitVerifyEmail,
+			appuser.RateScopeConfirmEmail:       cfg.RateLimitConfirmEmail,
 			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
 		},
 		Window: cfg.RateLimitWindow,
@@ -141,7 +145,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}, clk)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetAccess,
-		passwordReqRepo, resetMailer, avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial,
+		passwordReqRepo, resetMailer, emailVerificationRepo, verifyMailer,
+		avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial, cfg.EmailVerification,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)

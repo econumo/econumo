@@ -75,6 +75,9 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
                 className="h-11"
                 id="recovery-code"
                 autoFocus
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
                 {...register('code', {
                   validate: {
                     required: (v) => isNotEmpty(v) || t('user.form.code.validation.required_field'),
@@ -85,7 +88,7 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
               {errors.code ? <p className="text-sm text-destructive">{errors.code.message}</p> : null}
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="recovery-password">{t('user.form.password.placeholder')}</Label>
+              <Label htmlFor="recovery-password">{t('auth.access_recovery_modal.new_password')}</Label>
               <Input
                 className="h-11"
                 id="recovery-password"

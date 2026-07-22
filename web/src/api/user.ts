@@ -13,6 +13,20 @@ export async function login(username: string, password: string): Promise<UserLog
   return response.data
 }
 
+export async function confirmEmail(username: string, code: string): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/confirm-email'), { username, code })
+}
+
+// Returns the seconds to wait before another code may be requested, read from
+// the standard Retry-After header. The server owns this number and enforces it,
+// so a reload or a second tab cannot shorten the wait; the client only renders
+// the countdown.
+export async function resendVerificationCode(username: string): Promise<number> {
+  const response = await api.post(apiUrl('/api/v1/user/resend-verification-code'), { username })
+  const seconds = Number(response.headers?.['retry-after'])
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : 0
+}
+
 export async function logout(): Promise<void> {
   await api.post(apiUrl('/api/v1/user/logout-user'))
 }

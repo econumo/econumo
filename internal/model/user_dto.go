@@ -357,6 +357,53 @@ func (r ResetPasswordRequest) Validate() error {
 type ResetPasswordResult struct{}
 
 // ---------------------------------------------------------------------------
+// confirm-email / resend-verification-code
+// ---------------------------------------------------------------------------
+
+// ConfirmEmailRequest is the confirm-email request body. No password: the
+// emailed code is the proof of ownership, so this route mirrors
+// reset-password's error and rate-limit discipline instead.
+type ConfirmEmailRequest struct {
+	Username string `json:"username"`
+	Code     string `json:"code"`
+}
+
+// Validate enforces username NotBlank+Email, code NotBlank.
+func (r ConfirmEmailRequest) Validate() error {
+	var fields []errs.FieldError
+	fields = append(fields, validateEmailField("username", r.Username, 0)...)
+	if strings.TrimSpace(r.Code) == "" {
+		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// ConfirmEmailResult is the confirm-email response (empty object).
+type ConfirmEmailResult struct{}
+
+// ResendVerificationCodeRequest is the resend-verification-code request body.
+type ResendVerificationCodeRequest struct {
+	Username string `json:"username"`
+}
+
+// Validate enforces NotBlank + Email.
+func (r ResendVerificationCodeRequest) Validate() error {
+	if fields := validateEmailField("username", r.Username, 0); len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// ResendVerificationCodeResult is the resend-verification-code response (empty
+// object). The wait before another code may be requested travels on the
+// standard Retry-After header, not in the body — one representation, so the
+// two can never disagree.
+type ResendVerificationCodeResult struct{}
+
+// ---------------------------------------------------------------------------
 // logout-user
 // ---------------------------------------------------------------------------
 

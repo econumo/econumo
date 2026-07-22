@@ -372,3 +372,39 @@ func TestUserSchema_HasAccessColumns(t *testing.T) {
 		t.Fatalf("access columns not queryable: %v", err)
 	}
 }
+
+func TestUserEmailVerifiedRoundTrip(t *testing.T) {
+	db := dbtest.New(t)
+	r := userrepo.NewRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	u := model.NewUser(r.NextIdentity(), "email-verified-rt", "cipher", "RT", "face:blue", "hash", "salt", now)
+	if !u.EmailVerified {
+		t.Fatal("NewUser must default EmailVerified to true")
+	}
+	u.RequireEmailVerification()
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return r.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := r.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.EmailVerified {
+		t.Error("persisted EmailVerified=false must survive the round trip")
+	}
+
+	got.MarkEmailVerified(now.Add(time.Minute))
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return r.Save(ctx, got) }); err != nil {
+		t.Fatalf("Save verified: %v", err)
+	}
+	again, err := r.GetByIdentifier(ctx, "email-verified-rt")
+	if err != nil {
+		t.Fatalf("GetByIdentifier: %v", err)
+	}
+	if !again.EmailVerified {
+		t.Error("MarkEmailVerified must persist")
+	}
+}

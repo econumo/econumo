@@ -275,20 +275,13 @@ func TestLoad_SPAOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.APIURL != "" {
-		t.Fatalf("APIURL default = %q, want empty (leave the dist value)", c.APIURL)
-	}
 	if c.AllowCustomAPI != nil {
 		t.Fatal("AllowCustomAPI default != nil, want nil (leave the dist value)")
 	}
-	t.Setenv("ECONUMO_API_URL", "https://api.example.test")
 	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "false")
 	c, err = Load()
 	if err != nil {
 		t.Fatal(err)
-	}
-	if c.APIURL != "https://api.example.test" {
-		t.Fatalf("APIURL = %q, want %q", c.APIURL, "https://api.example.test")
 	}
 	if c.AllowCustomAPI == nil || *c.AllowCustomAPI {
 		t.Fatal("AllowCustomAPI = nil or true, want false")
@@ -296,11 +289,6 @@ func TestLoad_SPAOverrides(t *testing.T) {
 	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "maybe")
 	if _, err = Load(); err == nil {
 		t.Fatal("Load with ECONUMO_ALLOW_CUSTOM_API=maybe: err = nil, want boot error")
-	}
-	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "true")
-	t.Setenv("ECONUMO_API_URL", "not a url")
-	if _, err = Load(); err == nil {
-		t.Fatal("Load with malformed ECONUMO_API_URL: err = nil, want boot error")
 	}
 }
 
@@ -435,5 +423,37 @@ func TestLoad_BillingURLAllowsLoopbackHTTP(t *testing.T) {
 				t.Fatalf("BillingURL = %q", c.BillingURL)
 			}
 		})
+	}
+}
+
+func TestLoad_EmailVerification(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/test.sqlite")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.EmailVerification {
+		t.Error("EmailVerification should default to false")
+	}
+	if cfg.RateLimitVerifyEmail != 3 {
+		t.Errorf("RateLimitVerifyEmail = %d, want default 3", cfg.RateLimitVerifyEmail)
+	}
+	if cfg.RateLimitConfirmEmail != 5 {
+		t.Errorf("RateLimitConfirmEmail = %d, want default 5", cfg.RateLimitConfirmEmail)
+	}
+
+	t.Setenv("ECONUMO_EMAIL_VERIFICATION", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load with flag: %v", err)
+	}
+	if !cfg.EmailVerification {
+		t.Error("EmailVerification should be true")
+	}
+
+	t.Setenv("ECONUMO_EMAIL_VERIFICATION", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_EMAIL_VERIFICATION must fail at boot")
 	}
 }

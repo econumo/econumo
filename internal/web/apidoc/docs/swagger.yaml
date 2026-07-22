@@ -293,6 +293,15 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.ConfirmEmailRequest:
+    properties:
+      code:
+        type: string
+      username:
+        type: string
+    type: object
+  model.ConfirmEmailResult:
+    type: object
   model.ConnectionInviteResult:
     properties:
       code:
@@ -1143,6 +1152,13 @@ definitions:
         type: string
     type: object
   model.ReplaceFolderResult:
+    type: object
+  model.ResendVerificationCodeRequest:
+    properties:
+      username:
+        type: string
+    type: object
+  model.ResendVerificationCodeResult:
     type: object
   model.ResetBudgetRequest:
     properties:
@@ -4541,6 +4557,46 @@ paths:
       summary: Complete onboarding
       tags:
       - User
+  /api/v1/user/confirm-email:
+    post:
+      consumes:
+      - application/json
+      description: Confirms a user's email with the emailed verification code (ECONUMO_EMAIL_VERIFICATION).
+        Returns an empty success envelope.
+      parameters:
+      - description: Confirm email request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ConfirmEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ConfirmEmailResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Confirm email
+      tags:
+      - User
   /api/v1/user/create-billing-link:
     post:
       consumes:
@@ -4778,6 +4834,11 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "403":
+          description: 'Email verification required (ECONUMO_EMAIL_VERIFICATION):
+            confirm via /api/v1/user/confirm-email, then log in again.'
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "429":
           description: Too Many Requests
           schema:
@@ -4902,6 +4963,47 @@ paths:
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
       summary: Remind password
+      tags:
+      - User
+  /api/v1/user/resend-verification-code:
+    post:
+      consumes:
+      - application/json
+      description: Re-sends the email verification code, at most once per 60s. Always
+        returns success (anti-enumeration); the Retry-After header carries the seconds
+        until another code may be requested.
+      parameters:
+      - description: Resend verification code request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResendVerificationCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Retry-After: seconds until another code may be requested'
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ResendVerificationCodeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Resend verification code
       tags:
       - User
   /api/v1/user/reset-password:

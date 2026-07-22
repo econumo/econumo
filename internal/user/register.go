@@ -41,10 +41,11 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 // four default options, and persists. It returns the saved aggregate. A
 // duplicate email -> a validation error ("User already exists"). New users are
 // never auto-connected to existing users; connections are created only by
-// accepting an invite. Self-service registration grants a trial; accounts an
-// operator creates through the CLI do not — an admin explicitly provisioning
-// a user is trusted access, not a lead to be time-boxed.
-func (s *Service) createUser(ctx context.Context, name, email, password string, grantTrial bool) (*model.User, error) {
+// accepting an invite. Self-service registration grants a trial AND is subject
+// to the verification gate; operator-provisioned accounts (the CLI) get
+// neither — an admin explicitly provisioning a user is trusted access, not a
+// lead to be time-boxed or a mailbox to confirm.
+func (s *Service) createUser(ctx context.Context, name, email, password string, selfService bool) (*model.User, error) {
 	loweredEmail := strings.ToLower(strings.TrimSpace(email))
 	identifier := s.encode.Hash(loweredEmail)
 
@@ -73,9 +74,12 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 
 	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
-	if grantTrial && s.trial == "end-of-next-month" {
+	if selfService && s.trial == "end-of-next-month" {
 		until := model.TrialEnd(now)
 		u.SetAccess(model.AccessLevelFull, &until, now)
+	}
+	if selfService && s.emailVerification {
+		u.RequireEmailVerification()
 	}
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {

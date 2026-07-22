@@ -70,13 +70,16 @@ const (
 	CodeTransactionItemNotAvailable    = "transaction.item_not_available"
 	CodeTransactionInvalidImportFile   = "transaction.invalid_import_file"
 
-	CodeUserReportPeriodInvalid  = "user.report_period_invalid"
-	CodeUserLanguageInvalid      = "user.language_invalid"
-	CodeUserAlreadyExists        = "user.already_exists"
-	CodeUserRegistrationDisabled = "user.registration_disabled"
-	CodeUserPasswordIncorrect    = "user.password_incorrect"
-	CodeUserResetPasswordError   = "user.reset_password_error"
-	CodeUserResetCodeExpired     = "user.reset_code_expired"
+	CodeUserReportPeriodInvalid       = "user.report_period_invalid"
+	CodeUserLanguageInvalid           = "user.language_invalid"
+	CodeUserAlreadyExists             = "user.already_exists"
+	CodeUserRegistrationDisabled      = "user.registration_disabled"
+	CodeUserPasswordIncorrect         = "user.password_incorrect"
+	CodeUserResetPasswordError        = "user.reset_password_error"
+	CodeUserResetCodeExpired          = "user.reset_code_expired"
+	CodeUserEmailVerificationRequired = "user.email_verification_required"
+	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
+	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 )
 
 var AllCodes = []string{
@@ -148,4 +151,7 @@ var AllCodes = []string{
 	CodeUserPasswordIncorrect,
 	CodeUserResetPasswordError,
 	CodeUserResetCodeExpired,
+	CodeUserEmailVerificationRequired,
+	CodeUserVerificationCodeInvalid,
+	CodeUserVerificationCodeExpired,
 }

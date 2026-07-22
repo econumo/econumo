@@ -6,8 +6,7 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 
 export function useLogin() {
   return useMutation({
-    mutationFn: ({ username, password }: { username: string; password: string }) =>
-      userApi.login(username, password),
+    mutationFn: ({ username, password }: { username: string; password: string }) => userApi.login(username, password),
     onSuccess: (data) => {
       // the new session may belong to a different user — never restore the
       // previous user's persisted finances
@@ -15,6 +14,20 @@ export function useLogin() {
       setToken(data.token)
       trackEvent(METRICS.USER_LOGIN)
     },
+  })
+}
+
+export function useConfirmEmail() {
+  return useMutation({
+    mutationFn: ({ username, code }: { username: string; code: string }) => userApi.confirmEmail(username, code),
+    onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_COMPLETED),
+  })
+}
+
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: ({ username }: { username: string }) => userApi.resendVerificationCode(username),
+    onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_RESENT),
   })
 }
 

@@ -45,6 +45,74 @@ func mustBlocked(t *testing.T, l *ratelimit.Limiter, scope, key string) {
 	}
 }
 
+// retryAfterOf asserts the call was blocked and returns the reported wait.
+func retryAfterOf(t *testing.T, l *ratelimit.Limiter, scope, key string) int {
+	t.Helper()
+	v, ok := errs.AsTooManyRequests(l.Allow(scope, key))
+	if !ok {
+		t.Fatalf("Allow(%s,%s) did not block", scope, key)
+	}
+	return v.RetryAfter
+}
+
+// A 429 must always say how long to wait: the caller's oldest counted attempt
+// ages out at hits[0]+window, freeing exactly one slot.
+func TestAllow_BlockedCarriesRetryAfter(t *testing.T) {
+	l, clk := newLimiter(cfgLogin(2))
+	const key = "u@example.test"
+
+	l.Fail("login", key) // t0
+	clk.t = clk.t.Add(4 * time.Minute)
+	l.Fail("login", key) // t0+4m -> at the cap
+
+	// The oldest hit (t0) expires 15m after it was recorded, i.e. in 11 more min.
+	if got := retryAfterOf(t, l, "login", key); got != 11*60 {
+		t.Errorf("RetryAfter = %ds, want %ds (the oldest hit ageing out)", got, 11*60)
+	}
+
+	// As real time passes the wait shrinks in step.
+	clk.t = clk.t.Add(6 * time.Minute)
+	if got := retryAfterOf(t, l, "login", key); got != 5*60 {
+		t.Errorf("RetryAfter = %ds, want %ds", got, 5*60)
+	}
+
+	// Once it elapses the caller is let through, exactly as advertised.
+	clk.t = clk.t.Add(5 * time.Minute)
+	mustAllowed(t, l, "login", key)
+}
+
+// A blocked caller must never be told to wait 0 seconds — that reads as
+// "retry now" and would spin.
+func TestAllow_RetryAfterIsNeverZeroWhileBlocked(t *testing.T) {
+	l, clk := newLimiter(cfgLogin(1))
+	const key = "u@example.test"
+
+	l.Fail("login", key)
+	// A hair before the window closes: the true remainder is a sub-second
+	// fraction, which must round up to 1 rather than down to 0.
+	clk.t = clk.t.Add(15*time.Minute - 100*time.Millisecond)
+	if got := retryAfterOf(t, l, "login", key); got != 1 {
+		t.Errorf("RetryAfter = %d, want 1", got)
+	}
+}
+
+// The global backstop rejects on its own one-minute window, so its advertised
+// wait must come from that window, not the per-key one.
+func TestAllow_GlobalCapCarriesItsOwnRetryAfter(t *testing.T) {
+	l, clk := newLimiter(ratelimit.Config{
+		Limits: map[string]int{"login": 100}, Window: 15 * time.Minute, Global: 2,
+	})
+	mustAllowed(t, l, "login", "a@example.test")
+	clk.t = clk.t.Add(20 * time.Second)
+	mustAllowed(t, l, "login", "b@example.test")
+
+	// Global window is 1m; the oldest global hit was 20s ago, so 40s remain —
+	// far short of the 15m per-key window.
+	if got := retryAfterOf(t, l, "login", "c@example.test"); got != 40 {
+		t.Errorf("RetryAfter = %ds, want 40 (the global minute window)", got)
+	}
+}
+
 func TestAllow_UnderLimit(t *testing.T) {
 	l, _ := newLimiter(cfgLogin(3))
 	for i := 0; i < 2; i++ {
@@ -112,6 +180,58 @@ func TestUnknownScope_Disabled(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		l.Fail("nope", "u@example.test")
 		mustAllowed(t, l, "nope", "u@example.test")
+	}
+}
+
+// Mark is the per-key clock used by the email-verification resend cooldown: it
+// must record on a scope with NO configured limit (where Fail deliberately
+// no-ops) and must never reject anything.
+func TestMark_RecordsOnAnUnlimitedScopeAndNeverBlocks(t *testing.T) {
+	l, clk := newLimiter(cfgLogin(1))
+	const scope, key = "verify-email-sent", "u@example.test"
+
+	if _, ok := l.LastAttempt(scope, key); ok {
+		t.Fatal("LastAttempt on a fresh key must report no record")
+	}
+	// Fail cannot serve this role — the scope has no limit, so it stores nothing.
+	l.Fail(scope, key)
+	if _, ok := l.LastAttempt(scope, key); ok {
+		t.Fatal("Fail must no-op on an unlimited scope (Mark exists precisely because of this)")
+	}
+
+	l.Mark(scope, key)
+	at, ok := l.LastAttempt(scope, key)
+	if !ok || !at.Equal(clk.t) {
+		t.Fatalf("LastAttempt = (%v, %v), want (%v, true)", at, ok, clk.t)
+	}
+	// Marking never rejects, however often it is called.
+	for i := 0; i < 50; i++ {
+		l.Mark(scope, key)
+		mustAllowed(t, l, scope, key)
+	}
+	// The newest mark wins, so a cooldown always measures from the latest send.
+	clk.t = clk.t.Add(30 * time.Second)
+	l.Mark(scope, key)
+	if at, _ := l.LastAttempt(scope, key); !at.Equal(clk.t) {
+		t.Errorf("LastAttempt = %v, want the most recent mark %v", at, clk.t)
+	}
+}
+
+// A marked key prunes its own stale timestamps on the next write, so a scope
+// used purely as a clock keeps at most the current window per key rather than
+// growing with every send.
+func TestMark_PrunesItsOwnStaleEntries(t *testing.T) {
+	l, clk := newLimiter(cfgLogin(1))
+	const scope, key = "verify-email-sent", "u@example.test"
+
+	for i := 0; i < 10; i++ {
+		l.Mark(scope, key)
+	}
+	clk.t = clk.t.Add(2 * time.Hour) // well past the configured window
+	l.Mark(scope, key)
+	at, ok := l.LastAttempt(scope, key)
+	if !ok || !at.Equal(clk.t) {
+		t.Fatalf("LastAttempt = (%v, %v), want the fresh mark %v", at, ok, clk.t)
 	}
 }
 

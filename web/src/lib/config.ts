@@ -7,7 +7,6 @@ export interface LocaleOption {
 }
 
 export interface EconumoConfig {
-  API_URL?: string
   ALLOW_REGISTRATION?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
@@ -35,9 +34,6 @@ export function selfHosted(value?: boolean): boolean {
 }
 
 export function backendHost(value?: string): string {
-  if (window.econumoConfig.API_URL) {
-    return window.econumoConfig.API_URL
-  }
   if (!isCustomApiAllowed()) {
     const url = new URL(window.location.href)
     return `${url.protocol}//${url.host}`

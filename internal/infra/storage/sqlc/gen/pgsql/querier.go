@@ -36,6 +36,8 @@ type Querier interface {
 	DeletePayee(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
+	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
 	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
@@ -112,6 +114,7 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
+	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
 	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
@@ -139,6 +142,7 @@ type Querier interface {
 	// client-supplied operation id. See the sqlite variant for documentation.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).

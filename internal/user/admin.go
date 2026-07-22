@@ -108,6 +108,22 @@ func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 	return s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
 }
 
+// AdminVerifyEmail marks a user's email verified (support/rescue hatch for
+// the ECONUMO_EMAIL_VERIFICATION gate) and drops any pending code.
+func (s *Service) AdminVerifyEmail(ctx context.Context, email string) error {
+	u, err := s.userByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		u.MarkEmailVerified(s.clock.Now())
+		if err := s.repo.Save(ctx, u); err != nil {
+			return err
+		}
+		return s.emailVerifications.DeleteByUser(ctx, u.ID)
+	})
+}
+
 // AdminSetAccess sets a user's access level and optional expiry, looked up by
 // email. A nil until means the level never expires. The user is returned so
 // the CLI can log the action keyed by id (log lines carry ids, never emails).

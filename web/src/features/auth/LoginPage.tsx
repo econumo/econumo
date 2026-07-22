@@ -10,10 +10,12 @@ import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
+import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
 import { CustomServerSection } from './CustomServerSection'
 import { RecoveryDialog } from './RecoveryDialog'
+import { VerifyEmailDialog } from './VerifyEmailDialog'
 import { useLogin } from './queries'
 
 interface LoginForm {
@@ -30,6 +32,8 @@ export function LoginPage() {
   const login = useLogin()
   const [failOpen, setFailOpen] = useState(false)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
+  const [verifyOpen, setVerifyOpen] = useState(false)
+  const [verifyCooldown, setVerifyCooldown] = useState(0)
   const sessionExpired = searchParams.get('reason') === 'expired'
   const customApiAllowed = config.isCustomApiAllowed()
 
@@ -75,7 +79,14 @@ export function LoginPage() {
         return
       }
       window.location.assign('/')
-    } catch {
+    } catch (err) {
+      // 403 = correct credentials, unverified email: the server just sent (or
+      // reused) a code — collect it instead of showing the generic failure.
+      if (isForbidden(err)) {
+        setVerifyCooldown(retryAfterSeconds(err))
+        setVerifyOpen(true)
+        return
+      }
       setFailOpen(true)
     }
   })
@@ -186,6 +197,15 @@ export function LoginPage() {
           description={t('auth.sign_in_failed.information')}
         />
         {recoveryOpen ? <RecoveryDialog open onClose={() => setRecoveryOpen(false)} /> : null}
+        {verifyOpen ? (
+          <VerifyEmailDialog
+            open
+            onClose={() => setVerifyOpen(false)}
+            username={getValues('username')}
+            password={getValues('password')}
+            cooldownSeconds={verifyCooldown}
+          />
+        ) : null}
       </div>
     </>
   )

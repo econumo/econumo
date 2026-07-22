@@ -611,8 +611,19 @@
       "header": "Reset password",
       "information": "Enter the email address you registered with and we'll send you a security code.",
       "instruction": "We've sent a security code to your email. Enter it below and choose a new password.",
+      "new_password": "New password",
       "send_failed": "Couldn't send the code. Check the email address and try again.",
       "reset_failed": "The password wasn't reset. Check the code and try again."
+    },
+    "verify_email": {
+      "header": "Verify your email",
+      "information": "We've sent a confirmation code to {email}. Enter it below to finish signing in.",
+      "resent": "A new code has been sent.",
+      "action": {
+        "verify": "Verify and sign in",
+        "resend": "Resend code",
+        "resend_in": "Resend code in {seconds}s"
+      }
     },
     "sign_up_failed": {
       "header": "Registration failed",
@@ -1216,13 +1227,20 @@
       "registration_disabled": "Registration disabled",
       "password_incorrect": "Password is not correct",
       "reset_password_error": "Reset password error",
-      "reset_code_expired": "The code is expired"
+      "reset_code_expired": "The code is expired",
+      "email_verification_required": "Please verify your email address.",
+      "verification_code_invalid": "The confirmation code is not valid.",
+      "verification_code_expired": "The code is expired"
     }
   },
   "emails": {
     "reset": {
       "subject": "Reset password confirmation code",
       "body": "Hi {name},\nYour confirmation code is: {code}.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+    },
+    "verify": {
+      "subject": "Email verification code",
+      "body": "Hi {name},\nYour confirmation code is: {code}.\n\nEnter this code on the sign-in screen to verify your email address.\n\nIf you didn't create an Econumo account, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }

@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
@@ -30,6 +32,7 @@ var _ = apidoc.JsonResponseError{}
 // @Success     200     {object} model.LoginResult "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login)."
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     403     {object} apidoc.JsonResponseError "Email verification required (ECONUMO_EMAIL_VERIFICATION): confirm via /api/v1/user/confirm-email, then log in again."
 // @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/login-user [post]
@@ -131,4 +134,59 @@ func (h *Handlers) RemindPassword(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/v1/user/reset-password [post]
 func (h *Handlers) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandlePublic(w, r, h.svc.ResetPassword)
+}
+
+// ConfirmEmail handles POST /api/v1/user/confirm-email (public). It validates
+// the (email, code) pair and marks the email verified; unknown users and bad
+// codes yield the same generic error (anti-enumeration).
+//
+// @Summary     Confirm email
+// @Description Confirms a user's email with the emailed verification code (ECONUMO_EMAIL_VERIFICATION). Returns an empty success envelope.
+// @Tags        User
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.ConfirmEmailRequest true "Confirm email request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ConfirmEmailResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     429     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Router      /api/v1/user/confirm-email [post]
+func (h *Handlers) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
+	endpoint.HandlePublic(w, r, h.svc.ConfirmEmail)
+}
+
+// ResendVerificationCode handles POST /api/v1/user/resend-verification-code
+// (public). It re-sends the verification code to an unverified user, always
+// returning success (anti-enumeration).
+//
+// @Summary     Resend verification code
+// @Description Re-sends the email verification code, at most once per 60s. Always returns success (anti-enumeration); the Retry-After header carries the seconds until another code may be requested.
+// @Tags        User
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.ResendVerificationCodeRequest true "Resend verification code request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ResendVerificationCodeResult} "Retry-After: seconds until another code may be requested"
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     429     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Router      /api/v1/user/resend-verification-code [post]
+//
+// Hand-written rather than an endpoint.Handle* combinator: the cooldown travels
+// on the Retry-After header (not in the body), and the combinators cannot set
+// response headers.
+func (h *Handlers) ResendVerificationCode(w http.ResponseWriter, r *http.Request) {
+	var req model.ResendVerificationCodeRequest
+	if err := httpx.DecodeValidate(r, &req); err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	res, retryAfter, err := h.svc.ResendVerificationCode(r.Context(), req)
+	if err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	if retryAfter > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter/time.Second)))
+	}
+	httpx.OK(w, res)
 }

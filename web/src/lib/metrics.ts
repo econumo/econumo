@@ -23,6 +23,8 @@ export const METRICS = {
   USER_UPDATE_LANGUAGE: 'appUserUpdateLanguage',
   USER_REMIND_PASSWORD: 'appUserRemindPassword',
   USER_RESET_PASSWORD: 'appUserResetPassword',
+  EMAIL_VERIFICATION_COMPLETED: 'appEmailVerificationCompleted',
+  EMAIL_VERIFICATION_RESENT: 'appEmailVerificationResent',
   SESSION_REVOKE: 'appSessionRevoke',
   SESSION_REVOKE_OTHERS: 'appSessionRevokeOthers',
   PERSONAL_TOKEN_CREATE: 'appPersonalTokenCreate',

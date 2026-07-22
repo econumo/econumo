@@ -172,6 +172,13 @@ func run(serveArgs []string) error {
 			"cannot authenticate until you run `econumo data:remove-salt`, then unset ECONUMO_DATA_SALT")
 	}
 
+	// Verification emails through the console transport only reach stdout, so
+	// enabling the gate without a real mailer would strand new users.
+	if cfg.EmailVerification && cfg.MailProvider == "console" {
+		slog.Warn("ECONUMO_EMAIL_VERIFICATION is enabled but MAILER_DSN is the console transport; " +
+			"verification codes will only be printed to the server log")
+	}
+
 	// Server-only requirement (the CLI path validated via config.Load does not
 	// need it). PORT is never defaulted so the bound port is never an implicit
 	// surprise.

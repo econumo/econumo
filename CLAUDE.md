@@ -334,6 +334,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   access grant) or `end-of-next-month` (full access until the first of the month
   after next). Malformed values fail at boot. See `user:set-access` / `user:show`
   below and the 402 rule in API conventions for how access is enforced afterward.
+- `ECONUMO_EMAIL_VERIFICATION` — require newly registered users to confirm an emailed
+  code at login before their first session (default `false`; strict boolean, malformed
+  fails at boot). The code email is sent at the first blocked login attempt, not at
+  registration; `serve` WARNs at boot when enabled with the console mail transport.
+  Existing rows and CLI/admin-created users are always verified.
 - `ECONUMO_ADMIN_PORT` / `ECONUMO_ADMIN_TOKEN` — the private admin listener the payment
   portal talks to (`POST /admin/set-access`, `GET /admin/user-context`). A **second**
   `http.Server`, started by `serve` only when BOTH are set, so a self-hosted instance
@@ -365,10 +370,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `false` disables it instance-wide. Malformed values fail at boot (strict parse, unlike
   the other booleans). Server-owned SPA config keys reach the frontend via an
   `Object.assign(window.econumoConfig, …)` line the SPA handler appends to the served
-  `/econumo-config.js`; the dist file's static values are the fallback for
-  separately-hosted SPAs. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
-  (server truth); `ECONUMO_API_URL` and `ECONUMO_ALLOW_CUSTOM_API` merge `API_URL` /
-  `ALLOW_CUSTOM_API` only when set (unset = keep the dist value).
+  `/econumo-config.js`; the embedded dist file's static values are the fallback when a
+  key is not overridden. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
+  (server truth); `ECONUMO_ALLOW_CUSTOM_API` merges `ALLOW_CUSTOM_API` only when set
+  (unset = keep the dist value).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
   each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
@@ -384,6 +389,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
   authenticated user per window (default `10`; every attempt counts), guarding the short
   invite code against online brute force.
+  `ECONUMO_RATE_LIMIT_VERIFY_EMAIL` — verification-code emails per username per window (default `3`; every send counts).
+  `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL` — failed confirm-email attempts per username per window (default `5`; cleared on success).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
@@ -394,7 +401,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   values reach the frontend by being merged into the served `econumo-config.js`
   at runtime (the `Object.assign(window.econumoConfig, …)` suffix in
   `internal/web/spa`). One rule: the backend value overwrites the embedded
-  default when present. Each key maps to `ECONUMO_<KEY>`: `ECONUMO_API_URL`,
+  default when present. Each key maps to `ECONUMO_<KEY>`:
   `ECONUMO_ALLOW_CUSTOM_API`, `ECONUMO_LILTAG_CONFIG_URL` (load liltag config
   from a URL instead of the bundled `liltag-config.json`),
   `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
@@ -466,6 +473,7 @@ user:change-email <old> <new>
 user:change-password <email> <password>
 user:activate <email>
 user:deactivate <email>
+user:verify-email <email>
 user:set-access <email> <full|readonly> [YYYY-MM-DD]
 user:show <email>
 currency:update-rates [date]
@@ -501,7 +509,8 @@ In the distroless image these run via the binary directly, e.g.
   unknown/expired/revoked tokens with the 401 envelope, and puts the user id AND the
   token row id into the request context (the latter is the "current session" for
   logout/revoke/isCurrent). Public routes (login, register, remind-password,
-  reset-password, `/api/doc`, `/api/doc.json`) need no header; everything else does.
+  reset-password, confirm-email, resend-verification-code, `/api/doc`,
+  `/api/doc.json`) need no header; everything else does.
 - **Read-only access is enforced at the edge:** a caller whose access level is
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
@@ -573,7 +582,7 @@ data unreadable. Most are also asserted by the test suite.
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
 - `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
 - Validation strings are exact per language and asserted by tests in `en` (the default with no `Accept-Language` and no stored preference), e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`); coded errors render from the `errors.*` catalogue in the caller's language (see the envelope section).
-- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
 - Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're FK targets and held by clients).
 - `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material
   icon ligature name plus a color slug from the 7-slug allowlist in

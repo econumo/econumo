@@ -100,3 +100,13 @@ type PasswordRequests interface {
 	// Delete removes a request by id.
 	Delete(ctx context.Context, id vo.Id) error
 }
+
+// EmailVerifications persists login email-verification codes
+// (users_email_verifications) for the ECONUMO_EMAIL_VERIFICATION flow. One
+// outstanding row per user; GetByUser on a missing row returns
+// *errs.NotFoundError.
+type EmailVerifications interface {
+	GetByUser(ctx context.Context, userID vo.Id) (*model.EmailVerification, error)
+	Save(ctx context.Context, v *model.EmailVerification) error
+	DeleteByUser(ctx context.Context, userID vo.Id) error
+}
