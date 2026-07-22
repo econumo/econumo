@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
@@ -158,16 +160,33 @@ func (h *Handlers) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 // returning success (anti-enumeration).
 //
 // @Summary     Resend verification code
-// @Description Re-sends the email verification code. Always returns success (anti-enumeration).
+// @Description Re-sends the email verification code, at most once per 60s. Always returns success (anti-enumeration); the Retry-After header carries the seconds until another code may be requested.
 // @Tags        User
 // @Accept      json
 // @Produce     json
 // @Param       request body     model.ResendVerificationCodeRequest true "Resend verification code request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.ResendVerificationCodeResult}
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.ResendVerificationCodeResult} "Retry-After: seconds until another code may be requested"
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/resend-verification-code [post]
+//
+// Hand-written rather than an endpoint.Handle* combinator: the cooldown travels
+// on the Retry-After header (not in the body), and the combinators cannot set
+// response headers.
 func (h *Handlers) ResendVerificationCode(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandlePublic(w, r, h.svc.ResendVerificationCode)
+	var req model.ResendVerificationCodeRequest
+	if err := httpx.DecodeValidate(r, &req); err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	res, retryAfter, err := h.svc.ResendVerificationCode(r.Context(), req)
+	if err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	if retryAfter > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter/time.Second)))
+	}
+	httpx.OK(w, res)
 }

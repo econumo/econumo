@@ -8,7 +8,6 @@ import (
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
-	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/model"
@@ -27,16 +26,16 @@ func (c *captureMailer) Send(_ context.Context, m mailer.Message) error {
 	return nil
 }
 
-// codeFrom extracts the 12-char hex code from the rendered email body
+// codeFrom extracts the 6-digit code from the rendered email body
 // ("Your confirmation code is: <code>.").
 func codeFrom(t *testing.T, body string) string {
 	t.Helper()
 	const marker = "code is: "
 	i := strings.Index(body, marker)
-	if i < 0 || len(body) < i+len(marker)+12 {
+	if i < 0 || len(body) < i+len(marker)+6 {
 		t.Fatalf("no code in email body: %q", body)
 	}
-	return body[i+len(marker) : i+len(marker)+12]
+	return body[i+len(marker) : i+len(marker)+6]
 }
 
 // newVerifySvcFlag builds the user service with registration enabled, a
@@ -44,6 +43,15 @@ func codeFrom(t *testing.T, body string) string {
 // server.Build's wiring.
 func newVerifySvcFlag(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled bool) *appuser.Service {
 	t.Helper()
+	svc, _ := newVerifySvcClock(t, db, cap, enabled)
+	return svc
+}
+
+// newVerifySvcClock is newVerifySvcFlag with the clock handed back, so a test
+// can step past the resend gap instead of sleeping through it.
+func newVerifySvcClock(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled bool) (*appuser.Service, *testClock) {
+	t.Helper()
+	clk := &testClock{now: authT0}
 	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
@@ -55,7 +63,7 @@ func newVerifySvcFlag(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled b
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, true, "", enabled)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, "", enabled), clk
 }
 
 func newVerifySvc(t *testing.T, db *dbtest.DB, cap *captureMailer) *appuser.Service {
@@ -66,8 +74,9 @@ func newVerifySvc(t *testing.T, db *dbtest.DB, cap *captureMailer) *appuser.Serv
 // newVerifySvcLimited builds the user service wired with a REAL ratelimit.Limiter
 // capping the verify-email scope at limit attempts per key, mirroring
 // server.BuildAPI's ratelimit.New wiring, so tests can observe the 429 boundary.
-func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit int) *appuser.Service {
+func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit int) (*appuser.Service, *testClock) {
 	t.Helper()
+	clk := &testClock{now: authT0}
 	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
@@ -80,11 +89,22 @@ func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit 
 		Limits: map[string]int{appuser.RateScopeVerifyEmail: limit},
 		Window: time.Hour,
 		Global: 0,
-	}, clock.New())
+	}, clk)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), limiter, true, "", true)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, true, "", true), clk
+}
+
+// resendSeconds calls the resend use case and returns the advertised wait in
+// whole seconds (what the HTTP edge puts on Retry-After).
+func resendSeconds(t *testing.T, svc *appuser.Service, username string) int {
+	t.Helper()
+	_, wait, err := svc.ResendVerificationCode(context.Background(), model.ResendVerificationCodeRequest{Username: username})
+	if err != nil {
+		t.Fatalf("ResendVerificationCode(%s): %v", username, err)
+	}
+	return int(wait / time.Second)
 }
 
 func isVerificationDenied(err error, code string) bool {
@@ -162,7 +182,9 @@ func TestLoginBlockedUntilEmailConfirmed(t *testing.T) {
 func TestResendVerificationCode(t *testing.T) {
 	db := dbtest.New(t)
 	cap := &captureMailer{}
-	svc := newVerifySvc(t, db, cap)
+	// A limiter is wired (as in production) because the reported countdown is
+	// read from it; enforcement itself holds either way.
+	svc, clk := newVerifySvcLimited(t, db, cap, 100)
 	ctx := context.Background()
 
 	if _, err := svc.Register(ctx, model.RegisterRequest{Name: "Resend Me", Email: "resend@econumo.test", Password: "secretpass1"}); err != nil {
@@ -173,9 +195,27 @@ func TestResendVerificationCode(t *testing.T) {
 		t.Fatalf("blocked login must have sent the first email, got %d", len(cap.msgs))
 	}
 
-	// Resend: success envelope + a FRESH code that replaces the old one.
-	if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "resend@econumo.test"}); err != nil {
-		t.Fatalf("ResendVerificationCode: %v", err)
+	// Inside the gap: no new email, and the caller is told how long is left.
+	if got := resendSeconds(t, svc, "resend@econumo.test"); got != 60 {
+		t.Fatalf("wait inside the gap = %d, want the full 60s remaining", got)
+	}
+	if len(cap.msgs) != 1 {
+		t.Fatalf("resend inside the gap must not send, got %d emails", len(cap.msgs))
+	}
+	// The countdown measures from the last SEND, so repeated attempts shorten it
+	// as real time passes — clicking again can never renew a user's own lockout.
+	clk.now = clk.now.Add(30 * time.Second)
+	if got := resendSeconds(t, svc, "resend@econumo.test"); got != 30 {
+		t.Fatalf("wait 30s after the send = %d, want 30", got)
+	}
+	if len(cap.msgs) != 1 {
+		t.Fatalf("still inside the gap must not send, got %d emails", len(cap.msgs))
+	}
+
+	// Past the gap: a FRESH code replaces the old one.
+	clk.now = clk.now.Add(31 * time.Second)
+	if got := resendSeconds(t, svc, "resend@econumo.test"); got != 60 {
+		t.Fatalf("wait after a real send = %d, want the full 60s", got)
 	}
 	if len(cap.msgs) != 2 {
 		t.Fatalf("resend must send a fresh email, got %d", len(cap.msgs))
@@ -189,16 +229,87 @@ func TestResendVerificationCode(t *testing.T) {
 		t.Fatalf("fresh code must confirm: %v", err)
 	}
 
-	// Anti-enumeration: unknown user and now-verified user both silently succeed, no email.
+	// Anti-enumeration: unknown user and now-verified user both silently succeed,
+	// send no email, AND report the same retry time a real send would — so the
+	// number can never be read as "an unverified account exists here".
 	sent := len(cap.msgs)
-	if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"}); err != nil {
-		t.Fatalf("unknown user must silently succeed, got %v", err)
-	}
-	if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "resend@econumo.test"}); err != nil {
-		t.Fatalf("verified user must silently succeed, got %v", err)
+	unknown := resendSeconds(t, svc, "nobody@econumo.test")
+	verified := resendSeconds(t, svc, "resend@econumo.test")
+	if unknown != 60 || verified != 60 {
+		t.Fatalf("no-op resends must report the same 60s as a real send; unknown=%d verified=%d",
+			unknown, verified)
 	}
 	if len(cap.msgs) != sent {
 		t.Fatalf("no-op resends must not send email, got %d new", len(cap.msgs)-sent)
+	}
+}
+
+// TestResendCooldownDoesNotLeakAccountExistence is the enumeration guard for the
+// reported countdown. Reading it from the verification ROW would answer a flat
+// 60 for unknown usernames while a real unverified account mid-cooldown counted
+// down (53, 48, ...), so any value other than 60 would prove the account exists.
+// Both must tick identically.
+func TestResendCooldownDoesNotLeakAccountExistence(t *testing.T) {
+	db := dbtest.New(t)
+	cap := &captureMailer{}
+	svc, clk := newVerifySvcLimited(t, db, cap, 1000)
+	ctx := context.Background()
+
+	if _, err := svc.Register(ctx, model.RegisterRequest{Name: "Real", Email: "real@econumo.test", Password: "secretpass1"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start both cooldowns at the same instant: the real account via a blocked
+	// login, the unknown one via its own first resend.
+	_, _ = svc.Login(ctx, model.LoginRequest{Username: "real@econumo.test", Password: "secretpass1"}, "ua", time.Now())
+	resendSeconds(t, svc, "ghost@econumo.test")
+
+	for elapsed := 10; elapsed <= 50; elapsed += 10 {
+		clk.now = clk.now.Add(10 * time.Second)
+		real := resendSeconds(t, svc, "real@econumo.test")
+		ghost := resendSeconds(t, svc, "ghost@econumo.test")
+		if real != ghost {
+			t.Fatalf("at +%ds the countdown leaks existence: real=%d unknown=%d", elapsed, real, ghost)
+		}
+	}
+}
+
+// TestResendCooldownIsNotRenewedByAttempts guards the trap in measuring the gap
+// from the last ATTEMPT: an impatient user clicking resend every few seconds
+// would keep pushing their own deadline out and never receive a second code.
+// The gap runs from the last SEND, so waiting it out always works.
+func TestResendCooldownIsNotRenewedByAttempts(t *testing.T) {
+	db := dbtest.New(t)
+	cap := &captureMailer{}
+	svc, clk := newVerifySvcLimited(t, db, cap, 1000)
+	ctx := context.Background()
+
+	if _, err := svc.Register(ctx, model.RegisterRequest{Name: "Impatient", Email: "impatient@econumo.test", Password: "secretpass1"}); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = svc.Login(ctx, model.LoginRequest{Username: "impatient@econumo.test", Password: "secretpass1"}, "ua", time.Now())
+
+	// Click every 5s for the whole minute: no new email, and the countdown must
+	// shrink monotonically rather than resetting.
+	prev := 61
+	for elapsed := 5; elapsed < 60; elapsed += 5 {
+		clk.now = clk.now.Add(5 * time.Second)
+		got := resendSeconds(t, svc, "impatient@econumo.test")
+		if got >= prev {
+			t.Fatalf("wait at +%ds = %d, did not shrink from %d — the gap is renewing itself",
+				elapsed, got, prev)
+		}
+		prev = got
+	}
+	if len(cap.msgs) != 1 {
+		t.Fatalf("hammering resend inside the gap must not send, got %d emails", len(cap.msgs))
+	}
+
+	// Once the gap truly elapses the next click delivers, despite all the noise.
+	clk.now = clk.now.Add(10 * time.Second)
+	resendSeconds(t, svc, "impatient@econumo.test")
+	if len(cap.msgs) != 2 {
+		t.Fatalf("a user who waited out the gap must get a new code, got %d emails", len(cap.msgs))
 	}
 }
 
@@ -210,7 +321,7 @@ func TestResendVerificationCodeRateLimitsUnknownUsers(t *testing.T) {
 	db := dbtest.New(t)
 	cap := &captureMailer{}
 	const limit = 2
-	svc := newVerifySvcLimited(t, db, cap, limit)
+	svc, clk := newVerifySvcLimited(t, db, cap, limit)
 	ctx := context.Background()
 
 	if _, err := svc.Register(ctx, model.RegisterRequest{
@@ -222,23 +333,26 @@ func TestResendVerificationCodeRateLimitsUnknownUsers(t *testing.T) {
 	// Unknown username: the first `limit` calls silently succeed (anti-enumeration
 	// response), consuming the limiter; the next call hits the cap with a 429.
 	for i := 0; i < limit; i++ {
-		if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"}); err != nil {
+		if _, _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"}); err != nil {
 			t.Fatalf("unknown user call %d: want silent success, got %v", i+1, err)
 		}
 	}
-	_, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"})
+	_, _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"})
 	if _, ok := errs.AsTooManyRequests(err); !ok {
 		t.Fatalf("unknown user: want TooManyRequestsError after %d attempts, got %v", limit, err)
 	}
 
 	// A real unverified user hits the SAME cap, at the SAME attempt count —
 	// proving the limiter no longer treats unknown/verified callers specially.
+	// The clock steps past the resend gap each time so this measures the
+	// attempt cap alone, not the per-send cooldown.
 	for i := 0; i < limit; i++ {
-		if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "limited@econumo.test"}); err != nil {
+		if _, _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "limited@econumo.test"}); err != nil {
 			t.Fatalf("real user call %d: %v", i+1, err)
 		}
+		clk.now = clk.now.Add(model.EmailVerificationResendGap + time.Second)
 	}
-	_, err = svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "limited@econumo.test"})
+	_, _, err = svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "limited@econumo.test"})
 	if _, ok := errs.AsTooManyRequests(err); !ok {
 		t.Fatalf("real user: want TooManyRequestsError after %d attempts, got %v", limit, err)
 	}

@@ -61,6 +61,27 @@ it('opens the verification dialog on a 403 login', async () => {
   expect(screen.queryByText(/sign-in failed/i)).not.toBeInTheDocument()
 })
 
+// The 403 carries the server's remaining wait on Retry-After, so the dialog's
+// countdown is already correct when it opens — no extra round trip, no guess.
+it('seeds the resend countdown from the 403 Retry-After header', async () => {
+  const user = userEvent.setup()
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json(
+        { success: false, message: 'Please verify your email address.', code: 403, errors: {} },
+        { status: 403, headers: { 'Retry-After': '23' } },
+      ),
+    ),
+  )
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'pw12345678')
+  await user.click(screen.getByRole('button', { name: /sign in/i }))
+  const resend = await screen.findByRole('button', { name: /resend code in/i })
+  expect(resend).toBeDisabled()
+  expect(resend).toHaveTextContent('23s')
+})
+
 it('shows the failure dialog on invalid credentials', async () => {
   server.use(
     http.post('*/api/v1/user/login-user', () =>

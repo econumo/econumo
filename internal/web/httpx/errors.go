@@ -3,6 +3,7 @@ package httpx
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -43,6 +44,9 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 	if v, ok := errs.AsAccessDenied(err); ok {
 		// 403 with errors:[] (empty ARRAY, not {}); a coded message renders in
 		// the caller's language, a code-less one keeps its literal text.
+		if v.RetryAfter > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(v.RetryAfter))
+		}
 		AccessDenied(w, translated(lang, v.Msg, v.Code, nil))
 		return
 	}
@@ -55,6 +59,9 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 		return
 	}
 	if v, ok := errs.AsTooManyRequests(err); ok {
+		if v.RetryAfter > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(v.RetryAfter))
+		}
 		Err(w, translated(lang, v.Error(), errs.CodeTooManyAttempts, nil),
 			http.StatusTooManyRequests, nil, http.StatusTooManyRequests)
 		return

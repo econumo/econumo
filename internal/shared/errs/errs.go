@@ -73,6 +73,10 @@ type AccessDeniedError struct {
 	// Code is an optional errors.* catalogue key; when set the HTTP edge
 	// renders Msg in the caller's language, otherwise the literal text is kept.
 	Code string
+	// RetryAfter, when > 0, is emitted as the Retry-After response header
+	// (seconds). The response envelope is frozen, so a denial that carries
+	// timing information rides on the standard header instead of a new body field.
+	RetryAfter int
 }
 
 func (e *AccessDeniedError) Error() string {
@@ -141,6 +145,11 @@ func AsUnauthorized(err error) (*UnauthorizedError, bool) {
 // TooManyRequestsError maps to HTTP 429 (a rate-limited auth attempt).
 type TooManyRequestsError struct {
 	Msg string
+	// RetryAfter, when > 0, is emitted as the Retry-After response header
+	// (seconds): how long until the caller's oldest counted attempt ages out of
+	// the window and a slot frees up. Without it a 429 is a dead end — the
+	// caller cannot tell whether to retry in a second or a quarter of an hour.
+	RetryAfter int
 }
 
 func (e *TooManyRequestsError) Error() string {
@@ -152,6 +161,12 @@ func (e *TooManyRequestsError) Error() string {
 
 // NewTooManyRequests builds a TooManyRequestsError.
 func NewTooManyRequests(msg string) *TooManyRequestsError { return &TooManyRequestsError{Msg: msg} }
+
+// NewTooManyRequestsRetryAfter builds a TooManyRequestsError that tells the
+// caller how many seconds to wait.
+func NewTooManyRequestsRetryAfter(msg string, retryAfter int) *TooManyRequestsError {
+	return &TooManyRequestsError{Msg: msg, RetryAfter: retryAfter}
+}
 
 // AsTooManyRequests reports whether err is (or wraps) a *TooManyRequestsError.
 func AsTooManyRequests(err error) (*TooManyRequestsError, bool) {

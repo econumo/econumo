@@ -620,7 +620,8 @@
       "resent": "A new code has been sent.",
       "action": {
         "verify": "Verify and sign in",
-        "resend": "Resend code"
+        "resend": "Resend code",
+        "resend_in": "Resend code in {seconds}s"
       }
     },
     "sign_up_failed": {

@@ -5624,7 +5624,7 @@ const docTemplate = `{
         },
         "/api/v1/user/resend-verification-code": {
             "post": {
-                "description": "Re-sends the email verification code. Always returns success (anti-enumeration).",
+                "description": "Re-sends the email verification code, at most once per 60s. Always returns success (anti-enumeration); the Retry-After header carries the seconds until another code may be requested.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5648,7 +5648,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Retry-After: seconds until another code may be requested",
                         "schema": {
                             "allOf": [
                                 {

@@ -53,19 +53,30 @@ it('confirmEmail posts username+code and fires the completed metric', async () =
     }),
   )
   const { result } = renderHook(() => useConfirmEmail(), { wrapper })
-  await result.current.mutateAsync({ username: 'a@b.test', code: '123456789012' })
-  expect(bodies[0]).toMatchObject({ username: 'a@b.test', code: '123456789012' })
+  await result.current.mutateAsync({ username: 'a@b.test', code: '482913' })
+  expect(bodies[0]).toMatchObject({ username: 'a@b.test', code: '482913' })
 })
 
-it('resend posts the username and succeeds on the success envelope', async () => {
+it('resend posts the username and returns the wait from the Retry-After header', async () => {
   const bodies: unknown[] = []
   server.use(
     http.post('*/api/v1/user/resend-verification-code', async ({ request }) => {
       bodies.push(await request.json())
-      return HttpResponse.json({ success: true, message: '', data: {} })
+      // The wait lives on the header only — the body carries no retryAfter.
+      return HttpResponse.json({ success: true, message: '', data: {} }, { headers: { 'Retry-After': '60' } })
     }),
   )
   const { result } = renderHook(() => useResendVerification(), { wrapper })
-  await expect(result.current.mutateAsync({ username: 'a@b.test' })).resolves.not.toThrow()
+  await expect(result.current.mutateAsync({ username: 'a@b.test' })).resolves.toBe(60)
   expect(bodies[0]).toMatchObject({ username: 'a@b.test' })
+})
+
+it('resend falls back to 0 when the server sends no Retry-After', async () => {
+  server.use(
+    http.post('*/api/v1/user/resend-verification-code', () =>
+      HttpResponse.json({ success: true, message: '', data: {} }),
+    ),
+  )
+  const { result } = renderHook(() => useResendVerification(), { wrapper })
+  await expect(result.current.mutateAsync({ username: 'a@b.test' })).resolves.toBe(0)
 })

@@ -4969,7 +4969,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Re-sends the email verification code. Always returns success (anti-enumeration).
+      description: Re-sends the email verification code, at most once per 60s. Always
+        returns success (anti-enumeration); the Retry-After header carries the seconds
+        until another code may be requested.
       parameters:
       - description: Resend verification code request
         in: body
@@ -4981,7 +4983,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 'Retry-After: seconds until another code may be requested'
           schema:
             allOf:
             - $ref: '#/definitions/apidoc.JsonResponseOk'

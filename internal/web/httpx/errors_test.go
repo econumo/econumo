@@ -95,6 +95,49 @@ type errPlainMsg string
 
 func (e errPlainMsg) Error() string { return string(e) }
 
+// A rate-limited caller must be told how long to wait; without the header a
+// 429 is a dead end. The envelope itself is frozen, so the wait rides on the
+// standard header.
+func TestWriteErrorTooManyRequestsRetryAfter(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(context.Background(), rec, errs.NewTooManyRequestsRetryAfter("Too many attempts. Try again later.", 900))
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429", rec.Code)
+	}
+	if got := rec.Header().Get("Retry-After"); got != "900" {
+		t.Errorf("Retry-After = %q, want %q", got, "900")
+	}
+	// The frozen 429 envelope is unchanged.
+	if body := rec.Body.String(); !strings.Contains(body, `"code":429`) {
+		t.Errorf("envelope changed: %s", body)
+	}
+
+	bare := httptest.NewRecorder()
+	WriteError(context.Background(), bare, errs.NewTooManyRequests("Too many attempts. Try again later."))
+	if got := bare.Header().Get("Retry-After"); got != "" {
+		t.Errorf("Retry-After = %q with no wait known, want it absent", got)
+	}
+}
+
+// TestWriteErrorAccessDeniedRetryAfter covers the email-verification 403: the
+// wait rides on the standard Retry-After header (the envelope is frozen), and
+// the header is omitted entirely when no wait applies.
+func TestWriteErrorAccessDeniedRetryAfter(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(context.Background(), rec, &errs.AccessDeniedError{
+		Msg: "Please verify your email address.", Code: errs.CodeUserEmailVerificationRequired, RetryAfter: 42,
+	})
+	if got := rec.Header().Get("Retry-After"); got != "42" {
+		t.Errorf("Retry-After = %q, want %q", got, "42")
+	}
+
+	bare := httptest.NewRecorder()
+	WriteError(context.Background(), bare, errs.NewAccessDenied("Access is not allowed"))
+	if got := bare.Header().Get("Retry-After"); got != "" {
+		t.Errorf("Retry-After = %q on a denial with no wait, want it absent", got)
+	}
+}
+
 // TestWriteError_AccessDenied maps to HTTP 403.
 func TestWriteError_AccessDenied(t *testing.T) {
 	rec := httptest.NewRecorder()

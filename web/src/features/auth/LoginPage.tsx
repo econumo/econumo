@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
-import { isForbidden } from '@/lib/apiError'
+import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
 import { CustomServerSection } from './CustomServerSection'
@@ -33,6 +33,7 @@ export function LoginPage() {
   const [failOpen, setFailOpen] = useState(false)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [verifyOpen, setVerifyOpen] = useState(false)
+  const [verifyCooldown, setVerifyCooldown] = useState(0)
   const sessionExpired = searchParams.get('reason') === 'expired'
   const customApiAllowed = config.isCustomApiAllowed()
 
@@ -82,6 +83,7 @@ export function LoginPage() {
       // 403 = correct credentials, unverified email: the server just sent (or
       // reused) a code — collect it instead of showing the generic failure.
       if (isForbidden(err)) {
+        setVerifyCooldown(retryAfterSeconds(err))
         setVerifyOpen(true)
         return
       }
@@ -201,6 +203,7 @@ export function LoginPage() {
             onClose={() => setVerifyOpen(false)}
             username={getValues('username')}
             password={getValues('password')}
+            cooldownSeconds={verifyCooldown}
           />
         ) : null}
       </div>

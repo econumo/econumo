@@ -32,3 +32,13 @@ export function apiFieldErrors(err: unknown, field: string): string[] | undefine
 export function isForbidden(err: unknown): boolean {
   return isAxiosError(err) && err.response?.status === 403
 }
+
+// Seconds from the standard Retry-After header, or 0 when absent/unparseable.
+// The email-verification 403 carries it so the resend countdown is already
+// correct when the dialog opens.
+export function retryAfterSeconds(err: unknown): number {
+  if (!isAxiosError(err)) return 0
+  const raw = err.response?.headers?.['retry-after']
+  const seconds = Number(raw)
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : 0
+}

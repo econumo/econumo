@@ -397,7 +397,10 @@ func (r ResendVerificationCodeRequest) Validate() error {
 	return nil
 }
 
-// ResendVerificationCodeResult is the resend-verification-code response (empty object).
+// ResendVerificationCodeResult is the resend-verification-code response (empty
+// object). The wait before another code may be requested travels on the
+// standard Retry-After header, not in the body — one representation, so the
+// two can never disagree.
 type ResendVerificationCodeResult struct{}
 
 // ---------------------------------------------------------------------------
