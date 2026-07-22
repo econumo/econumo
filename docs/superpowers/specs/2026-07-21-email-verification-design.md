@@ -22,11 +22,25 @@ own their email before they can use the application.
 3. **Email sent at blocked login, not at registration.** Registration is
    untouched. The first login attempt by an unverified user triggers the code
    email.
-4. **Verification is folded into the login endpoint** (no separate
-   `verify-email` route). The login request gains optional `code` and `resend`
-   fields; HTTP 403 signals "verification required". The code is only ever
-   processed after the password check passes, so there is no new public
-   surface to enumerate or brute-force independently.
+4. **Dedicated public endpoints for confirm and resend** (revised 2026-07-22
+   after implementation review; the first iteration folded `code`/`resend`
+   into the login request). Login keeps only the 403 "verification required"
+   signal and the auto-send of the first code; confirming and resending are
+   their own endpoints, mirroring the remind-password / reset-password pair:
+   - `POST /api/v1/user/confirm-email` — `{username, code}`, no password.
+     Unknown user, no outstanding code, and a wrong code all collapse into
+     one generic "The confirmation code is not valid." validation error
+     (anti-enumeration); an expired code gets its own message, like reset.
+     Success is an empty envelope; the SPA then re-submits login.
+     Failed attempts count under a new `confirm-email` rate scope
+     (`ECONUMO_RATE_LIMIT_CONFIRM_EMAIL`, default 5, cleared on success) —
+     the 12-hex code is the sole secret on this route, so it gets reset-grade
+     brute-force protection.
+   - `POST /api/v1/user/resend-verification-code` — `{username}` only,
+     always returns success (anti-enumeration, like remind-password): unknown
+     or already-verified users are a silent no-op; an unverified user gets a
+     fresh code (replacing the old one), counted under the `verify-email`
+     send scope.
 
 ## Data model
 
@@ -48,6 +62,9 @@ Migration (sqlite + pgsql, run on boot):
 - `ECONUMO_RATE_LIMIT_VERIFY_EMAIL` — max verification emails per user per
   window (default `3`, every send counts, like remind). Shares
   `ECONUMO_RATE_LIMIT_WINDOW`.
+- `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL` — max FAILED confirm-email attempts per
+  username per window (default `5`, cleared on success, like reset). Shares
+  `ECONUMO_RATE_LIMIT_WINDOW`.
 - `serve` logs a WARN at boot when verification is enabled while the mailer
   is the console transport (verification emails would go to stdout only).
 
@@ -64,31 +81,35 @@ Migration (sqlite + pgsql, run on boot):
 
 ### Login (`login-user`)
 
-New block in `Service.Login`, placed **after** the existing password +
-`is_active` check and active only when the flag is on and the user is
-unverified:
+The login request keeps its frozen `{username, password}` shape — no new
+fields. One block in `Service.Login`, placed **after** the existing password
++ `is_active` check and active only when the flag is on and the user is
+unverified: ensure an outstanding code exists — if none or expired, generate
+one and send the email (rate-limited under the verify-email scope;
+over-limit → the standard 429 envelope) — then respond **HTTP 403** with the
+standard error envelope and catalogue code `user.email_verification_required`.
+403 is otherwise unused on this route, so the SPA distinguishes the
+verification state by status alone.
 
-- **No `code` in the request:** ensure an outstanding code exists — if none
-  or expired, generate one and send the email (rate-limited under the new
-  verify-email scope; over-limit → the standard 429 envelope). Respond
-  **HTTP 403** with the standard error envelope and catalogue code
-  `user.email_verification_required`.
-- **`resend: true`:** force a fresh code + email (same rate limit), then the
-  same 403.
-- **`code` present:** compare sha256 against the outstanding row.
-  - Valid and unexpired → set `email_verified = true`, delete the code row,
-    and continue into the normal session mint. The response is the ordinary
-    frozen `{token, user}` — verify and login complete in one round trip.
-  - Invalid or expired → **403** with catalogue code
-    `user.verification_code_invalid`, counted as a failed attempt under the
-    existing login rate limiter.
+### Confirm (`confirm-email`) and resend (`resend-verification-code`)
 
-Wire notes: the login request DTO gains two **optional** fields (`code`
-string, `resend` bool) — additive, existing clients unaffected. 403 is
-currently unused on this route, so the SPA distinguishes the verification
-state by status alone; the error envelope itself is unchanged. Both new
-catalogue codes are registered in `errs.AllCodes` with `errors.*` entries in
-`en` and `ru` (enforced by i18ntest).
+Two public routes mirroring remind/reset (registered in the public group,
+`endpoint.HandlePublic`, empty-object success envelopes):
+
+- `ConfirmEmail(ctx, {username, code})`: rate-gate under `confirm-email`
+  (failed attempts only); resolve the identifier; unknown user, missing row,
+  or hash mismatch → generic validation error `user.verification_code_invalid`
+  (indistinguishable, anti-enumeration); expired →
+  `user.verification_code_expired`; success → mark verified + delete the code
+  row in one transaction, clear the attempt counter, return `{}`.
+- `ResendVerificationCode(ctx, {username})`: always returns `{}`; unknown or
+  already-verified user is a silent no-op; otherwise force a fresh code +
+  email under the `verify-email` send scope (over-limit → 429, like remind).
+
+All three catalogue codes (`user.email_verification_required`,
+`user.verification_code_invalid`, `user.verification_code_expired`) are
+registered in `errs.AllCodes` with `errors.*` entries in `en` and `ru`
+(enforced by i18ntest).
 
 ### Password reset
 
@@ -122,10 +143,11 @@ via the existing `reqctx.Language` resolution.
   `VerifyEmailDialog` when login fails with 403 (no other 403 exists on the
   route).
 - `VerifyEmailDialog`, modeled on `RecoveryDialog` (ResponsiveDialog):
-  "We sent a code to {email}", a code input, a **Verify** button that
-  re-submits login with the code using the credentials still held in form
-  state (success lands the user in the app in one step), and a **Resend
-  code** button (login with `resend: true`). Wrong-code / throttle errors
+  "We sent a code to {email}", a code input, a **Verify** button that calls
+  `confirm-email` and, on success, silently re-submits login with the
+  credentials still held in form state (the user lands in the app in one
+  visible step), and a **Resend code** button calling
+  `resend-verification-code` with the username. Wrong-code / throttle errors
   render inline via `apiErrorMessage`.
 - New `auth.verify_email.*` strings in both catalogues.
 - Analytics (house rule): `METRICS` keys `appEmailVerificationCompleted`
@@ -142,10 +164,13 @@ via the existing `reqctx.Language` resolution.
   code → 403 + counts toward the login limiter; resend throttled at the
   verify-email cap; reset-password flips `email_verified`; migration backfill
   leaves existing users verified; CLI `user:verify-email` and `user:show`.
-- **apiparity / enginecompare:** no new route, so route guards and existing
-  goldens are untouched (default config = flag off). Add flag-on scenarios if
-  the catalogue supports per-scenario server config; otherwise the
-  feature-level tests above carry that coverage.
+- **apiparity / enginecompare:** the two new public routes get catalogue
+  scenarios (route guard requires one per route): `confirm-email` with a bad
+  code → the generic invalid-code envelope; `resend-verification-code` for a
+  verified user → the empty success envelope (flag-off default config, so
+  no email side effect). Existing goldens stay byte-identical; only new
+  golden files are added. Flag-on behavior stays covered by the
+  feature-level service tests.
 - **i18ntest:** new catalogue keys, placeholder parity, and the two error
   codes are enforced automatically.
 - **Vitest:** VerifyEmailDialog flow — opens on 403, verify re-submits with
