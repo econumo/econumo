@@ -203,3 +203,23 @@ func TestResetPasswordMarksEmailVerified(t *testing.T) {
 		t.Fatalf("login after reset must skip verification, got %v", err)
 	}
 }
+
+func TestAdminVerifyEmail(t *testing.T) {
+	db := dbtest.New(t)
+	cap := &captureMailer{}
+	svc := newVerifySvc(t, db, cap)
+	ctx := context.Background()
+
+	if _, err := svc.Register(ctx, model.RegisterRequest{Name: "Admin Verify", Email: "admin-verify@econumo.test", Password: "secretpass1"}); err != nil {
+		t.Fatal(err)
+	}
+	// Trigger a pending code so the command also has a row to clean up.
+	_, _ = svc.Login(ctx, model.LoginRequest{Username: "admin-verify@econumo.test", Password: "secretpass1"}, "ua", time.Now())
+
+	if err := svc.AdminVerifyEmail(ctx, "admin-verify@econumo.test"); err != nil {
+		t.Fatalf("AdminVerifyEmail: %v", err)
+	}
+	if _, err := svc.Login(ctx, model.LoginRequest{Username: "admin-verify@econumo.test", Password: "secretpass1"}, "ua", time.Now()); err != nil {
+		t.Fatalf("login after admin verify: %v", err)
+	}
+}

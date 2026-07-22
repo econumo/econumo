@@ -458,6 +458,7 @@ user:change-email <old> <new>
 user:change-password <email> <password>
 user:activate <email>
 user:deactivate <email>
+user:verify-email <email>
 user:set-access <email> <full|readonly> [YYYY-MM-DD]
 user:show <email>
 currency:update-rates [date]

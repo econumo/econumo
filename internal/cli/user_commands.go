@@ -92,6 +92,21 @@ func userCommands() []command {
 			},
 		},
 		{
+			name:    "user:verify-email",
+			summary: "Mark a user's email verified: user:verify-email <email>",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) != 1 {
+					return usageErr("user:verify-email <email>")
+				}
+				email := strings.TrimSpace(args[0])
+				if err := c.user.AdminVerifyEmail(ctx, email); err != nil {
+					return err
+				}
+				fmt.Printf("Email verified for %s\n", email)
+				return nil
+			},
+		},
+		{
 			name:    "user:set-access",
 			summary: "Set a user's access: user:set-access <email> <full|readonly> [YYYY-MM-DD]",
 			run: func(ctx context.Context, c *container, args []string) error {
@@ -152,11 +167,16 @@ func userCommands() []command {
 				if u.IsActive {
 					active = "yes"
 				}
+				verified := "no"
+				if u.EmailVerified {
+					verified = "yes"
+				}
 				until := datetime.FormatOrEmpty(u.AccessUntil)
 				fmt.Printf("Id:              %s\n", u.ID.String())
 				fmt.Printf("Name:            %s\n", u.Name)
 				fmt.Printf("Email:           %s\n", u.Email)
 				fmt.Printf("Active:          %s\n", active)
+				fmt.Printf("Email verified:  %s\n", verified)
 				fmt.Printf("Access level:    %s\n", u.AccessLevel)
 				fmt.Printf("Access until:    %s\n", until)
 				fmt.Printf("Effective:       %s\n", effective)
