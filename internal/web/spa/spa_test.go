@@ -1,6 +1,7 @@
 package spa
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -136,10 +137,13 @@ func TestSPA_RuntimeConfigMissingFile(t *testing.T) {
 	}
 }
 
-// fs.ValidPath is the containment boundary now: path.Clean collapses ".."
-// against the leading "/", and any name that still is not a valid rooted fs
-// path is refused before lookup. Nothing may escape fsys, however the URL
-// path is spelled.
+// Traversal attempts must never leak content from outside the served FS. In
+// a normal HTTP request path.Clean collapses any ".." against the leading
+// "/", so these payloads are refused before reaching the handler's
+// fs.ValidPath backstop (they 4xx). This asserts the observable invariant:
+// no payload yields file content other than the SPA shell. TestValidPathGate
+// below covers the fs.ValidPath backstop line directly, standing in for the
+// removed resolvePath unit tests.
 func TestSPA_TraversalAttempts(t *testing.T) {
 	h := Handler(newSPAFS(t), nil)
 	for _, p := range []string{"/../etc/passwd", "/..", "/a/../../etc/passwd", "/%2e%2e/etc/passwd"} {
@@ -148,6 +152,26 @@ func TestSPA_TraversalAttempts(t *testing.T) {
 		// result — never file content from outside the fixture FS.
 		if code == http.StatusOK && !strings.Contains(body, "<title>spa</title>") {
 			t.Errorf("%s: served unexpected content: %q", p, body)
+		}
+	}
+}
+
+// TestValidPathGate covers the fs.ValidPath containment backstop directly:
+// the handler maps a cleaned URL path onto an fs name and refuses it unless
+// fs.ValidPath accepts it, so any name carrying a "." or ".." element — the
+// forms an escape would take — must be rejected. Reached via HTTP only if
+// path.Clean is ever weakened, so it is asserted here in isolation.
+func TestValidPathGate(t *testing.T) {
+	rejected := []string{"..", "../etc/passwd", "../../root/.ssh/id_rsa", "a/../../etc/passwd", "./x", "/etc/passwd"}
+	for _, name := range rejected {
+		if fs.ValidPath(name) {
+			t.Errorf("fs.ValidPath(%q) = true, want false (escape/non-rooted name must be refused)", name)
+		}
+	}
+	accepted := []string{"index.html", "assets/app.js", "econumo-config.js"}
+	for _, name := range accepted {
+		if !fs.ValidPath(name) {
+			t.Errorf("fs.ValidPath(%q) = false, want true (legitimate asset name)", name)
 		}
 	}
 }
