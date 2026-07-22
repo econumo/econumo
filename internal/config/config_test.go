@@ -412,3 +412,32 @@ func TestLoad_BillingURLAllowsLoopbackHTTP(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_EmailVerification(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/test.sqlite")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.EmailVerification {
+		t.Error("EmailVerification should default to false")
+	}
+	if cfg.RateLimitVerifyEmail != 3 {
+		t.Errorf("RateLimitVerifyEmail = %d, want default 3", cfg.RateLimitVerifyEmail)
+	}
+
+	t.Setenv("ECONUMO_EMAIL_VERIFICATION", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load with flag: %v", err)
+	}
+	if !cfg.EmailVerification {
+		t.Error("EmailVerification should be true")
+	}
+
+	t.Setenv("ECONUMO_EMAIL_VERIFICATION", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_EMAIL_VERIFICATION must fail at boot")
+	}
+}

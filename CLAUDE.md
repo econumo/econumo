@@ -332,6 +332,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   access grant) or `end-of-next-month` (full access until the first of the month
   after next). Malformed values fail at boot. See `user:set-access` / `user:show`
   below and the 402 rule in API conventions for how access is enforced afterward.
+- `ECONUMO_EMAIL_VERIFICATION` — require newly registered users to confirm an emailed
+  code at login before their first session (default `false`; strict boolean, malformed
+  fails at boot). The code email is sent at the first blocked login attempt, not at
+  registration; `serve` WARNs at boot when enabled with the console mail transport.
+  Existing rows and CLI/admin-created users are always verified.
 - `ECONUMO_ADMIN_PORT` / `ECONUMO_ADMIN_TOKEN` — the private admin listener the payment
   portal talks to (`POST /admin/set-access`, `GET /admin/user-context`). A **second**
   `http.Server`, started by `serve` only when BOTH are set, so a self-hosted instance
@@ -382,6 +387,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
   authenticated user per window (default `10`; every attempt counts), guarding the short
   invite code against online brute force.
+  `ECONUMO_RATE_LIMIT_VERIFY_EMAIL` — verification-code emails per username per window (default `3`; every send counts).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
