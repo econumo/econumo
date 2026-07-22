@@ -30,6 +30,7 @@ var _ = apidoc.JsonResponseError{}
 // @Success     200     {object} model.LoginResult "Raw {token,user} body — NOT wrapped in the standard envelope (matches PHP login)."
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     403     {object} apidoc.JsonResponseError "Email verification required (ECONUMO_EMAIL_VERIFICATION): retry with the emailed code in the request body."
 // @Failure     429     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Router      /api/v1/user/login-user [post]

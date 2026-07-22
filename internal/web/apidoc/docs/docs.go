@@ -5348,6 +5348,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
+                    "403": {
+                        "description": "Email verification required (ECONUMO_EMAIL_VERIFICATION): retry with the emailed code in the request body.",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "429": {
                         "description": "Too Many Requests",
                         "schema": {
@@ -7719,8 +7725,14 @@ const docTemplate = `{
         "model.LoginRequest": {
             "type": "object",
             "properties": {
+                "code": {
+                    "type": "string"
+                },
                 "password": {
                     "type": "string"
+                },
+                "resend": {
+                    "type": "boolean"
                 },
                 "username": {
                     "type": "string"

@@ -144,6 +144,9 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
+		// Completing a reset proves mailbox ownership, so it also satisfies the
+		// email-verification gate.
+		u.MarkEmailVerified(s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}

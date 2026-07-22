@@ -43,6 +43,11 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if derr != nil {
 		return nil, derr
 	}
+	if s.emailVerification && !u.EmailVerified {
+		if err := s.verifyEmailOnLogin(ctx, u, email, req, limitKey); err != nil {
+			return nil, err
+		}
+	}
 	if err := s.purgeDeadTokens(ctx, u.ID, now); err != nil {
 		return nil, err
 	}

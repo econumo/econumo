@@ -41,9 +41,13 @@ type CurrentUserResult struct {
 // ---------------------------------------------------------------------------
 
 // LoginRequest is the login request body (username and password both NotBlank).
+// Code and Resend drive the email-verification handshake: both optional and
+// additive, absent for verified users (see the 403 flow in login).
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Code     string `json:"code"`
+	Resend   bool   `json:"resend"`
 }
 
 // Validate enforces the NotBlank constraints on username and password.

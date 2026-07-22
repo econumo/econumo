@@ -899,8 +899,12 @@ definitions:
     type: object
   model.LoginRequest:
     properties:
+      code:
+        type: string
       password:
         type: string
+      resend:
+        type: boolean
       username:
         type: string
     type: object
@@ -4778,6 +4782,11 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "403":
+          description: 'Email verification required (ECONUMO_EMAIL_VERIFICATION):
+            retry with the emailed code in the request body.'
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "429":
           description: Too Many Requests
           schema:

@@ -31,7 +31,8 @@ func newTrialSvc(t *testing.T, db *dbtest.DB, trial string) (*appuser.Service, *
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), trialClock{}, nil, true, trial)
+		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), trialClock{}, nil, true, trial, false)
 	return svc, repo, enc
 }
 
