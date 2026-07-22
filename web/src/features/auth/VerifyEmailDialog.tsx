@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidRecoveryCode } from '@/lib/validation'
-import { useLogin, useResendVerification } from './queries'
+import { useConfirmEmail, useLogin, useResendVerification } from './queries'
 
 interface VerifyEmailForm {
   code: string
@@ -20,6 +20,7 @@ export function VerifyEmailDialog({ open, onClose, username, password }: {
   password: string
 }) {
   const { t } = useTranslation()
+  const confirm = useConfirmEmail()
   const login = useLogin()
   const resend = useResendVerification()
   const [serverError, setServerError] = useState('')
@@ -30,7 +31,10 @@ export function VerifyEmailDialog({ open, onClose, username, password }: {
     setServerError('')
     setResent(false)
     try {
-      await login.mutateAsync({ username, password, code: code.trim() })
+      await confirm.mutateAsync({ username, code: code.trim() })
+      // The code proved ownership; the silent re-login uses the credentials
+      // still held by the login form, so the user lands in the app in one step.
+      await login.mutateAsync({ username, password })
       window.location.assign('/')
     } catch (err) {
       setServerError(apiErrorMessage(err))
@@ -41,7 +45,7 @@ export function VerifyEmailDialog({ open, onClose, username, password }: {
     setServerError('')
     setResent(false)
     try {
-      await resend.mutateAsync({ username, password })
+      await resend.mutateAsync({ username })
       setResent(true)
     } catch (err) {
       setServerError(apiErrorMessage(err))
@@ -83,7 +87,7 @@ export function VerifyEmailDialog({ open, onClose, username, password }: {
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
-          <Button type="submit" disabled={login.isPending}>
+          <Button type="submit" disabled={confirm.isPending || login.isPending}>
             {t('auth.verify_email.action.verify')}
           </Button>
         </div>

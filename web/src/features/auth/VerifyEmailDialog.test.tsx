@@ -22,27 +22,33 @@ beforeEach(() => {
   window.econumoConfig = {}
 })
 
-it('verifies by re-submitting login with the code', async () => {
+it('confirms the code then silently re-logs-in', async () => {
   const user = userEvent.setup()
-  const bodies: Record<string, unknown>[] = []
+  const confirmBodies: Record<string, unknown>[] = []
+  const loginBodies: Record<string, unknown>[] = []
   server.use(
+    http.post('*/api/v1/user/confirm-email', async ({ request }) => {
+      confirmBodies.push((await request.json()) as Record<string, unknown>)
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
     http.post('*/api/v1/user/login-user', async ({ request }) => {
-      bodies.push((await request.json()) as Record<string, unknown>)
+      loginBodies.push((await request.json()) as Record<string, unknown>)
       return HttpResponse.json({ token: 'tok-verified', user: { id: 'u1', accessLevel: 'full', accessUntil: '' } })
     }),
   )
   renderDialog()
   await user.type(screen.getByLabelText(/code/i), '123456789012')
   await user.click(screen.getByRole('button', { name: /verify and sign in/i }))
-  await vi.waitFor(() => expect(bodies).toHaveLength(1))
-  expect(bodies[0]).toMatchObject({ username: 'ada@example.test', password: 'pw12345678', code: '123456789012' })
+  await vi.waitFor(() => expect(loginBodies).toHaveLength(1))
+  expect(confirmBodies[0]).toMatchObject({ username: 'ada@example.test', code: '123456789012' })
+  expect(loginBodies[0]).toMatchObject({ username: 'ada@example.test', password: 'pw12345678' })
 })
 
 it('shows the server message inline on an invalid code', async () => {
   const user = userEvent.setup()
   server.use(
-    http.post('*/api/v1/user/login-user', () =>
-      HttpResponse.json({ success: false, message: 'The confirmation code is not valid.', code: 403, errors: {} }, { status: 403 }),
+    http.post('*/api/v1/user/confirm-email', () =>
+      HttpResponse.json({ success: false, message: 'The confirmation code is not valid.', code: 400, errors: {} }, { status: 400 }),
     ),
   )
   renderDialog()
@@ -54,8 +60,8 @@ it('shows the server message inline on an invalid code', async () => {
 it('resend confirms and stays open', async () => {
   const user = userEvent.setup()
   server.use(
-    http.post('*/api/v1/user/login-user', () =>
-      HttpResponse.json({ success: false, message: 'Please verify your email address.', code: 403, errors: {} }, { status: 403 }),
+    http.post('*/api/v1/user/resend-verification-code', () =>
+      HttpResponse.json({ success: true, message: '', data: {} }),
     ),
   )
   renderDialog()

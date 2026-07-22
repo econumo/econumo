@@ -3,37 +3,30 @@ import * as userApi from '@/api/user'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { isForbidden } from '@/lib/apiError'
 
 export function useLogin() {
   return useMutation({
-    mutationFn: ({ username, password, code }: { username: string; password: string; code?: string }) =>
-      userApi.login(username, password, code ? { code } : {}),
-    onSuccess: (data, variables) => {
+    mutationFn: ({ username, password }: { username: string; password: string }) => userApi.login(username, password),
+    onSuccess: (data) => {
       // the new session may belong to a different user — never restore the
       // previous user's persisted finances
       clearPersistedQueryCache()
       setToken(data.token)
       trackEvent(METRICS.USER_LOGIN)
-      if (variables.code) {
-        trackEvent(METRICS.EMAIL_VERIFICATION_COMPLETED)
-      }
     },
+  })
+}
+
+export function useConfirmEmail() {
+  return useMutation({
+    mutationFn: ({ username, code }: { username: string; code: string }) => userApi.confirmEmail(username, code),
+    onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_COMPLETED),
   })
 }
 
 export function useResendVerification() {
   return useMutation({
-    mutationFn: async ({ username, password }: { username: string; password: string }) => {
-      // The server answers a resend with the verification-required 403 after
-      // sending the fresh code — that IS the success case here.
-      try {
-        await userApi.login(username, password, { resend: true })
-      } catch (err) {
-        if (isForbidden(err)) return
-        throw err
-      }
-    },
+    mutationFn: ({ username }: { username: string }) => userApi.resendVerificationCode(username),
     onSuccess: () => trackEvent(METRICS.EMAIL_VERIFICATION_RESENT),
   })
 }
