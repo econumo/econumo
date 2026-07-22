@@ -45,6 +45,11 @@ type Querier interface {
 	// SET NULL FK, matching the PHP delete behaviour.
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// Login email-verification codes (users_email_verifications). The login flow
+	// replaces the user's old code with a fresh one, reads it back by user, and
+	// deletes it once verified. Expiry is compared in the app layer (Go time),
+	// not in SQL, to avoid engine date-format differences.
+	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
 	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). The reset flow:
 	// remind-password deletes the user's old codes and inserts a fresh one;
@@ -193,6 +198,7 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
 	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
+	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
 	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
@@ -240,6 +246,7 @@ type Querier interface {
 	// (GetOperationId) so a duplicate create is rejected.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
