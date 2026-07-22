@@ -46,6 +46,21 @@ it('logs in and stores the token', async () => {
   expect(localStorage.getItem('econumo.query-cache')).toBeNull()
 })
 
+it('opens the verification dialog on a 403 login', async () => {
+  const user = userEvent.setup()
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json({ success: false, message: 'Please verify your email address.', code: 403, errors: {} }, { status: 403 }),
+    ),
+  )
+  renderLogin()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'pw12345678')
+  await user.click(screen.getByRole('button', { name: /sign in/i }))
+  expect(await screen.findByText(/verify your email/i)).toBeInTheDocument()
+  expect(screen.queryByText(/sign-in failed/i)).not.toBeInTheDocument()
+})
+
 it('shows the failure dialog on invalid credentials', async () => {
   server.use(
     http.post('*/api/v1/user/login-user', () =>

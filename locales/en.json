@@ -614,6 +614,15 @@
       "send_failed": "Couldn't send the code. Check the email address and try again.",
       "reset_failed": "The password wasn't reset. Check the code and try again."
     },
+    "verify_email": {
+      "header": "Verify your email",
+      "information": "We've sent a confirmation code to {email}. Enter it below to finish signing in.",
+      "resent": "A new code has been sent.",
+      "action": {
+        "verify": "Verify and sign in",
+        "resend": "Resend code"
+      }
+    },
     "sign_up_failed": {
       "header": "Registration failed",
       "information": "Check the entered details and try again. If the problem persists, contact support."
