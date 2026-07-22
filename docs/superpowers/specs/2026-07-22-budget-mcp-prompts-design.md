@@ -74,7 +74,8 @@ Top-level:
 
 ## Design
 
-Three parts: a new tool, a shared glossary, and the three reworked prompts.
+Five parts: two new tools (`move_element`, `create_account`), a shared glossary,
+the three reworked prompts, and one new onboarding prompt (`budget-quick-start`).
 
 ### A. New MCP tool: `move_element` (`internal/budget/mcp/mcp.go`)
 
@@ -99,6 +100,33 @@ the file (`webmcp.UserID`, `webmcp.MapErr`, `reqctx.AddLogAttr`).
   `get_budget` for `element_id`/`folder_id`.
 - **Note:** an envelope is an element too, so `move_element` also refiles
   envelopes between folders — `update_envelope` need not gain `folder_id`.
+
+### A2. New MCP tool: `create_account` (`internal/account/mcp/mcp.go`)
+
+Currently the account MCP surface has only `list_accounts`. A budget needs at
+least one account to track balances/spending, so the quick-start onboarding
+prompt cannot seed a from-scratch user without this. Thin wrapper over
+`svc.CreateAccount`, following the file's existing pattern.
+
+- **Input struct** `createAccountInput`:
+  - `name` — account name.
+  - `currency_id` — currency id (UUID), from `list_currencies`; optional →
+    defaults to the user's currency (mirror how other create tools fall back).
+  - `balance` — optional decimal string opening balance (defaults to 0; a
+    non-zero value writes a balance-correction transaction, per the service).
+  - `icon` — optional icon name (default a sensible value; the tool must always
+    send a non-blank icon, which `CreateAccountRequest.Validate` requires).
+  - No `folder_id`: a blank folder is tolerated for a user's first account (the
+    service auto-creates a default "General" account folder), which is exactly
+    the quick-start case. Accounts stay ungrouped otherwise.
+- **id semantics:** `CreateAccountRequest.Id` is the **operation/idempotency
+  id**, not the entity id (the service mints a fresh account id). Mint a UUID
+  server-side for it, as the budget tools do.
+- **Output:** return the created account's id + name + currency (built from
+  `CreateAccountResult.Item`), enough for the prompt to reference it.
+- **Registration + tests:** register in the account `Register` closure; add a
+  scenario to `internal/test/mcpparity/catalogue.go`; add unit coverage in
+  `internal/account/mcp/mcp_test.go` following `list_accounts`' test.
 
 ### B. Shared "reading get_budget" glossary (`internal/web/mcp/prompts.go`)
 
@@ -165,18 +193,49 @@ Narrow to **revise, don't rebuild**:
    `update_envelope`'s full category-set caveat) → re-`get_budget` → report.
 6. Update the prompt `Description` to the narrower scope.
 
+### F. New prompt: `budget-quick-start` (`internal/web/mcp/prompts.go`)
+
+A one-shot onboarding flow for a user with little or no data: seed a starter set
+of categories (and a couple of tags), ensure an account exists, then build a
+budget on top. Optional `name` argument (budget name), like `budget-setup`.
+
+1. **Check emptiness.** Call `list_accounts`, `list_categories`, `list_tags`,
+   `list_budgets`, `list_currencies`. If the user already has substantial data
+   (existing budget, or many categories/transactions), say so and point them at
+   `budget-setup` instead — quick-start is for empty/near-empty users.
+2. **Propose a starter set, confirm, then create.** Propose a sensible default
+   set of expense + income categories (and maybe 1–2 tags), tailored lightly to
+   anything the user said. Show it and **wait for confirmation** before creating
+   anything. On approval, create them via `create_category` / `create_tag`.
+3. **Ensure an account.** If `list_accounts` is empty, propose one starter
+   account (name, currency, optional opening balance), confirm, and create it via
+   `create_account`. If an account already exists, use it.
+4. **Build the budget** following the same rules as `budget-setup`: Base/
+   Additional folders (default, not forced); envelopes only for grouping multiple
+   categories; tags and standalone categories filed into folders via
+   `move_element`; default folder empty. Since a fresh user has no spending
+   history, propose limits from the user's stated rough figures (or leave limits
+   unset and say so) rather than inventing averages.
+5. Call `get_budget`, confirm the result, and give one or two next steps (log a
+   first expense, adjust a limit).
+
+Ask before creating anything that changes structure. Reply in the user's
+language. Reuses the glossary block.
+
 ## Testing
 
-- **`move_element`:** add a scenario to `internal/test/mcpparity/catalogue.go`
-  (the guard requires every registered tool to have a scenario and forbids the
-  scenario/route counts from shrinking). Add unit coverage in
-  `internal/budget/mcp/mcp_test.go` following the sibling tools' tests.
+- **New tools (`move_element`, `create_account`):** add a scenario for each to
+  `internal/test/mcpparity/catalogue.go` (the guard requires every registered
+  tool to have a scenario and forbids the scenario/route counts from shrinking).
+  Add unit coverage in `internal/budget/mcp/mcp_test.go` and
+  `internal/account/mcp/mcp_test.go` following the sibling tools' tests.
 - **Prompts:** prompt text and descriptions are golden-captured in
-  `internal/test/mcpparity/testdata/golden/prompts.golden` (and `prompts-list`
-  captures descriptions). Regenerate:
+  `internal/test/mcpparity/testdata/golden/prompts.golden`; `prompts-list` and
+  `tools-list` capture descriptions/registration. Add a `prompts/get` scenario
+  for the new `budget-quick-start` prompt to the catalogue. Regenerate:
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then **inspect the diff** —
-  only the changed prompt strings/descriptions and the new `move_element` tool
-  entries should move. Never hand-edit a golden.
+  only the changed prompt strings/descriptions and the two new tool entries plus
+  the new prompt should move. Never hand-edit a golden.
 - Run `make go-test` (build, vet, gofmt, OpenAPI-fresh, unit/integration,
   coverage gate). MCP changes don't touch REST, so `apiparity` should be
   unaffected.
