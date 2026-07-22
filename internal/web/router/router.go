@@ -23,6 +23,7 @@ package router
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/web/middleware"
@@ -148,7 +149,7 @@ func New(deps Deps) http.Handler {
 	if deps.Cfg.AllowCustomAPI != nil {
 		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI
 	}
-	root.Handle("/", spa.Handler(deps.Cfg.SPADir, overrides))
+	root.Handle("/", spa.Handler(os.DirFS(deps.Cfg.SPADir), overrides))
 
 	// Browser-hardening headers wrap the WHOLE tree — including the SPA catch-all,
 	// which the per-subtree global chain deliberately skips — so the served HTML
