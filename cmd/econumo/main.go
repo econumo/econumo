@@ -32,6 +32,7 @@ import (
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/system"
+	"github.com/econumo/econumo/internal/version"
 
 	"github.com/joho/godotenv"
 
@@ -77,6 +78,10 @@ func main() {
 		// `-healthcheck` is kept as an alias for any older healthcheck config.
 		os.Exit(healthcheck())
 
+	case "version", "-version", "--version":
+		fmt.Println("econumo " + version.Version)
+		os.Exit(0)
+
 	case "help", "-h", "--help":
 		printUsage(os.Stdout)
 		os.Exit(0)
@@ -99,6 +104,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Server:")
 	fmt.Fprintf(w, "  %-40s %s\n", "serve", "Start the HTTP API + SPA server")
 	fmt.Fprintf(w, "  %-40s %s\n", "healthcheck", "Probe a running server's health endpoint (exit 0/1)")
+	fmt.Fprintf(w, "  %-40s %s\n", "version", "Print the binary version")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Management commands:")
 	cli.WriteCommandList(w)
@@ -157,6 +163,7 @@ func run(serveArgs []string) error {
 	slog.Info("configuration loaded",
 		"database_driver", cfg.DatabaseDriver,
 		"spa_dir", cfg.SPADir,
+		"version", version.Version,
 	)
 	// The API ignores ECONUMO_DATA_SALT (it always runs salt-free). If the salt is
 	// still set, a database written with it has unreadable emails / mismatched
