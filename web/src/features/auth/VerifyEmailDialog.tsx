@@ -75,12 +75,13 @@ export function VerifyEmailDialog({ open, onClose, username, password }: {
         {serverError ? <p className="text-sm text-destructive">{serverError}</p> : null}
         {resent ? <p className="text-sm text-muted-foreground">{t('auth.verify_email.resent')}</p> : null}
 
+        <Button type="button" variant="secondary" className="w-full h-11" onClick={onResend} disabled={resend.isPending}>
+          {t('auth.verify_email.action.resend')}
+        </Button>
+
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onResend} disabled={resend.isPending}>
-            {t('auth.verify_email.action.resend')}
           </Button>
           <Button type="submit" disabled={login.isPending}>
             {t('auth.verify_email.action.verify')}
