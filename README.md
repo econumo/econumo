@@ -76,6 +76,54 @@ inside the container, e.g.:
 $ docker compose exec econumo /app/econumo user:create "Name" user@example.com password
 ```
 
+### Run without Docker (single binary)
+
+Every release also ships self-contained Linux binaries — the web UI is
+embedded, so one file is the whole app. Grab the binary for your
+architecture plus `SHA256SUMS` from the
+[latest release](https://github.com/econumo/econumo/releases/latest) and
+verify it:
+
+```console
+$ curl -LO https://github.com/econumo/econumo/releases/latest/download/econumo-linux-amd64
+$ curl -LO https://github.com/econumo/econumo/releases/latest/download/SHA256SUMS
+$ sha256sum --check --ignore-missing SHA256SUMS
+```
+
+A reference systemd unit lives in
+[`deployment/systemd/econumo.service`](deployment/systemd/econumo.service):
+
+```console
+$ sudo useradd --system --home-dir /var/lib/econumo --shell /usr/sbin/nologin econumo
+$ sudo mkdir -p /opt/econumo /var/lib/econumo /etc/econumo
+$ sudo chown econumo:econumo /var/lib/econumo
+$ sudo install -m 0755 econumo-linux-amd64 /opt/econumo/econumo
+$ sudoedit /etc/econumo/env
+$ sudo cp deployment/systemd/econumo.service /etc/systemd/system/
+$ sudo systemctl daemon-reload && sudo systemctl enable --now econumo
+```
+
+A minimal `/etc/econumo/env` (all other settings from
+[`.env.example`](.env.example) work here too):
+
+```
+DATABASE_URL=sqlite:///var/lib/econumo/db.sqlite
+PORT=8181
+```
+
+**Upgrades:** replace `/opt/econumo/econumo` with the new release binary and
+`sudo systemctl restart econumo` — database migrations run on boot, exactly
+as in the Docker image. `/opt/econumo/econumo version` prints the installed
+version.
+
+**Management commands** need the same environment as the service:
+
+```console
+$ sudo -u econumo sh -c 'set -a; . /etc/econumo/env; exec /opt/econumo/econumo user:create "Name" user@example.com password'
+```
+
+**Back up** `/var/lib/econumo` (the SQLite database is the only state).
+
 ### Localization
 
 All translations live in [`locales/`](locales/) — one JSON catalogue per

@@ -14,7 +14,7 @@ Econumo is a self-hosted personal finance and budgeting application. It consists
 > edition is shipped (there is no separate "ce" edition).
 
 The production artifact is a single self-contained Go binary in a distroless image
-(`ghcr.io/econumo/econumo`) that serves both the JSON API and the built SPA, and
+(`ghcr.io/econumo/econumo`) that serves both the JSON API and the built SPA (SPA embedded via `go:embed` — `web/embed.go`); releases additionally attach standalone `econumo-linux-{amd64,arm64}` binaries + `SHA256SUMS` for Docker-free hosting, and
 runs database migrations on boot.
 
 ## Development Commands
@@ -387,7 +387,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
-- `ECONUMO_WEB_DIST` — path to the built SPA the binary serves.
+- `ECONUMO_WEB_DIST` — disk path to a built SPA, overriding the build embedded
+  in the binary (`web/embed.go`). Unset (default) = serve the embedded SPA,
+  falling back to `web/dist` on disk when no build is embedded (source
+  checkout). The binary logs the chosen source at boot (`spa_source`).
 - `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
   (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
   and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.
@@ -584,6 +587,10 @@ data unreadable. Most are also asserted by the test suite.
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
   - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
+- Docker-free: each release attaches single-file linux binaries (SPA embedded)
+  + `SHA256SUMS`; reference systemd unit in `deployment/systemd/econumo.service`,
+  walkthrough in the README ("Run without Docker"). `make release-binaries`
+  builds the same artifacts locally.
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
 
