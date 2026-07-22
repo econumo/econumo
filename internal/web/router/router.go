@@ -22,6 +22,7 @@
 package router
 
 import (
+	"io/fs"
 	"net/http"
 	"os"
 
@@ -80,6 +81,11 @@ type Deps struct {
 	// MCP is the fully-wrapped MCP endpoint handler (auth + timezone fallback
 	// applied by the composition root). Nil = endpoint not mounted.
 	MCP http.Handler
+
+	// SPA is the filesystem the SPA catch-all serves — the embedded build or
+	// a disk directory, selected by the composition root (web.SelectFS).
+	// Nil falls back to Cfg.SPADir on disk.
+	SPA fs.FS
 }
 
 // New builds the root http.Handler from deps.
@@ -149,7 +155,11 @@ func New(deps Deps) http.Handler {
 	if deps.Cfg.AllowCustomAPI != nil {
 		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI
 	}
-	root.Handle("/", spa.Handler(os.DirFS(deps.Cfg.SPADir), overrides))
+	spaFS := deps.SPA
+	if spaFS == nil {
+		spaFS = os.DirFS(deps.Cfg.SPADir)
+	}
+	root.Handle("/", spa.Handler(spaFS, overrides))
 
 	// Browser-hardening headers wrap the WHOLE tree — including the SPA catch-all,
 	// which the per-subtree global chain deliberately skips — so the served HTML

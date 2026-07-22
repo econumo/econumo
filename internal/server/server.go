@@ -65,6 +65,7 @@ import (
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/router"
+	"github.com/econumo/econumo/web"
 )
 
 // Seams are BuildAPI's injectable sources of nondeterminism. The zero value
@@ -280,12 +281,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		timezoneFallback(userSvc),
 	)(webmcp.NewHandler(mcpRegister))
 
+	spaFS, _ := web.SelectFS(cfg.SPADir, cfg.SPADirSet)
 	return router.New(router.Deps{
 		Cfg:                cfg,
 		DB:                 pinger{db},
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
 		MCP:                mcpHandler,
+		SPA:                spaFS,
 	}), adminHandler
 }
 

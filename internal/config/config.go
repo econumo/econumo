@@ -62,7 +62,8 @@ type Config struct {
 	OpenExchangeRatesToken string
 
 	// SPA
-	SPADir string // path to web/dist (served directly by the Go binary)
+	SPADir    string // disk path to a built SPA (dev default web/dist)
+	SPADirSet bool   // ECONUMO_WEB_DIST was set: the disk dir overrides the embedded SPA
 
 	// Optional SPA config overrides merged into the served econumo-config.js.
 	// Empty/nil = leave the dist file's value (the server does not enforce
@@ -96,6 +97,7 @@ func Load() (Config, error) {
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
 		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist"),
+		SPADirSet:              os.Getenv("ECONUMO_WEB_DIST") != "",
 	}
 
 	if c.DatabaseURL == "" {

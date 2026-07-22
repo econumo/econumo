@@ -304,6 +304,29 @@ func TestLoad_SPAOverrides(t *testing.T) {
 	}
 }
 
+func TestSPADirExplicit(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/econumo-test.sqlite")
+
+	// Unset (and set-empty, matching getEnv semantics) = the default, not explicit.
+	t.Setenv("ECONUMO_WEB_DIST", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SPADirSet || cfg.SPADir != "web/dist" {
+		t.Fatalf("unset: SPADir = %q, SPADirSet = %v; want web/dist, false", cfg.SPADir, cfg.SPADirSet)
+	}
+
+	t.Setenv("ECONUMO_WEB_DIST", "/srv/spa")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.SPADirSet || cfg.SPADir != "/srv/spa" {
+		t.Fatalf("set: SPADir = %q, SPADirSet = %v; want /srv/spa, true", cfg.SPADir, cfg.SPADirSet)
+	}
+}
+
 func TestLoad_AdminRequiresBothOrNeither(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
