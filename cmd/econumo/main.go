@@ -33,7 +33,6 @@ import (
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/system"
 	"github.com/econumo/econumo/internal/version"
-	"github.com/econumo/econumo/web"
 
 	"github.com/joho/godotenv"
 
@@ -161,10 +160,8 @@ func run(serveArgs []string) error {
 	// cfg.LogLevel (default info), raised to DEBUG by -v/-vv/-vvv on the serve
 	// command line (flags win); -q silences. From here on every log honors it.
 	logging.Setup(cfg.LogLevel, serveArgs)
-	_, spaSource := web.SelectFS(cfg.SPADir, cfg.SPADirSet)
 	slog.Info("configuration loaded",
 		"database_driver", cfg.DatabaseDriver,
-		"spa_source", spaSource,
 		"version", version.Version,
 	)
 	// The API ignores ECONUMO_DATA_SALT (it always runs salt-free). If the salt is

@@ -27,7 +27,8 @@ func newServer(t *testing.T, reg router.RegisterAPI) *httptest.Server {
 		t.Fatalf("write favicon: %v", err)
 	}
 	h := router.New(router.Deps{
-		Cfg:         config.Config{CORSAllowedOrigins: []string{"*"}, SPADir: dir},
+		Cfg:         config.Config{CORSAllowedOrigins: []string{"*"}},
+		SPA:         os.DirFS(dir),
 		RegisterAPI: reg,
 	})
 	srv := httptest.NewServer(h)
@@ -171,7 +172,8 @@ func TestHealthCheck_DBDown_ReportsFalse(t *testing.T) {
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "index.html"), []byte("x"), 0o644)
 	h := router.New(router.Deps{
-		Cfg: config.Config{SPADir: dir},
+		Cfg: config.Config{},
+		SPA: os.DirFS(dir),
 		DB:  stubPinger{err: context.DeadlineExceeded},
 	})
 	srv := httptest.NewServer(h)
@@ -202,13 +204,15 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 	allowCustom := false
-	h := router.New(router.Deps{Cfg: config.Config{
-		SPADir:         dir,
-		Analytics:      true,
-		APIURL:         "https://api.example.test",
-		AllowCustomAPI: &allowCustom,
-		BillingURL:     "https://pay.example.test/cloud/",
-	}})
+	h := router.New(router.Deps{
+		SPA: os.DirFS(dir),
+		Cfg: config.Config{
+			Analytics:      true,
+			APIURL:         "https://api.example.test",
+			AllowCustomAPI: &allowCustom,
+			BillingURL:     "https://pay.example.test/cloud/",
+		},
+	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
@@ -231,7 +235,7 @@ func TestRuntimeConfigOverrides_EmptyBillingURLIsMerged(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	h := router.New(router.Deps{Cfg: config.Config{SPADir: dir}})
+	h := router.New(router.Deps{SPA: os.DirFS(dir)})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
@@ -247,19 +251,52 @@ func TestRuntimeConfigOverrides_UnsetKeysNotMerged(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	h := router.New(router.Deps{Cfg: config.Config{SPADir: dir, Analytics: true}})
+	h := router.New(router.Deps{SPA: os.DirFS(dir), Cfg: config.Config{Analytics: true}})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	for _, absent := range []string{"API_URL", "ALLOW_CUSTOM_API"} {
+	for _, absent := range []string{"API_URL", "ALLOW_CUSTOM_API", "LILTAG_CONFIG_URL", "LILTAG_CACHE_TTL", "VERSION"} {
 		if strings.Contains(body, absent) {
 			t.Fatalf("unset key %q must not be merged:\n%s", absent, body)
 		}
 	}
 	if !strings.Contains(body, `"ANALYTICS":true`) {
 		t.Fatalf("ANALYTICS missing:\n%s", body)
+	}
+}
+
+// The liltag config URL and cache TTL are merged only when set, so a hosted
+// instance can point the SPA at a remote liltag config; VERSION carries the
+// running binary's version (or the ECONUMO_VERSION override).
+func TestRuntimeConfigOverrides_LiltagAndVersion(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := router.New(router.Deps{
+		SPA:        os.DirFS(dir),
+		SPAVersion: "v9.9.9",
+		Cfg: config.Config{
+			LiltagConfigURL: "https://cdn.example/liltag.json",
+			LiltagCacheTTL:  "3600",
+		},
+	})
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
+	defer resp.Body.Close()
+	body := readBody(t, resp)
+	for _, want := range []string{
+		`"LILTAG_CONFIG_URL":"https://cdn.example/liltag.json"`,
+		`"LILTAG_CACHE_TTL":"3600"`,
+		`"VERSION":"v9.9.9"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("config body missing %q:\n%s", want, body)
+		}
 	}
 }

@@ -304,26 +304,28 @@ func TestLoad_SPAOverrides(t *testing.T) {
 	}
 }
 
-func TestSPADirExplicit(t *testing.T) {
+func TestLoad_LiltagAndVersionOverrides(t *testing.T) {
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/econumo-test.sqlite")
 
-	// Unset (and set-empty, matching getEnv semantics) = the default, not explicit.
-	t.Setenv("ECONUMO_WEB_DIST", "")
+	// Unset = empty, so the embedded econumo-config.js defaults stay in place.
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.SPADirSet || cfg.SPADir != "web/dist" {
-		t.Fatalf("unset: SPADir = %q, SPADirSet = %v; want web/dist, false", cfg.SPADir, cfg.SPADirSet)
+	if cfg.LiltagConfigURL != "" || cfg.LiltagCacheTTL != "" || cfg.Version != "" {
+		t.Fatalf("unset: liltag/version overrides should be empty, got url=%q ttl=%q version=%q",
+			cfg.LiltagConfigURL, cfg.LiltagCacheTTL, cfg.Version)
 	}
 
-	t.Setenv("ECONUMO_WEB_DIST", "/srv/spa")
+	t.Setenv("ECONUMO_LILTAG_CONFIG_URL", "https://cdn.example/liltag.json")
+	t.Setenv("ECONUMO_LILTAG_CACHE_TTL", "3600")
+	t.Setenv("ECONUMO_VERSION", "demo-42")
 	cfg, err = Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.SPADirSet || cfg.SPADir != "/srv/spa" {
-		t.Fatalf("set: SPADir = %q, SPADirSet = %v; want /srv/spa, true", cfg.SPADir, cfg.SPADirSet)
+	if cfg.LiltagConfigURL != "https://cdn.example/liltag.json" || cfg.LiltagCacheTTL != "3600" || cfg.Version != "demo-42" {
+		t.Fatalf("set: got url=%q ttl=%q version=%q", cfg.LiltagConfigURL, cfg.LiltagCacheTTL, cfg.Version)
 	}
 }
 

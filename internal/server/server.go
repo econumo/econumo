@@ -61,6 +61,7 @@ import (
 	handleruser "github.com/econumo/econumo/internal/user/api"
 	usermcp "github.com/econumo/econumo/internal/user/mcp"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
+	"github.com/econumo/econumo/internal/version"
 	"github.com/econumo/econumo/internal/web/apidoc"
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 	"github.com/econumo/econumo/internal/web/middleware"
@@ -281,7 +282,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		timezoneFallback(userSvc),
 	)(webmcp.NewHandler(mcpRegister))
 
-	spaFS, _ := web.SelectFS(cfg.SPADir, cfg.SPADirSet)
+	// The SPA is always embedded in the binary. The served econumo-config.js
+	// reports the running binary's version, overridable via ECONUMO_VERSION
+	// (handy for demo/staging environments).
+	spaFS, _ := web.DistFS()
+	spaVersion := cfg.Version
+	if spaVersion == "" {
+		spaVersion = version.Version
+	}
 	return router.New(router.Deps{
 		Cfg:                cfg,
 		DB:                 pinger{db},
@@ -289,6 +297,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		SupportedLanguages: i18n.Supported,
 		MCP:                mcpHandler,
 		SPA:                spaFS,
+		SPAVersion:         spaVersion,
 	}), adminHandler
 }
 

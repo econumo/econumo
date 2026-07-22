@@ -389,10 +389,19 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
-- `ECONUMO_WEB_DIST` — disk path to a built SPA, overriding the build embedded
-  in the binary (`web/embed.go`). Unset (default) = serve the embedded SPA,
-  falling back to `web/dist` on disk when no build is embedded (source
-  checkout). The binary logs the chosen source at boot (`spa_source`).
+- **Web UI config** — the SPA is ALWAYS embedded in the binary (`web/embed.go`,
+  `//go:embed all:dist`); there is no disk-serving mode. Instance-specific
+  values reach the frontend by being merged into the served `econumo-config.js`
+  at runtime (the `Object.assign(window.econumoConfig, …)` suffix in
+  `internal/web/spa`). One rule: the backend value overwrites the embedded
+  default when present. Each key maps to `ECONUMO_<KEY>`: `ECONUMO_API_URL`,
+  `ECONUMO_ALLOW_CUSTOM_API`, `ECONUMO_LILTAG_CONFIG_URL` (load liltag config
+  from a URL instead of the bundled `liltag-config.json`),
+  `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
+  to the binary's `internal/version.Version`, overridable for demo/staging).
+  Flags (`ANALYTICS`, `ALLOW_REGISTRATION`) and `BILLING_URL` are always merged
+  (server truth); text/URL keys merge only when non-empty. The composition root
+  resolves the FS (`web.DistFS`) and version once in `server.BuildAPI`.
 - `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
   (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
   and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.

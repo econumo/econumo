@@ -24,11 +24,11 @@ package router
 import (
 	"io/fs"
 	"net/http"
-	"os"
 
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/spa"
+	"github.com/econumo/econumo/web"
 )
 
 // RegisterAPI is the seam through which resource modules attach their routes.
@@ -61,7 +61,7 @@ func Compose(fns ...RegisterAPI) RegisterAPI {
 // this foundational stage so the router is mountable before later phases wire
 // the database and API modules.
 type Deps struct {
-	// Cfg supplies the CORS allowlist and the SPA directory.
+	// Cfg supplies the CORS allowlist and the SPA config-override values.
 	Cfg config.Config
 
 	// DB is used by the health-check. May be nil (reports database: true).
@@ -82,10 +82,15 @@ type Deps struct {
 	// applied by the composition root). Nil = endpoint not mounted.
 	MCP http.Handler
 
-	// SPA is the filesystem the SPA catch-all serves — the embedded build or
-	// a disk directory, selected by the composition root (web.SelectFS).
-	// Nil falls back to Cfg.SPADir on disk.
+	// SPA is the filesystem the SPA catch-all serves. In production it is the
+	// SPA embedded in the binary (web.DistFS); it is a seam for tests to inject
+	// a fixture FS. Nil falls back to the embedded build.
 	SPA fs.FS
+
+	// SPAVersion is the version string merged into the served econumo-config.js
+	// as VERSION (the binary version, or the ECONUMO_VERSION override), resolved
+	// by the composition root. Empty is tolerated (the embedded default remains).
+	SPAVersion string
 }
 
 // New builds the root http.Handler from deps.
@@ -134,20 +139,25 @@ func New(deps Deps) http.Handler {
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so
 	// it never shadows the server-side groups.
-	// Server-owned SPA config keys, merged into the served econumo-config.js so
-	// the .env values reach the frontend (the dist file's static values are the
-	// fallback for separately-hosted SPAs). ANALYTICS and ALLOW_REGISTRATION are
-	// always server truth (the server enforces/owns them); the rest merge only
-	// when explicitly configured, so a file-configured deployment is never
-	// clobbered by a default.
+	// The env-driven config keys are merged into the served econumo-config.js so
+	// .env values reach the frontend. One rule: the backend value overwrites the
+	// embedded default whenever it is present. Flags and VERSION are always
+	// present (a bool is never blank; VERSION defaults to the binary version), so
+	// they always come from the backend; text/URL values are merged only when
+	// non-empty, leaving the embedded default in place otherwise.
 	overrides := map[string]any{
 		"ANALYTICS":          deps.Cfg.Analytics,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
-		// Always server truth, including when empty: the backend is what decides
-		// whether create-billing-link works, so an empty value here must be able
-		// to switch the SPA's billing UI off rather than leave a stale dist value
-		// pointing at a portal the server will not mint links for.
+		// Present even when empty: the backend decides whether create-billing-link
+		// works, so an empty value must switch the SPA's billing UI off rather than
+		// leave a stale default pointing at a portal the server will not mint for.
 		"BILLING_URL": deps.Cfg.BillingURL,
+	}
+	// The running binary's version (or the ECONUMO_VERSION override), resolved by
+	// the composition root; always non-empty in production, so the UI label
+	// always matches the served binary.
+	if deps.SPAVersion != "" {
+		overrides["VERSION"] = deps.SPAVersion
 	}
 	if deps.Cfg.APIURL != "" {
 		overrides["API_URL"] = deps.Cfg.APIURL
@@ -155,9 +165,17 @@ func New(deps Deps) http.Handler {
 	if deps.Cfg.AllowCustomAPI != nil {
 		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI
 	}
+	if deps.Cfg.LiltagConfigURL != "" {
+		overrides["LILTAG_CONFIG_URL"] = deps.Cfg.LiltagConfigURL
+	}
+	if deps.Cfg.LiltagCacheTTL != "" {
+		overrides["LILTAG_CACHE_TTL"] = deps.Cfg.LiltagCacheTTL
+	}
+	// The SPA is always embedded in the binary; deps.SPA is the injection seam
+	// for tests. A nil value falls back to the embedded FS.
 	spaFS := deps.SPA
 	if spaFS == nil {
-		spaFS = os.DirFS(deps.Cfg.SPADir)
+		spaFS, _ = web.DistFS()
 	}
 	root.Handle("/", spa.Handler(spaFS, overrides))
 

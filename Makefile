@@ -57,9 +57,10 @@ web-bundle:
 # Depends on `swagger` so the embedded OpenAPI docs are always regenerated from
 # the current handler annotations before the binary is built.
 # Note: this does NOT build the frontend; the binary embeds whatever is in
-# web/dist (go:embed). For live frontend reload during dev, keep web/dist empty
-# (unset ECONUMO_WEB_DIST then serves the disk default) or point ECONUMO_WEB_DIST
-# at your build; run `make release-binaries` to embed a freshly built SPA.
+# web/dist (go:embed) — the committed placeholder on a fresh checkout. For live
+# frontend work use the Vite dev server (`make web-run`), which serves the SPA
+# itself and proxies /api here; run `make release-binaries` to embed a freshly
+# built SPA into standalone binaries.
 go-build: swagger
 	CGO_ENABLED=0 go build -o econumo ./cmd/econumo
 
