@@ -88,6 +88,9 @@ export function AccountPage() {
   const myRole = account.sharedAccess.find((access) => access.user.id === user?.id)?.role
   const isOwner = account.owner.id === user?.id
   const canUpdateSettings = isOwner || myRole === 'admin'
+  // Read-only access does NOT hide write controls: the backend rejects the
+  // write with 402 and the global handler explains why. Only sharing roles
+  // gate the UI.
   const canChangeTransaction = isOwner || myRole === 'admin' || myRole === 'user'
 
   const canTouchRow = (tx: ViewTransaction): boolean => {

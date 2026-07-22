@@ -55,8 +55,8 @@ func newFixture() (*Service, *stubUsers, vo.Id, vo.Id) {
 	self, partner := vo.NewId(), vo.NewId()
 	users := &stubUsers{
 		byID: map[string]UserRecord{
-			self.String():    {ID: self.String(), Name: "Alex", Email: "alex@example.test", AccessLevel: model.AccessLevelFull},
-			partner.String(): {ID: partner.String(), Name: "Sam", Email: "sam@example.test", AccessLevel: model.AccessLevelFull},
+			self.String():    {ID: self.String(), Name: "Alex", Email: "alex@example.test", Avatar: "face:fuchsia", AccessLevel: model.AccessLevelFull},
+			partner.String(): {ID: partner.String(), Name: "Sam", Email: "sam@example.test", Avatar: "pets:sky", AccessLevel: model.AccessLevelFull},
 		},
 		saved: map[string]model.AccessLevel{},
 		until: map[string]*time.Time{},
@@ -164,6 +164,9 @@ func TestUserContextReturnsSelfAndConnections(t *testing.T) {
 	}
 	if res.Connections[0].Email != "sam@example.test" {
 		t.Fatalf("connection email = %q — the portal needs it to notify a beneficiary", res.Connections[0].Email)
+	}
+	if res.User.Avatar != "face:fuchsia" || res.Connections[0].Avatar != "pets:sky" {
+		t.Fatalf("avatars = %q / %q — the portal renders them next to each person", res.User.Avatar, res.Connections[0].Avatar)
 	}
 }
 

@@ -9,10 +9,10 @@ export interface LocaleOption {
 export interface EconumoConfig {
   API_URL?: string
   ALLOW_REGISTRATION?: boolean | string
-  PAYWALL_ENABLED?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
   ANALYTICS?: boolean | string
+  BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
 }
@@ -108,6 +108,12 @@ export function getVersion(): string {
   return window.econumoConfig?.VERSION || String(import.meta.env.ECONUMO_VERSION ?? 'dev')
 }
 
+// The server merges BILLING_URL unconditionally into the served
+// econumo-config.js (server truth); '' means billing UI is disabled.
+export function getBillingUrl(): string {
+  return window.econumoConfig?.BILLING_URL || ''
+}
+
 export function isCustomApiAllowed(): boolean {
   const allowCustomApi = window.econumoConfig?.ALLOW_CUSTOM_API
   if (typeof allowCustomApi === 'boolean') {
@@ -135,15 +141,4 @@ export function analyticsEnabled(): boolean {
   // Absent or unrecognized fails OPEN (enabled): a stale hand-hosted config
   // file keeps the enabled-by-default contract.
   return analytics !== 'false'
-}
-
-export function isPaywallEnabled(): boolean {
-  const paywall = window.econumoConfig?.PAYWALL_ENABLED
-  if (paywall === undefined) {
-    return false
-  }
-  if (typeof paywall === 'boolean') {
-    return paywall
-  }
-  return paywall === 'true'
 }

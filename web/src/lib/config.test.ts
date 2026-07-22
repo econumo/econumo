@@ -1,4 +1,4 @@
-import { analyticsEnabled, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, isPaywallEnabled, getVersion } from './config'
+import { analyticsEnabled, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getBillingUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -32,9 +32,14 @@ describe('flags', () => {
     expect(isCustomApiAllowed()).toBe(false)
   })
 
-  it('defaults registration=true, paywall=false when unset', () => {
+  it('defaults registration=true when unset', () => {
     expect(isRegistrationAllowed()).toBe(true)
-    expect(isPaywallEnabled()).toBe(false)
+  })
+
+  it('returns the billing URL, empty when unset', () => {
+    expect(getBillingUrl()).toBe('')
+    window.econumoConfig = { BILLING_URL: 'https://pay.example.test/cloud/' }
+    expect(getBillingUrl()).toBe('https://pay.example.test/cloud/')
   })
 })
 

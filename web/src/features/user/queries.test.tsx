@@ -3,9 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword } from './queries'
+import { useUpdateName, useUpdateAvatar, useUpdateDefaultBudget, useUpdatePassword, useAccessState } from './queries'
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -85,9 +85,41 @@ it('update-password rejects on the generic 400 envelope', async () => {
 
 it('isOnboardingCompleted treats an absent option as completed (Vue parity)', async () => {
   const { isOnboardingCompleted } = await import('./queries')
-  const base = { id: 'u1', name: 'A', email: 'a@x.test', avatar: '', currency: 'USD', reportPeriod: 'monthly' }
+  const base = { id: 'u1', name: 'A', email: 'a@x.test', avatar: '', accessLevel: 'full' as const, accessUntil: '', currency: 'USD', reportPeriod: 'monthly' }
   expect(isOnboardingCompleted(undefined)).toBe(false)
   expect(isOnboardingCompleted({ ...base, options: [] })).toBe(true)
   expect(isOnboardingCompleted({ ...base, options: [{ name: 'onboarding', value: 'completed' }] })).toBe(true)
   expect(isOnboardingCompleted({ ...base, options: [{ name: 'onboarding', value: '' }] })).toBe(false)
+})
+
+function utcIn(days: number): string {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
+}
+
+describe('useAccessState', () => {
+  it('derives trial with daysLeft and billingEnabled from config', async () => {
+    window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
+    server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'full', accessUntil: utcIn(2) } }))
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAccessState(), { wrapper })
+    await waitFor(() => expect(result.current.state).toBe('trial'))
+    expect(result.current.daysLeft).toBe(2)
+    expect(result.current.billingEnabled).toBe(true)
+  })
+
+  it('derives full_access with null daysLeft and disabled billing by default', async () => {
+    server.use(...coreHandlers())
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAccessState(), { wrapper })
+    await waitFor(() => expect(result.current.state).toBe('full_access'))
+    expect(result.current.daysLeft).toBeNull()
+    expect(result.current.billingEnabled).toBe(false)
+  })
+
+  it('derives readonly', async () => {
+    server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useAccessState(), { wrapper })
+    await waitFor(() => expect(result.current.state).toBe('readonly'))
+  })
 })

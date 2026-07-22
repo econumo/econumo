@@ -11,6 +11,9 @@ export interface SharedAccountRefDto {
 
 export interface ConnectionDto {
   user: UserDto
+  accessLevel: 'full' | 'readonly'
+  /** frozen wire format "YYYY-MM-DD HH:mm:ss" UTC; '' = no expiry */
+  accessUntil: string
   sharedAccounts: SharedAccountRefDto[]
 }
 

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { AccountPage } from './AccountPage'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
@@ -241,6 +241,14 @@ it('compact + shared account: preview hero overlays the author avatar', async ()
   expect(avatar).toHaveAttribute('data-avatar', fixtureOwner.avatar)
   expect(avatar.parentElement).toHaveAttribute('title', 'Ada')
   expect(within(dialog).queryByText('Author')).not.toBeInTheDocument()
+})
+
+it('keeps the add-transaction actions while the user is read-only (backend guards writes)', async () => {
+  mockViewport(false)
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
+  renderPage()
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Add transaction' })).toBeInTheDocument()
 })
 
 it('compact viewport: row click opens the preview dialog with details', async () => {

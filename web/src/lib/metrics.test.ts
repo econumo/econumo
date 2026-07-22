@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { METRICS, posthogEventName, scrubbedPage, trackEvent, viewMode } from './metrics'
+import { METRICS, posthogEventName, scrubbedPage, trackEvent, viewMode, setAnalyticsAccessState } from './metrics'
 import { capture } from './analytics'
 
 vi.mock('./analytics', async (importOriginal) => {
@@ -90,5 +90,22 @@ describe('scrubbedPage', () => {
     ['/', ''],
   ])('%s -> %s', (path, expected) => {
     expect(scrubbedPage(path)).toBe(expected)
+  })
+})
+
+describe('access_state property', () => {
+  afterEach(() => setAnalyticsAccessState(null))
+
+  it('is attached to captures once set', () => {
+    setAnalyticsAccessState('trial')
+    trackEvent(METRICS.USER_LOGIN)
+    const [, props] = vi.mocked(capture).mock.calls.at(-1)!
+    expect(props).toMatchObject({ access_state: 'trial' })
+  })
+
+  it('is absent before any state is known', () => {
+    trackEvent(METRICS.USER_LOGIN)
+    const [, props] = vi.mocked(capture).mock.calls.at(-1)!
+    expect(props).not.toHaveProperty('access_state')
   })
 })

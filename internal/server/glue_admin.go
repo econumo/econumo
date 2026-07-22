@@ -46,6 +46,7 @@ func record(u *model.User, email string) appadmin.UserRecord {
 		ID:          u.ID.String(),
 		Name:        u.Name,
 		Email:       email,
+		Avatar:      u.Avatar,
 		AccessLevel: u.AccessLevel,
 		AccessUntil: u.AccessUntil,
 	}

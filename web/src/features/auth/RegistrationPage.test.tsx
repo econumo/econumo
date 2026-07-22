@@ -57,13 +57,6 @@ it('rejects mismatched password retry', async () => {
   expect(await screen.findByText('Passwords do not match')).toBeInTheDocument()
 })
 
-it('shows the paywall instead of the form when enabled', () => {
-  window.econumoConfig = { PAYWALL_ENABLED: 'true' }
-  renderPage()
-  expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument()
-  expect(screen.getByRole('link')).toHaveAttribute('href', 'https://pay.econumo.com/cloud/')
-})
-
 it('persists the collapse and clears the server address', async () => {
   window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
   localStorage.setItem('selfHosted', 'true')
