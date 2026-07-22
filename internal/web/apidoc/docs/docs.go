@@ -7725,14 +7725,8 @@ const docTemplate = `{
         "model.LoginRequest": {
             "type": "object",
             "properties": {
-                "code": {
-                    "type": "string"
-                },
                 "password": {
                     "type": "string"
-                },
-                "resend": {
-                    "type": "boolean"
                 },
                 "username": {
                     "type": "string"

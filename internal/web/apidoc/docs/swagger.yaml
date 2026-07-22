@@ -899,12 +899,8 @@ definitions:
     type: object
   model.LoginRequest:
     properties:
-      code:
-        type: string
       password:
         type: string
-      resend:
-        type: boolean
       username:
         type: string
     type: object

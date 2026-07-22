@@ -135,6 +135,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appuser.RateScopeRemind:             cfg.RateLimitRemind,
 			appuser.RateScopeRegister:           cfg.RateLimitRegister,
 			appuser.RateScopeVerifyEmail:        cfg.RateLimitVerifyEmail,
+			appuser.RateScopeConfirmEmail:       cfg.RateLimitConfirmEmail,
 			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
 		},
 		Window: cfg.RateLimitWindow,

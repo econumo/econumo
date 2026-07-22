@@ -67,7 +67,12 @@ func isVerificationDenied(err error, code string) bool {
 	return ok && v.Code == code
 }
 
-func TestLoginBlockedUntilEmailVerified(t *testing.T) {
+func isValidationCode(err error, code string) bool {
+	v, ok := errs.AsValidation(err)
+	return ok && v.MsgCode == code
+}
+
+func TestLoginBlockedUntilEmailConfirmed(t *testing.T) {
 	db := dbtest.New(t)
 	cap := &captureMailer{}
 	svc := newVerifySvc(t, db, cap)
@@ -100,35 +105,36 @@ func TestLoginBlockedUntilEmailVerified(t *testing.T) {
 		t.Fatalf("outstanding code must not be re-sent, got %d emails", len(cap.msgs))
 	}
 
-	// Wrong password NEVER reaches the verification layer.
-	_, err = svc.Login(ctx, model.LoginRequest{Username: "verify@econumo.test", Password: "wrong"}, "ua", time.Now())
-	if _, ok := errs.AsUnauthorized(err); !ok {
-		t.Fatalf("bad password must stay a 401, got %v", err)
-	}
-
-	// Wrong code -> invalid-code 403.
-	_, err = svc.Login(ctx, model.LoginRequest{Username: "verify@econumo.test", Password: "secretpass1", Code: "000000000000"}, "ua", time.Now())
-	if !isVerificationDenied(err, errs.CodeUserVerificationCodeInvalid) {
+	// Wrong code -> generic invalid-code validation error.
+	if _, err := svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: "verify@econumo.test", Code: "000000000000"}); !isValidationCode(err, errs.CodeUserVerificationCodeInvalid) {
 		t.Fatalf("want verification_code_invalid, got %v", err)
 	}
 
-	// Correct code -> full login result in ONE call, user persisted verified.
-	code := codeFrom(t, cap.msgs[0].Text)
-	res, err := svc.Login(ctx, model.LoginRequest{Username: "verify@econumo.test", Password: "secretpass1", Code: code}, "ua", time.Now())
-	if err != nil {
-		t.Fatalf("verified login: %v", err)
-	}
-	if res.Token == "" {
-		t.Fatal("verified login must mint a session token")
+	// Unknown user -> the SAME generic error (anti-enumeration).
+	if _, err := svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: "nobody@econumo.test", Code: "000000000000"}); !isValidationCode(err, errs.CodeUserVerificationCodeInvalid) {
+		t.Fatalf("unknown user must be indistinguishable from a bad code, got %v", err)
 	}
 
-	// Subsequent logins skip the gate entirely.
-	if _, err := svc.Login(ctx, model.LoginRequest{Username: "verify@econumo.test", Password: "secretpass1"}, "ua", time.Now()); err != nil {
-		t.Fatalf("post-verification login: %v", err)
+	// Correct code -> empty success; login then succeeds without any code.
+	code := codeFrom(t, cap.msgs[0].Text)
+	if _, err := svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: "verify@econumo.test", Code: code}); err != nil {
+		t.Fatalf("ConfirmEmail: %v", err)
+	}
+	res, err := svc.Login(ctx, model.LoginRequest{Username: "verify@econumo.test", Password: "secretpass1"}, "ua", time.Now())
+	if err != nil {
+		t.Fatalf("login after confirm: %v", err)
+	}
+	if res.Token == "" {
+		t.Fatal("login after confirm must mint a session token")
+	}
+
+	// The consumed code is dead.
+	if _, err := svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: "verify@econumo.test", Code: code}); !isValidationCode(err, errs.CodeUserVerificationCodeInvalid) {
+		t.Fatalf("consumed code must be invalid, got %v", err)
 	}
 }
 
-func TestLoginResendForcesFreshCode(t *testing.T) {
+func TestResendVerificationCode(t *testing.T) {
 	db := dbtest.New(t)
 	cap := &captureMailer{}
 	svc := newVerifySvc(t, db, cap)
@@ -138,21 +144,36 @@ func TestLoginResendForcesFreshCode(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _ = svc.Login(ctx, model.LoginRequest{Username: "resend@econumo.test", Password: "secretpass1"}, "ua", time.Now())
-	_, err := svc.Login(ctx, model.LoginRequest{Username: "resend@econumo.test", Password: "secretpass1", Resend: true}, "ua", time.Now())
-	if !isVerificationDenied(err, errs.CodeUserEmailVerificationRequired) {
-		t.Fatalf("resend still answers verification_required, got %v", err)
+	if len(cap.msgs) != 1 {
+		t.Fatalf("blocked login must have sent the first email, got %d", len(cap.msgs))
+	}
+
+	// Resend: success envelope + a FRESH code that replaces the old one.
+	if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "resend@econumo.test"}); err != nil {
+		t.Fatalf("ResendVerificationCode: %v", err)
 	}
 	if len(cap.msgs) != 2 {
 		t.Fatalf("resend must send a fresh email, got %d", len(cap.msgs))
 	}
-	// The OLD code is dead, the NEW one works.
 	oldCode := codeFrom(t, cap.msgs[0].Text)
-	if _, err := svc.Login(ctx, model.LoginRequest{Username: "resend@econumo.test", Password: "secretpass1", Code: oldCode}, "ua", time.Now()); !isVerificationDenied(err, errs.CodeUserVerificationCodeInvalid) {
+	if _, err := svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: "resend@econumo.test", Code: oldCode}); !isValidationCode(err, errs.CodeUserVerificationCodeInvalid) {
 		t.Fatalf("replaced code must be invalid, got %v", err)
 	}
 	newCode := codeFrom(t, cap.msgs[1].Text)
-	if _, err := svc.Login(ctx, model.LoginRequest{Username: "resend@econumo.test", Password: "secretpass1", Code: newCode}, "ua", time.Now()); err != nil {
-		t.Fatalf("fresh code must verify: %v", err)
+	if _, err := svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: "resend@econumo.test", Code: newCode}); err != nil {
+		t.Fatalf("fresh code must confirm: %v", err)
+	}
+
+	// Anti-enumeration: unknown user and now-verified user both silently succeed, no email.
+	sent := len(cap.msgs)
+	if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "nobody@econumo.test"}); err != nil {
+		t.Fatalf("unknown user must silently succeed, got %v", err)
+	}
+	if _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: "resend@econumo.test"}); err != nil {
+		t.Fatalf("verified user must silently succeed, got %v", err)
+	}
+	if len(cap.msgs) != sent {
+		t.Fatalf("no-op resends must not send email, got %d new", len(cap.msgs)-sent)
 	}
 }
 

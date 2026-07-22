@@ -55,9 +55,10 @@ type AttemptLimiter interface {
 
 // Rate-limit scopes; the same strings key the limiter config in internal/server.
 const (
-	RateScopeLogin       = "login"
-	RateScopeReset       = "reset"
-	RateScopeRemind      = "remind"
-	RateScopeRegister    = "register"
-	RateScopeVerifyEmail = "verify-email"
+	RateScopeLogin        = "login"
+	RateScopeReset        = "reset"
+	RateScopeRemind       = "remind"
+	RateScopeRegister     = "register"
+	RateScopeVerifyEmail  = "verify-email"
+	RateScopeConfirmEmail = "confirm-email"
 )

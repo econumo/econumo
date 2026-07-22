@@ -44,7 +44,7 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 		return nil, derr
 	}
 	if s.emailVerification && !u.EmailVerified {
-		if err := s.verifyEmailOnLogin(ctx, u, email, req, limitKey); err != nil {
+		if err := s.requireVerifiedEmail(ctx, u, email, limitKey); err != nil {
 			return nil, err
 		}
 	}

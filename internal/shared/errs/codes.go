@@ -79,6 +79,7 @@ const (
 	CodeUserResetCodeExpired          = "user.reset_code_expired"
 	CodeUserEmailVerificationRequired = "user.email_verification_required"
 	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
+	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 )
 
 var AllCodes = []string{
@@ -152,4 +153,5 @@ var AllCodes = []string{
 	CodeUserResetCodeExpired,
 	CodeUserEmailVerificationRequired,
 	CodeUserVerificationCodeInvalid,
+	CodeUserVerificationCodeExpired,
 }

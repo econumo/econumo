@@ -1227,7 +1227,8 @@
       "reset_password_error": "Reset password error",
       "reset_code_expired": "The code is expired",
       "email_verification_required": "Please verify your email address.",
-      "verification_code_invalid": "The confirmation code is not valid."
+      "verification_code_invalid": "The confirmation code is not valid.",
+      "verification_code_expired": "The code is expired"
     }
   },
   "emails": {

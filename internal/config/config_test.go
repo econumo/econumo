@@ -426,6 +426,9 @@ func TestLoad_EmailVerification(t *testing.T) {
 	if cfg.RateLimitVerifyEmail != 3 {
 		t.Errorf("RateLimitVerifyEmail = %d, want default 3", cfg.RateLimitVerifyEmail)
 	}
+	if cfg.RateLimitConfirmEmail != 5 {
+		t.Errorf("RateLimitConfirmEmail = %d, want default 5", cfg.RateLimitConfirmEmail)
+	}
 
 	t.Setenv("ECONUMO_EMAIL_VERIFICATION", "true")
 	cfg, err = Load()

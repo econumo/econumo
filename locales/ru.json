@@ -1227,7 +1227,8 @@
       "reset_password_error": "Ошибка сброса пароля.",
       "reset_code_expired": "Срок действия кода истёк.",
       "email_verification_required": "Подтвердите адрес электронной почты.",
-      "verification_code_invalid": "Неверный код подтверждения."
+      "verification_code_invalid": "Неверный код подтверждения.",
+      "verification_code_expired": "Срок действия кода истёк."
     }
   },
   "emails": {
