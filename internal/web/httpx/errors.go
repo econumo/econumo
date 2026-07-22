@@ -41,8 +41,9 @@ func WriteError(ctx context.Context, w http.ResponseWriter, err error) {
 		return
 	}
 	if v, ok := errs.AsAccessDenied(err); ok {
-		// 403 with errors:[] (empty ARRAY, not {}) and the domain message verbatim.
-		AccessDenied(w, v.Msg)
+		// 403 with errors:[] (empty ARRAY, not {}); a coded message renders in
+		// the caller's language, a code-less one keeps its literal text.
+		AccessDenied(w, translated(lang, v.Msg, v.Code, nil))
 		return
 	}
 	if v, ok := errs.AsUnauthorized(err); ok {

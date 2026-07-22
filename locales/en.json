@@ -1216,7 +1216,9 @@
       "registration_disabled": "Registration disabled",
       "password_incorrect": "Password is not correct",
       "reset_password_error": "Reset password error",
-      "reset_code_expired": "The code is expired"
+      "reset_code_expired": "The code is expired",
+      "email_verification_required": "Please verify your email address.",
+      "verification_code_invalid": "The confirmation code is not valid."
     }
   },
   "emails": {

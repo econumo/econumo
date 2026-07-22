@@ -70,6 +70,9 @@ func NewNotFound(msg string) *NotFoundError { return &NotFoundError{Msg: msg} }
 // AccessDeniedError maps to HTTP 403.
 type AccessDeniedError struct {
 	Msg string
+	// Code is an optional errors.* catalogue key; when set the HTTP edge
+	// renders Msg in the caller's language, otherwise the literal text is kept.
+	Code string
 }
 
 func (e *AccessDeniedError) Error() string {

@@ -199,3 +199,33 @@ func TestWriteError_PaymentRequired(t *testing.T) {
 		t.Fatalf("code-less body:\n got %s\nwant %s", body, want)
 	}
 }
+
+func TestWriteErrorAccessDeniedTranslatesCodedMessage(t *testing.T) {
+	rec := httptest.NewRecorder()
+	ctx := reqctx.WithLanguage(context.Background(), "ru")
+	WriteError(ctx, rec, &errs.AccessDeniedError{
+		Msg:  "Please verify your email address.",
+		Code: errs.CodeUserEmailVerificationRequired,
+	})
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Подтвердите адрес электронной почты.") {
+		t.Errorf("message not translated: %s", body)
+	}
+	if !strings.Contains(body, `"errors":[]`) {
+		t.Errorf("403 envelope must keep errors as an empty ARRAY: %s", body)
+	}
+}
+
+func TestWriteErrorAccessDeniedWithoutCodeKeepsLiteral(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(context.Background(), rec, errs.NewAccessDenied("You are not allowed"))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "You are not allowed") {
+		t.Errorf("code-less 403 must keep its literal message: %s", rec.Body.String())
+	}
+}

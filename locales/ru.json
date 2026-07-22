@@ -1216,7 +1216,9 @@
       "registration_disabled": "Регистрация отключена.",
       "password_incorrect": "Неверный пароль.",
       "reset_password_error": "Ошибка сброса пароля.",
-      "reset_code_expired": "Срок действия кода истёк."
+      "reset_code_expired": "Срок действия кода истёк.",
+      "email_verification_required": "Подтвердите адрес электронной почты.",
+      "verification_code_invalid": "Неверный код подтверждения."
     }
   },
   "emails": {
