@@ -42,7 +42,7 @@ it('walks the two-step recovery flow', async () => {
   expect(await screen.findByLabelText(/code/i)).toBeInTheDocument()
 
   await user.type(screen.getByLabelText(/code/i), '482913')
-  await user.type(screen.getByLabelText('Password'), 'newpass1')
+  await user.type(screen.getByLabelText('New password'), 'newpass1')
   await user.click(screen.getByRole('button', { name: /reset password/i }))
 
   await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
