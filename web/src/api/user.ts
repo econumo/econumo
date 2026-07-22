@@ -4,10 +4,17 @@ import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, P
 import { deriveAccessState } from '@/lib/access'
 import { setAnalyticsAccessState } from '@/lib/metrics'
 
+export interface LoginOptions {
+  code?: string
+  resend?: boolean
+}
+
 // login-user is the one endpoint that responds with a bare {token, user}
-// body instead of the standard {success, message, data} envelope.
-export async function login(username: string, password: string): Promise<UserLoginItemDto> {
-  const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/user/login-user'), { username, password })
+// body instead of the standard {success, message, data} envelope. code/resend
+// drive the email-verification handshake: an unverified user gets HTTP 403
+// until a valid code is supplied alongside the credentials.
+export async function login(username: string, password: string, options: LoginOptions = {}): Promise<UserLoginItemDto> {
+  const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/user/login-user'), { username, password, ...options })
   const { user } = response.data
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   return response.data

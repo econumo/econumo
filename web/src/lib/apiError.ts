@@ -26,3 +26,9 @@ export function apiFieldErrors(err: unknown, field: string): string[] | undefine
   const data = isAxiosError(err) ? (err.response?.data as ErrEnvelope | undefined) : undefined
   return data?.errors?.[field]
 }
+
+// The login 403 is the email-verification signal (no other 403 exists on that
+// route); the dialog flow keys off the status alone.
+export function isForbidden(err: unknown): boolean {
+  return isAxiosError(err) && err.response?.status === 403
+}
