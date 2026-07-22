@@ -47,13 +47,18 @@ func TestResetPasswordFlow_PerEngine(t *testing.T) {
 			t.Fatalf("issued reset codes = %d, want 1 — was it inserted?", n)
 		}
 		code := h.LastResetCode(t)
-		if len(code) != 12 {
-			t.Fatalf("issued code = %q (len %d), want 12 chars", code, len(code))
+		if len(code) != 6 {
+			t.Fatalf("issued code = %q (len %d), want 6 chars", code, len(code))
 		}
 
-		// 3. A wrong code is rejected (400).
+		// 3. A wrong code is rejected (400). Derived from the real code so the two
+		//    can never coincide in the 6-digit code space.
+		wrongCode := "000000"
+		if code == wrongCode {
+			wrongCode = "111111"
+		}
 		if st, _ := h.Call(t, http.MethodPost, "/api/v1/user/reset-password", "", map[string]string{
-			"username": apiparity.OwnerEmail, "code": "ffffffffffff", "password": newPassword,
+			"username": apiparity.OwnerEmail, "code": wrongCode, "password": newPassword,
 		}); st != http.StatusBadRequest {
 			t.Fatalf("reset with wrong code = %d, want 400", st)
 		}

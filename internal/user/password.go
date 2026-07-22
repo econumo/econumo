@@ -7,7 +7,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"io"
+	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -16,17 +17,24 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// passwordCodeBytes is the random byte count for a reset code; hex-encoded it
-// yields the frozen 12-character code length.
-const passwordCodeBytes = 6
+// passwordCodeDigits is the length of an emailed reset/verification code.
+// Six digits is short enough to retype from a phone; the brute-force margin
+// comes from the per-username attempt caps and the code's short TTL, not from
+// the size of the code space.
+const passwordCodeDigits = 6
 
-// generatePasswordCode returns a fresh 12-char hex reset code.
+// generatePasswordCode returns a fresh 6-digit numeric code, zero-padded so
+// every code is exactly passwordCodeDigits long.
 func generatePasswordCode() (string, error) {
-	b := make([]byte, passwordCodeBytes)
-	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+	max := big.NewInt(1)
+	for i := 0; i < passwordCodeDigits; i++ {
+		max.Mul(max, big.NewInt(10))
+	}
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(b), nil
+	return fmt.Sprintf("%0*d", passwordCodeDigits, n), nil
 }
 
 // HashResetCode maps a reset code to its at-rest storage/lookup key. The

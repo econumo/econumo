@@ -75,6 +75,9 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
                 className="h-11"
                 id="recovery-code"
                 autoFocus
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
                 {...register('code', {
                   validate: {
                     required: (v) => isNotEmpty(v) || t('user.form.code.validation.required_field'),

@@ -23,8 +23,8 @@ func TestRemindAndResetPassword(t *testing.T) {
 	// 2. Recover the generated code from the email (it is hashed at rest, so the
 	//    DB no longer holds the plaintext).
 	code := h.mail.lastResetCode(t)
-	if len(code) != 12 {
-		t.Fatalf("code = %q, want 12 chars", code)
+	if len(code) != 6 {
+		t.Fatalf("code = %q, want 6 chars", code)
 	}
 	// The stored code is the sha256 hex of the emailed code, never the plaintext.
 	var stored string
@@ -35,9 +35,14 @@ func TestRemindAndResetPassword(t *testing.T) {
 		t.Fatal("reset code stored in plaintext; want a hash")
 	}
 
-	// 3. Wrong code -> validation error (400), generic message.
+	// 3. Wrong code -> validation error (400), generic message. Derived from the
+	//    real code so the two can never coincide in the 6-digit code space.
+	wrongCode := "000000"
+	if code == wrongCode {
+		wrongCode = "111111"
+	}
 	if st, env := h.do(t, http.MethodPost, "/api/v1/user/reset-password", "", map[string]string{
-		"username": seedEmail, "code": "wrongcode000", "password": "newpass123",
+		"username": seedEmail, "code": wrongCode, "password": "newpass123",
 	}); st != http.StatusBadRequest {
 		t.Fatalf("reset wrong code status = %d; body: %s", st, env.raw)
 	}

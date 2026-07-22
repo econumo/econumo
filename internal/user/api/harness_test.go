@@ -142,17 +142,19 @@ func (m *recordingMailer) Send(_ context.Context, msg mailer.Message) error {
 	return nil
 }
 
-// resetCodeRe matches the 12-char hex reset code in the rendered email body.
-var resetCodeRe = regexp.MustCompile(`[0-9a-f]{12}`)
+// resetCodeRe matches the 6-digit reset code in the rendered email body. It is
+// anchored on the body's marker text so a digit-bearing user name can never be
+// mistaken for the code.
+var resetCodeRe = regexp.MustCompile(`code is: (\d{6})`)
 
 // lastResetCode extracts the reset code from the most recently sent email.
 func (m *recordingMailer) lastResetCode(t *testing.T) string {
 	t.Helper()
-	code := resetCodeRe.FindString(m.last.Text)
-	if code == "" {
+	match := resetCodeRe.FindStringSubmatch(m.last.Text)
+	if match == nil {
 		t.Fatalf("no reset code found in email body: %q", m.last.Text)
 	}
-	return code
+	return match[1]
 }
 
 // seed inserts a known user (with hashed password and encrypted email) plus the
@@ -197,6 +199,27 @@ func toMigrations(files []migrations.File) []migrate.Migration {
 }
 
 // do issues a request to the harness server. token may be "" for public calls.
+// doHeader is do() for callers that need a response header rather than the body.
+func (h *harness) doHeader(t *testing.T, method, path string, body any, header string) (int, string) {
+	t.Helper()
+	b, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal body: %v", err)
+	}
+	req, err := http.NewRequest(method, h.srv.URL+path, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := h.srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return resp.StatusCode, resp.Header.Get(header)
+}
+
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {
 	t.Helper()
 	var rdr io.Reader
