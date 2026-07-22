@@ -14,8 +14,10 @@ Econumo is a self-hosted personal finance and budgeting application. It consists
 > edition is shipped (there is no separate "ce" edition).
 
 The production artifact is a single self-contained Go binary in a distroless image
-(`ghcr.io/econumo/econumo`) that serves both the JSON API and the built SPA (SPA embedded via `go:embed` — `web/embed.go`); releases additionally attach standalone `econumo-linux-{amd64,arm64}` binaries + `SHA256SUMS` for Docker-free hosting, and
-runs database migrations on boot.
+(`ghcr.io/econumo/econumo`) that serves both the JSON API and the built SPA (embedded
+via `go:embed` — `web/embed.go`) and runs database migrations on boot. Releases
+additionally attach standalone `econumo-linux-{amd64,arm64}` binaries + `SHA256SUMS`
+for Docker-free hosting.
 
 ## Development Commands
 
