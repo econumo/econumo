@@ -56,6 +56,10 @@ web-bundle:
 # pure-Go sqlite/pgx drivers are linked in, matching the production build.
 # Depends on `swagger` so the embedded OpenAPI docs are always regenerated from
 # the current handler annotations before the binary is built.
+# Note: this does NOT build the frontend; the binary embeds whatever is in
+# web/dist (go:embed). For live frontend reload during dev, keep web/dist empty
+# (unset ECONUMO_WEB_DIST then serves the disk default) or point ECONUMO_WEB_DIST
+# at your build; run `make release-binaries` to embed a freshly built SPA.
 go-build: swagger
 	CGO_ENABLED=0 go build -o econumo ./cmd/econumo
 
