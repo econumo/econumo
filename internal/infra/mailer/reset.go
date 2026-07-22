@@ -9,7 +9,7 @@ import (
 
 // EmailKeys lists every catalogue key the mailer renders; the i18ntest guard
 // asserts each exists in every language.
-var EmailKeys = []string{"emails.reset.subject", "emails.reset.body"}
+var EmailKeys = []string{"emails.reset.subject", "emails.reset.body", "emails.verify.subject", "emails.verify.body"}
 
 // ResetSender builds and sends the password-reset confirmation-code email. It
 // satisfies the user service's reset-mailer port (structurally) so the app layer

@@ -1223,6 +1223,10 @@
     "reset": {
       "subject": "Reset password confirmation code",
       "body": "Hi {name},\nYour confirmation code is: {code}.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+    },
+    "verify": {
+      "subject": "Email verification code",
+      "body": "Hi {name},\nYour confirmation code is: {code}.\n\nEnter this code on the sign-in screen to verify your email address.\n\nIf you didn't create an Econumo account, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }
