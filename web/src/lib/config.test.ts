@@ -6,11 +6,6 @@ beforeEach(() => {
 })
 
 describe('backendHost', () => {
-  it('prefers econumoConfig.API_URL over everything', () => {
-    window.econumoConfig = { API_URL: 'https://api.example.test', ALLOW_CUSTOM_API: 'true' }
-    expect(backendHost()).toBe('https://api.example.test')
-  })
-
   it('falls back to the page origin when custom API is not allowed', () => {
     window.econumoConfig = { ALLOW_CUSTOM_API: 'false' }
     expect(backendHost()).toBe(window.location.origin)

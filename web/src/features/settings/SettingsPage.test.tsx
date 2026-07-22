@@ -78,8 +78,10 @@ it('links a semver version to its release notes page', async () => {
   expect(label).toHaveAttribute('href', 'https://econumo.com/releases/v1.2.3/')
 })
 
-it('links to the API docs', async () => {
-  window.econumoConfig = { API_URL: 'https://api.example.test' }
+it('links to the API docs at the configured backend host', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  localStorage.setItem('selfHosted', JSON.stringify(true))
+  localStorage.setItem('backendHost', JSON.stringify('https://api.example.test'))
   renderPage()
   const link = await screen.findByRole('link', { name: 'API' })
   expect(link).toHaveAttribute('href', 'https://api.example.test/api/doc')

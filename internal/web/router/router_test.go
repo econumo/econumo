@@ -208,7 +208,6 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 		SPA: os.DirFS(dir),
 		Cfg: config.Config{
 			Analytics:      true,
-			APIURL:         "https://api.example.test",
 			AllowCustomAPI: &allowCustom,
 			BillingURL:     "https://pay.example.test/cloud/",
 		},
@@ -219,14 +218,14 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"API_URL":"https://api.example.test","BILLING_URL":"https://pay.example.test/cloud/"});`
+	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"BILLING_URL":"https://pay.example.test/cloud/"});`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
 }
 
-// BILLING_URL is server truth even when empty (unlike API_URL/ALLOW_CUSTOM_API,
-// which merge only when set): the backend decides whether create-billing-link
+// BILLING_URL is server truth even when empty (unlike ALLOW_CUSTOM_API, which
+// merges only when set): the backend decides whether create-billing-link
 // works, so an empty value must be able to switch the SPA's billing UI OFF
 // rather than leave a stale dist value advertising a portal that cannot mint
 // links.
@@ -258,7 +257,7 @@ func TestRuntimeConfigOverrides_UnsetKeysNotMerged(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	for _, absent := range []string{"API_URL", "ALLOW_CUSTOM_API", "LILTAG_CONFIG_URL", "LILTAG_CACHE_TTL", "VERSION"} {
+	for _, absent := range []string{"ALLOW_CUSTOM_API", "LILTAG_CONFIG_URL", "LILTAG_CACHE_TTL", "VERSION"} {
 		if strings.Contains(body, absent) {
 			t.Fatalf("unset key %q must not be merged:\n%s", absent, body)
 		}

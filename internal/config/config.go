@@ -69,7 +69,6 @@ type Config struct {
 	// the frontend from the environment). Each key mirrors a window.econumoConfig
 	// key under the ECONUMO_<KEY> name; an empty string / nil pointer leaves the
 	// embedded default in place (the backend value wins only when present).
-	APIURL          string // ECONUMO_API_URL
 	AllowCustomAPI  *bool  // ECONUMO_ALLOW_CUSTOM_API
 	LiltagConfigURL string // ECONUMO_LILTAG_CONFIG_URL: URL the SPA loads liltag config from (empty = embedded liltag-config.json)
 	LiltagCacheTTL  string // ECONUMO_LILTAG_CACHE_TTL: liltag config cache TTL in seconds (empty = embedded default)
@@ -176,13 +175,6 @@ func Load() (Config, error) {
 		c.BillingURL = v
 	}
 
-	if v := os.Getenv("ECONUMO_API_URL"); v != "" {
-		u, err := url.Parse(v)
-		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return Config{}, fmt.Errorf("ECONUMO_API_URL: not an absolute http(s) URL: %q", v)
-		}
-		c.APIURL = v
-	}
 	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
 	if err != nil {
 		return Config{}, err

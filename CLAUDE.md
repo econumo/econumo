@@ -370,10 +370,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `false` disables it instance-wide. Malformed values fail at boot (strict parse, unlike
   the other booleans). Server-owned SPA config keys reach the frontend via an
   `Object.assign(window.econumoConfig, …)` line the SPA handler appends to the served
-  `/econumo-config.js`; the dist file's static values are the fallback for
-  separately-hosted SPAs. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
-  (server truth); `ECONUMO_API_URL` and `ECONUMO_ALLOW_CUSTOM_API` merge `API_URL` /
-  `ALLOW_CUSTOM_API` only when set (unset = keep the dist value).
+  `/econumo-config.js`; the embedded dist file's static values are the fallback when a
+  key is not overridden. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
+  (server truth); `ECONUMO_ALLOW_CUSTOM_API` merges `ALLOW_CUSTOM_API` only when set
+  (unset = keep the dist value).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
   each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
@@ -401,7 +401,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   values reach the frontend by being merged into the served `econumo-config.js`
   at runtime (the `Object.assign(window.econumoConfig, …)` suffix in
   `internal/web/spa`). One rule: the backend value overwrites the embedded
-  default when present. Each key maps to `ECONUMO_<KEY>`: `ECONUMO_API_URL`,
+  default when present. Each key maps to `ECONUMO_<KEY>`:
   `ECONUMO_ALLOW_CUSTOM_API`, `ECONUMO_LILTAG_CONFIG_URL` (load liltag config
   from a URL instead of the bundled `liltag-config.json`),
   `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
