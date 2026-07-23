@@ -90,7 +90,7 @@ func init() {
 	// account's shape lands in the reference-data listing.
 	register(Scenario{Name: "account_write", Steps: []Step{
 		{Label: "create-account",
-			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_account","arguments":{"name":"MCP Made Account","currency_id":"` + apiparity.USD + `","balance":"100.00","icon":"wallet"}}}`},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_account","arguments":{"name":"MCP Made Account","currency_id":"` + apiparity.USD + `","balance":"100.00","icon":"wallet","folder_id":"` + apiparity.OwnerFolder + `"}}}`},
 		{Label: "list-accounts-after",
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_accounts","arguments":{}}}`},
 	}})

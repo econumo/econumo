@@ -20,6 +20,7 @@ type createAccountInput struct {
 	CurrencyID string `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
 	Balance    string `json:"balance,omitempty" jsonschema:"opening balance as a decimal string, e.g. 100.00; defaults to 0"`
 	Icon       string `json:"icon,omitempty" jsonschema:"optional icon name; defaults to 'wallet'"`
+	FolderID   string `json:"folder_id,omitempty" jsonschema:"account folder id (UUID), from list_accounts; omit to use the user's default folder (new users get one created automatically)"`
 }
 
 type createAccountResult struct {
@@ -68,7 +69,8 @@ func Register(svc *appaccount.Service) webmcp.Register {
 					CurrencyId: in.CurrencyID,
 					Balance:    vo.NewFlexString(balance),
 					Icon:       icon,
-					// FolderId omitted: a blank folder is tolerated for a first account.
+					FolderId:   in.FolderID,
+					// A blank FolderId is tolerated for a first account.
 				})
 				if err != nil {
 					return nil, createAccountResult{}, webmcp.MapErr(ctx, err)
