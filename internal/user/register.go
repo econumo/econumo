@@ -73,8 +73,8 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 
 	u := model.NewUser(s.repo.NextIdentity(), encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
-	if selfService && s.trial == "end-of-next-month" {
-		until := model.TrialEnd(now)
+	if selfService && s.trialDays > 0 {
+		until := model.TrialEnd(now, s.trialDays)
 		u.SetAccess(model.AccessLevelFull, &until, now)
 	}
 	if selfService && s.emailVerification {

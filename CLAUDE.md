@@ -349,9 +349,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   database has unreadable emails, so those users cannot log in (the intended push to migrate);
   `serve` logs a WARN at boot while it is set.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
-- `ECONUMO_TRIAL` — access granted to a newly registered user: `none` (default, no
-  access grant) or `end-of-next-month` (full access until the first of the month
-  after next). Malformed values fail at boot. See `user:set-access` / `user:show`
+- `ECONUMO_TRIAL` — trial length in DAYS for a newly self-registered user. `0`
+  (default; also `none`/empty) grants no trial, so the user keeps permanent full
+  access — the self-hosted default. A positive integer `N` grants full access
+  until `N` days after registration, after which they lapse to `readonly`.
+  Negative, non-numeric, or the old `end-of-next-month` literal fail at boot.
+  CLI-created users never get a trial. See `user:set-access` / `user:show`
   below and the 402 rule in API conventions for how access is enforced afterward.
 - `ECONUMO_EMAIL_VERIFICATION` — require newly registered users to confirm an emailed
   code at login before their first session (default `false`; strict boolean, malformed

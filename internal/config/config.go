@@ -23,10 +23,10 @@ type Config struct {
 	AllowRegistration bool
 	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
 	SQLiteBusyTimeout int
-	CheckUpdates      bool   // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
-	Analytics         bool   // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
-	Trial             string // ECONUMO_TRIAL: "none" (default) or "end-of-next-month" — grants new registrations full access until the trial ends
-	EmailVerification bool   // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
+	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	Analytics         bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
+	TrialDays         int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
+	EmailVerification bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
@@ -134,9 +134,18 @@ func Load() (Config, error) {
 	}
 	c.Analytics = analytics
 
-	c.Trial = getEnv("ECONUMO_TRIAL", "none")
-	if c.Trial != "none" && c.Trial != "end-of-next-month" {
-		return Config{}, fmt.Errorf("ECONUMO_TRIAL: invalid value %q (want none or end-of-next-month)", c.Trial)
+	// Trial length in days. Empty or "none" (case-insensitive) means 0 = no
+	// trial grant, so a new user keeps permanent full access — the self-hosted
+	// default. A positive integer time-boxes the grant.
+	trialRaw := strings.TrimSpace(getEnv("ECONUMO_TRIAL", ""))
+	if trialRaw == "" || strings.EqualFold(trialRaw, "none") {
+		c.TrialDays = 0
+	} else {
+		days, derr := strconv.Atoi(trialRaw)
+		if derr != nil || days < 0 {
+			return Config{}, fmt.Errorf("ECONUMO_TRIAL: invalid value %q (want a non-negative number of days, 0, or none)", trialRaw)
+		}
+		c.TrialDays = days
 	}
 
 	// Strict parse for the same reason as ECONUMO_ANALYTICS: a typo must fail

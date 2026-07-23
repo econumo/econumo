@@ -78,7 +78,7 @@ func newContainer(ctx context.Context) (*container, error) {
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
 		passwordReqRepo, resetMailer, emailVerificationRepo, nil,
 		emailChangeRepo, nil,
-		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.Trial, cfg.EmailVerification,
+		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
 	)
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)

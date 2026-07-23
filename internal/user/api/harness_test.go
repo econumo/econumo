@@ -112,7 +112,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	svc := appuser.NewService(repo, txm, encode, hasher, tokens, currency, budgets, passwordReqs, resetMailer,
 		userrepo.NewEmailVerificationRepo("sqlite", txm), nil,
 		userrepo.NewEmailChangeRequestRepo("sqlite", txm), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration, "", false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration, 0, false)
 	readSvc := appuser.NewReadService(readRepo, encode, clk)
 	billing := appuser.NewBillingService(
 		"https://pay.example.test/cloud/",

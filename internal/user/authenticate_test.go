@@ -57,7 +57,7 @@ func newAuthEnvFullOn(t *testing.T, db *dbtest.DB) (*appuser.Service, *userrepo.
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, pwreqs, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, false, "", false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, false, 0, false)
 
 	uid, err := svc.AdminCreateUser(context.Background(), "Auth Tester", "auth@econumo.test", "secretpass")
 	if err != nil {

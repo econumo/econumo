@@ -42,7 +42,7 @@ type Service struct {
 	clock               port.Clock
 	limiter             AttemptLimiter
 	allowRegistration   bool
-	trial               string
+	trialDays           int
 	emailVerification   bool
 }
 
@@ -64,7 +64,7 @@ func NewService(
 	clock port.Clock,
 	limiter AttemptLimiter,
 	allowRegistration bool,
-	trial string,
+	trialDays int,
 	emailVerification bool,
 ) *Service {
 	return &Service{
@@ -85,7 +85,7 @@ func NewService(
 		clock:               clock,
 		limiter:             limiter,
 		allowRegistration:   allowRegistration,
-		trial:               trial,
+		trialDays:           trialDays,
 		emailVerification:   emailVerification,
 	}
 }
