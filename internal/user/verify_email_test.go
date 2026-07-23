@@ -370,7 +370,7 @@ func TestFlagOffKeepsLoginUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Flag off: users are born verified and login needs no code (and sends no email).
-	u, err := userrepo.NewRepo(db.Engine, db.TX).GetByIdentifier(ctx, auth.NewEncodeService("").Hash("legacy@econumo.test"))
+	u, err := userrepo.NewRepo(db.Engine, db.TX).GetByEmail(ctx, "legacy@econumo.test")
 	if err != nil {
 		t.Fatalf("load registered user: %v", err)
 	}

@@ -19,7 +19,7 @@ func TestEmailVerificationRepoLifecycle(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 
-	u := model.NewUser(users.NextIdentity(), "ev-lifecycle", "cipher", "EV", "face:blue", "hash", "salt", now)
+	u := model.NewUser(users.NextIdentity(), "cipher", "EV", "face:blue", "hash", "salt", now)
 	if err := users.Save(ctx, u); err != nil {
 		t.Fatalf("save user: %v", err)
 	}

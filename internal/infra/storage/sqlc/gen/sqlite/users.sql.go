@@ -10,26 +10,70 @@ import (
 	"time"
 )
 
-const existsUserByIdentifier = `-- name: ExistsUserByIdentifier :one
-SELECT EXISTS(SELECT 1 FROM users WHERE identifier = ?)
+const existsUserByEmail = `-- name: ExistsUserByEmail :one
+SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower(?))
 `
 
-func (q *Queries) ExistsUserByIdentifier(ctx context.Context, identifier string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, existsUserByIdentifier, identifier)
+func (q *Queries) ExistsUserByEmail(ctx context.Context, lower string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, existsUserByEmail, lower)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+FROM users
+WHERE lower(email) = lower(?)
+`
+
+type GetUserByEmailRow struct {
+	ID            string
+	Email         string
+	Name          string
+	Avatar        string
+	Password      string
+	Salt          string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsActive      bool
+	Algorithm     string
+	AccessLevel   string
+	AccessUntil   *time.Time
+	Timezone      string
+	EmailVerified bool
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, lower)
+	var i GetUserByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Avatar,
+		&i.Password,
+		&i.Salt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsActive,
+		&i.Algorithm,
+		&i.AccessLevel,
+		&i.AccessUntil,
+		&i.Timezone,
+		&i.EmailVerified,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
 FROM users
 WHERE id = ?
 `
 
 type GetUserByIDRow struct {
 	ID            string
-	Identifier    string
 	Email         string
 	Name          string
 	Avatar        string
@@ -50,54 +94,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.Identifier,
-		&i.Email,
-		&i.Name,
-		&i.Avatar,
-		&i.Password,
-		&i.Salt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.IsActive,
-		&i.Algorithm,
-		&i.AccessLevel,
-		&i.AccessUntil,
-		&i.Timezone,
-		&i.EmailVerified,
-	)
-	return i, err
-}
-
-const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
-FROM users
-WHERE identifier = ?
-`
-
-type GetUserByIdentifierRow struct {
-	ID            string
-	Identifier    string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	Timezone      string
-	EmailVerified bool
-}
-
-func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByIdentifier, identifier)
-	var i GetUserByIdentifierRow
-	err := row.Scan(
-		&i.ID,
-		&i.Identifier,
 		&i.Email,
 		&i.Name,
 		&i.Avatar,

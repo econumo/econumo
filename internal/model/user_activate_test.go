@@ -15,7 +15,7 @@ func TestUserActivateDeactivate(t *testing.T) {
 	t2 := t0.Add(2 * time.Hour)
 	t3 := t0.Add(3 * time.Hour)
 
-	u := &User{ID: vo.NewId(), Identifier: "ident", Email: "enc-email", Name: "Name", Avatar: "avatar",
+	u := &User{ID: vo.NewId(), Email: "enc-email", Name: "Name", Avatar: "avatar",
 		Password: "pwhash", Salt: "salt", IsActive: true, CreatedAt: t0, UpdatedAt: t0}
 
 	// Already active: Activate is a no-op (updatedAt unchanged).

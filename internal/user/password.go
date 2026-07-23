@@ -85,7 +85,7 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 	}
 	s.failAttempt(RateScopeRemind, lowered) // every remind sends an email, so every request counts
 
-	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
+	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			return &model.RemindPasswordResult{}, nil // anti-enumeration
@@ -124,7 +124,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	if err := s.allowAttempt(RateScopeReset, lowered); err != nil {
 		return nil, err
 	}
-	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
+	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeReset, lowered)

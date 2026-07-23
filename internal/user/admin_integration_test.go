@@ -20,14 +20,18 @@ import (
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
-const testSalt = "0123456789abcdef" // AES-128 (16 bytes), like the seed devtool
+// testSalt is a legacy AES-128 (16 bytes) data salt, used only by
+// migrate_test.go to seed/decrypt genuinely encrypted rows for the
+// data:remove-salt migration test. Every other harness here is salt-free,
+// matching production (server.BuildAPI always builds EncodeService with "").
+const testSalt = "0123456789abcdef"
 
 // newUserSvc builds the user Service over a migrated SQLite DB exactly as
 // server.BuildAPI does (minus the unused JWT collaborator), plus the encode/hash
 // services tests assert against.
 func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeService, *auth.PasswordHasher) {
 	t.Helper()
-	enc := auth.NewEncodeService(testSalt)
+	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
@@ -53,11 +57,11 @@ func TestAdminCreateUser(t *testing.T) {
 		t.Fatal("empty id")
 	}
 
-	// Lookup uses the lowercased-email identifier; the row must be there, active,
-	// with a verifiable password and a decryptable email.
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("synth@econumo.test"))
+	// Lookup is case-insensitive by email; the row must be there, active, with
+	// a verifiable password and a decryptable email.
+	u, err := repo.GetByEmail(ctx, "synth@econumo.test")
 	if err != nil {
-		t.Fatalf("GetByIdentifier: %v", err)
+		t.Fatalf("GetByEmail: %v", err)
 	}
 	if !u.IsActive {
 		t.Error("new user should be active")
@@ -94,13 +98,13 @@ func TestAdminChangeEmail(t *testing.T) {
 		t.Fatalf("AdminChangeEmail: %v", err)
 	}
 
-	// Old identifier gone, new identifier resolves with the new (decryptable) email.
-	if _, err := repo.GetByIdentifier(ctx, enc.Hash("old@econumo.test")); !isNotFound(err) {
-		t.Errorf("old identifier should be gone, got %v", err)
+	// Old email gone, new email resolves with the new (decryptable) email.
+	if _, err := repo.GetByEmail(ctx, "old@econumo.test"); !isNotFound(err) {
+		t.Errorf("old email should be gone, got %v", err)
 	}
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("new@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "new@econumo.test")
 	if err != nil {
-		t.Fatalf("new identifier lookup: %v", err)
+		t.Fatalf("new email lookup: %v", err)
 	}
 	if got, _ := enc.Decode(u.Email); got != "new@econumo.test" {
 		t.Errorf("decoded email = %q, want new@econumo.test", got)
@@ -122,7 +126,7 @@ func TestAdminChangeEmail(t *testing.T) {
 
 func TestAdminChangePassword(t *testing.T) {
 	db := dbtest.New(t)
-	svc, enc, hasher := newUserSvc(t, db)
+	svc, _, hasher := newUserSvc(t, db)
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
@@ -131,7 +135,7 @@ func TestAdminChangePassword(t *testing.T) {
 	}
 
 	// Force the account to the legacy scheme so the test proves the transition.
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("pw@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "pw@econumo.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +148,7 @@ func TestAdminChangePassword(t *testing.T) {
 		t.Fatalf("AdminChangePassword: %v", err)
 	}
 
-	u, err = repo.GetByIdentifier(ctx, enc.Hash("pw@econumo.test"))
+	u, err = repo.GetByEmail(ctx, "pw@econumo.test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,12 +169,12 @@ func TestAdminChangePassword(t *testing.T) {
 
 func TestAdminActivateDeactivate(t *testing.T) {
 	db := dbtest.New(t)
-	svc, enc, _ := newUserSvc(t, db)
+	svc, _, _ := newUserSvc(t, db)
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	// Seed two real (crypto) users at controlled creation times.
-	f := fixture.New(t, db).WithCrypto(testSalt)
+	f := fixture.New(t, db).WithCrypto("")
 	f.At(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC))
 	f.User(fixture.User{Email: "old@econumo.test"})
 	f.At(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -180,10 +184,10 @@ func TestAdminActivateDeactivate(t *testing.T) {
 	if err := svc.AdminDeactivate(ctx, "old@econumo.test"); err != nil {
 		t.Fatalf("AdminDeactivate: %v", err)
 	}
-	if isActive(t, repo, enc, "old@econumo.test") {
+	if isActive(t, repo, "old@econumo.test") {
 		t.Error("old user should be deactivated")
 	}
-	if !isActive(t, repo, enc, "recent@econumo.test") {
+	if !isActive(t, repo, "recent@econumo.test") {
 		t.Error("recent user should remain active")
 	}
 
@@ -191,7 +195,7 @@ func TestAdminActivateDeactivate(t *testing.T) {
 	if err := svc.AdminDeactivate(ctx, "old@econumo.test"); err != nil {
 		t.Fatalf("second AdminDeactivate: %v", err)
 	}
-	if isActive(t, repo, enc, "old@econumo.test") {
+	if isActive(t, repo, "old@econumo.test") {
 		t.Error("old user should still be deactivated")
 	}
 
@@ -199,7 +203,7 @@ func TestAdminActivateDeactivate(t *testing.T) {
 	if err := svc.AdminActivate(ctx, "old@econumo.test"); err != nil {
 		t.Fatalf("AdminActivate: %v", err)
 	}
-	if !isActive(t, repo, enc, "old@econumo.test") {
+	if !isActive(t, repo, "old@econumo.test") {
 		t.Error("old user should be active again")
 	}
 
@@ -211,9 +215,9 @@ func TestAdminActivateDeactivate(t *testing.T) {
 	}
 }
 
-func isActive(t *testing.T, repo *userrepo.Repo, enc *auth.EncodeService, email string) bool {
+func isActive(t *testing.T, repo *userrepo.Repo, email string) bool {
 	t.Helper()
-	u, err := repo.GetByIdentifier(context.Background(), enc.Hash(strings.ToLower(email)))
+	u, err := repo.GetByEmail(context.Background(), email)
 	if err != nil {
 		t.Fatalf("lookup %s: %v", email, err)
 	}
@@ -232,16 +236,16 @@ func isNotFound(err error) bool {
 
 func TestAdminCreateUserAssignsPickedAvatar(t *testing.T) {
 	db := dbtest.New(t)
-	svc, enc, _ := newUserSvc(t, db)
+	svc, _, _ := newUserSvc(t, db)
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
 	if _, err := svc.AdminCreateUser(ctx, "Avatar Tester", "avatar@econumo.test", "secretpass"); err != nil {
 		t.Fatalf("AdminCreateUser: %v", err)
 	}
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("avatar@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "avatar@econumo.test")
 	if err != nil {
-		t.Fatalf("GetByIdentifier: %v", err)
+		t.Fatalf("GetByEmail: %v", err)
 	}
 	if u.Avatar != appuser.DefaultAvatar {
 		t.Fatalf("Avatar = %q, want the stub picker value %q", u.Avatar, appuser.DefaultAvatar)
@@ -323,7 +327,7 @@ func TestAdminSetAccess_UnknownEmail(t *testing.T) {
 
 func TestAdminChangeEmailKeepsAvatar(t *testing.T) {
 	db := dbtest.New(t)
-	svc, enc, _ := newUserSvc(t, db)
+	svc, _, _ := newUserSvc(t, db)
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
@@ -333,9 +337,9 @@ func TestAdminChangeEmailKeepsAvatar(t *testing.T) {
 	if err := svc.AdminChangeEmail(ctx, "keep@econumo.test", "kept@econumo.test"); err != nil {
 		t.Fatalf("AdminChangeEmail: %v", err)
 	}
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("kept@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "kept@econumo.test")
 	if err != nil {
-		t.Fatalf("GetByIdentifier: %v", err)
+		t.Fatalf("GetByEmail: %v", err)
 	}
 	if u.Avatar != appuser.DefaultAvatar {
 		t.Fatalf("Avatar = %q after email change, want unchanged %q", u.Avatar, appuser.DefaultAvatar)

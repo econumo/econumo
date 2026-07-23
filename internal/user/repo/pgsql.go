@@ -16,13 +16,13 @@ func (pgsqlQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string)
 	return userRow(u), err
 }
 
-func (pgsqlQuerier) GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error) {
-	u, err := pgsqlgen.New(db).GetUserByIdentifier(ctx, identifier)
+func (pgsqlQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
+	u, err := pgsqlgen.New(db).GetUserByEmail(ctx, email)
 	return userRow(u), err
 }
 
-func (pgsqlQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error) {
-	return pgsqlgen.New(db).ExistsUserByIdentifier(ctx, identifier)
+func (pgsqlQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error) {
+	return pgsqlgen.New(db).ExistsUserByEmail(ctx, email)
 }
 
 func (pgsqlQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {

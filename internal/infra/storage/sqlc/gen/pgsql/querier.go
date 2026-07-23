@@ -42,7 +42,7 @@ type Querier interface {
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
-	ExistsUserByIdentifier(ctx context.Context, identifier string) (bool, error)
+	ExistsUserByEmail(ctx context.Context, lower string) (bool, error)
 	// Joins users for access_level/access_until; see the sqlite sibling for why.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
@@ -112,8 +112,8 @@ type Querier interface {
 	// Write + read queries for the transaction module (PostgreSQL: $N placeholders).
 	// See the sqlite variant for documentation.
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
+	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
 	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even

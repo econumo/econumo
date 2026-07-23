@@ -24,7 +24,7 @@ func (trialClock) Now() time.Time { return trialNow }
 
 func newTrialSvc(t *testing.T, db *dbtest.DB, trial string) (*appuser.Service, *userrepo.Repo, *auth.EncodeService) {
 	t.Helper()
-	enc := auth.NewEncodeService(testSalt)
+	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
@@ -38,7 +38,7 @@ func newTrialSvc(t *testing.T, db *dbtest.DB, trial string) (*appuser.Service, *
 
 func TestRegister_GrantsTrialWhenEnabled(t *testing.T) {
 	db := dbtest.New(t)
-	svc, repo, enc := newTrialSvc(t, db, "end-of-next-month")
+	svc, repo, _ := newTrialSvc(t, db, "end-of-next-month")
 	ctx := context.Background()
 
 	if _, err := svc.Register(ctx, model.RegisterRequest{
@@ -47,7 +47,7 @@ func TestRegister_GrantsTrialWhenEnabled(t *testing.T) {
 		t.Fatalf("Register: %v", err)
 	}
 
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("trial@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "trial@econumo.test")
 	if err != nil {
 		t.Fatalf("lookup: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestRegister_GrantsTrialWhenEnabled(t *testing.T) {
 
 func TestRegister_NoTrialByDefault(t *testing.T) {
 	db := dbtest.New(t)
-	svc, repo, enc := newTrialSvc(t, db, "none")
+	svc, repo, _ := newTrialSvc(t, db, "none")
 	ctx := context.Background()
 
 	if _, err := svc.Register(ctx, model.RegisterRequest{
@@ -74,7 +74,7 @@ func TestRegister_NoTrialByDefault(t *testing.T) {
 		t.Fatalf("Register: %v", err)
 	}
 
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("plain@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "plain@econumo.test")
 	if err != nil {
 		t.Fatalf("lookup: %v", err)
 	}
@@ -85,14 +85,14 @@ func TestRegister_NoTrialByDefault(t *testing.T) {
 
 func TestAdminCreateUser_NeverGrantsTrial(t *testing.T) {
 	db := dbtest.New(t)
-	svc, repo, enc := newTrialSvc(t, db, "end-of-next-month")
+	svc, repo, _ := newTrialSvc(t, db, "end-of-next-month")
 	ctx := context.Background()
 
 	if _, err := svc.AdminCreateUser(ctx, "Ops User", "ops@econumo.test", "secretpass"); err != nil {
 		t.Fatalf("AdminCreateUser: %v", err)
 	}
 
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("ops@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "ops@econumo.test")
 	if err != nil {
 		t.Fatalf("lookup: %v", err)
 	}

@@ -21,23 +21,6 @@
             "hash": "PfEn1epTOxO3cR0oKGJ3g5Mbr0IbGOTIvHU7telWSpQ3D9lM8SfZpFOHMnHa0qyEVkHnmJedTWdrL+psOb15NQ=="
         }
     ],
-    "identifier_hash": [
-        {
-            "value": "john@example.com",
-            "salt": "0123456789abcdef",
-            "hash": "8ab901f184b70008d318983a58fcabc4"
-        },
-        {
-            "value": "john@example.com",
-            "salt": "0123456789abcdef",
-            "hash": "8ab901f184b70008d318983a58fcabc4"
-        },
-        {
-            "value": "тест@пример.рф",
-            "salt": "0123456789abcdef",
-            "hash": "bede302cbf0ba4144be2e7c2e3ccac15"
-        }
-    ],
     "encode": [
         {
             "plaintext": "john@example.com",

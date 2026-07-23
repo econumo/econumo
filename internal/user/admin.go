@@ -26,20 +26,23 @@ func (s *Service) AdminCreateUser(ctx context.Context, name, email, password str
 	return u.ID, nil
 }
 
-// AdminChangeEmail changes a user's email (identifier, ciphertext), looked up
-// by the current email. The avatar is left unchanged.
+// AdminChangeEmail changes a user's stored (encrypted) email, looked up by the
+// current email. The avatar is left unchanged.
 func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail string) error {
 	u, err := s.userByEmail(ctx, oldEmail)
 	if err != nil {
 		return err
 	}
 
+	currentEmail, derr := s.encode.Decode(u.Email)
+	if derr != nil {
+		return derr
+	}
 	loweredNew := strings.ToLower(strings.TrimSpace(newEmail))
-	newIdentifier := s.encode.Hash(loweredNew)
-	if newIdentifier != u.Identifier {
-		exists, err := s.repo.ExistsByIdentifier(ctx, newIdentifier)
-		if err != nil {
-			return err
+	if loweredNew != strings.ToLower(currentEmail) {
+		exists, eerr := s.repo.ExistsByEmail(ctx, loweredNew)
+		if eerr != nil {
+			return eerr
 		}
 		if exists {
 			return &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
@@ -52,7 +55,7 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 	}
 
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdateEmail(newIdentifier, encryptedEmail, s.clock.Now())
+		u.UpdateEmail(encryptedEmail, s.clock.Now())
 		return s.repo.Save(ctx, u)
 	})
 }
@@ -152,12 +155,10 @@ func (s *Service) AdminShowUser(ctx context.Context, email string) (*model.User,
 	return u, u.EffectiveAccessLevel(s.clock.Now()), nil
 }
 
-// userByEmail resolves a user from a plaintext email via the md5 identifier
-// (the same lookup key registration computes). A miss returns the repo's
-// NotFound error.
+// userByEmail resolves a user from a plaintext email (case-insensitive). A
+// miss returns the repo's NotFound error.
 func (s *Service) userByEmail(ctx context.Context, email string) (*model.User, error) {
-	lowered := strings.ToLower(strings.TrimSpace(email))
-	return s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
+	return s.repo.GetByEmail(ctx, strings.TrimSpace(email))
 }
 
 // AdminUserByID loads a user by id with the email decrypted, for the admin

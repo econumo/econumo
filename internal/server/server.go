@@ -111,7 +111,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	txm := backend.NewTxManager(db)
 
 	// The API ignores ECONUMO_DATA_SALT: it always runs salt-free (plaintext email,
-	// md5(lower(email)) identifier). The salt is consumed only by the data:remove-salt
+	// looked up by lower(email)). The salt is consumed only by the data:remove-salt
 	// migration, so a still-salted database must be migrated before its users can log in.
 	encodeSvc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
