@@ -5083,12 +5083,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5757,12 +5751,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
                         }
                     },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -5816,12 +5804,6 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "500": {

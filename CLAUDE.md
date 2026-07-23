@@ -520,7 +520,7 @@ In the distroless image these run via the binary directly, e.g.
 - **Read-only access is enforced at the edge:** a caller whose access level is
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
-  revocation, password update); `GET` reads are never restricted.
+  revocation, password update, email change); `GET` reads are never restricted.
 
 ## Authentication
 

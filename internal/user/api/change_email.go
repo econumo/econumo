@@ -31,7 +31,6 @@ var _ = apidoc.JsonResponseError{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.RequestEmailChangeResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/user/request-email-change [post]
@@ -54,7 +53,6 @@ func (h *Handlers) RequestEmailChange(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.CurrentUserResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/user/confirm-email-change [post]
@@ -76,7 +74,6 @@ func (h *Handlers) ConfirmEmailChange(w http.ResponseWriter, r *http.Request) {
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.ResendEmailChangeCodeResult} "Retry-After: seconds until another code may be requested"
 // @Failure     400 {object} apidoc.JsonResponseError
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
-// @Failure     402 {object} apidoc.JsonResponseError
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/user/resend-email-change-code [post]
