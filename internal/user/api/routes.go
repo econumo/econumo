@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the 24 user endpoints. The public group (login/register/
+// RegisterAPI mounts the 27 user endpoints. The public group (login/register/
 // remind/reset/confirm-email/resend-verification-code) is mounted bare; auth
 // is applied per-handler so the public group stays unauthenticated.
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
@@ -38,6 +38,9 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/user/update-name", auth(h.UpdateName))
 		mux.Handle("POST /api/v1/user/update-avatar", auth(h.UpdateAvatar))
 		mux.Handle("POST /api/v1/user/update-password", auth(h.UpdatePassword))
+		mux.Handle("POST /api/v1/user/request-email-change", auth(h.RequestEmailChange))
+		mux.Handle("POST /api/v1/user/confirm-email-change", auth(h.ConfirmEmailChange))
+		mux.Handle("POST /api/v1/user/resend-email-change-code", auth(h.ResendEmailChangeCode))
 		mux.Handle("POST /api/v1/user/create-billing-link", auth(h.CreateBillingLink))
 		mux.Handle("POST /api/v1/user/update-report-period", auth(h.UpdateReportPeriod))
 		mux.Handle("POST /api/v1/user/update-language", auth(h.UpdateLanguage))

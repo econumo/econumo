@@ -293,6 +293,11 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.ConfirmEmailChangeRequest:
+    properties:
+      code:
+        type: string
+    type: object
   model.ConfirmEmailRequest:
     properties:
       code:
@@ -1152,6 +1157,17 @@ definitions:
         type: string
     type: object
   model.ReplaceFolderResult:
+    type: object
+  model.RequestEmailChangeRequest:
+    properties:
+      newEmail:
+        type: string
+      password:
+        type: string
+    type: object
+  model.RequestEmailChangeResult:
+    type: object
+  model.ResendEmailChangeCodeResult:
     type: object
   model.ResendVerificationCodeRequest:
     properties:
@@ -4597,6 +4613,48 @@ paths:
       summary: Confirm email
       tags:
       - User
+  /api/v1/user/confirm-email-change:
+    post:
+      consumes:
+      - application/json
+      description: Confirms a pending email change with the code emailed to the new
+        address and returns the refreshed current user.
+      parameters:
+      - description: Confirm email change request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ConfirmEmailChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CurrentUserResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Confirm an email change
+      tags:
+      - User
   /api/v1/user/create-billing-link:
     post:
       consumes:
@@ -4963,6 +5021,83 @@ paths:
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
       summary: Remind password
+      tags:
+      - User
+  /api/v1/user/request-email-change:
+    post:
+      consumes:
+      - application/json
+      description: Starts an email change for the authenticated user after verifying
+        the password; emails a confirmation code to the new address. Returns an empty
+        success envelope.
+      parameters:
+      - description: Request email change request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RequestEmailChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RequestEmailChangeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Request an email change
+      tags:
+      - User
+  /api/v1/user/resend-email-change-code:
+    post:
+      description: Re-sends the pending email change's confirmation code, at most
+        once per cooldown. The Retry-After header carries the seconds until another
+        code may be requested.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Retry-After: seconds until another code may be requested'
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ResendEmailChangeCodeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Resend the email change code
       tags:
       - User
   /api/v1/user/resend-verification-code:

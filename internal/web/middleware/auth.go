@@ -44,12 +44,14 @@ var ctxKeyTokenID ctxKeyTokenIDType
 
 // ReadonlyAllowedPaths are the POST endpoints a restricted caller may still
 // reach. The principle: a restricted user may always secure their account,
-// leave it, or pay to restore it, but may not add data. update-password is a
-// security operation, so locking someone out of rotating a compromised password
-// would be indefensible; create-billing-link is how a lapsed user reaches the
-// payment portal, so blocking it would 402 exactly the person trying to fix
-// their access; create-personal-token is excluded because it mints new
-// write-capable credentials. Account deletion joins this list when it exists.
+// leave it, or pay to restore it, but may not add data. update-password and
+// the email-change flow (request/confirm/resend) are security operations, so
+// locking someone out of rotating a compromised password or a compromised
+// email address would be indefensible; create-billing-link is how a lapsed
+// user reaches the payment portal, so blocking it would 402 exactly the
+// person trying to fix their access; create-personal-token is excluded
+// because it mints new write-capable credentials. Account deletion joins this
+// list when it exists.
 //
 // Exported so a guard test (internal/test/apiparity) can assert every path
 // here is still a real registered route, catching a route rename that would
@@ -63,12 +65,15 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // allowlisting /mcp to restore reads would open every write tool at once.
 // Per-tool enforcement is what this would need first.
 var ReadonlyAllowedPaths = map[string]bool{
-	"/api/v1/user/logout-user":           true,
-	"/api/v1/user/revoke-session":        true,
-	"/api/v1/user/revoke-other-sessions": true,
-	"/api/v1/user/revoke-personal-token": true,
-	"/api/v1/user/update-password":       true,
-	"/api/v1/user/create-billing-link":   true,
+	"/api/v1/user/logout-user":              true,
+	"/api/v1/user/revoke-session":           true,
+	"/api/v1/user/revoke-other-sessions":    true,
+	"/api/v1/user/revoke-personal-token":    true,
+	"/api/v1/user/update-password":          true,
+	"/api/v1/user/create-billing-link":      true,
+	"/api/v1/user/request-email-change":     true,
+	"/api/v1/user/confirm-email-change":     true,
+	"/api/v1/user/resend-email-change-code": true,
 }
 
 // Auth builds the authentication middleware. It reads the

@@ -17,6 +17,7 @@ export const METRICS = {
   USER_UPDATE_NAME: 'appUserUpdateName',
   USER_UPDATE_AVATAR: 'appUserUpdateAvatar',
   USER_UPDATE_PASSWORD: 'appUserUpdatePassword',
+  USER_CHANGE_EMAIL: 'appUserChangeEmail',
   USER_UPDATE_CURRENCY: 'appUserUpdateCurrency',
   USER_COMPLETE_ONBOARDING: 'appUserCompleteOnboarding',
   USER_UPDATE_DEFAULT_BUDGET: 'appUserUpdateDefaultBudget',

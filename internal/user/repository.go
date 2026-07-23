@@ -110,3 +110,12 @@ type EmailVerifications interface {
 	Save(ctx context.Context, v *model.EmailVerification) error
 	DeleteByUser(ctx context.Context, userID vo.Id) error
 }
+
+// EmailChangeRequests persists pending self-service email changes
+// (users_email_change_requests). One outstanding row per user; GetByUser on a
+// missing row returns *errs.NotFoundError.
+type EmailChangeRequests interface {
+	GetByUser(ctx context.Context, userID vo.Id) (*model.EmailChangeRequest, error)
+	Save(ctx context.Context, r *model.EmailChangeRequest) error
+	DeleteByUser(ctx context.Context, userID vo.Id) error
+}

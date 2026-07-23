@@ -60,9 +60,11 @@ func newVerifySvcClock(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled 
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
+	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
+		ecRepo, nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, "", enabled), clk
 }
 
@@ -85,6 +87,7 @@ func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit 
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
+	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
 	limiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{appuser.RateScopeVerifyEmail: limit},
 		Window: time.Hour,
@@ -93,6 +96,7 @@ func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit 
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
+		ecRepo, nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, true, "", true), clk
 }
 

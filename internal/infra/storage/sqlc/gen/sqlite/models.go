@@ -247,6 +247,16 @@ type UsersConnectionsInvite struct {
 	ExpiredAt *time.Time
 }
 
+type UsersEmailChangeRequest struct {
+	ID        string
+	UserID    string
+	NewEmail  string
+	Code      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	ExpiredAt time.Time
+}
+
 type UsersEmailVerification struct {
 	ID        string
 	UserID    string

@@ -80,6 +80,7 @@ const (
 	CodeUserEmailVerificationRequired = "user.email_verification_required"
 	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
 	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
+	CodeUserEmailUnchanged            = "user.email_unchanged"
 )
 
 var AllCodes = []string{
@@ -154,4 +155,5 @@ var AllCodes = []string{
 	CodeUserEmailVerificationRequired,
 	CodeUserVerificationCodeInvalid,
 	CodeUserVerificationCodeExpired,
+	CodeUserEmailUnchanged,
 }
