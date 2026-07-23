@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/resend/resend-go/v3"
 )
@@ -45,6 +46,24 @@ func New(provider, apiKey string) Mailer {
 	default:
 		return console{out: os.Stdout}
 	}
+}
+
+// WithAppLink wraps a Mailer so every message body ends with the instance's
+// public URL (ECONUMO_URL) on its own line. Applied once at composition time,
+// it covers every current and future email without per-sender plumbing; when
+// the URL is unset the wrapper is not installed, so bodies are unchanged.
+func WithAppLink(inner Mailer, appURL string) Mailer {
+	return linkMailer{inner: inner, appURL: appURL}
+}
+
+type linkMailer struct {
+	inner  Mailer
+	appURL string
+}
+
+func (m linkMailer) Send(ctx context.Context, msg Message) error {
+	msg.Text = strings.TrimRight(msg.Text, "\n") + "\n\n" + m.appURL
+	return m.inner.Send(ctx, msg)
 }
 
 // console renders each message to out (stdout in production) instead of sending

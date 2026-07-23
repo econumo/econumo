@@ -383,6 +383,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `POST /api/v1/user/create-billing-link` returns 400 and the SPA shows no billing UI.
   Merged into the served `econumo-config.js` as `BILLING_URL`, so one variable drives
   both halves. Requires `ECONUMO_ADMIN_TOKEN` (the signing key).
+- `ECONUMO_URL` — this instance's public URL. When set, `mailer.WithAppLink` wraps the
+  mail transport once at composition time (`server.BuildAPI` and the CLI container) so
+  every transactional email ends with the bare URL on its own line; unset (default) leaves
+  bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
+  http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
+  signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
