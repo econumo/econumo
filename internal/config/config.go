@@ -19,14 +19,15 @@ type Config struct {
 	DatabaseDriver string // "sqlite" | "postgresql" — DERIVED from DatabaseURL's scheme
 
 	// Econumo behavior
-	CurrencyBase      string // default "USD"
-	AllowRegistration bool
-	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
-	SQLiteBusyTimeout int
-	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
-	Analytics         bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
-	TrialDays         int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
-	EmailVerification bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
+	CurrencyBase               string // default "USD"
+	AllowRegistration          bool
+	DataSalt                   string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
+	SQLiteBusyTimeout          int
+	CheckUpdates               bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	Analytics                  bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
+	TrialDays                  int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
+	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
+	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
 
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
@@ -156,6 +157,15 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.EmailVerification = emailVerification
+
+	// In-process rate refresh cadence in DAYS; 0 (default) disables it. Strict
+	// parse (like the rate limits): a negative/typo'd value must fail at boot,
+	// not silently disable the poller.
+	interval, err := getIntStrict("ECONUMO_CURRENCY_UPDATE_INTERVAL", 0)
+	if err != nil {
+		return Config{}, err
+	}
+	c.CurrencyUpdateIntervalDays = interval
 
 	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
 	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")
