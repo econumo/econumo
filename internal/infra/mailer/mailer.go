@@ -49,7 +49,7 @@ func New(provider, apiKey string) Mailer {
 }
 
 // WithAppLink wraps a Mailer so every message body ends with the instance's
-// public URL (ECONUMO_URL) on its own line. Applied once at composition time,
+// public URL (ECONUMO_URL) on the line directly below the body. Applied once at composition time,
 // it covers every current and future email without per-sender plumbing; when
 // the URL is unset the wrapper is not installed, so bodies are unchanged.
 func WithAppLink(inner Mailer, appURL string) Mailer {
@@ -62,7 +62,7 @@ type linkMailer struct {
 }
 
 func (m linkMailer) Send(ctx context.Context, msg Message) error {
-	msg.Text = strings.TrimRight(msg.Text, "\n") + "\n\n" + m.appURL
+	msg.Text = strings.TrimRight(msg.Text, "\n") + "\n" + m.appURL
 	return m.inner.Send(ctx, msg)
 }
 
