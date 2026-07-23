@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -29,6 +30,9 @@ type WriteModel interface {
 	InsertCurrency(ctx context.Context, c model.CurrencyRow) error
 	// UpsertRate inserts or updates a single (date, currency, base) rate.
 	UpsertRate(ctx context.Context, r model.RateRow) error
+	// LatestRateDate returns the newest stored rate date; ok=false when none
+	// exist yet.
+	LatestRateDate(ctx context.Context) (time.Time, bool, error)
 }
 
 // WriteService is the currency write-use-case orchestrator.
@@ -59,6 +63,12 @@ func (s *WriteService) AvailableCodes(ctx context.Context) ([]string, error) {
 	// deterministic (the source map iteration order is not).
 	sort.Strings(out)
 	return out, nil
+}
+
+// LatestRateDate returns the newest stored rate date; ok=false when no rates
+// exist yet. Used by the in-process rate updater's freshness check.
+func (s *WriteService) LatestRateDate(ctx context.Context) (time.Time, bool, error) {
+	return s.write.LatestRateDate(ctx)
 }
 
 // UpdateRates upserts every loaded rate whose currency AND base code both resolve
