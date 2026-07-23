@@ -510,6 +510,7 @@ currency:update-rates [date]
 currency:add <code> [name] [fraction-digits]
 token:purge [days]
 data:remove-salt
+data:import-sqlite [--force] <sqlite-path>
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -522,6 +523,14 @@ Run it **while the old salt is still set** (it needs it to decrypt), then
 unset `ECONUMO_DATA_SALT` and restart. It refuses to run with an empty salt,
 and is idempotent (already-plaintext rows are skipped).
 Back up the DB first — the decryption is one-way in practice.
+
+`data:import-sqlite` copies every table from an existing SQLite database into
+the configured PostgreSQL (`DATABASE_URL` must be a `postgres://` URL). It runs
+the PostgreSQL migrations on the target first (so a bare `createdb` works in one
+step), then copies all app data in one transaction — `access_tokens` and
+`currencies` included, the dead `messenger_messages` and the migration
+bookkeeping tables excluded. It aborts if the target already holds data unless
+`--force` is given, which truncates and replaces.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
