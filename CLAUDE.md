@@ -413,7 +413,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   DAYS. `0` (default/unset) = off (drive `currency:update-rates` from an external
   cron as before). A positive `N` starts a background poller in `serve` **only
   when `OPEN_EXCHANGE_RATES_TOKEN` is also set** (interval-without-token logs a
-  WARN at boot and stays off). Negative/malformed fails at boot. The poller
+  WARN at boot and stays off). Valid range is `1`-`31`; negative/malformed/over-31
+  fails at boot. The poller
   refreshes on boot then every N days and is DB-aware: it skips the fetch while
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
