@@ -44,7 +44,7 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	}
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
 
-	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
+	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeConfirmEmail, lowered)
@@ -128,7 +128,7 @@ func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVe
 	s.markSent(lowered)
 	fullGap := model.EmailVerificationResendGap
 
-	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
+	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			return result, fullGap, nil // anti-enumeration

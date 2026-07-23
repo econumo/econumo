@@ -1,4 +1,4 @@
-// Login use case: authenticate by identifier and mint a session token.
+// Login use case: authenticate by email and mint a session token.
 package user
 
 import (
@@ -12,17 +12,16 @@ import (
 	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
-// Login authenticates by identifier (md5 of the lowercased username), verifies
-// the password against the stored hash+salt, mints a session token, and returns
-// the token + current user. A bad username or password yields an
-// UnauthorizedError (HTTP 401, "Invalid credentials.").
+// Login authenticates by email (case-insensitive), verifies the password
+// against the stored hash+salt, mints a session token, and returns the token +
+// current user. A bad username or password yields an UnauthorizedError (HTTP
+// 401, "Invalid credentials.").
 func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent string, now time.Time) (*model.LoginResult, error) {
 	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeLogin, limitKey); err != nil {
 		return nil, err
 	}
-	identifier := s.encode.Hash(strings.ToLower(req.Username))
-	u, err := s.repo.GetByIdentifier(ctx, identifier)
+	u, err := s.repo.GetByEmail(ctx, req.Username)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			s.failAttempt(RateScopeLogin, limitKey)

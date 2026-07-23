@@ -24,7 +24,7 @@ func (trialClock) Now() time.Time { return trialNow }
 
 func newTrialSvc(t *testing.T, db *dbtest.DB, trial string) (*appuser.Service, *userrepo.Repo, *auth.EncodeService) {
 	t.Helper()
-	enc := auth.NewEncodeService(testSalt)
+	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)

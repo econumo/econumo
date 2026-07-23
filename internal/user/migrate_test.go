@@ -36,11 +36,14 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 
 func TestMigrateRemoveDataSalt(t *testing.T) {
 	db := dbtest.NewSQLite(t)
-	svc, enc, _ := newUserSvc(t, db) // service still holds the OLD salt (testSalt)
+	svc, _, _ := newUserSvc(t, db) // salt-free, like production; MigrateRemoveDataSalt takes the salt as a parameter
 	repo := userrepo.NewRepo("sqlite", db.TX)
 	ctx := context.Background()
 
-	// Seed encrypted users (real crypto with the SAME salt the service uses).
+	// Seed encrypted users (real crypto with a genuine salt), and a matching
+	// LOCAL encoder to compute the pre-migration salted identifier/ciphertext —
+	// the harness's own encoder is salt-free, so it can't derive these.
+	salted := auth.NewEncodeService(testSalt)
 	emails := []string{"Alice@Econumo.test", "bob@econumo.test"}
 	f := fixture.New(t, db).WithCrypto(testSalt)
 	for _, e := range emails {
@@ -50,7 +53,7 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 	// Sanity: emails are stored encrypted (not equal to plaintext) before migration.
 	saltFree := auth.NewEncodeService("")
 	for _, e := range emails {
-		u, err := repo.GetByIdentifier(ctx, enc.Hash(strings.ToLower(e)))
+		u, err := repo.GetByIdentifier(ctx, salted.Hash(strings.ToLower(e)))
 		if err != nil {
 			t.Fatalf("pre-migration lookup %s: %v", e, err)
 		}
@@ -80,7 +83,7 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 			t.Errorf("identifier for %s not the unsalted md5", e)
 		}
 		// The old (salted) identifier must no longer resolve.
-		if _, err := repo.GetByIdentifier(ctx, enc.Hash(strings.ToLower(e))); err == nil {
+		if _, err := repo.GetByIdentifier(ctx, salted.Hash(strings.ToLower(e))); err == nil {
 			t.Errorf("old salted identifier for %s still resolves", e)
 		}
 	}
@@ -99,7 +102,7 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 // salt-free service (ECONUMO_DATA_SALT unset) can log the user in.
 func TestMigrateThenLoginSaltFree(t *testing.T) {
 	db := dbtest.NewSQLite(t)
-	saltedSvc, _, _ := newUserSvc(t, db) // holds testSalt, used only to migrate
+	saltedSvc, _, _ := newUserSvc(t, db) // salt-free; MigrateRemoveDataSalt takes the salt as a parameter
 	ctx := context.Background()
 
 	const email = "Carol@Econumo.test"

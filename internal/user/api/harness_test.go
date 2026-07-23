@@ -34,8 +34,6 @@ import (
 )
 
 const (
-	testDataSalt = "0123456789abcdef" // 16 bytes -> AES-128 requires exactly 16 key bytes
-
 	seedUserID   = "11111111-1111-1111-1111-111111111111"
 	seedEmail    = "user@example.test"
 	seedPassword = "secret-pw"
@@ -87,7 +85,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 		t.Fatalf("migrate: %v", err)
 	}
 
-	encode := auth.NewEncodeService(testDataSalt)
+	encode := auth.NewEncodeService("") // salt-free, matching server.BuildAPI
 	hasher := auth.NewPasswordHasher()
 	// Use a near-now issuance time so tokens verify (the JWT verifier checks exp
 	// against the real wall clock). Truncated to the second to match the
@@ -164,7 +162,7 @@ func (m *recordingMailer) lastResetCode(t *testing.T) string {
 // existing option — can write to it.
 func seed(t *testing.T, tdb *dbtest.DB) {
 	t.Helper()
-	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
+	f := fixture.New(t, tdb).WithCrypto("")
 	f.User(fixture.User{
 		ID:       seedUserID,
 		Email:    seedEmail,

@@ -49,7 +49,7 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 	loweredEmail := strings.ToLower(strings.TrimSpace(email))
 	identifier := s.encode.Hash(loweredEmail)
 
-	exists, err := s.repo.ExistsByIdentifier(ctx, identifier)
+	exists, err := s.repo.ExistsByEmail(ctx, loweredEmail)
 	if err != nil {
 		return nil, err
 	}

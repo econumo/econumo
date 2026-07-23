@@ -20,14 +20,18 @@ import (
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
-const testSalt = "0123456789abcdef" // AES-128 (16 bytes), like the seed devtool
+// testSalt is a legacy AES-128 (16 bytes) data salt, used only by
+// migrate_test.go to seed/decrypt genuinely encrypted rows for the
+// data:remove-salt migration test. Every other harness here is salt-free,
+// matching production (server.BuildAPI always builds EncodeService with "").
+const testSalt = "0123456789abcdef"
 
 // newUserSvc builds the user Service over a migrated SQLite DB exactly as
 // server.BuildAPI does (minus the unused JWT collaborator), plus the encode/hash
 // services tests assert against.
 func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeService, *auth.PasswordHasher) {
 	t.Helper()
-	enc := auth.NewEncodeService(testSalt)
+	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
@@ -170,7 +174,7 @@ func TestAdminActivateDeactivate(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed two real (crypto) users at controlled creation times.
-	f := fixture.New(t, db).WithCrypto(testSalt)
+	f := fixture.New(t, db).WithCrypto("")
 	f.At(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC))
 	f.User(fixture.User{Email: "old@econumo.test"})
 	f.At(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
