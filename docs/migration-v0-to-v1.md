@@ -123,10 +123,13 @@ The Symfony variables are gone; start from the new
   default — prints to stdout) or `resend://<api_key>?from=…&reply_to=…`. A
   leftover v0.x value will **fail at boot**, so clear it or set the new form.
 - **`ECONUMO_DATA_SALT`** is deprecated, and v1.x runs **salt-free** — it no
-  longer decrypts salted data. If your v0.x instance never set it (or set it
-  empty), do nothing. **If it was set, you must migrate the data once**, or those
-  users can't log in (their emails are unreadable and identifiers no longer match).
-  Back up your database first, then:
+  longer decrypts salted data. Users are looked up by `lower(email)`, which
+  only works once emails are plaintext. If your v0.x instance never set it (or
+  set it empty), do nothing. **If it was set, you must migrate the data once**,
+  or those users can't log in (their emails are unreadable, so they can't be
+  matched against the plaintext `lower(email)` lookup) — this is not a new
+  regression, they're already unable to log in until you migrate. Back up
+  your database first, then:
 
     1. In `.env`, set `ECONUMO_DATA_SALT` to your **old** salt (so the migration
        can decrypt), and start v1.x: `docker compose up -d`.
@@ -137,8 +140,8 @@ The Symfony variables are gone; start from the new
         $ docker compose exec econumo /app/econumo data:remove-salt
         ```
 
-       It decrypts every email to plaintext, re-derives identifiers without the
-       salt, refuses to run on an empty salt, and is idempotent (safe to re-run).
+       It decrypts every email to plaintext, refuses to run on an empty salt,
+       and is idempotent (safe to re-run).
     3. Remove/comment `ECONUMO_DATA_SALT` in `.env` and restart:
        `docker compose up -d`. The boot-time `ECONUMO_DATA_SALT is set` warning
        clearing confirms you're done.

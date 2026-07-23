@@ -121,7 +121,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
 │   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
 │   │   │                          client-supplied operation ids on create endpoints
-│   │   ├── auth/ ................ password hashing + AES email encryption + user-identifier hashing
+│   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
@@ -324,11 +324,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   no token-related configuration. Persist the `/app/var` volume (the db) to keep data and
   logins valid. Leftover `ECONUMO_JWT_*` variables from older builds are ignored.
 - `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
-  salt-free (plaintext emails, `md5(lower(email))` identifiers). It is consumed by exactly one
+  salt-free (plaintext emails, `lower(email)` as the lookup key). It is consumed by exactly one
   code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
-  database has unreadable emails / mismatched identifiers, so those users cannot log in (the
-  intended push to migrate); `serve` logs a WARN at boot while it is set.
+  database has unreadable emails, so those users cannot log in (the intended push to migrate);
+  `serve` logs a WARN at boot while it is set.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
 - `ECONUMO_TRIAL` — access granted to a newly registered user: `none` (default, no
   access grant) or `end-of-next-month` (full access until the first of the month
@@ -483,10 +483,14 @@ data:remove-salt
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
-back to plaintext and re-derives the identifier as `md5(lower(email))` (no salt),
-so `ECONUMO_DATA_SALT` can be removed. Run it **while the old salt is still set**
-(it needs it to decrypt), then unset `ECONUMO_DATA_SALT` and restart. It refuses
-to run with an empty salt, and is idempotent (already-plaintext rows are skipped).
+back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `lower(email)` is the
+unique lookup key (unique expression index `users_email_lower_uniq`), so a
+still-salted instance MUST run this command after upgrading, before that index
+is relied on — otherwise emails stay encrypted and those users can't log in
+(they are already login-broken pre-migration, so this is not a regression).
+Run it **while the old salt is still set** (it needs it to decrypt), then
+unset `ECONUMO_DATA_SALT` and restart. It refuses to run with an empty salt,
+and is idempotent (already-plaintext rows are skipped).
 Back up the DB first — the decryption is one-way in practice.
 
 In the distroless image these run via the binary directly, e.g.
@@ -565,9 +569,9 @@ data unreadable. Most are also asserted by the test suite.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
-- **User identifier**: `hex(md5(lower(email)))` — 32-char hex; the primary user lookup key. (`EncodeService` still supports a salted form `hex(md5(lower(email) || salt))`, but only the `data:remove-salt` migration uses it — see below.)
+- **User lookup key**: `lower(email)` — enforced unique by the expression index `users_email_lower_uniq`; repo lookups are `GetByEmail`/`ExistsByEmail` (`WHERE lower(email) = lower(?)`). The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
-- **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
+- **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy email data to plaintext (the repo writes the row `id` into `identifier` automatically, so no re-derivation is needed).
 
 ### Access tokens (`internal/user/token.go`)
 - Format: `eco_ses_` (session) / `eco_pat_` (personal) + `base64.RawURLEncoding` of 32
