@@ -302,6 +302,30 @@ In `internal/user/verify_email.go`, replace `s.repo.GetByIdentifier(ctx, s.encod
 	u, err := s.repo.GetByEmail(ctx, lowered)
 ```
 
+- [ ] **Step 6b: Make the legacy user test harnesses salt-free (production parity)**
+
+Three older integration harnesses build the Service + fixtures with a non-empty
+AES salt, so `users.email` is stored as ciphertext — a configuration production
+no longer uses (the API is salt-free, so `Encode` is passthrough / plaintext).
+`GetByEmail`/`ExistsByEmail` match on the plaintext `email` column, so these
+harnesses must be salt-free too (the newer tests already use
+`auth.NewEncodeService("")` — `authenticate_test.go:50`, `verify_email_test.go:55,80`).
+
+Change the encoder construction to `auth.NewEncodeService("")` and the paired
+fixture `WithCrypto(...)` calls to the salt-free form (empty salt, or drop
+`WithCrypto`) in:
+- `internal/user/admin_integration_test.go:30` (`newUserSvc`) and `:173`
+- `internal/user/trial_integration_test.go:27` (`newTrialSvc`)
+- `internal/user/api/harness_test.go:90` (`newHarness`/`newHarnessWithLimiter`) and `:167`
+
+Keep `migrate_test.go` salted — it tests `data:remove-salt`. `MigrateRemoveDataSalt`
+takes the salt as a PARAMETER and builds its own salted encoder internally (it
+does not use `s.encode`), so `newUserSvc` being salt-free is fine for the migration
+call. Keep `migrate_test.go`'s salted seeding (`fixture.New(t, db).WithCrypto(testSalt)`)
+and construct any salted encoder it needs for pre-migration assertions LOCALLY
+(`auth.NewEncodeService(testSalt)`) instead of via the harness. Keep the `testSalt`
+const (still used by `migrate_test.go`).
+
 - [ ] **Step 7: Build + vet**
 
 Run: `go build ./... && go vet ./internal/user/...`
@@ -309,8 +333,8 @@ Expected: exit 0. (If `strings` becomes unused in `login.go`, keep it — `TrimS
 
 - [ ] **Step 8: Run the user + parity suites**
 
-Run: `go test ./internal/user/... ./internal/test/apiparity/... ./internal/test/mcpparity/...`
-Expected: PASS, and NO golden changes (behavior identical).
+Run: `go test ./internal/user/... ./internal/user/api/... ./internal/test/apiparity/... ./internal/test/mcpparity/...`
+Expected: PASS (including the now-salt-free harnesses from Step 6b), and NO golden changes (behavior identical — `git status` shows no testdata/golden edits).
 
 - [ ] **Step 9: Commit**
 
