@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, Lock } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { LanguageDialog } from '@/components/LanguageDialog'
 import { getLocaleOptions } from '@/lib/config'
@@ -134,24 +133,6 @@ export function ProfilePage() {
             </span>
           </div>
         </CardField>
-        {/* read-only: dashed border instead of a fill, muted value, lock mark */}
-        <div className="flex w-full items-center gap-3 rounded-lg border border-dashed px-4 py-2.5" title={t('user.form.email.label')}>
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <Label htmlFor="profile-email" className="text-[11px] font-normal text-muted-foreground">
-              {t('user.form.email.label')}
-            </Label>
-            <Input
-              id="profile-email"
-              type="email"
-              disabled
-              readOnly
-              className="h-auto rounded-none border-0 bg-transparent p-0 text-sm text-muted-foreground shadow-none disabled:bg-transparent disabled:opacity-100 dark:bg-transparent dark:disabled:bg-transparent"
-              placeholder={t('user.form.email.placeholder')}
-              value={user?.email ?? ''}
-            />
-          </div>
-          <Lock className="size-4 shrink-0 text-muted-foreground/60" aria-hidden="true" />
-        </div>
       </form>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
@@ -185,17 +166,17 @@ export function ProfilePage() {
       </p>
       <div className="flex max-w-md flex-col gap-2">
         <Link
-          to={RouterPage.SETTINGS_CHANGE_PASSWORD}
-          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
-        >
-          {t('user.page.settings.profile.change_password.menu_item')}
-          <ChevronRight className="size-4 text-muted-foreground" />
-        </Link>
-        <Link
           to={RouterPage.SETTINGS_CHANGE_EMAIL}
           className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
         >
           {t('user.page.settings.profile.change_email.menu_item')}
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+        <Link
+          to={RouterPage.SETTINGS_CHANGE_PASSWORD}
+          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        >
+          {t('user.page.settings.profile.change_password.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
         <Link
