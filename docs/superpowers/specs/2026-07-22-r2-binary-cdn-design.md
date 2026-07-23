@@ -7,7 +7,8 @@
 
 Release binaries (`econumo-linux-amd64`, `econumo-linux-arm64`, `SHA256SUMS`)
 are attached only to GitHub Releases today. We want them additionally mirrored
-to a Cloudflare R2 bucket, served publicly from `cdn.econumo.com`, addressable
+to a **private** Cloudflare R2 bucket (no public custom domain — objects are
+retrieved via the S3 API / signed URLs by credential holders), addressable
 by channel:
 
 - per version — `vX.Y.Z`
@@ -22,9 +23,10 @@ And `make publish-dev` — which today only builds and pushes the multi-arch
 | Choice | Value |
 |---|---|
 | Upload tool | `aws` S3 CLI (S3-compatible R2 API). Preinstalled on GitHub runners; assumed present locally. |
-| Key layout | `s3://<bucket>/<channel>/econumo-linux-{amd64,arm64}` + `SHA256SUMS`, one `SHA256SUMS` per channel prefix. |
+| Key layout | `s3://<bucket>/<project>/<channel>/econumo-linux-{amd64,arm64}` + `SHA256SUMS`, one `SHA256SUMS` per channel prefix. |
+| Project | `econumo` — hardcoded default, overridable via `R2_PROJECT`. Namespaces the bucket so it can host multiple projects. |
 | Channel | `dev` \| `latest` \| `vX.Y.Z` |
-| Public base URL | `https://cdn.econumo.com` → `https://cdn.econumo.com/<channel>/econumo-linux-amd64` |
+| Bucket visibility | **Private** — no public custom domain; retrieved via the S3 API / signed URLs by credential holders. |
 | Bucket | `econumo` — hardcoded default, overridable via `R2_BUCKET` |
 | Endpoint | `R2_ENDPOINT` from env/secret (`https://<account_id>.r2.cloudflarestorage.com`) — never committed |
 | Credentials | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` from env/secrets |
@@ -36,8 +38,8 @@ The Makefile and the workflow share one interface:
 - `R2_ENDPOINT` — required for any upload; `https://<account_id>.r2.cloudflarestorage.com`.
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` — R2 API-token credentials.
 - `R2_BUCKET ?= econumo` — hardcoded default, overridable.
-- `CDN_BASE_URL ?= https://cdn.econumo.com` — hardcoded default, used only to print
-  human-readable download URLs after upload.
+- `R2_PROJECT ?= econumo` — project namespace under the bucket, overridable.
+- `CDN_SRC ?= release-out` — directory holding the built binaries + `SHA256SUMS`.
 
 New GitHub Actions secrets: `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
 `R2_SECRET_ACCESS_KEY` (the latter two mapped to the `AWS_*` env names inside
@@ -50,17 +52,16 @@ the upload step).
 Parameterized by `CHANNEL` (required) and `SRC` (defaults `release-out`).
 Behavior:
 
-1. Fail with a clear message if `R2_ENDPOINT` is empty.
-2. Upload `$(SRC)/econumo-linux-amd64`, `$(SRC)/econumo-linux-arm64`, and
-   `$(SRC)/SHA256SUMS` to `s3://$(R2_BUCKET)/$(CHANNEL)/` using
+1. Fail with a clear message if `CHANNEL` is empty or `R2_ENDPOINT` is empty.
+2. Upload `$(CDN_SRC)/econumo-linux-amd64`, `$(CDN_SRC)/econumo-linux-arm64`, and
+   `$(CDN_SRC)/SHA256SUMS` to `s3://$(R2_BUCKET)/$(R2_PROJECT)/$(CHANNEL)/` using
    `aws s3 cp --endpoint-url $(R2_ENDPOINT) --content-type application/octet-stream`.
 3. Cache headers: `--cache-control "no-cache"` for `dev`/`latest`,
    `--cache-control "public, max-age=31536000, immutable"` for a `vX.Y.Z` channel.
-4. Print the resulting `$(CDN_BASE_URL)/$(CHANNEL)/...` URLs.
+4. Print the `s3://$(R2_BUCKET)/$(R2_PROJECT)/$(CHANNEL)/` destination.
 
-Sets `AWS_REQUEST_CHECKSUM_CALCULATION=when_required` (or
-`--checksum-algorithm CRC32`) so the aws CLI v2 default integrity headers that
-R2 rejects are not sent.
+Exports `AWS_REQUEST_CHECKSUM_CALCULATION=when_required` so the aws CLI v2
+default integrity headers that R2 rejects are not sent.
 
 ### `publish-dev`
 
@@ -72,13 +73,16 @@ duplication for a local dev-publish.)
 
 ## Release workflow changes (`.github/workflows/publish-release.yml`)
 
-In the existing `build-binaries` job, after the `sha256sum` step, add upload
-step(s) that run the aws CLI with the three R2 secrets in env
-(`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`R2_ENDPOINT`):
+In the existing `build-binaries` job, after the `sha256sum` step, add one
+upload step with the three R2 secrets in env
+(`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`R2_ENDPOINT`) that reuses the
+Makefile target (DRY — same upload logic as local):
 
-- **Always** upload `s3://econumo/${VERSION}/` (immutable cache).
-- Upload `latest/` **only when** `push_latest == 'true'` (no-cache).
-- Upload `dev/` **only when** `push_dev == 'true'` (no-cache).
+```sh
+make cdn-upload CHANNEL="$VERSION"                                  # always
+[ "$PUSH_LATEST" = "true" ] && make cdn-upload CHANNEL=latest       # gated
+[ "$PUSH_DEV" = "true" ]    && make cdn-upload CHANNEL=dev          # gated
+```
 
 This mirrors exactly how the Docker image tags already gate in the `create-tag`
 job. The upload reuses the `release-out/` directory already produced in the
@@ -86,9 +90,8 @@ job; the same three files go to each selected channel prefix.
 
 ## Documentation
 
-- `docs/run-without-docker.md`: mention the CDN mirror
-  (`https://cdn.econumo.com/latest/econumo-linux-amd64`) as an alternative to
-  the GitHub release download.
+- No user-facing docs change: the bucket is private, so `docs/run-without-docker.md`
+  keeps pointing at the public GitHub release download.
 - No `.env.example` change: `R2_*` are build/publish-time credentials, not
   runtime server config.
 
@@ -101,7 +104,7 @@ job; the same three files go to each selected channel prefix.
 
 ## Out of scope
 
-- Creating the R2 bucket, API token, and `cdn.econumo.com` custom domain
-  (assumed to exist / provisioned by the maintainer).
+- Creating the R2 bucket and API token (assumed to exist / provisioned by the
+  maintainer). The bucket stays private — no custom domain / public access.
 - Updating the `econumo.com/releases/latest.json` update feed (separate system).
 - Windows/macOS binaries (only linux amd64/arm64 are built today).
