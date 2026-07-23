@@ -58,6 +58,7 @@ make web-bundle    # cd web && pnpm build     (production SPA build -> web/dist)
 
 ```bash
 make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
+                   # AND mirror the `dev` binaries to the private R2 bucket
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
@@ -70,6 +71,24 @@ commit as the base for future hotfixes; a hotfix dispatches from a new
 workflow then creates no branch. `latest` only moves for the highest version
 released so far. See `.claude/skills/publish-release` for the full process.
 Everything publishes to `ghcr.io/econumo/econumo` only.
+
+**R2 binary mirror.** Both `make publish-dev` and the release workflow also
+upload the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}` +
+`SHA256SUMS`) to a **private** Cloudflare R2 bucket via `make cdn-upload`
+(aws S3 CLI). Keys are namespaced `s3://$(R2_BUCKET)/$(R2_PROJECT)/<channel>/`
+(defaults `econumo`/`econumo`; the bucket hosts several projects), channel ∈
+`dev` | `latest` | `vX.Y.Z`. The bucket has no public domain — objects are
+fetched via the S3 API / signed URLs. In the release workflow the channels gate
+exactly like the image tags: the version channel always, `latest/` and `dev/`
+only when their checkbox is set. Endpoint + credentials come from the
+environment, never committed, and are `ECONUMO_`-prefixed so several projects'
+R2 targets can coexist in one shell: `ECONUMO_R2_ENDPOINT`
+(`https://<acct>.r2.cloudflarestorage.com`, required) plus optional
+`ECONUMO_R2_ACCESS_KEY_ID` / `ECONUMO_R2_SECRET_ACCESS_KEY` (mapped to `AWS_*`
+for the aws subprocess only; unset falls back to the `~/.aws` profile). In CI
+the GitHub secrets `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are
+mapped to those `ECONUMO_R2_*` names in the step's `env:`. Local use needs the
+aws CLI installed.
 
 ### Branch naming
 
