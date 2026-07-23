@@ -233,8 +233,10 @@ In `internal/user/login.go`, replace lines 24-25:
 with:
 
 ```go
-	u, err := s.repo.GetByEmail(ctx, strings.TrimSpace(req.Username))
+	u, err := s.repo.GetByEmail(ctx, req.Username)
 ```
+
+(Pass `req.Username` UNTRIMMED — the original lookup was `Hash(ToLower(req.Username))` with no trim; `GetByEmail`'s query lowercases, so this reproduces the exact prior matching behavior. Do not add `TrimSpace` here.)
 
 - [ ] **Step 2: Switch `userByEmail` (admin lookups)**
 
