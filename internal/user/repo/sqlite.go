@@ -26,6 +26,16 @@ func (sqliteQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX
 	return n != 0, err
 }
 
+func (sqliteQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
+	row, err := sqlitegen.New(db).GetUserByEmail(ctx, email)
+	return userRow(row), err
+}
+
+func (sqliteQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error) {
+	n, err := sqlitegen.New(db).ExistsUserByEmail(ctx, email)
+	return n != 0, err
+}
+
 func (sqliteQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {
 	return sqlitegen.New(db).ListUserIDs(ctx)
 }

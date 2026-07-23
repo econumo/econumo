@@ -25,6 +25,15 @@ func (pgsqlQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX,
 	return pgsqlgen.New(db).ExistsUserByIdentifier(ctx, identifier)
 }
 
+func (pgsqlQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
+	u, err := pgsqlgen.New(db).GetUserByEmail(ctx, email)
+	return userRow(u), err
+}
+
+func (pgsqlQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error) {
+	return pgsqlgen.New(db).ExistsUserByEmail(ctx, email)
+}
+
 func (pgsqlQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error) {
 	return pgsqlgen.New(db).ListUserIDs(ctx)
 }

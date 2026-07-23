@@ -27,6 +27,14 @@ type Repository interface {
 	// by registration to detect a duplicate without loading the row.
 	ExistsByIdentifier(ctx context.Context, identifier string) (bool, error)
 
+	// GetByEmail loads a user (with options) by email, case-insensitively.
+	// Missing -> *errs.NotFoundError.
+	GetByEmail(ctx context.Context, email string) (*model.User, error)
+
+	// ExistsByEmail reports whether a user with that email exists
+	// (case-insensitive). Used by registration/change-email dup-checks.
+	ExistsByEmail(ctx context.Context, email string) (bool, error)
+
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 

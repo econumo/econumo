@@ -46,3 +46,11 @@ UPDATE users SET timezone = ? WHERE id = ?;
 
 -- name: GetUserLanguage :one
 SELECT language FROM users WHERE id = ?;
+
+-- name: GetUserByEmail :one
+SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+FROM users
+WHERE lower(email) = lower(?);
+
+-- name: ExistsUserByEmail :one
+SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower(?));

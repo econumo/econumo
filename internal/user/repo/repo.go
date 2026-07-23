@@ -51,6 +51,8 @@ type querier interface {
 	GetUserByID(ctx context.Context, db backend.DBTX, id string) (userRow, error)
 	GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error)
 	ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error)
+	GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error)
+	ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error)
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
@@ -133,6 +135,21 @@ func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*model.U
 
 func (r *Repo) ExistsByIdentifier(ctx context.Context, identifier string) (bool, error) {
 	return r.q.ExistsUserByIdentifier(ctx, r.db(ctx), identifier)
+}
+
+func (r *Repo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	row, err := r.q.GetUserByEmail(ctx, r.db(ctx), email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound("User not found")
+		}
+		return nil, err
+	}
+	return r.hydrate(ctx, row)
+}
+
+func (r *Repo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	return r.q.ExistsUserByEmail(ctx, r.db(ctx), email)
 }
 
 func (r *Repo) ListIDs(ctx context.Context) ([]vo.Id, error) {

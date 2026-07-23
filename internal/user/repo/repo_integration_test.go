@@ -150,6 +150,45 @@ func TestUserRepo_ExistsByIdentifier(t *testing.T) {
 	}
 }
 
+func TestUserRepo_GetByEmail(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	u := newTestUser(vo.MustParseId(userA), identA, "Alice@Example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	// Lookup is case-insensitive.
+	got, err := repo.GetByEmail(ctx, "alice@example.test")
+	if err != nil {
+		t.Fatalf("GetByEmail: %v", err)
+	}
+	if got.ID.String() != userA {
+		t.Errorf("want %s, got %s", userA, got.ID)
+	}
+	_, err = repo.GetByEmail(ctx, "missing@example.test")
+	var nf *errs.NotFoundError
+	if !errors.As(err, &nf) {
+		t.Fatalf("want NotFound for missing email, got %v", err)
+	}
+}
+
+func TestUserRepo_ExistsByEmail(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	u := newTestUser(vo.MustParseId(userA), identA, "Alice@Example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	exists, err := repo.ExistsByEmail(ctx, "alice@example.test")
+	if err != nil || !exists {
+		t.Errorf("ExistsByEmail(alice) = %v, %v; want true", exists, err)
+	}
+	exists, err = repo.ExistsByEmail(ctx, "nope@example.test")
+	if err != nil || exists {
+		t.Errorf("ExistsByEmail(nope) = %v, %v; want false", exists, err)
+	}
+}
+
 func TestUserRepo_ListIDs(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
