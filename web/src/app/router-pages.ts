@@ -9,6 +9,7 @@ export const RouterPage = {
   SETTINGS: '/settings',
   SETTINGS_PROFILE: '/settings/profile',
   SETTINGS_CHANGE_PASSWORD: '/settings/profile/change-password',
+  SETTINGS_CHANGE_EMAIL: '/settings/profile/change-email',
   SETTINGS_SESSIONS: '/settings/profile/sessions',
   SETTINGS_TOKENS: '/settings/profile/tokens',
   SETTINGS_ACCOUNTS: '/settings/accounts',

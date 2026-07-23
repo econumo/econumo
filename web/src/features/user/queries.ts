@@ -88,6 +88,30 @@ export function useUpdatePassword() {
   })
 }
 
+export function useRequestEmailChange() {
+  return useMutation({
+    mutationFn: ({ newEmail, password }: { newEmail: string; password: string }) =>
+      userApi.requestEmailChange(newEmail, password),
+  })
+}
+
+export function useConfirmEmailChange() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ code }: { code: string }) => userApi.confirmEmailChange(code),
+    onSuccess: (user) => {
+      queryClient.setQueryData(queryKeys.user, user)
+      trackEvent(METRICS.USER_CHANGE_EMAIL)
+    },
+  })
+}
+
+export function useResendEmailChangeCode() {
+  return useMutation({
+    mutationFn: () => userApi.resendEmailChangeCode(),
+  })
+}
+
 export function useUpdateCurrency() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -50,6 +50,23 @@ export async function updatePassword(oldPassword: string, newPassword: string): 
   await api.post(apiUrl('/api/v1/user/update-password'), { oldPassword, newPassword })
 }
 
+export async function requestEmailChange(newEmail: string, password: string): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/request-email-change'), { newEmail, password })
+}
+
+export async function confirmEmailChange(code: string): Promise<CurrentUserDto> {
+  const response = await api.post<Envelope<CurrentUserDto>>(apiUrl('/api/v1/user/confirm-email-change'), { code })
+  return response.data.data
+}
+
+// Returns the seconds to wait before another code may be requested, same
+// Retry-After contract as resendVerificationCode.
+export async function resendEmailChangeCode(): Promise<number> {
+  const response = await api.post(apiUrl('/api/v1/user/resend-email-change-code'), {})
+  const seconds = Number(response.headers?.['retry-after'])
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : 0
+}
+
 export async function updateCurrency(currency: string): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-currency'), { currency })
   return response.data.data.user
