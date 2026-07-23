@@ -405,6 +405,77 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 	}
 }
 
+func TestMoveElementTool(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	f.AccountOption(accountID, userID, 0)
+	categoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+
+	svc := newBudgetService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectBudgetSession(t, ctx, svc)
+
+	createBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_budget",
+		Arguments: map[string]any{"name": "Bud", "currency_id": fixture.USD, "start_date": "2024-04-01"},
+	})
+	if err != nil || createBudgetRes.IsError {
+		t.Fatalf("create_budget: %v %#v", err, createBudgetRes)
+	}
+	budgetID, _ := structured(t, createBudgetRes)["item"].(map[string]any)["meta"].(map[string]any)["id"].(string)
+
+	folderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+	})
+	if err != nil || folderRes.IsError {
+		t.Fatalf("create_folder: %v %#v", err, folderRes)
+	}
+	folderID, _ := structured(t, folderRes)["item"].(map[string]any)["id"].(string)
+
+	moveRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "move_element",
+		Arguments: map[string]any{
+			"budget_id": budgetID,
+			"items":     []any{map[string]any{"element_id": categoryID, "folder_id": folderID, "position": 0}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("move_element: transport error: %v", err)
+	}
+	if moveRes.IsError {
+		t.Fatalf("move_element: unexpected error: %#v", moveRes.Content)
+	}
+	if got := structured(t, moveRes)["moved"]; got != float64(1) {
+		t.Fatalf("move_element: moved = %#v, want 1", got)
+	}
+
+	getRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget",
+		Arguments: map[string]any{"budget_id": budgetID, "month": "2024-04"},
+	})
+	if err != nil || getRes.IsError {
+		t.Fatalf("get_budget: %v %#v", err, getRes)
+	}
+	structure := structured(t, getRes)["item"].(map[string]any)["structure"].(map[string]any)
+	elements, _ := structure["elements"].([]any)
+	found := false
+	for _, e := range elements {
+		el := e.(map[string]any)
+		if el["id"] == categoryID {
+			found = true
+			if el["folderId"] != folderID {
+				t.Fatalf("element folderId = %#v, want %q", el["folderId"], folderID)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("moved category not found in structure: %#v", elements)
+	}
+}
+
 func TestBudgetTools_SetLimitBeforeStart_IsError(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)

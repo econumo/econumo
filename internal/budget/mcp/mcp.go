@@ -85,6 +85,22 @@ type accountIncludedResult struct {
 	Included  bool   `json:"included"`
 }
 
+type moveElementItemInput struct {
+	ElementID string `json:"element_id" jsonschema:"envelope, tag or category id (UUID), from get_budget"`
+	FolderID  string `json:"folder_id,omitempty" jsonschema:"target folder id (UUID), from get_budget; omit to move to the default (ungrouped) area"`
+	Position  int    `json:"position" jsonschema:"0-based position within the target folder"`
+}
+
+type moveElementInput struct {
+	BudgetID string                 `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	Items    []moveElementItemInput `json:"items" jsonschema:"the elements to move; each names an element_id and its target folder_id + position"`
+}
+
+type moveElementResult struct {
+	BudgetID string `json:"budget_id"`
+	Moved    int    `json:"moved"`
+}
+
 func strPtr(s string) *string {
 	if s == "" {
 		return nil
@@ -302,6 +318,31 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					return nil, setLimitResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, setLimitResult{BudgetID: in.BudgetID, ElementID: in.ElementID, Month: in.Month, Amount: in.Amount}, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
+			Description: "Move budget elements (envelopes, tags, standalone categories) into folders or reorder them. Use get_budget for element_id and folder_id; omit folder_id to move an element to the default ungrouped area."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "move_element")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, moveElementResult{}, err
+				}
+				items := make([]model.MoveElementListItem, 0, len(in.Items))
+				for _, it := range in.Items {
+					items = append(items, model.MoveElementListItem{
+						Id:       it.ElementID,
+						FolderId: strPtr(it.FolderID),
+						Position: it.Position,
+					})
+				}
+				if _, err := svc.MoveElementList(ctx, userID, model.MoveElementListRequest{
+					BudgetId: in.BudgetID,
+					Items:    items,
+				}); err != nil {
+					return nil, moveElementResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, moveElementResult{BudgetID: in.BudgetID, Moved: len(in.Items)}, nil
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_budget_account_included",
