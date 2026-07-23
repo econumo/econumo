@@ -96,9 +96,12 @@ type moveElementInput struct {
 	Items    []moveElementItemInput `json:"items" jsonschema:"the elements to move; each names an element_id and its target folder_id + position"`
 }
 
+// moveElementResult reports no move count: MoveElementList silently skips any
+// item whose element_id isn't found in the budget, so a count would overstate
+// what actually happened. Verify the outcome with get_budget.
 type moveElementResult struct {
-	BudgetID string `json:"budget_id"`
-	Moved    int    `json:"moved"`
+	BudgetID   string   `json:"budget_id"`
+	ElementIDs []string `json:"element_ids"`
 }
 
 func strPtr(s string) *string {
@@ -342,7 +345,11 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				}); err != nil {
 					return nil, moveElementResult{}, webmcp.MapErr(ctx, err)
 				}
-				return nil, moveElementResult{BudgetID: in.BudgetID, Moved: len(in.Items)}, nil
+				elementIDs := make([]string, 0, len(in.Items))
+				for _, it := range in.Items {
+					elementIDs = append(elementIDs, it.ElementID)
+				}
+				return nil, moveElementResult{BudgetID: in.BudgetID, ElementIDs: elementIDs}, nil
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_budget_account_included",

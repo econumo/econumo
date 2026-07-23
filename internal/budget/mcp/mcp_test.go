@@ -448,8 +448,9 @@ func TestMoveElementTool(t *testing.T) {
 	if moveRes.IsError {
 		t.Fatalf("move_element: unexpected error: %#v", moveRes.Content)
 	}
-	if got := structured(t, moveRes)["moved"]; got != float64(1) {
-		t.Fatalf("move_element: moved = %#v, want 1", got)
+	elementIDs, ok := structured(t, moveRes)["element_ids"].([]any)
+	if !ok || len(elementIDs) != 1 || elementIDs[0] != categoryID {
+		t.Fatalf("move_element: element_ids = %#v, want [%q]", elementIDs, categoryID)
 	}
 
 	getRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
@@ -473,6 +474,76 @@ func TestMoveElementTool(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("moved category not found in structure: %#v", elements)
+	}
+}
+
+func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+
+	svc := newBudgetService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectBudgetSession(t, ctx, svc)
+
+	createBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_budget",
+		Arguments: map[string]any{"name": "Bud", "currency_id": fixture.USD, "start_date": "2024-04-01"},
+	})
+	if err != nil || createBudgetRes.IsError {
+		t.Fatalf("create_budget: %v %#v", err, createBudgetRes)
+	}
+	budgetID, _ := structured(t, createBudgetRes)["item"].(map[string]any)["meta"].(map[string]any)["id"].(string)
+
+	folderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "create_folder",
+		Arguments: map[string]any{"budget_id": budgetID, "name": "Bills"},
+	})
+	if err != nil || folderRes.IsError {
+		t.Fatalf("create_folder: %v %#v", err, folderRes)
+	}
+	folderID, _ := structured(t, folderRes)["item"].(map[string]any)["id"].(string)
+
+	// A well-formed UUID that names no element in this budget: MoveElementList
+	// silently skips it, so the tool must not report a false success/count.
+	absentID := "01960000-0000-7000-8000-000000000000"
+
+	moveRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "move_element",
+		Arguments: map[string]any{
+			"budget_id": budgetID,
+			"items":     []any{map[string]any{"element_id": absentID, "folder_id": folderID, "position": 0}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("move_element: transport error: %v", err)
+	}
+	if moveRes.IsError {
+		t.Fatalf("move_element: unexpected error: %#v", moveRes.Content)
+	}
+	data := structured(t, moveRes)
+	if _, hasMoved := data["moved"]; hasMoved {
+		t.Fatalf("move_element: result must not carry a move count, got: %#v", data)
+	}
+	elementIDs, ok := data["element_ids"].([]any)
+	if !ok || len(elementIDs) != 1 || elementIDs[0] != absentID {
+		t.Fatalf("move_element: element_ids = %#v, want the requested (absent) id echoed back", elementIDs)
+	}
+
+	getRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget",
+		Arguments: map[string]any{"budget_id": budgetID, "month": "2024-04"},
+	})
+	if err != nil || getRes.IsError {
+		t.Fatalf("get_budget: %v %#v", err, getRes)
+	}
+	structure := structured(t, getRes)["item"].(map[string]any)["structure"].(map[string]any)
+	elements, _ := structure["elements"].([]any)
+	for _, e := range elements {
+		el, ok := e.(map[string]any)
+		if ok && el["id"] == absentID {
+			t.Fatalf("get_budget: the absent element must not have been placed in the folder, got: %#v", el)
+		}
 	}
 }
 

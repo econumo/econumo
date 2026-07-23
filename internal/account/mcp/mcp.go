@@ -20,7 +20,7 @@ type createAccountInput struct {
 	CurrencyID string `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
 	Balance    string `json:"balance,omitempty" jsonschema:"opening balance as a decimal string, e.g. 100.00; defaults to 0"`
 	Icon       string `json:"icon,omitempty" jsonschema:"optional icon name; defaults to 'wallet'"`
-	FolderID   string `json:"folder_id,omitempty" jsonschema:"account folder id (UUID), from list_accounts; omit to use the user's default folder (new users get one created automatically)"`
+	FolderID   string `json:"folder_id,omitempty" jsonschema:"account folder id (UUID), from an existing account's folderId in list_accounts; may be omitted only if you have no folders yet"`
 }
 
 type createAccountResult struct {
@@ -48,7 +48,7 @@ func Register(svc *appaccount.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "create_account",
-			Description: "Create an account for the caller. currency_id is required (use list_currencies). Optional opening balance and icon. New users get a default account folder automatically."},
+			Description: "Create an account for the caller. currency_id is required (use list_currencies). Optional opening balance and icon. folder_id may be omitted only by a user with no folders yet (one is then created automatically); otherwise it is required."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in createAccountInput) (*sdk.CallToolResult, createAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "create_account")
 				userID, err := webmcp.UserID(ctx)
@@ -70,7 +70,7 @@ func Register(svc *appaccount.Service) webmcp.Register {
 					Balance:    vo.NewFlexString(balance),
 					Icon:       icon,
 					FolderId:   in.FolderID,
-					// A blank FolderId is tolerated for a first account.
+					// Blank is accepted only when the user has no folders at all (internal/account/create.go).
 				})
 				if err != nil {
 					return nil, createAccountResult{}, webmcp.MapErr(ctx, err)

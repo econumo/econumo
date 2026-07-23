@@ -248,6 +248,8 @@ sure I have an account, then build a first budget.
 3. Ensure an account. If list_accounts is empty, propose ONE starter account
    (name, currency from list_currencies, optional opening balance), confirm, and
    create it with create_account. If I already have an account, use it.
+   create_account needs a folder_id unless I have no folders at all — take one
+   from an existing account's folderId in list_accounts.
 4. Build the budget like budget-setup does: create_budget; "Base expenses" and
    "Additional expenses" folders (default, not forced); envelopes ONLY to group
    two or more categories (never a single-category envelope); file tags and
