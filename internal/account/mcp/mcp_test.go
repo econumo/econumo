@@ -78,3 +78,62 @@ func TestListAccountsTool(t *testing.T) {
 		t.Fatalf("list_accounts: expected Checking account, got: %#v", items)
 	}
 }
+
+func TestCreateAccountTool(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+
+	svc := newAccountService(t, db)
+
+	srv := sdk.NewServer(&sdk.Implementation{Name: "t", Version: "t"}, nil)
+	accountmcp.Register(svc)(srv)
+
+	ctx := mcptest.CtxWithUser(t, userID)
+	st, ct := sdk.NewInMemoryTransports()
+	ss, err := srv.Connect(ctx, st, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ss.Close()
+	client := sdk.NewClient(&sdk.Implementation{Name: "c", Version: "t"}, nil)
+	cs, err := client.Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "create_account",
+		Arguments: map[string]any{
+			"name":        "Checking",
+			"currency_id": fixture.USD,
+			"balance":     "100.00",
+		},
+	})
+	if err != nil {
+		t.Fatalf("create_account: transport error: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("create_account: unexpected error: %#v", res.Content)
+	}
+	m, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("create_account: structuredContent is not a map: %#v", res.StructuredContent)
+	}
+	if m["name"] != "Checking" {
+		t.Fatalf("create_account: name = %#v, want Checking", m["name"])
+	}
+	if m["id"] == "" || m["id"] == nil {
+		t.Fatalf("create_account: empty id: %#v", m)
+	}
+
+	listRes, err := cs.CallTool(ctx, &sdk.CallToolParams{Name: "list_accounts", Arguments: map[string]any{}})
+	if err != nil || listRes.IsError {
+		t.Fatalf("list_accounts: %v %#v", err, listRes)
+	}
+	items, _ := listRes.StructuredContent.(map[string]any)["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("list_accounts: want 1 account, got %#v", items)
+	}
+}
