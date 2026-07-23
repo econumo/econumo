@@ -80,7 +80,7 @@ func (u *RateUpdater) updateOnce(ctx context.Context) {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	if latest, ok, err := u.svc.LatestRateDate(ctx); err != nil {
-		slog.Debug("rate updater: latest-date check failed", "err", err)
+		slog.Warn("rate updater: latest-date check failed", "err", err)
 		// Fall through and try to fetch; a transient read error should not wedge
 		// the schedule.
 	} else if ok && today.Sub(latest) < u.interval {

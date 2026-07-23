@@ -165,6 +165,11 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	// Sanity cap: a rate-refresh cadence beyond ~10 years is a misconfiguration,
+	// and a huge value would overflow the time.Duration used for the poller ticker.
+	if interval > 3650 {
+		return Config{}, fmt.Errorf("ECONUMO_CURRENCY_UPDATE_INTERVAL %d is too large (max 3650 days)", interval)
+	}
 	c.CurrencyUpdateIntervalDays = interval
 
 	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")

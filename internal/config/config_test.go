@@ -539,7 +539,7 @@ func TestLoad_CurrencyUpdateInterval(t *testing.T) {
 }
 
 func TestLoad_CurrencyUpdateIntervalBadValueFailsBoot(t *testing.T) {
-	for _, bad := range []string{"-1", "abc", "1.5"} {
+	for _, bad := range []string{"-1", "abc", "1.5", "99999999"} {
 		t.Run(bad, func(t *testing.T) {
 			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 			t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", bad)
