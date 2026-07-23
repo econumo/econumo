@@ -404,6 +404,50 @@ func (r ResendVerificationCodeRequest) Validate() error {
 type ResendVerificationCodeResult struct{}
 
 // ---------------------------------------------------------------------------
+// request-email-change / confirm-email-change / resend-email-change-code
+// ---------------------------------------------------------------------------
+
+// RequestEmailChangeRequest is the request-email-change body.
+type RequestEmailChangeRequest struct {
+	NewEmail string `json:"newEmail"`
+	Password string `json:"password"`
+}
+
+// Validate enforces newEmail NotBlank+Email and password NotBlank.
+func (r RequestEmailChangeRequest) Validate() error {
+	fields := validateEmailField("newEmail", r.NewEmail, 0)
+	if r.Password == "" {
+		fields = append(fields, errs.FieldError{Key: "password", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// RequestEmailChangeResult is the request-email-change response (empty object).
+type RequestEmailChangeResult struct{}
+
+// ConfirmEmailChangeRequest is the confirm-email-change body. No password: the
+// emailed code (to the new address) is the proof of ownership.
+type ConfirmEmailChangeRequest struct {
+	Code string `json:"code"`
+}
+
+// Validate enforces code NotBlank.
+func (r ConfirmEmailChangeRequest) Validate() error {
+	if strings.TrimSpace(r.Code) == "" {
+		return errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// ResendEmailChangeCodeResult is the resend-email-change-code response (empty
+// object). The wait travels on the Retry-After header, not in the body.
+type ResendEmailChangeCodeResult struct{}
+
+// ---------------------------------------------------------------------------
 // logout-user
 // ---------------------------------------------------------------------------
 

@@ -124,12 +124,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
 	emailVerificationRepo := userrepo.NewEmailVerificationRepo(cfg.DatabaseDriver, txm)
+	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
 	mailTransport := seams.Mailer
 	if mailTransport == nil {
 		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
 	}
 	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
 			appuser.RateScopeLogin:              cfg.RateLimitLogin,
@@ -138,6 +140,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appuser.RateScopeRegister:           cfg.RateLimitRegister,
 			appuser.RateScopeVerifyEmail:        cfg.RateLimitVerifyEmail,
 			appuser.RateScopeConfirmEmail:       cfg.RateLimitConfirmEmail,
+			appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
+			appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
 			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
 		},
 		Window: cfg.RateLimitWindow,
@@ -146,6 +150,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetAccess,
 		passwordReqRepo, resetMailer, emailVerificationRepo, verifyMailer,
+		emailChangeRepo, changeMailer,
 		avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial, cfg.EmailVerification,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)

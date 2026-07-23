@@ -25,23 +25,25 @@ import (
 // Service is the user use-case orchestrator. It owns the tx boundary and builds
 // the response-shaped *Result structs directly.
 type Service struct {
-	repo               Repository
-	tx                 port.TxRunner
-	encode             *auth.EncodeService
-	hasher             *auth.PasswordHasher
-	tokens             AccessTokens
-	currency           CurrencyLookup
-	budgets            BudgetAccess
-	passwordRequests   PasswordRequests
-	mailer             *mailer.ResetSender
-	emailVerifications EmailVerifications
-	verifyMailer       *mailer.VerifySender
-	avatars            AvatarPicker
-	clock              port.Clock
-	limiter            AttemptLimiter
-	allowRegistration  bool
-	trial              string
-	emailVerification  bool
+	repo                Repository
+	tx                  port.TxRunner
+	encode              *auth.EncodeService
+	hasher              *auth.PasswordHasher
+	tokens              AccessTokens
+	currency            CurrencyLookup
+	budgets             BudgetAccess
+	passwordRequests    PasswordRequests
+	mailer              *mailer.ResetSender
+	emailVerifications  EmailVerifications
+	verifyMailer        *mailer.VerifySender
+	emailChangeRequests EmailChangeRequests
+	changeMailer        *mailer.ChangeEmailSender
+	avatars             AvatarPicker
+	clock               port.Clock
+	limiter             AttemptLimiter
+	allowRegistration   bool
+	trial               string
+	emailVerification   bool
 }
 
 func NewService(
@@ -56,6 +58,8 @@ func NewService(
 	mailer *mailer.ResetSender,
 	emailVerifications EmailVerifications,
 	verifyMailer *mailer.VerifySender,
+	emailChangeRequests EmailChangeRequests,
+	changeMailer *mailer.ChangeEmailSender,
 	avatars AvatarPicker,
 	clock port.Clock,
 	limiter AttemptLimiter,
@@ -64,23 +68,25 @@ func NewService(
 	emailVerification bool,
 ) *Service {
 	return &Service{
-		repo:               repo,
-		tx:                 tx,
-		encode:             encode,
-		hasher:             hasher,
-		tokens:             tokens,
-		currency:           currency,
-		budgets:            budgets,
-		passwordRequests:   passwordRequests,
-		mailer:             mailer,
-		emailVerifications: emailVerifications,
-		verifyMailer:       verifyMailer,
-		avatars:            avatars,
-		clock:              clock,
-		limiter:            limiter,
-		allowRegistration:  allowRegistration,
-		trial:              trial,
-		emailVerification:  emailVerification,
+		repo:                repo,
+		tx:                  tx,
+		encode:              encode,
+		hasher:              hasher,
+		tokens:              tokens,
+		currency:            currency,
+		budgets:             budgets,
+		passwordRequests:    passwordRequests,
+		mailer:              mailer,
+		emailVerifications:  emailVerifications,
+		verifyMailer:        verifyMailer,
+		emailChangeRequests: emailChangeRequests,
+		changeMailer:        changeMailer,
+		avatars:             avatars,
+		clock:               clock,
+		limiter:             limiter,
+		allowRegistration:   allowRegistration,
+		trial:               trial,
+		emailVerification:   emailVerification,
 	}
 }
 

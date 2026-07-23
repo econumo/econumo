@@ -30,6 +30,7 @@ func newTimezoneTestUserSvc(t *testing.T, db *dbtest.DB) *appuser.Service {
 	budgets := NewUserBudgetAccess(db.Engine, db.TX)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
+		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, "none", false)
 }
 
