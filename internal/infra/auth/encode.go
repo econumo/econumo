@@ -1,34 +1,31 @@
-// Package auth implements Econumo's crypto: the EncodeService (identifier
-// hashing + reversible email encryption) and the password hasher. These are
-// wire/data-compatible with existing accounts (see CLAUDE.md), locked
-// down by golden vectors in *_test.go.
+// Package auth implements Econumo's crypto: the EncodeService (reversible
+// email encryption) and the password hasher. These are wire/data-compatible
+// with existing accounts (see CLAUDE.md), locked down by golden vectors in
+// *_test.go.
 package auth
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
-	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"io"
 )
 
-// EncodeService hashes identifiers and reversibly encrypts emails.
+// EncodeService reversibly encrypts emails.
 //
 // AES-128-CBC takes a 16-byte key, but the raw ECONUMO_DATA_SALT may be any
 // length. To stay wire-compatible with already-stored emails, an over-long salt
 // is truncated to its first 16 bytes for the AES key and a short one is
-// zero-padded to 16, while the HMAC key and the md5 identifier deliberately use
-// the FULL salt. This asymmetry is part of the frozen data format: existing rows
-// were written this way, so deployments whose salt is not exactly 16 bytes must
-// keep decrypting.
+// zero-padded to 16, while the HMAC key deliberately uses the FULL salt. This
+// asymmetry is part of the frozen data format: existing rows were written this
+// way, so deployments whose salt is not exactly 16 bytes must keep decrypting.
 type EncodeService struct {
-	salt   []byte // full salt: HMAC key + md5 identifier salt
+	salt   []byte // full salt: the HMAC key
 	aesKey []byte // salt coerced to 16 bytes: the AES-128 key
 }
 
@@ -48,14 +45,6 @@ func coerceAESKey(salt []byte) []byte {
 	key := make([]byte, 16)
 	copy(key, salt) // copies min(16, len(salt)) bytes; remainder stays zero
 	return key
-}
-
-// Hash returns hex(md5(value + salt)) — the CHAR(32) user identifier.
-// Callers must lowercase the email before hashing; this method does not
-// lowercase.
-func (e *EncodeService) Hash(value string) string {
-	sum := md5.Sum(append([]byte(value), e.salt...))
-	return hex.EncodeToString(sum[:])
 }
 
 // Encode encrypts value with AES-128-CBC and returns

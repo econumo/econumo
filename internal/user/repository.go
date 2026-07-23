@@ -19,14 +19,6 @@ type Repository interface {
 	// GetByID loads a user (with options) by id. Missing -> *errs.NotFoundError.
 	GetByID(ctx context.Context, id vo.Id) (*model.User, error)
 
-	// GetByIdentifier loads a user (with options) by the md5 identifier used for
-	// authentication. Missing -> *errs.NotFoundError.
-	GetByIdentifier(ctx context.Context, identifier string) (*model.User, error)
-
-	// ExistsByIdentifier reports whether a user with the identifier exists. Used
-	// by registration to detect a duplicate without loading the row.
-	ExistsByIdentifier(ctx context.Context, identifier string) (bool, error)
-
 	// GetByEmail loads a user (with options) by email, case-insensitively.
 	// Missing -> *errs.NotFoundError.
 	GetByEmail(ctx context.Context, email string) (*model.User, error)

@@ -2,7 +2,6 @@ package user_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
@@ -10,6 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	appuser "github.com/econumo/econumo/internal/user"
@@ -17,8 +17,8 @@ import (
 )
 
 // newSaltFreeUserSvc builds a user Service with an EMPTY data salt — the state
-// the deployment is in AFTER ECONUMO_DATA_SALT is removed. Login then computes
-// the identifier as md5(lower(email)) and treats the email column as plaintext.
+// the deployment is in AFTER ECONUMO_DATA_SALT is removed. Login then looks the
+// user up by email and treats the email column as plaintext.
 func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.PasswordHasher) {
 	t.Helper()
 	enc := auth.NewEncodeService("")
@@ -40,20 +40,20 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 	repo := userrepo.NewRepo("sqlite", db.TX)
 	ctx := context.Background()
 
-	// Seed encrypted users (real crypto with a genuine salt), and a matching
-	// LOCAL encoder to compute the pre-migration salted identifier/ciphertext —
-	// the harness's own encoder is salt-free, so it can't derive these.
-	salted := auth.NewEncodeService(testSalt)
+	// Seed encrypted users with a genuine salt (real crypto); the harness's own
+	// encoder is salt-free, so this exercises actual ciphertext. Ids are
+	// captured because the email column is ciphertext pre-migration, so
+	// GetByEmail cannot find the row until after the sweep.
 	emails := []string{"Alice@Econumo.test", "bob@econumo.test"}
 	f := fixture.New(t, db).WithCrypto(testSalt)
+	ids := make(map[string]string, len(emails)) // email -> id
 	for _, e := range emails {
-		f.User(fixture.User{Email: e})
+		ids[e] = f.User(fixture.User{Email: e})
 	}
 
 	// Sanity: emails are stored encrypted (not equal to plaintext) before migration.
-	saltFree := auth.NewEncodeService("")
 	for _, e := range emails {
-		u, err := repo.GetByIdentifier(ctx, salted.Hash(strings.ToLower(e)))
+		u, err := repo.GetByID(ctx, vo.MustParseId(ids[e]))
 		if err != nil {
 			t.Fatalf("pre-migration lookup %s: %v", e, err)
 		}
@@ -70,21 +70,22 @@ func TestMigrateRemoveDataSalt(t *testing.T) {
 		t.Fatalf("migrated=%d skipped=%d, want %d/0", migrated, skipped, len(emails))
 	}
 
-	// Each row is now plaintext, looked up by the UNSALTED identifier.
+	// Each row is now plaintext, and findable by GetByEmail (its post-migration
+	// lookup key).
 	for _, e := range emails {
-		u, err := repo.GetByIdentifier(ctx, saltFree.Hash(strings.ToLower(e)))
+		u, err := repo.GetByID(ctx, vo.MustParseId(ids[e]))
 		if err != nil {
-			t.Fatalf("post-migration lookup %s: %v", e, err)
+			t.Fatalf("post-migration lookup by id %s: %v", e, err)
 		}
 		if u.Email != e {
 			t.Errorf("email = %q, want plaintext %q (case preserved)", u.Email, e)
 		}
-		if u.Identifier != saltFree.Hash(strings.ToLower(e)) {
-			t.Errorf("identifier for %s not the unsalted md5", e)
+		byEmail, err := repo.GetByEmail(ctx, e)
+		if err != nil {
+			t.Fatalf("post-migration GetByEmail(%s): %v", e, err)
 		}
-		// The old (salted) identifier must no longer resolve.
-		if _, err := repo.GetByIdentifier(ctx, salted.Hash(strings.ToLower(e))); err == nil {
-			t.Errorf("old salted identifier for %s still resolves", e)
+		if byEmail.ID.String() != ids[e] {
+			t.Errorf("GetByEmail(%s) = %s, want %s", e, byEmail.ID, ids[e])
 		}
 	}
 

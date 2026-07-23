@@ -16,16 +16,6 @@ func (sqliteQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string
 	return userRow(row), err
 }
 
-func (sqliteQuerier) GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error) {
-	row, err := sqlitegen.New(db).GetUserByIdentifier(ctx, identifier)
-	return userRow(row), err
-}
-
-func (sqliteQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error) {
-	n, err := sqlitegen.New(db).ExistsUserByIdentifier(ctx, identifier)
-	return n != 0, err
-}
-
 func (sqliteQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
 	row, err := sqlitegen.New(db).GetUserByEmail(ctx, email)
 	return userRow(row), err

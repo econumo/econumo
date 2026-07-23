@@ -16,9 +16,9 @@ func NewID() string { return vo.NewId().Value() }
 const USD = "dffc2a06-6f29-4704-8575-31709adee926"
 
 // User describes a user row. Zero fields take defaults: a fresh id, a derived
-// email/name, active=true. When the Builder has WithCrypto, identifier + email
-// are stored encrypted and the password is hashed (so login works); otherwise
-// literal placeholder values are stored (fine for tests that never authenticate).
+// email/name, active=true. When the Builder has WithCrypto, email is stored
+// encrypted and the password is hashed (so login works); otherwise literal
+// placeholder values are stored (fine for tests that never authenticate).
 type User struct {
 	ID       string
 	Email    string // default "user-<id8>@example.test"
@@ -54,19 +54,18 @@ func (b *Builder) User(u User) string {
 		u.Avatar = "diamond:sky"
 	}
 
-	identifier, email, password := u.Email, u.Email, u.Password
+	email, password := u.Email, u.Password
 	if b.encode != nil {
-		identifier = b.encode.Hash(lower(u.Email))
 		enc, err := b.encode.Encode(u.Email)
 		if err != nil {
 			b.t.Fatalf("fixture: encode email: %v", err)
 		}
 		email = enc
 		password = b.hasher.HashSHA512(u.Password, u.Salt)
-	} else {
-		// Keep identifier unique without crypto (the column is UNIQUE).
-		identifier = "ident-" + id[:8]
 	}
+	// The identifier column is retired but still NOT NULL UNIQUE; mirror the
+	// production repo and write the row's own id into it.
+	identifier := id
 
 	now := b.now()
 	active := "TRUE"
@@ -570,15 +569,4 @@ func nullable(s string) any {
 		return nil
 	}
 	return s
-}
-
-// lower lowercases ASCII without importing strings (kept tiny + allocation-light).
-func lower(s string) string {
-	b := []byte(s)
-	for i, c := range b {
-		if c >= 'A' && c <= 'Z' {
-			b[i] = c + 32
-		}
-	}
-	return string(b)
 }

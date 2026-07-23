@@ -93,13 +93,12 @@ type Header struct {
 }
 
 // User is the user aggregate root. Strings that are encrypted at rest (Email)
-// or hashed (Password, Identifier) are stored opaquely here; the service layer
+// or hashed (Password) are stored opaquely here; the service layer
 // applies/reverses the crypto. The aggregate owns its Options. Fields are
 // exported for direct read access; all writes after construction go through the
 // mutators.
 type User struct {
 	ID            vo.Id
-	Identifier    string // md5(lower(email)+salt) — the auth lookup key
 	Email         string // AES-encrypted ciphertext (opaque here)
 	Name          string
 	Avatar        string
@@ -116,12 +115,11 @@ type User struct {
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
-// already computed identifier, encrypted email, avatar value, password hash and
-// salt. Options are seeded separately via SeedDefaultOptions.
-func NewUser(id vo.Id, identifier, encryptedEmail, name, avatar, passwordHash, salt string, now time.Time) *User {
+// already encrypted the email, picked the avatar, and hashed the password.
+// Options are seeded separately via SeedDefaultOptions.
+func NewUser(id vo.Id, encryptedEmail, name, avatar, passwordHash, salt string, now time.Time) *User {
 	return &User{
 		ID:            id,
-		Identifier:    identifier,
 		Email:         encryptedEmail,
 		Name:          name,
 		Avatar:        avatar,
@@ -216,10 +214,9 @@ func (u *User) UpdatePassword(passwordHash, algorithm string, now time.Time) {
 	u.UpdatedAt = now
 }
 
-// UpdateEmail replaces the encrypted email and identifier together, both
-// derived by the service.
-func (u *User) UpdateEmail(identifier, encryptedEmail string, now time.Time) {
-	u.Identifier = identifier
+// UpdateEmail replaces the encrypted email. The identifier column is derived
+// from the row id at persistence time, so it needs no update here.
+func (u *User) UpdateEmail(encryptedEmail string, now time.Time) {
 	u.Email = encryptedEmail
 	u.UpdatedAt = now
 }

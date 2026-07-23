@@ -58,7 +58,6 @@ type Querier interface {
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByEmail(ctx context.Context, lower string) (int64, error)
-	ExistsUserByIdentifier(ctx context.Context, identifier string) (int64, error)
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
 	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
@@ -199,7 +198,6 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
 	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even

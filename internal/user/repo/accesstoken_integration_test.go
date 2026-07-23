@@ -17,7 +17,7 @@ func seedTokenUser(t *testing.T, db *dbtest.DB, id string) {
 	t.Helper()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	u := newTestUser(
-		vo.MustParseId(id), identA, "enc-email", "Alice", "https://av/a",
+		vo.MustParseId(id), "enc-email", "Alice", "https://av/a",
 		"hash", "salt-a", true, fixedTime, fixedTime, nil,
 	)
 	if err := db.TX.WithTx(context.Background(), func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {

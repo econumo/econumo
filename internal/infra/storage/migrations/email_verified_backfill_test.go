@@ -41,7 +41,10 @@ func TestEmailVerifiedBackfillAndDefault(t *testing.T) {
 	if err := migrate.Run(ctx, db, before); err != nil {
 		t.Fatalf("pre-migrate: %v", err)
 	}
-	if _, err := db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES ('u1','ident1','e','n','a','p','s','2020-01-01 00:00:00','2020-01-01 00:00:00')`); err != nil {
+	// identifier is set to the row's own id (any unique non-null value satisfies
+	// the column's legacy NOT NULL UNIQUE constraint); email must also be unique
+	// since a later migration in this run adds a unique index on lower(email).
+	if _, err := db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES ('u1','u1','e1','n','a','p','s','2020-01-01 00:00:00','2020-01-01 00:00:00')`); err != nil {
 		t.Fatalf("seed legacy user: %v", err)
 	}
 
@@ -60,7 +63,7 @@ func TestEmailVerifiedBackfillAndDefault(t *testing.T) {
 	}
 
 	// A raw insert omitting email_verified must default to false (fail closed).
-	if _, err := db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES ('u2','ident2','e','n','a','p','s','2026-01-01 00:00:00','2026-01-01 00:00:00')`); err != nil {
+	if _, err := db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES ('u2','u2','e2','n','a','p','s','2026-01-01 00:00:00','2026-01-01 00:00:00')`); err != nil {
 		t.Fatalf("insert new user: %v", err)
 	}
 	var fresh bool

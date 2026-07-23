@@ -47,7 +47,6 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 // lead to be time-boxed or a mailbox to confirm.
 func (s *Service) createUser(ctx context.Context, name, email, password string, selfService bool) (*model.User, error) {
 	loweredEmail := strings.ToLower(strings.TrimSpace(email))
-	identifier := s.encode.Hash(loweredEmail)
 
 	exists, err := s.repo.ExistsByEmail(ctx, loweredEmail)
 	if err != nil {
@@ -72,7 +71,7 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 	}
 	avatar := s.avatars.Pick()
 
-	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatar, passwordHash, salt, now)
+	u := model.NewUser(s.repo.NextIdentity(), encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
 	if selfService && s.trial == "end-of-next-month" {
 		until := model.TrialEnd(now)

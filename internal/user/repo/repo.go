@@ -25,7 +25,6 @@ import (
 type (
 	userRow struct {
 		ID            string
-		Identifier    string
 		Email         string
 		Name          string
 		Avatar        string
@@ -49,8 +48,6 @@ type (
 
 type querier interface {
 	GetUserByID(ctx context.Context, db backend.DBTX, id string) (userRow, error)
-	GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error)
-	ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error)
 	GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error)
 	ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error)
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
@@ -122,21 +119,6 @@ func (r *Repo) GetHeaderByID(ctx context.Context, id vo.Id) (model.Header, error
 	}, nil
 }
 
-func (r *Repo) GetByIdentifier(ctx context.Context, identifier string) (*model.User, error) {
-	row, err := r.q.GetUserByIdentifier(ctx, r.db(ctx), identifier)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errs.NewNotFound("User not found")
-		}
-		return nil, err
-	}
-	return r.hydrate(ctx, row)
-}
-
-func (r *Repo) ExistsByIdentifier(ctx context.Context, identifier string) (bool, error) {
-	return r.q.ExistsUserByIdentifier(ctx, r.db(ctx), identifier)
-}
-
 func (r *Repo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	row, err := r.q.GetUserByEmail(ctx, r.db(ctx), email)
 	if err != nil {
@@ -182,7 +164,7 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	db := r.db(ctx)
 	if err := r.q.UpsertUser(ctx, db, userParams{
 		ID:            u.ID.String(),
-		Identifier:    u.Identifier,
+		Identifier:    u.ID.String(),
 		Email:         u.Email,
 		Name:          u.Name,
 		Avatar:        u.Avatar,
@@ -255,7 +237,7 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.User{ID: id, Identifier: row.Identifier, Email: row.Email, Name: row.Name,
+	return &model.User{ID: id, Email: row.Email, Name: row.Name,
 		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, Algorithm: row.Algorithm,
 		IsActive: row.IsActive, EmailVerified: row.EmailVerified, AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil

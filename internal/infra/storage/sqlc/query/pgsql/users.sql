@@ -1,15 +1,7 @@
 -- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
 FROM users
 WHERE id = $1;
-
--- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
-FROM users
-WHERE identifier = $1;
-
--- name: ExistsUserByIdentifier :one
-SELECT EXISTS(SELECT 1 FROM users WHERE identifier = $1);
 
 -- name: ListUserIDs :many
 SELECT id FROM users;
@@ -48,7 +40,7 @@ UPDATE users SET timezone = $1 WHERE id = $2;
 SELECT language FROM users WHERE id = $1;
 
 -- name: GetUserByEmail :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
 FROM users
 WHERE lower(email) = lower($1);
 

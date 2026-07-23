@@ -67,7 +67,7 @@ func TestSetAccessBumpsUpdatedAt(t *testing.T) {
 
 func TestNewUserDefaultsToFullAccess(t *testing.T) {
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
-	u := NewUser(vo.NewId(), "ident", "email", "Name", "face:sky", "hash", "salt", now)
+	u := NewUser(vo.NewId(), "email", "Name", "face:sky", "hash", "salt", now)
 	if u.AccessLevel != AccessLevelFull {
 		t.Fatalf("level: got %q want full", u.AccessLevel)
 	}
