@@ -502,7 +502,7 @@ The core: `RequestEmailChange`, `ConfirmEmailChange`, `ResendEmailChangeCode`, p
 
 **Interfaces:**
 - Consumes: Task 1 (`EmailChangeRequests`, model), Task 2 (mailer, rate scopes, errs code).
-- Produces: `Service.RequestEmailChange(ctx, userID vo.Id, req model.RequestEmailChangeRequest) (*model.RequestEmailChangeResult, error)`; `Service.ConfirmEmailChange(ctx, userID, currentTokenID vo.Id, req model.ConfirmEmailChangeRequest) (*model.CurrentUserResult, error)`; `Service.ResendEmailChangeCode(ctx, userID vo.Id) (*model.ResendEmailChangeCodeResult, time.Duration, error)`.
+- Produces: `Service.RequestEmailChange(ctx, userID vo.Id, req model.RequestEmailChangeRequest) (*model.RequestEmailChangeResult, error)`; `Service.ConfirmEmailChange(ctx, userID, currentTokenID vo.Id, req model.ConfirmEmailChangeRequest) (model.CurrentUserResult, error)`; `Service.ResendEmailChangeCode(ctx, userID vo.Id) (*model.ResendEmailChangeCodeResult, time.Duration, error)`.
 
 - [ ] **Step 1: DTOs** — in `internal/model/user_dto.go` add:
 
@@ -633,42 +633,43 @@ func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req mode
 // verified, deletes the pending row, and revokes other sessions. A
 // missing/wrong/expired code is a generic invalid-code error (anti-enumeration,
 // though this is authenticated); failed attempts count toward the cap.
-func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID vo.Id, req model.ConfirmEmailChangeRequest) (*model.CurrentUserResult, error) {
+func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID vo.Id, req model.ConfirmEmailChangeRequest) (model.CurrentUserResult, error) {
 	key := userID.String()
 	if err := s.allowAttempt(RateScopeConfirmEmailChange, key); err != nil {
 		return nil, err
 	}
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
 
+	var empty model.CurrentUserResult
 	cr, err := s.emailChangeRequests.GetByUser(ctx, userID)
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeConfirmEmailChange, key)
-			return nil, invalid
+			return empty, invalid
 		}
-		return nil, err
+		return empty, err
 	}
 	if HashResetCode(strings.TrimSpace(req.Code)) != cr.Code {
 		s.failAttempt(RateScopeConfirmEmailChange, key)
-		return nil, invalid
+		return empty, invalid
 	}
 	now := s.clock.Now()
 	if cr.IsExpired(now) {
 		s.failAttempt(RateScopeConfirmEmailChange, key)
-		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
+		return empty, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 	}
 	// Commit-time race guard: the target could have been taken since the request.
 	exists, eerr := s.repo.ExistsByEmail(ctx, cr.NewEmail)
 	if eerr != nil {
-		return nil, eerr
+		return empty, eerr
 	}
 	if exists {
-		return nil, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
+		return empty, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 	}
 
 	encrypted, eerr := s.encode.Encode(cr.NewEmail)
 	if eerr != nil {
-		return nil, eerr
+		return empty, eerr
 	}
 	var updated *model.User
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -687,11 +688,11 @@ func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID
 		updated = u
 		return nil
 	}); err != nil {
-		return nil, err
+		return empty, err
 	}
 	s.clearAttempt(RateScopeConfirmEmailChange, key)
 	if err := s.revokeSessions(ctx, userID, currentTokenID, now); err != nil {
-		return nil, err
+		return empty, err
 	}
 	return s.toCurrentUser(ctx, updated)
 }
@@ -853,7 +854,7 @@ func (h *Handlers) RequestEmailChange(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) ConfirmEmailChange(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.ConfirmEmailChangeRequest) (*model.CurrentUserResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.ConfirmEmailChangeRequest) (model.CurrentUserResult, error) {
 		tokenID, _ := middleware.TokenIDFromCtx(ctx)
 		return h.svc.ConfirmEmailChange(ctx, userID, tokenID, req)
 	})
