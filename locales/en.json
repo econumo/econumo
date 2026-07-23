@@ -469,6 +469,40 @@
         }
       }
     },
+    "change_email": {
+      "header": "Change email",
+      "success": {
+        "text": "Email changed"
+      },
+      "loading": {
+        "label": "Sending confirmation code…"
+      },
+      "form": {
+        "new_email": {
+          "label": "New email",
+          "placeholder": "Enter your new email"
+        },
+        "password": {
+          "label": "Current password",
+          "placeholder": "Enter password",
+          "validation": {
+            "required_field": "Enter your current password"
+          }
+        },
+        "submit": {
+          "label": "Send confirmation code"
+        }
+      },
+      "confirm": {
+        "information": "We've sent a confirmation code to {email}. Enter it below to confirm your new email address.",
+        "resent": "A new code has been sent.",
+        "action": {
+          "verify": "Confirm new email",
+          "resend": "Resend code",
+          "resend_in": "Resend code in {seconds}s"
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Name",
@@ -536,6 +570,9 @@
           "change_password": {
             "menu_item": "Change password",
             "header": "Change password"
+          },
+          "change_email": {
+            "menu_item": "Change email"
           },
           "sessions": {
             "menu_item": "Sessions",

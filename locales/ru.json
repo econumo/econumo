@@ -469,6 +469,40 @@
         }
       }
     },
+    "change_email": {
+      "header": "Изменить email",
+      "success": {
+        "text": "Email изменён"
+      },
+      "loading": {
+        "label": "Отправка кода подтверждения…"
+      },
+      "form": {
+        "new_email": {
+          "label": "Новый email",
+          "placeholder": "Введите новый email"
+        },
+        "password": {
+          "label": "Текущий пароль",
+          "placeholder": "Введите пароль",
+          "validation": {
+            "required_field": "Введите текущий пароль"
+          }
+        },
+        "submit": {
+          "label": "Отправить код подтверждения"
+        }
+      },
+      "confirm": {
+        "information": "Мы отправили код подтверждения на {email}. Введите его ниже, чтобы подтвердить новый email.",
+        "resent": "Новый код отправлен.",
+        "action": {
+          "verify": "Подтвердить новый email",
+          "resend": "Отправить код повторно",
+          "resend_in": "Повторная отправка через {seconds} с"
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Имя",
@@ -536,6 +570,9 @@
           "change_password": {
             "menu_item": "Изменить пароль",
             "header": "Изменить пароль"
+          },
+          "change_email": {
+            "menu_item": "Изменить email"
           },
           "sessions": {
             "menu_item": "Сессии",

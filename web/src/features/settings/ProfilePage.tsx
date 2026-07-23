@@ -192,6 +192,13 @@ export function ProfilePage() {
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
         <Link
+          to={RouterPage.SETTINGS_CHANGE_EMAIL}
+          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        >
+          {t('user.page.settings.profile.change_email.menu_item')}
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
+        <Link
           to={RouterPage.SETTINGS_SESSIONS}
           className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
         >
