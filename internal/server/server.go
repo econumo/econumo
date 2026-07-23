@@ -9,6 +9,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"net/http"
 
 	appaccount "github.com/econumo/econumo/internal/account"
@@ -91,15 +92,16 @@ type Seams struct {
 // at either engine; the engine is read from cfg.DatabaseDriver, which selects
 // the per-engine sqlc query adapters in every repository constructor.
 func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
-	api, _ := Build(cfg, db, seams)
+	api, _, _ := Build(cfg, db, seams)
 	return api
 }
 
 // Build wires the service graph once and returns both edges: the public API
 // handler and the private admin handler. They share one set of services rather
 // than each opening its own, and serve decides whether to listen on the admin
-// one (see cfg.AdminPort/AdminToken).
-func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handler) {
+// one (see cfg.AdminPort/AdminToken). The third return is the in-process
+// currency-rate updater; serve starts its poller, BuildAPI and tests discard it.
+func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handler, *appcurrency.RateUpdater) {
 	clk := seams.Clock
 	if clk == nil {
 		clk = clock.New()
@@ -187,6 +189,21 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
 	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc)
+
+	// In-process exchange-rate updater. Enabled only when a cadence is set AND an
+	// OER token is present; serve starts its poller (Build's third return),
+	// BuildAPI and tests discard it (a disabled updater never polls).
+	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
+	currencyWriteSvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
+	rateLoader := currencyrepo.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
+	rateUpdaterEnabled := cfg.CurrencyUpdateIntervalDays > 0 && cfg.OpenExchangeRatesToken != ""
+	if cfg.CurrencyUpdateIntervalDays > 0 && cfg.OpenExchangeRatesToken == "" {
+		slog.Warn("ECONUMO_CURRENCY_UPDATE_INTERVAL is set but OPEN_EXCHANGE_RATES_TOKEN is empty; in-process rate updates are disabled")
+	}
+	rateUpdater := appcurrency.NewRateUpdater(
+		rateUpdaterEnabled, cfg.CurrencyUpdateIntervalDays, cfg.CurrencyBase,
+		rateLoader, currencyWriteSvc, clk,
+	)
 
 	updates := seams.Updates
 	if updates == nil {
@@ -311,7 +328,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		MCP:                mcpHandler,
 		SPA:                spaFS,
 		SPAVersion:         spaVersion,
-	}), adminHandler
+	}), adminHandler, rateUpdater
 }
 
 type pinger struct{ db *sql.DB }

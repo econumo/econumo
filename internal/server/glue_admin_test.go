@@ -34,7 +34,7 @@ func newAdminHandler(t *testing.T) http.Handler {
 	f.Connect(adminUserA, adminUserB)
 
 	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AdminToken: adminToken}
-	_, adminHandler := server.Build(cfg, db.Raw, server.Seams{})
+	_, adminHandler, _ := server.Build(cfg, db.Raw, server.Seams{})
 	return adminHandler
 }
 
