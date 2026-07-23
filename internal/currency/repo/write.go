@@ -30,6 +30,7 @@ type writeQuerier interface {
 	GetCurrencyByCode(ctx context.Context, db backend.DBTX, code string) error
 	InsertCurrency(ctx context.Context, db backend.DBTX, p insertCurrencyP) error
 	UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error
+	GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error)
 }
 
 // WriteRepo implements app/currency.WriteModel over the sqlc write queries.
@@ -105,6 +106,19 @@ func (r *WriteRepo) UpsertRate(ctx context.Context, rr model.RateRow) error {
 	})
 }
 
+// LatestRateDate returns the newest stored rate date; ok=false when no rates
+// exist yet (the in-process updater treats that as "must fetch").
+func (r *WriteRepo) LatestRateDate(ctx context.Context) (time.Time, bool, error) {
+	t, err := r.q.GetLatestRateDate(ctx, r.db(ctx))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return time.Time{}, false, nil
+		}
+		return time.Time{}, false, err
+	}
+	return t, true, nil
+}
+
 // sqliteWriteQuerier is the native passthrough (canonical types ARE sqlite's).
 type sqliteWriteQuerier struct{}
 
@@ -125,6 +139,10 @@ func (sqliteWriteQuerier) InsertCurrency(ctx context.Context, db backend.DBTX, p
 
 func (sqliteWriteQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error {
 	return sqlitegen.New(db).UpsertCurrencyRate(ctx, p)
+}
+
+func (sqliteWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
+	return sqlitegen.New(db).GetLatestRateDate(ctx)
 }
 
 // pgsqlWriteQuerier is the thin whole-struct conversion shim.
@@ -155,4 +173,8 @@ func (pgsqlWriteQuerier) InsertCurrency(ctx context.Context, db backend.DBTX, p 
 
 func (pgsqlWriteQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error {
 	return pgsqlgen.New(db).UpsertCurrencyRate(ctx, pgsqlgen.UpsertCurrencyRateParams(p))
+}
+
+func (pgsqlWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
+	return pgsqlgen.New(db).GetLatestRateDate(ctx)
 }

@@ -514,3 +514,49 @@ func TestLoad_EmailVerification(t *testing.T) {
 		t.Error("malformed ECONUMO_EMAIL_VERIFICATION must fail at boot")
 	}
 }
+
+func TestLoad_CurrencyUpdateInterval(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+
+	// Default: unset -> 0 (disabled).
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.CurrencyUpdateIntervalDays != 0 {
+		t.Errorf("default = %d, want 0", c.CurrencyUpdateIntervalDays)
+	}
+
+	// Positive value is parsed.
+	t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", "3")
+	c, err = Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.CurrencyUpdateIntervalDays != 3 {
+		t.Errorf("interval = %d, want 3", c.CurrencyUpdateIntervalDays)
+	}
+
+	// 31 is the maximum accepted value (one month).
+	t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", "31")
+	c, err = Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.CurrencyUpdateIntervalDays != 31 {
+		t.Errorf("interval = %d, want 31", c.CurrencyUpdateIntervalDays)
+	}
+}
+
+func TestLoad_CurrencyUpdateIntervalBadValueFailsBoot(t *testing.T) {
+	// -1/abc/1.5 are malformed; 32 is just over the 31-day cap; 99999999 is absurd.
+	for _, bad := range []string{"-1", "abc", "1.5", "32", "99999999"} {
+		t.Run(bad, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", bad)
+			if _, err := Load(); err == nil {
+				t.Fatalf("Load: want error for %q, got nil", bad)
+			}
+		})
+	}
+}

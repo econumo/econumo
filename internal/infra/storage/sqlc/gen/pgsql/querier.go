@@ -92,6 +92,10 @@ type Querier interface {
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	GetLatestCurrencyRateListView(ctx context.Context) ([]GetLatestCurrencyRateListViewRow, error)
+	// Newest stored rate date, for the in-process rate updater's freshness check.
+	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
+	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
+	GetLatestRateDate(ctx context.Context) (time.Time, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the

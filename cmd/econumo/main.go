@@ -219,8 +219,9 @@ func run(serveArgs []string) error {
 	slog.Info("migrations applied", "backend", be.Name())
 
 	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
-	handler, adminHandler := server.Build(cfg, db, server.Seams{Updates: updates})
+	handler, adminHandler, rateUpdater := server.Build(cfg, db, server.Seams{Updates: updates})
 	updates.StartPolling(ctx)
+	rateUpdater.StartPolling(ctx)
 
 	// newServer applies the shared timeouts: a slow or stalled request body must
 	// not hold a connection/goroutine indefinitely, and WriteTimeout also bounds
