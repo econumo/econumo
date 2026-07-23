@@ -530,7 +530,10 @@ the PostgreSQL migrations on the target first (so a bare `createdb` works in one
 step), then copies all app data in one transaction — `access_tokens` and
 `currencies` included, the dead `messenger_messages` and the migration
 bookkeeping tables excluded. It aborts if the target already holds data unless
-`--force` is given, which truncates and replaces.
+`--force` is given, which truncates and replaces. The source SQLite must
+already be on the current schema — boot the current econumo binary against it
+once before importing — and the command refuses with a clear error on a
+schema-version mismatch between source and target.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

@@ -50,7 +50,9 @@ func TestImport_CopiesAllTablesWithTypes(t *testing.T) {
 		t.Fatal("expected rows copied, got 0")
 	}
 
-	// Row counts: the source's currency replaced the seeded USD row.
+	// Row counts: TRUNCATE ... CASCADE removed the target's seeded USD row, then
+	// the copy inserted the source's rows (its own migration-seeded USD plus the
+	// inserted EUR).
 	var accounts, currencies, txns int
 	dst.Raw.QueryRowContext(ctx, `SELECT count(*) FROM accounts`).Scan(&accounts)
 	dst.Raw.QueryRowContext(ctx, `SELECT count(*) FROM currencies`).Scan(&currencies)
@@ -115,5 +117,21 @@ func TestImport_AbortsWhenTargetHasUsersWithoutForce(t *testing.T) {
 	dst.Raw.QueryRowContext(ctx, `SELECT count(*) FROM users`).Scan(&users)
 	if users != 1 {
 		t.Fatalf("expected 1 user after forced replace, got %d", users)
+	}
+}
+
+func TestImport_AbortsOnSchemaVersionMismatch(t *testing.T) {
+	ctx := context.Background()
+	src := dbtest.NewSQLite(t)
+	dst := dbtest.NewPostgres(t)
+	seedSource(t, src)
+
+	// Simulate a source at an older schema by dropping one recorded migration
+	// version from its bookkeeping table. force=true proves the schema check
+	// runs regardless of the overwrite guard.
+	src.Exec(t, `DELETE FROM schema_migrations WHERE version = (SELECT max(version) FROM schema_migrations)`)
+
+	if _, err := sqliteimport.Import(ctx, src.Raw, dst.Raw, true); !errors.Is(err, sqliteimport.ErrSchemaMismatch) {
+		t.Fatalf("expected ErrSchemaMismatch, got %v", err)
 	}
 }

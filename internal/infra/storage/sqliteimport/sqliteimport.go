@@ -17,6 +17,12 @@ import (
 // data and force is false; nothing is copied in that case.
 var ErrTargetNotEmpty = errors.New("target database already contains data")
 
+// ErrSchemaMismatch is returned when the source and target databases are at
+// different migration versions. The copier selects the target's columns out of
+// the source, so a version skew would silently drop columns/tables the two do
+// not share; refusing is safer than a partial import that reports success.
+var ErrSchemaMismatch = errors.New("source and target schema versions differ")
+
 type TableCount struct {
 	Name string
 	Rows int64
@@ -40,7 +46,6 @@ func topoSort(nodes []string, deps map[string][]string) ([]string, error) {
 	sort.Strings(sorted)
 
 	const (
-		white = 0
 		gray  = 1
 		black = 2
 	)
@@ -78,6 +83,35 @@ func topoSort(nodes []string, deps map[string][]string) ([]string, error) {
 	return order, nil
 }
 
+func schemaVersions(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, `SELECT version FROM schema_migrations`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	set := map[string]bool{}
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		set[v] = true
+	}
+	return set, rows.Err()
+}
+
+func sameVersionSet(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if !b[k] {
+			return false
+		}
+	}
+	return true
+}
+
 var excludedTables = map[string]bool{
 	"messenger_messages": true,
 	"schema_migrations":  true,
@@ -90,6 +124,18 @@ type column struct {
 }
 
 func Import(ctx context.Context, src, dst *sql.DB, force bool) (Report, error) {
+	srcVers, err := schemaVersions(ctx, src)
+	if err != nil {
+		return Report{}, fmt.Errorf("sqliteimport: read source schema_migrations (was the SQLite database migrated by econumo?): %w", err)
+	}
+	dstVers, err := schemaVersions(ctx, dst)
+	if err != nil {
+		return Report{}, fmt.Errorf("sqliteimport: read target schema_migrations: %w", err)
+	}
+	if !sameVersionSet(srcVers, dstVers) {
+		return Report{}, fmt.Errorf("%w (source has %d applied migration(s), target has %d); boot the current econumo binary against the source SQLite once so it is on the latest schema, then retry", ErrSchemaMismatch, len(srcVers), len(dstVers))
+	}
+
 	tables, err := listTables(ctx, dst)
 	if err != nil {
 		return Report{}, err
@@ -98,6 +144,8 @@ func Import(ctx context.Context, src, dst *sql.DB, force bool) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
+	// The schema has no self-referential foreign keys, so rows within a table
+	// carry no intra-table ordering constraint; only cross-table order matters.
 	ordered, err := topoSort(tables, deps)
 	if err != nil {
 		return Report{}, err
