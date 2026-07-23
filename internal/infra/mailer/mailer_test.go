@@ -104,21 +104,21 @@ func TestWithAppLink(t *testing.T) {
 	c := &captureMailer{}
 	m := WithAppLink(c, "https://money.example.com")
 
-	// A body with a trailing newline (reset/verify shape) gets exactly one
-	// blank line before the bare URL.
+	// A body with a trailing newline (reset/verify shape) puts the bare URL on
+	// the line directly below the body, no blank line between.
 	if err := m.Send(context.Background(), Message{Text: "line one\nfooter\n"}); err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	if want := "line one\nfooter\n\nhttps://money.example.com"; c.msg.Text != want {
+	if want := "line one\nfooter\nhttps://money.example.com"; c.msg.Text != want {
 		t.Fatalf("trailing-newline body:\n%q\nwant:\n%q", c.msg.Text, want)
 	}
 
 	// A body with no trailing newline (change-email shape) gets the same
-	// single blank-line separator.
+	// single-newline separator.
 	if err := m.Send(context.Background(), Message{Text: "no footer here"}); err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	if want := "no footer here\n\nhttps://money.example.com"; c.msg.Text != want {
+	if want := "no footer here\nhttps://money.example.com"; c.msg.Text != want {
 		t.Fatalf("no-newline body:\n%q\nwant:\n%q", c.msg.Text, want)
 	}
 }
