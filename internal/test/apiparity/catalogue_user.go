@@ -68,6 +68,28 @@ func init() {
 				Body: map[string]any{"username": OwnerEmail}},
 		}
 	}})
+
+	register(Scenario{Name: "user_change_email", Calls: func() []Call {
+		return []Call{
+			// Wrong password -> the generic incorrect-password validation error.
+			{Label: "err:request-email-change-wrong-password", Method: "POST", Path: "/api/v1/user/request-email-change", Auth: "owner",
+				Body: map[string]any{"newEmail": "owner-new@example.test", "password": "wrong-password"}},
+			// newEmail equal to the current (decrypted) email -> the unchanged-email error.
+			{Label: "err:request-email-change-same-email", Method: "POST", Path: "/api/v1/user/request-email-change", Auth: "owner",
+				Body: map[string]any{"newEmail": OwnerEmail, "password": SeedPassword}},
+			{Label: "request-email-change", Method: "POST", Path: "/api/v1/user/request-email-change", Auth: "owner",
+				Body: map[string]any{"newEmail": "owner-new@example.test", "password": SeedPassword}},
+			// The real code is only known server-side (emailed, hashed at rest), so a
+			// black-box replay can only pin the generic invalid-code path — mirrors
+			// err:confirm-email-bad-code above.
+			{Label: "err:confirm-email-change-bad-code", Method: "POST", Path: "/api/v1/user/confirm-email-change", Auth: "owner",
+				Body: map[string]any{"code": "000000"}},
+			// Immediately after request-email-change, within the resend cooldown: 200
+			// with the pending change untouched (Retry-After carries the wait; the
+			// body has no side channel for it, so only status/body are pinned here).
+			{Label: "resend-email-change-code", Method: "POST", Path: "/api/v1/user/resend-email-change-code", Auth: "owner"},
+		}
+	}})
 }
 
 func init() {
