@@ -390,6 +390,47 @@ func TestLoad_BillingURLAccepted(t *testing.T) {
 	}
 }
 
+func TestLoad_AppURL(t *testing.T) {
+	// Both http and https are accepted (no signed token in an app link, so no
+	// https-for-remote-hosts rule), and the value is stored verbatim.
+	for _, v := range []string{"https://money.example.test", "http://192.168.1.10:8181"} {
+		t.Run(v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", v)
+			c, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c.AppURL != v {
+				t.Fatalf("AppURL = %q, want %q", c.AppURL, v)
+			}
+		})
+	}
+
+	// Unset leaves it empty (no link appended to emails).
+	t.Run("unset", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.AppURL != "" {
+			t.Fatalf("AppURL = %q, want empty", c.AppURL)
+		}
+	})
+
+	// A relative or scheme-less value fails at boot.
+	for _, v := range []string{"/app", "money.example.test", "ftp://x.test"} {
+		t.Run("reject "+v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", v)
+			if _, err := Load(); err == nil {
+				t.Fatalf("ECONUMO_URL=%q must fail at boot", v)
+			}
+		})
+	}
+}
+
 // The billing URL is followed by users' browsers carrying the signed handoff
 // token in the query string; a remote http portal would expose tokens in
 // transit. Loopback stays allowed so portal development against a real

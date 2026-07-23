@@ -33,6 +33,7 @@ type Config struct {
 	AdminPort  string // ECONUMO_ADMIN_PORT
 	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
 	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
+	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -175,6 +176,16 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL requires ECONUMO_ADMIN_TOKEN (the handoff signing key)")
 		}
 		c.BillingURL = v
+	}
+
+	if v := os.Getenv("ECONUMO_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_URL: not an absolute http(s) URL: %q", v)
+		}
+		// Unlike ECONUMO_BILLING_URL this carries no signed token, so plain http
+		// stays allowed for LAN self-hosters.
+		c.AppURL = v
 	}
 
 	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")

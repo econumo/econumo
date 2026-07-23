@@ -129,6 +129,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	if mailTransport == nil {
 		mailTransport = mailer.New(cfg.MailProvider, cfg.MailAPIKey)
 	}
+	if cfg.AppURL != "" {
+		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
+	}
 	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
