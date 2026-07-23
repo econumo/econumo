@@ -218,6 +218,6 @@ func init() {
 		{Label: "get-budget-review", RPC: `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"budget-review","arguments":{}}}`},
 		{Label: "get-budget-setup", RPC: `{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"budget-setup","arguments":{"name":"Household"}}}`},
 		{Label: "get-budget-update", RPC: `{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"budget-update","arguments":{}}}`},
-		{Label: "get-budget-quick-start", RPC: `{"jsonrpc":"2.0","id":5,"method":"prompts/get","params":{"name":"budget-quick-start","arguments":{}}}`},
+		{Label: "get-setup-econumo", RPC: `{"jsonrpc":"2.0","id":5,"method":"prompts/get","params":{"name":"setup-econumo","arguments":{}}}`},
 	}})
 }

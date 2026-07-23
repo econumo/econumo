@@ -218,18 +218,11 @@ Follow these steps:
 	})
 
 	s.AddPrompt(&sdk.Prompt{
-		Name:        "budget-quick-start",
+		Name:        "setup-econumo",
 		Description: "Onboard a new/empty user: seed starter categories, ensure an account, and build a first budget.",
-		Arguments: []*sdk.PromptArgument{{
-			Name: "name", Description: "budget name; defaults to a name you propose", Required: false,
-		}},
 	}, func(ctx context.Context, req *sdk.GetPromptRequest) (*sdk.GetPromptResult, error) {
-		reqctx.AddLogAttr(ctx, "prompt", "budget-quick-start")
-		name := req.Params.Arguments["name"]
-		if name == "" {
-			name = "(none given — propose one)"
-		}
-		text := fmt.Sprintf(`Give me a quick start in my Econumo finance tracker. Requested budget name: %s
+		reqctx.AddLogAttr(ctx, "prompt", "setup-econumo")
+		text := fmt.Sprintf(`Set up my Econumo finance tracker from scratch.
 
 This is for a new or nearly-empty account: seed a starter set of categories, make
 sure I have an account, then build a first budget.
@@ -239,7 +232,7 @@ sure I have an account, then build a first budget.
 1. Check what I have. Call list_accounts, list_categories, list_tags,
    list_budgets and list_currencies. If I already have a budget or lots of
    categories/transactions, say so and point me at the budget-setup prompt instead
-   — quick-start is for empty/near-empty accounts.
+   — this prompt is for empty/near-empty accounts.
 2. Propose a starter set of categories, then WAIT for my confirmation before
    creating anything: a sensible default of expense categories (housing,
    groceries, transport, utilities, dining, entertainment) plus a couple of income
@@ -250,17 +243,18 @@ sure I have an account, then build a first budget.
    create it with create_account. If I already have an account, use it.
    create_account needs a folder_id unless I have no folders at all — take one
    from an existing account's folderId in list_accounts.
-4. Build the budget like budget-setup does: create_budget; "Base expenses" and
-   "Additional expenses" folders (default, not forced); envelopes ONLY to group
-   two or more categories (never a single-category envelope); file tags and
-   standalone categories into folders with move_element so the default area ends
-   up empty. I have no spending history yet, so set limits from rough figures I
-   give you, or leave limits unset and tell me — do not invent averages.
+4. Build the budget like budget-setup does: create_budget (propose a budget name
+   and confirm it with me); "Base expenses" and "Additional expenses" folders
+   (default, not forced); envelopes ONLY to group two or more categories (never a
+   single-category envelope); file tags and standalone categories into folders
+   with move_element so the default area ends up empty. I have no spending history
+   yet, so set limits from rough figures I give you, or leave limits unset and
+   tell me — do not invent averages.
 5. Call get_budget, confirm the result, and give me one or two next steps (log a
    first expense, adjust a limit).
 
 Ask before creating anything that changes structure. Reply in my language.`,
-			name, budgetFieldGlossary())
+			budgetFieldGlossary())
 		return &sdk.GetPromptResult{Messages: []*sdk.PromptMessage{
 			{Role: "user", Content: &sdk.TextContent{Text: text}},
 		}}, nil
