@@ -35,15 +35,22 @@ And `make publish-dev` — which today only builds and pushes the multi-arch
 
 The Makefile and the workflow share one interface:
 
-- `R2_ENDPOINT` — required for any upload; `https://<account_id>.r2.cloudflarestorage.com`.
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` — R2 API-token credentials.
+Credential/endpoint names are `ECONUMO_`-prefixed (matching the repo's env
+convention) so several projects' R2 endpoints/keys can coexist in one shell
+without colliding:
+
+- `ECONUMO_R2_ENDPOINT` — required for any upload; `https://<account_id>.r2.cloudflarestorage.com`.
+- `ECONUMO_R2_ACCESS_KEY_ID` / `ECONUMO_R2_SECRET_ACCESS_KEY` — R2 API-token
+  credentials. **Optional**: when both are set they are mapped to `AWS_*` for
+  the `aws` subprocess only; when unset, aws falls back to its own resolution
+  (e.g. the `~/.aws` default profile).
 - `R2_BUCKET ?= econumo` — hardcoded default, overridable.
 - `R2_PROJECT ?= econumo` — project namespace under the bucket, overridable.
 - `CDN_SRC ?= release-out` — directory holding the built binaries + `SHA256SUMS`.
 
-New GitHub Actions secrets: `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`,
-`R2_SECRET_ACCESS_KEY` (the latter two mapped to the `AWS_*` env names inside
-the upload step).
+GitHub Actions secrets: `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`
+(per-repo, so no cross-project collision there), mapped in the upload step's
+`env:` to the `ECONUMO_R2_*` names the Makefile reads.
 
 ## Makefile changes
 
@@ -52,7 +59,7 @@ the upload step).
 Parameterized by `CHANNEL` (required) and `SRC` (defaults `release-out`).
 Behavior:
 
-1. Fail with a clear message if `CHANNEL` is empty or `R2_ENDPOINT` is empty.
+1. Fail with a clear message if `CHANNEL` is empty or `ECONUMO_R2_ENDPOINT` is empty.
 2. Upload `$(CDN_SRC)/econumo-linux-amd64`, `$(CDN_SRC)/econumo-linux-arm64`, and
    `$(CDN_SRC)/SHA256SUMS` to `s3://$(R2_BUCKET)/$(R2_PROJECT)/$(CHANNEL)/` using
    `aws s3 cp --endpoint-url $(R2_ENDPOINT) --content-type application/octet-stream`.
@@ -74,9 +81,9 @@ duplication for a local dev-publish.)
 ## Release workflow changes (`.github/workflows/publish-release.yml`)
 
 In the existing `build-binaries` job, after the `sha256sum` step, add one
-upload step with the three R2 secrets in env
-(`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`R2_ENDPOINT`) that reuses the
-Makefile target (DRY — same upload logic as local):
+upload step with the three R2 secrets in env (mapped to
+`ECONUMO_R2_ENDPOINT`/`ECONUMO_R2_ACCESS_KEY_ID`/`ECONUMO_R2_SECRET_ACCESS_KEY`)
+that reuses the Makefile target (DRY — same upload logic as local):
 
 ```sh
 make cdn-upload CHANNEL="$VERSION"                                  # always

@@ -81,9 +81,13 @@ upload the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}` +
 fetched via the S3 API / signed URLs. In the release workflow the channels gate
 exactly like the image tags: the version channel always, `latest/` and `dev/`
 only when their checkbox is set. Endpoint + credentials come from the
-environment, never committed: `R2_ENDPOINT` (`https://<acct>.r2.cloudflarestorage.com`),
-`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` — in CI the GitHub secrets
-`R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`. Local use needs the
+environment, never committed, and are `ECONUMO_`-prefixed so several projects'
+R2 targets can coexist in one shell: `ECONUMO_R2_ENDPOINT`
+(`https://<acct>.r2.cloudflarestorage.com`, required) plus optional
+`ECONUMO_R2_ACCESS_KEY_ID` / `ECONUMO_R2_SECRET_ACCESS_KEY` (mapped to `AWS_*`
+for the aws subprocess only; unset falls back to the `~/.aws` profile). In CI
+the GitHub secrets `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are
+mapped to those `ECONUMO_R2_*` names in the step's `env:`. Local use needs the
 aws CLI installed.
 
 ### Branch naming

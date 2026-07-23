@@ -21,7 +21,7 @@ help:
 	@echo ""
 	@echo "Releases:"
 	@echo "  make release-binaries - Cross-compile the downloadable release binaries (SPA embedded)"
-	@echo "  make cdn-upload CHANNEL=dev - Mirror release-out/ binaries to the private R2 bucket (needs R2_ENDPOINT + AWS creds)"
+	@echo "  make cdn-upload CHANNEL=dev - Mirror release-out/ binaries to the private R2 bucket (needs ECONUMO_R2_ENDPOINT [+ ECONUMO_R2_* creds])"
 	@echo ""
 	@echo "Suite & stack:"
 	@echo "  make test         - ALL tests: Go smoke + sqlite-vs-pgsql regression + frontend"
@@ -270,11 +270,15 @@ publish-dev: swagger publish-buildx-ensure release-binaries
 # objects are retrieved via the S3 API / signed URLs by credential holders.
 # The bucket + project namespace are hardcoded defaults (the bucket hosts
 # several projects); the endpoint and credentials come from the environment and
-# are never committed:
-#   R2_ENDPOINT            https://<account_id>.r2.cloudflarestorage.com (required)
-#   AWS_ACCESS_KEY_ID      R2 API-token access key id
-#   AWS_SECRET_ACCESS_KEY  R2 API-token secret
-# CHANNEL is required (dev | latest | vX.Y.Z). Usage:
+# are never committed. The names are ECONUMO_-prefixed so several projects'
+# R2 endpoints/keys can coexist in one shell without colliding:
+#   ECONUMO_R2_ENDPOINT          https://<account_id>.r2.cloudflarestorage.com (required)
+#   ECONUMO_R2_ACCESS_KEY_ID     R2 API-token access key id (optional)
+#   ECONUMO_R2_SECRET_ACCESS_KEY R2 API-token secret        (optional)
+# The two credential vars are optional: when both are set they are mapped to
+# AWS_* for the aws subprocess only; when unset, aws falls back to its own
+# resolution (e.g. the ~/.aws default profile). CHANNEL is required
+# (dev | latest | vX.Y.Z). Usage:
 #   make cdn-upload CHANNEL=dev
 R2_BUCKET  ?= econumo
 R2_PROJECT ?= econumo
@@ -285,8 +289,11 @@ export AWS_REQUEST_CHECKSUM_CALCULATION = when_required
 
 cdn-upload:
 	@test -n "$(CHANNEL)" || { echo "cdn-upload: set CHANNEL (dev|latest|vX.Y.Z)"; exit 1; }
-	@test -n "$$R2_ENDPOINT" || { echo "cdn-upload: R2_ENDPOINT is required (https://<account_id>.r2.cloudflarestorage.com)"; exit 1; }
-	@case "$(CHANNEL)" in \
+	@test -n "$$ECONUMO_R2_ENDPOINT" || { echo "cdn-upload: ECONUMO_R2_ENDPOINT is required (https://<account_id>.r2.cloudflarestorage.com)"; exit 1; }
+	@if [ -n "$$ECONUMO_R2_ACCESS_KEY_ID" ] && [ -n "$$ECONUMO_R2_SECRET_ACCESS_KEY" ]; then \
+		export AWS_ACCESS_KEY_ID="$$ECONUMO_R2_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$$ECONUMO_R2_SECRET_ACCESS_KEY"; \
+	fi; \
+	case "$(CHANNEL)" in \
 		dev|latest) cache="no-cache" ;; \
 		*) cache="public, max-age=31536000, immutable" ;; \
 	esac; \
@@ -294,7 +301,7 @@ cdn-upload:
 	for f in econumo-linux-amd64 econumo-linux-arm64 SHA256SUMS; do \
 		echo "Uploading $$f -> $$dest/$$f"; \
 		aws s3 cp "$(CDN_SRC)/$$f" "$$dest/$$f" \
-			--endpoint-url "$$R2_ENDPOINT" \
+			--endpoint-url "$$ECONUMO_R2_ENDPOINT" \
 			--content-type application/octet-stream \
 			--cache-control "$$cache" || exit 1; \
 	done; \
