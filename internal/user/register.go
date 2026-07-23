@@ -56,7 +56,7 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 		return nil, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 	}
 
-	encryptedEmail, eerr := s.encode.Encode(email)
+	encryptedEmail, eerr := s.encode.Encode(strings.TrimSpace(email))
 	if eerr != nil {
 		return nil, eerr
 	}

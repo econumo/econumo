@@ -199,6 +199,39 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 	}
 }
 
+// TestRegisterUser_TrimsEmailWhitespace_LoginWorks locks storage and lookup
+// normalization together: the user lookup key is lower(email) on the stored
+// column, so a padded email must be trimmed before being persisted, or a
+// later login/reset/verification with the clean email can never find the row
+// (lower() does not strip whitespace).
+func TestRegisterUser_TrimsEmailWhitespace_LoginWorks(t *testing.T) {
+	h := newHarness(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
+		"email":    "  regtrim@example.test  ",
+		"password": "hunter2pw",
+		"name":     "Trim",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+
+	res := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+	if res.User.Email != "regtrim@example.test" {
+		t.Fatalf("user.email = %q, want trimmed %q", res.User.Email, "regtrim@example.test")
+	}
+
+	st2, env2 := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+		"username": "regtrim@example.test",
+		"password": "hunter2pw",
+	})
+	if st2 != http.StatusOK {
+		t.Fatalf("login with clean email after padded registration: status = %d; body: %s", st2, env2.raw)
+	}
+}
+
 // TestRegisterUser_DoesNotAutoConnect locks the behaviour after removing
 // ECONUMO_CONNECT_USERS: a newly registered user is never auto-connected to any
 // existing user. The harness already seeds one user; after registering another,
