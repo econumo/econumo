@@ -415,7 +415,7 @@ type RequestEmailChangeRequest struct {
 
 // Validate enforces newEmail NotBlank+Email and password NotBlank.
 func (r RequestEmailChangeRequest) Validate() error {
-	fields := validateEmailField("newEmail", r.NewEmail, 0)
+	fields := validateEmailField("newEmail", r.NewEmail, 256)
 	if r.Password == "" {
 		fields = append(fields, errs.FieldError{Key: "password", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
