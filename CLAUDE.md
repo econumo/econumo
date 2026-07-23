@@ -409,6 +409,15 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
   `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
 - `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
+- `ECONUMO_CURRENCY_UPDATE_INTERVAL` — refresh exchange rates in-process every N
+  DAYS. `0` (default/unset) = off (drive `currency:update-rates` from an external
+  cron as before). A positive `N` starts a background poller in `serve` **only
+  when `OPEN_EXCHANGE_RATES_TOKEN` is also set** (interval-without-token logs a
+  WARN at boot and stays off). Negative/malformed fails at boot. The poller
+  refreshes on boot then every N days and is DB-aware: it skips the fetch while
+  the newest stored rate is within N days, so a restart loop never burns API
+  quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
+  existing external cron.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
