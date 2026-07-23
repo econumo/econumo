@@ -9,10 +9,26 @@ import (
 	appaccount "github.com/econumo/econumo/internal/account"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
+	"github.com/econumo/econumo/internal/shared/vo"
 	webmcp "github.com/econumo/econumo/internal/web/mcp"
 )
 
 type emptyInput struct{}
+
+type createAccountInput struct {
+	Name       string `json:"name" jsonschema:"account name"`
+	CurrencyID string `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
+	Balance    string `json:"balance,omitempty" jsonschema:"opening balance as a decimal string, e.g. 100.00; defaults to 0"`
+	Icon       string `json:"icon,omitempty" jsonschema:"optional icon name; defaults to 'wallet'"`
+	FolderID   string `json:"folder_id,omitempty" jsonschema:"account folder id (UUID), from an existing account's folderId in list_accounts; may be omitted only if you have no folders yet"`
+}
+
+type createAccountResult struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	CurrencyID string `json:"currency_id"`
+	Balance    string `json:"balance"`
+}
 
 func Register(svc *appaccount.Service) webmcp.Register {
 	return func(s *sdk.Server) {
@@ -29,6 +45,42 @@ func Register(svc *appaccount.Service) webmcp.Register {
 					return nil, model.GetAccountListResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, model.GetAccountListResult{Items: items}, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "create_account",
+			Description: "Create an account for the caller. currency_id is required (use list_currencies). Optional opening balance and icon. folder_id may be omitted only by a user with no folders yet (one is then created automatically); otherwise it is required."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in createAccountInput) (*sdk.CallToolResult, createAccountResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "create_account")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, createAccountResult{}, err
+				}
+				icon := in.Icon
+				if icon == "" {
+					icon = "wallet"
+				}
+				balance := in.Balance
+				if balance == "" {
+					balance = "0"
+				}
+				res, err := svc.CreateAccount(ctx, userID, model.CreateAccountRequest{
+					Id:         vo.NewId().String(), // operation id; the service mints the entity id
+					Name:       in.Name,
+					CurrencyId: in.CurrencyID,
+					Balance:    vo.NewFlexString(balance),
+					Icon:       icon,
+					FolderId:   in.FolderID,
+					// Blank is accepted only when the user has no folders at all (internal/account/create.go).
+				})
+				if err != nil {
+					return nil, createAccountResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, createAccountResult{
+					ID:         res.Item.Id,
+					Name:       res.Item.Name,
+					CurrencyID: res.Item.Currency.Id,
+					Balance:    res.Item.Balance,
+				}, nil
 			})
 	}
 }

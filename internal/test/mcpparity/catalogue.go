@@ -84,6 +84,17 @@ func init() {
 		{Label: "create-category-short-name", RPC: `{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"create_category","arguments":{"name":"ab","type":"expense"}}}`},
 	}})
 
+	// account_write drives create_account (which mints its own entity id
+	// server-side, like create_budget/create_folder/create_envelope, unlike the
+	// REST create-account endpoint) then list_accounts to confirm the new
+	// account's shape lands in the reference-data listing.
+	register(Scenario{Name: "account_write", Steps: []Step{
+		{Label: "create-account",
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_account","arguments":{"name":"MCP Made Account","currency_id":"` + apiparity.USD + `","balance":"100.00","icon":"wallet","folder_id":"` + apiparity.OwnerFolder + `"}}}`},
+		{Label: "list-accounts-after",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_accounts","arguments":{}}}`},
+	}})
+
 	// budget REST-creates a budget then drives get_budget for a valid and an
 	// invalid month. Unlike category/tag/payee/account/transaction,
 	// create-budget honors the client-supplied id verbatim (it isn't an
@@ -126,6 +137,8 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_folder","arguments":{"budget_id":"{{budget_id}}","id":"{{folder_id}}","name":"Bills Renamed"}}}`},
 		{Label: "create-envelope", CaptureAs: "element_id", MCPCapturePath: []string{"item", "id"},
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_envelope","arguments":{"budget_id":"{{budget_id}}","name":"Groceries","icon":"cart","currency_id":"` + apiparity.USD + `","folder_id":"{{folder_id}}","category_ids":["` + apiparity.CatFood + `"]}}}`},
+		{Label: "move-element",
+			RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_element","arguments":{"budget_id":"{{budget_id}}","items":[{"element_id":"{{element_id}}","folder_id":"{{folder_id}}","position":0}]}}}`},
 		{Label: "update-envelope",
 			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `","` + apiparity.CatSalary + `"],"archived":false}}}`},
 		{Label: "set-limit",
@@ -205,5 +218,6 @@ func init() {
 		{Label: "get-budget-review", RPC: `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"budget-review","arguments":{}}}`},
 		{Label: "get-budget-setup", RPC: `{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"budget-setup","arguments":{"name":"Household"}}}`},
 		{Label: "get-budget-update", RPC: `{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"budget-update","arguments":{}}}`},
+		{Label: "get-setup-econumo", RPC: `{"jsonrpc":"2.0","id":5,"method":"prompts/get","params":{"name":"setup-econumo","arguments":{}}}`},
 	}})
 }
