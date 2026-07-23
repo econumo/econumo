@@ -36,15 +36,17 @@ type Config struct {
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
-	RateLimitLogin        int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
-	RateLimitReset        int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
-	RateLimitRemind       int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
-	RateLimitRegister     int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
-	RateLimitAccept       int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
-	RateLimitVerifyEmail  int           // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
-	RateLimitConfirmEmail int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
-	RateLimitWindow       time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitGlobal       int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
+	RateLimitLogin              int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset              int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind             int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister           int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept             int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitVerifyEmail        int           // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
+	RateLimitConfirmEmail       int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
+	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
+	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
+	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend).
@@ -195,6 +197,8 @@ func Load() (Config, error) {
 		{&c.RateLimitAccept, "ECONUMO_RATE_LIMIT_ACCEPT_INVITE", 10},
 		{&c.RateLimitVerifyEmail, "ECONUMO_RATE_LIMIT_VERIFY_EMAIL", 3},
 		{&c.RateLimitConfirmEmail, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL", 5},
+		{&c.RateLimitRequestEmailChange, "ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE", 3},
+		{&c.RateLimitConfirmEmailChange, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE", 5},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)

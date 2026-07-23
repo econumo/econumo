@@ -74,4 +74,11 @@ const (
 	// can be reported identically for real and unknown usernames. It carries no
 	// configured limit, so it never rejects anything itself.
 	RateScopeVerifySent = "verify-email-sent"
+
+	RateScopeRequestEmailChange = "request-email-change"
+	RateScopeConfirmEmailChange = "confirm-email-change"
+	// RateScopeEmailChangeSent is a timestamp channel (like RateScopeVerifySent),
+	// not a cap: it records the last change-email code send per user for the
+	// resend cooldown. It carries no configured limit.
+	RateScopeEmailChangeSent = "email-change-sent"
 )
