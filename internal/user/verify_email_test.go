@@ -65,7 +65,7 @@ func newVerifySvcClock(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled 
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
 		ecRepo, nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, "", enabled), clk
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, 0, enabled), clk
 }
 
 func newVerifySvc(t *testing.T, db *dbtest.DB, cap *captureMailer) *appuser.Service {
@@ -97,7 +97,7 @@ func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit 
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
 		ecRepo, nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, true, "", true), clk
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, true, 0, true), clk
 }
 
 // resendSeconds calls the resend use case and returns the advertised wait in

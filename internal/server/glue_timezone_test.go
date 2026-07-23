@@ -31,7 +31,7 @@ func newTimezoneTestUserSvc(t *testing.T, db *dbtest.DB) *appuser.Service {
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, "none", false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
 }
 
 func TestTimezoneTrackingAuthenticator(t *testing.T) {

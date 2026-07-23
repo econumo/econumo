@@ -31,7 +31,7 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo("sqlite", db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo("sqlite", db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, "", false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
 	return svc, hasher
 }
 

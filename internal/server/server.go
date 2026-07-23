@@ -151,7 +151,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetAccess,
 		passwordReqRepo, resetMailer, emailVerificationRepo, verifyMailer,
 		emailChangeRepo, changeMailer,
-		avatars, clk, authLimiter, cfg.AllowRegistration, cfg.Trial, cfg.EmailVerification,
+		avatars, clk, authLimiter, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
 	)
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)

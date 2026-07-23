@@ -250,22 +250,38 @@ func TestLoad_Trial(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Trial != "none" {
-		t.Fatal("Trial default = " + c.Trial + ", want none")
+	if c.TrialDays != 0 {
+		t.Fatalf("TrialDays default = %d, want 0", c.TrialDays)
 	}
-	t.Setenv("ECONUMO_TRIAL", "end-of-next-month")
+	t.Setenv("ECONUMO_TRIAL", "30")
 	c, err = Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.Trial != "end-of-next-month" {
-		t.Fatal("Trial with ECONUMO_TRIAL=end-of-next-month = " + c.Trial + ", want end-of-next-month")
+	if c.TrialDays != 30 {
+		t.Fatalf("TrialDays with ECONUMO_TRIAL=30 = %d, want 30", c.TrialDays)
 	}
-	// Strict parse: a typo while enabling trials fails at boot
-	// rather than silently disabling trials.
+	t.Setenv("ECONUMO_TRIAL", "none")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.TrialDays != 0 {
+		t.Fatalf("TrialDays with ECONUMO_TRIAL=none = %d, want 0", c.TrialDays)
+	}
+	// The removed calendar-span literal now fails at boot.
+	t.Setenv("ECONUMO_TRIAL", "end-of-next-month")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_TRIAL=end-of-next-month: err = nil, want boot error")
+	}
+	// Non-numeric and negative values fail at boot.
 	t.Setenv("ECONUMO_TRIAL", "weekly")
 	if _, err = Load(); err == nil {
 		t.Fatal("Load with ECONUMO_TRIAL=weekly: err = nil, want boot error")
+	}
+	t.Setenv("ECONUMO_TRIAL", "-5")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_TRIAL=-5: err = nil, want boot error")
 	}
 }
 
