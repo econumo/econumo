@@ -40,7 +40,14 @@ func NewHandler(register Register) http.Handler {
 	addPrompts(srv)
 	return sdk.NewStreamableHTTPHandler(
 		func(*http.Request) *sdk.Server { return srv },
-		&sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true},
+		// DisableLocalhostProtection: /mcp sits behind a reverse proxy that
+		// dials the app over loopback, so the SDK's DNS-rebinding guard (added
+		// in v1.4.0) sees a loopback local address with a public Host header
+		// and 403s every request. That guard defends browser-driven local
+		// desktop servers with ambient credentials; this edge is a public
+		// HTTPS endpoint authenticated by a bearer PAT, so the threat model
+		// does not apply.
+		&sdk.StreamableHTTPOptions{Stateless: true, JSONResponse: true, DisableLocalhostProtection: true},
 	)
 }
 
