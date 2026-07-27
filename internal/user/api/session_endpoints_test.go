@@ -122,7 +122,7 @@ func TestRevokeSession_ForeignAndUnknown400(t *testing.T) {
 
 	// A second user with their own session.
 	otherUser := "99999999-9999-9999-9999-999999999999"
-	f := fixture.New(t, h.tdb).WithCrypto(testDataSalt)
+	f := fixture.New(t, h.tdb).WithCrypto("")
 	f.User(fixture.User{ID: otherUser, Email: "other-sess@example.test", Name: "Other"})
 	otherTok := h.issueTokenFor(t, otherUser)
 	foreign := h.sessionList(t, otherTok)[0].Id

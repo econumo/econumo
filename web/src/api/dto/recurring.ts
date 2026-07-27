@@ -9,7 +9,7 @@ export interface CreateRecurringDto {
   type: TransactionType
   accountId: Id
   accountRecipientId: Id | null
-  amount: number
+  amount: string
   categoryId: Id | null
   payeeId: Id | null
   tagId: Id | null

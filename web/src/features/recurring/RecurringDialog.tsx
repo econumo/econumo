@@ -12,12 +12,13 @@ import { amountCardInputClass, CardField, cardFieldControlClass } from '@/compon
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { dayKey, formatDate, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
+import { tryNormalize } from '@/lib/decimal'
 import { isNotEmpty, isValidFormula } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenRecurringParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
-import { accountOptions, categoryOptions, evaluatedNumber } from '@/features/transactions/useTransactionForm'
+import { accountOptions, categoryOptions, evaluatedAmount } from '@/features/transactions/useTransactionForm'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import type { TransactionType } from '@/api/dto/transaction'
 import type { RecurringSchedule } from '@/api/dto/recurring'
@@ -91,7 +92,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
       next.amount = t('common.validation.required_field')
     } else if (!isValidFormula(form.amount)) {
       next.amount = t('common.validation.invalid_formula')
-    } else if (Number.isNaN(evaluatedNumber(form.amount))) {
+    } else if (tryNormalize(evaluatedAmount(form.amount)) === null) {
       next.amount = t('common.validation.invalid_number')
     }
     if (isTransfer && !form.accountRecipientId) {

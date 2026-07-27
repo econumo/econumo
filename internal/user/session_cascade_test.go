@@ -106,9 +106,10 @@ func TestResetPassword_RevokesAllSessionsKeepsPATs(t *testing.T) {
 	sesB := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_reset-b", &exp)
 	pat := seedToken(t, tokens, uid, model.TokenKindPersonal, "eco_pat_reset", &patExp)
 
-	// Seed a valid reset code directly (the remind flow's persistence shape).
+	// Seed a valid reset code directly (the remind flow's persistence shape): the
+	// stored value is the hash, the plaintext is what the reset request submits.
 	pr := &model.PasswordRequest{
-		ID: vo.NewId(), UserID: uid, Code: "abcdef123456",
+		ID: vo.NewId(), UserID: uid, Code: appuser.HashResetCode("482913"),
 		CreatedAt: authT0, UpdatedAt: authT0, ExpiredAt: authT0.Add(10 * time.Minute),
 	}
 	if err := pwreqs.Save(ctx, pr); err != nil {
@@ -116,7 +117,7 @@ func TestResetPassword_RevokesAllSessionsKeepsPATs(t *testing.T) {
 	}
 
 	_, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
-		Username: "auth@econumo.test", Code: "abcdef123456", Password: "next-secret",
+		Username: "auth@econumo.test", Code: "482913", Password: "next-secret",
 	})
 	if err != nil {
 		t.Fatalf("ResetPassword: %v", err)

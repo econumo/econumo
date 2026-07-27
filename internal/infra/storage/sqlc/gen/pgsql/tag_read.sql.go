@@ -18,7 +18,7 @@ WHERE t.user_id = $1
        SELECT a.user_id
        FROM accounts_access aa
        JOIN accounts a ON a.id = aa.account_id
-       WHERE aa.user_id = $1
+       WHERE aa.user_id = $1 AND aa.is_accepted = true
    )
 ORDER BY t.position, t.id
 `

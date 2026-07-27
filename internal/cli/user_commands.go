@@ -4,7 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+	"time"
+
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 )
 
 // userCommands returns the user-management subcommands.
@@ -83,6 +88,98 @@ func userCommands() []command {
 					return err
 				}
 				fmt.Printf("User %s deactivated\n", email)
+				return nil
+			},
+		},
+		{
+			name:    "user:verify-email",
+			summary: "Mark a user's email verified: user:verify-email <email>",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) != 1 {
+					return usageErr("user:verify-email <email>")
+				}
+				email := strings.TrimSpace(args[0])
+				if err := c.user.AdminVerifyEmail(ctx, email); err != nil {
+					return err
+				}
+				fmt.Printf("Email verified for %s\n", email)
+				return nil
+			},
+		},
+		{
+			name:    "user:set-access",
+			summary: "Set a user's access: user:set-access <email> <full|readonly> [YYYY-MM-DD]",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) < 2 || len(args) > 3 {
+					return usageErr("user:set-access <email> <full|readonly> [YYYY-MM-DD]")
+				}
+				email := strings.TrimSpace(args[0])
+				level, err := model.ParseAccessLevel(strings.TrimSpace(args[1]))
+				if err != nil {
+					return err
+				}
+				var until *time.Time
+				if len(args) == 3 && strings.TrimSpace(args[2]) != "" {
+					d, err := time.Parse(datetime.DateLayout, strings.TrimSpace(args[2]))
+					if err != nil {
+						return fmt.Errorf("invalid date %q (want YYYY-MM-DD): %w", args[2], err)
+					}
+					until = &d
+				}
+				u, err := c.user.AdminSetAccess(ctx, email, level, until)
+				if err != nil {
+					return err
+				}
+				// Structured audit line alongside the human stdout print; keyed
+				// by id — log lines never carry emails.
+				untilAttr := ""
+				if until != nil {
+					untilAttr = until.UTC().Format(datetime.Layout)
+				}
+				slog.Info("set-access",
+					"user_id", u.ID.String(),
+					"access_level", string(level),
+					"access_until", untilAttr,
+				)
+				if until == nil {
+					fmt.Printf("Access for %s set to %s with no expiry\n", email, level)
+				} else {
+					// Access restricts once now >= until (exclusive boundary, same
+					// as TrialEnd), so the resolved instant is printed rather than
+					// the bare date to make that cutoff visible to the operator.
+					fmt.Printf("Access for %s set to %s until %s\n", email, level, until.Format(datetime.Layout))
+				}
+				return nil
+			},
+		},
+		{
+			name:    "user:show",
+			summary: "Show a user's profile and access: user:show <email>",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if len(args) != 1 {
+					return usageErr("user:show <email>")
+				}
+				u, effective, err := c.user.AdminShowUser(ctx, strings.TrimSpace(args[0]))
+				if err != nil {
+					return err
+				}
+				active := "no"
+				if u.IsActive {
+					active = "yes"
+				}
+				verified := "no"
+				if u.EmailVerified {
+					verified = "yes"
+				}
+				until := datetime.FormatOrEmpty(u.AccessUntil)
+				fmt.Printf("Id:              %s\n", u.ID.String())
+				fmt.Printf("Name:            %s\n", u.Name)
+				fmt.Printf("Email:           %s\n", u.Email)
+				fmt.Printf("Active:          %s\n", active)
+				fmt.Printf("Email verified:  %s\n", verified)
+				fmt.Printf("Access level:    %s\n", u.AccessLevel)
+				fmt.Printf("Access until:    %s\n", until)
+				fmt.Printf("Effective:       %s\n", effective)
 				return nil
 			},
 		},

@@ -11,6 +11,13 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// Connections reports whether two users hold a connection link — the
+// precondition for sharing a budget (grant-access may only target a connected
+// user). Satisfied by the connection feature at wiring time.
+type Connections interface {
+	AreConnected(ctx context.Context, a, b vo.Id) (bool, error)
+}
+
 // UserLookup resolves a budget participant's id/name/avatar + their currency code.
 type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
@@ -19,6 +26,9 @@ type UserLookup interface {
 	CurrencyCode(ctx context.Context, userID string) (string, error)
 	// SetActiveBudget records the user's active budget id.
 	SetActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
+	// ClearActiveBudget clears the user's active-budget option when it points at
+	// the given budget (no-op otherwise) — called when the user loses access.
+	ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 }
 
 // AccountLookup resolves accounts owned by the budget participants + ownership.

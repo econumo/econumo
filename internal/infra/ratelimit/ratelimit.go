@@ -83,7 +83,7 @@ func (l *Limiter) Allow(scope, key string) error {
 		hits := prune(l.attempts[k], now, l.cfg.Window)
 		l.store(k, hits)
 		if len(hits) >= limit {
-			return errs.NewTooManyRequests(Message)
+			return errs.NewTooManyRequestsRetryAfter(Message, retryAfterSeconds(hits, now, l.cfg.Window))
 		}
 	}
 	if l.cfg.Global > 0 {
@@ -91,11 +91,27 @@ func (l *Limiter) Allow(scope, key string) error {
 		hits := prune(l.attempts[k], now, globalWindow)
 		if len(hits) >= l.cfg.Global {
 			l.attempts[k] = hits
-			return errs.NewTooManyRequests(Message)
+			return errs.NewTooManyRequestsRetryAfter(Message, retryAfterSeconds(hits, now, globalWindow))
 		}
 		l.attempts[k] = append(hits, now)
 	}
 	return nil
+}
+
+// retryAfterSeconds reports when the caller may try again: the oldest hit still
+// inside the window ages out at hits[0]+window, freeing exactly one slot. Hits
+// are pruned and sorted ascending, so hits[0] is that oldest survivor. Rounds
+// UP to whole seconds and to a floor of 1, so a caller that obeys the value
+// never retries early and is never told to "wait 0 seconds" while blocked.
+func retryAfterSeconds(hits []time.Time, now time.Time, window time.Duration) int {
+	if len(hits) == 0 {
+		return 0
+	}
+	remaining := hits[0].Add(window).Sub(now)
+	if remaining < time.Second {
+		return 1
+	}
+	return int((remaining + time.Second - 1) / time.Second)
 }
 
 // Fail records a failed attempt against the key.
@@ -111,6 +127,38 @@ func (l *Limiter) Fail(scope, key string) {
 		l.evict(now)
 	}
 	l.attempts[k] = append(prune(l.attempts[k], now, l.cfg.Window), now)
+}
+
+// Mark records an event timestamp for the key WITHOUT any cap check, for
+// scopes used purely as a per-key clock (e.g. "when was a code last emailed").
+// Fail is not usable for that: it no-ops on a scope with no configured limit.
+// Marked keys share the per-key map and its eviction, so the memory bound is
+// the same as for counted scopes.
+func (l *Limiter) Mark(scope, key string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.clock.Now()
+	k := attemptKey(scope, key)
+	if _, exists := l.attempts[k]; !exists && len(l.attempts) >= l.cfg.MaxKeys {
+		l.evict(now)
+	}
+	l.attempts[k] = append(prune(l.attempts[k], now, l.cfg.Window), now)
+}
+
+// LastAttempt reports when the key last recorded an attempt in this scope, and
+// whether any is on record. It reads the same per-key counter Fail writes, so
+// the answer is identical for every caller — including usernames that do not
+// exist. Endpoints that report a cooldown use this rather than their own
+// storage, which would only ever have a row for a real account and would turn
+// the reported time into an account-existence oracle.
+func (l *Limiter) LastAttempt(scope, key string) (time.Time, bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	hits := l.attempts[attemptKey(scope, key)]
+	if len(hits) == 0 {
+		return time.Time{}, false
+	}
+	return hits[len(hits)-1], true
 }
 
 // Clear wipes the key's counter (called after a successful attempt).

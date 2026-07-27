@@ -126,16 +126,16 @@ func TestAccessMatrix(t *testing.T) {
 			name: "unaccepted user (invited, pending)",
 			a:    agg(t, grant(t, otherID, model.BudgetRoleUser, false)),
 			user: other,
-			// no accepted access -> read/del/upd false; canShare TRUE (legacy quirk);
-			// can accept (pending row exists) + can decline (row exists).
-			want: want{false, false, false, true, true, true},
+			// no accepted access -> read/del/upd/share false; can accept (pending
+			// row exists) + can decline (row exists).
+			want: want{false, false, false, false, true, true},
 		},
 		{
 			name: "stranger (no row)",
 			a:    agg(t),
 			user: stranger,
-			// canShare TRUE via the access-denied catch quirk.
-			want: want{false, false, false, true, false, false},
+			// no access at all -> everything false (canShare fails closed).
+			want: want{false, false, false, false, false, false},
 		},
 	}
 
@@ -163,19 +163,28 @@ func TestAccessMatrix(t *testing.T) {
 	}
 }
 
-// canShare's AccessDenied-catch quirk: a guest (accepted, no share right) returns
-// FALSE, but anyone WITHOUT accepted access returns TRUE. Pin both halves.
-func TestCanShare_Quirk(t *testing.T) {
+// canShare fails closed: only an accepted owner/admin may share. A guest, a
+// pending invitee, and a stranger are all denied.
+func TestCanShare_FailsClosed(t *testing.T) {
 	s := &Service{}
-	// accepted guest: real role, no share -> false.
+	// accepted guest: real role, no share right -> false.
 	guest := agg(t, grant(t, otherID, model.BudgetRoleGuest, true))
 	if s.canShare(guest, mustID(t, otherID)) {
 		t.Error("accepted guest must NOT canShare")
 	}
-	// pending (unaccepted) grant -> budgetRole errors -> canShare returns true.
+	// pending (unaccepted) grant -> budgetRole errors -> canShare returns false.
 	pending := agg(t, grant(t, otherID, model.BudgetRoleGuest, false))
-	if !s.canShare(pending, mustID(t, otherID)) {
-		t.Error("pending grant should canShare via the access-denied catch quirk")
+	if s.canShare(pending, mustID(t, otherID)) {
+		t.Error("pending grant must NOT canShare (fails closed)")
+	}
+	// stranger with no row -> false.
+	if s.canShare(agg(t), mustID(t, "99999999-9999-9999-9999-999999999999")) {
+		t.Error("stranger must NOT canShare (fails closed)")
+	}
+	// accepted admin -> true.
+	admin := agg(t, grant(t, otherID, model.BudgetRoleAdmin, true))
+	if !s.canShare(admin, mustID(t, otherID)) {
+		t.Error("accepted admin must canShare")
 	}
 }
 

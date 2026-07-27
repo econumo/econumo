@@ -14,7 +14,8 @@
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
-      "expand_menu": "Expand menu"
+      "expand_menu": "Expand menu",
+      "sharing_requests": "Sharing requests"
     },
     "econumo": {
       "label": "Econumo"
@@ -142,6 +143,10 @@
           "data_loading": "Loading your data"
         }
       }
+    },
+    "update": {
+      "notice": "Econumo {version} is out",
+      "dismiss": "Dismiss"
     }
   },
   "accounts": {
@@ -287,6 +292,10 @@
       "delete_account_modal": {
         "question": "Are you sure you want to delete the account “{account}”?"
       },
+      "decline_access_modal": {
+        "title": "Decline access to the account?",
+        "question": "Are you sure you want to decline access to the account “{account}”?"
+      },
       "preview_account_modal": {
         "header": "Account details"
       }
@@ -307,6 +316,9 @@
       "empty": "No recurring transactions yet",
       "create": "Add recurring transaction",
       "delete_question": "Delete this recurring transaction?"
+    },
+    "update": {
+      "available": "New version {version} available"
     }
   },
   "transactions": {
@@ -500,6 +512,40 @@
         }
       }
     },
+    "change_email": {
+      "header": "Change email",
+      "success": {
+        "text": "Email changed"
+      },
+      "loading": {
+        "label": "Sending confirmation code…"
+      },
+      "form": {
+        "new_email": {
+          "label": "New email",
+          "placeholder": "Enter your new email"
+        },
+        "password": {
+          "label": "Current password",
+          "placeholder": "Enter password",
+          "validation": {
+            "required_field": "Enter your current password"
+          }
+        },
+        "submit": {
+          "label": "Send confirmation code"
+        }
+      },
+      "confirm": {
+        "information": "We've sent a confirmation code to {email}. Enter it below to confirm your new email address.",
+        "resent": "A new code has been sent.",
+        "action": {
+          "verify": "Confirm new email",
+          "resend": "Resend code",
+          "resend_in": "Resend code in {seconds}s"
+        }
+      }
+    },
     "form": {
       "name": {
         "label": "Name",
@@ -529,7 +575,7 @@
         "placeholder": "Password",
         "validation": {
           "required_field": "Required field",
-          "invalid_password": "Password must be at least 4 characters"
+          "invalid_password": "Password must be at least 8 characters"
         }
       },
       "password_retry": {
@@ -567,6 +613,9 @@
           "change_password": {
             "menu_item": "Change password",
             "header": "Change password"
+          },
+          "change_email": {
+            "menu_item": "Change email"
           },
           "sessions": {
             "menu_item": "Sessions",
@@ -642,8 +691,19 @@
       "header": "Reset password",
       "information": "Enter the email address you registered with and we'll send you a security code.",
       "instruction": "We've sent a security code to your email. Enter it below and choose a new password.",
+      "new_password": "New password",
       "send_failed": "Couldn't send the code. Check the email address and try again.",
       "reset_failed": "The password wasn't reset. Check the code and try again."
+    },
+    "verify_email": {
+      "header": "Verify your email",
+      "information": "We've sent a confirmation code to {email}. Enter it below to finish signing in.",
+      "resent": "A new code has been sent.",
+      "action": {
+        "verify": "Verify and sign in",
+        "resend": "Resend code",
+        "resend_in": "Resend code in {seconds}s"
+      }
     },
     "sign_up_failed": {
       "header": "Registration failed",
@@ -690,12 +750,6 @@
         "header": "Sign up",
         "privacy": {
           "text": "By registering, you agree to our <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Privacy Policy</a> and <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Terms of Service</a>"
-        },
-        "paywall": {
-          "header": "Ready to start using Econumo?",
-          "text": "Make a one-time payment by clicking the button below to get started.",
-          "next_steps": "As soon as we receive your payment, we will send your login credentials to the provided email address.",
-          "action": "Sign up"
         }
       }
     }
@@ -864,6 +918,14 @@
           "create_budget": "Create a budget",
           "initial_setup": "To create a budget, first add an account and at least one category.",
           "create_account": "Add account"
+        },
+        "unavailable": {
+          "header": "Budget unavailable",
+          "no_access": "You no longer have access to this budget. It may have been deleted, or your access was revoked.",
+          "choose_budget": "Choose another budget"
+        },
+        "error": {
+          "retry": "Try again"
         },
         "settings": {
           "button": "Configure",
@@ -1126,6 +1188,44 @@
           "required_field": "Required field"
         }
       }
+    },
+    "sharing_requests": {
+      "title": "Sharing requests",
+      "empty": "No pending requests",
+      "invited_you": "{name} invited you",
+      "account": "Account",
+      "budget": "Budget",
+      "choose_folder": "Choose a folder for this account",
+      "general_folder_hint": "General (will be created)",
+      "decline_question": "Decline access to \"{name}\"?"
+    }
+  },
+  "subscription": {
+    "banner": {
+      "trial": "Your subscription ends in {count} day | Your subscription ends in {count} days",
+      "readonly": "Your account is read-only — you can view and export your data, but not add or change it",
+      "cta": "Manage subscription",
+      "dismiss": "Dismiss",
+      "connection_trial": "{name}'s subscription ends in {count} day | {name}'s subscription ends in {count} days",
+      "connection_readonly": "{name}'s subscription has ended — they can view shared accounts but not edit"
+    },
+    "settings": {
+      "group": "Billing",
+      "portal": "Manage subscription",
+      "status": {
+        "trial": "Subscription ends {date}",
+        "readonly": "Expired"
+      }
+    },
+    "connections": {
+      "status": {
+        "readonly": "Read-only",
+        "ends": "Subscription ends in {count} day | Subscription ends in {count} days"
+      },
+      "pay_for": "Pay for {name}"
+    },
+    "toast": {
+      "readonly": "Read-only access — changes are disabled"
     }
   },
   "errors": {
@@ -1137,7 +1237,9 @@
       "invalid_email": "This value is not a valid email address.",
       "too_long": "This value is too long.",
       "too_short": "This value is too short.",
+      "out_of_range": "This value is out of range.",
       "too_many_attempts": "Too many attempts. Try again later.",
+      "readonly_access": "Read-only access. Write operations are disabled.",
       "operation_locked": "Operation is locked",
       "invalid_datetime_format": "Invalid date format, expected Y-m-d H:i:s",
       "invalid_datetime": "This value is not a valid datetime.",
@@ -1205,13 +1307,29 @@
       "registration_disabled": "Registration disabled",
       "password_incorrect": "Password is not correct",
       "reset_password_error": "Reset password error",
-      "reset_code_expired": "The code is expired"
+      "reset_code_expired": "The code is expired",
+      "email_verification_required": "Please verify your email address.",
+      "verification_code_invalid": "The confirmation code is not valid.",
+      "verification_code_expired": "The code is expired",
+      "email_unchanged": "The new email is the same as your current email."
     }
   },
   "emails": {
     "reset": {
       "subject": "Reset password confirmation code",
       "body": "Hi {name},\nYour confirmation code is: {code}.\n\nIf you didn't request this code, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+    },
+    "verify": {
+      "subject": "Email verification code",
+      "body": "Hi {name},\nYour confirmation code is: {code}.\n\nEnter this code on the sign-in screen to verify your email address.\n\nIf you didn't create an Econumo account, please ignore this email.\n\n--\nEconumo — Manage money. Together.\n"
+    },
+    "change_email": {
+      "subject": "Confirm your new email",
+      "body": "Hi {name},\n\nUse this code to confirm your new email address: {code}\n\nThe code expires in 10 minutes. If you did not request this, you can ignore this email."
+    },
+    "change_email_notice": {
+      "subject": "Email change requested",
+      "body": "Hi {name},\n\nSomeone requested to change the email on your account to {email}. If this was not you, please change your password immediately."
     }
   }
 }

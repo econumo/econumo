@@ -27,9 +27,10 @@ var _ = model.UpdateLanguageResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateLanguageResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/user/update-language [post]
 func (h *Handlers) UpdateLanguage(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateLanguage)
+	endpoint.Handle(w, r, h.svc.UpdateLanguage)
 }

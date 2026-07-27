@@ -18,11 +18,6 @@ type vectors struct {
 		Salt     string `json:"salt"`
 		Hash     string `json:"hash"`
 	} `json:"password_hasher"`
-	IdentifierHash []struct {
-		Value string `json:"value"`
-		Salt  string `json:"salt"`
-		Hash  string `json:"hash"`
-	} `json:"identifier_hash"`
 	Encode []struct {
 		Plaintext  string `json:"plaintext"`
 		Salt       string `json:"salt"`
@@ -60,16 +55,6 @@ func TestPasswordHasher_MatchesGoldenVectors(t *testing.T) {
 		}
 		if h.Verify(model.AlgorithmSHA512, tc.Hash, tc.Password+"x", tc.Salt) {
 			t.Errorf("Verify wrongly accepted bad password for %q", tc.Password)
-		}
-	}
-}
-
-func TestIdentifierHash_MatchesGoldenVectors(t *testing.T) {
-	v := loadVectors(t)
-	for _, tc := range v.IdentifierHash {
-		svc := NewEncodeService(tc.Salt)
-		if got := svc.Hash(tc.Value); got != tc.Hash {
-			t.Errorf("Hash(%q) got=%s want=%s", tc.Value, got, tc.Hash)
 		}
 	}
 }

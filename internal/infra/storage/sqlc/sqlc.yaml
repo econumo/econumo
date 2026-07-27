@@ -13,7 +13,7 @@
 #
 # Type overrides keep the generated Go primitive-friendly: UUID / CHAR(36)
 # columns surface as plain string, and NUMERIC(19,8) money columns surface as
-# string. The repo layer adapts string <-> domain value objects (Id, Identifier)
+# string. The repo layer adapts string <-> domain value objects (Id)
 # and string <-> shopspring/decimal at scale 8, matching PHP bcmath exactly.
 version: "2"
 sql:

@@ -28,10 +28,9 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if err != nil {
 		return nil, err
 	}
-	if !s.canRead(b, userID) {
-		return nil, accessDenied()
-	}
-	if b.budget.Name != req.Name && !s.canUpdate(b, userID) {
+	// Any field change (name, currency, excluded accounts) requires edit rights;
+	// a read-only guest must not alter budget metadata.
+	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
 
@@ -91,7 +90,20 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.Dele
 		return nil, accessDenied()
 	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.budgets.Delete(txCtx, budgetID)
+		if derr := s.budgets.Delete(txCtx, budgetID); derr != nil {
+			return derr
+		}
+		// Every participant whose active-budget option points here would keep
+		// requesting a budget that now 404s.
+		if cerr := s.users.ClearActiveBudget(txCtx, b.budget.UserID, budgetID); cerr != nil {
+			return cerr
+		}
+		for _, a := range b.access {
+			if cerr := s.users.ClearActiveBudget(txCtx, a.UserID, budgetID); cerr != nil {
+				return cerr
+			}
+		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}

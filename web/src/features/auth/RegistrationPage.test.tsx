@@ -29,7 +29,10 @@ beforeEach(() => {
   window.econumoConfig = {}
 })
 
-it('registers and navigates to the login page', async () => {
+it('registers, remembers the new email, and navigates to the login page', async () => {
+  // A different account was remembered before; registering must replace it with
+  // the address just created so the login form pre-fills the right one.
+  localStorage.setItem('rememberedEmail', JSON.stringify('someone.else@example.test'))
   let body: unknown
   server.use(
     http.post('*/api/v1/user/register-user', async ({ request }) => {
@@ -41,27 +44,40 @@ it('registers and navigates to the login page', async () => {
   renderPage()
   await user.type(screen.getByLabelText('Name'), 'Ada')
   await user.type(screen.getByLabelText('Email'), 'ada@example.test')
-  await user.type(screen.getByLabelText('Password'), 'secret1')
-  await user.type(screen.getByLabelText('Confirm password'), 'secret1')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.type(screen.getByLabelText('Confirm password'), 'secret12')
   await user.click(screen.getByRole('button', { name: /sign up/i }))
   expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
-  expect(body).toEqual({ email: 'ada@example.test', password: 'secret1', name: 'Ada' })
+  expect(body).toEqual({ email: 'ada@example.test', password: 'secret12', name: 'Ada' })
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('ada@example.test'))
+})
+
+it('does not remember the email when registration fails', async () => {
+  localStorage.setItem('rememberedEmail', JSON.stringify('someone.else@example.test'))
+  server.use(
+    http.post('*/api/v1/user/register-user', () =>
+      HttpResponse.json({ success: false, message: 'nope', code: 400, errors: {} }, { status: 400 }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.type(screen.getByLabelText('Name'), 'Ada')
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.type(screen.getByLabelText('Confirm password'), 'secret12')
+  await user.click(screen.getByRole('button', { name: /sign up/i }))
+  expect(await screen.findByText(/registration failed/i)).toBeInTheDocument()
+  // The prior value is untouched — a failed registration must not overwrite it.
+  expect(localStorage.getItem('rememberedEmail')).toBe(JSON.stringify('someone.else@example.test'))
 })
 
 it('rejects mismatched password retry', async () => {
   const user = userEvent.setup()
   renderPage()
-  await user.type(screen.getByLabelText('Password'), 'secret1')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
   await user.type(screen.getByLabelText('Confirm password'), 'different')
   await user.click(screen.getByRole('button', { name: /sign up/i }))
   expect(await screen.findByText('Passwords do not match')).toBeInTheDocument()
-})
-
-it('shows the paywall instead of the form when enabled', () => {
-  window.econumoConfig = { PAYWALL_ENABLED: 'true' }
-  renderPage()
-  expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument()
-  expect(screen.getByRole('link')).toHaveAttribute('href', 'https://pay.econumo.com/cloud/')
 })
 
 it('persists the collapse and clears the server address', async () => {

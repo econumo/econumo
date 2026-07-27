@@ -27,5 +27,5 @@ SELECT
     AS TEXT) as balance
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
-WHERE a.is_deleted = false AND (a.user_id = sqlc.arg(user_id) OR aa.user_id = sqlc.arg(user_id))
+WHERE a.is_deleted = false AND (a.user_id = sqlc.arg(user_id) OR (aa.user_id = sqlc.arg(user_id) AND aa.is_accepted = true))
 GROUP BY a.id;

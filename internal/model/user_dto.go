@@ -32,6 +32,8 @@ type CurrentUserResult struct {
 	Options      []OptionResult `json:"options"`
 	Currency     string         `json:"currency"`
 	ReportPeriod string         `json:"reportPeriod"`
+	AccessLevel  string         `json:"accessLevel"`
+	AccessUntil  string         `json:"accessUntil"`
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +71,14 @@ type LoginResult struct {
 // register-user
 // ---------------------------------------------------------------------------
 
+// Password length policy for newly-set passwords (register, update, reset).
+// Login is intentionally exempt so pre-existing short passwords still work; the
+// upper bound caps the plaintext fed to Argon2id.
+const (
+	PasswordMinLen = 8
+	PasswordMaxLen = 128
+)
+
 // RegisterRequest is the register request body.
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -76,12 +86,12 @@ type RegisterRequest struct {
 	Name     string `json:"name"`
 }
 
-// Validate enforces: email NotBlank+Email+max256, password NotBlank+min4,
+// Validate enforces: email NotBlank+Email+max256, password NotBlank+len 8..128,
 // name NotBlank+len 3..20.
 func (r RegisterRequest) Validate() error {
 	var fields []errs.FieldError
 	fields = append(fields, validateEmailField("email", r.Email, 256)...)
-	fields = append(fields, validateMinLenField("password", r.Password, 4)...)
+	fields = append(fields, validateLenRangeField("password", r.Password, PasswordMinLen, PasswordMaxLen)...)
 	fields = append(fields, validateLenRangeField("name", r.Name, 3, 20)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -216,13 +226,13 @@ type UpdatePasswordRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
-// Validate enforces oldPassword NotBlank, newPassword NotBlank + min4.
+// Validate enforces oldPassword NotBlank, newPassword NotBlank + len 8..128.
 func (r UpdatePasswordRequest) Validate() error {
 	var fields []errs.FieldError
 	if r.OldPassword == "" {
 		fields = append(fields, errs.FieldError{Key: "oldPassword", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
-	fields = append(fields, validateMinLenField("newPassword", r.NewPassword, 4)...)
+	fields = append(fields, validateLenRangeField("newPassword", r.NewPassword, PasswordMinLen, PasswordMaxLen)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
@@ -329,14 +339,14 @@ type ResetPasswordRequest struct {
 	Password string `json:"password"`
 }
 
-// Validate enforces username NotBlank+Email, code NotBlank, password NotBlank+min4.
+// Validate enforces username NotBlank+Email, code NotBlank, password NotBlank+len 8..128.
 func (r ResetPasswordRequest) Validate() error {
 	var fields []errs.FieldError
 	fields = append(fields, validateEmailField("username", r.Username, 0)...)
 	if strings.TrimSpace(r.Code) == "" {
 		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
-	fields = append(fields, validateMinLenField("password", r.Password, 4)...)
+	fields = append(fields, validateLenRangeField("password", r.Password, PasswordMinLen, PasswordMaxLen)...)
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
@@ -345,6 +355,97 @@ func (r ResetPasswordRequest) Validate() error {
 
 // ResetPasswordResult is the reset-password response (empty object).
 type ResetPasswordResult struct{}
+
+// ---------------------------------------------------------------------------
+// confirm-email / resend-verification-code
+// ---------------------------------------------------------------------------
+
+// ConfirmEmailRequest is the confirm-email request body. No password: the
+// emailed code is the proof of ownership, so this route mirrors
+// reset-password's error and rate-limit discipline instead.
+type ConfirmEmailRequest struct {
+	Username string `json:"username"`
+	Code     string `json:"code"`
+}
+
+// Validate enforces username NotBlank+Email, code NotBlank.
+func (r ConfirmEmailRequest) Validate() error {
+	var fields []errs.FieldError
+	fields = append(fields, validateEmailField("username", r.Username, 0)...)
+	if strings.TrimSpace(r.Code) == "" {
+		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// ConfirmEmailResult is the confirm-email response (empty object).
+type ConfirmEmailResult struct{}
+
+// ResendVerificationCodeRequest is the resend-verification-code request body.
+type ResendVerificationCodeRequest struct {
+	Username string `json:"username"`
+}
+
+// Validate enforces NotBlank + Email.
+func (r ResendVerificationCodeRequest) Validate() error {
+	if fields := validateEmailField("username", r.Username, 0); len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// ResendVerificationCodeResult is the resend-verification-code response (empty
+// object). The wait before another code may be requested travels on the
+// standard Retry-After header, not in the body — one representation, so the
+// two can never disagree.
+type ResendVerificationCodeResult struct{}
+
+// ---------------------------------------------------------------------------
+// request-email-change / confirm-email-change / resend-email-change-code
+// ---------------------------------------------------------------------------
+
+// RequestEmailChangeRequest is the request-email-change body.
+type RequestEmailChangeRequest struct {
+	NewEmail string `json:"newEmail"`
+	Password string `json:"password"`
+}
+
+// Validate enforces newEmail NotBlank+Email and password NotBlank.
+func (r RequestEmailChangeRequest) Validate() error {
+	fields := validateEmailField("newEmail", r.NewEmail, 256)
+	if r.Password == "" {
+		fields = append(fields, errs.FieldError{Key: "password", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// RequestEmailChangeResult is the request-email-change response (empty object).
+type RequestEmailChangeResult struct{}
+
+// ConfirmEmailChangeRequest is the confirm-email-change body. No password: the
+// emailed code (to the new address) is the proof of ownership.
+type ConfirmEmailChangeRequest struct {
+	Code string `json:"code"`
+}
+
+// Validate enforces code NotBlank.
+func (r ConfirmEmailChangeRequest) Validate() error {
+	if strings.TrimSpace(r.Code) == "" {
+		return errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// ResendEmailChangeCodeResult is the resend-email-change-code response (empty
+// object). The wait travels on the Retry-After header, not in the body.
+type ResendEmailChangeCodeResult struct{}
 
 // ---------------------------------------------------------------------------
 // logout-user
@@ -377,16 +478,6 @@ func validateEmailField(key, v string, maxLen int) []errs.FieldError {
 	return nil
 }
 
-func validateMinLenField(key, v string, minLen int) []errs.FieldError {
-	if v == "" {
-		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: errs.CodeIsBlank}}
-	}
-	if len([]rune(v)) < minLen {
-		return []errs.FieldError{{Key: key, Message: "This value is too short.", Code: errs.CodeTooShort}}
-	}
-	return nil
-}
-
 func validateLenRangeField(key, v string, minLen, maxLen int) []errs.FieldError {
 	if strings.TrimSpace(v) == "" {
 		return []errs.FieldError{{Key: key, Message: "This value should not be blank.", Code: errs.CodeIsBlank}}
@@ -414,4 +505,20 @@ func looksLikeEmail(s string) bool {
 	}
 	domain := s[at+1:]
 	return strings.Contains(domain, ".") && !strings.HasPrefix(domain, ".") && !strings.HasSuffix(domain, ".")
+}
+
+// CreateBillingLinkRequest optionally preselects a beneficiary. For is a
+// preselection hint only — the portal authorizes it against the connection
+// list it fetches server-side.
+type CreateBillingLinkRequest struct {
+	For string `json:"for"`
+}
+
+// Validate is a no-op: For needs id parsing, which the service does, and
+// checking it here too would report the same failure twice with different
+// wording.
+func (r CreateBillingLinkRequest) Validate() error { return nil }
+
+type CreateBillingLinkResult struct {
+	URL string `json:"url"`
 }

@@ -61,7 +61,9 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *model
 			return err
 		}
 		if !t.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned tag as not-found (matching the repo above), so
+			// the response can't probe which tag ids exist.
+			return errs.NewNotFound("Tag not found")
 		}
 		fn(t, s.clock.Now())
 		if err := s.repo.Save(ctx, t); err != nil {
@@ -93,7 +95,9 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 			return err
 		}
 		if !t.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned tag as not-found (matching the repo above), so
+			// the response can't probe which tag ids exist.
+			return errs.NewNotFound("Tag not found")
 		}
 		if ferr := fn(txCtx, t, s.clock.Now()); ferr != nil {
 			return ferr

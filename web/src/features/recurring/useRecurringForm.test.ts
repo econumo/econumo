@@ -28,7 +28,7 @@ describe('useRecurringForm', () => {
 
   it('edit mode seeds from the template and keeps its id', () => {
     const rt = {
-      id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: 50.5,
+      id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '50.5',
       categoryId: 'c1', payeeId: null, tagId: null, description: 'rent', schedule: 'weekly', nextPaymentAt: '2026-08-31 00:00:00',
     } as RecurringDto
     const s = initialRecurringFormState({ recurring: rt }, accounts)
@@ -41,7 +41,7 @@ describe('useRecurringForm', () => {
   it('buildRecurringPayload evaluates the amount and nulls classifier ids for transfers', () => {
     const s = initialRecurringFormState({}, accounts)
     const payload = buildRecurringPayload({ ...s, type: 'transfer', accountId: 'a1', accountRecipientId: 'a2', amount: '10+5', categoryId: 'c1' })
-    expect(payload.amount).toBe(15)
+    expect(payload.amount).toBe('15')
     expect(payload.categoryId).toBeNull()
     expect(payload.accountRecipientId).toBe('a2')
   })

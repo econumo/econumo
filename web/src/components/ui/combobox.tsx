@@ -120,14 +120,28 @@ function ComboboxContent({
   )
 }
 
-function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
+function ComboboxList({
+  className,
+  onPointerDownCapture,
+  ...props
+}: ComboboxPrimitive.List.Props) {
   return (
     <ComboboxPrimitive.List
       data-slot="combobox-list"
       className={cn(
-        "no-scrollbar max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",
+        "no-scrollbar max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] touch-pan-y scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",
         className
       )}
+      onPointerDownCapture={(event) => {
+        onPointerDownCapture?.(event)
+        if (event.pointerType === "touch") {
+          // Base UI prevents pointerdown on each option to keep the input
+          // focused. On touch browsers that also cancels the native pan before
+          // this overflow container can scroll. Stop the capture path here so
+          // touch taps still click options while touch drags remain scrollable.
+          event.stopPropagation()
+        }
+      }}
       {...props}
     />
   )

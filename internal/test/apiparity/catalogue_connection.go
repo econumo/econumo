@@ -1,24 +1,14 @@
 package apiparity
 
-// Connection-module write scenarios: account-access grants/revokes (owner
-// manages access to their OWN account) and the invite/delete-connection flow.
-// Owner and guest are already Connect()ed in the shared fixture; generate-invite
-// mints a fresh code every run (see NormalizeGolden's inviteCodeRe redaction),
-// so the happy accept path can't be replayed statically here — it's covered end
-// to end by the build-tagged internal/test/enginecompare/connection_invite_test.go.
+// Connection-module write scenarios: the invite/delete-connection flow.
+// Account-access grants/revokes moved to the account module (see
+// catalogue_account.go's account_access_writes scenario). Owner and guest are
+// already Connect()ed in the shared fixture; generate-invite mints a fresh code
+// every run (see NormalizeGolden's inviteCodeRe redaction), so the happy accept
+// path can't be replayed statically here — it's covered end to end by the
+// build-tagged internal/test/enginecompare/connection_invite_test.go.
 
 func init() {
-	register(Scenario{Name: "connection_access_writes", Calls: func() []Call {
-		return []Call{
-			// role enum: "admin" | "user" | "guest" (owner is not an input role).
-			{Label: "set-account-access", Method: "POST", Path: "/api/v1/connection/set-account-access", Auth: "owner",
-				Body: map[string]any{"accountId": OwnerAccount, "userId": GuestID, "role": "user"}},
-			{Label: "get-connection-list-after-set", Method: "GET", Path: "/api/v1/connection/get-connection-list", Auth: "owner"},
-			{Label: "revoke-account-access", Method: "POST", Path: "/api/v1/connection/revoke-account-access", Auth: "owner",
-				Body: map[string]any{"accountId": OwnerAccount, "userId": GuestID}},
-		}
-	}})
-
 	register(Scenario{Name: "connection_invite_flows", Calls: func() []Call {
 		return []Call{
 			// Owner mints an invite (response carries a fresh, non-UUID 5-char code

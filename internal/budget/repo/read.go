@@ -326,7 +326,11 @@ func (r *ReadRepo) holdingsSQL(toHoldings bool, ids []any, start, end time.Time)
 
 // CountSpending implements ReadModel.
 func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
-	if len(categoryIDs) == 0 {
+	// Both lists feed an "IN (...)" clause; an empty list is a no-op on SQLite
+	// but a syntax error on PostgreSQL (unlike the other list here, accountIDs
+	// had no guard — reachable whenever a budget's categories are non-empty but
+	// every account is excluded from it).
+	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
 		return nil, nil
 	}
 	catArgs := idArgs(categoryIDs)

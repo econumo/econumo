@@ -1,6 +1,5 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { AccountRole } from './dto/account'
 import type { ConnectionDto, InviteDto } from './dto/connection'
 
 interface Envelope<T> {
@@ -25,12 +24,4 @@ export async function acceptInvite(code: string): Promise<ConnectionDto[]> {
 // the wire field is "id" (the connected user's id)
 export async function deleteConnection(userId: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/connection/delete-connection'), { id: userId })
-}
-
-export async function setAccountAccess(form: { accountId: Id; userId: Id; role: AccountRole }): Promise<void> {
-  await api.post(apiUrl('/api/v1/connection/set-account-access'), form)
-}
-
-export async function revokeAccountAccess(form: { accountId: Id; userId: Id }): Promise<void> {
-  await api.post(apiUrl('/api/v1/connection/revoke-account-access'), form)
 }

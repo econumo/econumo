@@ -15,9 +15,9 @@ func (accessTokenPgsqlQuerier) InsertAccessToken(ctx context.Context, db backend
 	return pgsqlgen.New(db).InsertAccessToken(ctx, pgsqlgen.InsertAccessTokenParams(p))
 }
 
-func (accessTokenPgsqlQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenRow, error) {
+func (accessTokenPgsqlQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error) {
 	row, err := pgsqlgen.New(db).GetAccessTokenByHash(ctx, hash)
-	return accessTokenRow(row), err
+	return accessTokenWithAccessRow(row), err
 }
 
 func (accessTokenPgsqlQuerier) GetAccessTokenByID(ctx context.Context, db backend.DBTX, id string) (accessTokenRow, error) {

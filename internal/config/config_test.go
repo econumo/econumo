@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -196,5 +197,366 @@ func TestLoadLogLevel(t *testing.T) {
 	}
 	if cfg.LogLevel != "debug" {
 		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
+}
+
+func TestLoad_CheckUpdates(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.CheckUpdates {
+		t.Fatal("CheckUpdates default = false, want true")
+	}
+	t.Setenv("ECONUMO_CHECK_UPDATES", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.CheckUpdates {
+		t.Fatal("CheckUpdates with ECONUMO_CHECK_UPDATES=false = true, want false")
+	}
+}
+
+func TestLoad_Analytics(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.Analytics {
+		t.Fatal("Analytics default = false, want true")
+	}
+	t.Setenv("ECONUMO_ANALYTICS", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Analytics {
+		t.Fatal("Analytics with ECONUMO_ANALYTICS=false = true, want false")
+	}
+	// Strict parse: a typo while trying to disable analytics fails at boot
+	// rather than silently leaving it enabled.
+	t.Setenv("ECONUMO_ANALYTICS", "flase")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_ANALYTICS=flase: err = nil, want boot error")
+	}
+}
+
+func TestLoad_Trial(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.TrialDays != 0 {
+		t.Fatalf("TrialDays default = %d, want 0", c.TrialDays)
+	}
+	t.Setenv("ECONUMO_TRIAL", "30")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.TrialDays != 30 {
+		t.Fatalf("TrialDays with ECONUMO_TRIAL=30 = %d, want 30", c.TrialDays)
+	}
+	t.Setenv("ECONUMO_TRIAL", "none")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.TrialDays != 0 {
+		t.Fatalf("TrialDays with ECONUMO_TRIAL=none = %d, want 0", c.TrialDays)
+	}
+	// The removed calendar-span literal now fails at boot.
+	t.Setenv("ECONUMO_TRIAL", "end-of-next-month")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_TRIAL=end-of-next-month: err = nil, want boot error")
+	}
+	// Non-numeric and negative values fail at boot.
+	t.Setenv("ECONUMO_TRIAL", "weekly")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_TRIAL=weekly: err = nil, want boot error")
+	}
+	t.Setenv("ECONUMO_TRIAL", "-5")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_TRIAL=-5: err = nil, want boot error")
+	}
+}
+
+func TestLoad_SPAOverrides(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AllowCustomAPI != nil {
+		t.Fatal("AllowCustomAPI default != nil, want nil (leave the dist value)")
+	}
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "false")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AllowCustomAPI == nil || *c.AllowCustomAPI {
+		t.Fatal("AllowCustomAPI = nil or true, want false")
+	}
+	t.Setenv("ECONUMO_ALLOW_CUSTOM_API", "maybe")
+	if _, err = Load(); err == nil {
+		t.Fatal("Load with ECONUMO_ALLOW_CUSTOM_API=maybe: err = nil, want boot error")
+	}
+}
+
+func TestLoad_LiltagAndVersionOverrides(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/econumo-test.sqlite")
+
+	// Unset = empty, so the embedded econumo-config.js defaults stay in place.
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LiltagConfigURL != "" || cfg.LiltagCacheTTL != "" || cfg.Version != "" {
+		t.Fatalf("unset: liltag/version overrides should be empty, got url=%q ttl=%q version=%q",
+			cfg.LiltagConfigURL, cfg.LiltagCacheTTL, cfg.Version)
+	}
+
+	t.Setenv("ECONUMO_LILTAG_CONFIG_URL", "https://cdn.example/liltag.json")
+	t.Setenv("ECONUMO_LILTAG_CACHE_TTL", "3600")
+	t.Setenv("ECONUMO_VERSION", "demo-42")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LiltagConfigURL != "https://cdn.example/liltag.json" || cfg.LiltagCacheTTL != "3600" || cfg.Version != "demo-42" {
+		t.Fatalf("set: got url=%q ttl=%q version=%q", cfg.LiltagConfigURL, cfg.LiltagCacheTTL, cfg.Version)
+	}
+}
+
+func TestLoad_AdminRequiresBothOrNeither(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	if _, err := Load(); err == nil {
+		t.Fatal("port without token must fail at boot")
+	}
+}
+
+func TestLoad_AdminTokenMinimumLength(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", "tooshort")
+	if _, err := Load(); err == nil {
+		t.Fatal("a token under 32 chars must fail at boot")
+	}
+}
+
+func TestLoad_AdminBothSet(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AdminPort != "9090" || len(c.AdminToken) != 32 {
+		t.Fatalf("AdminPort=%q AdminToken len=%d", c.AdminPort, len(c.AdminToken))
+	}
+}
+
+func TestLoad_AdminDefaultsEmpty(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AdminPort != "" || c.AdminToken != "" || c.BillingURL != "" {
+		t.Fatalf("want all empty by default, got %q %q %q", c.AdminPort, c.AdminToken, c.BillingURL)
+	}
+}
+
+func TestLoad_BillingURLRequiresAdminToken(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_BILLING_URL", "https://pay.example.test/cloud/")
+	if _, err := Load(); err == nil {
+		t.Fatal("billing URL without an admin token (the HMAC key) must fail at boot")
+	}
+}
+
+func TestLoad_BillingURLMustBeAbsolute(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	t.Setenv("ECONUMO_BILLING_URL", "/cloud")
+	if _, err := Load(); err == nil {
+		t.Fatal("a non-absolute billing URL must fail at boot")
+	}
+}
+
+func TestLoad_BillingURLAccepted(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	t.Setenv("ECONUMO_BILLING_URL", "https://pay.example.test/cloud/")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.BillingURL != "https://pay.example.test/cloud/" {
+		t.Fatalf("BillingURL = %q", c.BillingURL)
+	}
+}
+
+func TestLoad_AppURL(t *testing.T) {
+	// Both http and https are accepted (no signed token in an app link, so no
+	// https-for-remote-hosts rule), and the value is stored verbatim.
+	for _, v := range []string{"https://money.example.test", "http://192.168.1.10:8181"} {
+		t.Run(v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", v)
+			c, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if c.AppURL != v {
+				t.Fatalf("AppURL = %q, want %q", c.AppURL, v)
+			}
+		})
+	}
+
+	// Unset leaves it empty (no link appended to emails).
+	t.Run("unset", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.AppURL != "" {
+			t.Fatalf("AppURL = %q, want empty", c.AppURL)
+		}
+	})
+
+	// A relative or scheme-less value fails at boot.
+	for _, v := range []string{"/app", "money.example.test", "ftp://x.test"} {
+		t.Run("reject "+v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", v)
+			if _, err := Load(); err == nil {
+				t.Fatalf("ECONUMO_URL=%q must fail at boot", v)
+			}
+		})
+	}
+}
+
+// The billing URL is followed by users' browsers carrying the signed handoff
+// token in the query string; a remote http portal would expose tokens in
+// transit. Loopback stays allowed so portal development against a real
+// backend works.
+func TestLoad_BillingURLRequiresHTTPSForRemoteHosts(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+	t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+	t.Setenv("ECONUMO_BILLING_URL", "http://pay.example.test/cloud/")
+	if _, err := Load(); err == nil {
+		t.Fatal("a remote http billing URL must fail at boot")
+	}
+}
+
+func TestLoad_BillingURLAllowsLoopbackHTTP(t *testing.T) {
+	for _, v := range []string{
+		"http://localhost:3000/cloud/",
+		"http://127.0.0.1:3000/",
+		"http://[::1]:3000/",
+	} {
+		t.Run(v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_ADMIN_PORT", "9090")
+			t.Setenv("ECONUMO_ADMIN_TOKEN", strings.Repeat("k", 32))
+			t.Setenv("ECONUMO_BILLING_URL", v)
+			c, err := Load()
+			if err != nil {
+				t.Fatalf("loopback http rejected: %v", err)
+			}
+			if c.BillingURL != v {
+				t.Fatalf("BillingURL = %q", c.BillingURL)
+			}
+		})
+	}
+}
+
+func TestLoad_EmailVerification(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/test.sqlite")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.EmailVerification {
+		t.Error("EmailVerification should default to false")
+	}
+	if cfg.RateLimitVerifyEmail != 3 {
+		t.Errorf("RateLimitVerifyEmail = %d, want default 3", cfg.RateLimitVerifyEmail)
+	}
+	if cfg.RateLimitConfirmEmail != 5 {
+		t.Errorf("RateLimitConfirmEmail = %d, want default 5", cfg.RateLimitConfirmEmail)
+	}
+
+	t.Setenv("ECONUMO_EMAIL_VERIFICATION", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("Load with flag: %v", err)
+	}
+	if !cfg.EmailVerification {
+		t.Error("EmailVerification should be true")
+	}
+
+	t.Setenv("ECONUMO_EMAIL_VERIFICATION", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_EMAIL_VERIFICATION must fail at boot")
+	}
+}
+
+func TestLoad_CurrencyUpdateInterval(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+
+	// Default: unset -> 0 (disabled).
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.CurrencyUpdateIntervalDays != 0 {
+		t.Errorf("default = %d, want 0", c.CurrencyUpdateIntervalDays)
+	}
+
+	// Positive value is parsed.
+	t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", "3")
+	c, err = Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.CurrencyUpdateIntervalDays != 3 {
+		t.Errorf("interval = %d, want 3", c.CurrencyUpdateIntervalDays)
+	}
+
+	// 31 is the maximum accepted value (one month).
+	t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", "31")
+	c, err = Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.CurrencyUpdateIntervalDays != 31 {
+		t.Errorf("interval = %d, want 31", c.CurrencyUpdateIntervalDays)
+	}
+}
+
+func TestLoad_CurrencyUpdateIntervalBadValueFailsBoot(t *testing.T) {
+	// -1/abc/1.5 are malformed; 32 is just over the 31-day cap; 99999999 is absurd.
+	for _, bad := range []string{"-1", "abc", "1.5", "32", "99999999"} {
+		t.Run(bad, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", bad)
+			if _, err := Load(); err == nil {
+				t.Fatalf("Load: want error for %q, got nil", bad)
+			}
+		})
 	}
 }

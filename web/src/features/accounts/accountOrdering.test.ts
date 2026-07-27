@@ -4,7 +4,7 @@ import type { AccountDto } from '@/api/dto/account'
 const owner = { id: 'u1', avatar: '', name: 'Ada' }
 const usd = { id: 'usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const account = (id: string, folderId: string | null, position: number): AccountDto => ({
-  id, owner, folderId, name: id, position, currency: usd, balance: 0, type: 1, icon: 'wallet', sharedAccess: [],
+  id, owner, folderId, name: id, position, currency: usd, balance: '0', type: 1, icon: 'wallet', sharedAccess: [],
 })
 
 const accounts = [account('a1', 'f1', 0), account('a2', 'f1', 1), account('a3', 'f2', 2)]

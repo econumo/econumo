@@ -16,13 +16,13 @@ func (sqliteQuerier) GetUserByID(ctx context.Context, db backend.DBTX, id string
 	return userRow(row), err
 }
 
-func (sqliteQuerier) GetUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (userRow, error) {
-	row, err := sqlitegen.New(db).GetUserByIdentifier(ctx, identifier)
+func (sqliteQuerier) GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error) {
+	row, err := sqlitegen.New(db).GetUserByEmail(ctx, email)
 	return userRow(row), err
 }
 
-func (sqliteQuerier) ExistsUserByIdentifier(ctx context.Context, db backend.DBTX, identifier string) (bool, error) {
-	n, err := sqlitegen.New(db).ExistsUserByIdentifier(ctx, identifier)
+func (sqliteQuerier) ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error) {
+	n, err := sqlitegen.New(db).ExistsUserByEmail(ctx, email)
 	return n != 0, err
 }
 
@@ -44,4 +44,16 @@ func (sqliteQuerier) UpsertUserOption(ctx context.Context, db backend.DBTX, p op
 
 func (sqliteQuerier) UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error {
 	return sqlitegen.New(db).UpdateUserLanguage(ctx, p)
+}
+
+func (sqliteQuerier) GetUserTimezone(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).GetUserTimezone(ctx, id)
+}
+
+func (sqliteQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p timezoneParams) error {
+	return sqlitegen.New(db).UpdateUserTimezone(ctx, p)
+}
+
+func (sqliteQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).GetUserLanguage(ctx, id)
 }

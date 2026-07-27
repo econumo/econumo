@@ -24,6 +24,19 @@ func TestCredentialsAlgorithm(t *testing.T) {
 	}); st != http.StatusOK {
 		t.Fatalf("legacy login = %d; body: %s", st, env.raw)
 	}
+	// A successful legacy login transparently upgrades the stored hash to argon2id.
+	if err := h.db.QueryRow(`SELECT algorithm FROM users WHERE id = ?`, seedUserID).Scan(&alg); err != nil {
+		t.Fatalf("read algorithm after login: %v", err)
+	}
+	if alg != "argon2id" {
+		t.Fatalf("algorithm after legacy login = %q, want argon2id (rehash-on-login)", alg)
+	}
+	// The same password still logs in via the new argon2id hash.
+	if st, env := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+		"username": seedEmail, "password": seedPassword,
+	}); st != http.StatusOK {
+		t.Fatalf("login after rehash = %d; body: %s", st, env.raw)
+	}
 	if st, _ := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
 		"username": seedEmail, "password": "wrong-pw",
 	}); st != http.StatusUnauthorized {
@@ -74,21 +87,23 @@ func TestUpdatePasswordTransitionsAlgorithm(t *testing.T) {
 	}
 	token := mustUnmarshal[loginResult](t, env.raw).Token
 
-	// Wrong old password: 400, row stays sha512.
+	// The successful login above already rehashed the legacy row to argon2id.
+	var alg string
+	if err := h.db.QueryRow(`SELECT algorithm FROM users WHERE id = ?`, seedUserID).Scan(&alg); err != nil {
+		t.Fatalf("read algorithm: %v", err)
+	}
+	if alg != "argon2id" {
+		t.Fatalf("algorithm after legacy login = %q, want argon2id (rehash-on-login)", alg)
+	}
+
+	// Wrong old password: 400, password unchanged (old one still logs in below).
 	if st, _ := h.do(t, http.MethodPost, "/api/v1/user/update-password", token, map[string]string{
 		"oldPassword": "not-the-password", "newPassword": "upgraded-pw-1",
 	}); st != http.StatusBadRequest {
 		t.Fatalf("update with wrong old password = %d, want 400", st)
 	}
-	var alg string
-	if err := h.db.QueryRow(`SELECT algorithm FROM users WHERE id = ?`, seedUserID).Scan(&alg); err != nil {
-		t.Fatalf("read algorithm: %v", err)
-	}
-	if alg != "sha512" {
-		t.Fatalf("algorithm after failed update = %q, want sha512", alg)
-	}
 
-	// Correct old password: transition.
+	// Correct old password: password changes (algorithm stays argon2id).
 	if st, env := h.do(t, http.MethodPost, "/api/v1/user/update-password", token, map[string]string{
 		"oldPassword": seedPassword, "newPassword": "upgraded-pw-1",
 	}); st != http.StatusOK {

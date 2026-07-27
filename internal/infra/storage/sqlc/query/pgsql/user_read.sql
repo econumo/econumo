@@ -2,7 +2,8 @@
 -- variant for rationale. Postgres uses $N placeholders.
 
 -- name: GetUserView :one
-SELECT id, email, name, avatar
+-- See the sqlite variant for rationale on the access columns.
+SELECT id, email, name, avatar, access_level, access_until
 FROM users
 WHERE id = $1;
 

@@ -71,7 +71,7 @@ const listTransactionsByAccount = `-- name: ListTransactionsByAccount :many
 SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
 FROM transactions
 WHERE account_id = $1 OR account_recipient_id = $2
-ORDER BY spent_at DESC
+ORDER BY spent_at DESC, id
 `
 
 type ListTransactionsByAccountParams struct {

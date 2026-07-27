@@ -14,9 +14,7 @@ import (
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
-	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	"github.com/econumo/econumo/internal/config"
-	appconnection "github.com/econumo/econumo/internal/connection"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -77,24 +75,15 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	// Wire the real connection module so sharedAccess[] + the delete-account
-	// non-owner revoke branch are exercised against actual accounts_access rows.
-	connRepo := connectionrepo.NewRepo("sqlite", txm)
-	connSvc := appconnection.NewService(
-		connRepo, connectionrepo.NewInviteRepo("sqlite", txm),
-		server.NewConnectionFolderPort(folderRepo), repo,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
-		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)), txm, clock.New(),
-	)
-	sharedLookup := server.NewConnectionSharedAccessLookup(connRepo)
-	revoker := server.NewConnectionAccessRevoker(connRepo, connSvc)
-	svc := appaccount.NewService(repo, folderRepo, accCur, accUser, sharedLookup, revoker, txm, opGuard, clk)
-	handlers := handleraccount.NewHandlers(svc, cfg.IsDev())
+	accessRepo := accountrepo.NewAccessRepo("sqlite", txm)
+	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
+	svc := appaccount.NewService(repo, folderRepo, accessRepo, accCur, accUser, connections, txm, opGuard, clk)
+	handlers := handleraccount.NewHandlers(svc)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleraccount.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
+		RegisterAPI: handleraccount.RegisterAPI(handlers, authstub.Authenticator{}),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
@@ -110,6 +99,8 @@ func seedUsers(t *testing.T, f *fixture.Builder) {
 	} {
 		f.User(fixture.User{ID: u.id, Email: u.email, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 	}
+	// Sharing an account requires a connection between the two users.
+	f.Connect(seedUserID, otherUserID)
 }
 
 func (h *harness) token(t *testing.T) string {

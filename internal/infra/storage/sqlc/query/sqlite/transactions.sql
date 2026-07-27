@@ -29,9 +29,9 @@ ON CONFLICT (id) DO UPDATE SET
 DELETE FROM transactions WHERE id = ?;
 
 -- name: ListTransactionsByAccount :many
--- Transactions on an account (as source or recipient), newest first. Mirrors
--- TransactionRepository::findByAccountId (orderBy spentAt DESC).
+-- Transactions on an account (as source or recipient), newest first; id is the
+-- stable tie-break so row order is deterministic across engines.
 SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
 FROM transactions
 WHERE account_id = ? OR account_recipient_id = ?
-ORDER BY spent_at DESC;
+ORDER BY spent_at DESC, id;

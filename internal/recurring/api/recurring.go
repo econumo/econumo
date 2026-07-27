@@ -28,7 +28,7 @@ var _ = model.SkipRecurringTransactionResult{}
 // @Security    Bearer
 // @Router      /api/v1/recurring/get-recurring-transaction-list [get]
 func (h *Handlers) GetRecurringTransactionList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetRecurringTransactionList)
+	endpoint.HandleNoBody(w, r, h.svc.GetRecurringTransactionList)
 }
 
 // CreateRecurringTransaction handles POST /api/v1/recurring/create-recurring-transaction (auth).
@@ -42,11 +42,12 @@ func (h *Handlers) GetRecurringTransactionList(w http.ResponseWriter, r *http.Re
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateRecurringTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/recurring/create-recurring-transaction [post]
 func (h *Handlers) CreateRecurringTransaction(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreateRecurringTransaction)
+	endpoint.Handle(w, r, h.svc.CreateRecurringTransaction)
 }
 
 // UpdateRecurringTransaction handles POST /api/v1/recurring/update-recurring-transaction (auth).
@@ -60,11 +61,12 @@ func (h *Handlers) CreateRecurringTransaction(w http.ResponseWriter, r *http.Req
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateRecurringTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/recurring/update-recurring-transaction [post]
 func (h *Handlers) UpdateRecurringTransaction(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateRecurringTransaction)
+	endpoint.Handle(w, r, h.svc.UpdateRecurringTransaction)
 }
 
 // DeleteRecurringTransaction handles POST /api/v1/recurring/delete-recurring-transaction (auth).
@@ -78,11 +80,12 @@ func (h *Handlers) UpdateRecurringTransaction(w http.ResponseWriter, r *http.Req
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteRecurringTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/recurring/delete-recurring-transaction [post]
 func (h *Handlers) DeleteRecurringTransaction(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteRecurringTransaction)
+	endpoint.Handle(w, r, h.svc.DeleteRecurringTransaction)
 }
 
 // PostRecurringTransaction handles POST /api/v1/recurring/post-recurring-transaction (auth).
@@ -96,11 +99,12 @@ func (h *Handlers) DeleteRecurringTransaction(w http.ResponseWriter, r *http.Req
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.PostRecurringTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/recurring/post-recurring-transaction [post]
 func (h *Handlers) PostRecurringTransaction(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.PostRecurringTransaction)
+	endpoint.Handle(w, r, h.svc.PostRecurringTransaction)
 }
 
 // SkipRecurringTransaction handles POST /api/v1/recurring/skip-recurring-transaction (auth).
@@ -114,9 +118,10 @@ func (h *Handlers) PostRecurringTransaction(w http.ResponseWriter, r *http.Reque
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.SkipRecurringTransactionResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/recurring/skip-recurring-transaction [post]
 func (h *Handlers) SkipRecurringTransaction(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.SkipRecurringTransaction)
+	endpoint.Handle(w, r, h.svc.SkipRecurringTransaction)
 }

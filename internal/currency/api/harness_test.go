@@ -63,12 +63,12 @@ func newHarness(t *testing.T) *harness {
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	readSvc := appcurrency.NewReadService(readRepo)
-	handlers := handlercurrency.NewHandlers(readSvc, cfg.IsDev())
+	handlers := handlercurrency.NewHandlers(readSvc)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handlercurrency.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev()),
+		RegisterAPI: handlercurrency.RegisterAPI(handlers, authstub.Authenticator{}),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)

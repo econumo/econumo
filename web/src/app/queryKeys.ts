@@ -15,6 +15,7 @@ export const queryKeys = {
   recurring: ['recurring'] as const,
   sessions: ['sessions'] as const,
   personalTokens: ['personalTokens'] as const,
+  updateInfo: ['updateInfo'] as const,
 }
 
 export const TEN_MINUTES = 10 * 60_000

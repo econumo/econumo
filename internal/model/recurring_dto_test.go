@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 func fieldKeys(err error) []string {
@@ -30,7 +31,7 @@ func TestCreateRecurringTransactionRequest_Validate(t *testing.T) {
 	}
 
 	ok := model.CreateRecurringTransactionRequest{
-		Id: "0197b7e0-0000-7000-8000-000000000001", Type: "expense", Amount: "50",
+		Id: "0197b7e0-0000-7000-8000-000000000001", Type: "expense", Amount: vo.NewFlexString("50"),
 		AccountId: "0197b7e0-0000-7000-8000-000000000002",
 		Schedule:  "monthly", NextPaymentAt: "2026-08-01 00:00:00",
 	}

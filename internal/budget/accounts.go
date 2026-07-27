@@ -47,6 +47,15 @@ func (s *Service) toggleAccount(ctx context.Context, userID vo.Id, rawBudget, ra
 	if !owner.Equal(userID) {
 		return model.MetaResult{}, accessDenied()
 	}
+	// The caller must also have write access to the budget itself — otherwise a
+	// user could toggle excluded-account rows on a budget they cannot even read.
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return model.MetaResult{}, err
+	}
+	if !s.canUpdate(b, userID) {
+		return model.MetaResult{}, accessDenied()
+	}
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if exclude {
 			return s.budgets.ExcludeAccount(txCtx, budgetID, accountID)
@@ -55,7 +64,7 @@ func (s *Service) toggleAccount(ctx context.Context, userID vo.Id, rawBudget, ra
 	}); err != nil {
 		return model.MetaResult{}, err
 	}
-	b, err := s.loadAggregate(ctx, budgetID)
+	b, err = s.loadAggregate(ctx, budgetID)
 	if err != nil {
 		return model.MetaResult{}, err
 	}

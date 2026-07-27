@@ -64,7 +64,7 @@ it('creates an account with a UUIDv7 op id and numeric balance; correction lands
 
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.id).toMatch(UUID_V7)
-  expect(body!.balance).toBe(25)
+  expect(body!.balance).toBe('25')
   expect(body!.folderId).toBe('f1')
   expect(body!.name).toBe('New Wallet')
   await waitFor(() =>
@@ -136,7 +136,7 @@ it('edit mode shows the access row for the owner; the share flow posts the grant
   let body: Record<string, unknown> | undefined
   server.use(
     ...coreHandlers({ connections: fixtureConnections }),
-    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
       body = (await request.json()) as Record<string, unknown>
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
@@ -168,7 +168,7 @@ it('edit mode hides the access row from a non-admin member', async () => {
     ...fixtureAccounts[0],
     id: 'a-foreign',
     owner: { id: 'u2', avatar: 'pets:sky', name: 'Partner' },
-    sharedAccess: [{ user: fixtureOwner, role: 'user' }],
+    sharedAccess: [{ user: fixtureOwner, role: 'user', isAccepted: 1 }],
   }
   server.use(...coreHandlers({ accounts: [...fixtureAccounts, foreign], connections: fixtureConnections }))
   renderDialog()

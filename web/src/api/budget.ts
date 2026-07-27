@@ -1,41 +1,9 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetTransactionDto } from './dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetTransactionDto } from './dto/budget'
 
 interface Envelope<T> {
   data: T
-}
-
-const num = (v: unknown): number => Number(v)
-const numOrNull = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v))
-
-// The exact Vue coercion list: parent spent/budgetSpent/budgeted/available,
-// child spent/budgetSpent, balances (null-preserving), rate.
-function coerceBudget(raw: BudgetDto): BudgetDto {
-  return {
-    ...raw,
-    balances: raw.balances.map((b): BudgetBalanceDto => ({
-      ...b,
-      startBalance: numOrNull(b.startBalance),
-      endBalance: numOrNull(b.endBalance),
-      income: numOrNull(b.income),
-      expenses: numOrNull(b.expenses),
-      exchanges: numOrNull(b.exchanges),
-      holdings: numOrNull(b.holdings),
-    })),
-    currencyRates: raw.currencyRates.map((r) => ({ ...r, rate: num(r.rate) })),
-    structure: {
-      folders: raw.structure.folders,
-      elements: raw.structure.elements.map((el): BudgetElementDto => ({
-        ...el,
-        spent: num(el.spent),
-        budgetSpent: num(el.budgetSpent),
-        budgeted: num(el.budgeted),
-        available: num(el.available),
-        children: el.children.map((child) => ({ ...child, spent: num(child.spent), budgetSpent: num(child.budgetSpent) })),
-      })),
-    },
-  }
 }
 
 export interface CreateBudgetForm {
@@ -77,7 +45,7 @@ export async function getBudget(id: Id, date: string): Promise<BudgetDto> {
   const response = await api.get<Envelope<{ item: BudgetDto }>>(
     apiUrl(`/api/v1/budget/get-budget?id=${encodeURIComponent(id)}&date=${encodeURIComponent(date)}`),
   )
-  return coerceBudget(response.data.data.item)
+  return response.data.data.item
 }
 
 export interface SetLimitForm {
@@ -159,7 +127,7 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )
-  return response.data.data.items.map((tx) => ({ ...tx, amount: num(tx.amount) }))
+  return response.data.data.items
 }
 
 // Access + account inclusion functions for Plan 5 (no UI yet).

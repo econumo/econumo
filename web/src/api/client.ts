@@ -1,7 +1,11 @@
 import axios from 'axios'
 import { v7 as uuidv7 } from 'uuid'
+import { toast } from 'sonner'
 import { getToken, removeToken } from '@/lib/storage'
 import { backendHost, locale } from '@/lib/config'
+import i18n from '@/app/i18n'
+import { queryClient } from '@/app/queryClient'
+import { queryKeys } from '@/app/queryKeys'
 
 export const api = axios.create()
 
@@ -25,6 +29,13 @@ api.interceptors.response.use(
     if (status === 401 && !url.includes('/api/v1/user/login-user')) {
       removeToken()
       window.location.assign('/login?reason=expired')
+    }
+    if (status === 402) {
+      // The 402 envelope message is deliberately product-neutral and carries
+      // no messageCode — render our own localized copy. Fixed id: repeated
+      // 402s must not stack toasts.
+      toast.error(i18n.t('subscription.toast.readonly'), { id: 'subscription-readonly' })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.user })
     }
     return Promise.reject(error)
   },

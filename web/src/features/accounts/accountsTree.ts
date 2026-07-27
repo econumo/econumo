@@ -1,26 +1,27 @@
 import type { AccountDto } from '@/api/dto/account'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { FolderDto } from '@/api/dto/folder'
+import { add } from '@/lib/decimal'
 
 export interface AccountsTreeItem {
   folder: FolderDto
   accounts: AccountDto[]
-  total: number
+  total: string
   /** the folder's shared currency, or the user currency when mixed */
   currency: CurrencyDto | null
 }
 
 export const SYNTHETIC_FOLDER_ID = '0'
 
-// Port of the Vue accountsTree computed: visible folders only, position order,
-// per-folder totals (native currency when uniform, user-currency-converted when
-// mixed), folderless accounts grouped into a trailing synthetic folder, empty
-// folders dropped. Accounts inside hidden folders disappear entirely.
+// Builds visible folders only in position order, computing per-folder totals
+// in native currency when uniform or user-currency-converted when mixed,
+// groups folderless accounts into a trailing synthetic folder, and drops
+// empty folders. Accounts inside hidden folders disappear entirely.
 export function buildAccountsTree(
   accounts: AccountDto[],
   folders: FolderDto[],
   userCurrency: CurrencyDto | null,
-  exchangeFn: (fromCurrencyId: string, toCurrencyId: string, amount: number) => number,
+  exchangeFn: (fromCurrencyId: string, toCurrencyId: string, amount: string) => string,
   defaultFolderName: string,
 ): AccountsTreeItem[] {
   const orderedAccounts = [...accounts].sort((a, b) => a.position - b.position)
@@ -30,16 +31,16 @@ export function buildAccountsTree(
   const buildItem = (folder: FolderDto, folderAccounts: AccountDto[]): AccountsTreeItem => {
     let sharedCurrency: CurrencyDto | null = null
     let mixed = false
-    let nativeTotal = 0
-    let convertedTotal = 0
+    let nativeTotal = '0'
+    let convertedTotal = '0'
     for (const account of folderAccounts) {
       if (sharedCurrency === null) {
         sharedCurrency = account.currency
       } else if (sharedCurrency.id !== account.currency.id) {
         mixed = true
       }
-      nativeTotal += account.balance
-      convertedTotal += userCurrency ? exchangeFn(account.currency.id, userCurrency.id, account.balance) : account.balance
+      nativeTotal = add(nativeTotal, account.balance)
+      convertedTotal = add(convertedTotal, userCurrency ? exchangeFn(account.currency.id, userCurrency.id, account.balance) : account.balance)
     }
     if (sharedCurrency && !mixed) {
       return { folder, accounts: folderAccounts, total: nativeTotal, currency: sharedCurrency }

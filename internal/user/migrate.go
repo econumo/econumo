@@ -11,14 +11,11 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 )
 
-// MigrateRemoveDataSalt decrypts every user's email back to plaintext and
-// re-derives the identifier WITHOUT the data salt, so ECONUMO_DATA_SALT can be
-// unset afterwards. It rewrites both salt-dependent columns:
-//
-//   - email:      AES ciphertext -> plaintext (decrypted with the salt the data
-//     was written with, passed in by the caller).
-//   - identifier: hex(md5(lower(email)+salt)) -> hex(md5(lower(email))) — the
-//     exact value Login will compute (the API itself is already salt-free).
+// MigrateRemoveDataSalt decrypts every user's email back to plaintext (AES
+// ciphertext -> plaintext, decrypted with the salt the data was written with,
+// passed in by the caller) so ECONUMO_DATA_SALT can be unset afterwards. The
+// repo derives the identifier column from the row id at Save time, so this
+// migration no longer touches it.
 //
 // The salt arrives as a parameter rather than via s.encode: the service's own
 // encoder is salt-free (the API ignores ECONUMO_DATA_SALT), so this method builds
@@ -41,10 +38,7 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 	if err != nil {
 		return 0, 0, err
 	}
-	// salted decrypts the stored emails; saltFree derives the post-removal
-	// identifier md5(lower(email)).
 	salted := auth.NewEncodeService(salt)
-	saltFree := auth.NewEncodeService("")
 
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, id := range ids {
@@ -59,13 +53,12 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 				skipped++
 				continue
 			}
-			newIdent := saltFree.Hash(strings.ToLower(plain))
-			if plain == u.Email && newIdent == u.Identifier {
+			if plain == u.Email {
 				// Nothing to change (defensive: Decode normally errors first).
 				skipped++
 				continue
 			}
-			u.UpdateEmail(newIdent, plain, s.clock.Now())
+			u.UpdateEmail(plain, s.clock.Now())
 			if serr := s.repo.Save(ctx, u); serr != nil {
 				return serr
 			}

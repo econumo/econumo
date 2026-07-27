@@ -54,7 +54,7 @@ func TestCreateRecurringTransaction_SharedAccount_NoGrant_Denied(t *testing.T) {
 	h.shareAccount(t, 0, false) // account owned by another user, no grant to seed user
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok, sharedCreateRecurringReq("0197c300-0000-7000-8000-000000000001", "10"))
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 }
 
 func TestSkipRecurringTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
@@ -74,7 +74,7 @@ func TestSkipRecurringTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 
 	tok := h.token(t) // seed user, guest role on recSharedAcctID
 	status, env = h.do(t, http.MethodPost, "/api/v1/recurring/skip-recurring-transaction", tok, map[string]any{"id": item.ID})
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 }
 
 func TestUpdateRecurringTransaction_MoveToUnwritableAccount_Denied(t *testing.T) {
@@ -91,7 +91,7 @@ func TestUpdateRecurringTransaction_MoveToUnwritableAccount_Denied(t *testing.T)
 		"nextPaymentAt": "2026-09-05 00:00:00", "description": "moved",
 	}
 	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/update-recurring-transaction", tok, body)
-	assertValidationDenied(t, status, env, "account.account.not_available")
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
 
 	// The template must be unchanged (still on the original account).
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
@@ -102,8 +102,8 @@ func TestUpdateRecurringTransaction_MoveToUnwritableAccount_Denied(t *testing.T)
 }
 
 // assertValidationDenied checks the denial envelope: HTTP 400, success false,
-// and the fieldless *ValidationError's own message on the wire (an i18n key
-// the frontend localizes).
+// and the fieldless *ValidationError's server-rendered message on the wire
+// (coded errors are localized into the caller's language in the envelope).
 func assertValidationDenied(t *testing.T, status int, env envelope, wantMsg string) {
 	t.Helper()
 	if status != http.StatusBadRequest {

@@ -136,7 +136,6 @@ it('surfaces server field errors under the name input', async () => {
           message: 'Form validation error',
           code: 400,
           errors: { name: ['This value is too long.'] },
-          errorCodes: { name: [{ code: 'common.too_long' }] },
         },
         { status: 400 },
       ),
@@ -200,10 +199,9 @@ it('clicking the avatar opens the avatar picker dialog', async () => {
   expect(within(dialog).getByText('Choose your avatar')).toBeInTheDocument()
 })
 
-it('email is readonly; logout confirm has the exact copy and navigates', async () => {
+it('logout confirm has the exact copy and navigates', async () => {
   const user = userEvent.setup()
   renderPage()
-  expect(await screen.findByLabelText('Email')).toBeDisabled()
   await user.click(await screen.findByText('Log out'))
   expect(await screen.findByText('Are you sure you want to log out?')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Stay' })).toBeInTheDocument()

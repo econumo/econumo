@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { importTransactionList } from '@/api/transaction'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
@@ -183,6 +184,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     setSubmitting(true)
     try {
       const result = await runImport(analysis, selection, importTransactionList, (done, total) => setProgress({ done, total }))
+      trackEvent(METRICS.TRANSACTION_IMPORT)
       await queryClient.invalidateQueries()
       onClose()
       onComplete(result)

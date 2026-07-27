@@ -12,5 +12,5 @@ export async function getCurrencyList(): Promise<CurrencyDto[]> {
 
 export async function getCurrencyRateList(): Promise<CurrencyRateDto[]> {
   const response = await api.get<Envelope<{ items: CurrencyRateDto[] }>>(apiUrl('/api/v1/currency/get-currency-rate-list'))
-  return response.data.data.items.map((r) => ({ ...r, rate: Number(r.rate) }))
+  return response.data.data.items
 }

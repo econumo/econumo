@@ -26,6 +26,9 @@ export interface CurrentUserDto {
   email: string
   avatar: string
   options: UserOptionDto[]
+  accessLevel: 'full' | 'readonly'
+  /** frozen wire format "YYYY-MM-DD HH:mm:ss" UTC; '' = no expiry */
+  accessUntil: string
   /** @deprecated */
   currency: string
   /** @deprecated */

@@ -1,4 +1,4 @@
-import { backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, isPaywallEnabled, getVersion } from './config'
+import { analyticsEnabled, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getBillingUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -6,11 +6,6 @@ beforeEach(() => {
 })
 
 describe('backendHost', () => {
-  it('prefers econumoConfig.API_URL over everything', () => {
-    window.econumoConfig = { API_URL: 'https://api.example.test', ALLOW_CUSTOM_API: 'true' }
-    expect(backendHost()).toBe('https://api.example.test')
-  })
-
   it('falls back to the page origin when custom API is not allowed', () => {
     window.econumoConfig = { ALLOW_CUSTOM_API: 'false' }
     expect(backendHost()).toBe(window.location.origin)
@@ -32,9 +27,14 @@ describe('flags', () => {
     expect(isCustomApiAllowed()).toBe(false)
   })
 
-  it('defaults registration=true, paywall=false when unset', () => {
+  it('defaults registration=true when unset', () => {
     expect(isRegistrationAllowed()).toBe(true)
-    expect(isPaywallEnabled()).toBe(false)
+  })
+
+  it('returns the billing URL, empty when unset', () => {
+    expect(getBillingUrl()).toBe('')
+    window.econumoConfig = { BILLING_URL: 'https://pay.example.test/cloud/' }
+    expect(getBillingUrl()).toBe('https://pay.example.test/cloud/')
   })
 })
 
@@ -64,5 +64,19 @@ describe('locale and version', () => {
   it('falls back to english when nothing is supported', () => {
     vi.stubGlobal('navigator', { ...navigator, languages: ['de-DE', 'fr-FR'], language: 'de-DE' })
     expect(locale()).toBe('en')
+  })
+})
+
+describe('analyticsEnabled', () => {
+  it.each([
+    [undefined, true],
+    [true, true],
+    ['true', true],
+    [false, false],
+    ['false', false],
+    ['garbage', true], // unknown fails OPEN: enabled-by-default contract
+  ])('ANALYTICS=%s -> %s', (value, expected) => {
+    window.econumoConfig = { ANALYTICS: value as boolean | string | undefined }
+    expect(analyticsEnabled()).toBe(expected)
   })
 })

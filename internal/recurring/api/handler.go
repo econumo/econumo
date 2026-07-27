@@ -11,9 +11,8 @@ var _ = apidoc.JsonResponseOk{}
 
 type Handlers struct {
 	svc *apprecurring.Service
-	dev bool
 }
 
-func NewHandlers(svc *apprecurring.Service, dev bool) *Handlers {
-	return &Handlers{svc: svc, dev: dev}
+func NewHandlers(svc *apprecurring.Service) *Handlers {
+	return &Handlers{svc: svc}
 }

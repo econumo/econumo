@@ -57,7 +57,7 @@ const listTransactionsByAccount = `-- name: ListTransactionsByAccount :many
 SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
 FROM transactions
 WHERE account_id = ? OR account_recipient_id = ?
-ORDER BY spent_at DESC
+ORDER BY spent_at DESC, id
 `
 
 type ListTransactionsByAccountParams struct {
@@ -65,8 +65,8 @@ type ListTransactionsByAccountParams struct {
 	AccountRecipientID *string
 }
 
-// Transactions on an account (as source or recipient), newest first. Mirrors
-// TransactionRepository::findByAccountId (orderBy spentAt DESC).
+// Transactions on an account (as source or recipient), newest first; id is the
+// stable tie-break so row order is deterministic across engines.
 func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error) {
 	rows, err := q.db.QueryContext(ctx, listTransactionsByAccount, arg.AccountID, arg.AccountRecipientID)
 	if err != nil {

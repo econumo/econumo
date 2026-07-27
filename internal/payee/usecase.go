@@ -61,7 +61,9 @@ func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(p *model
 			return err
 		}
 		if !p.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned payee as not-found (matching the repo above), so
+			// the response can't probe which payee ids exist.
+			return errs.NewNotFound("Payee not found")
 		}
 		fn(p, s.clock.Now())
 		if err := s.repo.Save(txCtx, p); err != nil {
@@ -93,7 +95,9 @@ func (s *Service) mutateChecked(ctx context.Context, id, userID vo.Id, fn func(c
 			return err
 		}
 		if !p.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Mask a foreign-owned payee as not-found (matching the repo above), so
+			// the response can't probe which payee ids exist.
+			return errs.NewNotFound("Payee not found")
 		}
 		if ferr := fn(txCtx, p, s.clock.Now()); ferr != nil {
 			return ferr

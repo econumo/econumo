@@ -144,3 +144,61 @@ func TestDeleteBudget_AcceptedUser_403(t *testing.T) {
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/delete-budget", other, map[string]any{"id": budgetID1})
 	assertBudgetDenied(t, status, env)
 }
+
+// A non-admin accepted member (guest) must not be able to revoke anyone —
+// canShare is owner|admin only, and fails closed for everyone else.
+func TestRevokeAccess_NonAdminMember_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	other := h.seedSecondUser(t)
+	h.shareAndAccept(t, tok, other, "guest")
+	// Guest tries to revoke the owner.
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/revoke-access", other, map[string]any{
+		"budgetId": budgetID1, "userId": seedUserID,
+	})
+	assertBudgetDenied(t, status, env)
+	// Owner still owns and can read the budget.
+	if st, e := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil); st != http.StatusOK {
+		t.Fatalf("owner get-budget after failed revoke = %d; body: %s", st, e.raw)
+	}
+}
+
+// Revoking the budget owner's id must be rejected even for an admin — it would
+// otherwise delete the owner's own elements/limits via removeMemberRecords.
+func TestRevokeAccess_Owner_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/revoke-access", tok, map[string]any{
+		"budgetId": budgetID1, "userId": seedUserID,
+	})
+	assertBudgetDenied(t, status, env)
+}
+
+// Revoking a user who has no grant on the budget is denied (no silent cleanup of
+// a non-member's records).
+func TestRevokeAccess_NonMember_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	other := h.seedSecondUser(t) // connected, but never granted access
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/revoke-access", tok, map[string]any{
+		"budgetId": budgetID1, "userId": other,
+	})
+	assertBudgetDenied(t, status, env)
+}
+
+// A read-only guest must not change budget metadata (currency, excluded
+// accounts) by submitting the unchanged name.
+func TestUpdateBudget_Guest_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	other := h.seedSecondUser(t)
+	h.shareAndAccept(t, tok, other, "guest")
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/update-budget", other, map[string]any{
+		"id": budgetID1, "name": "Test Budget", "currencyId": eurID,
+	})
+	assertBudgetDenied(t, status, env)
+}

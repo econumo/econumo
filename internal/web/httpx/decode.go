@@ -2,9 +2,17 @@ package httpx
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+
+	"github.com/econumo/econumo/internal/shared/errs"
 )
+
+// MaxJSONBody caps a decoded JSON request body. No API payload approaches this;
+// the bound exists so an unauthenticated client cannot exhaust memory with an
+// arbitrarily large body (decoding happens before service-level rate limiting).
+const MaxJSONBody = 1 << 20 // 1 MiB
 
 // Validator is implemented by request DTOs that carry hand-written validation
 // (tier-1: shape/format). Returning an *errs.ValidationError yields a 400 with
@@ -20,10 +28,14 @@ func Decode(r *http.Request, dst any) error {
 	if r.Body == nil {
 		return nil
 	}
-	dec := json.NewDecoder(r.Body)
+	dec := json.NewDecoder(http.MaxBytesReader(nil, r.Body, MaxJSONBody))
 	if err := dec.Decode(dst); err != nil {
 		if err == io.EOF {
 			return nil // empty body -> zero value
+		}
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			return errs.NewValidation("Request body too large.")
 		}
 		return err
 	}

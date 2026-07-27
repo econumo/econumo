@@ -247,3 +247,16 @@ func (l *BudgetUserLookup) SetActiveBudget(ctx context.Context, userID, budgetID
 	u.UpdateBudget(budgetID.String(), l.clock.Now())
 	return l.users.Save(ctx, u)
 }
+
+// ClearActiveBudget clears the user's active-budget option when it points at
+// the given budget.
+func (l *BudgetUserLookup) ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error {
+	u, err := l.users.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if !u.ClearBudget(budgetID.String(), l.clock.Now()) {
+		return nil
+	}
+	return l.users.Save(ctx, u)
+}

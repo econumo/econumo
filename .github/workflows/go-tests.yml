@@ -6,6 +6,10 @@ name: Go tests
 #                 Postgres service container
 on:
     push:
+        # release/* branches are cut by the publish workflow at already-tested
+        # commits; hotfix changes reach them via pull_request, which still runs.
+        branches-ignore:
+            - "release/**"
         paths:
             - "cmd/**"
             - "internal/**"

@@ -54,7 +54,7 @@ func authedRequest(t *testing.T, method string, body []byte) (*http.Request, *ht
 	req := httptest.NewRequest(method, "/x", rdr)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
-	return req, rec, middleware.Auth(authstub.Authenticator{}, false)
+	return req, rec, middleware.Auth(authstub.Authenticator{})
 }
 
 func decodeEnvelope(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
@@ -70,7 +70,7 @@ func TestHandle_NoUserYields401(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader([]byte(`{}`)))
 	// No JWT middleware wrapping -> no user in context.
-	endpoint.Handle(rec, req, false, func(ctx context.Context, userID vo.Id, r testReq) (testRes, error) {
+	endpoint.Handle(rec, req, func(ctx context.Context, userID vo.Id, r testReq) (testRes, error) {
 		t.Fatal("call must not run without an authenticated user")
 		return testRes{}, nil
 	})
@@ -87,7 +87,7 @@ func TestHandle_NoUserYields401(t *testing.T) {
 func TestHandle_ValidationFailureYields400(t *testing.T) {
 	req, rec, jwtMw := authedRequest(t, http.MethodPost, []byte(`{"bad":true}`))
 	handler := jwtMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		endpoint.Handle(w, r, false, func(ctx context.Context, userID vo.Id, req testReq) (testRes, error) {
+		endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req testReq) (testRes, error) {
 			t.Fatal("call must not run when validation fails")
 			return testRes{}, nil
 		})
@@ -107,7 +107,7 @@ func TestHandle_ServiceErrorGoesThroughWriteError(t *testing.T) {
 	req, rec, jwtMw := authedRequest(t, http.MethodPost, []byte(`{"bad":false}`))
 	wantErr := errors.New("boom")
 	handler := jwtMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		endpoint.Handle(w, r, false, func(ctx context.Context, userID vo.Id, req testReq) (testRes, error) {
+		endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req testReq) (testRes, error) {
 			return testRes{}, wantErr
 		})
 	}))
@@ -120,7 +120,7 @@ func TestHandle_ServiceErrorGoesThroughWriteError(t *testing.T) {
 	if env["success"] != false {
 		t.Fatalf("success = %v, want false; body: %s", env["success"], rec.Body.String())
 	}
-	// dev=false: the unmapped error goes through the exception envelope with a
+	// The unmapped error goes through the exception envelope with a
 	// generic message; the raw error text must not leak to the client.
 	if env["message"] != "Internal Server Error" {
 		t.Fatalf("message = %v, want generic; body: %s", env["message"], rec.Body.String())
@@ -134,7 +134,7 @@ func TestHandle_SuccessYieldsOKEnvelope(t *testing.T) {
 	req, rec, jwtMw := authedRequest(t, http.MethodPost, []byte(`{"bad":false}`))
 	var gotUserID vo.Id
 	handler := jwtMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		endpoint.Handle(w, r, false, func(ctx context.Context, userID vo.Id, req testReq) (testRes, error) {
+		endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req testReq) (testRes, error) {
 			gotUserID = userID
 			return testRes{Value: "ok"}, nil
 		})
@@ -160,7 +160,7 @@ func TestHandle_SuccessYieldsOKEnvelope(t *testing.T) {
 func TestHandleNoBody_NoUserYields401(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	endpoint.HandleNoBody(rec, req, false, func(ctx context.Context, userID vo.Id) (testRes, error) {
+	endpoint.HandleNoBody(rec, req, func(ctx context.Context, userID vo.Id) (testRes, error) {
 		t.Fatal("call must not run without an authenticated user")
 		return testRes{}, nil
 	})
@@ -173,7 +173,7 @@ func TestHandleNoBody_NoUserYields401(t *testing.T) {
 func TestHandleNoBody_ServiceErrorGoesThroughWriteError(t *testing.T) {
 	req, rec, jwtMw := authedRequest(t, http.MethodGet, nil)
 	handler := jwtMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		endpoint.HandleNoBody(w, r, false, func(ctx context.Context, userID vo.Id) (testRes, error) {
+		endpoint.HandleNoBody(w, r, func(ctx context.Context, userID vo.Id) (testRes, error) {
 			return testRes{}, errs.NewAccessDenied("")
 		})
 	}))
@@ -187,7 +187,7 @@ func TestHandleNoBody_ServiceErrorGoesThroughWriteError(t *testing.T) {
 func TestHandleNoBody_SuccessYieldsOKEnvelope(t *testing.T) {
 	req, rec, jwtMw := authedRequest(t, http.MethodGet, nil)
 	handler := jwtMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		endpoint.HandleNoBody(w, r, false, func(ctx context.Context, userID vo.Id) (testRes, error) {
+		endpoint.HandleNoBody(w, r, func(ctx context.Context, userID vo.Id) (testRes, error) {
 			return testRes{Value: "listed"}, nil
 		})
 	}))
@@ -205,7 +205,7 @@ func TestHandleNoBody_SuccessYieldsOKEnvelope(t *testing.T) {
 func TestHandlePublic_ValidationFailureYields400(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader([]byte(`{"bad":true}`)))
-	endpoint.HandlePublic(rec, req, false, func(ctx context.Context, req testReq) (testRes, error) {
+	endpoint.HandlePublic(rec, req, func(ctx context.Context, req testReq) (testRes, error) {
 		t.Fatal("call must not run when validation fails")
 		return testRes{}, nil
 	})
@@ -218,7 +218,7 @@ func TestHandlePublic_ValidationFailureYields400(t *testing.T) {
 func TestHandlePublic_ServiceErrorGoesThroughWriteError(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader([]byte(`{"bad":false}`)))
-	endpoint.HandlePublic(rec, req, false, func(ctx context.Context, req testReq) (testRes, error) {
+	endpoint.HandlePublic(rec, req, func(ctx context.Context, req testReq) (testRes, error) {
 		return testRes{}, errs.NewUnauthorized("nope")
 	})
 
@@ -231,7 +231,7 @@ func TestHandlePublic_SuccessYieldsOKEnvelopeWithNoUserGate(t *testing.T) {
 	rec := httptest.NewRecorder()
 	// No Authorization header at all -> HandlePublic must not require one.
 	req := httptest.NewRequest(http.MethodPost, "/x", bytes.NewReader([]byte(`{"bad":false}`)))
-	endpoint.HandlePublic(rec, req, false, func(ctx context.Context, req testReq) (testRes, error) {
+	endpoint.HandlePublic(rec, req, func(ctx context.Context, req testReq) (testRes, error) {
 		return testRes{Value: "public-ok"}, nil
 	})
 

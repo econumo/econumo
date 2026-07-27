@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
+import { cmp } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
@@ -9,7 +10,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, displayAvailable, displaySpent } from './budgetMath'
+import { budgetTotals, displayAvailable } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
@@ -44,12 +45,12 @@ const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   maxPrecision: currency?.fractionDigits ?? 2,
 })
 
-function AvailablePill({ available, currency, testId }: { available: number; currency: CurrencyDto | undefined; testId?: string }) {
+function AvailablePill({ available, currency, testId }: { available: string; currency: CurrencyDto | undefined; testId?: string }) {
   return (
     <span
       data-testid={testId}
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-        available >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
+        cmp(available, '0') >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
       }`}
     >
       {moneyFormat(available, currency, cellOpts(currency))}
@@ -63,8 +64,8 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
   return (
     <span className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stat-line">
       <span className="hidden w-24 text-right tabular-nums sm:block">{moneyFormat(stats.budgeted, currency, opts)}</span>
-      <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(displaySpent(stats.spent), currency, opts)}</span>
-      <span className={`w-20 text-center tabular-nums sm:w-24 ${available >= 0 ? 'text-income' : 'text-expense'}`}>
+      <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(stats.spent, currency, opts)}</span>
+      <span className={`w-20 text-center tabular-nums sm:w-24 ${cmp(available, '0') >= 0 ? 'text-income' : 'text-expense'}`}>
         {moneyFormat(available, currency, opts)}
       </span>
       {hideSymbol ? null : <span className="hidden w-6 text-center sm:block">{currency?.symbol}</span>}
@@ -73,6 +74,12 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
 }
 
 
+/* edit mode appends a w-8 actions button to element rows; every row without
+   one must pad the slot or its amount columns drift out of alignment */
+function ActionsSpacer() {
+  return <span data-testid="actions-spacer" className="w-8 shrink-0" />
+}
+
 function ElementRow({
   element,
   bucket,
@@ -80,6 +87,7 @@ function ElementRow({
   currencies,
   accessById,
   extras,
+  actionsColumn = false,
   hideChildren = false,
 }: {
   element: BudgetElementDto
@@ -88,6 +96,8 @@ function ElementRow({
   currencies: CurrencyDto[]
   accessById: Map<string, UserDto>
   extras: ElementRowExtras
+  /** the table renders an actions column (edit mode): rows without their own actions pad it */
+  actionsColumn?: boolean
   hideChildren?: boolean
 }) {
   const { t } = useTranslation()
@@ -101,7 +111,7 @@ function ElementRow({
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
 
-  const spentCell = (target: BudgetTransactionsTarget, spent: number) =>
+  const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
       <button
         type="button"
@@ -110,11 +120,11 @@ function ElementRow({
         className="w-20 text-center text-[15px] tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline sm:w-24"
         onClick={() => extras.onSpentClick!(target)}
       >
-        {moneyFormat(displaySpent(spent), currency, opts)}
+        {moneyFormat(spent, currency, opts)}
       </button>
     ) : (
       <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">
-        {moneyFormat(displaySpent(spent), currency, opts)}
+        {moneyFormat(spent, currency, opts)}
       </span>
     )
 
@@ -185,7 +195,7 @@ function ElementRow({
           )}
         </span>
         <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
-        {extras.renderActions?.(element, bucket)}
+        {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
       </div>
       {expandable && unfolded ? (
         <ul className="pb-1">
@@ -210,6 +220,7 @@ function ElementRow({
                 </span>
                 <span className="w-20 sm:w-24" />
                 <span className="hidden w-6 sm:block" />
+                {actionsColumn ? <ActionsSpacer /> : null}
               </li>
             )
           })}
@@ -226,6 +237,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const totals = budgetTotals(buckets)
+  const actionsColumn = !!extras.renderActions
   const opts = cellOpts(budgetCurrency)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
 
@@ -244,13 +256,15 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.spent')}</span>
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.available')}</span>
         <span className="hidden w-6 sm:block" />
+        {actionsColumn ? <ActionsSpacer /> : null}
       </div>
 
       {sections.map((section) => {
         if (section.bucket.elements.length === 0 && section.folderIndex === null) {
-          // archive hides when empty; the Default folder stays visible as a drop
-          // target whenever real folders exist (Vue renders it unconditionally)
-          if (section.key === '__archive__' || realFolders.length === 0) {
+          // archive hides when it has nothing to show; the empty Default folder
+          // survives only in edit mode (folder actions present), where it is the
+          // drop target for dragging elements out of folders
+          if (section.key === '__archive__' || realFolders.length === 0 || !renderFolderActions) {
             return null
           }
         }
@@ -271,6 +285,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                 />
               ) : null}
               {!isArchiveSection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
+              {isArchiveSection && actionsColumn ? <ActionsSpacer /> : null}
             </header>
             {hideContents ? null : section.bucket.elements.length === 0 ? (
               <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
@@ -284,6 +299,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                   currencies={currencies}
                   accessById={accessById}
                   extras={isArchiveSection ? { onSpentClick: extras.onSpentClick } : extras}
+                  actionsColumn={actionsColumn}
                   hideChildren={hideChildren}
                 />
               ))
@@ -301,12 +317,13 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
         <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
         <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
-          {moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}
+          {moneyFormat(totals.spent, budgetCurrency, opts)}
         </span>
         <span className="flex w-24 justify-center">
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
         <span className="w-6 text-center text-xs text-muted-foreground">{budgetCurrency?.symbol}</span>
+        {actionsColumn ? <ActionsSpacer /> : null}
       </div>
 
       {/* the phone table hides the budget column, so the totals unfold into
@@ -322,7 +339,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.spent')}</span>
-          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}</span>
+          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(totals.spent, budgetCurrency, opts)}</span>
         </span>
         <span className="flex items-center justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>

@@ -10,6 +10,8 @@ const user = {
   options: [],
   currency: 'USD',
   reportPeriod: 'month',
+  accessLevel: 'full',
+  accessUntil: '',
 }
 
 beforeEach(() => {

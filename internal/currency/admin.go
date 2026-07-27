@@ -5,8 +5,10 @@ package currency
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -28,6 +30,9 @@ type WriteModel interface {
 	InsertCurrency(ctx context.Context, c model.CurrencyRow) error
 	// UpsertRate inserts or updates a single (date, currency, base) rate.
 	UpsertRate(ctx context.Context, r model.RateRow) error
+	// LatestRateDate returns the newest stored rate date; ok=false when none
+	// exist yet.
+	LatestRateDate(ctx context.Context) (time.Time, bool, error)
 }
 
 // WriteService is the currency write-use-case orchestrator.
@@ -58,6 +63,12 @@ func (s *WriteService) AvailableCodes(ctx context.Context) ([]string, error) {
 	// deterministic (the source map iteration order is not).
 	sort.Strings(out)
 	return out, nil
+}
+
+// LatestRateDate returns the newest stored rate date; ok=false when no rates
+// exist yet. Used by the in-process rate updater's freshness check.
+func (s *WriteService) LatestRateDate(ctx context.Context) (time.Time, bool, error) {
+	return s.write.LatestRateDate(ctx)
 }
 
 // UpdateRates upserts every loaded rate whose currency AND base code both resolve
@@ -98,6 +109,12 @@ func (s *WriteService) UpdateRates(ctx context.Context, rates []model.RateInput)
 	return count, nil
 }
 
+// maxFractionDigits bounds the admin-supplied fraction-digits override. ISO 4217
+// itself tops out at 4, but the override exists to allow higher display
+// precision, so the cap is only tight enough to keep the value well inside the
+// int16 the currencies row stores it in.
+const maxFractionDigits = 18
+
 // AddCurrency creates a currency if its code is not already present. The symbol
 // and (when not overridden) the fraction digits come from the ICU tables.
 // Returns whether a row was created (false = the code already existed).
@@ -115,6 +132,11 @@ func (s *WriteService) AddCurrency(ctx context.Context, code string, name *strin
 	}
 	digits := FractionDigits(c)
 	if fractionDigits != nil {
+		if *fractionDigits < 0 || *fractionDigits > maxFractionDigits {
+			msg := fmt.Sprintf("Fraction digits must be 0-%d", maxFractionDigits)
+			return false, errs.NewValidation(msg,
+				errs.FieldError{Key: "fractionDigits", Message: msg})
+		}
 		digits = *fractionDigits
 	}
 	row := model.CurrencyRow{

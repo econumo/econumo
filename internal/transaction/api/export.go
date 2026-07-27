@@ -42,27 +42,27 @@ func (h *Handlers) ExportTransactionList(w http.ResponseWriter, r *http.Request)
 
 	raw := r.URL.Query().Get("accountId")
 	if !accountIdPattern.MatchString(raw) {
-		httpx.WriteError(w, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "accountId", Message: "This value is not valid.", Code: errs.CodeInvalidFormat}), h.dev)
+		httpx.WriteError(r.Context(), w, errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "accountId", Message: "This value is not valid.", Code: errs.CodeInvalidFormat}))
 		return
 	}
 
 	accountIDs, err := parseExportAccountIDs(raw)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 
 	rows, err := h.svc.ExportTransactionList(r.Context(), userID, accountIDs)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 
 	var buf bytes.Buffer
 	cw := csv.NewWriter(&buf)
 	if werr := cw.WriteAll(rows); werr != nil {
-		httpx.WriteError(w, werr, h.dev)
+		httpx.WriteError(r.Context(), w, werr)
 		return
 	}
 

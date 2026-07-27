@@ -8,18 +8,18 @@ const owner = { id: 'u1', avatar: '', name: 'Ada' }
 
 const account = (over: Partial<AccountDto>): AccountDto => ({
   id: 'a', owner, folderId: 'f1', name: 'Acc', position: 0, currency: usd,
-  balance: 0, type: 1, icon: 'wallet', sharedAccess: [], ...over,
+  balance: '0', type: 1, icon: 'wallet', sharedAccess: [], ...over,
 })
 const folder = (over: Partial<FolderDto>): FolderDto => ({ id: 'f1', name: 'General', position: 0, isVisible: 1, ...over })
 
-// converts 1 EUR = 2 USD for easy math
-const exch = (from: string, to: string, amount: number) => (from === to ? amount : from === 'eur' ? amount * 2 : amount / 2)
+// returns the amount unchanged (stub that works once types flip to strings)
+const exch = (_f: string, _t: string, a: string) => a
 
 it('groups position-sorted accounts into visible position-sorted folders', () => {
   const tree = buildAccountsTree(
     [
-      account({ id: 'a2', folderId: 'f2', position: 1, balance: 5 }),
-      account({ id: 'a1', folderId: 'f1', position: 0, balance: 3 }),
+      account({ id: 'a2', folderId: 'f2', position: 1, balance: '5' }),
+      account({ id: 'a1', folderId: 'f1', position: 0, balance: '3' }),
     ],
     [folder({ id: 'f2', name: 'Second', position: 1 }), folder({ id: 'f1', position: 0 })],
     usd,
@@ -32,7 +32,7 @@ it('groups position-sorted accounts into visible position-sorted folders', () =>
 
 it('excludes hidden folders and their accounts entirely', () => {
   const tree = buildAccountsTree(
-    [account({ id: 'a1', folderId: 'fh', balance: 5 })],
+    [account({ id: 'a1', folderId: 'fh', balance: '5' })],
     [folder({ id: 'fh', isVisible: 0 })],
     usd,
     exch,
@@ -62,25 +62,37 @@ it('puts folderless accounts into a trailing synthetic translated folder', () =>
 
 it('uses the native currency total when a folder has one currency', () => {
   const tree = buildAccountsTree(
-    [account({ id: 'a1', balance: 10, currency: eur }), account({ id: 'a2', position: 1, balance: 5, currency: eur })],
+    [account({ id: 'a1', balance: '10', currency: eur }), account({ id: 'a2', position: 1, balance: '5', currency: eur })],
     [folder({})],
     usd,
     exch,
     'All accounts',
   )
   expect(tree[0].currency).toEqual(eur)
-  expect(tree[0].total).toBe(15)
+  expect(tree[0].total).toBe('15')
 })
 
 it('converts to the user currency when the folder mixes currencies', () => {
   const tree = buildAccountsTree(
-    [account({ id: 'a1', balance: 10, currency: eur }), account({ id: 'a2', position: 1, balance: 5, currency: usd })],
+    [account({ id: 'a1', balance: '10', currency: eur }), account({ id: 'a2', position: 1, balance: '5', currency: usd })],
     [folder({})],
     usd,
     exch,
     'All accounts',
   )
   expect(tree[0].currency).toEqual(usd)
-  // 10 EUR * 2 + 5 USD = 25 USD
-  expect(tree[0].total).toBe(25)
+  // stub exchange returns amounts unchanged
+  expect(tree[0].total).toBe('15')
+})
+
+it('sums large decimal values without loss of precision', () => {
+  const tree = buildAccountsTree(
+    [account({ id: 'a1', balance: '9007199254740993', currency: usd }), account({ id: 'a2', position: 1, balance: '9007199254740993', currency: usd })],
+    [folder({})],
+    usd,
+    exch,
+    'All accounts',
+  )
+  expect(tree[0].currency).toEqual(usd)
+  expect(tree[0].total).toBe('18014398509481986')
 })

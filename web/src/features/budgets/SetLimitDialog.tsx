@@ -5,6 +5,7 @@ import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { normalizeNumber } from '@/lib/money'
+import { isZero } from '@/lib/decimal'
 import type { BudgetElementDto } from '@/api/dto/budget'
 import { limitAmountFromInput } from './limitAmount'
 
@@ -22,7 +23,7 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
 
   useEffect(() => {
     if (element) {
-      setValue(element.budgeted === 0 ? '' : normalizeNumber(element.budgeted))
+      setValue(isZero(element.budgeted) ? '' : normalizeNumber(element.budgeted))
       setError(null)
     }
   }, [element])

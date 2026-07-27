@@ -39,7 +39,7 @@ func seqIDs(t *testing.T, uuids ...string) func() vo.Id {
 func newUser(t *testing.T) *User {
 	return NewUser(
 		mustID(t, "11111111-1111-1111-1111-111111111111"),
-		"identifier-md5", "encrypted-email", "Alice", "https://avatar/x",
+		"encrypted-email", "Alice", "https://avatar/x",
 		"password-hash", "salt-hex", tu0)
 }
 
@@ -57,9 +57,6 @@ func seeded(t *testing.T) *User {
 
 func TestNewUser_Getters(t *testing.T) {
 	u := newUser(t)
-	if u.Identifier != "identifier-md5" {
-		t.Errorf("Identifier()=%q", u.Identifier)
-	}
 	if u.Email != "encrypted-email" {
 		t.Errorf("Email()=%q", u.Email)
 	}
@@ -89,7 +86,7 @@ func TestNewUser_Getters(t *testing.T) {
 func TestUser_StructLiteral_RoundTrip(t *testing.T) {
 	id := mustID(t, "11111111-1111-1111-1111-111111111111")
 	opt := NewUserOption(mustID(t, "aaaaaaaa-0000-0000-0000-000000000001"), OptionBudget, strPtr("b-1"), tu0)
-	u := &User{ID: id, Identifier: "ident", Email: "email", Name: "Bob", Avatar: "avatar", Password: "pw",
+	u := &User{ID: id, Email: "email", Name: "Bob", Avatar: "avatar", Password: "pw",
 		Salt: "salt", IsActive: false, CreatedAt: tu0, UpdatedAt: tu1, Options: []UserOption{opt}}
 	if !u.ID.Equal(id) || u.Name != "Bob" || u.IsActive {
 		t.Fatal("scalar fields did not round-trip")
@@ -186,9 +183,9 @@ func TestUser_UpdatePassword(t *testing.T) {
 func TestUser_UpdateEmail(t *testing.T) {
 	u := newUser(t)
 	avatarBefore := u.Avatar
-	u.UpdateEmail("new-ident", "new-cipher", tu1)
-	if u.Identifier != "new-ident" || u.Email != "new-cipher" {
-		t.Fatalf("UpdateEmail fields: %q / %q", u.Identifier, u.Email)
+	u.UpdateEmail("new-cipher", tu1)
+	if u.Email != "new-cipher" {
+		t.Fatalf("UpdateEmail email: %q", u.Email)
 	}
 	if u.Avatar != avatarBefore {
 		t.Errorf("UpdateEmail must not change Avatar: got %q want %q", u.Avatar, avatarBefore)

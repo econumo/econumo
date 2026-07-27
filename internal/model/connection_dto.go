@@ -17,70 +17,23 @@ type AccountAccessResult struct {
 }
 
 // ConnectionResult is one connected user plus the accounts shared between them
-// and the requesting user.
+// and the requesting user. AccessLevel/AccessUntil describe the CONNECTED
+// user's (not the caller's) payment access state, so the caller can see why a
+// partner's writes might be blocked; they live here rather than on the shared
+// UserResult embed because UserResult also rides on every transaction/account
+// author, and broadcasting payment status that widely would cost real bytes on
+// the heaviest responses in the product for data only the connections view needs.
 type ConnectionResult struct {
 	User           UserResult            `json:"user"`
 	SharedAccounts []AccountAccessResult `json:"sharedAccounts"`
+	AccessLevel    string                `json:"accessLevel"`
+	AccessUntil    string                `json:"accessUntil"`
 }
 
 // GetConnectionListResult is the response: {items: [...]}.
 type GetConnectionListResult struct {
 	Items []ConnectionResult `json:"items"`
 }
-
-// SetAccountAccessRequest grants/updates a connected user's role on an owned
-// account.
-type SetAccountAccessRequest struct {
-	AccountId string `json:"accountId"`
-	UserId    string `json:"userId"`
-	Role      string `json:"role"`
-}
-
-// Validate enforces NotBlank on accountId/userId/role (UUID + role-alias
-// validity are checked in the service via the value-object constructors).
-func (r SetAccountAccessRequest) Validate() error {
-	var fields []errs.FieldError
-	for _, f := range []struct{ key, val string }{
-		{"accountId", r.AccountId}, {"userId", r.UserId}, {"role", r.Role},
-	} {
-		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
-		}
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
-	}
-	return nil
-}
-
-// SetAccountAccessResult is the (empty) response.
-type SetAccountAccessResult struct{}
-
-// RevokeAccountAccessRequest removes a connected user's grant on an owned
-// account.
-type RevokeAccountAccessRequest struct {
-	AccountId string `json:"accountId"`
-	UserId    string `json:"userId"`
-}
-
-// Validate enforces NotBlank on accountId/userId.
-func (r RevokeAccountAccessRequest) Validate() error {
-	var fields []errs.FieldError
-	for _, f := range []struct{ key, val string }{
-		{"accountId", r.AccountId}, {"userId", r.UserId},
-	} {
-		if strings.TrimSpace(f.val) == "" {
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
-		}
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
-	}
-	return nil
-}
-
-// RevokeAccountAccessResult is the (empty) response.
-type RevokeAccountAccessResult struct{}
 
 // GenerateInviteRequest has no body fields; the invite is keyed by the
 // authenticated user.

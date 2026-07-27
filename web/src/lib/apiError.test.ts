@@ -1,47 +1,40 @@
-import { apiErrorMessage } from './apiError'
+import { apiErrorMessage, apiFieldErrors } from './apiError'
 import i18n from '@/app/i18n'
 
 function axiosErr(data: unknown) {
   return { isAxiosError: true, response: { data } }
 }
 
-beforeAll(async () => {
-  await i18n.changeLanguage('ru')
-})
-
-afterAll(async () => {
-  await i18n.changeLanguage('en')
-})
-
-it('renders messageCode via the catalogue', () => {
+it('renders the server-translated message', () => {
   const msg = apiErrorMessage(
-    axiosErr({ success: false, message: 'Invalid credentials.', code: 0, errors: {}, messageCode: 'auth.invalid_credentials' }),
+    axiosErr({ success: false, message: 'Неверные учётные данные.', code: 0, errors: {} }),
   )
-  expect(msg).toBe(i18n.t('errors.auth.invalid_credentials'))
-  expect(msg).not.toBe('Invalid credentials.')
+  expect(msg).toBe('Неверные учётные данные.')
 })
 
-it('renders the first field errorCode with params', () => {
+it('prefers the first field error over the generic form label', () => {
   const msg = apiErrorMessage(
     axiosErr({
       success: false,
       message: 'Form validation error',
       code: 400,
-      errors: { name: ['Category name must be 3-64 characters'] },
-      errorCodes: { name: [{ code: 'category.name_length', params: { min: 3, max: 64 } }] },
+      errors: { name: ['Название категории должно содержать от 3 до 64 символов.'] },
     }),
   )
-  expect(msg).toContain('3')
-  expect(msg).toContain('64')
-  expect(msg).not.toBe('Category name must be 3-64 characters')
-})
-
-it('falls back to the raw English message for unknown codes', () => {
-  expect(
-    apiErrorMessage(axiosErr({ success: false, message: 'Something odd', code: 400, errors: {}, messageCode: 'no.such.code' })),
-  ).toBe('Something odd')
+  expect(msg).toBe('Название категории должно содержать от 3 до 64 символов.')
 })
 
 it('falls back to a generic message when there is no envelope', () => {
   expect(apiErrorMessage(new Error('boom'))).toBe(i18n.t('common.app.error'))
+})
+
+it('apiFieldErrors returns the field messages', () => {
+  const err = axiosErr({
+    success: false,
+    message: 'Form validation error',
+    code: 400,
+    errors: { name: ['Это значение слишком длинное.'] },
+  })
+  expect(apiFieldErrors(err, 'name')).toEqual(['Это значение слишком длинное.'])
+  expect(apiFieldErrors(err, 'other')).toBeUndefined()
 })

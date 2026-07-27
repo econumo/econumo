@@ -10,35 +10,83 @@ import (
 	"time"
 )
 
-const existsUserByIdentifier = `-- name: ExistsUserByIdentifier :one
-SELECT EXISTS(SELECT 1 FROM users WHERE identifier = $1)
+const existsUserByEmail = `-- name: ExistsUserByEmail :one
+SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower($1))
 `
 
-func (q *Queries) ExistsUserByIdentifier(ctx context.Context, identifier string) (bool, error) {
-	row := q.db.QueryRowContext(ctx, existsUserByIdentifier, identifier)
+func (q *Queries) ExistsUserByEmail(ctx context.Context, lower string) (bool, error) {
+	row := q.db.QueryRowContext(ctx, existsUserByEmail, lower)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
 }
 
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+FROM users
+WHERE lower(email) = lower($1)
+`
+
+type GetUserByEmailRow struct {
+	ID            string
+	Email         string
+	Name          string
+	Avatar        string
+	Password      string
+	Salt          string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsActive      bool
+	Algorithm     string
+	AccessLevel   string
+	AccessUntil   *time.Time
+	Timezone      string
+	EmailVerified bool
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, lower)
+	var i GetUserByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Avatar,
+		&i.Password,
+		&i.Salt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsActive,
+		&i.Algorithm,
+		&i.AccessLevel,
+		&i.AccessUntil,
+		&i.Timezone,
+		&i.EmailVerified,
+	)
+	return i, err
+}
+
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
 FROM users
 WHERE id = $1
 `
 
 type GetUserByIDRow struct {
-	ID         string
-	Identifier string
-	Email      string
-	Name       string
-	Avatar     string
-	Password   string
-	Salt       string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	IsActive   bool
-	Algorithm  string
+	ID            string
+	Email         string
+	Name          string
+	Avatar        string
+	Password      string
+	Salt          string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsActive      bool
+	Algorithm     string
+	AccessLevel   string
+	AccessUntil   *time.Time
+	Timezone      string
+	EmailVerified bool
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -46,7 +94,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.Identifier,
 		&i.Email,
 		&i.Name,
 		&i.Avatar,
@@ -56,47 +103,34 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.UpdatedAt,
 		&i.IsActive,
 		&i.Algorithm,
+		&i.AccessLevel,
+		&i.AccessUntil,
+		&i.Timezone,
+		&i.EmailVerified,
 	)
 	return i, err
 }
 
-const getUserByIdentifier = `-- name: GetUserByIdentifier :one
-SELECT id, identifier, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm
-FROM users
-WHERE identifier = $1
+const getUserLanguage = `-- name: GetUserLanguage :one
+SELECT language FROM users WHERE id = $1
 `
 
-type GetUserByIdentifierRow struct {
-	ID         string
-	Identifier string
-	Email      string
-	Name       string
-	Avatar     string
-	Password   string
-	Salt       string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	IsActive   bool
-	Algorithm  string
+func (q *Queries) GetUserLanguage(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserLanguage, id)
+	var language string
+	err := row.Scan(&language)
+	return language, err
 }
 
-func (q *Queries) GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error) {
-	row := q.db.QueryRowContext(ctx, getUserByIdentifier, identifier)
-	var i GetUserByIdentifierRow
-	err := row.Scan(
-		&i.ID,
-		&i.Identifier,
-		&i.Email,
-		&i.Name,
-		&i.Avatar,
-		&i.Password,
-		&i.Salt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.IsActive,
-		&i.Algorithm,
-	)
-	return i, err
+const getUserTimezone = `-- name: GetUserTimezone :one
+SELECT timezone FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserTimezone(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getUserTimezone, id)
+	var timezone string
+	err := row.Scan(&timezone)
+	return timezone, err
 }
 
 const insertUser = `-- name: InsertUser :exec
@@ -176,9 +210,23 @@ func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguage
 	return err
 }
 
+const updateUserTimezone = `-- name: UpdateUserTimezone :exec
+UPDATE users SET timezone = $1 WHERE id = $2
+`
+
+type UpdateUserTimezoneParams struct {
+	Timezone string
+	ID       string
+}
+
+func (q *Queries) UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserTimezone, arg.Timezone, arg.ID)
+	return err
+}
+
 const upsertUser = `-- name: UpsertUser :exec
-INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until, email_verified)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 ON CONFLICT (id) DO UPDATE SET
     identifier = excluded.identifier,
     email      = excluded.email,
@@ -188,21 +236,27 @@ ON CONFLICT (id) DO UPDATE SET
     salt       = excluded.salt,
     algorithm  = excluded.algorithm,
     updated_at = excluded.updated_at,
-    is_active  = excluded.is_active
+    is_active  = excluded.is_active,
+    access_level = excluded.access_level,
+    access_until = excluded.access_until,
+    email_verified = excluded.email_verified
 `
 
 type UpsertUserParams struct {
-	ID         string
-	Identifier string
-	Email      string
-	Name       string
-	Avatar     string
-	Password   string
-	Salt       string
-	Algorithm  string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	IsActive   bool
+	ID            string
+	Identifier    string
+	Email         string
+	Name          string
+	Avatar        string
+	Password      string
+	Salt          string
+	Algorithm     string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsActive      bool
+	AccessLevel   string
+	AccessUntil   *time.Time
+	EmailVerified bool
 }
 
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
@@ -218,6 +272,9 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.IsActive,
+		arg.AccessLevel,
+		arg.AccessUntil,
+		arg.EmailVerified,
 	)
 	return err
 }

@@ -24,7 +24,9 @@ func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req model.Delet
 			return gerr
 		}
 		if !p.UserID.Equal(userID) {
-			return errs.NewAccessDenied("")
+			// Foreign-owned payee: report as not-found (matching the repo above) so
+			// the response can't probe which payee ids exist.
+			return errs.NewNotFound("Payee not found")
 		}
 		return s.repo.Delete(txCtx, id)
 	}); err != nil {

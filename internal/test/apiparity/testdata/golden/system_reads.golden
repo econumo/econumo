@@ -1,0 +1,3 @@
+== get-update-info GET /api/v1/system/get-update-info [owner] -> 200
+{"success":true,"message":"","data":{"version":"","url":""}}
+

@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -119,9 +118,12 @@ func (r *Repo) ListByAccount(ctx context.Context, accountID vo.Id) ([]*model.Tra
 }
 
 // ListByAccountIDs returns transactions whose source OR recipient is in
-// accountIDs, optionally bounded by [periodStart, periodEnd). Built by hand
-// (dynamic IN); placeholders differ per engine.
-func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodStart, periodEnd time.Time) ([]*model.Transaction, error) {
+// accountIDs, bounded by filter.PeriodStart/PeriodEnd (both non-zero) and
+// narrowed by filter's classification fields. Built by hand (dynamic IN +
+// optional predicates); placeholders differ per engine. filter's zero value
+// appends no predicate beyond the accounts, so callers that never set it (the
+// account-only paths) get exactly today's query.
+func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter model.TransactionFilter) ([]*model.Transaction, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -129,7 +131,7 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 	for i, id := range accountIDs {
 		ids[i] = id.String()
 	}
-	usePeriod := !periodStart.IsZero() && !periodEnd.IsZero()
+	usePeriod := !filter.PeriodStart.IsZero() && !filter.PeriodEnd.IsZero()
 
 	const cols = "id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient"
 	var b strings.Builder
@@ -143,15 +145,38 @@ func (r *Repo) ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, periodS
 	b.WriteString(in2)
 	b.WriteString("))")
 
-	args := make([]any, 0, len(ids)*2+2)
+	args := make([]any, 0, len(ids)*2+5)
 	args = append(args, ids...)
 	args = append(args, ids...)
+	next := 1 + 2*len(ids)
 	if usePeriod {
 		b.WriteString(" AND spent_at >= ")
-		b.WriteString(placeholders(r.driver, 1+2*len(ids), 1))
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
 		b.WriteString(" AND spent_at < ")
-		b.WriteString(placeholders(r.driver, 2+2*len(ids), 1))
-		args = append(args, periodStart, periodEnd)
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
+		args = append(args, filter.PeriodStart, filter.PeriodEnd)
+	}
+	if filter.Uncategorized {
+		b.WriteString(" AND category_id IS NULL")
+	} else if filter.CategoryID != nil {
+		b.WriteString(" AND category_id = ")
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
+		args = append(args, filter.CategoryID.String())
+	}
+	if filter.PayeeID != nil {
+		b.WriteString(" AND payee_id = ")
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
+		args = append(args, filter.PayeeID.String())
+	}
+	if filter.TagID != nil {
+		b.WriteString(" AND tag_id = ")
+		b.WriteString(placeholders(r.driver, next, 1))
+		next++
+		args = append(args, filter.TagID.String())
 	}
 	// Newest first (the transaction-list convention, see ListTransactionsByAccount)
 	// with id as the stable tie-break: without an ORDER BY the row order diverges

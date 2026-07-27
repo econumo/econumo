@@ -29,7 +29,7 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-list [get]
 func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCurrencyList)
+	endpoint.HandleNoBody(w, r, h.read.GetCurrencyList)
 }
 
 // GetCurrencyRateList handles GET /api/v1/currency/get-currency-rate-list
@@ -45,5 +45,5 @@ func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-rate-list [get]
 func (h *Handlers) GetCurrencyRateList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCurrencyRateList)
+	endpoint.HandleNoBody(w, r, h.read.GetCurrencyRateList)
 }

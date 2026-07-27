@@ -20,19 +20,9 @@ type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
 }
 
-// SharedAccessLookup lists the accounts_access grants on an account (for the
-// account result's sharedAccess[] embed). Satisfied by an adapter over the
-// connection repo. A nil lookup means "no connection module" -> empty slice.
-type SharedAccessLookup interface {
-	ListByAccount(ctx context.Context, accountID vo.Id) ([]model.SharedAccessView, error)
-}
-
-// AccessRevoker drops the caller's own grant on a shared account (the
-// delete-account non-owner branch). HasAccess reports whether the user owns or
-// has any grant on the account (the gate for deleting it). Satisfied by an
-// adapter over the connection service. May be nil (no connection module) ->
-// non-owner delete falls back to AccessDenied.
-type AccessRevoker interface {
-	HasAccess(ctx context.Context, userID, accountID vo.Id) (bool, error)
-	RevokeOwnAccess(ctx context.Context, userID, accountID vo.Id) error
+// Connections reports whether two users hold a connection link — the
+// precondition for sharing an account (grant-access may only target a connected
+// user). Satisfied by the connection feature at wiring time.
+type Connections interface {
+	AreConnected(ctx context.Context, a, b vo.Id) (bool, error)
 }

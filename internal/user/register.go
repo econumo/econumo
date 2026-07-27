@@ -23,7 +23,7 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 		return nil, &errs.ValidationError{Msg: "Registration disabled", MsgCode: errs.CodeUserRegistrationDisabled}
 	}
 
-	u, err := s.createUser(ctx, req.Name, req.Email, req.Password)
+	u, err := s.createUser(ctx, req.Name, req.Email, req.Password, true)
 	if err != nil {
 		return nil, err
 	}
@@ -41,12 +41,14 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 // four default options, and persists. It returns the saved aggregate. A
 // duplicate email -> a validation error ("User already exists"). New users are
 // never auto-connected to existing users; connections are created only by
-// accepting an invite.
-func (s *Service) createUser(ctx context.Context, name, email, password string) (*model.User, error) {
+// accepting an invite. Self-service registration grants a trial AND is subject
+// to the verification gate; operator-provisioned accounts (the CLI) get
+// neither — an admin explicitly provisioning a user is trusted access, not a
+// lead to be time-boxed or a mailbox to confirm.
+func (s *Service) createUser(ctx context.Context, name, email, password string, selfService bool) (*model.User, error) {
 	loweredEmail := strings.ToLower(strings.TrimSpace(email))
-	identifier := s.encode.Hash(loweredEmail)
 
-	exists, err := s.repo.ExistsByIdentifier(ctx, identifier)
+	exists, err := s.repo.ExistsByEmail(ctx, loweredEmail)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +56,7 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 		return nil, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 	}
 
-	encryptedEmail, eerr := s.encode.Encode(email)
+	encryptedEmail, eerr := s.encode.Encode(strings.TrimSpace(email))
 	if eerr != nil {
 		return nil, eerr
 	}
@@ -69,8 +71,15 @@ func (s *Service) createUser(ctx context.Context, name, email, password string) 
 	}
 	avatar := s.avatars.Pick()
 
-	u := model.NewUser(s.repo.NextIdentity(), identifier, encryptedEmail, name, avatar, passwordHash, salt, now)
+	u := model.NewUser(s.repo.NextIdentity(), encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
+	if selfService && s.trialDays > 0 {
+		until := model.TrialEnd(now, s.trialDays)
+		u.SetAccess(model.AccessLevelFull, &until, now)
+	}
+	if selfService && s.emailVerification {
+		u.RequireEmailVerification()
+	}
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		return s.repo.Save(ctx, u)

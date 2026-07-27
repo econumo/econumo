@@ -58,6 +58,9 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model
 		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
 			return nerr
 		}
+		if rerr := s.checkReferences(ctx, userID, st); rerr != nil {
+			return rerr
+		}
 		t := model.New(st)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr

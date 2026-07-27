@@ -7,7 +7,7 @@ import type { TransactionType } from '@/api/dto/transaction'
 import type { OpenRecurringParams } from '@/app/uiStore'
 import { formatDateTime } from '@/lib/datetime'
 import { normalizeNumber } from '@/lib/money'
-import { evaluatedNumber } from '@/features/transactions/useTransactionForm'
+import { evaluatedAmount } from '@/features/transactions/useTransactionForm'
 
 export interface RecurringFormState {
   id: Id
@@ -28,7 +28,7 @@ export interface RecurringFormState {
 // fraction digits — a recurring template's amount is re-entered on every
 // post, so the prefill should echo the stored value verbatim (42.5 stays
 // "42.5", not "42.50"), trimmed of float noise via normalizeNumber
-const seedAmount = (value: number | null | undefined): string => (value === null || value === undefined ? '' : normalizeNumber(value))
+const seedAmount = (value: string | null | undefined): string => (value === null || value === undefined ? '' : normalizeNumber(value))
 
 export function initialRecurringFormState(params: OpenRecurringParams, accounts: AccountDto[]): RecurringFormState {
   const rt = params.recurring
@@ -88,7 +88,7 @@ export function buildRecurringPayload(form: RecurringFormState): CreateRecurring
     type: form.type,
     accountId: form.accountId as Id,
     accountRecipientId: isTransfer ? form.accountRecipientId : null,
-    amount: evaluatedNumber(form.amount),
+    amount: evaluatedAmount(form.amount),
     categoryId: isTransfer ? null : form.categoryId,
     payeeId: isTransfer ? null : form.payeeId,
     tagId: isTransfer ? null : form.tagId,

@@ -355,7 +355,9 @@ func TestDeleteTag_RemovesIt(t *testing.T) {
 	}
 }
 
-func TestUpdateTag_NotOwned_403(t *testing.T) {
+// A tag owned by another user must be indistinguishable from a nonexistent one:
+// both return 400 "Tag not found", so the response can't probe which ids exist.
+func TestUpdateTag_NotOwned_MaskedAsNotFound(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
@@ -364,19 +366,19 @@ func TestUpdateTag_NotOwned_403(t *testing.T) {
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/update-tag", token, map[string]any{
 		"id": tagID1, "name": "#hijacked",
 	})
-	if status != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
+	if status != http.StatusBadRequest || env.Message != "Tag not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Tag not found\"; body: %s", status, env.Message, env.raw)
 	}
 }
 
-func TestDeleteTag_NotOwned_403(t *testing.T) {
+func TestDeleteTag_NotOwned_MaskedAsNotFound(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
 	h.seedTag(t, tagID1, otherUserID, "#theirs", 0, false)
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/tag/delete-tag", token, map[string]any{"id": tagID1})
-	if status != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
+	if status != http.StatusBadRequest || env.Message != "Tag not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Tag not found\"; body: %s", status, env.Message, env.raw)
 	}
 }

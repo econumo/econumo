@@ -180,6 +180,30 @@ func TestConnectionRepo_ConnectUsersAndLinks(t *testing.T) {
 	}
 }
 
+func TestConnectionRepo_IsAcceptedRoundTrip(t *testing.T) {
+	repo, _, _ := newRepo(t)
+	ctx := context.Background()
+	pending := model.NewAccountAccess(vo.MustParseId(acctA), vo.MustParseId(userB), model.RoleUser, fixedTime)
+	if err := repo.Save(ctx, pending); err != nil {
+		t.Fatalf("Save pending: %v", err)
+	}
+	got, err := repo.Get(ctx, vo.MustParseId(acctA), vo.MustParseId(userB))
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.IsAccepted {
+		t.Fatal("stored grant must round-trip as pending")
+	}
+	got.Accept(fixedTime.Add(time.Hour))
+	if err := repo.Save(ctx, got); err != nil {
+		t.Fatalf("Save accepted: %v", err)
+	}
+	got2, _ := repo.Get(ctx, vo.MustParseId(acctA), vo.MustParseId(userB))
+	if !got2.IsAccepted {
+		t.Fatal("accept must persist")
+	}
+}
+
 func TestConnectionRepo_DeleteOption(t *testing.T) {
 	repo, db, f := newRepo(t)
 	ctx := context.Background()

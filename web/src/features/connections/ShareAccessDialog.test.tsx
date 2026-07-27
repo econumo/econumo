@@ -9,8 +9,8 @@ const partner = { id: 'u2', avatar: 'https://a/partner', name: 'Partner' }
 const third = { id: 'u3', avatar: 'https://a/third', name: 'Third' }
 
 const connections: ConnectionDto[] = [
-  { user: partner, sharedAccounts: [] },
-  { user: third, sharedAccounts: [] },
+  { user: partner, accessLevel: 'full' as const, accessUntil: '', sharedAccounts: [] },
+  { user: third, accessLevel: 'full' as const, accessUntil: '', sharedAccounts: [] },
 ]
 
 beforeEach(() => {
@@ -29,7 +29,7 @@ it('buildShareEntries seeds connections, overlays access, excludes me, marks the
   // the owner connection gets role 'owner'; I never appear in my own list
   const owned = buildShareEntries(connections, [], 'u1', 'u2')
   expect(owned.find((e) => e.user.id === 'u2')!.role).toBe('owner')
-  expect(buildShareEntries([{ user: me, sharedAccounts: [] }, ...connections], [], 'u1', 'u1').some((e) => e.user.id === 'u1')).toBe(false)
+  expect(buildShareEntries([{ user: me, accessLevel: 'full' as const, accessUntil: '', sharedAccounts: [] }, ...connections], [], 'u1', 'u1').some((e) => e.user.id === 'u1')).toBe(false)
 })
 
 it('renders role labels, no-access rows, and the budgets not-accepted suffix', () => {

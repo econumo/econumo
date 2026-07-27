@@ -25,6 +25,7 @@ func commandList() []command {
 	cs = append(cs, userCommands()...)
 	cs = append(cs, currencyCommands()...)
 	cs = append(cs, tokenCommands()...)
+	cs = append(cs, dataCommands()...)
 	return cs
 }
 

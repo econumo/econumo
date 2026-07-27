@@ -1,0 +1,15 @@
+== err:request-email-change-wrong-password POST /api/v1/user/request-email-change [owner] -> 400
+{"success":false,"message":"Password is not correct","code":400,"errors":{}}
+
+== err:request-email-change-same-email POST /api/v1/user/request-email-change [owner] -> 400
+{"success":false,"message":"The new email is the same as your current email.","code":400,"errors":{}}
+
+== request-email-change POST /api/v1/user/request-email-change [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:confirm-email-change-bad-code POST /api/v1/user/confirm-email-change [owner] -> 400
+{"success":false,"message":"The confirmation code is not valid.","code":400,"errors":{}}
+
+== resend-email-change-code POST /api/v1/user/resend-email-change-code [owner] -> 200
+{"success":true,"message":"","data":{}}
+

@@ -96,6 +96,14 @@ func TestBudgetReadRepo_CountSpending_MonthBoundary(t *testing.T) {
 	if rows[0].Amount != "15.50000000" {
 		t.Errorf("spending amount mismatch: %q", rows[0].Amount)
 	}
+
+	// Empty account id set (every account excluded from the budget) -> nil,nil,
+	// not an "a.id IN ()" query: that's a no-op on SQLite but a PostgreSQL
+	// syntax error, so it must short-circuit like the empty-categoryIDs case.
+	none, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, nil, start, end)
+	if err != nil || none != nil {
+		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
+	}
 }
 
 func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {

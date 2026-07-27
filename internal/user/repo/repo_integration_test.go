@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -21,21 +22,17 @@ const (
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
 
-// identA is a realistic 32-char identifier (production identifiers are
-// md5(lower(email)) = 32 hex chars); using exactly 32 avoids CHAR(32) padding
-// differences between sqlite and Postgres.
-const identA = "0123456789abcdef0123456789abcdef"
-
 func newRepos(t *testing.T) (*userrepo.Repo, *userrepo.ReadRepo, *dbtest.DB) {
 	t.Helper()
 	db := dbtest.New(t)
 	return userrepo.NewRepo(db.Engine, db.TX), userrepo.NewReadRepo(db.Engine, db.TX), db
 }
 
-func newTestUser(id vo.Id, identifier, email, name, avatar, password, salt string, isActive bool,
+func newTestUser(id vo.Id, email, name, avatar, password, salt string, isActive bool,
 	createdAt, updatedAt time.Time, opts []model.UserOption) *model.User {
-	return &model.User{ID: id, Identifier: identifier, Email: email, Name: name, Avatar: avatar,
-		Password: password, Salt: salt, IsActive: isActive, CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
+	return &model.User{ID: id, Email: email, Name: name, Avatar: avatar,
+		Password: password, Salt: salt, IsActive: isActive, AccessLevel: model.AccessLevelFull,
+		CreatedAt: createdAt, UpdatedAt: updatedAt, Options: opts}
 }
 
 func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
@@ -45,7 +42,7 @@ func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
 	val := "USD"
 	opt := model.ReconstituteUserOption(vo.MustParseId(optID), "currency", &val, fixedTime, fixedTime)
 	u := newTestUser(
-		vo.MustParseId(userA), identA, "enc-email", "Alice", "https://av/a",
+		vo.MustParseId(userA), "enc-email", "Alice", "https://av/a",
 		"hash", "salt-a", true, fixedTime, fixedTime, []model.UserOption{opt},
 	)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
@@ -56,8 +53,8 @@ func TestUserRepo_SaveGetRoundTrip_WithOptions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Identifier != identA || got.Email != "enc-email" || got.Name != "Alice" {
-		t.Errorf("fields mismatch: %q %q %q", got.Identifier, got.Email, got.Name)
+	if got.Email != "enc-email" || got.Name != "Alice" {
+		t.Errorf("fields mismatch: %q %q", got.Email, got.Name)
 	}
 	if got.Avatar != "https://av/a" || got.Password != "hash" || got.Salt != "salt-a" || !got.IsActive {
 		t.Errorf("auth/avatar mismatch: %+v", got)
@@ -88,7 +85,7 @@ func TestUserRepo_GetHeaderByID(t *testing.T) {
 	ctx := context.Background()
 
 	u := newTestUser(
-		vo.MustParseId(userA), identA, "enc-email", "Alice", "https://av/a",
+		vo.MustParseId(userA), "enc-email", "Alice", "https://av/a",
 		"hash", "salt-a", true, fixedTime, fixedTime, nil,
 	)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
@@ -110,41 +107,42 @@ func TestUserRepo_GetHeaderByID(t *testing.T) {
 	}
 }
 
-func TestUserRepo_GetByIdentifier(t *testing.T) {
+func TestUserRepo_GetByEmail(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "Alice@Example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	got, err := repo.GetByIdentifier(ctx, identA)
+	// Lookup is case-insensitive.
+	got, err := repo.GetByEmail(ctx, "alice@example.test")
 	if err != nil {
-		t.Fatalf("GetByIdentifier: %v", err)
+		t.Fatalf("GetByEmail: %v", err)
 	}
 	if got.ID.String() != userA {
 		t.Errorf("want %s, got %s", userA, got.ID)
 	}
-	_, err = repo.GetByIdentifier(ctx, "missing")
+	_, err = repo.GetByEmail(ctx, "missing@example.test")
 	var nf *errs.NotFoundError
 	if !errors.As(err, &nf) {
-		t.Fatalf("want NotFound for missing identifier, got %v", err)
+		t.Fatalf("want NotFound for missing email, got %v", err)
 	}
 }
 
-func TestUserRepo_ExistsByIdentifier(t *testing.T) {
+func TestUserRepo_ExistsByEmail(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "Alice@Example.test", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	exists, err := repo.ExistsByIdentifier(ctx, identA)
+	exists, err := repo.ExistsByEmail(ctx, "alice@example.test")
 	if err != nil || !exists {
-		t.Errorf("ExistsByIdentifier(ident-a) = %v, %v; want true", exists, err)
+		t.Errorf("ExistsByEmail(alice) = %v, %v; want true", exists, err)
 	}
-	exists, err = repo.ExistsByIdentifier(ctx, "nope")
+	exists, err = repo.ExistsByEmail(ctx, "nope@example.test")
 	if err != nil || exists {
-		t.Errorf("ExistsByIdentifier(nope) = %v, %v; want false", exists, err)
+		t.Errorf("ExistsByEmail(nope) = %v, %v; want false", exists, err)
 	}
 }
 
@@ -152,7 +150,8 @@ func TestUserRepo_ListIDs(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
 	for _, id := range []string{userA, userB} {
-		u := newTestUser(vo.MustParseId(id), id[:32], "e", "U", "", "h", "s", true, fixedTime, fixedTime, nil)
+		// Email must be unique per row (lower(email) is now a unique index).
+		u := newTestUser(vo.MustParseId(id), id+"@example.test", "U", "", "h", "s", true, fixedTime, fixedTime, nil)
 		if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 			t.Fatalf("Save %s: %v", id, err)
 		}
@@ -171,7 +170,7 @@ func TestUserRepo_GetOptions(t *testing.T) {
 	ctx := context.Background()
 	val := "dark"
 	opt := model.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
-	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, []model.UserOption{opt})
+	u := newTestUser(vo.MustParseId(userA), "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, []model.UserOption{opt})
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -189,7 +188,7 @@ func TestUserReadRepo_Views(t *testing.T) {
 	ctx := context.Background()
 	val := "light"
 	opt := model.ReconstituteUserOption(vo.MustParseId(optID), "theme", &val, fixedTime, fixedTime)
-	u := newTestUser(vo.MustParseId(userA), identA, "enc", "Alice", "https://av", "h", "s", true, fixedTime, fixedTime, []model.UserOption{opt})
+	u := newTestUser(vo.MustParseId(userA), "enc", "Alice", "https://av", "h", "s", true, fixedTime, fixedTime, []model.UserOption{opt})
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -233,7 +232,7 @@ func TestUserReadRepo_CurrencyIDByCode(t *testing.T) {
 func TestUserRepo_UpdateLanguage(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -258,7 +257,7 @@ func TestUserRepo_UpdateLanguage(t *testing.T) {
 func TestUserRepo_UpdateLanguage_DefaultsToEnglish(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()
-	u := newTestUser(vo.MustParseId(userA), identA, "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
+	u := newTestUser(vo.MustParseId(userA), "e", "Alice", "", "h", "s", true, fixedTime, fixedTime, nil)
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -277,7 +276,7 @@ func TestUserRepo_AlgorithmRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	u := newTestUser(
-		vo.MustParseId(userA), identA, "enc-email", "Alice", "https://av/a",
+		vo.MustParseId(userA), "enc-email", "Alice", "https://av/a",
 		"hash", "salt-a", true, fixedTime, fixedTime, nil,
 	)
 	u.Algorithm = model.AlgorithmArgon2id
@@ -306,5 +305,103 @@ func TestUserRepo_AlgorithmRoundTrip(t *testing.T) {
 	}
 	if legacy.Algorithm != model.AlgorithmSHA512 {
 		t.Errorf("legacy Algorithm = %q, want %q", legacy.Algorithm, model.AlgorithmSHA512)
+	}
+}
+
+func TestUserRepo_AccessRoundTrip(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	u := newTestUser(vo.MustParseId(userA), "enc-email", "Alice", "https://av/a",
+		"hash", "salt-a", true, fixedTime, fixedTime, nil)
+	u.SetAccess(model.AccessLevelReadonly, &until, u.UpdatedAt)
+
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.AccessLevel != model.AccessLevelReadonly {
+		t.Fatalf("level: got %q want readonly", got.AccessLevel)
+	}
+	if got.AccessUntil == nil || !got.AccessUntil.Equal(until) {
+		t.Fatalf("until: got %v want %v", got.AccessUntil, until)
+	}
+}
+
+func TestUserRepo_AccessDefaultsToFullWithNoExpiry(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	u := newTestUser(vo.MustParseId(userA), "enc-email", "Alice", "https://av/a",
+		"hash", "salt-a", true, fixedTime, fixedTime, nil)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.AccessLevel != model.AccessLevelFull {
+		t.Fatalf("level: got %q want full", got.AccessLevel)
+	}
+	if got.AccessUntil != nil {
+		t.Fatalf("until: got %v want nil", got.AccessUntil)
+	}
+}
+
+func TestUserSchema_HasAccessColumns(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+
+	var level string
+	var until *time.Time
+	err := db.Raw.QueryRowContext(ctx,
+		db.Rebind(`SELECT access_level, access_until FROM users WHERE id = ?`),
+		"00000000-0000-0000-0000-000000000000",
+	).Scan(&level, &until)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("access columns not queryable: %v", err)
+	}
+}
+
+func TestUserEmailVerifiedRoundTrip(t *testing.T) {
+	db := dbtest.New(t)
+	r := userrepo.NewRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	u := model.NewUser(r.NextIdentity(), "cipher", "RT", "face:blue", "hash", "salt", now)
+	if !u.EmailVerified {
+		t.Fatal("NewUser must default EmailVerified to true")
+	}
+	u.RequireEmailVerification()
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return r.Save(ctx, u) }); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := r.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.EmailVerified {
+		t.Error("persisted EmailVerified=false must survive the round trip")
+	}
+
+	got.MarkEmailVerified(now.Add(time.Minute))
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return r.Save(ctx, got) }); err != nil {
+		t.Fatalf("Save verified: %v", err)
+	}
+	again, err := r.GetByID(ctx, u.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if !again.EmailVerified {
+		t.Error("MarkEmailVerified must persist")
 	}
 }

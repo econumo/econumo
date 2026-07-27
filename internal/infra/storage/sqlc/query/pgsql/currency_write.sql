@@ -29,3 +29,9 @@ INSERT INTO currencies_rates (id, currency_id, base_currency_id, published_at, r
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (published_at, currency_id, base_currency_id)
 DO UPDATE SET rate = excluded.rate;
+
+-- name: GetLatestRateDate :one
+-- Newest stored rate date, for the in-process rate updater's freshness check.
+-- ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
+-- (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
+SELECT published_at FROM currencies_rates ORDER BY published_at DESC LIMIT 1;
