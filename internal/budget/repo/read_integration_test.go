@@ -238,3 +238,49 @@ func TestBudgetReadRepo_BudgetTransactionsByCategories(t *testing.T) {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
 	}
 }
+
+// A first-of-month transaction is counted in the row total by CountSpending, so
+// the drill-down list must contain it too — otherwise the list silently
+// contradicts the number above it. SQLite only: the bounds must be bound as
+// 'Y-m-d H:i:s' strings, not as time.Time (see sqliteDatetime).
+func TestBudgetReadRepo_Drilldown_MonthBoundary(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	cat := "c0000000-0000-0000-0000-0000000000c1"
+	tag := "7a000000-0000-0000-0000-0000000000c2"
+	seedCategory(t, db, cat, userA)
+	f := fixture.New(t, db)
+	f.Tag(fixture.Tag{ID: tag, UserID: userA, Name: "Tag"})
+	seedExpense(t, db, "74000000-0000-0000-0000-000000000001", acctA, cat, "10.00", "2024-04-01 00:00:00")
+	f.Transaction(fixture.Transaction{ID: "74000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, CategoryID: cat, TagID: tag, Type: 0, Amount: "20.00", SpentAt: "2024-04-01 00:00:00"})
+	// The previous month must stay excluded (the lower bound is inclusive, the
+	// upper bound exclusive).
+	seedExpense(t, db, "74000000-0000-0000-0000-000000000003", acctA, cat, "99.00", "2024-03-31 23:59:59")
+	seedExpense(t, db, "74000000-0000-0000-0000-000000000004", acctA, cat, "88.00", "2024-05-01 00:00:00")
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	accIDs := []vo.Id{vo.MustParseId(acctA)}
+
+	byCat, err := read.BudgetTransactionsByCategories(ctx, []vo.Id{vo.MustParseId(cat)}, accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByCategories: %v", err)
+	}
+	if len(byCat) != 1 {
+		t.Fatalf("want the Apr 1 untagged expense in the list, got %d rows: %+v", len(byCat), byCat)
+	}
+	if byCat[0].ID != "74000000-0000-0000-0000-000000000001" {
+		t.Errorf("wrong row: %q", byCat[0].ID)
+	}
+
+	byTag, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByTag: %v", err)
+	}
+	if len(byTag) != 1 {
+		t.Fatalf("want the Apr 1 tagged expense in the list, got %d rows: %+v", len(byTag), byTag)
+	}
+	if byTag[0].ID != "74000000-0000-0000-0000-000000000002" {
+		t.Errorf("wrong row: %q", byTag[0].ID)
+	}
+}

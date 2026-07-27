@@ -486,20 +486,24 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 	catArgs := idArgs(categoryIDs)
 	var sql string
 	args := make([]any, 0, len(accArgs)+len(catArgs)+2)
+	args = append(args, accArgs...)
+	args = append(args, catArgs...)
 	if r.driver == "postgresql" {
 		accIn := r.ph(1, len(accArgs))
 		catIn := r.ph(1+len(accArgs), len(catArgs))
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
 		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " ORDER BY t.spent_at DESC"
+		args = append(args, start, end)
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		catIn := r.ph(1, len(catArgs))
 		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= ? AND t.spent_at < ? ORDER BY t.spent_at DESC"
+		// Bind the bounds as 'Y-m-d H:i:s' strings (see sqliteDatetime): a
+		// time.Time bound does not compare correctly against the stored
+		// datetime TEXT and drops the first-of-month row.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
-	args = append(args, accArgs...)
-	args = append(args, catArgs...)
-	args = append(args, start, end)
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {
 		return nil, err
@@ -542,7 +546,8 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 			args = append(args, categoryID.String())
 		}
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
-		args = append(args, start, end)
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + " ORDER BY t.spent_at DESC"
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
