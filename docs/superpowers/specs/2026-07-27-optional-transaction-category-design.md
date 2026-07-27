@@ -122,6 +122,11 @@ with `CodeIsBlank`. Remove that check.
   create and update, on both the REST and MCP edges.
 - Clearing an existing category needs no extra work: `buildState` does a
   full-state replace, so `categoryId: null` clears it.
+- **Empty string normalizes to absent.** The removed check tested
+  `categoryID == nil || *categoryID == ""`, so `""` was previously a validation
+  error and never reached `checkReferences`. After the change it must be
+  normalized to nil rather than looked up, or a client sending `""` would get a
+  spurious "category not found". Same rule for `update`.
 
 ### 2.2 Budget aggregation: let NULL-category spending through
 
@@ -252,36 +257,135 @@ which already fires its event.
 
 ## Testing
 
-Phase 1:
+Both phases are well suited to test-first development: every defect below is
+currently either untested or provably wrong, so the failing test can be written
+before the fix.
 
-- Regression test: a tag child drill-down returns the **tagged** transactions.
-- `BudgetTransactionsByCategories` currently has **no test at all** — add one,
-  covering its `tag_id IS NULL` filter.
-- Month-boundary test using a 1st-of-month transaction. The existing test
-  (`internal/budget/repo/read_integration_test.go:109-162`) uses Apr 5/6 and cannot
-  catch it; `:95` shows the "incl. Apr 1 boundary" pattern to copy.
-- Frontend: assert the child target carries the parent tag id and that the request
-  sends both params. `BudgetTable.test.tsx:145-153` covers only an **envelope**
-  child, where omitting the parent is correct.
+Shared fixtures needed up front (both phases depend on them):
 
-Phase 2:
+- A tag with child categories, where one category has **both** tagged and untagged
+  spending in the same period — this is the fixture that distinguishes the
+  intersection from the complement. The only existing tag fixture
+  (`web/src/test/fixtures.ts:124`) is archived with no children.
+- A transaction dated the **1st of the month**, for the boundary cases.
 
-- Create and update a non-transfer transaction with no category; clear a category
-  from an existing transaction.
-- Uncategorized aggregation on both engines, including the tag-wins case.
-- `SetLimit` against `"uncategorized"` returns the existing validation error.
-- The only tag fixture (`web/src/test/fixtures.ts:124`) is archived with no
-  children; a tag-with-children fixture is needed.
+### Phase 1
 
-Golden files:
+Repo layer (`internal/budget/repo/`, run on SQLite **and** PostgreSQL via
+`make test-repo-pgsql`):
+
+1. `BudgetTransactionsByCategories` — **no test exists today**. Cover: returns only
+   untagged rows (locking in the deliberate `tag_id IS NULL` clause); account
+   filter; date range; excludes non-expense types; empty category list returns
+   empty.
+2. `BudgetTransactionsByCategories` — includes a 1st-of-month transaction (this is
+   the §1.2 fix; the test must fail before it).
+3. Period bounds are half-open: the last day of the month is included, the next
+   month's 1st is excluded.
+4. `BudgetTransactionsByTag` — with a nil category filter returns all the tag's
+   transactions; with a category filter returns only the intersection. Extends
+   `read_integration_test.go:109-162`, which covers this but never on a boundary date.
+5. `BudgetTransactionsByTag` — 1st-of-month boundary.
+6. `CountSpending` — confirm the existing Apr 1 boundary assertion (`:95`) still holds.
+
+Builder / use case:
+
+7. `txlist.go` dispatcher — one test per branch: category only, tag only,
+   **tag + category**, envelope, and none (asserting `CodeBudgetTransactionFilterRequired`).
+8. Tag child `spent` equals the tag∩category intersection, not the category total,
+   given the mixed fixture.
+9. A tag child with zero spend is dropped (`builder_structure_build.go:210`).
+10. Envelope children and standalone rows still read the untagged bucket — a
+    regression guard on the disjoint partition.
+
+API / golden:
+
+11. An apiparity scenario whose budget contains a tag with children. No golden has
+    one today, so this closes the coverage hole that let the bug ship.
+12. End-to-end regression: drilling into a tag child returns the **tagged**
+    transactions, and their sum equals the number displayed on that row. This is
+    the single test that would have caught the reported bug.
+
+Frontend (vitest):
+
+13. A child row of a **tag** parent builds a target carrying the parent tag id.
+14. A child row of an **envelope** parent does not — a regression guard for
+    `BudgetTable.test.tsx:145-153`, where omitting the parent is correct.
+15. `BudgetTransactionsDialog` maps a category-target-with-tag-parent to both
+    `tagId` and `categoryId`.
+16. `web/src/api/budget.ts` serializes both params; the existing
+    `budget.test.ts:89` assertion (a plain category sends no `tagId`) must keep passing.
+
+### Phase 2
+
+Transaction use case:
+
+17. Create a non-transfer with no category — succeeds, persists NULL.
+18. Create with `categoryId: ""` — normalized to absent, not a lookup failure (§2.1).
+19. Update clears an existing category via `categoryId: null`.
+20. Update with an unknown category id still errors — `checkReferences` must not
+    have been weakened.
+21. A transfer still clears category/payee/tag (unchanged behavior).
+22. Same via the **MCP** edge, which shares the use case.
+
+Budget aggregation (both engines):
+
+23. `CountSpending` returns NULL-category rows once the predicate is widened.
+24. Tag-wins routing: a tagged **and** uncategorized expense lands in the tag
+    bucket, not the top-level row.
+25. An untagged, uncategorized expense lands in the top-level row.
+26. The three buckets remain a disjoint partition — total across buckets equals
+    total expense spending, so nothing is double-counted or dropped.
+27. `CountSpending` still works when the category id list is empty (the `:333`
+    early return, §2.2).
+
+Synthetic row:
+
+28. The Uncategorized row appears with the right `spent`, `budgeted: "0"`, and
+    `available: -spent`.
+29. It is absent when there is no such spending.
+30. It sorts to the bottom of the no-folder section.
+31. An Uncategorized **child** appears under a tag, and sorts last among children.
+32. `SetLimit` with `elementId: "uncategorized"` returns the existing validation
+    error — the frozen contract asserted by
+    `internal/budget/api/element_selfheal_test.go:87-102`.
+33. `ChangeElementCurrency` and `MoveElementList` likewise reject it.
+34. **No `budget_elements` row is created** for it — assert directly against the DB
+    after a `get-budget` call.
+
+Drill-down:
+
+35. `{uncategorized: true}` returns only `category IS NULL AND tag IS NULL`.
+36. `{uncategorized: true, tagId: T}` returns only `category IS NULL AND tag = T`.
+37. The third-state flag does not change existing behavior when a category filter
+    is passed normally (§2.5).
+
+Frontend:
+
+38. `TransactionDialog` submits with no category and shows no validation error.
+39. The category select is clearable and clearing sends `null`.
+40. `TransactionRow` shows "Uncategorized" when category, description, tag and
+    payee are all absent.
+41. `TransactionRow` still prefers description / tag / payee when present — the
+    existing fallback chain is unchanged.
+42. `ViewTransactionDialog` shows the label for a null category.
+43. The Uncategorized budget row renders read-only: no budget cell, no actions, no
+    clickable available pill.
+44. Its `spent` **is** clickable and opens the drill-down.
+
+Guards that run automatically and must stay green: `i18ntest` en/ru key and
+placeholder parity, `metrics-coverage.test.ts`, the apiparity route/scenario guards,
+and `pnpm exec tsc -b` (vitest and oxlint do not type-check).
+
+### Golden files
 
 - No apiparity golden currently contains a tag with children, and nothing asserts
-  the buggy behavior, so Phase 1 will not fight the goldens.
+  the buggy behavior, so Phase 1 will not fight the goldens. Test 11 **adds** one.
 - Phase 2 adds a request field, so regenerate apiparity **and** mcpparity goldens
   (`UPDATE_GOLDEN=1`) and **inspect the diff** — a golden change means observable
-  behavior changed.
+  behavior changed. Never hand-edit a golden.
 - Both dialects must be edited in lockstep; `enginecompare` asserts byte-identical
-  SQLite and PostgreSQL responses.
+  SQLite and PostgreSQL responses and is the primary safety net for the §2.2 risk.
 
 ## Risk
 
