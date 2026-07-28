@@ -2,6 +2,7 @@ package budget
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -20,9 +21,13 @@ import (
 // uncategorized with tagId selects that tag's uncategorized child (tag_id =
 // tagId AND category_id IS NULL) - the two compose. uncategorized and
 // categoryId are mutually exclusive. tagId and envelopeId are mutually
-// exclusive. Requires read access.
+// exclusive; so are uncategorized and envelopeId - envelopes have no
+// uncategorized bucket of their own, so uncategorized+envelopeId falls
+// through to the same CodeBudgetTransactionFilterRequired error as any other
+// unsupported combination, exactly like tagId+envelopeId. Requires read
+// access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
-	if req.Uncategorized && req.CategoryId != nil && *req.CategoryId != "" {
+	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
 		return nil, errs.NewValidation("Validation failed", errs.FieldError{
 			Key: "categoryId", Message: "This value should not be provided when uncategorized is true.", Code: errs.CodeInvalidChoice,
 		})
@@ -81,7 +86,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			catFilter = &c
 		}
 		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.includedAccountIDs, periodStart, periodEnd)
-	case env != "" && tag == "" && cat == "":
+	case env != "" && tag == "" && cat == "" && !req.Uncategorized:
 		envID, perr := vo.ParseId(env)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"envelopeId": ""})

@@ -348,3 +348,29 @@ func TestUncategorized_Drilldown_TopLevelAndTagChild(t *testing.T) {
 		t.Fatalf("errors[categoryId] must be present; body=%s", env.raw)
 	}
 }
+
+// TestUncategorized_EnvelopeIdCombinationIsRejected: envelopes have no
+// uncategorized bucket of their own, so uncategorized+envelopeId must be
+// rejected the same way tagId+envelopeId already is - falling through to the
+// "at least one selector" error - rather than silently returning the
+// envelope's CATEGORIZED transactions (the opposite of what was asked for).
+func TestUncategorized_EnvelopeIdCombinationIsRejected(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	envelopeID := f.BudgetEnvelope(fixture.BudgetEnvelope{BudgetID: budgetID1, Name: "Envelope"})
+	f.EnvelopeCategory(envelopeID, catID)
+	f.Transaction(fixture.Transaction{
+		ID: "eeee4444-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "50.00", SpentAt: "2024-04-10 00:00:00",
+	})
+
+	base := "/api/v1/budget/get-transaction-list?budgetId=" + budgetID1 + "&periodStart=2024-04-01"
+	status, env := h.do(t, http.MethodGet, base+"&envelopeId="+envelopeID+"&uncategorized=1", tok, nil)
+	if status != http.StatusBadRequest {
+		t.Fatalf("get-transaction-list uncategorized+envelopeId=%d want 400 (must not silently return categorized rows); body=%s", status, env.raw)
+	}
+}
