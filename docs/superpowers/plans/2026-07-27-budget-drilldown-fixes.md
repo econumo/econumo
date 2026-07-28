@@ -28,10 +28,11 @@ This is Phase 1 of `docs/superpowers/specs/2026-07-27-optional-transaction-categ
 | `internal/budget/repo/read.go` | Hand-written budget report SQL | Modify — `:481-509`, `:512-554` date binding |
 | `internal/budget/api/tag_child_drilldown_test.go` | End-to-end regression for the tag-child drill-down | Create |
 | `web/src/features/budgets/BudgetTransactionsDialog.tsx` | Target type + request params | Modify — `:27-34`, `:58-66` |
+| `web/src/features/budgets/BudgetTransactionsDialog.test.tsx` | Param-mapping regression for the parent-tag spread | Create (final fix wave) |
 | `web/src/features/budgets/BudgetTable.tsx` | Row rendering, builds the click target | Modify — `:219` |
 | `web/src/features/budgets/BudgetTable.test.tsx` | Table behavior tests | Modify — update `:145-153`, add 1 test |
 
-No new files on the frontend; no schema, migration, or sqlc change anywhere in this plan.
+No schema, migration, or sqlc change anywhere in this plan.
 
 ---
 
@@ -559,9 +560,11 @@ code they exercise:
 - Test 11 (an apiparity scenario containing a tag with children) — a golden
   addition; Task 3 covers the same behavior with sharper assertions. Worth adding
   in Phase 2, when the goldens must be regenerated anyway.
-- Test 15 (`BudgetTransactionsDialog` param mapping) — Task 4 Step 6 covers the
-  serialization through `budget.test.ts`; a dedicated dialog test would need
-  significant provider scaffolding for little added signal.
+- Test 15 (`BudgetTransactionsDialog` param mapping) — added during the final
+  fix wave (`BudgetTransactionsDialog.test.tsx`): the review that surfaced the
+  order-dependent `parentTagId` spread needed a real assertion that a
+  TAG-typed element's own `tagId` survives, which `budget.test.ts` alone
+  can't exercise.
 
 **Placeholder scan.** No TBD/TODO. Every code step contains the actual code.
 
