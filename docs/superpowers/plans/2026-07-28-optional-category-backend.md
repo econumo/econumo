@@ -309,7 +309,20 @@ Run `go build ./...` and fix every other consumer of `SpendingRow.CategoryID`. D
 - [ ] **Step 8: Run the tests**
 
 Run: `go test ./internal/budget/... ./internal/model/... -v` then `go test ./...`
-Expected: all pass, including the new test and every pre-existing budget test. **If a budget golden changes at this step, STOP and report** — Task 2 alone must not alter any response, because nothing yet emits an uncategorized element.
+Expected: all pass, including the new test and every pre-existing budget test.
+
+> **Amended after review.** An earlier version of this step required that Task 2
+> change no response at all. That is not achievable and was wrong: NULL-category
+> transactions **already exist** in production, because `delete-category` in
+> delete mode relies on `ON DELETE SET NULL` (`internal/category/delete.go:16-17`).
+> A tagged one previously had its row dropped before it could count, so its tag
+> stayed hidden; it now counts, so the tag appears. In Task 2 alone that renders
+> as an all-zero ghost row, because nothing yet emits the child that carries the
+> amount — Task 3 completes it. The branch ships atomically, so the intermediate
+> state never reaches production. Surfacing this historical money is intended.
+>
+> The goldens are structurally blind to this: no fixture pairs a NULL category
+> with a tag. **Task 3 Step 1a adds that fixture.**
 
 - [ ] **Step 9: Verify PostgreSQL**
 
@@ -382,6 +395,30 @@ Write four tests:
 ```
 
 Assert on real values, not just presence.
+
+- [ ] **Step 1a: Cover the historical category-deleted case**
+
+Added after Task 2's review. NULL-category transactions already exist in every
+production database: `delete-category` in delete mode hard-deletes the row so the
+FK nulls its transactions (`internal/category/delete.go:16-17`). Before this
+branch those rows were dropped from the aggregation, so a tag whose only spending
+was on one stayed **hidden**. It must now appear, showing that spending with an
+Uncategorized child — surfacing that money is the point of the feature.
+
+No existing fixture pairs a NULL category with a tag, which is exactly why the
+goldens could not catch the intermediate breakage Task 2 introduced. Add a fifth
+test:
+
+5. `TestUncategorized_TagWithOnlyCategoryDeletedSpending` — seed an expense with
+   a tag and **no** category (the shape `delete-category` leaves behind), with the
+   tag having no limit and no other spending. Assert `get-budget` shows that tag
+   as a **parent element carrying the spending** (not an all-zero ghost row), with
+   exactly one child whose id is `"uncategorized"` and whose `spent` equals the
+   seeded amount. Assert the tag's own `spent` is that amount too, and that the
+   **top-level** uncategorized row is absent (the tag won).
+
+This is the regression guard for the whole tag-wins rule against real historical
+data. If it renders as an all-zero row, Task 3 is not finished.
 
 - [ ] **Step 2: Run to verify they FAIL**
 
