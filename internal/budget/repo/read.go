@@ -320,7 +320,9 @@ func (r *ReadRepo) holdingsSQL(toHoldings bool, ids []any, start, end time.Time)
 	args := make([]any, 0, 2*len(ids)+2)
 	args = append(args, ids...)
 	args = append(args, ids...)
-	args = append(args, start, end)
+	// See sqliteDatetime: a time.Time bound does not compare correctly against
+	// the stored datetime TEXT and drops the first-of-month row.
+	args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	return sql, args
 }
 

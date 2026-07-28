@@ -385,10 +385,15 @@ type Transaction struct {
 	CategoryID  string // optional
 	PayeeID     string // optional
 	TagID       string // optional
-	Type        int    // 0 expense, 1 income (domain transaction.TypeExpense/TypeIncome)
+	Type        int    // 0 expense, 1 income, 2 transfer (domain transaction.TypeExpense/TypeIncome/TypeTransfer)
 	Amount      string // decimal string; default "0"
 	Description string
 	SpentAt     interface{} // time.Time or "Y-m-d H:i:s"; default builder time
+
+	// Transfer-only (Type == 2): the recipient account and the amount credited
+	// to it, which may differ from Amount for a cross-currency transfer.
+	AccountRecipientID string
+	AmountRecipient    string
 }
 
 func (b *Builder) Transaction(tx Transaction) string {
@@ -405,9 +410,11 @@ func (b *Builder) Transaction(tx Transaction) string {
 	cat := nullable(tx.CategoryID)
 	payee := nullable(tx.PayeeID)
 	tag := nullable(tx.TagID)
-	b.insert(`INSERT INTO transactions (id, user_id, account_id, category_id, payee_id, tag_id, type, amount, description, spent_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, tx.UserID, tx.AccountID, cat, payee, tag, tx.Type, tx.Amount, tx.Description, spent, now, now)
+	acctRecipient := nullable(tx.AccountRecipientID)
+	amountRecipient := nullable(tx.AmountRecipient)
+	b.insert(`INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, type, amount, amount_recipient, description, spent_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, tx.UserID, tx.AccountID, acctRecipient, cat, payee, tag, tx.Type, tx.Amount, amountRecipient, tx.Description, spent, now, now)
 	return id
 }
 

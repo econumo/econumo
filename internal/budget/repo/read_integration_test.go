@@ -284,3 +284,35 @@ func TestBudgetReadRepo_Drilldown_MonthBoundary(t *testing.T) {
 		t.Errorf("wrong row: %q", byTag[0].ID)
 	}
 }
+
+// A transfer dated the 1st of the month must be counted in HoldingsReport, and
+// the next month's 1st must be excluded. SQLite only: the bounds must be
+// bound as 'Y-m-d H:i:s' strings, not as time.Time (see sqliteDatetime).
+func TestBudgetReadRepo_HoldingsReport_MonthBoundary(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	acctB := "aaaa1111-0000-0000-0000-0000000000a2"
+	seedAccount(t, db, acctB, userA)
+	f := fixture.New(t, db)
+	// A same-currency transfer OUT of the {acctA} set (recipient acctB is
+	// outside): the Apr 1 boundary must be INCLUDED.
+	f.Transaction(fixture.Transaction{ID: "75000000-0000-0000-0000-000000000001", UserID: userA, AccountID: acctA, AccountRecipientID: acctB, Type: 2, Amount: "10.00", AmountRecipient: "10.00", SpentAt: "2024-04-01 00:00:00"})
+	// The next month's 1st must be EXCLUDED (upper bound is exclusive).
+	f.Transaction(fixture.Transaction{ID: "75000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, AccountRecipientID: acctB, Type: 2, Amount: "88.00", AmountRecipient: "88.00", SpentAt: "2024-05-01 00:00:00"})
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	rows, err := read.HoldingsReport(ctx, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("HoldingsReport: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("want 1 holdings row (Apr 1 transfer only), got %d: %+v", len(rows), rows)
+	}
+	if vo.NewDecimal(rows[0].ToHoldings).String() != vo.NewDecimal("10.00").String() {
+		t.Errorf("to holdings mismatch: %q", rows[0].ToHoldings)
+	}
+	if rows[0].CurrencyID != usdID {
+		t.Errorf("currency mismatch: %q", rows[0].CurrencyID)
+	}
+}
