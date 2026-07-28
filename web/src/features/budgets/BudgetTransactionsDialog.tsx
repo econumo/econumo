@@ -65,10 +65,14 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
     ? {
         budgetId: budget.meta.id,
         periodStart: selectedDate,
-        ...(element.type === BudgetElementType.CATEGORY ? { categoryId: element.id } : {}),
+        // the parent tag only ever applies to a CATEGORY-typed element, so it
+        // is folded into that branch rather than spread last, which would
+        // silently clobber a TAG-typed element's own tagId
+        ...(element.type === BudgetElementType.CATEGORY
+          ? { categoryId: element.id, ...(parentTagId ? { tagId: parentTagId } : {}) }
+          : {}),
         ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
         ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
-        ...(parentTagId ? { tagId: parentTagId } : {}),
       }
     : null
   const { data: transactions, isLoading } = useBudgetTransactions(params)
