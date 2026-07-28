@@ -124,7 +124,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
 
-	rows, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	rows, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 
 	// The categoryID filter narrows further; a non-matching category yields none.
 	catID := vo.MustParseId(cat)
-	withCat, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &catID, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	withCat, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &catID, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag with category: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 		t.Fatalf("want 1 row with matching category filter, got %d", len(withCat))
 	}
 	otherCatID := vo.NewId()
-	none, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &otherCatID, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	none, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), &otherCatID, false, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag mismatching category: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestBudgetReadRepo_BudgetTransactionsByTag(t *testing.T) {
 	}
 
 	// Empty account id set short-circuits to nil, nil.
-	empty, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, nil, start, end)
+	empty, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, false, nil, start, end)
 	if err != nil || empty != nil {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", empty, err)
 	}
@@ -274,7 +274,7 @@ func TestBudgetReadRepo_Drilldown_MonthBoundary(t *testing.T) {
 		t.Errorf("wrong row: %q", byCat[0].ID)
 	}
 
-	byTag, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, accIDs, start, end)
+	byTag, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, false, accIDs, start, end)
 	if err != nil {
 		t.Fatalf("BudgetTransactionsByTag: %v", err)
 	}
@@ -399,6 +399,67 @@ func TestBudgetReadRepo_CountSpending_NullCategory(t *testing.T) {
 
 	// No accounts still short-circuits.
 	if none, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, nil, start, end); err != nil || none != nil {
+		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
+	}
+}
+
+// The uncategorized-untagged and uncategorized-by-tag drill-downs back the
+// top-level "uncategorized" element and a tag's "uncategorized" child
+// respectively. Both must return exactly their own bucket, never a
+// categorized row, even when a categorized row shares the period.
+func TestBudgetReadRepo_UncategorizedDrilldown(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	cat := "c0000000-0000-0000-0000-0000000000c1"
+	tag := "7a000000-0000-0000-0000-0000000000e1"
+	seedCategory(t, db, cat, userA)
+	f := fixture.New(t, db)
+	f.Tag(fixture.Tag{ID: tag, UserID: userA, Name: "Tag"})
+
+	// Distinct amounts so a wrong row is unmistakable.
+	categorizedUntagged := "76000000-0000-0000-0000-000000000001"
+	categorizedTagged := "76000000-0000-0000-0000-000000000002"
+	uncategorizedUntagged := "76000000-0000-0000-0000-000000000003"
+	uncategorizedTagged := "76000000-0000-0000-0000-000000000004"
+	f.Transaction(fixture.Transaction{ID: categorizedUntagged, UserID: userA, AccountID: acctA, CategoryID: cat, Type: 0, Amount: "11.00", SpentAt: "2024-04-05 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: categorizedTagged, UserID: userA, AccountID: acctA, CategoryID: cat, TagID: tag, Type: 0, Amount: "22.00", SpentAt: "2024-04-06 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: uncategorizedUntagged, UserID: userA, AccountID: acctA, Type: 0, Amount: "33.00", SpentAt: "2024-04-07 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: uncategorizedTagged, UserID: userA, AccountID: acctA, TagID: tag, Type: 0, Amount: "44.00", SpentAt: "2024-04-08 00:00:00"})
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	accIDs := []vo.Id{vo.MustParseId(acctA)}
+
+	uncat, err := read.BudgetTransactionsUncategorized(ctx, accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsUncategorized: %v", err)
+	}
+	if len(uncat) != 1 {
+		t.Fatalf("want exactly 1 uncategorized-untagged row, got %d: %+v", len(uncat), uncat)
+	}
+	if uncat[0].ID != uncategorizedUntagged {
+		t.Errorf("wrong row: %q want %q", uncat[0].ID, uncategorizedUntagged)
+	}
+	if vo.NewDecimal(uncat[0].Amount).String() != vo.NewDecimal("33").String() {
+		t.Errorf("amount mismatch: %q", uncat[0].Amount)
+	}
+
+	byTagUncat, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, true, accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByTag uncategorized: %v", err)
+	}
+	if len(byTagUncat) != 1 {
+		t.Fatalf("want exactly 1 uncategorized-tagged row, got %d: %+v", len(byTagUncat), byTagUncat)
+	}
+	if byTagUncat[0].ID != uncategorizedTagged {
+		t.Errorf("wrong row: %q want %q", byTagUncat[0].ID, uncategorizedTagged)
+	}
+	if vo.NewDecimal(byTagUncat[0].Amount).String() != vo.NewDecimal("44").String() {
+		t.Errorf("amount mismatch: %q", byTagUncat[0].Amount)
+	}
+
+	// Empty account id set short-circuits to nil, nil.
+	if none, err := read.BudgetTransactionsUncategorized(ctx, nil, start, end); err != nil || none != nil {
 		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
 	}
 }

@@ -50,7 +50,11 @@ func (s *spendingStub) BudgetTransactionsByCategories(context.Context, []vo.Id, 
 	return nil, nil
 }
 
-func (s *spendingStub) BudgetTransactionsByTag(context.Context, vo.Id, *vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+func (s *spendingStub) BudgetTransactionsByTag(context.Context, vo.Id, *vo.Id, bool, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) BudgetTransactionsUncategorized(context.Context, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
 	return nil, nil
 }
 

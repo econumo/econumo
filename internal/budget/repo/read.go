@@ -524,8 +524,11 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 	return scanBudgetTxRows(rows)
 }
 
-// BudgetTransactionsByTag implements ReadModel.
-func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, categoryID *vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+// BudgetTransactionsByTag implements ReadModel. categoryID and uncategorized
+// are mutually exclusive narrowing modes (see the ReadModel doc comment); the
+// "category_id IS NULL" fragment binds no argument, so in the pgsql branch it
+// must not advance the `next` placeholder counter.
+func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, categoryID *vo.Id, uncategorized bool, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
@@ -544,6 +547,8 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 			where += " AND t.category_id = $" + itoa(next)
 			next++
 			args = append(args, categoryID.String())
+		} else if uncategorized {
+			where += " AND t.category_id IS NULL"
 		}
 		where += " AND t.spent_at >= $" + itoa(next) + " AND t.spent_at < $" + itoa(next+1)
 		args = append(args, start, end)
@@ -556,11 +561,44 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 		if categoryID != nil {
 			where += " AND t.category_id = ?"
 			args = append(args, categoryID.String())
+		} else if uncategorized {
+			where += " AND t.category_id IS NULL"
 		}
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
 		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + " ORDER BY t.spent_at DESC"
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanBudgetTxRows(rows)
+}
+
+// BudgetTransactionsUncategorized implements ReadModel.
+func (r *ReadRepo) BudgetTransactionsUncategorized(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	var sql string
+	args := make([]any, 0, len(accArgs)+2)
+	args = append(args, accArgs...)
+	if r.driver == "postgresql" {
+		accIn := r.ph(1, len(accArgs))
+		dStart := "$" + itoa(1+len(accArgs))
+		dEnd := "$" + itoa(2+len(accArgs))
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IS NULL AND t.tag_id IS NULL AND t.type = 0 AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " ORDER BY t.spent_at DESC"
+		args = append(args, start, end)
+	} else {
+		accIn := r.ph(1, len(accArgs))
+		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IS NULL AND t.tag_id IS NULL AND t.type = 0 AND t.spent_at >= ? AND t.spent_at < ? ORDER BY t.spent_at DESC"
+		// Bind the bounds as 'Y-m-d H:i:s' strings (see sqliteDatetime): a
+		// time.Time bound does not compare correctly against the stored
+		// datetime TEXT and drops the first-of-month row.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
 	if err != nil {

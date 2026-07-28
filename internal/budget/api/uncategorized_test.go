@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -280,5 +281,70 @@ func TestUncategorized_TagWithOnlyCategoryDeletedSpending(t *testing.T) {
 	}
 	if child.Spent != "88" || child.BudgetSpent != "88" {
 		t.Errorf("child spent/budgetSpent=%q/%q want 88/88", child.Spent, child.BudgetSpent)
+	}
+}
+
+// TestUncategorized_Drilldown_TopLevelAndTagChild: clicking the top-level
+// "uncategorized" row must list exactly the untagged-and-uncategorized
+// transactions; clicking a tag's "uncategorized" child must list exactly that
+// tag's tagged-but-uncategorized transactions. Neither leaks a categorized row.
+func TestUncategorized_Drilldown_TopLevelAndTagChild(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	// Categorized, unaffected by either drill-down below.
+	f.Transaction(fixture.Transaction{
+		ID: "eeee3333-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "10.00", SpentAt: "2024-04-10 00:00:00",
+	})
+	uncategorizedUntaggedID := f.Transaction(fixture.Transaction{
+		ID: "eeee3333-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: accountID,
+		Type: 0, Amount: "20.00", SpentAt: "2024-04-11 00:00:00",
+	})
+	uncategorizedTaggedID := f.Transaction(fixture.Transaction{
+		ID: "eeee3333-0000-7000-8000-000000000003", UserID: seedUserID, AccountID: accountID,
+		TagID: tagID, Type: 0, Amount: "30.00", SpentAt: "2024-04-12 00:00:00",
+	})
+
+	base := "/api/v1/budget/get-transaction-list?budgetId=" + budgetID1 + "&periodStart=2024-04-01"
+
+	// Top-level uncategorized row.
+	st, b := h.do(t, http.MethodGet, base+"&uncategorized=1", tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("get-transaction-list uncategorized=%d body=%s", st, b.raw)
+	}
+	got := mustUnmarshal[txListView](t, b.Data)
+	if len(got.Items) != 1 || got.Items[0].Id != uncategorizedUntaggedID {
+		t.Fatalf("top-level uncategorized drill-down must return exactly %q; got %s", uncategorizedUntaggedID, b.Data)
+	}
+	if vo.NewDecimal(got.Items[0].Amount).String() != vo.NewDecimal("20.00").String() {
+		t.Errorf("amount mismatch: got %q, want 20.00", got.Items[0].Amount)
+	}
+
+	// A tag's uncategorized child.
+	st, b = h.do(t, http.MethodGet, base+"&tagId="+tagID+"&uncategorized=1", tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("get-transaction-list tag uncategorized=%d body=%s", st, b.raw)
+	}
+	got = mustUnmarshal[txListView](t, b.Data)
+	if len(got.Items) != 1 || got.Items[0].Id != uncategorizedTaggedID {
+		t.Fatalf("tag uncategorized-child drill-down must return exactly %q; got %s", uncategorizedTaggedID, b.Data)
+	}
+	if vo.NewDecimal(got.Items[0].Amount).String() != vo.NewDecimal("30.00").String() {
+		t.Errorf("amount mismatch: got %q, want 30.00", got.Items[0].Amount)
+	}
+
+	// uncategorized + categoryId is a validation error, mirroring
+	// TransactionListRequest.Validate().
+	status, env := h.do(t, http.MethodGet, base+"&uncategorized=1&categoryId="+catID, tok, nil)
+	if status != http.StatusBadRequest {
+		t.Fatalf("get-transaction-list uncategorized+categoryId=%d want 400; body=%s", status, env.raw)
+	}
+	msgs := env.errorsMap()["categoryId"]
+	if len(msgs) == 0 {
+		t.Fatalf("errors[categoryId] must be present; body=%s", env.raw)
 	}
 }
