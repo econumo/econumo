@@ -341,10 +341,7 @@
           }
         },
         "category": {
-          "label": "Category",
-          "validation": {
-            "required_field": "Category is required"
-          }
+          "label": "Category"
         },
         "payee": {
           "expense": "Recipient",

@@ -341,10 +341,7 @@
           }
         },
         "category": {
-          "label": "Категория",
-          "validation": {
-            "required_field": "Укажите категорию"
-          }
+          "label": "Категория"
         },
         "payee": {
           "expense": "Получатель",
