@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"math"
 	"net/http"
 	"testing"
 
@@ -8,41 +9,51 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
+// uncategorizedElement is the full shape of a get-budget parent element that
+// this file's tests assert on (matches model.ParentElementResult).
+type uncategorizedElement struct {
+	Id          string  `json:"id"`
+	Type        int     `json:"type"`
+	Name        string  `json:"name"`
+	Icon        string  `json:"icon"`
+	CurrencyId  string  `json:"currencyId"`
+	IsArchived  int     `json:"isArchived"`
+	FolderId    *string `json:"folderId"`
+	Position    int     `json:"position"`
+	Budgeted    string  `json:"budgeted"`
+	Available   string  `json:"available"`
+	Spent       string  `json:"spent"`
+	BudgetSpent string  `json:"budgetSpent"`
+	OwnerUserId *string `json:"ownerUserId"`
+	Children    []struct {
+		Id          string `json:"id"`
+		Type        int    `json:"type"`
+		Name        string `json:"name"`
+		Icon        string `json:"icon"`
+		IsArchived  int    `json:"isArchived"`
+		Spent       string `json:"spent"`
+		BudgetSpent string `json:"budgetSpent"`
+		OwnerUserId string `json:"ownerUserId"`
+	} `json:"children"`
+}
+
 // uncategorizedBudgetView is the slice of get-budget tests in this file care
 // about: elements plus their children.
 type uncategorizedBudgetView struct {
 	Item struct {
 		Structure struct {
-			Elements []struct {
-				Id       string  `json:"id"`
-				Budgeted string  `json:"budgeted"`
-				Spent    string  `json:"spent"`
-				FolderId *string `json:"folderId"`
-				Children []struct {
-					Id    string `json:"id"`
-					Spent string `json:"spent"`
-				} `json:"children"`
-			} `json:"elements"`
+			Elements []uncategorizedElement `json:"elements"`
 		} `json:"structure"`
 	} `json:"item"`
 }
 
-func (v uncategorizedBudgetView) find(id string) (elem struct {
-	Id       string  `json:"id"`
-	Budgeted string  `json:"budgeted"`
-	Spent    string  `json:"spent"`
-	FolderId *string `json:"folderId"`
-	Children []struct {
-		Id    string `json:"id"`
-		Spent string `json:"spent"`
-	} `json:"children"`
-}, ok bool) {
+func (v uncategorizedBudgetView) find(id string) (uncategorizedElement, bool) {
 	for _, e := range v.Item.Structure.Elements {
 		if e.Id == id {
 			return e, true
 		}
 	}
-	return elem, false
+	return uncategorizedElement{}, false
 }
 
 // TestUncategorized_TopLevelRowAppears: an expense with no category and no tag
@@ -65,11 +76,41 @@ func TestUncategorized_TopLevelRowAppears(t *testing.T) {
 	if !ok {
 		t.Fatalf("uncategorized element must be present; body: %s", b.Data)
 	}
+	if el.Type != 1 {
+		t.Errorf("type=%d want 1 (ElementCategory)", el.Type)
+	}
+	if el.Name != "Uncategorized" {
+		t.Errorf("name=%q want Uncategorized", el.Name)
+	}
+	if el.Icon != "question_mark" {
+		t.Errorf("icon=%q want question_mark", el.Icon)
+	}
+	if el.CurrencyId != usdID {
+		t.Errorf("currencyId=%q want %q", el.CurrencyId, usdID)
+	}
+	if el.IsArchived != 0 {
+		t.Errorf("isArchived=%d want 0", el.IsArchived)
+	}
+	if el.Position != math.MaxInt16 {
+		t.Errorf("position=%d want %d (sentinel sorting it last)", el.Position, math.MaxInt16)
+	}
+	if el.OwnerUserId != nil {
+		t.Errorf("ownerUserId=%v want nil", el.OwnerUserId)
+	}
 	if el.Budgeted != "0" {
 		t.Errorf("budgeted=%q want 0", el.Budgeted)
 	}
 	if el.Spent != "42" {
 		t.Errorf("spent=%q want 42", el.Spent)
+	}
+	if el.BudgetSpent != "42" {
+		t.Errorf("budgetSpent=%q want 42", el.BudgetSpent)
+	}
+	// available = budgetedBefore - spentBefore - spent, which with no limits
+	// (this element can never have one) reduces to -spent. Asserting the real
+	// value guards against a future change hardcoding it to "0".
+	if el.Available != "-42" {
+		t.Errorf("available=%q want -42", el.Available)
 	}
 	if el.FolderId != nil {
 		t.Errorf("folderId=%v want nil", el.FolderId)
@@ -123,8 +164,42 @@ func TestUncategorized_TaggedGoesToTheTagAsAChild(t *testing.T) {
 	if !ok {
 		t.Fatalf("tag element must be present; body: %s", b.Data)
 	}
-	if len(tagEl.Children) != 1 || tagEl.Children[0].Id != "uncategorized" || tagEl.Children[0].Spent != "17.5" {
-		t.Fatalf("tag children=%+v want exactly one uncategorized child with spent=17.5", tagEl.Children)
+	if tagEl.Spent != "17.5" {
+		t.Errorf("tag spent=%q want 17.5", tagEl.Spent)
+	}
+	if tagEl.BudgetSpent != "17.5" {
+		t.Errorf("tag budgetSpent=%q want 17.5", tagEl.BudgetSpent)
+	}
+	if tagEl.Available != "-17.5" {
+		t.Errorf("tag available=%q want -17.5", tagEl.Available)
+	}
+	if len(tagEl.Children) != 1 {
+		t.Fatalf("tag children=%+v want exactly one child", tagEl.Children)
+	}
+	child := tagEl.Children[0]
+	if child.Id != "uncategorized" {
+		t.Errorf("child id=%q want uncategorized", child.Id)
+	}
+	if child.Type != 1 {
+		t.Errorf("child type=%d want 1 (ElementCategory)", child.Type)
+	}
+	if child.Name != "Uncategorized" {
+		t.Errorf("child name=%q want Uncategorized", child.Name)
+	}
+	if child.Icon != "question_mark" {
+		t.Errorf("child icon=%q want question_mark", child.Icon)
+	}
+	if child.IsArchived != 0 {
+		t.Errorf("child isArchived=%d want 0", child.IsArchived)
+	}
+	if child.OwnerUserId != "" {
+		t.Errorf("child ownerUserId=%q want empty", child.OwnerUserId)
+	}
+	if child.Spent != "17.5" {
+		t.Errorf("child spent=%q want 17.5", child.Spent)
+	}
+	if child.BudgetSpent != "17.5" {
+		t.Errorf("child budgetSpent=%q want 17.5", child.BudgetSpent)
 	}
 }
 
@@ -190,7 +265,20 @@ func TestUncategorized_TagWithOnlyCategoryDeletedSpending(t *testing.T) {
 	if tagEl.Spent != "88" {
 		t.Errorf("tag spent=%q want 88 (must not render as an all-zero ghost row)", tagEl.Spent)
 	}
-	if len(tagEl.Children) != 1 || tagEl.Children[0].Id != "uncategorized" || tagEl.Children[0].Spent != "88" {
-		t.Fatalf("tag children=%+v want exactly one uncategorized child with spent=88", tagEl.Children)
+	if tagEl.BudgetSpent != "88" {
+		t.Errorf("tag budgetSpent=%q want 88", tagEl.BudgetSpent)
+	}
+	if tagEl.Available != "-88" {
+		t.Errorf("tag available=%q want -88", tagEl.Available)
+	}
+	if len(tagEl.Children) != 1 {
+		t.Fatalf("tag children=%+v want exactly one child", tagEl.Children)
+	}
+	child := tagEl.Children[0]
+	if child.Id != "uncategorized" || child.Name != "Uncategorized" || child.Icon != "question_mark" {
+		t.Errorf("child=%+v want id/name/icon = uncategorized/Uncategorized/question_mark", child)
+	}
+	if child.Spent != "88" || child.BudgetSpent != "88" {
+		t.Errorf("child spent/budgetSpent=%q/%q want 88/88", child.Spent, child.BudgetSpent)
 	}
 }
