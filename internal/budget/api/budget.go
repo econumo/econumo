@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
@@ -143,8 +144,17 @@ func optQuery(v string) *string {
 	return &v
 }
 
+// boolQuery parses a query-param boolean per Go/swagger boolean conventions
+// (strconv.ParseBool: "1", "t", "T", "TRUE", "true", "True", ...), not just
+// the literal "1"/"true" -- a stricter parse would silently accept
+// swagger-generated spellings like "True" as false, taking the wrong branch
+// instead of erroring.
 func boolQuery(v string) bool {
-	return v == "1" || v == "true"
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return b
 }
 
 // GetBudgetList handles GET /api/v1/budget/get-budget-list.
