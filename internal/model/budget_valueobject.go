@@ -16,6 +16,12 @@ const (
 	ElementTag      ElementType = 2
 )
 
+// UncategorizedID is the wire id of the presentation-only budget element that
+// carries spending with no category. It is deliberately NOT a UUID: vo.ParseId
+// rejects it, so set-limit and the other element writes refuse it with the
+// existing validation error and no new checks. It is never persisted.
+const UncategorizedID = "uncategorized"
+
 var elementAliases = [...]string{ElementEnvelope: "envelope", ElementCategory: "category", ElementTag: "tag"}
 
 // ElementTypeFromAlias parses an element type alias.

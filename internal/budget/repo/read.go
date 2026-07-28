@@ -328,11 +328,11 @@ func (r *ReadRepo) holdingsSQL(toHoldings bool, ids []any, start, end time.Time)
 
 // CountSpending implements ReadModel.
 func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error) {
-	// Both lists feed an "IN (...)" clause; an empty list is a no-op on SQLite
-	// but a syntax error on PostgreSQL (unlike the other list here, accountIDs
-	// had no guard — reachable whenever a budget's categories are non-empty but
-	// every account is excluded from it).
-	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
+	// accountIDs feeds an "IN (...)" clause; an empty list is a no-op on SQLite
+	// but a syntax error on PostgreSQL (reachable whenever a budget's categories
+	// are non-empty but every account is excluded from it). An empty categoryIDs
+	// is NOT a short-circuit: the NULL-category rows still have to come back.
+	if len(accountIDs) == 0 {
 		return nil, nil
 	}
 	catArgs := idArgs(categoryIDs)
@@ -341,21 +341,31 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 	var args []any
 	if r.driver == "postgresql" {
 		accIn := r.ph(1, len(accArgs))
-		catIn := r.ph(1+len(accArgs), len(catArgs))
+		// With no categories selected the predicate must be the IS NULL half
+		// alone: "IN ()" is a syntax error here.
+		catWhere := "t.category_id IS NULL"
+		if len(catArgs) > 0 {
+			catWhere = "(t.category_id IN (" + r.ph(1+len(accArgs), len(catArgs)) + ") OR t.category_id IS NULL)"
+		}
+		// Args are appended accounts, categories, start, end — so the date
+		// params sit after both lists (and catArgs contributes 0 when empty).
 		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
 		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND t.category_id IN (" + catIn + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, start, end)
 	} else {
 		accIn := r.ph(1, len(accArgs))
-		catIn := r.ph(1, len(catArgs))
+		catWhere := "t.category_id IS NULL"
+		if len(catArgs) > 0 {
+			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
+		}
 		// Bind the spent_at bounds as 'Y-m-d H:i:s' strings: a time.Time bound is
 		// serialized by the driver in a form that does not compare correctly
 		// against the stored datetime TEXT at month boundaries (it drops the
 		// first-of-month row).
-		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND t.category_id IN (" + catIn + ") AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
+		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
@@ -378,7 +388,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
 				return nil, err
 			}
-			if currencyID == nil || categoryID == nil {
+			if currencyID == nil {
 				continue
 			}
 			if amount != nil {
@@ -389,14 +399,14 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 			if err := rows.Scan(&amount, &categoryID, &tagID, &currencyID); err != nil {
 				return nil, err
 			}
-			if currencyID == nil || categoryID == nil {
+			if currencyID == nil {
 				continue
 			}
 			if amount != nil {
 				a = strconv.FormatFloat(*amount, 'f', 8, 64)
 			}
 		}
-		out = append(out, model.SpendingRow{CategoryID: *categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
 	}
 	return out, rows.Err()
 }

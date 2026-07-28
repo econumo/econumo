@@ -316,3 +316,61 @@ func TestBudgetReadRepo_HoldingsReport_MonthBoundary(t *testing.T) {
 		t.Errorf("currency mismatch: %q", rows[0].CurrencyID)
 	}
 }
+
+// Spending with no category must reach the builder so it can be shown as
+// "Uncategorized". Tagged rows keep their tag: the tag bucket wins, and the
+// uncategorized row only collects what is neither categorized nor tagged.
+func TestBudgetReadRepo_CountSpending_NullCategory(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	cat := "c0000000-0000-0000-0000-0000000000c1"
+	tag := "7a000000-0000-0000-0000-0000000000d1"
+	seedCategory(t, db, cat, userA)
+	f := fixture.New(t, db)
+	f.Tag(fixture.Tag{ID: tag, UserID: userA, Name: "Tag"})
+	// Categorized, untagged.
+	seedExpense(t, db, "75000000-0000-0000-0000-000000000001", acctA, cat, "10.00", "2024-04-05 00:00:00")
+	// No category, no tag -> the uncategorized bucket.
+	f.Transaction(fixture.Transaction{ID: "75000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, Type: 0, Amount: "20.00", SpentAt: "2024-04-06 00:00:00"})
+	// No category but tagged -> the tag bucket.
+	f.Transaction(fixture.Transaction{ID: "75000000-0000-0000-0000-000000000003", UserID: userA, AccountID: acctA, TagID: tag, Type: 0, Amount: "30.00", SpentAt: "2024-04-07 00:00:00"})
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	rows, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("CountSpending: %v", err)
+	}
+
+	var categorized, uncatUntagged, uncatTagged int
+	for _, r := range rows {
+		switch {
+		case r.CategoryID != nil:
+			categorized++
+		case r.TagID != nil && *r.TagID != "":
+			uncatTagged++
+		default:
+			uncatUntagged++
+		}
+	}
+	if categorized != 1 || uncatUntagged != 1 || uncatTagged != 1 {
+		t.Fatalf("want one row of each kind; got categorized=%d uncategorized-untagged=%d uncategorized-tagged=%d: %+v",
+			categorized, uncatUntagged, uncatTagged, rows)
+	}
+
+	// An empty category list must still return the uncategorized rows rather
+	// than short-circuiting -- and must not emit "IN ()", a PostgreSQL syntax
+	// error.
+	noCats, err := read.CountSpending(ctx, nil, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("CountSpending with no categories: %v", err)
+	}
+	if len(noCats) != 2 {
+		t.Fatalf("want the 2 uncategorized rows when no categories are given, got %d: %+v", len(noCats), noCats)
+	}
+
+	// No accounts still short-circuits.
+	if none, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, nil, start, end); err != nil || none != nil {
+		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
+	}
+}
