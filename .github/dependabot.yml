@@ -12,6 +12,13 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore: "
+    groups:
+      # React refuses to boot unless react and react-dom are on the exact same
+      # version, so they must be bumped in one PR rather than two.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
 
   # Enable version updates for Docker
   - package-ecosystem: "docker"
