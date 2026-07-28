@@ -11,6 +11,7 @@ import (
 	"time"
 
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -317,6 +318,41 @@ func TestBudgetReadRepo_HoldingsReport_MonthBoundary(t *testing.T) {
 	}
 }
 
+// assertRows checks the exact identity of a spending row set: every row is
+// keyed by its (category, tag) pair -- empty for nil -- and its amount must
+// match. Amounts go through vo.NewDecimal because the engines render sums
+// differently (sqlite float text "20.00000000" vs pgsql NUMERIC "20.00").
+func assertRows(t *testing.T, rows []model.SpendingRow, want map[string]string) {
+	t.Helper()
+	got := map[string]string{}
+	for _, r := range rows {
+		key := "cat="
+		if r.CategoryID != nil {
+			key += *r.CategoryID
+		}
+		key += " tag="
+		if r.TagID != nil {
+			key += *r.TagID
+		}
+		if _, dup := got[key]; dup {
+			t.Fatalf("duplicate row for %q: %+v", key, rows)
+		}
+		got[key] = vo.NewDecimal(r.Amount).String()
+	}
+	if len(got) != len(want) {
+		t.Fatalf("want %d rows %v, got %d %v", len(want), want, len(got), got)
+	}
+	for key, amount := range want {
+		a, ok := got[key]
+		if !ok {
+			t.Fatalf("missing row %q; got %v", key, got)
+		}
+		if a != vo.NewDecimal(amount).String() {
+			t.Errorf("row %q amount = %s, want %s", key, a, amount)
+		}
+	}
+}
+
 // Spending with no category must reach the builder so it can be shown as
 // "Uncategorized". Tagged rows keep their tag: the tag bucket wins, and the
 // uncategorized row only collects what is neither categorized nor tagged.
@@ -342,32 +378,24 @@ func TestBudgetReadRepo_CountSpending_NullCategory(t *testing.T) {
 		t.Fatalf("CountSpending: %v", err)
 	}
 
-	var categorized, uncatUntagged, uncatTagged int
-	for _, r := range rows {
-		switch {
-		case r.CategoryID != nil:
-			categorized++
-		case r.TagID != nil && *r.TagID != "":
-			uncatTagged++
-		default:
-			uncatUntagged++
-		}
-	}
-	if categorized != 1 || uncatUntagged != 1 || uncatTagged != 1 {
-		t.Fatalf("want one row of each kind; got categorized=%d uncategorized-untagged=%d uncategorized-tagged=%d: %+v",
-			categorized, uncatUntagged, uncatTagged, rows)
-	}
+	assertRows(t, rows, map[string]string{
+		"cat=" + cat + " tag=": "10.00",
+		"cat= tag=":            "20.00",
+		"cat= tag=" + tag:      "30.00",
+	})
 
 	// An empty category list must still return the uncategorized rows rather
 	// than short-circuiting -- and must not emit "IN ()", a PostgreSQL syntax
-	// error.
+	// error. Assert WHICH rows come back, not just how many: a count alone
+	// would pass if the predicate returned the wrong two rows.
 	noCats, err := read.CountSpending(ctx, nil, []vo.Id{vo.MustParseId(acctA)}, start, end)
 	if err != nil {
 		t.Fatalf("CountSpending with no categories: %v", err)
 	}
-	if len(noCats) != 2 {
-		t.Fatalf("want the 2 uncategorized rows when no categories are given, got %d: %+v", len(noCats), noCats)
-	}
+	assertRows(t, noCats, map[string]string{
+		"cat= tag=":       "20.00",
+		"cat= tag=" + tag: "30.00",
+	})
 
 	// No accounts still short-circuits.
 	if none, err := read.CountSpending(ctx, []vo.Id{vo.MustParseId(cat)}, nil, start, end); err != nil || none != nil {
