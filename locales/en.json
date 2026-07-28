@@ -20,6 +20,7 @@
     "econumo": {
       "label": "Econumo"
     },
+    "uncategorized": "Uncategorized",
     "loader": {
       "label": "loading",
       "having_trouble": "Having trouble?"
