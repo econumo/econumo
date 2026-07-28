@@ -28,7 +28,7 @@ This is Phase 1 of `docs/superpowers/specs/2026-07-27-optional-transaction-categ
 | `internal/budget/repo/read.go` | Hand-written budget report SQL | Modify — `:481-509`, `:512-554` date binding |
 | `internal/budget/api/tag_child_drilldown_test.go` | End-to-end regression for the tag-child drill-down | Create |
 | `web/src/features/budgets/BudgetTransactionsDialog.tsx` | Target type + request params | Modify — `:27-34`, `:58-66` |
-| `web/src/features/budgets/BudgetTransactionsDialog.test.tsx` | Param-mapping regression for the parent-tag spread | Create (final fix wave) |
+| `web/src/features/budgets/BudgetTransactionsDialog.test.tsx` | Param-mapping regression for the parent-tag spread | Modify — added in Task 4b |
 | `web/src/features/budgets/BudgetTable.tsx` | Row rendering, builds the click target | Modify — `:219` |
 | `web/src/features/budgets/BudgetTable.test.tsx` | Table behavior tests | Modify — update `:145-153`, add 1 test |
 
