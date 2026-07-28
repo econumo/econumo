@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -50,6 +51,9 @@ func TestTagChildDrilldown_ReturnsTheIntersection(t *testing.T) {
 	}
 	if got.Items[0].Id != taggedID {
 		t.Errorf("tag child drill-down returned %q, want the tagged transaction %q", got.Items[0].Id, taggedID)
+	}
+	if vo.NewDecimal(got.Items[0].Amount).String() != vo.NewDecimal("42.00").String() {
+		t.Errorf("tag child drill-down amount mismatch: got %q, want the seeded 42.00", got.Items[0].Amount)
 	}
 
 	// The standalone category row shows the untagged bucket, and its drill-down
