@@ -108,3 +108,29 @@ it('clearable shows a — row that clears the selection', async () => {
   await user.click(await screen.findByRole('option', { name: '—' }))
   expect(onChange).toHaveBeenCalledWith(null)
 })
+
+it('a disabled option is marked disabled and cannot be clicked', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  const options = [...OPTIONS, { value: 'c4', label: 'Locked', disabled: true }]
+  render(<EntitySelect aria-label="Category" value={null} onChange={onChange} options={options} />)
+
+  await user.click(combobox())
+  const locked = await screen.findByRole('option', { name: 'Locked' })
+  expect(locked).toHaveAttribute('aria-disabled', 'true')
+  await user.click(locked)
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+it('Enter on a filter that matches only a disabled option selects nothing', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  const options = [...OPTIONS, { value: 'c4', label: 'Locked', disabled: true }]
+  render(<EntitySelect aria-label="Category" value={null} onChange={onChange} options={options} />)
+
+  await user.click(combobox())
+  await user.keyboard('lock')
+  expect(await screen.findByRole('option', { name: 'Locked' })).toBeInTheDocument()
+  await user.keyboard('{Enter}')
+  expect(onChange).not.toHaveBeenCalled()
+})
