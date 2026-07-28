@@ -154,8 +154,8 @@ importers:
         specifier: ^29.1.1
         version: 29.1.1
       msw:
-        specifier: ^2.14.6
-        version: 2.14.6(@types/node@26.1.1)(typescript@7.0.2)
+        specifier: ^2.15.0
+        version: 2.15.0(@types/node@26.1.1)(typescript@7.0.2)
       oxlint:
         specifier: ^1.73.0
         version: 1.73.0
@@ -167,7 +167,7 @@ importers:
         version: 8.1.3(@types/node@26.1.1)(jiti@2.7.0)
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(msw@2.14.6(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0))
+        version: 4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(msw@2.15.0(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0))
 
 packages:
 
@@ -3056,8 +3056,8 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  msw@2.14.6:
-    resolution: {integrity: sha512-ALe+N10S72cyx94cMcy3Zs4HhXCj35sgeAL4c+WTvKi0zWnbd8/h0lcFqv0mb2P+aSgAdD7p9HzvA0DiUPxsyg==}
+  msw@2.15.0:
+    resolution: {integrity: sha512-2wQAmKkQKxRuXvYJxVhPGG0wZNBQyD06oJvxqw90XqLvptdqxdlHrFUfEteKkpaNORX3Xzc+HtEl/q0nfmN2wQ==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
@@ -3501,8 +3501,8 @@ packages:
     resolution: {integrity: sha512-xRXBn0pPqQTVQiC8wyQrKs2MOlX24zQ0POGaj0kultvoOCstBQM5yvOhAVSUwOMjQtTvsPWoNCHfPGwaaQJhTw==}
     engines: {node: '>= 18'}
 
-  set-cookie-parser@3.1.1:
-    resolution: {integrity: sha512-vM9SUhjsUYs6UeJUmygc5Ofm5eQGe85riob5ju6XCgFGJI5PLV4nrDAQpQjd+LkFBpAkADn5BQQpZ9EUNkyLuA==}
+  set-cookie-parser@3.1.2:
+    resolution: {integrity: sha512-5/r/lTwbJ3zQ+qwdUFZYeRNqda7P5HD8zQKqlSjdGt1/S0cjLAphHusj4Y58ahDtWn/g32xrIS58/ikOvwl0Lw==}
 
   setprototypeof@1.2.0:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
@@ -3663,8 +3663,15 @@ packages:
   tldts-core@7.4.6:
     resolution: {integrity: sha512-TkQNGJIhlEphpHCjKodMTSe23egUZr/g+flI2qkLgiJ/maAzSgXypSLRTNH3nCmqgayEmtcJBiLcfODSAr1xoA==}
 
+  tldts-core@7.4.9:
+    resolution: {integrity: sha512-DxKfPBI52p2msTEu7MPhdpdDTBhhVQg1a/8PjQckeyAvO13eMYElX545grIp6nnTGIMZlRvFZPvFhvI/WIz2Vg==}
+
   tldts@7.4.6:
     resolution: {integrity: sha512-rbP0Gyx8b3Ae9yO//CU2wbSnQNoQ66m1nJdSbSHmnwKwzkkz/u8mERYU8T2rmlmy+bJvRNn84yNCW8gYqox44Q==}
+    hasBin: true
+
+  tldts@7.4.9:
+    resolution: {integrity: sha512-3kZ8wQQ/k5DrChD4X4FVvr2D7E5uoRgAqkPyLpSCGUvqOvqu+JEdr3mwMUaVWb+vMHZaKhF5fp2PBigKsui7hA==}
     hasBin: true
 
   to-regex-range@5.0.1:
@@ -3677,6 +3684,10 @@ packages:
 
   tough-cookie@6.0.1:
     resolution: {integrity: sha512-LktZQb3IeoUWB9lqR5EWTHgW/VTITCXg4D21M+lvybRVdylLrRMnqaIONLVb5mav8vM19m44HIcGq4qASeu2Qw==}
+    engines: {node: '>=16'}
+
+  tough-cookie@6.0.2:
+    resolution: {integrity: sha512-exgYmnmL/sJpR3upZfXG5PoatXQii55xAiXGXzY+sROLZ/Y+SLcp9PgJNI9Vz37HpQ74WvDcLT8eqm+kV3FzrA==}
     engines: {node: '>=16'}
 
   tr46@6.0.0:
@@ -3696,8 +3707,8 @@ packages:
   tw-animate-css@1.4.0:
     resolution: {integrity: sha512-7bziOlRqH0hJx80h/3mbicLW7o8qLsH5+RaLR2t+OHM3D0JlWGODQKQ4cxbK7WlvmUxpcj6Kgu6EKqjrGFe3QQ==}
 
-  type-fest@5.7.0:
-    resolution: {integrity: sha512-1URUxUqfHFM1c+zfSPsa3gnkO7Aq21qyH75SIduNYz4SzY964rn1X2vCMQaHSHhktiw+0kPa2iyb6PUpXqB6Vg==}
+  type-fest@5.8.0:
+    resolution: {integrity: sha512-YGYEVz3Fm5iy/AybuA0oyNFq7H4CgQNfRp/qfe8nurE1kuCeNm3/vfm9X4Mtl+qLyaKJUh5xrFZwogr41SMjYA==}
     engines: {node: '>=20'}
 
   type-is@2.1.0:
@@ -5656,13 +5667,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.10(msw@2.14.6(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0))':
+  '@vitest/mocker@4.1.10(msw@2.15.0(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0))':
     dependencies:
       '@vitest/spy': 4.1.10
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      msw: 2.14.6(@types/node@26.1.1)(typescript@7.0.2)
+      msw: 2.15.0(@types/node@26.1.1)(typescript@7.0.2)
       vite: 8.1.3(@types/node@26.1.1)(jiti@2.7.0)
 
   '@vitest/pretty-format@4.1.10':
@@ -6322,7 +6333,7 @@ snapshots:
   headers-polyfill@5.0.1:
     dependencies:
       '@types/set-cookie-parser': 2.4.10
-      set-cookie-parser: 3.1.1
+      set-cookie-parser: 3.1.2
 
   hono@4.12.32: {}
 
@@ -6627,7 +6638,7 @@ snapshots:
 
   ms@2.1.3: {}
 
-  msw@2.14.6(@types/node@26.1.1)(typescript@7.0.2):
+  msw@2.15.0(@types/node@26.1.1)(typescript@7.0.2):
     dependencies:
       '@inquirer/confirm': 6.1.1(@types/node@26.1.1)
       '@mswjs/interceptors': 0.41.9
@@ -6643,8 +6654,8 @@ snapshots:
       rettime: 0.11.11
       statuses: 2.0.2
       strict-event-emitter: 0.5.1
-      tough-cookie: 6.0.1
-      type-fest: 5.7.0
+      tough-cookie: 6.0.2
+      type-fest: 5.8.0
       until-async: 3.0.2
       yargs: 17.7.3
     optionalDependencies:
@@ -7140,7 +7151,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  set-cookie-parser@3.1.1: {}
+  set-cookie-parser@3.1.2: {}
 
   setprototypeof@1.2.0: {}
 
@@ -7310,9 +7321,15 @@ snapshots:
 
   tldts-core@7.4.6: {}
 
+  tldts-core@7.4.9: {}
+
   tldts@7.4.6:
     dependencies:
       tldts-core: 7.4.6
+
+  tldts@7.4.9:
+    dependencies:
+      tldts-core: 7.4.9
 
   to-regex-range@5.0.1:
     dependencies:
@@ -7323,6 +7340,10 @@ snapshots:
   tough-cookie@6.0.1:
     dependencies:
       tldts: 7.4.6
+
+  tough-cookie@6.0.2:
+    dependencies:
+      tldts: 7.4.9
 
   tr46@6.0.0:
     dependencies:
@@ -7343,7 +7364,7 @@ snapshots:
 
   tw-animate-css@1.4.0: {}
 
-  type-fest@5.7.0:
+  type-fest@5.8.0:
     dependencies:
       tagged-tag: 1.0.0
 
@@ -7461,10 +7482,10 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.7.0
 
-  vitest@4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(msw@2.14.6(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0)):
+  vitest@4.1.10(@types/node@26.1.1)(jsdom@29.1.1)(msw@2.15.0(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0)):
     dependencies:
       '@vitest/expect': 4.1.10
-      '@vitest/mocker': 4.1.10(msw@2.14.6(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0))
+      '@vitest/mocker': 4.1.10(msw@2.15.0(@types/node@26.1.1)(typescript@7.0.2))(vite@8.1.3(@types/node@26.1.1)(jiti@2.7.0))
       '@vitest/pretty-format': 4.1.10
       '@vitest/runner': 4.1.10
       '@vitest/snapshot': 4.1.10
