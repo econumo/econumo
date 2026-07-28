@@ -216,7 +216,7 @@ function ElementRow({
                   {owner?.name}
                 </span>
                 <span data-testid="child-spent" className="flex justify-end">
-                  {spentCell({ id: child.id, type: child.type, name: child.name, icon: child.icon, currencyId: element.currencyId }, child.spent)}
+                  {spentCell({ id: child.id, type: child.type, name: child.name, icon: child.icon, currencyId: element.currencyId, parent: { id: element.id, type: element.type } }, child.spent)}
                 </span>
                 <span className="w-20 sm:w-24" />
                 <span className="hidden w-6 sm:block" />

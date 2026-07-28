@@ -149,7 +149,32 @@ it('clicking a child spent amount reports the child category with the parent cur
   const living = await screen.findByTestId('element-env-1')
   await user.click(within(living).getByText('Living'))
   await user.click(await screen.findByRole('button', { name: 'transactions Rent' }))
-  expect(onSpentClick).toHaveBeenCalledWith({ id: 'cat-rent', type: 1, name: 'Rent', icon: 'house', currencyId: 'cur-eur' })
+  expect(onSpentClick).toHaveBeenCalledWith({
+    id: 'cat-rent', type: 1, name: 'Rent', icon: 'house', currencyId: 'cur-eur',
+    parent: { id: 'env-1', type: 0 },
+  })
+})
+
+it('clicking a tag child spent amount reports the parent tag', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable((budget) => {
+    budget.structure.elements.push({
+      id: 'tag-travel', type: 2, name: 'Travel', icon: 'flight', currencyId: null, isArchived: 0,
+      folderId: null, position: 3, budgeted: '0', available: '-30', spent: '30', budgetSpent: '30',
+      ownerUserId: 'u1',
+      children: [{ id: 'cat-hotel', type: 1, name: 'Hotel', icon: 'hotel', isArchived: 0, spent: '30', budgetSpent: '30', ownerUserId: 'u1' }],
+    })
+  }, { onSpentClick })
+  const travel = await screen.findByTestId('element-tag-travel')
+  await user.click(within(travel).getByText('Travel'))
+  await user.click(await screen.findByRole('button', { name: 'transactions Hotel' }))
+  // Without the parent the dialog sends categoryId alone, and the backend
+  // returns the untagged complement of what this row displays.
+  expect(onSpentClick).toHaveBeenCalledWith({
+    id: 'cat-hotel', type: 1, name: 'Hotel', icon: 'hotel', currencyId: null,
+    parent: { id: 'tag-travel', type: 2 },
+  })
 })
 
 it('children show spent and the owner badge only in a multi-user budget', async () => {

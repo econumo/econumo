@@ -191,3 +191,128 @@ func TestBudgetReadRepo_SummarizedLimits_MonthBoundary(t *testing.T) {
 		t.Errorf("external id mismatch: %q", rows[0].ExternalID)
 	}
 }
+
+// BudgetTransactionsByCategories backs the drill-down of a standalone category
+// row and of an envelope's children. Both display the UNTAGGED bucket, so the
+// query deliberately excludes tagged rows ("t.tag_id IS NULL"). A category
+// nested under a tag shows the opposite bucket and must not use this query.
+func TestBudgetReadRepo_BudgetTransactionsByCategories(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	cat := "c0000000-0000-0000-0000-0000000000c1"
+	tag := "7a000000-0000-0000-0000-0000000000b1"
+	seedCategory(t, db, cat, userA)
+	f := fixture.New(t, db)
+	f.Tag(fixture.Tag{ID: tag, UserID: userA, Name: "Tag"})
+	// The only row this query should return.
+	seedExpense(t, db, "73000000-0000-0000-0000-000000000001", acctA, cat, "10.00", "2024-04-05 00:00:00")
+	// Same category but tagged: excluded by design.
+	f.Transaction(fixture.Transaction{ID: "73000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, CategoryID: cat, TagID: tag, Type: 0, Amount: "99.00", SpentAt: "2024-04-06 00:00:00"})
+	// An income in the same category is not budget spending (type != 0).
+	f.Transaction(fixture.Transaction{ID: "73000000-0000-0000-0000-000000000003", UserID: userA, AccountID: acctA, CategoryID: cat, Type: 1, Amount: "50.00", SpentAt: "2024-04-07 00:00:00"})
+	// Outside the period.
+	seedExpense(t, db, "73000000-0000-0000-0000-000000000004", acctA, cat, "77.00", "2024-05-02 00:00:00")
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	catIDs := []vo.Id{vo.MustParseId(cat)}
+	accIDs := []vo.Id{vo.MustParseId(acctA)}
+
+	rows, err := read.BudgetTransactionsByCategories(ctx, catIDs, accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByCategories: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("want 1 untagged in-period expense, got %d: %+v", len(rows), rows)
+	}
+	if rows[0].ID != "73000000-0000-0000-0000-000000000001" {
+		t.Errorf("wrong row returned: %q", rows[0].ID)
+	}
+
+	// Empty id sets short-circuit: "IN ()" is a no-op on SQLite but a PostgreSQL
+	// syntax error, so both lists must be guarded.
+	if none, err := read.BudgetTransactionsByCategories(ctx, nil, accIDs, start, end); err != nil || none != nil {
+		t.Errorf("empty category ids should be nil,nil; got %v, %v", none, err)
+	}
+	if none, err := read.BudgetTransactionsByCategories(ctx, catIDs, nil, start, end); err != nil || none != nil {
+		t.Errorf("empty account ids should be nil,nil; got %v, %v", none, err)
+	}
+}
+
+// A first-of-month transaction is counted in the row total by CountSpending, so
+// the drill-down list must contain it too — otherwise the list silently
+// contradicts the number above it. SQLite only: the bounds must be bound as
+// 'Y-m-d H:i:s' strings, not as time.Time (see sqliteDatetime).
+func TestBudgetReadRepo_Drilldown_MonthBoundary(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	cat := "c0000000-0000-0000-0000-0000000000c1"
+	tag := "7a000000-0000-0000-0000-0000000000c2"
+	seedCategory(t, db, cat, userA)
+	f := fixture.New(t, db)
+	f.Tag(fixture.Tag{ID: tag, UserID: userA, Name: "Tag"})
+	seedExpense(t, db, "74000000-0000-0000-0000-000000000001", acctA, cat, "10.00", "2024-04-01 00:00:00")
+	f.Transaction(fixture.Transaction{ID: "74000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, CategoryID: cat, TagID: tag, Type: 0, Amount: "20.00", SpentAt: "2024-04-01 00:00:00"})
+	// The previous month must stay excluded (the lower bound is inclusive, the
+	// upper bound exclusive).
+	seedExpense(t, db, "74000000-0000-0000-0000-000000000003", acctA, cat, "99.00", "2024-03-31 23:59:59")
+	seedExpense(t, db, "74000000-0000-0000-0000-000000000004", acctA, cat, "88.00", "2024-05-01 00:00:00")
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	accIDs := []vo.Id{vo.MustParseId(acctA)}
+
+	byCat, err := read.BudgetTransactionsByCategories(ctx, []vo.Id{vo.MustParseId(cat)}, accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByCategories: %v", err)
+	}
+	if len(byCat) != 1 {
+		t.Fatalf("want the Apr 1 untagged expense in the list, got %d rows: %+v", len(byCat), byCat)
+	}
+	if byCat[0].ID != "74000000-0000-0000-0000-000000000001" {
+		t.Errorf("wrong row: %q", byCat[0].ID)
+	}
+
+	byTag, err := read.BudgetTransactionsByTag(ctx, vo.MustParseId(tag), nil, accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByTag: %v", err)
+	}
+	if len(byTag) != 1 {
+		t.Fatalf("want the Apr 1 tagged expense in the list, got %d rows: %+v", len(byTag), byTag)
+	}
+	if byTag[0].ID != "74000000-0000-0000-0000-000000000002" {
+		t.Errorf("wrong row: %q", byTag[0].ID)
+	}
+}
+
+// A transfer dated the 1st of the month must be counted in HoldingsReport, and
+// the next month's 1st must be excluded. SQLite only: the bounds must be
+// bound as 'Y-m-d H:i:s' strings, not as time.Time (see sqliteDatetime).
+func TestBudgetReadRepo_HoldingsReport_MonthBoundary(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	acctB := "aaaa1111-0000-0000-0000-0000000000a2"
+	seedAccount(t, db, acctB, userA)
+	f := fixture.New(t, db)
+	// A same-currency transfer OUT of the {acctA} set (recipient acctB is
+	// outside): the Apr 1 boundary must be INCLUDED.
+	f.Transaction(fixture.Transaction{ID: "75000000-0000-0000-0000-000000000001", UserID: userA, AccountID: acctA, AccountRecipientID: acctB, Type: 2, Amount: "10.00", AmountRecipient: "10.00", SpentAt: "2024-04-01 00:00:00"})
+	// The next month's 1st must be EXCLUDED (upper bound is exclusive).
+	f.Transaction(fixture.Transaction{ID: "75000000-0000-0000-0000-000000000002", UserID: userA, AccountID: acctA, AccountRecipientID: acctB, Type: 2, Amount: "88.00", AmountRecipient: "88.00", SpentAt: "2024-05-01 00:00:00"})
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	rows, err := read.HoldingsReport(ctx, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("HoldingsReport: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("want 1 holdings row (Apr 1 transfer only), got %d: %+v", len(rows), rows)
+	}
+	if vo.NewDecimal(rows[0].ToHoldings).String() != vo.NewDecimal("10.00").String() {
+		t.Errorf("to holdings mismatch: %q", rows[0].ToHoldings)
+	}
+	if rows[0].CurrencyID != usdID {
+		t.Errorf("currency mismatch: %q", rows[0].CurrencyID)
+	}
+}
