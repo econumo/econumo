@@ -11,8 +11,11 @@ import (
 )
 
 // GetTransactionList returns the budget's transactions for a category, tag, or
-// envelope in a period. Exactly one of categoryId / tagId / envelopeId selects
-// the mode. Requires read access.
+// envelope in a period. categoryId alone selects that category's UNTAGGED
+// transactions; tagId (with an optional categoryId) selects that tag's
+// transactions, narrowed to the given category when both are set; envelopeId
+// alone selects the envelope's categories' untagged transactions. tagId and
+// envelopeId are mutually exclusive. Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {

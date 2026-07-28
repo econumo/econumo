@@ -31,6 +31,8 @@ export interface BudgetTransactionsTarget {
   icon: string
   /** null = the budget base currency */
   currencyId: Id | null
+  /** set on a nested child row: the row it is listed under */
+  parent?: { id: Id; type: BudgetElementType }
 }
 
 interface BudgetTransactionsDialogProps {
@@ -55,11 +57,20 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
 
+  // A category listed under a tag displays the tag-and-category intersection.
+  // Sending categoryId alone puts the backend on its "tag_id IS NULL" branch,
+  // which returns the complement of what the row shows.
+  const parentTagId = element?.parent?.type === BudgetElementType.TAG ? element.parent.id : undefined
   const params = element
     ? {
         budgetId: budget.meta.id,
         periodStart: selectedDate,
-        ...(element.type === BudgetElementType.CATEGORY ? { categoryId: element.id } : {}),
+        // the parent tag only ever applies to a CATEGORY-typed element, so it
+        // is folded into that branch rather than spread last, which would
+        // silently clobber a TAG-typed element's own tagId
+        ...(element.type === BudgetElementType.CATEGORY
+          ? { categoryId: element.id, ...(parentTagId ? { tagId: parentTagId } : {}) }
+          : {}),
         ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
         ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
       }
