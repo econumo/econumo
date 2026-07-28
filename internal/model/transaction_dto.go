@@ -48,9 +48,8 @@ type CreateTransactionRequest struct {
 	TagId              *string        `json:"tagId"`
 }
 
-// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date. (For
-// non-transfers categoryId is required, but that is re-checked tier-2 in
-// buildState.)
+// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.
+// categoryId is optional for every transaction type, including non-transfers.
 func (r CreateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
