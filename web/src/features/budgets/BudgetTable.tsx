@@ -11,7 +11,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, displayAvailable } from './budgetMath'
+import { budgetTotals, displayAvailable, elementDisplayName } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
@@ -111,9 +111,7 @@ function ElementRow({
   const expandable = element.children.length > 0
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
-  // the wire name is the English literal "Uncategorized" -- the SPA renders
-  // the translated label instead, everywhere this element's name would show
-  const displayName = element.id === UNCATEGORIZED_ID ? t('common.uncategorized') : element.name
+  const displayName = elementDisplayName(element.id, element.name, t)
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
@@ -205,7 +203,7 @@ function ElementRow({
         <ul className="pb-1">
           {element.children.map((child) => {
             const owner = accessById.size > 1 && child.ownerUserId ? accessById.get(child.ownerUserId) : undefined
-            const childDisplayName = child.id === UNCATEGORIZED_ID ? t('common.uncategorized') : child.name
+            const childDisplayName = elementDisplayName(child.id, child.name, t)
             return (
               <li
                 key={child.id}

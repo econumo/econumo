@@ -139,7 +139,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 					// Not a real category, so it can't be looked up in f.categories -
 					// without this branch the child (and its spending) would be
 					// silently dropped and the tag would render as an all-zero ghost.
-					name, icon = "Uncategorized", "question_mark"
+					name, icon = model.UncategorizedName, model.UncategorizedIcon
 				} else {
 					cat, ok := f.categories[catID]
 					if !ok {
@@ -203,7 +203,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		hasSpent := cs != nil && (len(cs.currenciesSpent) > 0 || len(cs.currenciesSpentBefore) > 0)
 		if hasSpent {
 			el := &structElement{
-				id: model.UncategorizedID, typ: model.ElementCategory, name: "Uncategorized", icon: "question_mark",
+				id: model.UncategorizedID, typ: model.ElementCategory, name: model.UncategorizedName, icon: model.UncategorizedIcon,
 				ownerID: nil, currencyID: budgetCurrencyID, isArchived: false,
 				folderID: nil, position: uncategorizedPosition, budgeted: zero, budgetedBefore: zero,
 			}

@@ -1,4 +1,5 @@
 import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
+import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { abs, add, cmp, div } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
@@ -86,6 +87,13 @@ export function budgetTotals(buckets: BudgetBuckets): BucketStats {
 }
 
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
+
+// The wire name for the Uncategorized element is the English literal
+// "Uncategorized" (see internal/model.UncategorizedName); the SPA renders the
+// translated label instead, everywhere this element's (or its tag-child
+// copy's) name would show.
+export const elementDisplayName = (id: string, name: string, t: (key: string) => string): string =>
+  id === UNCATEGORIZED_ID ? t('common.uncategorized') : name
 
 export interface PeriodItem {
   value: string

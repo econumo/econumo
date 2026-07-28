@@ -20,6 +20,7 @@ import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
@@ -90,7 +91,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
     return null
   }
 
-  const displayName = isUncategorized ? t('common.uncategorized') : element.name
+  const displayName = elementDisplayName(element.id, element.name, t)
 
   // full ViewTransaction when the caller can see the transaction in their own
   // list; otherwise (a partner's row in a shared budget) a read-only shape is
