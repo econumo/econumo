@@ -9,6 +9,7 @@ import type { ElementRowExtras } from './BudgetTable'
 import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto } from '@/api/dto/budget'
+import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -267,4 +268,64 @@ it('phone totals unfold into labeled budget/spent/available lines', async () => 
   expect(totals).toHaveTextContent('Available')
   expect(totals).toHaveTextContent('45.50')
   expect(totals).toHaveTextContent('554.50')
+})
+
+function pushUncategorized(budget: BudgetDto) {
+  budget.structure.elements.push({
+    id: UNCATEGORIZED_ID,
+    type: 1,
+    // deliberately mismatched with the translation, to prove the row
+    // ignores the wire's raw name
+    name: 'zzz-wire-name-should-not-render',
+    icon: 'question_mark',
+    currencyId: null,
+    isArchived: 0,
+    folderId: null,
+    position: 999,
+    budgeted: '0',
+    available: '-30',
+    spent: '30',
+    budgetSpent: '30',
+    ownerUserId: null,
+    children: [],
+  })
+}
+
+it('the Uncategorized row is read-only, mirroring an archive row', async () => {
+  renderTable(pushUncategorized, {
+    renderBudgetCell: () => <span data-testid="editor-marker">edit</span>,
+    renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} />,
+    onAvailableClick: vi.fn(),
+  })
+  const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
+  expect(within(row).queryByTestId('editor-marker')).not.toBeInTheDocument()
+  expect(within(row).queryByRole('button', { name: /^element actions /i })).not.toBeInTheDocument()
+  expect(within(row).queryByRole('button', { name: /^limit /i })).not.toBeInTheDocument()
+})
+
+it('the Uncategorized row spent amount is still clickable', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(pushUncategorized, { onSpentClick })
+  const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
+  await user.click(within(row).getByRole('button', { name: /^transactions /i }))
+  expect(onSpentClick).toHaveBeenCalledWith({ id: UNCATEGORIZED_ID, type: 1, name: 'Uncategorized', icon: 'question_mark', currencyId: null })
+})
+
+it('the Uncategorized row displays the translated name, not the wire literal', async () => {
+  renderTable(pushUncategorized)
+  const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
+  expect(within(row).getByText('Uncategorized')).toBeInTheDocument()
+  expect(within(row).queryByText('zzz-wire-name-should-not-render')).not.toBeInTheDocument()
+})
+
+it('a normal sibling row beside Uncategorized in the same (no-folder) section still gets its budget cell and actions', async () => {
+  renderTable(pushUncategorized, {
+    renderBudgetCell: () => <span data-testid="editor-marker">edit</span>,
+    renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} />,
+  })
+  // env-1 "Living" has folderId: null, same no-folder section as the pushed Uncategorized row
+  const living = await screen.findByTestId('element-env-1')
+  expect(within(living).getByTestId('editor-marker')).toBeInTheDocument()
+  expect(within(living).getByRole('button', { name: 'element actions Living' })).toBeInTheDocument()
 })

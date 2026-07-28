@@ -22,6 +22,9 @@ export interface BudgetMetaDto {
 export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2 } as const
 export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetElementType]
 
+/** the presentation-only element the backend emits for spending with no category */
+export const UNCATEGORIZED_ID = 'uncategorized'
+
 export interface BudgetChildElementDto {
   id: Id
   type: BudgetElementType

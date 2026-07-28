@@ -6,6 +6,7 @@ import { cmp } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
+import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -110,6 +111,9 @@ function ElementRow({
   const expandable = element.children.length > 0
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
+  // the wire name is the English literal "Uncategorized" -- the SPA renders
+  // the translated label instead, everywhere this element's name would show
+  const displayName = element.id === UNCATEGORIZED_ID ? t('common.uncategorized') : element.name
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
@@ -149,8 +153,8 @@ function ElementRow({
       ) : (
         <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />
       )}
-      <span className="truncate text-[15px]" title={element.name}>
-        {element.name}
+      <span className="truncate text-[15px]" title={displayName}>
+        {displayName}
       </span>
     </>
   )
@@ -176,7 +180,7 @@ function ElementRow({
         </span>
         <span data-testid="cell-spent" className="flex justify-end">
           {spentCell(
-            { id: element.id, type: element.type, name: element.name, icon: element.icon, currencyId: element.currencyId },
+            { id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId },
             element.spent,
           )}
         </span>
@@ -185,7 +189,7 @@ function ElementRow({
             <button
               type="button"
               title={t('budgets.modal.set_limit_form.header')}
-              aria-label={`limit ${element.name}`}
+              aria-label={`limit ${displayName}`}
               onClick={() => extras.onAvailableClick!(element)}
             >
               <AvailablePill available={available} currency={currency} testId="cell-available" />
@@ -201,6 +205,7 @@ function ElementRow({
         <ul className="pb-1">
           {element.children.map((child) => {
             const owner = accessById.size > 1 && child.ownerUserId ? accessById.get(child.ownerUserId) : undefined
+            const childDisplayName = child.id === UNCATEGORIZED_ID ? t('common.uncategorized') : child.name
             return (
               <li
                 key={child.id}
@@ -208,15 +213,15 @@ function ElementRow({
                 data-testid={`child-${child.id}`}
               >
                 <EntityIcon name={child.icon} className="text-lg" />
-                <span className="min-w-0 flex-1 truncate" title={child.name}>
-                  {child.name}
+                <span className="min-w-0 flex-1 truncate" title={childDisplayName}>
+                  {childDisplayName}
                 </span>
                 {/* owner sits in the budget column slot, flush under the amounts; row hover only (multi-user budgets) */}
                 <span className="hidden w-24 truncate text-right text-xs text-muted-foreground/60 opacity-0 group-hover:opacity-100 sm:block">
                   {owner?.name}
                 </span>
                 <span data-testid="child-spent" className="flex justify-end">
-                  {spentCell({ id: child.id, type: child.type, name: child.name, icon: child.icon, currencyId: element.currencyId, parent: { id: element.id, type: element.type } }, child.spent)}
+                  {spentCell({ id: child.id, type: child.type, name: childDisplayName, icon: child.icon, currencyId: element.currencyId, parent: { id: element.id, type: element.type } }, child.spent)}
                 </span>
                 <span className="w-20 sm:w-24" />
                 <span className="hidden w-6 sm:block" />
@@ -298,7 +303,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                   budget={budget}
                   currencies={currencies}
                   accessById={accessById}
-                  extras={isArchiveSection ? { onSpentClick: extras.onSpentClick } : extras}
+                  extras={isArchiveSection || element.id === UNCATEGORIZED_ID ? { onSpentClick: extras.onSpentClick } : extras}
                   actionsColumn={actionsColumn}
                   hideChildren={hideChildren}
                 />
