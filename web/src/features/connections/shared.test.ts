@@ -1,4 +1,4 @@
-import { hasAccountAdminAccess, hasBudgetAdminAccess, isPendingForMe, sharedAccountsFor, sharedBudgetsFor } from './shared'
+import { canWriteToAccount, hasAccountAdminAccess, hasBudgetAdminAccess, isPendingForMe, sharedAccountsFor, sharedBudgetsFor } from './shared'
 import { fixtureAccounts } from '@/test/fixtures'
 import type { AccountDto } from '@/api/dto/account'
 import type { BudgetMetaDto } from '@/api/dto/budget'
@@ -59,4 +59,14 @@ it('admin access = owner or admin grant (budgets require accepted)', () => {
   expect(hasBudgetAdminAccess(budget, 'u1')).toBe(true)
   expect(hasBudgetAdminAccess({ ...budget, access: [{ user: me, role: 'admin', isAccepted: 0 }] }, 'u1')).toBe(false)
   expect(hasBudgetAdminAccess({ ...budget, ownerUserId: 'u1' }, 'u1')).toBe(true)
+})
+
+it('canWriteToAccount mirrors the backend gate: owner or accepted admin/user grant', () => {
+  expect(canWriteToAccount(mine, 'u1')).toBe(true) // owner
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [{ user: me, role: 'admin', isAccepted: 1 }] }, 'u1')).toBe(true)
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [{ user: me, role: 'user', isAccepted: 1 }] }, 'u1')).toBe(true)
+  expect(canWriteToAccount(theirs, 'u1')).toBe(false) // guest
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [{ user: me, role: 'admin', isAccepted: 0 }] }, 'u1')).toBe(false) // unaccepted
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [] }, 'u1')).toBe(false) // no grant
+  expect(canWriteToAccount(mine, undefined)).toBe(false) // user not loaded yet
 })
