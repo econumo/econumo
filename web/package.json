@@ -63,7 +63,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "msw": "^2.15.0",
     "oxlint": "^1.76.0",
     "typescript": "~7.0.2",
