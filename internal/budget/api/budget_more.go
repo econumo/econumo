@@ -20,7 +20,10 @@ var _ = model.CreateBudgetFolderResult{}
 // @Produce json
 // @Param request body model.CreateBudgetFolderRequest true "Create folder"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.CreateBudgetFolderResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/create-folder [post]
 func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +38,10 @@ func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.UpdateBudgetFolderRequest true "Update folder"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.UpdateBudgetFolderResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/update-folder [post]
 func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +56,10 @@ func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.DeleteFolderRequest true "Delete folder"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.DeleteFolderResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/delete-folder [post]
 func (h *Handlers) DeleteFolder(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +74,10 @@ func (h *Handlers) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.OrderBudgetFolderListRequest true "Order folders"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.OrderBudgetFolderListResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/order-folder-list [post]
 func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +92,10 @@ func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.CreateEnvelopeRequest true "Create envelope"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.CreateEnvelopeResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/create-envelope [post]
 func (h *Handlers) CreateEnvelope(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +110,10 @@ func (h *Handlers) CreateEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.UpdateEnvelopeRequest true "Update envelope"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.UpdateEnvelopeResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/update-envelope [post]
 func (h *Handlers) UpdateEnvelope(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +128,10 @@ func (h *Handlers) UpdateEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.DeleteEnvelopeRequest true "Delete envelope"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.DeleteEnvelopeResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/delete-envelope [post]
 func (h *Handlers) DeleteEnvelope(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +146,10 @@ func (h *Handlers) DeleteEnvelope(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.GrantAccessRequest true "Grant access"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.GrantAccessResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/grant-access [post]
 func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +164,10 @@ func (h *Handlers) GrantAccess(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.AcceptAccessRequest true "Accept access"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.AcceptAccessResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/accept-access [post]
 func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
@@ -155,7 +182,10 @@ func (h *Handlers) AcceptAccess(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.RevokeAccessRequest true "Revoke access"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.RevokeAccessResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/revoke-access [post]
 func (h *Handlers) RevokeAccess(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +200,10 @@ func (h *Handlers) RevokeAccess(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.DeclineAccessRequest true "Decline access"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.DeclineAccessResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/decline-access [post]
 func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
@@ -185,7 +218,10 @@ func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.ExcludeAccountRequest true "Exclude account"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.ExcludeAccountResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/exclude-account [post]
 func (h *Handlers) ExcludeAccount(w http.ResponseWriter, r *http.Request) {
@@ -200,7 +236,10 @@ func (h *Handlers) ExcludeAccount(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.IncludeAccountRequest true "Include account"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.IncludeAccountResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/include-account [post]
 func (h *Handlers) IncludeAccount(w http.ResponseWriter, r *http.Request) {
@@ -215,7 +254,10 @@ func (h *Handlers) IncludeAccount(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.ChangeElementCurrencyRequest true "Change element currency"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.ChangeElementCurrencyResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/change-element-currency [post]
 func (h *Handlers) ChangeElementCurrency(w http.ResponseWriter, r *http.Request) {
@@ -230,7 +272,10 @@ func (h *Handlers) ChangeElementCurrency(w http.ResponseWriter, r *http.Request)
 // @Produce json
 // @Param request body model.SetLimitRequest true "Set limit"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.SetLimitResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/set-limit [post]
 func (h *Handlers) SetLimit(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +290,10 @@ func (h *Handlers) SetLimit(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param request body model.MoveElementListRequest true "Move elements"
 // @Success 200 {object} apidoc.JsonResponseOk{data=model.MoveElementListResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router /api/v1/budget/move-element-list [post]
 func (h *Handlers) MoveElementList(w http.ResponseWriter, r *http.Request) {
