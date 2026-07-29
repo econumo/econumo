@@ -24,6 +24,7 @@ import type { ViewTransaction } from '@/features/transactions/useAccountTransact
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+import { canWriteToAccount } from '@/features/connections/shared'
 
 // Accounts hold thousands of transactions; mounting them all at once makes
 // switching accounts visibly slow. Render a chunk and grow it as the scroll
@@ -99,7 +100,7 @@ export function AccountPage() {
   // Read-only access does NOT hide write controls: the backend rejects the
   // write with 402 and the global handler explains why. Only sharing roles
   // gate the UI.
-  const canChangeTransaction = isOwner || myRole === 'admin' || myRole === 'user'
+  const canChangeTransaction = canWriteToAccount(account, user?.id)
 
   const canTouchRow = (tx: ViewTransaction): boolean => {
     if (!canChangeTransaction) {

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
@@ -360,4 +360,29 @@ it('posting a recurring template: header + date prefill, submits to post-recurri
   expect(postBody!.type).toBe('expense')
   expect(postBody!.accountId).toBe('a1')
   expect(createCalled).toBe(false)
+})
+
+it('read-only shared accounts are disabled in the transfer account pickers', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const readOnlyShared = {
+    id: 'a-ro', owner: partner, folderId: null, name: 'Partner cash', position: 9,
+    currency: fixtureUsd, balance: '50', type: 1, icon: 'wallet',
+    sharedAccess: [{ user: fixtureOwner, role: 'guest', isAccepted: 1 }],
+  }
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, readOnlyShared] }))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'transfer' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  const toPicker = () => screen.getByRole('combobox', { name: 'to account' }) as HTMLInputElement
+  await user.click(toPicker())
+  const locked = await screen.findByRole('option', { name: /Partner cash/ })
+  expect(locked).toHaveAttribute('aria-disabled', 'true')
+  await user.click(locked)
+  expect(toPicker().value).not.toContain('Partner cash')
+
+  // a writable account remains selectable
+  await user.click(await screen.findByRole('option', { name: /Bank/ }))
+  await waitFor(() => expect(toPicker().value).toContain('Bank'))
 })
