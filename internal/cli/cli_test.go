@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bytes"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -106,6 +108,30 @@ func TestFirstPositional(t *testing.T) {
 		if got := firstPositional(c.args); got != c.want {
 			t.Errorf("%s: firstPositional(%q) = %q, want %q", c.name, c.args, got, c.want)
 		}
+	}
+}
+
+// TestLogCommandStartOmitsSecrets is the regression guard for the leak where the
+// command-start DEBUG line logged the full argument vector — for user:create and
+// user:change-password that included the plaintext password and email.
+func TestLogCommandStartOmitsSecrets(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(prev)
+
+	const email, password = "secret@example.test", "SuperSecret123"
+	logCommandStart("user:create", []string{"Test Name", email, password})
+
+	out := buf.String()
+	if strings.Contains(out, email) {
+		t.Errorf("DEBUG line leaked the email:\n%s", out)
+	}
+	if strings.Contains(out, password) {
+		t.Errorf("DEBUG line leaked the password:\n%s", out)
+	}
+	if !strings.Contains(out, "user:create") {
+		t.Errorf("DEBUG line dropped the command name, its only useful signal:\n%s", out)
 	}
 }
 
