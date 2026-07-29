@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -6,6 +7,7 @@ import { coreHandlers, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { BudgetTable } from './BudgetTable'
 import type { ElementRowExtras } from './BudgetTable'
+import type { FolderBucket } from './budgetMath'
 import { bucketElements, makeBudgetExchange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto } from '@/api/dto/budget'
@@ -14,7 +16,12 @@ import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
 
-function renderTable(mutate?: (budget: BudgetDto) => void, extras: ElementRowExtras & { hideChildren?: boolean } = {}) {
+type TableExtras = ElementRowExtras & {
+  hideChildren?: boolean
+  sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
+}
+
+function renderTable(mutate?: (budget: BudgetDto) => void, extras: TableExtras = {}) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
   mutate?.(budget)
   const buckets = bucketElements(budget, makeBudgetExchange(budget, [usd, eur]))
@@ -319,13 +326,72 @@ it('the Uncategorized row displays the translated name, not the wire literal', a
   expect(within(row).queryByText('zzz-wire-name-should-not-render')).not.toBeInTheDocument()
 })
 
-it('a normal sibling row beside Uncategorized in the same (no-folder) section still gets its budget cell and actions', async () => {
+it('a no-folder row alongside Uncategorized still gets its budget cell and actions', async () => {
   renderTable(pushUncategorized, {
     renderBudgetCell: () => <span data-testid="editor-marker">edit</span>,
     renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} />,
   })
-  // env-1 "Living" has folderId: null, same no-folder section as the pushed Uncategorized row
   const living = await screen.findByTestId('element-env-1')
   expect(within(living).getByTestId('editor-marker')).toBeInTheDocument()
   expect(within(living).getByRole('button', { name: 'element actions Living' })).toBeInTheDocument()
+})
+
+it('Uncategorized lives in its own section, not the no-folder one', async () => {
+  renderTable(pushUncategorized)
+  const section = await screen.findByTestId('budget-folder-Uncategorized')
+  expect(within(section).getByTestId(`element-${UNCATEGORIZED_ID}`)).toBeInTheDocument()
+  // the no-folder section keeps its own rows and does NOT hold Uncategorized
+  const noFolder = screen.getByTestId('budget-folder-Default folder')
+  expect(within(noFolder).queryByTestId(`element-${UNCATEGORIZED_ID}`)).not.toBeInTheDocument()
+  expect(within(noFolder).getByTestId('element-env-1')).toBeInTheDocument()
+})
+
+it('Uncategorized hides its icon on desktop but keeps it on mobile', async () => {
+  renderTable(pushUncategorized)
+  const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
+  const icon = row.querySelector('.material-icon')
+  expect(icon).not.toBeNull()
+  // mobile-only: the wrapper drops the icon from the sm breakpoint up
+  expect(icon!.parentElement).toHaveClass('sm:hidden')
+  // a normal row shows its icon at every width
+  const living = screen.getByTestId('element-env-1')
+  expect(living.querySelector('.material-icon')!.parentElement).not.toHaveClass('sm:hidden')
+})
+
+it('Uncategorized renders as ONE level: a bare row, with no section header above it', async () => {
+  renderTable(pushUncategorized)
+  const section = await screen.findByTestId('budget-folder-Uncategorized')
+  // no header/stat-line wrapper — the row itself is the whole section
+  expect(within(section).queryByTestId('stat-line')).not.toBeInTheDocument()
+  expect(section.querySelector('header')).toBeNull()
+  // and the label appears exactly once, on the row
+  expect(within(section).getAllByText('Uncategorized')).toHaveLength(1)
+})
+
+it('Uncategorized shows a dash for budget and available, and keeps its spent amount', async () => {
+  renderTable(pushUncategorized)
+  const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
+  expect(within(row).getByTestId('cell-budgeted')).toHaveTextContent('—')
+  expect(within(row).getByTestId('cell-available')).toHaveTextContent('—')
+  // the dash replaces the value, so no stray zero/negative amount survives
+  expect(within(row).getByTestId('cell-available')).not.toHaveTextContent('30')
+  expect(within(row).getByTestId('cell-spent')).toHaveTextContent('30')
+})
+
+it('the Uncategorized section is never a drag container and its row has no handle', async () => {
+  const sectionWrapper = vi.fn((_bucket, _key, node) => node)
+  renderTable(pushUncategorized, {
+    renderRowWrapper: (element, _bucket, row) => (
+      <div key={element.id} data-testid={`wrapped-${element.id}`}>
+        {row}
+      </div>
+    ),
+    sectionWrapper,
+  })
+  await screen.findByTestId('budget-folder-Uncategorized')
+  // the row is rendered plain — renderRowWrapper (the drag handle in edit mode)
+  // never wraps it, while a normal row still gets wrapped
+  expect(screen.queryByTestId(`wrapped-${UNCATEGORIZED_ID}`)).not.toBeInTheDocument()
+  expect(screen.getByTestId('wrapped-env-1')).toBeInTheDocument()
+  expect(sectionWrapper.mock.calls.map((c) => c[1])).not.toContain('__uncategorized__')
 })
