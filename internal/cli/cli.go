@@ -60,12 +60,21 @@ func Run(args []string) int {
 	}
 	defer c.Close()
 
-	slog.Debug("cli: running command", "command", name, "args", args[1:])
+	logCommandStart(name, args[1:])
 	if err := cmd.run(ctx, c, args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		return 1
 	}
 	return 0
+}
+
+// logCommandStart emits the single DEBUG line marking a command's start. It
+// records the command name and the argument COUNT only — never the values,
+// which for user:create / user:change-password include the plaintext password
+// and email. A secret written to a log cannot be un-written, and DEBUG is a
+// persistent .env setting (ECONUMO_LOG_LEVEL=debug), not just a stray -vvv.
+func logCommandStart(name string, args []string) {
+	slog.Debug("cli: running command", "command", name, "argc", len(args))
 }
 
 // index builds a name->command map, panicking on a duplicate name so a wiring

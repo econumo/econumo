@@ -40,7 +40,9 @@ func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    request body model.UpdateBudgetRequest true "Update budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.UpdateBudgetResult}
 // @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
 // @Failure  402 {object} apidoc.JsonResponseError
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/update-budget [post]
 func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +57,10 @@ func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    request body model.DeleteBudgetRequest true "Delete budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.DeleteBudgetResult}
+// @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
 // @Failure  402 {object} apidoc.JsonResponseError
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/delete-budget [post]
 func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +75,10 @@ func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    request body model.ResetBudgetRequest true "Reset budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.ResetBudgetResult}
+// @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
 // @Failure  402 {object} apidoc.JsonResponseError
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/reset-budget [post]
 func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +93,8 @@ func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    id    query string true  "Budget id"
 // @Param    date  query string false "Period date (Y-m-d)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetResult}
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget [get]
 func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +123,8 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    envelopeId    query string false "Envelope id"
 // @Param    uncategorized query boolean false "Uncategorized bucket (mutually exclusive with categoryId)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetTransactionListResult}
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/get-transaction-list [get]
 func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
@@ -163,6 +175,8 @@ func boolQuery(v string) bool {
 // @Tags     Budget
 // @Produce  json
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetListResult}
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget-list [get]
 func (h *Handlers) GetBudgetList(w http.ResponseWriter, r *http.Request) {

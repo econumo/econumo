@@ -81,6 +81,14 @@ export function hasAccountAdminAccess(account: AccountDto, meId: Id): boolean {
   return account.owner.id === meId || account.sharedAccess.some((a) => a.user.id === meId && a.role === 'admin')
 }
 
+/** Mirrors the backend transaction write gate: owner, or an ACCEPTED admin/user grant. Guest is read-only. */
+export function canWriteToAccount(account: AccountDto, meId: Id | undefined): boolean {
+  if (!meId) return false
+  if (account.owner.id === meId) return true
+  const entry = account.sharedAccess.find((a) => a.user.id === meId)
+  return !!entry && entry.isAccepted === 1 && (entry.role === 'admin' || entry.role === 'user')
+}
+
 export function hasBudgetAdminAccess(budget: BudgetMetaDto, meId: Id): boolean {
   if (budget.ownerUserId === meId) return true
   const entry = budget.access.find((a) => a.user.id === meId)

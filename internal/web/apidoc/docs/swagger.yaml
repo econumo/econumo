@@ -2335,10 +2335,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.AcceptAccessResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Accept budget access
@@ -2367,10 +2379,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.ChangeElementCurrencyResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Change a budget element's currency
@@ -2443,10 +2467,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.CreateEnvelopeResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Create an envelope
@@ -2475,10 +2511,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.CreateBudgetFolderResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Create a budget folder
@@ -2507,10 +2555,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.DeclineAccessResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Decline budget access
@@ -2539,10 +2599,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.DeleteBudgetResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Delete a budget
@@ -2571,10 +2643,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.DeleteEnvelopeResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Delete an envelope
@@ -2603,10 +2687,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.DeleteFolderResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Delete a budget folder
@@ -2635,10 +2731,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.ExcludeAccountResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Exclude an account from a budget
@@ -2668,6 +2776,14 @@ paths:
                 data:
                   $ref: '#/definitions/model.GetBudgetResult'
               type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Get a budget
@@ -2687,6 +2803,14 @@ paths:
                 data:
                   $ref: '#/definitions/model.GetBudgetListResult'
               type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: List budgets
@@ -2733,6 +2857,14 @@ paths:
                 data:
                   $ref: '#/definitions/model.GetBudgetTransactionListResult'
               type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Budget transaction list
@@ -2761,10 +2893,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.GrantAccessResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Grant budget access
@@ -2793,10 +2937,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.IncludeAccountResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Include an account in a budget
@@ -2825,10 +2981,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.MoveElementListResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Move/reorder budget elements
@@ -2857,10 +3025,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.OrderBudgetFolderListResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Reorder budget folders
@@ -2889,10 +3069,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.ResetBudgetResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Reset a budget
@@ -2921,10 +3113,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.RevokeAccessResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Revoke budget access
@@ -2953,10 +3157,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.SetLimitResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Set a budget element limit
@@ -2989,10 +3205,18 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Update a budget
@@ -3021,10 +3245,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.UpdateEnvelopeResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Update an envelope
@@ -3053,10 +3289,22 @@ paths:
                 data:
                   $ref: '#/definitions/model.UpdateBudgetFolderResult'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
         "402":
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
       summary: Update a budget folder
