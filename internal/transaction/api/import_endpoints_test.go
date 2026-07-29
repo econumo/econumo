@@ -129,6 +129,33 @@ func TestImport_EmptyCategoryCell_ImportsUncategorized(t *testing.T) {
 	}
 }
 
+// A whitespace-only Category cell counts as "no category name": it must import
+// uncategorized rather than find-or-create a category named " ".
+func TestImport_WhitespaceCategoryCell_ImportsUncategorized(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Cash,2024-03-01,-42.50,   ,blank category,Market\n"
+	status, env := h.doImport(t, tok, csv, importMapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].CategoryID != nil {
+		t.Fatalf("want 1 uncategorized item; got %+v", list.Items)
+	}
+	var blank int
+	h.db.QueryRow(`SELECT COUNT(*) FROM categories WHERE TRIM(name) = ''`).Scan(&blank)
+	if blank != 0 {
+		t.Fatalf("import created %d blank/whitespace-named categories", blank)
+	}
+}
+
 // The same, with the Category column left unmapped entirely.
 func TestImport_UnmappedCategoryColumn_ImportsUncategorized(t *testing.T) {
 	h := newHarness(t)
