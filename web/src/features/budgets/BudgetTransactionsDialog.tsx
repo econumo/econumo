@@ -14,6 +14,7 @@ import type { PayeeDto } from '@/api/dto/payee'
 import type { TagDto } from '@/api/dto/tag'
 import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
+import { canWriteToAccount } from '@/features/connections/shared'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData } from '@/features/user/queries'
@@ -122,9 +123,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
     if (!account) {
       return false
     }
-    const isOwner = account.owner.id === user?.id
-    const myRole = account.sharedAccess.find((access) => access.user.id === user?.id)?.role
-    if (!(isOwner || myRole === 'admin' || myRole === 'user')) {
+    if (!canWriteToAccount(account, user?.id)) {
       return false
     }
     if (tx.type === 'transfer') {

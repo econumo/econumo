@@ -22,6 +22,7 @@ import { useUiStore } from '@/app/uiStore'
 import type { OpenTransactionParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags, useCreateCategory, useCreatePayee, useCreateTag } from '@/features/classifications/queries'
+import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
@@ -194,6 +195,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     value: a.id,
     label: `${a.name} (${moneyFormat(a.balance, a.currency)})`,
     icon: a.icon,
+    disabled: !canWriteToAccount(a, user?.id),
   })
 
   return (

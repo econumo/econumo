@@ -9,6 +9,7 @@ export interface EntityOption {
   value: string
   label: string
   icon?: string
+  disabled?: boolean
 }
 
 interface Row extends EntityOption {
@@ -144,6 +145,7 @@ export function EntitySelect({
             <ComboboxItem
               key={row.create ? '__create__' : row.value}
               value={row}
+              disabled={row.disabled}
               className={row.create ? 'text-econumo-magenta' : undefined}
             >
               {row.create ? (
