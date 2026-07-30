@@ -73,16 +73,22 @@ string is unchanged, so desktop output is byte-identical.
 max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))]
 ```
 
-At 28px rows that shows 9 options; at 48px rows it would show 5. Taller rows alone
-would trade a tapping problem for a scrolling one, so the mobile cap rises with them:
+That resolves to 288 − 36 = **252px**: 9 options at 28px rows, but only 5 at 48px.
+Taller rows alone would trade a tapping problem for a scrolling one, so the mobile cap
+rises with them.
+
+A flat `max-md:max-h-96` (the `CurrencyPickerDialog` precedent) is **wrong here**: it has
+the same specificity as the base `max-h-[min(…)]` and would win inside the media query,
+*replacing* the whole expression and discarding the `var(--available-height)` operand —
+losing the viewport clamp that keeps the popup on screen in landscape or with the
+keyboard up. So only the fixed operand is raised, `spacing(72)` → `spacing(96)`:
 
 ```
-max-md:max-h-96
+max-md:max-h-[min(calc(--spacing(96)---spacing(9)),calc(var(--available-height)---spacing(9)))]
 ```
 
-384px ≈ 8 rows, preserving roughly today's scannability. The `var(--available-height)`
-term in the existing expression is a separate `min()` operand computed by Base UI from
-the real viewport, so it still clamps the popup — `max-h-96` cannot overflow the screen.
+384 − 36 = **348px** ≈ 7 rows at 48px, against 9 today. Slightly fewer options, but the
+reported pain is tapping, not scrolling, and the `--available-height` clamp survives.
 
 `SelectContent` needs no equivalent: it already sizes off
 `max-h-(--radix-select-content-available-height)` with no fixed cap.
@@ -127,7 +133,7 @@ This is a style-only change; the value is visual, so verification is primarily v
 
 ## Risks
 
-- **Fewer visible options despite (2).** 8 rows instead of 9. Judged acceptable; the
+- **Fewer visible options despite (2).** ~7 rows instead of 9. Judged acceptable; the
   reported pain is tapping, not scrolling.
 - **Card text growth.** Explicitly accepted above; the only visible change to the
   transaction form's closed state.
