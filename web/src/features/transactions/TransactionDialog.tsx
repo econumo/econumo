@@ -171,9 +171,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         next.amountRecipient = recipientError
       }
     }
-    if (!isTransfer && !form.categoryId) {
-      next.category = t('transactions.modal.form.category.validation.required_field')
-    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -378,12 +375,13 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </>
       ) : (
         <>
-          <SelectCard label={t('transactions.modal.form.category.label')} error={errors.category}>
+          <SelectCard label={t('transactions.modal.form.category.label')}>
               <EntitySelect
                 aria-label={t('transactions.modal.form.category.label')}
                 value={form.categoryId}
                 onChange={(id) => patch({ categoryId: id })}
                 options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
+                clearable
                 onCreate={
                   canEditData
                     ? (name) => {

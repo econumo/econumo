@@ -233,7 +233,7 @@ func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]model.A
 // buildState converts the request's primitive fields into a domain
 // model.NewState, applying the type-dependent field rules: a transfer keeps
 // recipient account+amount and drops category/payee/tag; a non-transfer
-// requires a category and keeps payee/tag, dropping recipient. amount is
+// keeps an optional category/payee/tag, dropping recipient. amount is
 // normalized.
 func buildState(
 	id, userID vo.Id, typ model.TransactionType, accountID vo.Id, amount string,
@@ -258,16 +258,17 @@ func buildState(
 			st.AmountRecipient = &ar
 		}
 	} else {
-		// Non-transfer requires a category.
-		if categoryID == nil || *categoryID == "" {
-			return st, errs.NewValidation("Validation failed",
-				errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		// A non-transfer may have no category. Treat an empty string as absent:
+		// the removed blank guard used to reject it before it could reach the
+		// reference lookup, so passing "" through would turn into a spurious
+		// "category not found".
+		if categoryID != nil && *categoryID != "" {
+			cid, err := vo.ParseId(*categoryID)
+			if err != nil {
+				return st, err
+			}
+			st.CategoryID = &cid
 		}
-		cid, err := vo.ParseId(*categoryID)
-		if err != nil {
-			return st, err
-		}
-		st.CategoryID = &cid
 		if payeeID != nil && *payeeID != "" {
 			pid, err := vo.ParseId(*payeeID)
 			if err != nil {

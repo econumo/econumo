@@ -2996,6 +2996,10 @@ paths:
         in: query
         name: envelopeId
         type: string
+      - description: Uncategorized bucket (mutually exclusive with categoryId)
+        in: query
+        name: uncategorized
+        type: boolean
       produces:
       - application/json
       responses:

@@ -164,7 +164,7 @@ export function transactionTitleInfo(
   if (tx.payee?.name) {
     return { text: tx.payee.name, source: 'payee' }
   }
-  return { text: '', source: 'none' }
+  return { text: t('common.uncategorized'), source: 'none' }
 }
 
 export function isIncomeForAccount(tx: ViewTransaction, pageAccountId: Id): boolean {

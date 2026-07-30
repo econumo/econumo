@@ -457,11 +457,12 @@ type MoveElementListResult struct{}
 
 // BudgetTransactionListRequest is the budget transaction-list query.
 type BudgetTransactionListRequest struct {
-	BudgetId    string  `json:"budgetId"`
-	PeriodStart string  `json:"periodStart"`
-	CategoryId  *string `json:"categoryId"`
-	TagId       *string `json:"tagId"`
-	EnvelopeId  *string `json:"envelopeId"`
+	BudgetId      string  `json:"budgetId"`
+	PeriodStart   string  `json:"periodStart"`
+	CategoryId    *string `json:"categoryId"`
+	TagId         *string `json:"tagId"`
+	EnvelopeId    *string `json:"envelopeId"`
+	Uncategorized bool    `json:"uncategorized,omitempty"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.

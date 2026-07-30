@@ -32,7 +32,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   const typeLabel = t(`accounts.page.preview_transaction_modal.type.${tx.type}`)
 
   const heroIcon = isTransfer ? 'sync_alt' : tx.category?.icon || 'question_mark'
-  const heroName = isTransfer ? typeLabel : (tx.category?.name ?? typeLabel)
+  const heroName = isTransfer ? typeLabel : (tx.category?.name ?? t('common.uncategorized'))
   const sign = tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''
   const amountClass = tx.type === 'expense' ? 'text-expense' : tx.type === 'income' ? 'text-income' : ''
 

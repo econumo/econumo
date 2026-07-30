@@ -2060,6 +2060,12 @@ const docTemplate = `{
                         "description": "Envelope id",
                         "name": "envelopeId",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Uncategorized bucket (mutually exclusive with categoryId)",
+                        "name": "uncategorized",
+                        "in": "query"
                     }
                 ],
                 "responses": {

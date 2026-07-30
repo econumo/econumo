@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureOwner } from '@/test/fixtures'
 import type { ViewTransaction } from './useAccountTransactions'
 import { ViewTransactionDialog } from './ViewTransactionDialog'
 
@@ -17,8 +17,8 @@ const fixtureTransaction = {
   type: 'expense',
   accountId: 'a1',
   accountRecipientId: null,
-  amount: 50.5,
-  amountRecipient: 50.5,
+  amount: '50.5',
+  amountRecipient: '50.5',
   categoryId: 'cat1',
   description: 'test transaction',
   payeeId: null,
@@ -31,6 +31,25 @@ const fixtureTransaction = {
   tag: undefined,
   author: undefined,
   recurring: undefined,
+  isInFuture: false,
+} as unknown as ViewTransaction
+
+const categorylessAccount = { id: 'a1', owner: fixtureOwner, folderId: null, name: 'Cash', position: 0, currency: { id: 'usd', code: 'USD', symbol: '$', fractionDigits: 2 }, balance: '0', type: 1, icon: 'wallet', sharedAccess: [] } as unknown as ViewTransaction['account']
+
+const categorylessTx = {
+  id: 't1',
+  author: fixtureOwner,
+  type: 'expense',
+  accountId: 'a1',
+  accountRecipientId: null,
+  amount: '9.99',
+  amountRecipient: null,
+  categoryId: null,
+  description: '',
+  payeeId: null,
+  tagId: null,
+  date: '2026-07-01 10:00:00',
+  account: categorylessAccount,
   isInFuture: false,
 } as unknown as ViewTransaction
 
@@ -90,4 +109,9 @@ it('disables Make recurring button when canChange is false', async () => {
   renderView({ onMakeRecurring, canChange: false })
   const button = await screen.findByRole('button', { name: /Make recurring/i })
   expect(button).toBeDisabled()
+})
+
+it('a categoryless non-transfer transaction shows Uncategorized as the hero name', async () => {
+  renderView({ transaction: categorylessTx })
+  expect(await screen.findByText('Uncategorized')).toBeInTheDocument()
 })

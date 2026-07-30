@@ -141,14 +141,44 @@ it('creates an expense with the exact payload shape', async () => {
   expect(body!.date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 })
 
-it('requires a category for non-transfers with the exact message', async () => {
+it('submits an expense with no category', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho({ categoryId: null }), accounts: fixtureAccounts } })
+    }),
+  )
   const user = userEvent.setup()
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
   await user.type(await screen.findByLabelText('Amount'), '5')
   await user.click(screen.getByRole('button', { name: 'Add' }))
-  expect(await screen.findByText('Category is required')).toBeInTheDocument()
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.categoryId).toBeNull()
+  expect(screen.queryByText('Category is required')).not.toBeInTheDocument()
+})
+
+it('clears an existing category via the select\'s clear row', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho({ categoryId: null }), accounts: fixtureAccounts } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ categoryId: 'cat-food' }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.click(screen.getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByText('—'))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.categoryId).toBeNull()
 })
 
 it('tags show on expense but not income; income payee label is Sender', async () => {

@@ -109,21 +109,29 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 			return err
 		}
 		for _, row := range rows {
+			catKey := model.UncategorizedID
+			if row.CategoryID != nil {
+				catKey = *row.CategoryID
+			}
 			var key string
-			if row.TagID != nil && *row.TagID != "" {
+			switch {
+			case row.TagID != nil && *row.TagID != "":
+				// A tag wins over the category, and over having none: a tagged
+				// but uncategorized expense belongs to its tag, surfacing as an
+				// Uncategorized child there rather than in the top-level row.
 				key = elementKey(*row.TagID, model.ElementTag)
-			} else {
-				key = elementKey(row.CategoryID, model.ElementCategory)
+			default:
+				key = elementKey(catKey, model.ElementCategory)
 			}
 			es := data[key]
 			if es == nil {
 				es = &elementSpending{spendingInCategories: map[string]*categorySpending{}}
 				data[key] = es
 			}
-			cs := es.spendingInCategories[row.CategoryID]
+			cs := es.spendingInCategories[catKey]
 			if cs == nil {
-				cs = &categorySpending{categoryID: row.CategoryID}
-				es.spendingInCategories[row.CategoryID] = cs
+				cs = &categorySpending{categoryID: catKey}
+				es.spendingInCategories[catKey] = cs
 			}
 			cid, err := vo.ParseId(row.CurrencyID)
 			if err != nil {

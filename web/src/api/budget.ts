@@ -117,6 +117,7 @@ export interface BudgetTransactionsParams {
   categoryId?: Id
   tagId?: Id
   envelopeId?: Id
+  uncategorized?: boolean
 }
 
 export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
@@ -124,6 +125,7 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.categoryId) query.set('categoryId', params.categoryId)
   if (params.tagId) query.set('tagId', params.tagId)
   if (params.envelopeId) query.set('envelopeId', params.envelopeId)
+  if (params.uncategorized) query.set('uncategorized', '1')
   const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )

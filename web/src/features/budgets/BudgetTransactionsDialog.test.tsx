@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { useUiStore } from '@/app/uiStore'
 import { BudgetTransactionsDialog, type BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -154,5 +154,31 @@ it('a top-level tag row requests tagId only, not clobbered by a parent spread', 
   await vi.waitFor(() => expect(getUrl()).toBeDefined())
   const params = new URL(getUrl()!).searchParams
   expect(params.get('tagId')).toBe('tag-groceries')
+  expect(params.has('categoryId')).toBe(false)
+})
+
+it('the top-level Uncategorized target requests uncategorized=1 and no categoryId', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: UNCATEGORIZED_ID, type: BudgetElementType.CATEGORY, name: 'Uncategorized', icon: 'question_mark', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.has('categoryId')).toBe(false)
+})
+
+it("a tag's Uncategorized child requests uncategorized=1 and tagId, and no categoryId", async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: UNCATEGORIZED_ID,
+    type: BudgetElementType.CATEGORY,
+    name: 'Uncategorized',
+    icon: 'question_mark',
+    currencyId: null,
+    parent: { id: 'tag-x', type: BudgetElementType.TAG },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.get('tagId')).toBe('tag-x')
   expect(params.has('categoryId')).toBe(false)
 })

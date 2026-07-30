@@ -41,7 +41,7 @@ type txFields struct {
 	Amount             string `json:"amount" jsonschema:"decimal string, e.g. 12.50"`
 	AccountID          string `json:"account_id" jsonschema:"source account id (UUID)"`
 	Date               string `json:"date" jsonschema:"YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'"`
-	CategoryID         string `json:"category_id,omitempty" jsonschema:"category id (UUID); required unless type is transfer"`
+	CategoryID         string `json:"category_id,omitempty" jsonschema:"category id (UUID); optional, including for non-transfers, since a transaction may have no category. update_transaction sends the full new state, so omitting this field on an update CLEARS any category the transaction currently has"`
 	AccountRecipientID string `json:"account_recipient_id,omitempty" jsonschema:"transfer target account id (UUID)"`
 	AmountRecipient    string `json:"amount_recipient,omitempty" jsonschema:"received amount for cross-currency transfers"`
 	Description        string `json:"description,omitempty"`
