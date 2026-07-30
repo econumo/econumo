@@ -25,10 +25,10 @@ const maxBulkUpdateIds = 100
 // caller have write access to the transaction's account?), checkReferences
 // (is a newly-set category/payee/tag owned by the caller?), and the
 // transfer/non-transfer classification rule (a transfer may carry no
-// category/payee/tag at all; a non-transfer must keep a category) — so a
-// transfer rejecting a category, a foreign reference, an inaccessible
-// account, or a missing id all surface as an error and roll back the whole
-// batch; nothing is partially applied.
+// category/payee/tag at all; a non-transfer may be categoryless too, same as
+// single-update) — so a transfer rejecting a category, a foreign reference,
+// an inaccessible account, or a missing id all surface as an error and roll
+// back the whole batch; nothing is partially applied.
 func (s *Service) BulkUpdateTransactions(ctx context.Context, userID vo.Id, req model.BulkUpdateTransactionsRequest) (*model.BulkUpdateTransactionsResult, error) {
 	if err := req.Validate(); err != nil {
 		return nil, err
@@ -95,10 +95,6 @@ func (s *Service) BulkUpdateTransactions(ctx context.Context, userID vo.Id, req 
 				st.CategoryID = nil
 			case newCategoryID != nil:
 				st.CategoryID = newCategoryID
-			}
-			if st.CategoryID == nil {
-				return errs.NewValidation("Validation failed",
-					errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 			}
 			switch {
 			case req.ClearPayee:

@@ -38,6 +38,20 @@ it('arrangement round-trip: move live across containers and derive the wire item
   expect(arrangementItem(back, 'env-1')).toEqual({ id: 'env-1', folderId: null, position: 0 })
 })
 
+// An EMPTY folder has no rows, so the only rects under the pointer are the
+// section droppable (`bfolder:<id>`) and the folder's own sortable (the bare
+// `<id>`, used for folder reordering). Resolving to the bare id must still drop
+// the element INTO that folder, not silently no-op.
+it('drops into an empty folder addressed by its bare folder id', () => {
+  const arrangement = [
+    { folderId: 'bf-empty' as string | null, ids: [] as string[] },
+    { folderId: 'bf1' as string | null, ids: ['cat-food'] },
+    { folderId: null as string | null, ids: ['env-1'] },
+  ]
+  const moved = moveElementInArrangement(arrangement, 'env-1', 'bf-empty')
+  expect(arrangementItem(moved, 'env-1')).toEqual({ id: 'env-1', folderId: 'bf-empty', position: 0 })
+})
+
 it('applyArrangement patches folderId + order; archived elements untouched', () => {
   const arrangement = moveElementInArrangement(arrangementFromBuckets(buckets), 'env-1', 'cat-food')
   const patched = applyArrangement(budget, arrangement)

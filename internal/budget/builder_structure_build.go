@@ -3,11 +3,18 @@ package budget
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+// uncategorizedPosition sorts the presentation-only Uncategorized element last.
+// Real positions are validated to fit int16 (see validatePositionField), so
+// math.MaxInt16 is the highest value the column type allows any real element to
+// hold, and this element is never persisted so it can't itself be bumped past it.
+const uncategorizedPosition int16 = math.MaxInt16
 
 // structElement is the in-progress parent element accumulated during the walk
 // before the bulkConvert resolves spent/available amounts.
@@ -126,15 +133,25 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		}
 		if es != nil {
 			for catID, cs := range es.spendingInCategories {
-				cat, ok := f.categories[catID]
-				if !ok {
-					continue
+				var name, icon, ownerID string
+				var isArchived bool
+				if catID == model.UncategorizedID {
+					// Not a real category, so it can't be looked up in f.categories -
+					// without this branch the child (and its spending) would be
+					// silently dropped and the tag would render as an all-zero ghost.
+					name, icon = model.UncategorizedName, model.UncategorizedIcon
+				} else {
+					cat, ok := f.categories[catID]
+					if !ok {
+						continue
+					}
+					name, icon, ownerID, isArchived = cat.Name, cat.Icon, cat.OwnerID, cat.IsArchived
 				}
 				subIndex := elementKey(catID, model.ElementCategory)
 				addSpendingConvert(toConvert, index, subIndex, cs, currencyID, budgetCurrencyID)
 				el.children = append(el.children, structChild{
-					id: catID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon,
-					ownerID: cat.OwnerID, isArchived: cat.IsArchived, subIndex: subIndex,
+					id: catID, typ: model.ElementCategory, name: name, icon: icon,
+					ownerID: ownerID, isArchived: isArchived, subIndex: subIndex,
 				})
 			}
 		}
@@ -177,6 +194,30 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			}
 		}
 		elements = append(elements, el)
+	}
+
+	// --- Uncategorized (presentation-only; never persisted) ---
+	{
+		index := elementKey(model.UncategorizedID, model.ElementCategory)
+		cs := categorySpendingFor(spending, index, model.UncategorizedID)
+		hasSpent := cs != nil && (len(cs.currenciesSpent) > 0 || len(cs.currenciesSpentBefore) > 0)
+		if hasSpent {
+			el := &structElement{
+				id: model.UncategorizedID, typ: model.ElementCategory, name: model.UncategorizedName, icon: model.UncategorizedIcon,
+				ownerID: nil, currencyID: budgetCurrencyID, isArchived: false,
+				folderID: nil, position: uncategorizedPosition, budgeted: zero, budgetedBefore: zero,
+			}
+			// same convert-key shape as the standalone-category pass: an element's own
+			// spending is keyed without a sub-prefix.
+			for _, sp := range cs.currenciesSpent {
+				toConvert[fmt.Sprintf("spent_%s", index)] = append(toConvert[fmt.Sprintf("spent_%s", index)], convItem(sp, budgetCurrencyID))
+				toConvert[fmt.Sprintf("spent-budget_%s", index)] = append(toConvert[fmt.Sprintf("spent-budget_%s", index)], convItem(sp, budgetCurrencyID))
+			}
+			for _, sp := range cs.currenciesSpentBefore {
+				toConvert[fmt.Sprintf("spent-before_%s", index)] = append(toConvert[fmt.Sprintf("spent-before_%s", index)], convItem(sp, budgetCurrencyID))
+			}
+			elements = append(elements, el)
+		}
 	}
 
 	// One bulk conversion for everything.

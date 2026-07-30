@@ -16,6 +16,22 @@ const (
 	ElementTag      ElementType = 2
 )
 
+// UncategorizedID is the wire id of the presentation-only budget element that
+// carries spending with no category. It is deliberately NOT a UUID: vo.ParseId
+// rejects it, so set-limit and the other element writes refuse it with the
+// existing validation error and no new checks. It is never persisted.
+const UncategorizedID = "uncategorized"
+
+// UncategorizedName and UncategorizedIcon are the wire name/icon of the
+// Uncategorized element (both the top-level element and its tag-child copy).
+// The frontend renders a translated label instead of this literal name; the
+// icon is not translated. Kept alongside UncategorizedID so the two rendering
+// sites (builder_structure_build.go) can't drift apart.
+const (
+	UncategorizedName = "Uncategorized"
+	UncategorizedIcon = "question_mark"
+)
+
 var elementAliases = [...]string{ElementEnvelope: "envelope", ElementCategory: "category", ElementTag: "tag"}
 
 // ElementTypeFromAlias parses an element type alias.
