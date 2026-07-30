@@ -104,7 +104,7 @@ export function EntitySelect({
       <div
         ref={rootRef}
         data-slot="entity-select"
-        className="flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:opacity-50 dark:bg-input/30"
+        className="flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:opacity-50 dark:bg-input/30 max-md:h-11 max-md:text-base"
         onClick={(e) => {
           // clicks on the icon/chevron/padding (and clicks forwarded by
           // SelectCard) open the picker, not just clicks on the input itself
