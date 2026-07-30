@@ -351,8 +351,11 @@ export function AccountPage() {
           onOpenRecurring={
             previewRecurring
               ? () => {
+                  // straight to the template editor: the template PREVIEW renders
+                  // the same body as this dialog, so hopping through it reads as
+                  // the preview merely refreshing
                   setPreview(null)
-                  setRecurringPreview(previewRecurring)
+                  openRecurringModal({ recurring: previewRecurring })
                 }
               : undefined
           }

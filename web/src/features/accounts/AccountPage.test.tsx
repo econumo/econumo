@@ -251,6 +251,32 @@ it('keeps the add-transaction actions while the user is read-only (backend guard
   expect(screen.getByRole('button', { name: 'Add transaction' })).toBeInTheDocument()
 })
 
+it('posted transaction preview: one tap on the recurring row opens the template editor', async () => {
+  mockViewport(true)
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'coffee sub',
+    schedule: 'monthly', nextPaymentAt: '2099-01-01 00:00:00',
+  }
+  const posted = {
+    id: 't-posted', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'coffee sub',
+    payeeId: null, tagId: null, date: '2026-07-03 09:00:00', recurringId: 'r1',
+  }
+  server.use(...coreHandlers({ recurring: [template], transactions: [posted] }))
+  useUiStore.setState({ recurringModal: null })
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByTestId('tx-t-posted'))
+  const dialog = await screen.findByRole('dialog', { name: 'Transaction details' })
+  await user.click(within(dialog).getByRole('button', { name: /Recurring transaction/i }))
+  // straight to the editor: the template PREVIEW shares this dialog's body, so
+  // hopping through it read as the preview merely refreshing
+  await waitFor(() => expect(useUiStore.getState().recurringModal?.recurring?.id).toBe('r1'))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Transaction details' })).not.toBeInTheDocument())
+})
+
 it('compact viewport: row click opens the preview dialog with details', async () => {
   mockViewport(true)
   const user = userEvent.setup()
