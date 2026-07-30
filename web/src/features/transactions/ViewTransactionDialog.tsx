@@ -25,12 +25,16 @@ interface ViewTransactionDialogProps {
   fallbackCurrency?: CurrencyLike | null
   /** callback to make a recurring transaction from this one */
   onMakeRecurring?: () => void
-  /** the template this transaction was posted from, when the caller could resolve
-      it. Absent (deleted template, or one on an account the caller can't see)
-      means no provenance row is shown at all — better than a dead end. */
+  /** the schedule to show in the recurring row. For a posted transaction this is
+      the template it came from, and the row is omitted when that template can't
+      be resolved (deleted, or on an account the caller can't see) rather than
+      rendering a dead end. */
   recurringSchedule?: RecurringSchedule
-  /** opens the recurring-transaction dialog for the template above */
+  /** opens the editor for the schedule above (the recurring row's click) */
   onOpenRecurring?: () => void
+  /** replaces the whole action row. The recurring dialog shows the same body with
+      its own actions (hide/post/skip), so the layout lives in one component. */
+  footer?: React.ReactNode
 }
 
 /** A transaction posted from a template already has a schedule behind it, so
@@ -41,7 +45,7 @@ function canMakeRecurring(tx: ViewTransaction, onMakeRecurring?: () => void): bo
   return onMakeRecurring !== undefined && !tx.recurringId
 }
 
-export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring, recurringSchedule, onOpenRecurring }: ViewTransactionDialogProps) {
+export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring, recurringSchedule, onOpenRecurring, footer }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
   const showMakeRecurring = canMakeRecurring(tx, onMakeRecurring)
   // Indicator only, independent of whether the template itself resolved: the
@@ -115,6 +119,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       showClose
       dismissible={dismissible}
       footer={
+        footer ?? (
         /* dismiss on the left, actions on the right: collapse icon | wide Edit | delete icon.
            "Make recurring" is deliberately NOT here — it creates a new template rather than
            acting on this transaction, so it sits under the hero instead */
@@ -146,6 +151,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             <Trash2 className="size-4" />
           </Button>
         </div>
+        )
       }
     >
       {/* hero: the category identity + the money, everything else is detail */}

@@ -65,7 +65,18 @@ it('shows the empty state when there are no templates', async () => {
   expect(await screen.findByText('No recurring transactions yet')).toBeInTheDocument()
 })
 
-it('tapping a row opens the view dialog, and deleting it asks for confirmation first', async () => {
+it('tapping a row opens the view dialog', async () => {
+  server.use(...coreHandlers({ recurring: [wireRecurring] }))
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByTestId('recurring-r1'))
+  expect(await screen.findByText('Recurring transaction')).toBeInTheDocument()
+})
+
+it('deleting from the list row asks for confirmation first', async () => {
+  // delete moved off the preview dialog (its footer is hide|post|skip) onto the
+  // list row, which is where templates are managed
   server.use(
     ...coreHandlers({ recurring: [wireRecurring] }),
     http.post('*/api/v1/recurring/delete-recurring-transaction', () =>
@@ -74,14 +85,23 @@ it('tapping a row opens the view dialog, and deleting it asks for confirmation f
   const user = userEvent.setup()
   renderPage()
 
-  await user.click(await screen.findByTestId('recurring-r1'))
-  expect(await screen.findByText('Recurring transaction')).toBeInTheDocument()
-
-  await user.click(screen.getByRole('button', { name: 'Delete' }))
+  await user.click(await screen.findByTestId('recurring-delete-r1'))
   expect(await screen.findByText('Delete this recurring transaction?')).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Delete' }))
   await screen.findByText('No recurring transactions yet')
+})
+
+it('the list delete button does not also open the preview dialog', async () => {
+  server.use(...coreHandlers({ recurring: [wireRecurring] }))
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByTestId('recurring-delete-r1'))
+  await screen.findByText('Delete this recurring transaction?')
+  // the row's own onClick must not fire through the button
+  expect(screen.queryByText('Repeats')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
 })
 
 it('skipping from the view dialog advances the template and closes the dialog', async () => {

@@ -85,12 +85,14 @@ export function AccountPage() {
   const openRecurringModal = useUiStore((s) => s.openRecurringModal)
 
   const [search, setSearch] = useState('')
+  // still reachable from the desktop kebab on an unposted recurring row, even
+  // though the preview dialog itself no longer offers delete
+  const [recurringDeleteTarget, setRecurringDeleteTarget] = useState<RecurringDto | null>(null)
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
   // the template being previewed: reached either from its own (unposted) list row
   // or from the provenance row inside a posted transaction's preview
   const [recurringPreview, setRecurringPreview] = useState<RecurringDto | null>(null)
-  const [recurringDeleteTarget, setRecurringDeleteTarget] = useState<RecurringDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const entries = useAccountTransactions(id, search)
 
@@ -387,10 +389,6 @@ export function AccountPage() {
           onEdit={() => {
             setRecurringPreview(null)
             openRecurringModal({ recurring: recurringPreview })
-          }}
-          onDelete={() => {
-            setRecurringDeleteTarget(recurringPreview)
-            setRecurringPreview(null)
           }}
           canChange={canChangeTransaction}
           skipPending={skipRecurring.isPending}

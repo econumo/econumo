@@ -459,9 +459,7 @@
     "preview": {
       "header": "Recurring transaction",
       "post": "Post",
-      "skip": "Skip",
-      "next_payment": "Next payment",
-      "schedule": "Repeats"
+      "skip": "Skip"
     },
     "make_recurring": "Make recurring"
   },

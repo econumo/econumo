@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { RecurringDto } from '@/api/dto/recurring'
@@ -81,6 +82,25 @@ export function RecurringSettingsPage() {
             <p className="text-sm">
               {moneyFormat(rt.amount, accountOf(rt)?.currency, { useNativePrecision: false })}
             </p>
+            {/* the preview dialog no longer carries delete, so template
+                management (the only place it belongs) owns it */}
+            {canChangeRecurring(rt) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-11 shrink-0 text-destructive hover:bg-destructive/10"
+                aria-label={t('common.button.delete.label')}
+                title={t('common.button.delete.label')}
+                data-testid={`recurring-delete-${rt.id}`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeleteTarget(rt)
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            ) : null}
           </div>
         ))
       )}
@@ -92,10 +112,6 @@ export function RecurringSettingsPage() {
           onEdit={() => {
             setSelected(null)
             openRecurringModal({ recurring: selected })
-          }}
-          onDelete={() => {
-            setDeleteTarget(selected)
-            setSelected(null)
           }}
           canChange={canChangeRecurring(selected)}
           skipPending={skipRecurring.isPending}
