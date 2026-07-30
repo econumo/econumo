@@ -48,8 +48,7 @@ Deliberately app-wide at the primitive level, which is contained in practice:
 Fixing the primitives rather than overriding from `EntitySelect` keeps one sizing
 convention and covers future pickers automatically.
 
-Out of scope: the tag row (chips, not a dropdown), the date `Popover` + `Calendar`,
-and every desktop rendering.
+Out of scope: the tag row (chips, not a dropdown) and the date `Popover` + `Calendar`.
 
 ## Changes
 
@@ -62,8 +61,8 @@ Append to `ComboboxItem` (`components/ui/combobox.tsx:159`) and `SelectItem`
 max-md:py-3 max-md:text-base
 ```
 
-12 + 24 + 12 = **48px** below 768px, clearing the 44px minimum. Above 768px the class
-string is unchanged, so desktop output is byte-identical.
+12 + 24 + 12 = **48px** below 768px, clearing the 44px minimum. Desktop density is
+adjusted separately and more modestly in (2b).
 
 ### 2. List height — a required consequence of (1)
 
@@ -89,6 +88,22 @@ max-md:max-h-[min(calc(--spacing(96)---spacing(9)),calc(var(--available-height)-
 
 384 − 36 = **348px** ≈ 7 rows at 48px, against 9 today. Slightly fewer options, but the
 reported pain is tapping, not scrolling, and the `--available-height` clamp survives.
+
+### 2b. Desktop density
+
+Desktop rows are cramped too, just less dangerously so — and inconsistently: `command.tsx`
+uses `py-1.5 px-2` while `combobox`/`select` sit at `py-1 pl-1.5`. Both move to
+`py-1.5 pl-2`, so all three primitives agree at every viewport.
+
+Row height goes 28px → **32px**. Applying the same rule as (2), the base list cap rises
+`spacing(72)` → `spacing(80)`: 320 − 36 = **284px** ≈ 8.9 rows, holding today's count of 9.
+
+Final geometry:
+
+| Viewport | Row | List cap | Rows visible |
+| --- | --- | --- | --- |
+| ≥768px | 32px (`py-1.5`) | 284px | ~8.9 |
+| <768px | 48px (`py-3`) | 348px | ~7.2 |
 
 `SelectContent` needs no equivalent: it already sizes off
 `max-h-(--radix-select-content-available-height)` with no fixed cap.
