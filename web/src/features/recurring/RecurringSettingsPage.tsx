@@ -1,9 +1,9 @@
 import { MoreVertical, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { AccountDto } from '@/api/dto/account'
 import type { RecurringDto } from '@/api/dto/recurring'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
-import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -11,11 +11,11 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories, usePayees } from '@/features/classifications/queries'
+import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { SettingsShell } from '@/features/settings/SettingsShell'
+import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { useUserData } from '@/features/user/queries'
-import { moneyFormat } from '@/lib/money'
-import { dayKey, isFuture } from '@/lib/datetime'
+import { recurringAsTransaction } from './asTransaction'
 import { useDeleteRecurring, useRecurring, useSkipRecurring } from './queries'
 
 export function RecurringSettingsPage() {
@@ -25,6 +25,7 @@ export function RecurringSettingsPage() {
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
+  const { data: tags } = useTags()
   const { data: user } = useUserData()
   const openRecurringModal = useUiStore((s) => s.openRecurringModal)
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
@@ -37,6 +38,9 @@ export function RecurringSettingsPage() {
 
   const scheduleLabel = (rt: RecurringDto) => t(`recurring.schedule.${rt.schedule}`)
   const accountOf = (rt: RecurringDto) => accounts?.find((a) => a.id === rt.accountId)
+  const asTransaction = (rt: RecurringDto) => recurringAsTransaction(rt, { accounts, categories, payees, tags })
+  // menu/sheet headings and aria labels still need a plain-text name; the row
+  // itself derives its own title from the shaped transaction
   const title = (rt: RecurringDto) =>
     rt.description ||
     payees?.find((p) => p.id === rt.payeeId)?.name ||
@@ -83,28 +87,20 @@ export function RecurringSettingsPage() {
             <div
               key={rt.id}
               data-testid={`recurring-${rt.id}`}
-              className={`flex items-center rounded-md px-1 ${
-                isCompact ? 'gap-3 py-3 active:bg-accent' : 'gap-2 py-1.5 cursor-pointer hover:bg-accent'
-              }`}
+              /* padding comes from TransactionRow, exactly as on the account page,
+                 so the two lists sit on the same grid */
+              className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'cursor-pointer hover:bg-accent'}`}
               onClick={() => (isCompact ? setSheetItem(rt) : setOpenMenuId(rt.id))}
             >
-              <EntityIcon
-                name={rt.type === 'transfer' ? 'sync_alt' : (categories?.find((c) => c.id === rt.categoryId)?.icon ?? 'question_mark')}
-                className="text-base text-muted-foreground"
-              />
+              {/* the same row the account list renders, so a template looks like
+                  the transaction it will become. The schedule and next-payment
+                  date are deliberately not repeated here — they live in the
+                  preview and the edit form. */}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm">{title(rt)}</p>
-                {/* a past next-payment date means the template needs attention (post or skip) */}
-                <p
-                  data-testid={`recurring-summary-${rt.id}`}
-                  className={`text-sm ${isFuture(rt.nextPaymentAt) ? 'text-muted-foreground' : 'text-destructive'}`}
-                >
-                  <span>{scheduleLabel(rt)}</span> · <span>{dayKey(rt.nextPaymentAt)}</span>
-                </p>
+                {accountOf(rt) ? (
+                  <TransactionRow transaction={asTransaction(rt)} pageAccount={accountOf(rt) as AccountDto} dimmed={false} />
+                ) : null}
               </div>
-              <p className="text-sm tabular-nums">
-                {moneyFormat(rt.amount, accountOf(rt)?.currency, { useNativePrecision: false })}
-              </p>
               {!isCompact ? (
                 <DropdownMenu open={openMenuId === rt.id} onOpenChange={(open) => setOpenMenuId(open ? rt.id : null)}>
                   <DropdownMenuTrigger asChild>
@@ -112,6 +108,7 @@ export function RecurringSettingsPage() {
                       type="button"
                       variant="ghost"
                       size="icon"
+                      className="mt-0.5"
                       aria-label={`actions ${title(rt)}`}
                       onClick={(e) => e.stopPropagation()}
                     >

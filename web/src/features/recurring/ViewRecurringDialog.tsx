@@ -4,9 +4,9 @@ import type { RecurringDto } from '@/api/dto/recurring'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
-import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import { recurringAsTransaction } from './asTransaction'
 
 export interface ViewRecurringDialogProps {
   recurring: RecurringDto
@@ -44,34 +44,7 @@ export function ViewRecurringDialog({
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
 
-  const asTransaction = {
-    id: recurring.id,
-    type: recurring.type,
-    accountId: recurring.accountId,
-    accountRecipientId: recurring.accountRecipientId,
-    amount: recurring.amount,
-    // a template carries one amount; the recipient leg mirrors it
-    amountRecipient: recurring.type === 'transfer' ? recurring.amount : null,
-    categoryId: recurring.categoryId,
-    payeeId: recurring.payeeId,
-    tagId: recurring.tagId,
-    description: recurring.description,
-    // the date under the amount IS the next payment, which is why no separate
-    // "next payment" card is needed
-    date: recurring.nextPaymentAt,
-    account: accounts?.find((a) => a.id === recurring.accountId),
-    accountRecipient: recurring.accountRecipientId
-      ? accounts?.find((a) => a.id === recurring.accountRecipientId)
-      : undefined,
-    category: recurring.categoryId ? categories?.find((c) => c.id === recurring.categoryId) : undefined,
-    payee: recurring.payeeId ? payees?.find((p) => p.id === recurring.payeeId) : undefined,
-    tag: recurring.tagId ? tags?.find((tg) => tg.id === recurring.tagId) : undefined,
-    isInFuture: false,
-    // drives the hero's recurring glyph; the schedule row below comes from the
-    // recurringSchedule prop
-    recurringId: recurring.id,
-    recurring,
-  } as unknown as ViewTransaction
+  const asTransaction = recurringAsTransaction(recurring, { accounts, categories, payees, tags })
 
   return (
     <ViewTransactionDialog

@@ -27,12 +27,17 @@ export function displayAmount(tx: ViewTransaction, pageAccountId: Id): string {
 interface TransactionRowProps {
   transaction: ViewTransaction
   pageAccount: AccountDto
+  /** Dim the row to mark money that hasn't moved yet — a future-dated
+      transaction or an unposted template preview. The account list leaves this
+      to the default; the recurring settings list turns it off, since there
+      EVERY row is a template and dimming them all would just look disabled. */
+  dimmed?: boolean
 }
 
 // Presentational only: the row wrapper on the page owns the click (menu on
 // desktop, preview sheet on mobile) so hover/active feedback covers the whole
 // row including the kebab.
-export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowProps) {
+export function TransactionRow({ transaction: tx, pageAccount, dimmed }: TransactionRowProps) {
   const { t } = useTranslation()
   const title = transactionTitleInfo(tx, pageAccount.id, t)
   const income = isIncomeForAccount(tx, pageAccount.id)
@@ -50,7 +55,7 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
       data-testid={`tx-${tx.id}`}
       /* tx.recurring (not isRecurring) on purpose: only the unposted preview is
          dimmed, never a posted transaction */
-      className={`flex w-full items-start gap-4 px-2 py-2 text-left ${tx.isInFuture || tx.recurring ? 'opacity-50' : ''}`}
+      className={`flex w-full items-start gap-4 px-2 py-2 text-left ${(dimmed ?? (tx.isInFuture || Boolean(tx.recurring))) ? 'opacity-50' : ''}`}
     >
       <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-econumo-card">
         <EntityIcon name={icon} className="text-xl text-[#666666]" />

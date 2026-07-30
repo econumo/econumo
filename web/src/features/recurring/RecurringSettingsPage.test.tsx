@@ -46,20 +46,20 @@ beforeEach(() => {
   useUiStore.setState({ transactionModal: null, recurringModal: null })
 })
 
-it('lists templates with schedule and next payment date', async () => {
+it('lists templates as transaction rows', async () => {
   server.use(...coreHandlers({ recurring: [wireRecurring] }))
   renderPage()
   expect(await screen.findByText('rent')).toBeInTheDocument()
-  expect(screen.getByText('Monthly')).toBeInTheDocument()
 })
 
-it('highlights overdue templates and not future-dated ones', async () => {
-  const overdue = { ...wireRecurring, id: 'r-overdue', nextPaymentAt: '2020-01-01 00:00:00' }
-  server.use(...coreHandlers({ recurring: [wireRecurring, overdue] }))
+it('does not repeat the schedule or the next payment date in the list', async () => {
+  // both live in the preview and the edit form; the row is the transaction shape
+  server.use(...coreHandlers({ recurring: [wireRecurring] }))
   renderPage()
-  await screen.findByTestId('recurring-r-overdue')
-  expect(screen.getByTestId('recurring-summary-r-overdue')).toHaveClass('text-destructive')
-  expect(screen.getByTestId('recurring-summary-r1')).not.toHaveClass('text-destructive')
+  await screen.findByText('rent')
+  expect(screen.queryByText('Monthly')).toBeNull()
+  expect(screen.queryByTestId('recurring-summary-r1')).toBeNull()
+  expect(screen.queryByText(futurePaymentAt.slice(0, 10))).toBeNull()
 })
 
 it('shows the empty state when there are no templates', async () => {
@@ -120,14 +120,17 @@ it('skipping from the menu advances the template', async () => {
     }),
   )
   const user = userEvent.setup()
-  renderPage()
+  const queryClient = renderPage()
 
   await user.click(await screen.findByTestId('recurring-r1'))
   await user.click(await screen.findByRole('menuitem', { name: 'Skip' }))
+  // the list no longer prints the date, so assert the request and that the
+  // refreshed template is what the cache now holds
   await waitFor(() => expect(skipCalls).toBe(1))
-  await waitFor(() =>
-    expect(screen.getByTestId('recurring-summary-r1')).toHaveTextContent(advancedPaymentAt.slice(0, 10)),
-  )
+  await waitFor(() => {
+    const cached = queryClient.getQueryData<{ nextPaymentAt: string }[]>(['recurring'])
+    expect(cached?.[0]?.nextPaymentAt).toBe(advancedPaymentAt)
+  })
 })
 
 it('posting from the menu opens the transaction dialog for that template', async () => {
@@ -153,6 +156,17 @@ it('compact: tapping a row opens the action sheet, not a kebab menu', async () =
     expect(await screen.findByRole('button', { name: label })).toBeInTheDocument()
   }
   expect(screen.queryByRole('button', { name: 'actions rent' })).toBeNull()
+})
+
+it('renders the account list row, undimmed', async () => {
+  server.use(...coreHandlers({ recurring: [wireRecurring] }))
+  renderPage()
+  await screen.findByText('rent')
+  // the shared TransactionRow, not a bespoke layout
+  const row = document.querySelector('[data-testid="tx-r1"]') as HTMLElement
+  expect(row).not.toBeNull()
+  // every row here is a template, so dimming them all would just look disabled
+  expect(row.className).not.toContain('opacity-50')
 })
 
 it('labels the create action "Add transaction"', async () => {
