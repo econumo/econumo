@@ -1,4 +1,5 @@
 import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
+import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { abs, add, cmp, div } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
@@ -19,6 +20,8 @@ export interface BudgetBuckets {
   withFolder: FolderBucket[]
   withoutFolder: FolderBucket
   archive: FolderBucket
+  // categoryless spending: its own read-only section, never a drag container
+  uncategorized: FolderBucket
 }
 
 type ExchangeFn = (fromCurrencyId: string, toCurrencyId: string, amount: string) => string
@@ -48,7 +51,10 @@ export function bucketStats(elements: BudgetElementDto[], budget: BudgetDto, exc
 export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): BudgetBuckets {
   const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
   const elements = budget.structure.elements
-  const active = elements.filter((el) => el.isArchived === 0)
+  // The uncategorized element is presentation-only (no persisted row to move or
+  // budget), so it is pulled out before bucketing and never joins a folder.
+  const uncategorizedElements = elements.filter((el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0)
+  const active = elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
   const byPosition = (a: BudgetElementDto, b: BudgetElementDto) => a.position - b.position
 
   // Vue quirk: zero folders -> ALL active elements land in the no-folder bucket
@@ -66,7 +72,7 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): Budge
   // archive is read-only history: a row earns its place only if one of its
   // displayed numbers (budget, spent, available) is nonzero
   const archived = elements
-    .filter((el) => el.isArchived === 1)
+    .filter((el) => el.isArchived === 1 && el.id !== UNCATEGORIZED_ID)
     .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0)
     .sort((a, b) => a.name.localeCompare(b.name))
 
@@ -74,18 +80,34 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): Budge
     withFolder,
     withoutFolder: { folder: null, elements: folderless, stats: bucketStats(folderless, budget, exchangeFn) },
     archive: { folder: null, elements: archived, stats: bucketStats(archived, budget, exchangeFn) },
+    uncategorized: {
+      folder: null,
+      elements: uncategorizedElements,
+      stats: bucketStats(uncategorizedElements, budget, exchangeFn),
+    },
   }
 }
 
 export function budgetTotals(buckets: BudgetBuckets): BucketStats {
   const all = [...buckets.withFolder.map((b) => b.stats), buckets.withoutFolder.stats, buckets.archive.stats]
-  return all.reduce(
+  const totals = all.reduce(
     (acc, s) => ({ budgeted: add(acc.budgeted, s.budgeted), spent: add(acc.spent, s.spent), available: add(acc.available, s.available) }),
     { budgeted: '0', spent: '0', available: '0' },
   )
+  // Categoryless spending is real money out, so it still counts toward the
+  // spent total — but it can never be budgeted, so it adds nothing to the
+  // budgeted/available totals.
+  return { ...totals, spent: add(totals.spent, buckets.uncategorized.stats.spent) }
 }
 
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
+
+// The wire name for the Uncategorized element is the English literal
+// "Uncategorized" (see internal/model.UncategorizedName); the SPA renders the
+// translated label instead, everywhere this element's (or its tag-child
+// copy's) name would show.
+export const elementDisplayName = (id: string, name: string, t: (key: string) => string): string =>
+  id === UNCATEGORIZED_ID ? t('common.uncategorized') : name
 
 export interface PeriodItem {
   value: string

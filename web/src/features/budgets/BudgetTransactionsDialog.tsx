@@ -7,7 +7,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
 import type { BudgetDto, BudgetTransactionDto } from '@/api/dto/budget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { Id } from '@/api/types'
 import type { PayeeDto } from '@/api/dto/payee'
@@ -21,6 +21,7 @@ import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction, useTransactions } from '@/features/transactions/queries'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
@@ -61,6 +62,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
   // A category listed under a tag displays the tag-and-category intersection.
   // Sending categoryId alone puts the backend on its "tag_id IS NULL" branch,
   // which returns the complement of what the row shows.
+  const isUncategorized = element?.id === UNCATEGORIZED_ID
   const parentTagId = element?.parent?.type === BudgetElementType.TAG ? element.parent.id : undefined
   const params = element
     ? {
@@ -69,8 +71,16 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
         // the parent tag only ever applies to a CATEGORY-typed element, so it
         // is folded into that branch rather than spread last, which would
         // silently clobber a TAG-typed element's own tagId
+        //
+        // The Uncategorized element is presentation-only and has no id the
+        // backend can look up, so it is selected by flag instead; it composes
+        // with the parent tag exactly as a real category does. Never send
+        // uncategorized together with categoryId -- the backend rejects that.
         ...(element.type === BudgetElementType.CATEGORY
-          ? { categoryId: element.id, ...(parentTagId ? { tagId: parentTagId } : {}) }
+          ? {
+              ...(isUncategorized ? { uncategorized: true } : { categoryId: element.id }),
+              ...(parentTagId ? { tagId: parentTagId } : {}),
+            }
           : {}),
         ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
         ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
@@ -81,6 +91,8 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
   if (!element) {
     return null
   }
+
+  const displayName = elementDisplayName(element.id, element.name, t)
 
   // full ViewTransaction when the caller can see the transaction in their own
   // list; otherwise (a partner's row in a shared budget) a read-only shape is
@@ -151,7 +163,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
   return (
     <>
       {/* interactions inside the stacked preview/confirm must not dismiss the list */}
-      <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={element.name} dismissible={!preview && !deleteTarget}>
+      <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={displayName} dismissible={!preview && !deleteTarget}>
         {isLoading ? (
           <div className="flex justify-center py-6">
             <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="loading" />
@@ -180,7 +192,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
                     >
                       <EntityIcon name={tx.category?.icon || element.icon} className="text-base text-muted-foreground" />
                       <span className="flex min-w-0 flex-1 flex-col text-left">
-                        <span className="truncate">{tx.description || tx.category?.name || element.name}</span>
+                        <span className="truncate">{tx.description || tx.category?.name || displayName}</span>
                         {tx.description && (tx.category || tx.payee) ? (
                           <span className="truncate text-xs text-muted-foreground">
                             {[tx.category?.name, tx.payee?.name].filter(Boolean).join(' · ')}

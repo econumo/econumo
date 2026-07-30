@@ -33,7 +33,8 @@ type HoldingsRow struct {
 // SpendingRow is one (category, optional tag, currency) spending total in a
 // period (grouped by category_id, tag_id, currency_id).
 type SpendingRow struct {
-	CategoryID string
+	// nil when the transaction has no category (shown as Uncategorized).
+	CategoryID *string
 	TagID      *string
 	CurrencyID string
 	Amount     string

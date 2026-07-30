@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
@@ -117,9 +118,10 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    budgetId    query string true  "Budget id"
 // @Param    periodStart query string true  "Period start (Y-m-d)"
-// @Param    categoryId  query string false "Category id"
-// @Param    tagId       query string false "Tag id"
-// @Param    envelopeId  query string false "Envelope id"
+// @Param    categoryId    query string false "Category id"
+// @Param    tagId         query string false "Tag id"
+// @Param    envelopeId    query string false "Envelope id"
+// @Param    uncategorized query boolean false "Uncategorized bucket (mutually exclusive with categoryId)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetTransactionListResult}
 // @Failure  401 {object} apidoc.JsonResponseUnauthorized
 // @Failure  500 {object} apidoc.JsonResponseException
@@ -132,11 +134,12 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	req := model.BudgetTransactionListRequest{
-		BudgetId:    q.Get("budgetId"),
-		PeriodStart: q.Get("periodStart"),
-		CategoryId:  optQuery(q.Get("categoryId")),
-		TagId:       optQuery(q.Get("tagId")),
-		EnvelopeId:  optQuery(q.Get("envelopeId")),
+		BudgetId:      q.Get("budgetId"),
+		PeriodStart:   q.Get("periodStart"),
+		CategoryId:    optQuery(q.Get("categoryId")),
+		TagId:         optQuery(q.Get("tagId")),
+		EnvelopeId:    optQuery(q.Get("envelopeId")),
+		Uncategorized: boolQuery(q.Get("uncategorized")),
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)
 	if err != nil {
@@ -151,6 +154,19 @@ func optQuery(v string) *string {
 		return nil
 	}
 	return &v
+}
+
+// boolQuery parses a query-param boolean per Go/swagger boolean conventions
+// (strconv.ParseBool: "1", "t", "T", "TRUE", "true", "True", ...), not just
+// the literal "1"/"true" -- a stricter parse would silently accept
+// swagger-generated spellings like "True" as false, taking the wrong branch
+// instead of erroring.
+func boolQuery(v string) bool {
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return b
 }
 
 // GetBudgetList handles GET /api/v1/budget/get-budget-list.

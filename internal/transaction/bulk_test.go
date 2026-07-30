@@ -290,6 +290,81 @@ func TestBulkUpdateTransactions_ForeignCategoryID_RollsBackWholeBatch(t *testing
 	}
 }
 
+func TestBulkUpdateTransactions_ClearCategory_NonTransfer_Succeeds(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	categoryID := f.Category(fixture.Category{UserID: userID, Type: 0})
+
+	svc := newWriteService(t, db)
+	uid := mustID(t, userID)
+	id1 := createExpense(t, svc, uid, accountID, categoryID, "2024-04-01")
+
+	res, err := svc.BulkUpdateTransactions(context.Background(), uid, model.BulkUpdateTransactionsRequest{
+		Ids: []string{id1}, ClearCategory: true,
+	})
+	if err != nil {
+		t.Fatalf("clear_category on a non-transfer must succeed now that a category is optional: %v", err)
+	}
+	if res.Updated != 1 {
+		t.Fatalf("Updated = %d, want 1", res.Updated)
+	}
+
+	list, err := svc.GetTransactionList(context.Background(), uid, model.TransactionListRequest{AccountId: accountID})
+	if err != nil {
+		t.Fatalf("GetTransactionList: %v", err)
+	}
+	if len(list.Items) != 1 || list.Items[0].CategoryId != nil {
+		t.Fatalf("category not cleared: %#v", list.Items)
+	}
+}
+
+func TestBulkUpdateTransactions_AlreadyCategoryless_UnrelatedFieldUpdate_Succeeds(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	payeeID := f.Payee(fixture.Payee{UserID: userID})
+
+	svc := newWriteService(t, db)
+	uid := mustID(t, userID)
+	createRes, err := svc.CreateTransaction(context.Background(), uid, model.CreateTransactionRequest{
+		Id: vo.NewId().String(), Type: "expense", Amount: vo.NewFlexString("10.00"),
+		AccountId: accountID, Date: "2024-04-01 00:00:00",
+	})
+	if err != nil {
+		t.Fatalf("create categoryless expense: %v", err)
+	}
+	if createRes.Item.CategoryId != nil {
+		t.Fatalf("fixture transaction unexpectedly has a category: %#v", createRes.Item.CategoryId)
+	}
+
+	res, err := svc.BulkUpdateTransactions(context.Background(), uid, model.BulkUpdateTransactionsRequest{
+		Ids: []string{createRes.Item.Id}, PayeeId: &payeeID,
+	})
+	if err != nil {
+		t.Fatalf("bulk update of an already-categoryless transaction, not touching category, must succeed: %v", err)
+	}
+	if res.Updated != 1 {
+		t.Fatalf("Updated = %d, want 1", res.Updated)
+	}
+
+	list, err := svc.GetTransactionList(context.Background(), uid, model.TransactionListRequest{AccountId: accountID})
+	if err != nil {
+		t.Fatalf("GetTransactionList: %v", err)
+	}
+	if len(list.Items) != 1 {
+		t.Fatalf("items = %d, want 1", len(list.Items))
+	}
+	if list.Items[0].CategoryId != nil {
+		t.Fatalf("category unexpectedly set: %#v", list.Items[0].CategoryId)
+	}
+	if list.Items[0].PayeeId == nil || *list.Items[0].PayeeId != payeeID {
+		t.Fatalf("payeeId = %v, want %q", list.Items[0].PayeeId, payeeID)
+	}
+}
+
 func TestBulkUpdateTransactions_CategoryOnTransfer_Rejected(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)

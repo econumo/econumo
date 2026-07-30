@@ -83,3 +83,15 @@ it('title logic: transfer direction, source priority and suppression source', ()
   const descOnly = { ...base, type: 'expense', accountId: 'page', description: 'lunch' } as unknown as ViewTransaction
   expect(transactionTitleInfo(descOnly, 'page', t)).toEqual({ text: 'lunch', source: 'description' })
 })
+
+it('title logic: no category, no description, no tag, no payee falls back to Uncategorized', () => {
+  const base = { id: 't', author: fixtureOwner, amount: 1, amountRecipient: null, categoryId: null, description: '', payeeId: null, tagId: null, date: '2026-07-01 00:00:00', accountRecipientId: null, isInFuture: false }
+  const bare = { ...base, type: 'expense', accountId: 'page' } as unknown as ViewTransaction
+  expect(transactionTitleInfo(bare, 'page', t)).toEqual({ text: 'common.uncategorized', source: 'none' })
+})
+
+it('title logic: no category but WITH a description still shows the description, not Uncategorized', () => {
+  const base = { id: 't', author: fixtureOwner, amount: 1, amountRecipient: null, categoryId: null, payeeId: null, tagId: null, date: '2026-07-01 00:00:00', accountRecipientId: null, isInFuture: false }
+  const descOnly = { ...base, type: 'expense', accountId: 'page', description: 'lunch' } as unknown as ViewTransaction
+  expect(transactionTitleInfo(descOnly, 'page', t)).toEqual({ text: 'lunch', source: 'description' })
+})

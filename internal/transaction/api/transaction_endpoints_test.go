@@ -170,3 +170,93 @@ func TestCreateTransaction_NoToken_401(t *testing.T) {
 		t.Fatalf("status=%d want 401", status)
 	}
 }
+
+// A non-transfer no longer requires a category: the DB column is nullable, the
+// entity holds *vo.Id, and transfers have always worked without one.
+func TestCreateTransaction_NoCategory(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, map[string]any{
+		"id": txID1, "type": "expense", "amount": "42.50", "accountId": accountID,
+		"date": "2024-03-01 10:00:00", "description": "groceries",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[writeResult](t, env.Data)
+	if res.Item.CategoryID != nil {
+		t.Fatalf("categoryId = %v, want nil", res.Item.CategoryID)
+	}
+	// Read the persisted row back through the list endpoint, not just the
+	// create response.
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+accountID, tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].CategoryID != nil {
+		t.Fatalf("persisted list = %+v, want one item with nil categoryId", list.Items)
+	}
+}
+
+// An empty string is not a category id. Before this change the blank guard
+// rejected it, so it never reached the reference lookup; it must normalize to
+// absent rather than becoming a "category not found" error.
+func TestCreateTransaction_EmptyCategoryIdIsAbsent(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, map[string]any{
+		"id": txID1, "type": "expense", "amount": "42.50", "accountId": accountID, "categoryId": "",
+		"date": "2024-03-01 10:00:00", "description": "groceries",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[writeResult](t, env.Data)
+	if res.Item.CategoryID != nil {
+		t.Fatalf("categoryId = %v, want nil", res.Item.CategoryID)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+accountID, tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].CategoryID != nil {
+		t.Fatalf("persisted list = %+v, want one item with nil categoryId", list.Items)
+	}
+}
+
+// Clearing a category on an existing transaction must work: buildState does a
+// full-state replace, so a nil categoryId means "no category".
+func TestUpdateTransaction_ClearsCategory(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, createReq(txID1, "expense", "42.50"))
+	created := mustUnmarshal[writeResult](t, cEnv.Data)
+	if created.Item.CategoryID == nil || *created.Item.CategoryID != catID {
+		t.Fatalf("categoryId = %v, want %s before clearing", created.Item.CategoryID, catID)
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
+		"id": created.Item.ID, "type": "expense", "amount": "42.50", "accountId": accountID,
+		"date": "2024-03-01 10:00:00", "description": "groceries",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("update=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[writeResult](t, env.Data)
+	if res.Item.CategoryID != nil {
+		t.Fatalf("categoryId = %v, want nil after clearing", res.Item.CategoryID)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+accountID, tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].CategoryID != nil {
+		t.Fatalf("persisted list = %+v, want one item with nil categoryId", list.Items)
+	}
+}
+
+// The reference check must not have been weakened along with the blank guard:
+// a well-formed but non-existent category id is still rejected.
+func TestCreateTransaction_UnknownCategoryStillRejected(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, map[string]any{
+		"id": txID1, "type": "expense", "amount": "42.50", "accountId": accountID,
+		"categoryId": "cccc2222-0000-0000-0000-0000000000c9",
+		"date":       "2024-03-01 10:00:00", "description": "groceries",
+	})
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
+}
