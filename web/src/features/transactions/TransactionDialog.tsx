@@ -199,11 +199,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
   const dateOnly = dayKey(form.date)
   const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending
-  const title = params.postRecurring
-    ? t('recurring.modal.post_form.header')
-    : form.isNew
-      ? t('transactions.modal.create_form.header')
-      : t('transactions.modal.update_form.header')
+  // posting a template creates an ordinary transaction (prefilled from it), so
+  // it reads as the regular add dialog rather than a mode of its own
+  const title = form.isNew
+    ? t('transactions.modal.create_form.header')
+    : t('transactions.modal.update_form.header')
 
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,

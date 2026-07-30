@@ -437,9 +437,6 @@
       "update_form": {
         "header": "Edit recurring transaction"
       },
-      "post_form": {
-        "header": "Post recurring transaction"
-      },
       "form": {
         "schedule": {
           "label": "Repeats"

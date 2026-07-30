@@ -16,7 +16,7 @@ import { SettingsShell } from '@/features/settings/SettingsShell'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { useUserData } from '@/features/user/queries'
 import { recurringAsTransaction } from './asTransaction'
-import { useDeleteRecurring, useRecurring, useSkipRecurring } from './queries'
+import { useDeleteRecurring, useRecurring } from './queries'
 
 export function RecurringSettingsPage() {
   const { t } = useTranslation()
@@ -29,7 +29,6 @@ export function RecurringSettingsPage() {
   const { data: user } = useUserData()
   const openRecurringModal = useUiStore((s) => s.openRecurringModal)
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
-  const skipRecurring = useSkipRecurring()
   const deleteRecurring = useDeleteRecurring()
   const [deleteTarget, setDeleteTarget] = useState<RecurringDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -56,7 +55,6 @@ export function RecurringSettingsPage() {
   }
 
   const post = (rt: RecurringDto) => openTransactionModal({ postRecurring: rt })
-  const skip = (rt: RecurringDto) => skipRecurring.mutate(rt.id)
   const edit = (rt: RecurringDto) => openRecurringModal({ recurring: rt })
 
   const createLabel = t('settings.recurring.create')
@@ -120,9 +118,6 @@ export function RecurringSettingsPage() {
                     <DropdownMenuItem disabled={!canChange} onSelect={() => post(rt)}>
                       {t('recurring.preview.post')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem disabled={!canChange || skipRecurring.isPending} onSelect={() => skip(rt)}>
-                      {t('recurring.preview.skip')}
-                    </DropdownMenuItem>
                     <DropdownMenuItem disabled={!canChange} onSelect={() => edit(rt)}>
                       {t('common.button.edit.label')}
                     </DropdownMenuItem>
@@ -151,19 +146,6 @@ export function RecurringSettingsPage() {
             }}
           >
             {t('recurring.preview.post')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!sheetItem || !canChangeRecurring(sheetItem) || skipRecurring.isPending}
-            onClick={() => {
-              if (sheetItem) {
-                skip(sheetItem)
-              }
-              setSheetItem(null)
-            }}
-          >
-            {t('recurring.preview.skip')}
           </Button>
           <Button
             type="button"

@@ -68,7 +68,7 @@ it('shows the empty state when there are no templates', async () => {
   expect(await screen.findByText('No recurring transactions yet')).toBeInTheDocument()
 })
 
-it('clicking a row opens the action menu with post/skip/edit/delete', async () => {
+it('clicking a row opens the action menu with post/edit/delete', async () => {
   server.use(...coreHandlers({ recurring: [wireRecurring] }))
   const user = userEvent.setup()
   renderPage()
@@ -76,7 +76,8 @@ it('clicking a row opens the action menu with post/skip/edit/delete', async () =
   await user.click(await screen.findByTestId('recurring-r1'))
   const menu = await screen.findByRole('menu')
   const items = Array.from(menu.querySelectorAll('[role="menuitem"]')).map((el) => el.textContent)
-  expect(items).toEqual(['Post', 'Skip', 'Edit', 'Delete'])
+  // skip belongs to the account list, where a due template is actionable in place
+  expect(items).toEqual(['Post', 'Edit', 'Delete'])
 })
 
 it('the kebab opens the same menu without the row handler reopening it', async () => {
@@ -105,32 +106,24 @@ it('deleting from the menu asks for confirmation first', async () => {
   await screen.findByText('No recurring transactions yet')
 })
 
-it('skipping from the menu advances the template', async () => {
-  // a month past the fixture date, so the advanced dayKey provably differs
-  const advancedPaymentAt = formatDateTime(new Date(Date.now() + 395 * 24 * 3600 * 1000))
+it('offers no skip action, and never calls skip', async () => {
+  // skipping a payment is an account-list action (a due template shown among the
+  // transactions it will become), not template management
   let skipCalls = 0
   server.use(
     ...coreHandlers({ recurring: [wireRecurring] }),
     http.post('*/api/v1/recurring/skip-recurring-transaction', () => {
       skipCalls += 1
-      return HttpResponse.json({
-        success: true, message: '',
-        data: { item: { ...wireRecurring, nextPaymentAt: advancedPaymentAt } },
-      })
+      return HttpResponse.json({ success: true, message: '', data: { item: wireRecurring } })
     }),
   )
   const user = userEvent.setup()
-  const queryClient = renderPage()
+  renderPage()
 
   await user.click(await screen.findByTestId('recurring-r1'))
-  await user.click(await screen.findByRole('menuitem', { name: 'Skip' }))
-  // the list no longer prints the date, so assert the request and that the
-  // refreshed template is what the cache now holds
-  await waitFor(() => expect(skipCalls).toBe(1))
-  await waitFor(() => {
-    const cached = queryClient.getQueryData<{ nextPaymentAt: string }[]>(['recurring'])
-    expect(cached?.[0]?.nextPaymentAt).toBe(advancedPaymentAt)
-  })
+  await screen.findByRole('menu')
+  expect(screen.queryByRole('menuitem', { name: 'Skip' })).toBeNull()
+  expect(skipCalls).toBe(0)
 })
 
 it('posting from the menu opens the transaction dialog for that template', async () => {
@@ -152,9 +145,10 @@ it('compact: tapping a row opens the action sheet, not a kebab menu', async () =
   renderPage()
 
   await user.click(await screen.findByTestId('recurring-r1'))
-  for (const label of ['Post', 'Skip', 'Edit', 'Delete']) {
+  for (const label of ['Post', 'Edit', 'Delete']) {
     expect(await screen.findByRole('button', { name: label })).toBeInTheDocument()
   }
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'actions rent' })).toBeNull()
 })
 

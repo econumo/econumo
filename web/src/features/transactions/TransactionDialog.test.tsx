@@ -346,7 +346,7 @@ it('creates a category on the fly and selects it', async () => {
   await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('Books'))
 })
 
-it('posting a recurring template: header + date prefill, submits to post-recurring-transaction (not create-transaction)', async () => {
+it('posting a recurring template: regular add dialog + date prefill, submits to post-recurring-transaction (not create-transaction)', async () => {
   const wireRecurringDto: RecurringDto = {
     id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
     amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'rent',
@@ -375,7 +375,8 @@ it('posting a recurring template: header + date prefill, submits to post-recurri
   renderDialog()
   useUiStore.getState().openTransactionModal({ postRecurring: wireRecurringDto })
 
-  await screen.findByRole('heading', { name: 'Post recurring transaction' })
+  // posting reads as the ordinary add dialog — the template only prefills it
+  await screen.findByRole('heading', { name: 'Add transaction' })
   expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent('2026-07-05')
   // the account list hasn't resolved yet at the moment the form seeds its
   // initial state (TransactionForm only mounts once the modal opens), so the
