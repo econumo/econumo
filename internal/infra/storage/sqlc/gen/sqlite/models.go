@@ -233,6 +233,7 @@ type Transaction struct {
 	Type               int16
 	Amount             string
 	AmountRecipient    *string
+	RecurringID        *string
 }
 
 type User struct {

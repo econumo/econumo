@@ -67,6 +67,10 @@ type Transaction struct {
 	SpentAt         time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	// RecurringID is the template this transaction was materialized from (nil
+	// for hand-entered ones). Provenance, not mutable state: Update leaves it
+	// alone, so editing a posted instance never severs its origin.
+	RecurringID *vo.Id
 }
 
 // NewState bundles the fields for constructing/reconstructing a Transaction.
@@ -86,6 +90,7 @@ type NewState struct {
 	SpentAt         time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	RecurringID     *vo.Id
 }
 
 // TransactionFilter narrows a transaction list query. PeriodStart/PeriodEnd
@@ -113,6 +118,7 @@ func New(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.CreatedAt,
+		RecurringID: s.RecurringID,
 	}
 }
 
@@ -124,6 +130,7 @@ func FromState(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
+		RecurringID: s.RecurringID,
 	}
 }
 

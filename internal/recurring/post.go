@@ -46,7 +46,7 @@ func (s *Service) PostRecurringTransaction(ctx context.Context, userID vo.Id, re
 		if aerr := s.checkWriteAccess(ctx, userID, rt.AccountID); aerr != nil {
 			return aerr
 		}
-		created, gerr = s.creator.CreateTransaction(ctx, userID, createReq)
+		created, gerr = s.creator.CreateTransactionFromRecurring(ctx, userID, createReq, rtID)
 		if gerr != nil {
 			return gerr
 		}

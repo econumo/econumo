@@ -20,6 +20,9 @@ export interface CreateTransactionDto {
 
 export interface TransactionDto extends CreateTransactionDto {
   author: UserDto
+  /** the recurring template this transaction was posted from; null when hand-entered.
+      Server-owned provenance — create/update never accept it. */
+  recurringId: Id | null
 }
 
 // Prefill data for the transaction/recurring dialogs: accepts enriched view

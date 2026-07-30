@@ -57,6 +57,8 @@ function renderView(overrides: {
   transaction?: ViewTransaction
   onMakeRecurring?: () => void
   canChange?: boolean
+  recurringSchedule?: 'monthly' | 'weekly'
+  onOpenRecurring?: () => void
 } = {}) {
   server.use(...coreHandlers())
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -72,6 +74,8 @@ function renderView(overrides: {
         onEdit={onEdit}
         onDelete={onDelete}
         onMakeRecurring={onMakeRecurring}
+        recurringSchedule={overrides.recurringSchedule}
+        onOpenRecurring={overrides.onOpenRecurring}
         canChange={overrides.canChange ?? true}
         isShared={false}
       />
@@ -109,6 +113,82 @@ it('disables Make recurring button when canChange is false', async () => {
   renderView({ onMakeRecurring, canChange: false })
   const button = await screen.findByRole('button', { name: /Make recurring/i })
   expect(button).toBeDisabled()
+})
+
+it('hides Make recurring for a transaction posted from a recurring template', async () => {
+  // a posted instance already has a schedule behind it, so offering the action
+  // again would invite duplicate templates
+  renderView({
+    onMakeRecurring: vi.fn(),
+    transaction: { ...fixtureTransaction, recurringId: 'r1' } as ViewTransaction,
+  })
+  expect(await screen.findByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Make recurring/i })).toBeNull()
+})
+
+it('shows Make recurring for a hand-entered transaction (recurringId null)', async () => {
+  renderView({
+    onMakeRecurring: vi.fn(),
+    transaction: { ...fixtureTransaction, recurringId: null } as ViewTransaction,
+  })
+  expect(await screen.findByRole('button', { name: /Make recurring/i })).toBeInTheDocument()
+})
+
+it('shows the schedule row for a posted transaction and opens the template on click', async () => {
+  const onOpenRecurring = vi.fn()
+  renderView({
+    transaction: { ...fixtureTransaction, recurringId: 'r1' } as ViewTransaction,
+    recurringSchedule: 'monthly',
+    onOpenRecurring,
+  })
+  const row = await screen.findByRole('button', { name: /Recurring transaction/i })
+  expect(row).toHaveTextContent('Monthly')
+  await userEvent.setup().click(row)
+  expect(onOpenRecurring).toHaveBeenCalled()
+})
+
+it('marks a posted transaction with a non-interactive recurring indicator', async () => {
+  renderView({
+    transaction: { ...fixtureTransaction, recurringId: 'r1' } as ViewTransaction,
+    recurringSchedule: 'monthly',
+    onOpenRecurring: vi.fn(),
+  })
+  // present as a labelled graphic...
+  const indicators = await screen.findAllByLabelText('Recurring transaction')
+  expect(indicators.length).toBeGreaterThan(0)
+  // ...but never as a pressable control, unlike the hand-entered case
+  expect(screen.queryByRole('button', { name: /Make recurring/i })).toBeNull()
+  const heroIndicator = indicators.find((el) => el.closest('button') === null)
+  expect(heroIndicator).toBeDefined()
+})
+
+it('shows the hero indicator even when the template is gone', async () => {
+  // the transaction still came from a schedule, so the glyph stays; only the
+  // clickable schedule row (which needs a resolvable template) disappears
+  renderView({
+    transaction: { ...fixtureTransaction, recurringId: 'r1' } as ViewTransaction,
+    recurringSchedule: undefined,
+    onOpenRecurring: undefined,
+  })
+  const indicators = await screen.findAllByLabelText('Recurring transaction')
+  expect(indicators.some((el) => el.closest('button') === null)).toBe(true)
+})
+
+it('shows no recurring indicator on a hand-entered transaction', async () => {
+  renderView({ transaction: { ...fixtureTransaction, recurringId: null } as ViewTransaction })
+  expect(screen.queryByLabelText('Recurring transaction')).toBeNull()
+})
+
+it('shows no schedule row when the template could not be resolved', async () => {
+  // deleted template, or one on an account the caller cannot see: the row would
+  // be a dead end, so it is omitted entirely
+  renderView({
+    transaction: { ...fixtureTransaction, recurringId: 'r1' } as ViewTransaction,
+    recurringSchedule: undefined,
+    onOpenRecurring: undefined,
+  })
+  expect(await screen.findByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Recurring transaction/i })).toBeNull()
 })
 
 it('a categoryless non-transfer transaction shows Uncategorized as the hero name', async () => {

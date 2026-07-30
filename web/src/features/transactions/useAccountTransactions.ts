@@ -106,6 +106,9 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
         payee: rt.payeeId ? payees?.find((p) => p.id === rt.payeeId) : undefined,
         tag: rt.tagId ? tags?.find((tg) => tg.id === rt.tagId) : undefined,
         isInFuture: isFuture(rt.nextPaymentAt),
+        // not posted yet, so there is no originating template on the row itself;
+        // `recurring` below is what marks this as a synthesized preview
+        recurringId: null,
         recurring: rt,
       }))
     const merged = [...enriched, ...virtual].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))

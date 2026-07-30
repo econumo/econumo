@@ -376,6 +376,9 @@ type Querier interface {
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error
+	// recurring_id is intentionally absent from the DO UPDATE SET list below: it
+	// records where the row came from, so editing a posted instance must not
+	// overwrite its provenance.
 	UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error
 	UpsertUserOption(ctx context.Context, arg UpsertUserOptionParams) error

@@ -233,6 +233,7 @@ type Transaction struct {
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	SpentAt            time.Time
+	RecurringID        *string
 }
 
 type User struct {

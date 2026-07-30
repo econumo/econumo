@@ -37,12 +37,19 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
   const title = transactionTitleInfo(tx, pageAccount.id, t)
   const income = isIncomeForAccount(tx, pageAccount.id)
   const icon = tx.type === 'transfer' ? 'sync_alt' : tx.category?.icon || 'question_mark'
+  // The glyph marks "this is on a schedule" either way: an unposted preview
+  // (tx.recurring) or a real transaction posted from a template (recurringId).
+  // Dimming stays exclusive to the preview — a posted transaction is settled
+  // money and must read as solid as any hand-entered row.
+  const isRecurring = Boolean(tx.recurring) || Boolean(tx.recurringId)
 
   return (
     // Vue reference layout: 40px icon, 16px title with the amount on the same
     // top line, then description / tag / payee stacked one per line below.
     <div
       data-testid={`tx-${tx.id}`}
+      /* tx.recurring (not isRecurring) on purpose: only the unposted preview is
+         dimmed, never a posted transaction */
       className={`flex w-full items-start gap-4 px-2 py-2 text-left ${tx.isInFuture || tx.recurring ? 'opacity-50' : ''}`}
     >
       <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-econumo-card">
@@ -55,9 +62,18 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
         ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate text-base leading-6" title={title.text}>
-          {tx.recurring ? <Repeat className="mr-1 inline size-3 text-muted-foreground" /> : null}
-          {title.text}
+        {/* the icon trails the name but must survive truncation, so the name
+            truncates inside its own box and the icon stays a shrink-0 sibling */}
+        <span className="flex min-w-0 items-center text-base leading-6">
+          <span className="truncate" title={title.text}>
+            {title.text}
+          </span>
+          {isRecurring ? (
+            // the wrapper carries the tooltip: lucide icons take no title prop
+            <span title={t('recurring.preview.header')} className="ml-1 flex shrink-0 items-center">
+              <Repeat className="size-3 text-muted-foreground" aria-label={t('recurring.preview.header')} />
+            </span>
+          ) : null}
         </span>
         {title.source !== 'description' && tx.description ? (
           <span className="break-words text-sm text-muted-foreground">{tx.description}</span>

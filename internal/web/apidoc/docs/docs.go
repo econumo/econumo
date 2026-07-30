@@ -9698,6 +9698,10 @@ const docTemplate = `{
                 "payeeId": {
                     "type": "string"
                 },
+                "recurringId": {
+                    "description": "RecurringId is the template this transaction was posted from, null for a\nhand-entered one. Read-only provenance: create/update never accept it.",
+                    "type": "string"
+                },
                 "tagId": {
                     "type": "string"
                 },

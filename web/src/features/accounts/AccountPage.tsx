@@ -17,7 +17,7 @@ import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
 import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction } from '@/features/transactions/queries'
-import { useDeleteRecurring, useSkipRecurring } from '@/features/recurring/queries'
+import { useDeleteRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
 import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
@@ -77,6 +77,9 @@ export function AccountPage() {
   const deleteTransaction = useDeleteTransaction()
   const skipRecurring = useSkipRecurring()
   const deleteRecurring = useDeleteRecurring()
+  // already cached by useAccountTransactions, so resolving a posted
+  // transaction's template costs no extra request
+  const { data: recurringList } = useRecurring()
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
   const openRecurringModal = useUiStore((s) => s.openRecurringModal)
@@ -84,10 +87,19 @@ export function AccountPage() {
   const [search, setSearch] = useState('')
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
-  const [recurringPreview, setRecurringPreview] = useState<ViewTransaction | null>(null)
+  // the template being previewed: reached either from its own (unposted) list row
+  // or from the provenance row inside a posted transaction's preview
+  const [recurringPreview, setRecurringPreview] = useState<RecurringDto | null>(null)
   const [recurringDeleteTarget, setRecurringDeleteTarget] = useState<RecurringDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const entries = useAccountTransactions(id, search)
+
+  // the template behind the previewed transaction. Stays undefined when it was
+  // deleted or lives on an account the caller can't see (the list is scoped to
+  // visible accounts), in which case the preview shows no provenance row.
+  const previewRecurring = preview?.recurringId
+    ? recurringList?.find((rt) => rt.id === preview.recurringId)
+    : undefined
 
   const account = accounts?.find((a) => a.id === id)
   if (!account) {
@@ -243,7 +255,14 @@ export function AccountPage() {
             <div
               key={entry.transaction.id}
               className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'}`}
-              onClick={() => (entry.transaction.recurring ? setRecurringPreview(entry.transaction) : setPreview(entry.transaction))}
+              onClick={() => {
+                const rt = entry.transaction.recurring
+                if (rt) {
+                  setRecurringPreview(rt)
+                } else {
+                  setPreview(entry.transaction)
+                }
+              }}
             >
               <div className="min-w-0 flex-1">
                 <TransactionRow transaction={entry.transaction} pageAccount={account} />
@@ -326,6 +345,15 @@ export function AccountPage() {
             setPreview(null)
             openRecurringModal({ fromTransaction: txToMakeRecurring })
           }}
+          recurringSchedule={previewRecurring?.schedule}
+          onOpenRecurring={
+            previewRecurring
+              ? () => {
+                  setPreview(null)
+                  setRecurringPreview(previewRecurring)
+                }
+              : undefined
+          }
           canChange={canTouchRow(preview)}
           isShared={account.sharedAccess.length > 0}
         />
@@ -345,27 +373,23 @@ export function AccountPage() {
         destructive
       />
 
-      {recurringPreview?.recurring ? (
+      {recurringPreview ? (
         <ViewRecurringDialog
-          recurring={recurringPreview.recurring}
+          recurring={recurringPreview}
           onClose={() => setRecurringPreview(null)}
           onPost={() => {
-            openTransactionModal({ postRecurring: recurringPreview.recurring })
+            openTransactionModal({ postRecurring: recurringPreview })
             setRecurringPreview(null)
           }}
           onSkip={() => {
-            const rt = recurringPreview.recurring
-            if (rt) {
-              skipRecurring.mutate(rt.id, { onSuccess: () => setRecurringPreview(null) })
-            }
+            skipRecurring.mutate(recurringPreview.id, { onSuccess: () => setRecurringPreview(null) })
           }}
           onEdit={() => {
-            const rt = recurringPreview.recurring
             setRecurringPreview(null)
-            openRecurringModal({ recurring: rt })
+            openRecurringModal({ recurring: recurringPreview })
           }}
           onDelete={() => {
-            setRecurringDeleteTarget(recurringPreview.recurring ?? null)
+            setRecurringDeleteTarget(recurringPreview)
             setRecurringPreview(null)
           }}
           canChange={canChangeTransaction}

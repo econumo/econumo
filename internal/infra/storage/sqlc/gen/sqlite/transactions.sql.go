@@ -21,7 +21,7 @@ func (q *Queries) DeleteTransaction(ctx context.Context, id string) error {
 
 const getTransactionByID = `-- name: GetTransactionByID :one
 
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
 FROM transactions
 WHERE id = ?
 `
@@ -49,12 +49,13 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id string) (Transactio
 		&i.Type,
 		&i.Amount,
 		&i.AmountRecipient,
+		&i.RecurringID,
 	)
 	return i, err
 }
 
 const listTransactionsByAccount = `-- name: ListTransactionsByAccount :many
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
 FROM transactions
 WHERE account_id = ? OR account_recipient_id = ?
 ORDER BY spent_at DESC, id
@@ -91,6 +92,7 @@ func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransac
 			&i.Type,
 			&i.Amount,
 			&i.AmountRecipient,
+			&i.RecurringID,
 		); err != nil {
 			return nil, err
 		}
@@ -106,8 +108,8 @@ func (q *Queries) ListTransactionsByAccount(ctx context.Context, arg ListTransac
 }
 
 const upsertTransaction = `-- name: UpsertTransaction :exec
-INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     account_id           = excluded.account_id,
     account_recipient_id = excluded.account_recipient_id,
@@ -137,8 +139,12 @@ type UpsertTransactionParams struct {
 	Type               int16
 	Amount             string
 	AmountRecipient    *string
+	RecurringID        *string
 }
 
+// recurring_id is intentionally absent from the DO UPDATE SET list below: it
+// records where the row came from, so editing a posted instance must not
+// overwrite its provenance.
 func (q *Queries) UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error {
 	_, err := q.db.ExecContext(ctx, upsertTransaction,
 		arg.ID,
@@ -155,6 +161,7 @@ func (q *Queries) UpsertTransaction(ctx context.Context, arg UpsertTransactionPa
 		arg.Type,
 		arg.Amount,
 		arg.AmountRecipient,
+		arg.RecurringID,
 	)
 	return err
 }

@@ -5,13 +5,16 @@
 -- app layer computes (excluding deleted/hidden-folder accounts).
 
 -- name: GetTransactionByID :one
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
 FROM transactions
 WHERE id = ?;
 
 -- name: UpsertTransaction :exec
-INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+-- recurring_id is intentionally absent from the DO UPDATE SET list below: it
+-- records where the row came from, so editing a posted instance must not
+-- overwrite its provenance.
+INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     account_id           = excluded.account_id,
     account_recipient_id = excluded.account_recipient_id,
@@ -31,7 +34,7 @@ DELETE FROM transactions WHERE id = ?;
 -- name: ListTransactionsByAccount :many
 -- Transactions on an account (as source or recipient), newest first; id is the
 -- stable tie-break so row order is deterministic across engines.
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
 FROM transactions
 WHERE account_id = ? OR account_recipient_id = ?
 ORDER BY spent_at DESC, id;

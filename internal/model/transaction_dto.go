@@ -28,6 +28,9 @@ type TransactionResult struct {
 	PayeeId            *string    `json:"payeeId"`
 	TagId              *string    `json:"tagId"`
 	Date               string     `json:"date"`
+	// RecurringId is the template this transaction was posted from, null for a
+	// hand-entered one. Read-only provenance: create/update never accept it.
+	RecurringId *string `json:"recurringId"`
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient

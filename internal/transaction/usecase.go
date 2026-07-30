@@ -202,6 +202,11 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult) mod
 		s := v.String()
 		tagID = &s
 	}
+	var recurringID *string
+	if v := t.RecurringID; v != nil {
+		s := v.String()
+		recurringID = &s
+	}
 	return model.TransactionResult{
 		Id:                 t.ID.String(),
 		Author:             author,
@@ -215,6 +220,7 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult) mod
 		PayeeId:            payeeID,
 		TagId:              tagID,
 		Date:               t.SpentAt.Format(datetime.Layout),
+		RecurringId:        recurringID,
 	}
 }
 

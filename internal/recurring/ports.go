@@ -22,5 +22,5 @@ type VisibleAccounts interface {
 }
 
 type TransactionCreator interface {
-	CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error)
+	CreateTransactionFromRecurring(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest, recurringID vo.Id) (*model.CreateTransactionResult, error)
 }
