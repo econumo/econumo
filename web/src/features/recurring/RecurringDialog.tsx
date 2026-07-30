@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { ChevronLeft } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { amountCardInputClass, CardField, cardFieldControlClass } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { dayKey, formatDate, parseDateTime } from '@/lib/datetime'
+import { calendarLocale } from '@/lib/calendarLocale'
+import { dayKey, formatDate, formatDateTime, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { tryNormalize } from '@/lib/decimal'
 import { isNotEmpty, isValidFormula } from '@/lib/validation'
@@ -20,6 +21,7 @@ import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
 import { accountOptions, categoryOptions, evaluatedAmount } from '@/features/transactions/useTransactionForm'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
+import { SelectCard } from '@/features/transactions/SelectCard'
 import type { TransactionType } from '@/api/dto/transaction'
 import type { RecurringSchedule } from '@/api/dto/recurring'
 import { useCreateRecurring, useUpdateRecurring } from './queries'
@@ -28,36 +30,8 @@ import { useRecurringForm, buildRecurringPayload } from './useRecurringForm'
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 
-// strips the EntitySelect trigger button down so the CardField carries the chrome
-const cardSelectClass =
-  '[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:font-normal [&_button]:shadow-none'
-
-// same whole-card tap target as TransactionDialog's SelectCard
-function SelectCard({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
-  const wasOpen = useRef(false)
-  const trigger = (root: HTMLElement) => root.querySelector<HTMLButtonElement>('button[role="combobox"]')
-  return (
-    <div
-      className="cursor-pointer"
-      onPointerDownCapture={(e) => {
-        wasOpen.current = trigger(e.currentTarget)?.getAttribute('aria-expanded') === 'true'
-      }}
-      onClick={(e) => {
-        if (wasOpen.current || (e.target as HTMLElement).closest('button')) {
-          return
-        }
-        trigger(e.currentTarget)?.click()
-      }}
-    >
-      <CardField label={label} error={error}>
-        <div className={cardSelectClass}>{children}</div>
-      </CardField>
-    </div>
-  )
-}
-
 function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { data: accounts = [] } = useAccounts()
   const { data: folders = [] } = useFolders()
   const { data: categories = [] } = useCategories()
@@ -119,14 +93,18 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
     }
   }
 
+  const dateOnly = dayKey(form.nextPaymentAt)
   const pending = createRecurring.isPending || updateRecurring.isPending
-  const title = form.isNew ? t('recurring.modal.create_form.header') : t('recurring.modal.update_form.header')
+  // the same headers as the add-transaction dialog: a template edit is meant to
+  // read as that dialog with one extra row, not as a form of its own
+  const title = form.isNew ? t('transactions.modal.create_form.header') : t('transactions.modal.update_form.header')
 
   return (
     <ResponsiveDialog
       open
       caps
       fullScreen
+      hideHeader
       dismissible={false}
       onOpenChange={(o) => !o && onDone()}
       title={title}
@@ -150,6 +128,50 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           void submit()
         }}
       >
+        {/* the dialog header is visually hidden — the title shares one row with
+            the back-a-day arrow + date chip, exactly as in TransactionDialog.
+            That chip IS the next payment, so there is no separate date row. */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-lg font-normal uppercase tracking-wide">{title}</span>
+          <span className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="previous day"
+              onClick={() => {
+                const d = parseDateTime(form.nextPaymentAt)
+                d.setHours(d.getHours() - 24)
+                patch({ nextPaymentAt: formatDateTime(d) })
+              }}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="secondary" className="h-7 rounded bg-econumo-card px-2 text-xs font-normal" aria-label="date">
+                  {dateOnly}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  weekStartsOn={1}
+                  locale={calendarLocale(i18n.language)}
+                  selected={parseDateTime(dateOnly)}
+                  onSelect={(day) => {
+                    if (day) {
+                      patch({ nextPaymentAt: `${formatDate(day)} 00:00:00` })
+                      setDateOpen(false)
+                    }
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </span>
+        </div>
+
         <div className="flex rounded-lg bg-econumo-card p-1" role="radiogroup" aria-label="type">
           {TYPE_ORDER.map((type) => (
             <button
@@ -169,7 +191,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
 
         <div className="flex flex-col rounded-lg bg-econumo-card px-3 py-2">
           {!isTransfer ? (
-            <div className="[&_button]:h-auto [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-0 [&_button]:py-1 [&_button]:shadow-none">
+            <div className="[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:py-1 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent">
               <EntitySelect
                 aria-label="account"
                 value={form.accountId}
@@ -262,33 +284,6 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
               </SelectContent>
             </Select>
           </div>
-        </CardField>
-
-        <CardField label={t('recurring.modal.form.next_payment.label')}>
-          <Popover open={dateOpen} onOpenChange={setDateOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                aria-label={t('recurring.modal.form.next_payment.label')}
-                className="w-full text-left text-sm"
-              >
-                {dayKey(form.nextPaymentAt)}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                weekStartsOn={1}
-                selected={parseDateTime(dayKey(form.nextPaymentAt))}
-                onSelect={(day) => {
-                  if (day) {
-                    patch({ nextPaymentAt: `${formatDate(day)} 00:00:00` })
-                    setDateOpen(false)
-                  }
-                }}
-              />
-            </PopoverContent>
-          </Popover>
         </CardField>
 
         <CardField label={t('transactions.modal.form.description.label')} htmlFor="rt-description">

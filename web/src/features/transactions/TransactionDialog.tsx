@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
@@ -29,41 +28,11 @@ import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
 import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedAmount } from './useTransactionForm'
 import { EntitySelect } from './EntitySelect'
+import { SelectCard } from './SelectCard'
 import { AddTagDialog } from './AddTagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
-
-// strips the EntitySelect field down so the CardField carries the chrome
-const cardSelectClass =
-  '[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent'
-
-// CardField around an EntitySelect where the WHOLE card is the tap target —
-// clicks on the label/padding forward to the field inside
-function SelectCard({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
-  // if the picker was open at pointerdown, that press already dismissed it —
-  // forwarding the click would immediately reopen
-  const wasOpen = useRef(false)
-  const trigger = (root: HTMLElement) => root.querySelector<HTMLInputElement>('[data-slot=entity-select] input')
-  return (
-    <div
-      className="cursor-pointer"
-      onPointerDownCapture={(e) => {
-        wasOpen.current = trigger(e.currentTarget)?.getAttribute('aria-expanded') === 'true'
-      }}
-      onClick={(e) => {
-        if (wasOpen.current || (e.target as HTMLElement).closest('input, button')) {
-          return
-        }
-        trigger(e.currentTarget)?.click()
-      }}
-    >
-      <CardField label={label} error={error}>
-        <div className={cardSelectClass}>{children}</div>
-      </CardField>
-    </div>
-  )
-}
 
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
   const { t, i18n } = useTranslation()

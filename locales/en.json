@@ -431,18 +431,9 @@
   },
   "recurring": {
     "modal": {
-      "create_form": {
-        "header": "Add recurring transaction"
-      },
-      "update_form": {
-        "header": "Edit recurring transaction"
-      },
       "form": {
         "schedule": {
           "label": "Repeats"
-        },
-        "next_payment": {
-          "label": "Next payment"
         }
       }
     },
