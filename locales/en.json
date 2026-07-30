@@ -315,7 +315,7 @@
       "menu_item": "Recurring transactions",
       "header": "Recurring transactions",
       "empty": "No recurring transactions yet",
-      "create": "Add recurring transaction",
+      "create": "Add transaction",
       "delete_question": "Delete this recurring transaction?"
     },
     "update": {
