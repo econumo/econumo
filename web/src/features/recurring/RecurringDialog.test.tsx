@@ -103,6 +103,19 @@ it('the back-a-day arrow moves the next payment date', async () => {
   await waitFor(() => expect(screen.getByRole('button', { name: 'date' }).textContent).not.toBe(before))
 })
 
+it('tags render as the transaction dialog pill row, toggling the template tag', async () => {
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
+  // a pill (role=checkbox), not an option in a select
+  const pill = await screen.findByRole('checkbox', { name: 'vacation' })
+  expect(pill).toHaveAttribute('aria-checked', 'false')
+  await user.click(pill)
+  expect(await screen.findByRole('checkbox', { name: 'vacation' })).toHaveAttribute('aria-checked', 'true')
+  await user.click(pill)
+  expect(await screen.findByRole('checkbox', { name: 'vacation' })).toHaveAttribute('aria-checked', 'false')
+})
+
 it('Repeats is the only row the add-transaction dialog does not have', async () => {
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })

@@ -1,6 +1,7 @@
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Label } from '@/components/ui/label'
@@ -18,8 +19,10 @@ import { isNotEmpty, isValidFormula } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenRecurringParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
-import { accountOptions, categoryOptions, evaluatedAmount } from '@/features/transactions/useTransactionForm'
+import { useCategories, usePayees, useTags, useCreateTag } from '@/features/classifications/queries'
+import { useUserData } from '@/features/user/queries'
+import { accountOptions, canChangeAccountData, categoryOptions, evaluatedAmount } from '@/features/transactions/useTransactionForm'
+import { AddTagDialog } from '@/features/transactions/AddTagDialog'
 import { EntitySelect } from '@/features/transactions/EntitySelect'
 import { SelectCard } from '@/features/transactions/SelectCard'
 import type { TransactionType } from '@/api/dto/transaction'
@@ -38,21 +41,29 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const { data: payees = [] } = usePayees()
   const { data: tags = [] } = useTags()
 
+  const { data: user } = useUserData()
   const createRecurring = useCreateRecurring()
   const updateRecurring = useUpdateRecurring()
+  const createTag = useCreateTag()
 
   const { form, patch, setType, account } = useRecurringForm(params, accounts)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [dateOpen, setDateOpen] = useState(false)
+  const [addTagOpen, setAddTagOpen] = useState(false)
 
   const isTransfer = form.type === 'transfer'
   const isExpense = form.type === 'expense'
   const ownerId = account?.owner.id
+  const canEditData = canChangeAccountData(account, user?.id)
 
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
-  const currentTags = tags.filter((tg) => tg.isArchived === 0 && (!ownerId || tg.ownerUserId === ownerId))
+  // the tag pill row, exactly as in TransactionDialog: visible tags plus the
+  // selected one even when it is archived or another owner's
+  const selectedTag = tags.find((tag) => tag.id === form.tagId)
+  const visibleTags = tags.filter((tag) => tag.isArchived === 0 && (!ownerId || tag.ownerUserId === ownerId))
+  const tagRow = selectedTag && !visibleTags.some((tg) => tg.id === selectedTag.id) ? [...visibleTags, selectedTag] : visibleTags
 
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,
@@ -256,15 +267,47 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             </SelectCard>
 
             {isExpense ? (
-              <SelectCard label={t('accounts.page.preview_transaction_modal.tags.label')}>
-                <EntitySelect
-                  aria-label={t('accounts.page.preview_transaction_modal.tags.label')}
-                  value={form.tagId}
-                  onChange={(id) => patch({ tagId: id })}
-                  options={currentTags.map((tg) => ({ value: tg.id, label: tg.name }))}
-                  clearable
-                />
-              </SelectCard>
+              /* the same tag pill row as TransactionDialog, not a select */
+              <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
+                <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-0.5">
+                    {tagRow.map((tag) => {
+                      const toggleTag = () => patch({ tagId: form.tagId === tag.id ? null : tag.id })
+                      return (
+                        <Badge
+                          key={tag.id}
+                          role="checkbox"
+                          aria-checked={form.tagId === tag.id}
+                          aria-label={tag.name}
+                          tabIndex={0}
+                          variant={form.tagId === tag.id ? 'default' : 'secondary'}
+                          className="cursor-pointer"
+                          onClick={toggleTag}
+                          onKeyDown={(e) => {
+                            if (!e.repeat && (e.key === 'Enter' || e.key === ' ')) {
+                              e.preventDefault()
+                              toggleTag()
+                            }
+                          }}
+                        >
+                          {tag.name}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                  {canEditData ? (
+                    <button
+                      type="button"
+                      aria-label="add tag"
+                      title={t('common.button.add.label')}
+                      className="shrink-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => setAddTagOpen(true)}
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  ) : null}
+                </div>
+              </CardField>
             ) : null}
           </>
         )}
@@ -296,6 +339,22 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
           />
         </CardField>
       </form>
+
+      <AddTagDialog
+        open={addTagOpen}
+        onClose={() => setAddTagOpen(false)}
+        onSubmit={(name) => {
+          createTag.mutate(
+            { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
+            {
+              onSuccess: (item) => {
+                patch({ tagId: item.id })
+                setAddTagOpen(false)
+              },
+            },
+          )
+        }}
+      />
     </ResponsiveDialog>
   )
 }
