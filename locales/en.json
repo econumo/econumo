@@ -316,7 +316,8 @@
       "header": "Recurring transactions",
       "empty": "No recurring transactions yet",
       "create": "Add transaction",
-      "delete_question": "Delete this recurring transaction?"
+      "delete_question": "Delete this recurring transaction?",
+      "info": "Payments that repeat on a schedule live here. The next payment shows on the account page as not posted — nothing is added automatically: post or skip it yourself, and the date moves to the following one."
     },
     "update": {
       "available": "New version {version} available"

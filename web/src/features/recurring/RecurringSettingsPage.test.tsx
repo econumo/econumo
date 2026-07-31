@@ -76,6 +76,8 @@ it('shows the empty state when there are no templates', async () => {
   server.use(...coreHandlers({ recurring: [] }))
   renderPage()
   expect(await screen.findByText('No recurring transactions yet')).toBeInTheDocument()
+  // the how-it-works hint renders above the list, as on the budget page
+  expect(screen.getByText(/nothing is added automatically/)).toBeInTheDocument()
 })
 
 it('clicking a row opens the action menu with post/edit/delete', async () => {

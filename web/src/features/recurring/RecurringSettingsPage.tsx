@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { AccountDto } from '@/api/dto/account'
 import type { RecurringDto } from '@/api/dto/recurring'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -97,6 +98,7 @@ export function RecurringSettingsPage() {
         )
       }
     >
+      <InfoBox>{t('settings.recurring.info')}</InfoBox>
       {recurring.length === 0 ? (
         <p className="px-1 py-2 text-sm text-muted-foreground">{t('settings.recurring.empty')}</p>
       ) : (
