@@ -52,14 +52,24 @@ it('lists templates as transaction rows', async () => {
   expect(await screen.findByText('rent')).toBeInTheDocument()
 })
 
-it('does not repeat the schedule or the next payment date in the list', async () => {
-  // both live in the preview and the edit form; the row is the transaction shape
+it('shows the interval beside the title and the next payment under the amount', async () => {
   server.use(...coreHandlers({ recurring: [wireRecurring] }))
   renderPage()
-  await screen.findByText('rent')
-  expect(screen.queryByText('Monthly')).toBeNull()
-  expect(screen.queryByTestId('recurring-summary-r1')).toBeNull()
-  expect(screen.queryByText(futurePaymentAt.slice(0, 10))).toBeNull()
+  const row = (await screen.findByTestId('recurring-r1')) as HTMLElement
+  // interval trails the title line
+  expect(row).toHaveTextContent('Monthly')
+  // next payment under the amount, not overdue -> not red
+  const next = screen.getByTestId('recurring-next-r1')
+  expect(next).toHaveTextContent(futurePaymentAt.slice(0, 10))
+  expect(next.className).not.toContain('text-destructive')
+})
+
+it('marks a due template by turning its next payment red', async () => {
+  const due = { ...wireRecurring, id: 'r-due', nextPaymentAt: '2020-01-01 00:00:00' }
+  server.use(...coreHandlers({ recurring: [wireRecurring, due] }))
+  renderPage()
+  expect((await screen.findByTestId('recurring-next-r-due')).className).toContain('text-destructive')
+  expect(screen.getByTestId('recurring-next-r1').className).not.toContain('text-destructive')
 })
 
 it('shows the empty state when there are no templates', async () => {

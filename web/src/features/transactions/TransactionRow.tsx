@@ -32,12 +32,17 @@ interface TransactionRowProps {
       to the default; the recurring settings list turns it off, since there
       EVERY row is a template and dimming them all would just look disabled. */
   dimmed?: boolean
+  /** muted note trailing the title (the recurring list's "Monthly") — kept
+      outside the truncating box so a long title can never clip it */
+  titleNote?: string
+  /** small muted line under the amount (the recurring list's next payment) */
+  amountNote?: React.ReactNode
 }
 
 // Presentational only: the row wrapper on the page owns the click (menu on
 // desktop, preview sheet on mobile) so hover/active feedback covers the whole
 // row including the kebab.
-export function TransactionRow({ transaction: tx, pageAccount, dimmed }: TransactionRowProps) {
+export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote, amountNote }: TransactionRowProps) {
   const { t } = useTranslation()
   const title = transactionTitleInfo(tx, pageAccount.id, t)
   const income = isIncomeForAccount(tx, pageAccount.id)
@@ -79,6 +84,7 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed }: Transac
               <Repeat className="size-3 text-muted-foreground" aria-label={t('recurring.preview.header')} />
             </span>
           ) : null}
+          {titleNote ? <span className="ml-1.5 shrink-0 text-[13px] text-muted-foreground">{titleNote}</span> : null}
         </span>
         {title.source !== 'description' && tx.description ? (
           <span className="break-words text-sm text-muted-foreground">{tx.description}</span>
@@ -96,9 +102,12 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed }: Transac
           </span>
         ) : null}
       </span>
-      <span className={`text-sm leading-6 tabular-nums ${income ? 'text-income' : 'text-expense'}`}>
-        {displayAmount(tx, pageAccount.id)}
-        <span className="ml-1 text-muted-foreground">{pageAccount.currency.symbol}</span>
+      <span className="flex shrink-0 flex-col items-end">
+        <span className={`text-sm leading-6 tabular-nums ${income ? 'text-income' : 'text-expense'}`}>
+          {displayAmount(tx, pageAccount.id)}
+          <span className="ml-1 text-muted-foreground">{pageAccount.currency.symbol}</span>
+        </span>
+        {amountNote ? <span className="text-xs text-muted-foreground">{amountNote}</span> : null}
       </span>
     </div>
   )

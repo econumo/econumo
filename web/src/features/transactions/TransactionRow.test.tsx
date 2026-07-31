@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import type { AccountDto } from '@/api/dto/account'
 import { fixtureOwner } from '@/test/fixtures'
 import { TransactionRow } from './TransactionRow'
@@ -66,6 +66,24 @@ it('does NOT dim a posted transaction — it is settled money', () => {
 it('dims the unposted virtual row', () => {
   const row = renderRow({ recurring: { id: 'r1' } as ViewTransaction['recurring'] })
   expect(row.className).toContain('opacity-50')
+})
+
+it('renders the title and amount notes when provided, and neither by default', () => {
+  render(
+    <TransactionRow
+      transaction={baseTx}
+      pageAccount={pageAccount}
+      titleNote="Monthly"
+      amountNote={<span>2026-09-17</span>}
+    />,
+  )
+  expect(screen.getByText('Monthly')).toBeInTheDocument()
+  expect(screen.getByText('2026-09-17')).toBeInTheDocument()
+
+  cleanup()
+  renderRow()
+  expect(screen.queryByText('Monthly')).toBeNull()
+  expect(screen.queryByText('2026-09-17')).toBeNull()
 })
 
 it('renders the icon after the name, and the name still truncates', () => {

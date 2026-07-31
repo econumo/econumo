@@ -15,7 +15,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { useUserData } from '@/features/user/queries'
-import { parseDateTime } from '@/lib/datetime'
+import { dayKey, isFuture, parseDateTime } from '@/lib/datetime'
 import { recurringAsTransaction } from './asTransaction'
 import { useDeleteRecurring, useRecurring } from './queries'
 
@@ -131,7 +131,18 @@ export function RecurringSettingsPage() {
                   preview and the edit form. */}
               <div className="min-w-0 flex-1">
                 {accountOf(rt) ? (
-                  <TransactionRow transaction={asTransaction(rt)} pageAccount={accountOf(rt) as AccountDto} dimmed={false} />
+                  <TransactionRow
+                    transaction={asTransaction(rt)}
+                    pageAccount={accountOf(rt) as AccountDto}
+                    dimmed={false}
+                    titleNote={scheduleLabel(rt)}
+                    amountNote={
+                      /* a past next payment means the template is due — post or skip it */
+                      <span data-testid={`recurring-next-${rt.id}`} className={isFuture(rt.nextPaymentAt) ? undefined : 'text-destructive'}>
+                        {dayKey(rt.nextPaymentAt)}
+                      </span>
+                    }
+                  />
                 ) : null}
               </div>
               {!isCompact ? (
