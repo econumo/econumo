@@ -2,6 +2,10 @@
 .idea
 .DS_Store
 
+# A stray npm/vite invocation from the repo root must never get committed;
+# the real frontend deps live in web/node_modules (ignored by web/.gitignore)
+node_modules/
+
 # Local env (holds secrets like JWT_PASSPHRASE; committed template is .env.example).
 # Used by both `go run` and docker compose (env_file).
 .env

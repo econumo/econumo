@@ -103,6 +103,15 @@ export function AccountPage() {
     ? recurringList?.find((rt) => rt.id === preview.recurringId)
     : undefined
 
+  // The interval trailing a recurring row's title, as on the settings list. A
+  // virtual row carries its template; a posted one resolves it by recurringId,
+  // and shows nothing when the template is gone or not visible.
+  const scheduleNote = (tx: ViewTransaction): string | undefined => {
+    const schedule =
+      tx.recurring?.schedule ?? (tx.recurringId ? recurringList?.find((rt) => rt.id === tx.recurringId)?.schedule : undefined)
+    return schedule ? t(`recurring.schedule.${schedule}`) : undefined
+  }
+
   const account = accounts?.find((a) => a.id === id)
   if (!account) {
     return null
@@ -267,7 +276,7 @@ export function AccountPage() {
               }}
             >
               <div className="min-w-0 flex-1">
-                <TransactionRow transaction={entry.transaction} pageAccount={account} />
+                <TransactionRow transaction={entry.transaction} pageAccount={account} titleNote={scheduleNote(entry.transaction)} />
               </div>
               {!isCompact && canTouchRow(entry.transaction) ? (
                 <DropdownMenu

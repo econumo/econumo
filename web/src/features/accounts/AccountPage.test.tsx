@@ -277,6 +277,35 @@ it('posted transaction preview: one tap on the recurring row opens the template 
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Transaction details' })).not.toBeInTheDocument())
 })
 
+it('recurring rows carry the interval beside the title; plain rows do not', async () => {
+  mockViewport(false)
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'coffee sub',
+    schedule: 'weekly', nextPaymentAt: '2099-01-01 00:00:00',
+  }
+  const posted = {
+    id: 't-posted', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'coffee sub',
+    payeeId: null, tagId: null, date: '2026-07-03 09:00:00', recurringId: 'r1',
+  }
+  server.use(...coreHandlers({ recurring: [template], transactions: [posted] }))
+  renderPage()
+
+  // the posted transaction resolves its template's schedule...
+  expect(await screen.findByTestId('tx-t-posted')).toHaveTextContent('Weekly')
+  // ...and the template's own virtual row carries it directly
+  expect(screen.getByTestId('tx-r1')).toHaveTextContent('Weekly')
+})
+
+it('a plain transaction row shows no interval note', async () => {
+  mockViewport(false)
+  renderPage()
+  const row = await screen.findByTestId('tx-t1')
+  expect(row).not.toHaveTextContent('Monthly')
+  expect(row).not.toHaveTextContent('Weekly')
+})
+
 it('compact viewport: row click opens the preview dialog with details', async () => {
   mockViewport(true)
   const user = userEvent.setup()
