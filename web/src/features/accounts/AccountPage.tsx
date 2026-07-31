@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { formatDate } from '@/lib/datetime'
 import { ChevronLeft, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
@@ -32,10 +33,52 @@ import { canWriteToAccount } from '@/features/connections/shared'
 // filtering happens on the data, not the DOM.
 const LIST_CHUNK = 100
 
-function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; children: (entry: DailyListEntry) => ReactNode }) {
+function WindowedEntries({
+  entries,
+  anchorIndex,
+  ready,
+  children,
+}: {
+  entries: DailyListEntry[]
+  /** index of the first at-or-before-today entry — everything above it is the
+      future block that starts hidden above the fold */
+  anchorIndex: number
+  /** anchoring waits for this so the future block is complete before the
+      scroll position is chosen (the recurring query may land after the
+      transactions) */
+  ready: boolean
+  children: (entry: DailyListEntry) => ReactNode
+}) {
   const [visibleCount, setVisibleCount] = useState(LIST_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const anchorRef = useRef<HTMLDivElement | null>(null)
+  const anchoredRef = useRef(false)
   const hasMore = visibleCount < entries.length
+
+  // Land the initial view on today: future rows stay above the fold and are
+  // pulled into view by scrolling up. Runs once per mount (the list remounts
+  // per account), so later list changes never yank the scroll position.
+  useLayoutEffect(() => {
+    if (anchoredRef.current || !ready || entries.length === 0 || anchorIndex < 0) {
+      return
+    }
+    if (anchorIndex === 0) {
+      // no future block — nothing to hide
+      anchoredRef.current = true
+      return
+    }
+    if (anchorIndex >= visibleCount) {
+      // the anchor row isn't rendered yet — grow the window first, then anchor
+      setVisibleCount(anchorIndex + LIST_CHUNK)
+      return
+    }
+    const anchor = anchorRef.current
+    const container = anchor?.parentElement
+    if (anchor && container) {
+      container.scrollTop += anchor.getBoundingClientRect().top - container.getBoundingClientRect().top
+    }
+    anchoredRef.current = true
+  }, [ready, entries.length, anchorIndex, visibleCount])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -61,7 +104,13 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
 
   return (
     <>
-      {entries.slice(0, visibleCount).map(children)}
+      {entries.slice(0, visibleCount).flatMap((entry, i) => {
+        const node = children(entry)
+        // the zero-height marker the initial scroll lands on
+        return i === anchorIndex && anchorIndex > 0
+          ? [<div key="future-anchor" data-testid="future-anchor" ref={anchorRef} aria-hidden="true" />, node]
+          : [node]
+      })}
       {hasMore ? <div ref={sentinelRef} aria-hidden="true" className="h-px" /> : null}
     </>
   )
@@ -102,6 +151,13 @@ export function AccountPage() {
   const previewRecurring = preview?.recurringId
     ? recurringList?.find((rt) => rt.id === preview.recurringId)
     : undefined
+
+  // The first entry at or before today; everything above it is the future
+  // block (upcoming templates, post-dated transactions) that the initial
+  // scroll hides above the fold. Day separators lead every group, so matching
+  // on them finds the boundary.
+  const todayKey = formatDate(new Date())
+  const anchorIndex = entries.findIndex((e) => e.kind === 'separator' && e.day <= todayKey)
 
   // The interval trailing a recurring row's title, as on the settings list. A
   // virtual row carries its template; a posted one resolves it by recurringId,
@@ -253,7 +309,7 @@ export function AccountPage() {
       )}
 
       <div className="flex-1 overflow-y-auto">
-        <WindowedEntries key={account.id} entries={entries}>
+        <WindowedEntries key={account.id} entries={entries} anchorIndex={anchorIndex} ready={recurringList !== undefined}>
           {(entry) =>
             entry.kind === 'separator' ? (
             <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">

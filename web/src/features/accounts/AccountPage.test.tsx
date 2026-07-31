@@ -277,6 +277,46 @@ it('posted transaction preview: one tap on the recurring row opens the template 
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Transaction details' })).not.toBeInTheDocument())
 })
 
+it('places the today anchor between the future block and the past', async () => {
+  mockViewport(false)
+  const day = 24 * 3600 * 1000
+  const stamp = (d: Date) => `${d.toISOString().slice(0, 10)} 12:00:00`
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'upcoming',
+    schedule: 'monthly', nextPaymentAt: stamp(new Date(Date.now() + 5 * day)),
+  }
+  const past = {
+    id: 't-past', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'settled',
+    payeeId: null, tagId: null, date: stamp(new Date(Date.now() - 5 * day)), recurringId: null,
+  }
+  server.use(...coreHandlers({ recurring: [template], transactions: [past] }))
+  renderPage()
+  await screen.findByTestId('tx-r1')
+
+  // the marker the initial scroll lands on sits between the future block and
+  // everything at-or-before today, so the future starts above the fold
+  const order = Array.from(document.querySelectorAll('[data-testid^="tx-"], [data-testid="future-anchor"]')).map(
+    (el) => el.getAttribute('data-testid'),
+  )
+  expect(order).toEqual(['tx-r1', 'future-anchor', 'tx-t-past'])
+})
+
+it('renders no anchor when nothing is scheduled ahead', async () => {
+  mockViewport(false)
+  const day = 24 * 3600 * 1000
+  const past = {
+    id: 't-past', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'settled',
+    payeeId: null, tagId: null, date: `${new Date(Date.now() - 5 * day).toISOString().slice(0, 10)} 12:00:00`, recurringId: null,
+  }
+  server.use(...coreHandlers({ recurring: [], transactions: [past] }))
+  renderPage()
+  await screen.findByTestId('tx-t-past')
+  expect(screen.queryByTestId('future-anchor')).toBeNull()
+})
+
 it('recurring rows carry the interval beside the title; plain rows do not', async () => {
   mockViewport(false)
   const template = {
