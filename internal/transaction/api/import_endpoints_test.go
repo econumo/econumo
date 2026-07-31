@@ -130,6 +130,87 @@ func TestImport_NewAccount_PrefersOwnCustomCurrencyOverGlobalCode(t *testing.T) 
 	}
 }
 
+// A row whose Category cell is empty imports as an uncategorized transaction
+// (categoryId null) rather than being skipped or inventing a category — the
+// import counterpart of a categoryless create.
+func TestImport_EmptyCategoryCell_ImportsUncategorized(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Cash,2024-03-01,-42.50,,no category,Market\n"
+	status, env := h.doImport(t, tok, csv, importMapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 {
+		t.Fatalf("list has %d items, want 1", len(list.Items))
+	}
+	if list.Items[0].CategoryID != nil {
+		t.Fatalf("categoryId=%v want nil (uncategorized)", *list.Items[0].CategoryID)
+	}
+	// the empty cell must not have created a category named ""
+	var blank int
+	h.db.QueryRow(`SELECT COUNT(*) FROM categories WHERE name = ''`).Scan(&blank)
+	if blank != 0 {
+		t.Fatalf("import created %d blank-named categories", blank)
+	}
+}
+
+// A whitespace-only Category cell counts as "no category name": it must import
+// uncategorized rather than find-or-create a category named " ".
+func TestImport_WhitespaceCategoryCell_ImportsUncategorized(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Category,Note,Payee\n" +
+		"Cash,2024-03-01,-42.50,   ,blank category,Market\n"
+	status, env := h.doImport(t, tok, csv, importMapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].CategoryID != nil {
+		t.Fatalf("want 1 uncategorized item; got %+v", list.Items)
+	}
+	var blank int
+	h.db.QueryRow(`SELECT COUNT(*) FROM categories WHERE TRIM(name) = ''`).Scan(&blank)
+	if blank != 0 {
+		t.Fatalf("import created %d blank/whitespace-named categories", blank)
+	}
+}
+
+// The same, with the Category column left unmapped entirely.
+func TestImport_UnmappedCategoryColumn_ImportsUncategorized(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Note\nCash,2024-03-01,-42.50,no category\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount","description":"Note"}`
+	status, env := h.doImport(t, tok, csv, mapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].CategoryID != nil {
+		t.Fatalf("want 1 uncategorized item; got %+v", list.Items)
+	}
+}
+
 func TestImport_OverrideAccountAndDate(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

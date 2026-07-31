@@ -70,7 +70,16 @@ export function moveElementInArrangement(arrangement: ElementContainer[], active
     insertAt = target ? target.ids.length : 0
   } else {
     target = next.find((c) => c.ids.includes(overId))
-    insertAt = target ? target.ids.indexOf(overId) : 0
+    // An empty folder has no rows, so the pointer can only land on the section
+    // itself — which dnd-kit reports as the folder's own sortable id (the bare
+    // folder id, registered for folder reordering), never `bfolder:<id>`.
+    // Treat that as "append to this folder" instead of dropping the move.
+    if (!target) {
+      target = next.find((c) => c.folderId !== null && String(c.folderId) === overId)
+      insertAt = target ? target.ids.length : 0
+    } else {
+      insertAt = target.ids.indexOf(overId)
+    }
   }
   if (!target) {
     return arrangement

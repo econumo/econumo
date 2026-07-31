@@ -9,16 +9,18 @@ FROM accounts
 WHERE id = ?;
 
 -- name: ListAvailableAccounts :many
--- Available accounts: own OR shared via accounts_access, not deleted. Mirrors
--- AccountRepository::getAvailableForUserId (LEFT JOIN accounts_access, own OR
--- granted). DISTINCT collapses duplicate rows when multiple grants exist.
--- ORDER BY pins creation order (id tie-break) so both engines return the same
--- row order: get-account-list serves this order (reversed) directly, and an
--- unordered DISTINCT differs between SQLite and PostgreSQL query plans.
+-- Available accounts: own OR ACCEPTED shared via accounts_access, not deleted.
+-- A pending (not yet accepted) grant confers no access here -- it only rides
+-- get-account-list as an inert entry appended separately (see
+-- Service.buildAccountList). DISTINCT collapses duplicate rows when multiple
+-- grants exist. ORDER BY pins creation order (id tie-break) so both engines
+-- return the same row order: get-account-list serves this order (reversed)
+-- directly, and an unordered DISTINCT differs between SQLite and PostgreSQL
+-- query plans.
 SELECT DISTINCT a.id, a.currency_id, a.user_id, a.name, a.type, a.icon, a.is_deleted, a.created_at, a.updated_at
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
-WHERE a.is_deleted = 0 AND (a.user_id = ? OR aa.user_id = ?)
+WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
 ORDER BY a.created_at, a.id;
 
 -- name: CountAvailableAccounts :one
@@ -26,7 +28,7 @@ SELECT COUNT(*) FROM (
     SELECT DISTINCT a.id
     FROM accounts a
     LEFT JOIN accounts_access aa ON aa.account_id = a.id
-    WHERE a.is_deleted = 0 AND (a.user_id = ? OR aa.user_id = ?)
+    WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
 ) t;
 
 -- name: UpsertAccount :exec

@@ -5,9 +5,8 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import '@/app/i18n'
 import './index.css'
 import { createRouter } from '@/app/routes'
-import { createAppQueryClient, createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist'
-
-const queryClient = createAppQueryClient()
+import { createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist'
+import { queryClient } from '@/app/queryClient'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -18,6 +18,7 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	domcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
@@ -109,12 +110,13 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 		server.NewBudgetAccountLookup(accountRepo),
 		server.NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), server.NewBudgetTagMetadataLookup(tagRepo), server.NewBudgetPayeeMetadataLookup(payeeRepo)),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		txm, clk,
 	)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	handlers := handlerbudget.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
+	handlers := handlerbudget.NewHandlers(svc)
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db}

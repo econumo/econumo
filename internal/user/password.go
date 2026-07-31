@@ -4,9 +4,11 @@ package user
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"io"
+	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -15,17 +17,32 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// passwordCodeBytes is the random byte count for a reset code; hex-encoded it
-// yields the frozen 12-character code length.
-const passwordCodeBytes = 6
+// passwordCodeDigits is the length of an emailed reset/verification code.
+// Six digits is short enough to retype from a phone; the brute-force margin
+// comes from the per-username attempt caps and the code's short TTL, not from
+// the size of the code space.
+const passwordCodeDigits = 6
 
-// generatePasswordCode returns a fresh 12-char hex reset code.
+// generatePasswordCode returns a fresh 6-digit numeric code, zero-padded so
+// every code is exactly passwordCodeDigits long.
 func generatePasswordCode() (string, error) {
-	b := make([]byte, passwordCodeBytes)
-	if _, err := io.ReadFull(rand.Reader, b); err != nil {
+	max := big.NewInt(1)
+	for i := 0; i < passwordCodeDigits; i++ {
+		max.Mul(max, big.NewInt(10))
+	}
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(b), nil
+	return fmt.Sprintf("%0*d", passwordCodeDigits, n), nil
+}
+
+// HashResetCode maps a reset code to its at-rest storage/lookup key. The
+// plaintext code is emailed to the user; only this sha256 hex is persisted, so a
+// database disclosure does not hand out usable reset codes.
+func HashResetCode(code string) string {
+	sum := sha256.Sum256([]byte(code))
+	return hex.EncodeToString(sum[:])
 }
 
 func isNotFound(err error) bool {
@@ -68,7 +85,7 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 	}
 	s.failAttempt(RateScopeRemind, lowered) // every remind sends an email, so every request counts
 
-	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
+	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			return &model.RemindPasswordResult{}, nil // anti-enumeration
@@ -80,7 +97,7 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 	if err != nil {
 		return nil, err
 	}
-	pr := model.NewPasswordRequest(vo.NewId(), u.ID, code, s.clock.Now())
+	pr := model.NewPasswordRequest(vo.NewId(), u.ID, HashResetCode(code), s.clock.Now())
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
@@ -107,7 +124,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	if err := s.allowAttempt(RateScopeReset, lowered); err != nil {
 		return nil, err
 	}
-	u, err := s.repo.GetByIdentifier(ctx, s.encode.Hash(lowered))
+	u, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeReset, lowered)
@@ -116,7 +133,7 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		return nil, err
 	}
 
-	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, strings.TrimSpace(req.Code))
+	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, HashResetCode(strings.TrimSpace(req.Code)))
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeReset, lowered)
@@ -135,6 +152,9 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
+		// Completing a reset proves mailbox ownership, so it also satisfies the
+		// email-verification gate.
+		u.MarkEmailVerified(s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}

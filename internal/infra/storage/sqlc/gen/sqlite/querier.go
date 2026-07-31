@@ -47,10 +47,20 @@ type Querier interface {
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
+	DeleteRecurringTransaction(ctx context.Context, id string) error
 	// Transactions referencing this tag have tag_id set to NULL via the ON DELETE
 	// SET NULL FK, matching the PHP delete behaviour.
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// Pending change-email requests (users_email_change_requests). The request is
+	// replaced with a fresh one, read back by user, and deleted once confirmed.
+	// Expiry is compared in the app layer (Go time), not in SQL.
+	DeleteUserEmailChangeRequestsByUser(ctx context.Context, userID string) error
+	// Login email-verification codes (users_email_verifications). The login flow
+	// replaces the user's old code with a fresh one, reads it back by user, and
+	// deletes it once verified. Expiry is compared in the app layer (Go time),
+	// not in SQL, to avoid engine date-format differences.
+	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
 	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). The reset flow:
 	// remind-password deletes the user's old codes and inserts a fresh one;
@@ -58,8 +68,12 @@ type Querier interface {
 	// it. Expiry is compared in the app layer (Go time.Time), not in SQL, to avoid
 	// engine date-format differences.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
-	ExistsUserByIdentifier(ctx context.Context, identifier string) (int64, error)
-	GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error)
+	ExistsUserByEmail(ctx context.Context, lower string) (int64, error)
+	// Joins users for access_level/access_until so per-request auth can report
+	// the caller's effective access level in the same round trip. This does NOT
+	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
+	// lapsed user must still authenticate, just read-only.
+	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
 	// to connected users; users_connections is the symmetric user link. Roles are
@@ -158,6 +172,10 @@ type Querier interface {
 	// form dropped any currency whose newest rate predates the newest OXR batch,
 	// which breaks backdated custom rates.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]CurrenciesRate, error)
+	// Newest stored rate date, for the in-process rate updater's freshness check.
+	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
+	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
+	GetLatestRateDate(ctx context.Context) (time.Time, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module. The read-side query lives in
 	// payee_read.sql to keep the CQRS boundary visible (matching tags.sql vs
@@ -173,6 +191,7 @@ type Querier interface {
 	// granted via accounts_access), ordered by position. The user id is repeated
 	// positionally -> two-field Params struct.
 	GetPayeeListView(ctx context.Context, arg GetPayeeListViewParams) ([]Payee, error)
+	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
 	// Write-side queries for the tag module. The read-side query lives in
 	// tag_read.sql to keep the CQRS boundary visible (matching categories.sql vs
 	// category_read.sql). The tags table has no type/icon columns (unlike
@@ -192,8 +211,8 @@ type Querier interface {
 	// category/payee/tag (non-transfers). Listing filters by account id sets the
 	// app layer computes (excluding deleted/hidden-folder accounts).
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
+	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	// Read-model queries for the currency module (CQRS read side). Both currency
 	// endpoints are pure reads, so the whole module lives on the read side; there is
 	// no write aggregate. Kept separate from currencies.sql (the user-module lookup)
@@ -203,6 +222,9 @@ type Querier interface {
 	// accounts or budgets shared to the user (budget currency and element
 	// currencies). Codes can repeat across owners, so id breaks ties.
 	GetUserCurrencyListView(ctx context.Context, arg GetUserCurrencyListViewParams) ([]GetUserCurrencyListViewRow, error)
+	GetUserEmailChangeRequestByUser(ctx context.Context, userID string) (UsersEmailChangeRequest, error)
+	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
+	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
@@ -214,11 +236,14 @@ type Querier interface {
 	// the secondary key makes SQLite and PostgreSQL agree byte-for-byte.
 	GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error)
 	GetUserPasswordRequestByUserAndCode(ctx context.Context, arg GetUserPasswordRequestByUserAndCodeParams) (UsersPasswordRequest, error)
+	GetUserTimezone(ctx context.Context, id string) (string, error)
 	// Read-model queries for the user module (CQRS read side). These are tailored
 	// to the response shape and bypass the domain aggregate. They live separately
 	// from the write queries (users.sql / users_options.sql) to keep the read and
 	// write concerns visibly distinct.
-	// The user's display fields for get-user-data / the login response user object.
+	// The user's display fields for get-user-data / the login response user
+	// object, plus the raw access_level/access_until columns (the service
+	// collapses them against the clock before putting them on the wire).
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	GlobalCurrencyCodeExists(ctx context.Context, code string) (int64, error)
 	// Access-token queries (access_tokens): login sessions + personal access
@@ -249,6 +274,8 @@ type Querier interface {
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
+	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
+	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
@@ -259,12 +286,14 @@ type Querier interface {
 	// row; the repo formats it to PHP's precision-14 string.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
-	// Available accounts: own OR shared via accounts_access, not deleted. Mirrors
-	// AccountRepository::getAvailableForUserId (LEFT JOIN accounts_access, own OR
-	// granted). DISTINCT collapses duplicate rows when multiple grants exist.
-	// ORDER BY pins creation order (id tie-break) so both engines return the same
-	// row order: get-account-list serves this order (reversed) directly, and an
-	// unordered DISTINCT differs between SQLite and PostgreSQL query plans.
+	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted.
+	// A pending (not yet accepted) grant confers no access here -- it only rides
+	// get-account-list as an inert entry appended separately (see
+	// Service.buildAccountList). DISTINCT collapses duplicate rows when multiple
+	// grants exist. ORDER BY pins creation order (id tie-break) so both engines
+	// return the same row order: get-account-list serves this order (reversed)
+	// directly, and an unordered DISTINCT differs between SQLite and PostgreSQL
+	// query plans.
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
@@ -317,13 +346,17 @@ type Querier interface {
 	// The owner's payees ordered by position; used by order-payee-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
+	// Pending grants TO this user (invites awaiting acceptance), excluding grants
+	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
+	// engines return identical row order.
+	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's tags ordered by position; used by order-tag-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
-	// Transactions on an account (as source or recipient), newest first. Mirrors
-	// TransactionRepository::findByAccountId (orderBy spentAt DESC).
+	// Transactions on an account (as source or recipient), newest first; id is the
+	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
@@ -339,6 +372,7 @@ type Querier interface {
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
+	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error
@@ -361,7 +395,11 @@ type Querier interface {
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
+	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error
+	// recurring_id is intentionally absent from the DO UPDATE SET list below: it
+	// records where the row came from, so editing a posted instance must not
+	// overwrite its provenance.
 	UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error
 	UpsertUserOption(ctx context.Context, arg UpsertUserOptionParams) error

@@ -9,6 +9,7 @@ export const RouterPage = {
   SETTINGS: '/settings',
   SETTINGS_PROFILE: '/settings/profile',
   SETTINGS_CHANGE_PASSWORD: '/settings/profile/change-password',
+  SETTINGS_CHANGE_EMAIL: '/settings/profile/change-email',
   SETTINGS_SESSIONS: '/settings/profile/sessions',
   SETTINGS_TOKENS: '/settings/profile/tokens',
   SETTINGS_ACCOUNTS: '/settings/accounts',
@@ -18,4 +19,5 @@ export const RouterPage = {
   SETTINGS_CURRENCIES: '/settings/currencies',
   SETTINGS_CONNECTIONS: '/settings/connections',
   SETTINGS_BUDGETS: '/settings/budgets',
+  SETTINGS_RECURRING: '/settings/recurring',
 } as const

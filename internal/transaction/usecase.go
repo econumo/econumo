@@ -74,6 +74,82 @@ func notAvailableCode(msg string) string {
 	return errs.CodeTransactionAccountNotAvailable
 }
 
+// checkReferences authorizes the non-source references a create/update carries
+// (the source account is already checked by the caller). Without this a valid
+// foreign UUID would be enough to touch another user's data:
+//   - a transfer's recipient account needs the SAME write access as the source,
+//     else a caller could inject a leg into a stranger's account (its balance is
+//     SUM(amount_recipient) over that account id);
+//   - an optional category/payee/tag must belong to the CALLER or to the OWNER
+//     of the account the transaction is on. On a shared account the SPA
+//     categorizes with the account owner's entities (its picker filters to the
+//     account owner), so a caller-only check would reject a legitimate
+//     co-sharer's transaction; a truly foreign (unconnected) id is still
+//     rejected.
+func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st model.NewState) error {
+	if st.AccountRecipID != nil {
+		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
+			return err
+		}
+	}
+	// The account owner (== userID for an own account) whose entities are also
+	// acceptable references. Write access to st.AccountID is already verified by
+	// the caller, so the lookup resolves.
+	ownerID, err := s.accounts.AccountOwner(ctx, st.AccountID)
+	if err != nil {
+		return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
+	}
+	if st.CategoryID != nil {
+		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
+			return err
+		}
+	}
+	if st.PayeeID != nil {
+		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.PayeeID, s.importer.PayeesByOwner); err != nil {
+			return err
+		}
+	}
+	if st.TagID != nil {
+		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.TagID, s.importer.TagsByOwner); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// requireAvailableEntity confirms id belongs to the caller or to the account
+// owner (each list is owner-scoped, so membership IS the ownership check). A
+// foreign or unknown id yields the frozen item-not-available validation error.
+func (s *Service) requireAvailableEntity(ctx context.Context, callerID, accountOwnerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) error {
+	if ok, err := ownsEntity(ctx, callerID, id, list); err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
+	if !accountOwnerID.Equal(callerID) {
+		if ok, err := ownsEntity(ctx, accountOwnerID, id, list); err != nil {
+			return err
+		} else if ok {
+			return nil
+		}
+	}
+	return &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
+}
+
+// ownsEntity reports whether id is among ownerID's owner-scoped entities.
+func ownsEntity(ctx context.Context, ownerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) (bool, error) {
+	items, err := list(ctx, ownerID)
+	if err != nil {
+		return false, err
+	}
+	for _, it := range items {
+		if it.ID == id.String() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // checkViewAccess verifies the user may VIEW the account's transactions: owner
 // OR any shared access, else AccessDenied (HTTP 403). The visible-account set
 // already computes own + shared, so membership in it is exactly the access test.
@@ -126,6 +202,11 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult) mod
 		s := v.String()
 		tagID = &s
 	}
+	var recurringID *string
+	if v := t.RecurringID; v != nil {
+		s := v.String()
+		recurringID = &s
+	}
 	return model.TransactionResult{
 		Id:                 t.ID.String(),
 		Author:             author,
@@ -139,6 +220,7 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult) mod
 		PayeeId:            payeeID,
 		TagId:              tagID,
 		Date:               t.SpentAt.Format(datetime.Layout),
+		RecurringId:        recurringID,
 	}
 }
 
@@ -157,7 +239,7 @@ func (s *Service) accountListEmbed(ctx context.Context, userID vo.Id) ([]model.A
 // buildState converts the request's primitive fields into a domain
 // model.NewState, applying the type-dependent field rules: a transfer keeps
 // recipient account+amount and drops category/payee/tag; a non-transfer
-// requires a category and keeps payee/tag, dropping recipient. amount is
+// keeps an optional category/payee/tag, dropping recipient. amount is
 // normalized.
 func buildState(
 	id, userID vo.Id, typ model.TransactionType, accountID vo.Id, amount string,
@@ -182,16 +264,17 @@ func buildState(
 			st.AmountRecipient = &ar
 		}
 	} else {
-		// Non-transfer requires a category.
-		if categoryID == nil || *categoryID == "" {
-			return st, errs.NewValidation("Validation failed",
-				errs.FieldError{Key: "categoryId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		// A non-transfer may have no category. Treat an empty string as absent:
+		// the removed blank guard used to reject it before it could reach the
+		// reference lookup, so passing "" through would turn into a spurious
+		// "category not found".
+		if categoryID != nil && *categoryID != "" {
+			cid, err := vo.ParseId(*categoryID)
+			if err != nil {
+				return st, err
+			}
+			st.CategoryID = &cid
 		}
-		cid, err := vo.ParseId(*categoryID)
-		if err != nil {
-			return st, err
-		}
-		st.CategoryID = &cid
 		if payeeID != nil && *payeeID != "" {
 			pid, err := vo.ParseId(*payeeID)
 			if err != nil {

@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/i18n"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -24,19 +25,25 @@ import (
 // Service is the user use-case orchestrator. It owns the tx boundary and builds
 // the response-shaped *Result structs directly.
 type Service struct {
-	repo              Repository
-	tx                port.TxRunner
-	encode            *auth.EncodeService
-	hasher            *auth.PasswordHasher
-	tokens            AccessTokens
-	currency          CurrencyLookup
-	budgets           BudgetExistence
-	passwordRequests  PasswordRequests
-	mailer            *mailer.ResetSender
-	avatars           AvatarPicker
-	clock             port.Clock
-	limiter           AttemptLimiter
-	allowRegistration bool
+	repo                Repository
+	tx                  port.TxRunner
+	encode              *auth.EncodeService
+	hasher              *auth.PasswordHasher
+	tokens              AccessTokens
+	currency            CurrencyLookup
+	budgets             BudgetAccess
+	passwordRequests    PasswordRequests
+	mailer              *mailer.ResetSender
+	emailVerifications  EmailVerifications
+	verifyMailer        *mailer.VerifySender
+	emailChangeRequests EmailChangeRequests
+	changeMailer        *mailer.ChangeEmailSender
+	avatars             AvatarPicker
+	clock               port.Clock
+	limiter             AttemptLimiter
+	allowRegistration   bool
+	trialDays           int
+	emailVerification   bool
 }
 
 func NewService(
@@ -46,28 +53,40 @@ func NewService(
 	hasher *auth.PasswordHasher,
 	tokens AccessTokens,
 	currency CurrencyLookup,
-	budgets BudgetExistence,
+	budgets BudgetAccess,
 	passwordRequests PasswordRequests,
 	mailer *mailer.ResetSender,
+	emailVerifications EmailVerifications,
+	verifyMailer *mailer.VerifySender,
+	emailChangeRequests EmailChangeRequests,
+	changeMailer *mailer.ChangeEmailSender,
 	avatars AvatarPicker,
 	clock port.Clock,
 	limiter AttemptLimiter,
 	allowRegistration bool,
+	trialDays int,
+	emailVerification bool,
 ) *Service {
 	return &Service{
-		repo:              repo,
-		tx:                tx,
-		encode:            encode,
-		hasher:            hasher,
-		tokens:            tokens,
-		currency:          currency,
-		budgets:           budgets,
-		passwordRequests:  passwordRequests,
-		mailer:            mailer,
-		avatars:           avatars,
-		clock:             clock,
-		limiter:           limiter,
-		allowRegistration: allowRegistration,
+		repo:                repo,
+		tx:                  tx,
+		encode:              encode,
+		hasher:              hasher,
+		tokens:              tokens,
+		currency:            currency,
+		budgets:             budgets,
+		passwordRequests:    passwordRequests,
+		mailer:              mailer,
+		emailVerifications:  emailVerifications,
+		verifyMailer:        verifyMailer,
+		emailChangeRequests: emailChangeRequests,
+		changeMailer:        changeMailer,
+		avatars:             avatars,
+		clock:               clock,
+		limiter:             limiter,
+		allowRegistration:   allowRegistration,
+		trialDays:           trialDays,
+		emailVerification:   emailVerification,
 	}
 }
 
@@ -154,6 +173,8 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		Options:      options,
 		Currency:     code,
 		ReportPeriod: u.ReportPeriod(),
+		AccessLevel:  string(u.EffectiveAccessLevel(s.clock.Now())),
+		AccessUntil:  datetime.FormatOrEmpty(u.AccessUntil),
 	}, nil
 }
 

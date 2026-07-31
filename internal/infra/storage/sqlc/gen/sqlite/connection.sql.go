@@ -76,7 +76,7 @@ func (q *Queries) DeleteConnectionLink(ctx context.Context, arg DeleteConnection
 
 const getAccountAccess = `-- name: GetAccountAccess :one
 
-SELECT account_id, user_id, role, created_at, updated_at
+SELECT account_id, user_id, role, created_at, updated_at, is_accepted
 FROM accounts_access
 WHERE account_id = ? AND user_id = ?
 `
@@ -98,6 +98,7 @@ func (q *Queries) GetAccountAccess(ctx context.Context, arg GetAccountAccessPara
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsAccepted,
 	)
 	return i, err
 }
@@ -154,7 +155,7 @@ func (q *Queries) InsertConnectionLink(ctx context.Context, arg InsertConnection
 }
 
 const listAccountAccessByAccount = `-- name: ListAccountAccessByAccount :many
-SELECT account_id, user_id, role, created_at, updated_at
+SELECT account_id, user_id, role, created_at, updated_at, is_accepted
 FROM accounts_access
 WHERE account_id = ?
 `
@@ -175,6 +176,7 @@ func (q *Queries) ListAccountAccessByAccount(ctx context.Context, accountID stri
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsAccepted,
 		); err != nil {
 			return nil, err
 		}
@@ -219,7 +221,7 @@ func (q *Queries) ListConnectedUserIDs(ctx context.Context, userID string) ([]st
 }
 
 const listIssuedAccountAccess = `-- name: ListIssuedAccountAccess :many
-SELECT aa.account_id, aa.user_id, aa.role, aa.created_at, aa.updated_at
+SELECT aa.account_id, aa.user_id, aa.role, aa.created_at, aa.updated_at, aa.is_accepted
 FROM accounts_access aa
 JOIN accounts a ON a.id = aa.account_id
 WHERE a.user_id = ?
@@ -241,6 +243,49 @@ func (q *Queries) ListIssuedAccountAccess(ctx context.Context, userID string) ([
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsAccepted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPendingReceivedAccountAccess = `-- name: ListPendingReceivedAccountAccess :many
+SELECT accounts_access.account_id, accounts_access.user_id, accounts_access.role,
+       accounts_access.created_at, accounts_access.updated_at, accounts_access.is_accepted
+FROM accounts_access
+JOIN accounts a ON a.id = accounts_access.account_id AND a.is_deleted = 0
+WHERE accounts_access.user_id = ? AND accounts_access.is_accepted = 0
+ORDER BY accounts_access.created_at, accounts_access.account_id
+`
+
+// Pending grants TO this user (invites awaiting acceptance), excluding grants
+// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
+// engines return identical row order.
+func (q *Queries) ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error) {
+	rows, err := q.db.QueryContext(ctx, listPendingReceivedAccountAccess, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AccountsAccess{}
+	for rows.Next() {
+		var i AccountsAccess
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.UserID,
+			&i.Role,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsAccepted,
 		); err != nil {
 			return nil, err
 		}
@@ -256,7 +301,7 @@ func (q *Queries) ListIssuedAccountAccess(ctx context.Context, userID string) ([
 }
 
 const listReceivedAccountAccess = `-- name: ListReceivedAccountAccess :many
-SELECT account_id, user_id, role, created_at, updated_at
+SELECT account_id, user_id, role, created_at, updated_at, is_accepted
 FROM accounts_access
 WHERE user_id = ?
 `
@@ -277,6 +322,7 @@ func (q *Queries) ListReceivedAccountAccess(ctx context.Context, userID string) 
 			&i.Role,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsAccepted,
 		); err != nil {
 			return nil, err
 		}
@@ -292,19 +338,21 @@ func (q *Queries) ListReceivedAccountAccess(ctx context.Context, userID string) 
 }
 
 const upsertAccountAccess = `-- name: UpsertAccountAccess :exec
-INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT (account_id, user_id) DO UPDATE SET
-    role       = excluded.role,
-    updated_at = excluded.updated_at
+    role        = excluded.role,
+    is_accepted = excluded.is_accepted,
+    updated_at  = excluded.updated_at
 `
 
 type UpsertAccountAccessParams struct {
-	AccountID string
-	UserID    string
-	Role      int16
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	AccountID  string
+	UserID     string
+	Role       int16
+	IsAccepted bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 func (q *Queries) UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error {
@@ -312,6 +360,7 @@ func (q *Queries) UpsertAccountAccess(ctx context.Context, arg UpsertAccountAcce
 		arg.AccountID,
 		arg.UserID,
 		arg.Role,
+		arg.IsAccepted,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

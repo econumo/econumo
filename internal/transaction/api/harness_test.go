@@ -88,8 +88,10 @@ func newHarness(t *testing.T) *harness {
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
 		accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm),
+		accountrepo.NewAccessRepo("sqlite", txm),
 		server.NewAccountCurrencyLookup(curLookup), server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
-		nil, nil, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
+		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
+		txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	txRepo := transactionrepo.NewRepo("sqlite", txm)
 	catRepo := categoryrepo.NewRepo("sqlite", txm)
@@ -116,8 +118,8 @@ func newHarness(t *testing.T) *harness {
 		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	handlers := handlertransaction.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlertransaction.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
+	handlers := handlertransaction.NewHandlers(svc)
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlertransaction.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db}

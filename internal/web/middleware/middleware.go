@@ -50,6 +50,31 @@ const (
 // requestIDHeader is the response header carrying the generated id.
 const requestIDHeader = "X-Request-Id"
 
+// exposedHeaders are the response headers a cross-origin caller may READ.
+// Browsers hide every other header from JS on a cross-origin response, so a
+// separately-hosted SPA would silently see no Retry-After and fall back to a
+// guessed cooldown. Retry-After is meaningful on 200 (the resend cooldown),
+// 403 (the email-verification handshake) and 429 (the rate-limit cap).
+const exposedHeaders = requestIDHeader + ", Retry-After"
+
+// SecurityHeaders sets conservative browser-hardening headers on every response
+// (API and the served SPA alike): nosniff, deny framing (bearer tokens live in
+// localStorage, so clickjacking matters), and a tight referrer policy. It sets
+// no resource-restricting CSP — that needs per-deployment origin allowlisting —
+// but `frame-ancestors 'none'` closes the framing hole without touching resource
+// loads. HSTS is intentionally omitted: TLS is terminated by the deployment's
+// proxy, and hardcoding it would break plain-HTTP LAN installs.
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.Set("Content-Security-Policy", "frame-ancestors 'none'")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // RequestID generates a random hex id for each request, sets it on the
 // X-Request-Id response header, and stashes it in the request context.
 func RequestID(next http.Handler) http.Handler {
@@ -80,39 +105,31 @@ func newRequestID() string {
 	return uuid.NewString()
 }
 
-// Recover catches panics from downstream handlers, logs them with the request
-// id, and writes the frozen 500 exception envelope. The recovered value and
-// stack trace are exposed in the response body only when dev is true.
-func Recover(dev bool) Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			defer func() {
-				if rec := recover(); rec != nil {
-					stack := debug.Stack()
-					slog.Error("panic recovered",
-						"request_id", RequestIDFromCtx(r.Context()),
-						"method", r.Method,
-						"path", r.URL.Path,
-						"panic", rec,
-						"stack", string(stack),
-					)
-					// Surface the panic to the access log's operation line too
-					// (the detailed stack stays in the dedicated record above).
-					if lw, ok := w.(*logResponseWriter); ok {
-						lw.SetError(fmt.Errorf("panic: %v", rec))
-					}
-					// stackTrace payload is only surfaced in dev (Exception
-					// honors the dev flag internally).
-					var trace any
-					if dev {
-						trace = string(stack)
-					}
-					httpx.Exception(w, "Internal Server Error", "panic", trace, dev)
+// Recover catches panics from downstream handlers, logs them (with the request
+// id and full stack trace), and writes the frozen 500 exception envelope. The
+// response body never carries the recovered value or stack — logs only.
+func Recover(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				stack := debug.Stack()
+				slog.Error("panic recovered",
+					"request_id", RequestIDFromCtx(r.Context()),
+					"method", r.Method,
+					"path", r.URL.Path,
+					"panic", rec,
+					"stack", string(stack),
+				)
+				// Surface the panic to the access log's operation line too
+				// (the detailed stack stays in the dedicated record above).
+				if lw, ok := w.(*logResponseWriter); ok {
+					lw.SetError(fmt.Errorf("panic: %v", rec))
 				}
-			}()
-			next.ServeHTTP(w, r)
-		})
-	}
+				httpx.Exception(w, "Internal Server Error", "panic")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 // CORS controls cross-origin access via an allowlist (ECONUMO_CORS_ALLOW_ORIGIN). The
@@ -156,7 +173,7 @@ func CORS(origins []string) Middleware {
 			if h.Get("Access-Control-Allow-Origin") != "" {
 				h.Set("Access-Control-Allow-Methods", "OPTIONS, POST, GET")
 				h.Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Timezone, X-Request-Id")
-				h.Set("Access-Control-Expose-Headers", requestIDHeader)
+				h.Set("Access-Control-Expose-Headers", exposedHeaders)
 				h.Set("Access-Control-Max-Age", "3600")
 			}
 			if r.Method == http.MethodOptions {
@@ -173,13 +190,19 @@ func CORS(origins []string) Middleware {
 // invalid header the location defaults to UTC.
 func Timezone(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		loc := time.UTC
+		explicit := false
 		if tz := r.Header.Get("X-Timezone"); tz != "" {
 			if l, err := time.LoadLocation(tz); err == nil {
-				loc = l
+				loc, explicit = l, true
 			}
 		}
-		ctx := reqctx.WithLocation(r.Context(), loc)
+		if explicit {
+			ctx = reqctx.WithExplicitLocation(ctx, loc)
+		} else {
+			ctx = reqctx.WithLocation(ctx, loc)
+		}
 		// Record the resolved timezone as a log dimension. Timezone runs inside
 		// AccessLog, so the pointer accumulator carries it back out to both lines.
 		reqctx.AddLogAttr(ctx, "timezone", loc.String())

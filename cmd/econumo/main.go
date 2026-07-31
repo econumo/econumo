@@ -20,7 +20,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/econumo/econumo/internal/cli"
@@ -29,6 +31,8 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/system"
+	"github.com/econumo/econumo/internal/version"
 
 	"github.com/joho/godotenv"
 
@@ -74,6 +78,10 @@ func main() {
 		// `-healthcheck` is kept as an alias for any older healthcheck config.
 		os.Exit(healthcheck())
 
+	case "version", "-version", "--version":
+		fmt.Println("econumo " + version.Version)
+		os.Exit(0)
+
 	case "help", "-h", "--help":
 		printUsage(os.Stdout)
 		os.Exit(0)
@@ -96,6 +104,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Server:")
 	fmt.Fprintf(w, "  %-40s %s\n", "serve", "Start the HTTP API + SPA server")
 	fmt.Fprintf(w, "  %-40s %s\n", "healthcheck", "Probe a running server's health endpoint (exit 0/1)")
+	fmt.Fprintf(w, "  %-40s %s\n", "version", "Print the binary version")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Management commands:")
 	cli.WriteCommandList(w)
@@ -152,9 +161,8 @@ func run(serveArgs []string) error {
 	// command line (flags win); -q silences. From here on every log honors it.
 	logging.Setup(cfg.LogLevel, serveArgs)
 	slog.Info("configuration loaded",
-		"debug", cfg.Debug,
 		"database_driver", cfg.DatabaseDriver,
-		"spa_dir", cfg.SPADir,
+		"version", version.Version,
 	)
 	// The API ignores ECONUMO_DATA_SALT (it always runs salt-free). If the salt is
 	// still set, a database written with it has unreadable emails / mismatched
@@ -162,6 +170,13 @@ func run(serveArgs []string) error {
 	if cfg.DataSalt != "" {
 		slog.Warn("ECONUMO_DATA_SALT is set but ignored by the API; existing salted users " +
 			"cannot authenticate until you run `econumo data:remove-salt`, then unset ECONUMO_DATA_SALT")
+	}
+
+	// Verification emails through the console transport only reach stdout, so
+	// enabling the gate without a real mailer would strand new users.
+	if cfg.EmailVerification && cfg.MailProvider == "console" {
+		slog.Warn("ECONUMO_EMAIL_VERIFICATION is enabled but MAILER_DSN is the console transport; " +
+			"verification codes will only be printed to the server log")
 	}
 
 	// Server-only requirement (the CLI path validated via config.Load does not
@@ -203,19 +218,74 @@ func run(serveArgs []string) error {
 	}
 	slog.Info("migrations applied", "backend", be.Name())
 
-	handler := server.BuildAPI(cfg, db, server.Seams{})
+	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
+	handler, adminHandler, rateUpdater := server.Build(cfg, db, server.Seams{Updates: updates})
+	updates.StartPolling(ctx)
+	rateUpdater.StartPolling(ctx)
 
-	srv := &http.Server{
-		Addr:              addr(cfg.Port),
-		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
+	// newServer applies the shared timeouts: a slow or stalled request body must
+	// not hold a connection/goroutine indefinitely, and WriteTimeout also bounds
+	// slow-client response reads.
+	newServer := func(port string, h http.Handler) *http.Server {
+		return &http.Server{
+			Addr:              addr(port),
+			Handler:           h,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
 	}
 
-	slog.Info("listening", "addr", srv.Addr)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	servers := []*http.Server{newServer(cfg.Port, handler)}
+	// The admin listener opens only when both variables are configured, so a
+	// self-hosted instance never serves those routes at all. config.Load has
+	// already rejected a half-configured pair.
+	if cfg.AdminPort != "" && cfg.AdminToken != "" {
+		adminSrv := newServer(cfg.AdminPort, adminHandler)
+		adminSrv.Addr = adminAddr(cfg.AdminPort)
+		servers = append(servers, adminSrv)
+		slog.Info("admin listener enabled", "addr", adminSrv.Addr)
 	}
-	return nil
+
+	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, len(servers))
+	for _, s := range servers {
+		go func(s *http.Server) {
+			slog.Info("listening", "addr", s.Addr)
+			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- err
+				return
+			}
+			errCh <- nil
+		}(s)
+	}
+
+	var runErr error
+	select {
+	case <-sigCtx.Done():
+		slog.Info("shutting down")
+		// A listener failure that raced the signal still decides the exit code:
+		// without this drain, select picking the signal branch would swallow a
+		// buffered bind error and report a clean exit for a server that never
+		// came up.
+		select {
+		case runErr = <-errCh:
+		default:
+		}
+	case runErr = <-errCh:
+		// One listener failing leaves a half-serving binary, which is worse than
+		// exiting: bring the other down too so the supervisor restarts cleanly.
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for _, s := range servers {
+		_ = s.Shutdown(shutdownCtx)
+	}
+	return runErr
 }
 
 // addr normalizes the configured port (e.g. "8080" or ":8080") into a listen
@@ -226,6 +296,19 @@ func addr(port string) string {
 		return port
 	}
 	return ":" + port
+}
+
+// adminAddr additionally accepts a host-qualified value ("127.0.0.1:9090") so
+// the private listener can be pinned to loopback or an internal interface on
+// bare-host deployments; a bare port keeps the all-interfaces default that
+// container deployments rely on. PORT deliberately does not get this: the
+// healthcheck subcommand derives its probe URL from PORT and assumes it is a
+// bare port.
+func adminAddr(v string) string {
+	if strings.Contains(v, ":") && !strings.HasPrefix(v, ":") {
+		return v
+	}
+	return addr(v)
 }
 
 // toMigrateMigrations adapts the backend's []backend.Migration (Version/Up) to

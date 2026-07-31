@@ -1,4 +1,4 @@
-# Econumo backend: one static Go binary serving the JSON API + SPA on a single port.
+# Econumo backend: one static Go binary serving the JSON API + SPA on a single port, SPA embedded via go:embed.
 # Build context is the repo root:
 #   docker build -f deployment/docker/Dockerfile -t ghcr.io/econumo/econumo:latest .
 # DATABASE_URL comes from the environment (.env), not baked in. Mount a volume
@@ -36,20 +36,26 @@ COPY internal/ ./internal/
 # internal/infra/i18n imports github.com/econumo/econumo/locales, which lives
 # at the module root alongside cmd/ and internal/.
 COPY locales/ ./locales/
+# The built SPA is embedded into the binary (web/embed.go, go:embed): the
+# image and the downloadable release binary share one code path, and the
+# runtime stage no longer carries a separate /app/web.
+COPY web/embed.go ./web/embed.go
+COPY --from=frontend /build/web/dist ./web/dist
 ARG TARGETOS TARGETARCH
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /app/econumo ./cmd/econumo
+ARG ECONUMO_VERSION=""
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath \
+    -ldflags="-s -w -X github.com/econumo/econumo/internal/version.Version=${ECONUMO_VERSION:-dev}" \
+    -o /app/econumo ./cmd/econumo
 # Pre-create runtime dirs owned by the non-root user (distroless can't mkdir on boot).
 RUN mkdir -p /out/var/db
 
 # --- 3. Runtime (distroless: no shell, minimal surface) ---
 FROM gcr.io/distroless/static-debian12 AS prod
 COPY --from=gobuild /app/econumo /app/econumo
-COPY --from=frontend /build/web/dist /app/web
 # Runtime data dir (sqlite db); mount a volume here to persist.
 COPY --from=gobuild --chown=nonroot:nonroot /out/var /app/var
 
-ENV ECONUMO_WEB_DIST=/app/web \
-    PORT=80
+ENV PORT=80
 
 EXPOSE 80
 WORKDIR /app

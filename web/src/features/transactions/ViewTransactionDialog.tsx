@@ -1,5 +1,6 @@
-import { ChevronDown, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Repeat, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { RecurringSchedule } from '@/api/dto/recurring'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CardField } from '@/components/CardField'
@@ -22,19 +23,44 @@ interface ViewTransactionDialogProps {
   dismissible?: boolean
   /** amount currency when the account isn't visible to the caller (budget rows) */
   fallbackCurrency?: CurrencyLike | null
+  /** callback to make a recurring transaction from this one */
+  onMakeRecurring?: () => void
+  /** the schedule to show in the recurring row. For a posted transaction this is
+      the template it came from, and the row is omitted when that template can't
+      be resolved (deleted, or on an account the caller can't see) rather than
+      rendering a dead end. */
+  recurringSchedule?: RecurringSchedule
+  /** opens the editor for the schedule above (the recurring row's click) */
+  onOpenRecurring?: () => void
+  /** replaces the whole action row. The recurring dialog shows the same body with
+      its own actions (hide/post/skip), so the layout lives in one component. */
+  footer?: React.ReactNode
 }
 
-export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency }: ViewTransactionDialogProps) {
+/** A transaction posted from a template already has a schedule behind it, so
+    offering "make recurring" on it invites accidental duplicate templates. The
+    control is hidden rather than disabled: a disabled icon button explains
+    nothing on touch, where there is no hover tooltip. */
+function canMakeRecurring(tx: ViewTransaction, onMakeRecurring?: () => void): boolean {
+  return onMakeRecurring !== undefined && !tx.recurringId
+}
+
+export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring, recurringSchedule, onOpenRecurring, footer }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
+  const showMakeRecurring = canMakeRecurring(tx, onMakeRecurring)
+  // Indicator only, independent of whether the template itself resolved: the
+  // transaction's own recurringId is enough to state that it came from a
+  // schedule, even when the template is gone (so the row below is hidden).
+  const isPostedFromRecurring = Boolean(tx.recurringId)
   const isTransfer = tx.type === 'transfer'
   const typeLabel = t(`accounts.page.preview_transaction_modal.type.${tx.type}`)
 
   const heroIcon = isTransfer ? 'sync_alt' : tx.category?.icon || 'question_mark'
-  const heroName = isTransfer ? typeLabel : (tx.category?.name ?? typeLabel)
+  const heroName = isTransfer ? typeLabel : (tx.category?.name ?? t('common.uncategorized'))
   const sign = tx.type === 'expense' ? '-' : tx.type === 'income' ? '+' : ''
   const amountClass = tx.type === 'expense' ? 'text-expense' : tx.type === 'income' ? 'text-income' : ''
 
-  const accountRow = (account: ViewTransaction['account'], amount: number | null) => (
+  const accountRow = (account: ViewTransaction['account'], amount: string | null) => (
     <span className="flex items-center gap-2 text-sm">
       <EntityIcon name={account?.icon} className="text-base text-muted-foreground" />
       <span className="flex-1 truncate">{account?.name ?? t('accounts.account.name_hidden')}</span>
@@ -93,7 +119,10 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       showClose
       dismissible={dismissible}
       footer={
-        /* dismiss on the left, actions on the right: collapse icon | wide Edit | delete icon */
+        footer ?? (
+        /* dismiss on the left, actions on the right: collapse icon | wide Edit | delete icon.
+           "Make recurring" is deliberately NOT here — it creates a new template rather than
+           acting on this transaction, so it sits under the hero instead */
         <div className="flex gap-3 [&_button]:h-11">
           <Button
             type="button"
@@ -122,6 +151,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             <Trash2 className="size-4" />
           </Button>
         </div>
+        )
       }
     >
       {/* hero: the category identity + the money, everything else is detail */}
@@ -138,9 +168,39 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         <span className="mt-1 max-w-full truncate text-base font-medium" title={heroName}>
           {heroName}
         </span>
-        <span className={`text-2xl font-semibold tabular-nums ${amountClass}`}>
-          {sign}
-          {moneyFormat(tx.amount, tx.account?.currency ?? fallbackCurrency, { useNativePrecision: false })}
+        {/* Whatever sits beside the amount, an equal-width spacer opposite keeps
+            the amount optically centred. The two are mutually exclusive: only a
+            hand-entered transaction offers the action, only a posted one carries
+            the indicator (a plain glyph — there is nothing to press). */}
+        <span className="flex items-center gap-2">
+          {showMakeRecurring ? <span aria-hidden="true" className="size-11 shrink-0" /> : null}
+          {isPostedFromRecurring ? <span aria-hidden="true" className="size-6 shrink-0" /> : null}
+          <span className={`text-2xl font-semibold tabular-nums ${amountClass}`}>
+            {sign}
+            {moneyFormat(tx.amount, tx.account?.currency ?? fallbackCurrency, { useNativePrecision: false })}
+          </span>
+          {showMakeRecurring ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="size-11 shrink-0"
+              disabled={!canChange}
+              aria-label={t('recurring.make_recurring')}
+              title={t('recurring.make_recurring')}
+              onClick={onMakeRecurring}
+            >
+              <Repeat className="size-4" />
+            </Button>
+          ) : null}
+          {isPostedFromRecurring ? (
+            <span
+              title={t('recurring.preview.header')}
+              className="flex size-6 shrink-0 items-center justify-center text-muted-foreground"
+            >
+              <Repeat className="size-5" aria-label={t('recurring.preview.header')} />
+            </span>
+          ) : null}
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span>{typeLabel}</span>
@@ -155,6 +215,24 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
             {card.content}
           </CardField>
         ))}
+        {recurringSchedule && onOpenRecurring ? (
+          // provenance, and a way through to the template that owns the schedule
+          <button
+            type="button"
+            onClick={onOpenRecurring}
+            title={t('recurring.preview.header')}
+            className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-2.5 text-left hover:bg-econumo-hover"
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[11px] text-muted-foreground">{t('recurring.preview.header')}</span>
+              <span className="flex items-center gap-2 text-sm">
+                <Repeat className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="truncate">{t(`recurring.schedule.${recurringSchedule}`)}</span>
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
     </ResponsiveDialog>
   )

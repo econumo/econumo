@@ -42,14 +42,11 @@ func (s *Service) canUpdate(b *budgetAggregate, userID vo.Id) bool {
 	return err == nil && (r == model.BudgetRoleOwner || r == model.BudgetRoleAdmin || r == model.BudgetRoleUser)
 }
 
-// canShare = owner|admin; the access-denied fallback intentionally returns true —
-// a preserved legacy quirk relied on by clients.
+// canShare = owner|admin. Fails closed: any error (no access, pending invite,
+// stranger) denies sharing. Only accepted owner/admin may grant or revoke.
 func (s *Service) canShare(b *budgetAggregate, userID vo.Id) bool {
 	r, err := s.budgetRole(b, userID)
-	if err != nil {
-		return true // access-denied path is treated as shareable (legacy quirk)
-	}
-	return r == model.BudgetRoleOwner || r == model.BudgetRoleAdmin
+	return err == nil && (r == model.BudgetRoleOwner || r == model.BudgetRoleAdmin)
 }
 
 // canAccept = has an UNaccepted access row for the user.

@@ -2,18 +2,29 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
-import type { TransactionDto, TransactionType } from '@/api/dto/transaction'
+import type { RecurringDto } from '@/api/dto/recurring'
+import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 
 export interface OpenTransactionParams {
-  transaction?: TransactionDto
+  transaction?: TransactionPrefill
   type?: TransactionType
   accountId?: Id
+  // present when the caller is posting a due recurring template — switches
+  // TransactionDialog into posting mode (prefilled from the template, with a
+  // recurringId sent alongside the created transaction)
+  postRecurring?: RecurringDto
 }
 
 export interface OpenAccountParams {
   account?: AccountDto
   folderId?: Id | null
+}
+
+export interface OpenRecurringParams {
+  recurring?: RecurringDto
+  fromTransaction?: TransactionPrefill
+  accountId?: Id
 }
 
 interface UiState {
@@ -23,6 +34,9 @@ interface UiState {
   accountModal: OpenAccountParams | null
   openAccountModal: (params: OpenAccountParams) => void
   closeAccountModal: () => void
+  recurringModal: OpenRecurringParams | null
+  openRecurringModal: (params: OpenRecurringParams) => void
+  closeRecurringModal: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
 }
@@ -45,6 +59,15 @@ export const useUiStore = create<UiState>()((set) => ({
   closeAccountModal: () => {
     trackEvent(METRICS.UI_MODAL_ACCOUNT_CLOSE)
     set({ accountModal: null })
+  },
+  recurringModal: null,
+  openRecurringModal: (params) => {
+    trackEvent(METRICS.UI_MODAL_RECURRING_OPEN)
+    set({ recurringModal: params })
+  },
+  closeRecurringModal: () => {
+    trackEvent(METRICS.UI_MODAL_RECURRING_CLOSE)
+    set({ recurringModal: null })
   },
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),

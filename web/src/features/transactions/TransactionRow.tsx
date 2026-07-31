@@ -1,3 +1,4 @@
+import { Repeat } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -26,23 +27,40 @@ export function displayAmount(tx: ViewTransaction, pageAccountId: Id): string {
 interface TransactionRowProps {
   transaction: ViewTransaction
   pageAccount: AccountDto
+  /** Dim the row to mark money that hasn't moved yet — a future-dated
+      transaction or an unposted template preview. The account list leaves this
+      to the default; the recurring settings list turns it off, since there
+      EVERY row is a template and dimming them all would just look disabled. */
+  dimmed?: boolean
+  /** muted note trailing the title (the recurring list's "Monthly") — kept
+      outside the truncating box so a long title can never clip it */
+  titleNote?: string
+  /** small muted line under the amount (the recurring list's next payment) */
+  amountNote?: React.ReactNode
 }
 
 // Presentational only: the row wrapper on the page owns the click (menu on
 // desktop, preview sheet on mobile) so hover/active feedback covers the whole
 // row including the kebab.
-export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowProps) {
+export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote, amountNote }: TransactionRowProps) {
   const { t } = useTranslation()
   const title = transactionTitleInfo(tx, pageAccount.id, t)
   const income = isIncomeForAccount(tx, pageAccount.id)
   const icon = tx.type === 'transfer' ? 'sync_alt' : tx.category?.icon || 'question_mark'
+  // The glyph marks "this is on a schedule" either way: an unposted preview
+  // (tx.recurring) or a real transaction posted from a template (recurringId).
+  // Dimming stays exclusive to the preview — a posted transaction is settled
+  // money and must read as solid as any hand-entered row.
+  const isRecurring = Boolean(tx.recurring) || Boolean(tx.recurringId)
 
   return (
     // Vue reference layout: 40px icon, 16px title with the amount on the same
     // top line, then description / tag / payee stacked one per line below.
     <div
       data-testid={`tx-${tx.id}`}
-      className={`flex w-full items-start gap-4 px-2 py-2 text-left ${tx.isInFuture ? 'opacity-50' : ''}`}
+      /* tx.recurring (not isRecurring) on purpose: only the unposted preview is
+         dimmed, never a posted transaction */
+      className={`flex w-full items-start gap-4 px-2 py-2 text-left ${(dimmed ?? (tx.isInFuture || Boolean(tx.recurring))) ? 'opacity-50' : ''}`}
     >
       <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-econumo-card">
         <EntityIcon name={icon} className="text-xl text-[#666666]" />
@@ -54,8 +72,19 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
         ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate text-base leading-6" title={title.text}>
-          {title.text}
+        {/* the icon trails the name but must survive truncation, so the name
+            truncates inside its own box and the icon stays a shrink-0 sibling */}
+        <span className="flex min-w-0 items-center text-base leading-6">
+          <span className="truncate" title={title.text}>
+            {title.text}
+          </span>
+          {isRecurring ? (
+            // the wrapper carries the tooltip: lucide icons take no title prop
+            <span title={t('recurring.preview.header')} className="ml-1 flex shrink-0 items-center">
+              <Repeat className="size-3 text-muted-foreground" aria-label={t('recurring.preview.header')} />
+            </span>
+          ) : null}
+          {titleNote ? <span className="ml-1.5 shrink-0 text-[13px] text-muted-foreground">{titleNote}</span> : null}
         </span>
         {title.source !== 'description' && tx.description ? (
           <span className="break-words text-sm text-muted-foreground">{tx.description}</span>
@@ -73,9 +102,12 @@ export function TransactionRow({ transaction: tx, pageAccount }: TransactionRowP
           </span>
         ) : null}
       </span>
-      <span className={`text-sm leading-6 tabular-nums ${income ? 'text-income' : 'text-expense'}`}>
-        {displayAmount(tx, pageAccount.id)}
-        <span className="ml-1 text-muted-foreground">{pageAccount.currency.symbol}</span>
+      <span className="flex shrink-0 flex-col items-end">
+        <span className={`text-sm leading-6 tabular-nums ${income ? 'text-income' : 'text-expense'}`}>
+          {displayAmount(tx, pageAccount.id)}
+          <span className="ml-1 text-muted-foreground">{pageAccount.currency.symbol}</span>
+        </span>
+        {amountNote ? <span className="text-xs text-muted-foreground">{amountNote}</span> : null}
       </span>
     </div>
   )

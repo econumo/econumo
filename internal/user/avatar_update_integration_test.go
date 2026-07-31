@@ -11,7 +11,7 @@ import (
 
 func TestUpdateAvatar(t *testing.T) {
 	db := dbtest.New(t)
-	svc, enc, _ := newUserSvc(t, db)
+	svc, _, _ := newUserSvc(t, db)
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	ctx := context.Background()
 
@@ -27,9 +27,9 @@ func TestUpdateAvatar(t *testing.T) {
 	if res.User.Avatar != "pets:teal" {
 		t.Fatalf("result avatar = %q, want pets:teal", res.User.Avatar)
 	}
-	u, err := repo.GetByIdentifier(ctx, enc.Hash("upd@econumo.test"))
+	u, err := repo.GetByEmail(ctx, "upd@econumo.test")
 	if err != nil {
-		t.Fatalf("GetByIdentifier: %v", err)
+		t.Fatalf("GetByEmail: %v", err)
 	}
 	if u.Avatar != "pets:teal" {
 		t.Fatalf("persisted avatar = %q, want pets:teal", u.Avatar)

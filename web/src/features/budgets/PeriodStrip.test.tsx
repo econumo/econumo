@@ -56,7 +56,7 @@ it('mouse wheel scrolls the strip horizontally (the scrollbar is hidden)', () =>
 it('widget renders spent/total, progress and the conversion hint', async () => {
   server.use(...coreHandlers())
   const budget = JSON.parse(JSON.stringify(fixtureWireBudget)) as BudgetDto
-  budget.balances[0] = { currencyId: 'cur-usd', startBalance: 100, endBalance: null, income: 400, expenses: -450, exchanges: -25, holdings: 30 }
+  budget.balances[0] = { currencyId: 'cur-usd', startBalance: '100', endBalance: null, income: '400', expenses: '-450', exchanges: '-25', holdings: '30' }
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ExpenseWidget budget={budget} currencyId="cur-usd" />
@@ -72,7 +72,6 @@ it('widget renders spent/total, progress and the conversion hint', async () => {
 it('widget shows the conversion hint for a non-base currency', async () => {
   server.use(...coreHandlers())
   const budget = JSON.parse(JSON.stringify(fixtureWireBudget)) as BudgetDto
-  budget.currencyRates = budget.currencyRates.map((r) => ({ ...r, rate: Number(r.rate) }))
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <ExpenseWidget budget={budget} currencyId="cur-eur" />

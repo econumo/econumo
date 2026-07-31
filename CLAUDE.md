@@ -14,8 +14,10 @@ Econumo is a self-hosted personal finance and budgeting application. It consists
 > edition is shipped (there is no separate "ce" edition).
 
 The production artifact is a single self-contained Go binary in a distroless image
-(`ghcr.io/econumo/econumo`) that serves both the JSON API and the built SPA, and
-runs database migrations on boot.
+(`ghcr.io/econumo/econumo`) that serves both the JSON API and the built SPA (embedded
+via `go:embed` — `web/embed.go`) and runs database migrations on boot. Releases
+additionally attach standalone `econumo-linux-{amd64,arm64}` binaries + `SHA256SUMS`
+for Docker-free hosting.
 
 ## Development Commands
 
@@ -56,20 +58,54 @@ make web-bundle    # cd web && pnpm build     (production SPA build -> web/dist)
 
 ```bash
 make publish-dev   # build + push the multi-arch `dev` image to ghcr.io/econumo/econumo:dev
+                   # AND mirror the `dev` binaries to the private R2 bucket
 ```
 
 Releases (`latest` + `vX.Y.Z`) are cut by the GitHub release workflow
 (`.github/workflows/publish-release.yml`), not locally; its "Publish Dev"
-checkbox can also move the `dev` tag. Everything publishes to
-`ghcr.io/econumo/econumo` only.
+checkbox can also move the `dev` tag. The workflow's `branch` input selects
+the source branch (default `main`; a `release/*` branch for hotfixes of older
+versions). A release from `main` auto-creates `release/vX.Y.Z` at the released
+commit as the base for future hotfixes; a hotfix dispatches from a new
+`release/*` branch copied by hand from the fixed version's branch, and the
+workflow then creates no branch. `latest` only moves for the highest version
+released so far. See `.claude/skills/publish-release` for the full process.
+Everything publishes to `ghcr.io/econumo/econumo` only.
+
+**R2 binary mirror.** Both `make publish-dev` and the release workflow also
+upload the cross-compiled linux binaries (`econumo-linux-{amd64,arm64}` +
+`SHA256SUMS`) to a **private** Cloudflare R2 bucket via `make cdn-upload`
+(aws S3 CLI). Keys are namespaced `s3://$(R2_BUCKET)/$(R2_PROJECT)/<channel>/`
+(defaults `econumo`/`econumo`; the bucket hosts several projects), channel ∈
+`dev` | `latest` | `vX.Y.Z`. The bucket has no public domain — objects are
+fetched via the S3 API / signed URLs. In the release workflow the channels gate
+exactly like the image tags: the version channel always, `latest/` and `dev/`
+only when their checkbox is set. Endpoint + credentials come from the
+environment, never committed, and are `ECONUMO_`-prefixed so several projects'
+R2 targets can coexist in one shell: `ECONUMO_R2_ENDPOINT`
+(`https://<acct>.r2.cloudflarestorage.com`, required) plus optional
+`ECONUMO_R2_ACCESS_KEY_ID` / `ECONUMO_R2_SECRET_ACCESS_KEY` (mapped to `AWS_*`
+for the aws subprocess only; unset falls back to the `~/.aws` profile). In CI
+the GitHub secrets `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are
+mapped to those `ECONUMO_R2_*` names in the step's `env:`. Local use needs the
+aws CLI installed.
+
+### Branch naming
+
+- `feature/<slug>` — feature work, and the default for EVERY change that is
+  not a bug fix (chores, docs, refactors, CI, dependency bumps).
+- `bug/<slug>` — bug fixes.
+- `release/vX.Y.Z` — reserved for releases (auto-created when releasing from
+  `main`; copied by hand from the previous release branch of the line for
+  hotfixes); never used for development work.
 
 ## Architecture
 
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the nine features (`account`, `budget`, `category`, `connection`,
-`currency`, `payee`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the twelve features (`account`, `admin`, `budget`, `category`, `connection`,
+`currency`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -87,7 +123,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, payee, tag, transaction, user); root package holds only
+│   │   │                            currency, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -96,13 +132,15 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │                             split theirs into role interfaces + a composite for wiring
 │   │   │   ports.go ..............   consumer-side interfaces for capabilities OTHER features provide
 │   │   ├── repo/ ..................  repository implementation (engine-adapter pattern, see below)
-│   │   └── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   │   ├── api/ ...................  HTTP edge: handlers + route registration (see API handler pattern below)
+│   │   └── mcp/ ...................  MCP edge (all nine features have one): tool registration, mirroring
+│   │                                 api/ (see MCP endpoint below; prompts live in internal/web/mcp)
 │   ├── infra/ .................... engine-agnostic infrastructure shared by every feature:
 │   │   ├── storage/sqlc/ ......... sqlc config + per-engine queries (query/{sqlite,pgsql}) and generated code (gen/{sqlite,pgsql})
 │   │   ├── storage/migrations/ ... SQL migrations per engine ({sqlite,pgsql}); run on boot
 │   │   ├── operation/ ............ shared row-based idempotency guard (operation_requests_ids) for
 │   │   │                          client-supplied operation ids on create endpoints
-│   │   ├── auth/ ................ password hashing + AES email encryption + user-identifier hashing
+│   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
@@ -118,7 +156,9 @@ DTOs those use cases operate on live in the shared `internal/model` package
 
 Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
 per-user persistence shape (it's rates + conversion + admin lookups), so it
-keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`.
+keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
+similar — it's in-memory poller state only (no persistence at all), so it has
+no `repository.go` either.
 
 ### Dependency rule
 
@@ -171,6 +211,19 @@ special: CSV export, multipart import, query-param reads, and login's raw
 `internal/<feature>/api/routes.go` (`RegisterAPI`). Request/result DTOs live
 in `internal/model/<feature>_dto.go`.
 
+### MCP endpoint
+
+`/mcp` is a second, independent HTTP edge — mounted on the root mux next to
+`/health`, outside `/api`, so the REST `apiparity` scanner never sees it (its
+own golden suite, `internal/test/mcpparity/`, owns coverage instead). It's the
+official Go SDK's Streamable HTTP handler in **stateless, JSON-response**
+mode (no SSE, no server-held sessions — every tool call is a sub-second DB
+round trip). Auth is the same bearer-token middleware as REST (PATs are the
+intended credential for MCP clients). Shared edge infra lives in
+`internal/web/mcp/`; each feature that exposes MCP surface registers its own
+tools/prompts from an `internal/<feature>/mcp/` package, composed at
+`server.BuildAPI` exactly like `RegisterAPI`.
+
 ### Frontend architecture (React 19 + Vite)
 
 Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
@@ -180,6 +233,17 @@ router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config is read from
 `ECONUMO_VERSION`, inlined by Vite at build time (the Docker build arg of the
 same name sets it per image build, default `dev`). Lint is oxlint, tests are
 vitest (`pnpm test`).
+
+**Product analytics rule:** every new user-facing feature/action MUST fire an
+analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
+`app`-prefixed camelCase names; the PostHog snake_case name derives
+automatically) and call `trackEvent` at the action's success point (mutation
+`onSuccess`; or inside `mutationFn` after the API call for hooks with a dedupe
+short-circuit, e.g. the classification creates). Prefer the shared hook/store
+choke point over per-page call sites so every surface (pages, dialogs, inline
+creates) is covered once. `web/src/lib/metrics-coverage.test.ts` fails the
+suite if a `METRICS` key is never fired; a catalogue key may only be excused
+via its documented `NOT_WIRED` list.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
@@ -196,9 +260,9 @@ above), and `emails` (backend-rendered mail). `{var}` placeholders use the same
 (`web/src/app/i18n.ts`), `getLocaleOptions()` (`web/src/lib/config.ts`),
 and the `languages` list in `internal/test/i18ntest`.
 - **Backend runtime**: `internal/infra/i18n` (`i18n.T(lang, key, params)`) translates
-  server-rendered text — currently just the password-reset email; API error
-  `message`/`errors` strings stay frozen English, never translated here (see
-  above). The `Language` middleware resolves `Accept-Language` to a supported
+  server-rendered text — the password-reset email, and the error `message`/`errors`
+  strings on both edges (REST envelope and MCP tool errors) for errors that carry a
+  catalogue code. The `Language` middleware resolves `Accept-Language` to a supported
   two-letter tag and stashes it in `reqctx`; the middleware chain is
   `requestid -> accesslog -> recover -> cors -> timezone -> language -> [auth]`
   (`internal/web/middleware/middleware.go`).
@@ -206,16 +270,18 @@ and the `languages` list in `internal/test/i18ntest`.
   choice persists in `localStorage` (`locale()` in `web/src/lib/config.ts`) and
   is applied via `LanguageSelector` (`web/src/components/LanguageSelector.tsx`,
   surfaced on auth pages and in Settings). `apiErrorMessage`
-  (`web/src/lib/apiError.ts`) renders a failed response by preferring
-  `messageCode`/`errorCodes` (translated through the catalogue) and falling
-  back to the envelope's frozen `message` for codes the SPA doesn't recognize.
+  (`web/src/lib/apiError.ts`) renders a failed response from the envelope's
+  server-translated strings: the first field error when present (the top-level
+  message is then the generic form label), else `message`; `apiFieldErrors`
+  serves inline per-field form errors.
   `pluralPick` (`web/src/lib/plural.ts`) reads pipe-delimited catalogue values
   (`"one | many"`, Russian `"one | few | many"`) and picks the variant via
   `Intl.PluralRules` — i18next's own plural suffixes are not used, so all
   plural strings are authored as a single pipe-joined value. The selected
   language is also persisted server-side (`users.language`, default `en` —
-  written by `update-language` and on login from `Accept-Language`; write-only,
-  for future background email rendering).
+  written by `update-language` and on login from `Accept-Language`; read back
+  as the stored-language fallback for header-less authenticated requests on
+  both edges, and reserved for future background email rendering).
 - **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
   key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
   frontend-source `t()`-call key coverage against the catalogue, two-way
@@ -252,9 +318,16 @@ Tests live alongside the Go code:
 - `internal/test/fixture` — shared fixture builder (users, accounts, access tokens, ...);
   `internal/test/authstub` — a stub `middleware.TokenAuthenticator` for feature api tests
   (the bearer token IS the user id string).
+- `internal/test/mcpparity/` — the MCP counterpart to `apiparity`: a golden-file JSON-RPC
+  scenario catalogue (`initialize`, `tools/list`, `prompts/list`, each tool/prompt)
+  replayed against the real `server.BuildAPI` handler over `/mcp`,
+  normalized the same way as the REST goldens. Runs in the smoke tier and, under
+  `-tags enginecompare`, against both engines. Regenerate goldens with
+  `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
+  as `apiparity`.
 
 Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
-default 72). CI surfaces the coverage % in the Actions job summary plus an HTML
+default 78). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
@@ -270,17 +343,65 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   no token-related configuration. Persist the `/app/var` volume (the db) to keep data and
   logins valid. Leftover `ECONUMO_JWT_*` variables from older builds are ignored.
 - `ECONUMO_DATA_SALT` — **Deprecated and IGNORED by the API/repositories**, which always run
-  salt-free (plaintext emails, `md5(lower(email))` identifiers). It is consumed by exactly one
+  salt-free (plaintext emails, `lower(email)` as the lookup key). It is consumed by exactly one
   code path, the `data:remove-salt` migration (below), which reads it to decrypt existing data.
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
-  database has unreadable emails / mismatched identifiers, so those users cannot log in (the
-  intended push to migrate); `serve` logs a WARN at boot while it is set.
+  database has unreadable emails, so those users cannot log in (the intended push to migrate);
+  `serve` logs a WARN at boot while it is set.
 - `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
+- `ECONUMO_TRIAL` — trial length in DAYS for a newly self-registered user. `0`
+  (default; also `none`/empty) grants no trial, so the user keeps permanent full
+  access — the self-hosted default. A positive integer `N` grants full access
+  until `N` days after registration, after which they lapse to `readonly`.
+  Negative, non-numeric, or the old `end-of-next-month` literal fail at boot.
+  CLI-created users never get a trial. See `user:set-access` / `user:show`
+  below and the 402 rule in API conventions for how access is enforced afterward.
+- `ECONUMO_EMAIL_VERIFICATION` — require newly registered users to confirm an emailed
+  code at login before their first session (default `false`; strict boolean, malformed
+  fails at boot). The code email is sent at the first blocked login attempt, not at
+  registration; `serve` WARNs at boot when enabled with the console mail transport.
+  Existing rows and CLI/admin-created users are always verified.
+- `ECONUMO_ADMIN_PORT` / `ECONUMO_ADMIN_TOKEN` — the private admin listener the payment
+  portal talks to (`POST /admin/set-access`, `GET /admin/user-context`). A **second**
+  `http.Server`, started by `serve` only when BOTH are set, so a self-hosted instance
+  never serves those routes and they sit on no public mux at all (enforced by
+  `TestAdminRoutesAreNotOnThePublicMux`). Auth is `Authorization: Bearer <ECONUMO_ADMIN_TOKEN>`
+  compared in constant time; the same token is the HMAC key for billing-handoff tokens
+  (minimum 32 characters, and it must be RANDOM — authenticated users see HMAC samples in
+  their billing links, so a guessable passphrase is offline-attackable; generate with
+  `openssl rand -hex 32`). A half-configured pair fails at boot. Every admin action is
+  audit-logged on its operation line: `set-access` carries `user_id`, the written
+  `access_level`/`access_until` AND the `old_*` pair (logged even when the write fails, so
+  attempts are recorded); `user-context` carries `user_id` + `connections`; CLI
+  `user:set-access` emits the same `set-access` line. Ids and levels only — never emails. The port accepts a
+  host-qualified value (`127.0.0.1:9090`) to pin the listener to loopback/an internal
+  interface on bare-host deployments; a bare port binds all interfaces (the container
+  default, where compose controls exposure). Unlike the public API,
+  this surface returns a real 404 for an unknown user: its consumer is a machine.
+- `ECONUMO_BILLING_URL` — payment portal URL (**https required** except loopback hosts —
+  billing links carry signed identity tokens in the query string). Empty (default) means
+  `POST /api/v1/user/create-billing-link` returns 400 and the SPA shows no billing UI.
+  Merged into the served `econumo-config.js` as `BILLING_URL`, so one variable drives
+  both halves. Requires `ECONUMO_ADMIN_TOKEN` (the signing key).
+- `ECONUMO_URL` — this instance's public URL. When set, `mailer.WithAppLink` wraps the
+  mail transport once at composition time (`server.BuildAPI` and the CLI container) so
+  every transactional email ends with the bare URL on its own line; unset (default) leaves
+  bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
+  http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
+  signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
-- `ECONUMO_DEBUG` — `true` exposes 500 stack traces (default `false`). Replaces the former `APP_ENV`.
+- `ECONUMO_CHECK_UPDATES` — daily check for new releases against `econumo.com/releases/latest.json` (single server-side request; result served to the SPA via `get-update-info`). `false` disables it.
+- `ECONUMO_ANALYTICS` — anonymous product analytics from the SPA to PostHog (default `true`).
+  `false` disables it instance-wide. Malformed values fail at boot (strict parse, unlike
+  the other booleans). Server-owned SPA config keys reach the frontend via an
+  `Object.assign(window.econumoConfig, …)` line the SPA handler appends to the served
+  `/econumo-config.js`; the embedded dist file's static values are the fallback when a
+  key is not overridden. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
+  (server truth); `ECONUMO_ALLOW_CUSTOM_API` merges `ALLOW_CUSTOM_API` only when set
+  (unset = keep the dist value).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
   each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
@@ -288,17 +409,46 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `console://`/`log://`). Parsed once in `config.Load` (a bad scheme fails at boot). Replaces the former
   `RESEND_API_KEY` / `ECONUMO_MAIL_FROM` / `ECONUMO_MAIL_REPLY_TO`.
 - `OPEN_EXCHANGE_RATES_TOKEN` — currency-rate updates.
+- `ECONUMO_CURRENCY_UPDATE_INTERVAL` — refresh exchange rates in-process every N
+  DAYS. `0` (default/unset) = off (drive `currency:update-rates` from an external
+  cron as before). A positive `N` starts a background poller in `serve` **only
+  when `OPEN_EXCHANGE_RATES_TOKEN` is also set** (interval-without-token logs a
+  WARN at boot and stays off). Valid range is `1`-`31`; negative/malformed/over-31
+  fails at boot. The poller
+  refreshes on boot then every N days and is DB-aware: it skips the fetch while
+  the newest stored rate is within N days, so a restart loop never burns API
+  quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
+  existing external cron.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
   max attempts per username/email per window (defaults 5/5/3/5; login and reset count
   only FAILED attempts and clear on success, remind and register count every request).
+  `ECONUMO_RATE_LIMIT_ACCEPT_INVITE` — cap on `connection/accept-invite` attempts per
+  authenticated user per window (default `10`; every attempt counts), guarding the short
+  invite code against online brute force.
+  `ECONUMO_RATE_LIMIT_VERIFY_EMAIL` — verification-code emails per username per window (default `3`; every send counts).
+  `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL` — failed confirm-email attempts per username per window (default `5`; cleared on success).
+  `ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE` — change-email code sends per user per window (default `3`; every send counts).
+  `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE` — failed confirm-email-change attempts per user per window (default `5`; cleared on success).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
-- `ECONUMO_WEB_DIST` — path to the built SPA the binary serves.
+- **Web UI config** — the SPA is ALWAYS embedded in the binary (`web/embed.go`,
+  `//go:embed all:dist`); there is no disk-serving mode. Instance-specific
+  values reach the frontend by being merged into the served `econumo-config.js`
+  at runtime (the `Object.assign(window.econumoConfig, …)` suffix in
+  `internal/web/spa`). One rule: the backend value overwrites the embedded
+  default when present. Each key maps to `ECONUMO_<KEY>`:
+  `ECONUMO_ALLOW_CUSTOM_API`, `ECONUMO_LILTAG_CONFIG_URL` (load liltag config
+  from a URL instead of the bundled `liltag-config.json`),
+  `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
+  to the binary's `internal/version.Version`, overridable for demo/staging).
+  Flags (`ANALYTICS`, `ALLOW_REGISTRATION`) and `BILLING_URL` are always merged
+  (server truth); text/URL keys merge only when non-empty. The composition root
+  resolves the FS (`web.DistFS`) and version once in `server.BuildAPI`.
 - `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
   (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
   and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.
@@ -308,6 +458,23 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   > (`SQLITE_BUSY_TIMEOUT`, `OPEN_EXCHANGE_RATES_TOKEN`).
 - `X-Timezone` request header — the caller's IANA timezone, used for day-boundary math
   (e.g. an account's "balance as of end of today"); the tz database is embedded in the binary.
+  A `users.timezone` column opportunistically persists it: a decorator around
+  `middleware.TokenAuthenticator` (wired once in `server.BuildAPI`) writes the header's
+  value on every authenticated request where it differs from the last value seen for that
+  user (throttled by an in-memory per-user cache, same pattern as the token
+  `last_used_at` throttle). MCP clients send no header, so `/mcp` (only) falls back to the
+  stored value when none is present; the header always wins when it is present, on both
+  edges — REST behavior is unchanged.
+- Error `message`/`errors` text is rendered in the caller's language on BOTH edges:
+  `httpx.WriteError` (REST) and `internal/web/mcp/helpers.go` (`MapErr`) resolve
+  `reqctx.Language(ctx)` and render any coded message/field message via
+  `i18n.T(lang, "errors."+code, params)`; code-less errors keep their literal English.
+  The language follows the same fallback pattern as the timezone above, but on both
+  edges: explicit `Accept-Language` header → stored `users.language` → `en`. The stored
+  fallback runs inside the auth middleware via the optional
+  `middleware.StoredLanguageResolver` capability, implemented by the server's
+  authenticator decorator (`StoredLanguage`, `internal/server/glue_language.go`;
+  `reqctx.IsLanguageExplicit` mirrors `IsLocationExplicit`).
 
 ### Logging
 
@@ -346,18 +513,37 @@ user:change-email <old> <new>
 user:change-password <email> <password>
 user:activate <email>
 user:deactivate <email>
+user:verify-email <email>
+user:set-access <email> <full|readonly> [YYYY-MM-DD]
+user:show <email>
 currency:update-rates [date]
 currency:add <code> [name] [fraction-digits]
 token:purge [days]
 data:remove-salt
+data:import-sqlite [--force] <sqlite-path>
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
-back to plaintext and re-derives the identifier as `md5(lower(email))` (no salt),
-so `ECONUMO_DATA_SALT` can be removed. Run it **while the old salt is still set**
-(it needs it to decrypt), then unset `ECONUMO_DATA_SALT` and restart. It refuses
-to run with an empty salt, and is idempotent (already-plaintext rows are skipped).
+back to plaintext, so `ECONUMO_DATA_SALT` can be removed. `lower(email)` is the
+unique lookup key (unique expression index `users_email_lower_uniq`), so a
+still-salted instance MUST run this command after upgrading, before that index
+is relied on — otherwise emails stay encrypted and those users can't log in
+(they are already login-broken pre-migration, so this is not a regression).
+Run it **while the old salt is still set** (it needs it to decrypt), then
+unset `ECONUMO_DATA_SALT` and restart. It refuses to run with an empty salt,
+and is idempotent (already-plaintext rows are skipped).
 Back up the DB first — the decryption is one-way in practice.
+
+`data:import-sqlite` copies every table from an existing SQLite database into
+the configured PostgreSQL (`DATABASE_URL` must be a `postgres://` URL). It runs
+the PostgreSQL migrations on the target first (so a bare `createdb` works in one
+step), then copies all app data in one transaction — `access_tokens` and
+`currencies` included, the dead `messenger_messages` and the migration
+bookkeeping tables excluded. It aborts if the target already holds data unless
+`--force` is given, which truncates and replaces. The source SQLite must
+already be on the current schema — boot the current econumo binary against it
+once before importing — and the command refuses with a clear error on a
+schema-version mismatch between source and target.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
@@ -379,7 +565,12 @@ In the distroless image these run via the binary directly, e.g.
   unknown/expired/revoked tokens with the 401 envelope, and puts the user id AND the
   token row id into the request context (the latter is the "current session" for
   logout/revoke/isCurrent). Public routes (login, register, remind-password,
-  reset-password, `/api/doc`, `/api/doc.json`) need no header; everything else does.
+  reset-password, confirm-email, resend-verification-code, `/api/doc`,
+  `/api/doc.json`) need no header; everything else does.
+- **Read-only access is enforced at the edge:** a caller whose access level is
+  `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
+  in the middleware's small allowlist (account security actions — logout, session/PAT
+  revocation, password update, email change); `GET` reads are never restricted.
 
 ## Authentication
 
@@ -414,24 +605,25 @@ data unreadable. Most are also asserted by the test suite.
 ### Response envelope (`internal/web/httpx/envelope.go`)
 - Success (200): `{"success": true, "message": "", "data": <payload>}`
 - Error (handled, default 400): `{"success": false, "message": <string>, "code": <int>, "errors": <object>}` — `errors` maps field → `[messages]`, always present (`{}` when none).
-- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; `stackTrace` only when `ECONUMO_DEBUG=true`.
+- Exception (500): `{"success": false, "message": <string>, "code": 0, "exceptionType": <string>}` — no `errors` key; error detail (message, stack trace) goes to the server logs only, never the response body.
 - Not implemented (501): `{"success": false, "message": <string>, "code": 0, "errors": []}` — here `errors` is an array `[]` (the lone exception to the object rule).
 - Rate-limited (429): `{"success": false, "message": "Too many attempts. Try again later.", "code": 429, "errors": {}}` — same shape as the handled-error envelope.
 - JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
-- **Additive i18n codes** (handled-error envelope only): `errorCodes` (field → `[{code, params}]`,
-  the per-field sibling of `errors`) and `messageCode` + `messageParams` (the fieldless sibling of
-  `message`) — all three `omitempty`, so an endpoint that hasn't been given codes yet serializes
-  exactly as before (goldens stay byte-identical). `code` is a catalogue key under `errors.*` in
-  `locales/{en,ru}.json` (registry: `internal/shared/errs/codes.go`, `AllCodes`); `params` feeds
-  `{var}` placeholder interpolation. The frozen `errors`/`message` strings are unchanged — always
-  English, never translated server-side. Clients render the localized text with the code when
-  present and fall back to the frozen string otherwise (see `apiErrorMessage` below).
+- **Server-rendered error language** (handled-error envelope only): `message` and the per-field
+  `errors` strings are rendered server-side in the caller's language when the underlying error
+  carries a catalogue code (`errors.*` keys in `locales/{en,ru}.json`; registry:
+  `internal/shared/errs/codes.go`, `AllCodes`); errors without a code keep their literal English
+  text. The language is `reqctx.Language`: `Accept-Language` (the SPA sends its selected locale
+  on every request) → the authenticated user's stored `users.language` (resolved in the auth
+  middleware via `middleware.StoredLanguageResolver`) → `en`. The `en` catalogue text matches the
+  historical strings, so English callers see the same wire bytes as before; the envelope carries
+  no separate code/translation fields.
 
 ### Auth crypto (`internal/infra/auth/`)
 - **Password hash**: versioned by `users.algorithm`. `sha512` (legacy, all pre-existing rows): sha512, 500 iterations, base64 (88 chars), salt merged as `password{salt}`; `digest = sha512(salted)` then 499 rounds of `sha512(digest || salted)`; verify rejects len≠88 or a `$`, constant-time. `argon2id` (every new hash: registration and all password changes): PHC string `$argon2id$v=19$m=19456,t=2,p=1$…$…` (OWASP params), salt embedded in the hash — the `salt` column persists for sha512 rows. Verification dispatches on the column; unknown values fail closed.
-- **User identifier**: `hex(md5(lower(email)))` — 32-char hex; the primary user lookup key. (`EncodeService` still supports a salted form `hex(md5(lower(email) || salt))`, but only the `data:remove-salt` migration uses it — see below.)
+- **User lookup key**: `lower(email)` — enforced unique by the expression index `users_email_lower_uniq`; repo lookups are `GetByEmail`/`ExistsByEmail` (`WHERE lower(email) = lower(?)`). The legacy `identifier` column is retained (dropping a NOT NULL UNIQUE column would force a SQLite table rebuild) but retired: it now holds the row's own `id` as a unique non-null placeholder, no longer derived from email. `EncodeService.Hash` (the md5 identifier derivation) was removed — nothing computes it anymore.
 - **Email encryption**: emails are stored as plaintext. `EncodeService` still implements AES-128-CBC (key = raw salt, 16 bytes; layout `base64(iv[16] || hmac_sha256[32] || ciphertext)`, PKCS#7, random IV, HMAC verified constant-time before decrypt), but the API constructs it with an empty salt, so Encode/Decode are passthrough. The salted path runs only inside `data:remove-salt`.
-- **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy data and re-derive identifiers as `md5(lower(email))`.
+- **Salt-free everywhere**: the API and all CLI user commands construct `EncodeService` with `""` and ignore `ECONUMO_DATA_SALT` entirely (`server.BuildAPI`, `cli` container). The salt reaches code through one path only: `data:remove-salt` passes it into `MigrateRemoveDataSalt(ctx, salt)`, which builds a temporary salted encoder to decrypt legacy email data to plaintext (the repo writes the row `id` into `identifier` automatically, so no re-derivation is needed).
 
 ### Access tokens (`internal/user/token.go`)
 - Format: `eco_ses_` (session) / `eco_pat_` (personal) + `base64.RawURLEncoding` of 32
@@ -445,8 +637,8 @@ data unreadable. Most are also asserted by the test suite.
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
 - `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
-- Validation strings are exact and asserted by clients/tests, e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`).
-- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
+- Validation strings are exact per language and asserted by tests in `en` (the default with no `Accept-Language` and no stored preference), e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`); coded errors render from the `errors.*` catalogue in the caller's language (see the envelope section).
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
 - Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're FK targets and held by clients).
 - `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material
   icon ligature name plus a color slug from the 7-slug allowlist in
@@ -465,12 +657,20 @@ data unreadable. Most are also asserted by the test suite.
 ### Notable behaviours
 - **Budget element visibility**: a tag/envelope/category appears in `get-budget` when it has spending **or** a limit (current or carried-over) — so a tag with a limit but no transactions stays visible.
 - **Account balance day boundary**: "balance as of end of today" uses the **caller's** timezone (`X-Timezone` header), not the server's UTC day.
+- **Recurring transaction scheduling**: templates advance from the scheduled date with
+  month-end clamping via a persisted scheduled day (31st → Feb 28 → Mar 31); posting is
+  manual (the user acts on a due template) and idempotent on the client-supplied
+  transaction id.
 
 ## Deployment
 
 - Image: `ghcr.io/econumo/econumo` (GitHub Container Registry only).
   - `:dev` — published locally via `make publish-dev`, or by the release workflow's "Publish Dev" checkbox.
   - `:latest` + `:vX.Y.Z` — published by the GitHub release workflow (latest only from `main`).
+- Docker-free: each release attaches single-file linux binaries (SPA embedded)
+  + `SHA256SUMS`; reference systemd unit in `deployment/systemd/econumo.service`,
+  walkthrough in `docs/run-without-docker.md` (linked from the README).
+  `make release-binaries` builds the same artifacts locally.
 - Self-hosting: see the root `docker-compose.yml` (+ `.env.example`, copied to `.env`)
   and the README quick-start. The Dockerfile is `deployment/docker/Dockerfile`.
 

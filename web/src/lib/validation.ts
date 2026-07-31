@@ -58,7 +58,7 @@ export function isValidBudgetName(value: string): boolean {
 }
 
 export function isValidPassword(value: string): boolean {
-  return value.length >= 4
+  return value.length >= 8 && value.length <= 128
 }
 
 export function isValidBudgetFolderName(value: string): boolean {
@@ -74,11 +74,24 @@ export function isNotEmpty(value: string): boolean {
 }
 
 export function isValidRecoveryCode(value: string): boolean {
-  return value.length === 12
+  return /^\d{6}$/.test(value)
 }
 
 export function isValidFormula(value: string): boolean {
-  return validateFormula(sanitizeInput(value))
+  if (value.trim() === '') {
+    return true
+  }
+  // sanitizeInput silently strips foreign characters, so "abc" would sanitize
+  // to "" and validate as an empty (valid) formula — reject the raw text first
+  if (/[^0-9+\-*/=.,\s]/.test(value)) {
+    return false
+  }
+  const sanitized = sanitizeInput(value)
+  // non-empty input must still hold a number after sanitizing ("...", "=")
+  if (sanitized.replace(/=/g, '') === '') {
+    return false
+  }
+  return validateFormula(sanitized)
 }
 
 export function hasIncompleteFormula(value: string): boolean {

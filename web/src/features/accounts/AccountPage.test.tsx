@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { AccountPage } from './AccountPage'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
@@ -241,6 +241,142 @@ it('compact + shared account: preview hero overlays the author avatar', async ()
   expect(avatar).toHaveAttribute('data-avatar', fixtureOwner.avatar)
   expect(avatar.parentElement).toHaveAttribute('title', 'Ada')
   expect(within(dialog).queryByText('Author')).not.toBeInTheDocument()
+})
+
+it('keeps the add-transaction actions while the user is read-only (backend guards writes)', async () => {
+  mockViewport(false)
+  server.use(...coreHandlers({ user: { ...fixtureUser, accessLevel: 'readonly', accessUntil: '' } }))
+  renderPage()
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Add transaction' })).toBeInTheDocument()
+})
+
+it('posted transaction preview: one tap on the recurring row opens the template editor', async () => {
+  mockViewport(true)
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'coffee sub',
+    schedule: 'monthly', nextPaymentAt: '2099-01-01 00:00:00',
+  }
+  const posted = {
+    id: 't-posted', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'coffee sub',
+    payeeId: null, tagId: null, date: '2026-07-03 09:00:00', recurringId: 'r1',
+  }
+  server.use(...coreHandlers({ recurring: [template], transactions: [posted] }))
+  useUiStore.setState({ recurringModal: null })
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByTestId('tx-t-posted'))
+  const dialog = await screen.findByRole('dialog', { name: 'Transaction details' })
+  await user.click(within(dialog).getByRole('button', { name: /Recurring transaction/i }))
+  // straight to the editor: the template PREVIEW shares this dialog's body, so
+  // hopping through it read as the preview merely refreshing
+  await waitFor(() => expect(useUiStore.getState().recurringModal?.recurring?.id).toBe('r1'))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Transaction details' })).not.toBeInTheDocument())
+})
+
+it('places the today anchor between the future block and the past', async () => {
+  mockViewport(false)
+  const day = 24 * 3600 * 1000
+  const stamp = (d: Date) => `${d.toISOString().slice(0, 10)} 12:00:00`
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'upcoming',
+    schedule: 'monthly', nextPaymentAt: stamp(new Date(Date.now() + 5 * day)),
+  }
+  const past = {
+    id: 't-past', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'settled',
+    payeeId: null, tagId: null, date: stamp(new Date(Date.now() - 5 * day)), recurringId: null,
+  }
+  server.use(...coreHandlers({ recurring: [template], transactions: [past] }))
+  renderPage()
+  await screen.findByTestId('tx-r1')
+
+  // the marker the initial scroll lands on sits between the future block and
+  // everything at-or-before today, so the future starts above the fold
+  const order = Array.from(document.querySelectorAll('[data-testid^="tx-"], [data-testid="future-anchor"]')).map(
+    (el) => el.getAttribute('data-testid'),
+  )
+  expect(order).toEqual(['tx-r1', 'future-anchor', 'tx-t-past'])
+})
+
+it('colours the Not posted label red only when the template is due', async () => {
+  mockViewport(false)
+  const day = 24 * 3600 * 1000
+  const stamp = (d: Date) => `${d.toISOString().slice(0, 10)} 12:00:00`
+  const template = (over: Record<string, unknown>) => ({
+    ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'sub',
+    schedule: 'monthly', ...over,
+  })
+  server.use(
+    ...coreHandlers({
+      transactions: [],
+      recurring: [
+        template({ id: 'r-due', nextPaymentAt: stamp(new Date(Date.now() - 5 * day)) }),
+        template({ id: 'r-ahead', nextPaymentAt: stamp(new Date(Date.now() + 5 * day)) }),
+      ],
+    }),
+  )
+  renderPage()
+
+  // innermost span carrying the text: the wrapper span shares its textContent
+  const label = (id: string) =>
+    Array.from((screen.getByTestId(id) as HTMLElement).querySelectorAll('span'))
+      .filter((el) => el.textContent === 'Not posted')
+      .pop()
+  await screen.findByTestId('tx-r-due')
+  expect(label('tx-r-due')?.className).toContain('text-destructive')
+  expect(label('tx-r-ahead')?.className ?? '').not.toContain('text-destructive')
+})
+
+it('renders no anchor when nothing is scheduled ahead', async () => {
+  mockViewport(false)
+  const day = 24 * 3600 * 1000
+  const past = {
+    id: 't-past', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'settled',
+    payeeId: null, tagId: null, date: `${new Date(Date.now() - 5 * day).toISOString().slice(0, 10)} 12:00:00`, recurringId: null,
+  }
+  server.use(...coreHandlers({ recurring: [], transactions: [past] }))
+  renderPage()
+  await screen.findByTestId('tx-t-past')
+  expect(screen.queryByTestId('future-anchor')).toBeNull()
+})
+
+it('recurring rows carry the interval beside the title; plain rows do not', async () => {
+  mockViewport(false)
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'coffee sub',
+    schedule: 'weekly', nextPaymentAt: '2099-01-01 00:00:00',
+  }
+  const posted = {
+    id: 't-posted', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: 'coffee sub',
+    payeeId: null, tagId: null, date: '2026-07-03 09:00:00', recurringId: 'r1',
+  }
+  server.use(...coreHandlers({ recurring: [template], transactions: [posted] }))
+  renderPage()
+
+  // the posted transaction resolves its template's schedule...
+  expect(await screen.findByTestId('tx-t-posted')).toHaveTextContent('Weekly')
+  // ...and the template's own virtual row carries it directly
+  expect(screen.getByTestId('tx-r1')).toHaveTextContent('Weekly')
+  // only the unposted virtual row is marked; the posted one is settled money
+  expect(screen.getByTestId('tx-r1')).toHaveTextContent('Not posted')
+  expect(screen.getByTestId('tx-t-posted')).not.toHaveTextContent('Not posted')
+})
+
+it('a plain transaction row shows no interval note', async () => {
+  mockViewport(false)
+  renderPage()
+  const row = await screen.findByTestId('tx-t1')
+  expect(row).not.toHaveTextContent('Monthly')
+  expect(row).not.toHaveTextContent('Weekly')
 })
 
 it('compact viewport: row click opens the preview dialog with details', async () => {

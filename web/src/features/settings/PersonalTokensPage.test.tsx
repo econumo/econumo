@@ -1,8 +1,9 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { enUS } from 'react-day-picker/locale'
 import { server } from '@/test/msw'
 import { formatDate } from '@/lib/datetime'
 import { expiresAtFrom, PersonalTokensPage } from './PersonalTokensPage'
@@ -124,10 +125,13 @@ it('picks a custom expiry from the calendar and shows it on the chip', async () 
 
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  const dayButton = within(grid)
-    .getAllByText(String(tomorrow.getDate()))
-    .map((el) => el.closest('button'))
-    .find((b): b is HTMLButtonElement => b !== null && !b.disabled)
+  // The grid also renders leading/trailing days from adjacent months, which
+  // can share the bare day-of-month number with the target day (e.g. Jun 29
+  // alongside Jul 29). Match on the full date instead, via the `data-day`
+  // attribute CalendarDayButton stamps on every cell (calendar.tsx).
+  const dayButton = grid.querySelector<HTMLButtonElement>(
+    `[data-day="${tomorrow.toLocaleDateString(enUS.code)}"]`,
+  )
   await user.click(dayButton!)
 
   // The calendar closes and the picked date replaces the chip label.

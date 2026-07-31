@@ -13,7 +13,7 @@ export async function getCurrencyList(): Promise<CurrencyListItemDto[]> {
 
 export async function getCurrencyRateList(): Promise<CurrencyRateDto[]> {
   const response = await api.get<Envelope<{ items: CurrencyRateDto[] }>>(apiUrl('/api/v1/currency/get-currency-rate-list'))
-  return response.data.data.items.map((r) => ({ ...r, rate: Number(r.rate) }))
+  return response.data.data.items
 }
 
 export async function createCurrency(form: {

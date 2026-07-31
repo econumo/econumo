@@ -13,6 +13,18 @@ import (
 // access to the account: they own it, or hold an admin/user grant on it (see
 // checkWriteAccess).
 func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
+	return s.createTransaction(ctx, userID, req, nil)
+}
+
+// CreateTransactionFromRecurring is CreateTransaction with the originating
+// template recorded on the row. It is a separate method rather than a field on
+// CreateTransactionRequest so provenance stays server-controlled: no REST or MCP
+// client can claim a transaction came from a template it did not.
+func (s *Service) CreateTransactionFromRecurring(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest, recurringID vo.Id) (*model.CreateTransactionResult, error) {
+	return s.createTransaction(ctx, userID, req, &recurringID)
+}
+
+func (s *Service) createTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest, recurringID *vo.Id) (*model.CreateTransactionResult, error) {
 	// req.Id is the operation/idempotency id; the entity id is freshly minted.
 	opID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -55,8 +67,12 @@ func (s *Service) CreateTransaction(ctx context.Context, userID vo.Id, req model
 		if berr != nil {
 			return berr
 		}
+		st.RecurringID = recurringID
 		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
 			return nerr
+		}
+		if rerr := s.checkReferences(ctx, userID, st); rerr != nil {
+			return rerr
 		}
 		t := model.New(st)
 		if serr := s.repo.Save(ctx, t); serr != nil {

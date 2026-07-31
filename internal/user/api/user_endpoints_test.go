@@ -43,7 +43,7 @@ func TestLoginUser_Success(t *testing.T) {
 	if !strings.HasPrefix(res.Token, "eco_ses_") {
 		t.Fatalf("token %q must start with eco_ses_", res.Token)
 	}
-	row, err := h.tokens.GetByHash(context.Background(), appuser.HashAccessToken(res.Token))
+	row, _, _, err := h.tokens.GetByHash(context.Background(), appuser.HashAccessToken(res.Token))
 	if err != nil {
 		t.Fatalf("session row for issued token: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
 		"email":    "fresh@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 		"name":     "Fresh",
 	})
 	if status != http.StatusOK {
@@ -192,10 +192,43 @@ func TestRegisterUser_NoToken_CreatesUser(t *testing.T) {
 	// + encrypted email + identifier were all written correctly).
 	st2, env2 := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
 		"username": "fresh@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 	})
 	if st2 != http.StatusOK {
 		t.Fatalf("login after register: status = %d; body: %s", st2, env2.raw)
+	}
+}
+
+// TestRegisterUser_TrimsEmailWhitespace_LoginWorks locks storage and lookup
+// normalization together: the user lookup key is lower(email) on the stored
+// column, so a padded email must be trimmed before being persisted, or a
+// later login/reset/verification with the clean email can never find the row
+// (lower() does not strip whitespace).
+func TestRegisterUser_TrimsEmailWhitespace_LoginWorks(t *testing.T) {
+	h := newHarness(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
+		"email":    "  regtrim@example.test  ",
+		"password": "hunter2pw",
+		"name":     "Trim",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+
+	res := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+	if res.User.Email != "regtrim@example.test" {
+		t.Fatalf("user.email = %q, want trimmed %q", res.User.Email, "regtrim@example.test")
+	}
+
+	st2, env2 := h.do(t, http.MethodPost, "/api/v1/user/login-user", "", map[string]string{
+		"username": "regtrim@example.test",
+		"password": "hunter2pw",
+	})
+	if st2 != http.StatusOK {
+		t.Fatalf("login with clean email after padded registration: status = %d; body: %s", st2, env2.raw)
 	}
 }
 
@@ -209,7 +242,7 @@ func TestRegisterUser_DoesNotAutoConnect(t *testing.T) {
 
 	if st, env := h.do(t, http.MethodPost, "/api/v1/user/register-user", "", map[string]string{
 		"email":    "second@example.test",
-		"password": "hunter2",
+		"password": "hunter2pw",
 		"name":     "Second",
 	}); st != http.StatusOK {
 		t.Fatalf("register status = %d; body: %s", st, env.raw)
@@ -408,7 +441,24 @@ func TestUpdateLanguage_Unsupported_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-	if !bytes.Contains(env.raw, []byte("user.language_invalid")) {
-		t.Fatalf("expected user.language_invalid in body: %s", env.raw)
+	if !bytes.Contains(env.raw, []byte(`"errors":{"language":["Language is incorrect"]}`)) {
+		t.Fatalf("expected language field error in body: %s", env.raw)
+	}
+}
+
+func TestGetUserData_CarriesAccessState(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	_, env := h.do(t, http.MethodGet, "/api/v1/user/get-user-data", token, nil)
+	wrapper := mustUnmarshal[struct {
+		User currentUser `json:"user"`
+	}](t, env.Data)
+
+	if wrapper.User.AccessLevel != "full" {
+		t.Fatalf("accessLevel = %q, want full", wrapper.User.AccessLevel)
+	}
+	if wrapper.User.AccessUntil != "" {
+		t.Fatalf("accessUntil = %q, want empty for a user with no expiry", wrapper.User.AccessUntil)
 	}
 }

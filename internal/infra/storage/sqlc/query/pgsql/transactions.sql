@@ -2,13 +2,13 @@
 -- See the sqlite variant for documentation.
 
 -- name: GetTransactionByID :one
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
 FROM transactions
 WHERE id = $1;
 
 -- name: UpsertTransaction :exec
-INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 ON CONFLICT (id) DO UPDATE SET
     account_id           = excluded.account_id,
     account_recipient_id = excluded.account_recipient_id,
@@ -26,7 +26,7 @@ ON CONFLICT (id) DO UPDATE SET
 DELETE FROM transactions WHERE id = $1;
 
 -- name: ListTransactionsByAccount :many
-SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient
+SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
 FROM transactions
 WHERE account_id = $1 OR account_recipient_id = $2
-ORDER BY spent_at DESC;
+ORDER BY spent_at DESC, id;

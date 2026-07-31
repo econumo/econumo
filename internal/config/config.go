@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -13,26 +14,41 @@ import (
 
 // Config is the fully-resolved application configuration.
 type Config struct {
-	Debug bool // ECONUMO_DEBUG: expose stackTrace in the 500 envelope
-
 	// Database
 	DatabaseURL    string // DSN passed to the selected Backend; its scheme picks the engine
 	DatabaseDriver string // "sqlite" | "postgresql" — DERIVED from DatabaseURL's scheme
 
 	// Econumo behavior
-	CurrencyBase      string // default "USD"
-	AllowRegistration bool
-	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
-	SQLiteBusyTimeout int
+	CurrencyBase               string // default "USD"
+	AllowRegistration          bool
+	DataSalt                   string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
+	SQLiteBusyTimeout          int
+	CheckUpdates               bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	Analytics                  bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to PostHog (default true)
+	TrialDays                  int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
+	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
+	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
+
+	// Admin listener for the payment portal. Both empty on a self-hosted
+	// instance, so the listener never opens and its routes exist on no mux.
+	AdminPort  string // ECONUMO_ADMIN_PORT
+	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
+	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
+	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
-	RateLimitLogin    int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
-	RateLimitReset    int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
-	RateLimitRemind   int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
-	RateLimitRegister int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
-	RateLimitWindow   time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
-	RateLimitGlobal   int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
+	RateLimitLogin              int           // ECONUMO_RATE_LIMIT_LOGIN: failed logins per username
+	RateLimitReset              int           // ECONUMO_RATE_LIMIT_RESET: failed reset attempts per username
+	RateLimitRemind             int           // ECONUMO_RATE_LIMIT_REMIND: remind requests per username
+	RateLimitRegister           int           // ECONUMO_RATE_LIMIT_REGISTER: register attempts per email
+	RateLimitAccept             int           // ECONUMO_RATE_LIMIT_ACCEPT_INVITE: accept-invite attempts per user (short-code brute-force guard)
+	RateLimitVerifyEmail        int           // ECONUMO_RATE_LIMIT_VERIFY_EMAIL: verification-code emails per username (every send counts)
+	RateLimitConfirmEmail       int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
+	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
+	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
+	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
+	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
 	// Mail — all DERIVED from MAILER_DSN, whose scheme selects the transport
 	// (empty/console/log -> console to stdout; resend://<key> -> Resend).
@@ -52,28 +68,44 @@ type Config struct {
 	// Integrations
 	OpenExchangeRatesToken string
 
-	// SPA
-	SPADir string // path to web/dist (served directly by the Go binary)
+	// SPA config overrides merged into the served econumo-config.js (the SPA
+	// itself is always embedded in the binary; only these config values reach
+	// the frontend from the environment). Each key mirrors a window.econumoConfig
+	// key under the ECONUMO_<KEY> name; an empty string / nil pointer leaves the
+	// embedded default in place (the backend value wins only when present).
+	AllowCustomAPI  *bool  // ECONUMO_ALLOW_CUSTOM_API
+	LiltagConfigURL string // ECONUMO_LILTAG_CONFIG_URL: URL the SPA loads liltag config from (empty = embedded liltag-config.json)
+	LiltagCacheTTL  string // ECONUMO_LILTAG_CACHE_TTL: liltag config cache TTL in seconds (empty = embedded default)
+	Version         string // ECONUMO_VERSION: overrides the UI version label (empty = the binary's build version)
 }
 
-// IsDev reports whether stack traces should be exposed in the 500 envelope.
-func (c Config) IsDev() bool { return c.Debug }
+// isLoopbackHost reports whether a URL hostname is loopback ("localhost" or a
+// loopback IP), the only hosts allowed to use plain http for the billing URL.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
 
 // Load reads and validates configuration from the environment.
 func Load() (Config, error) {
 	c := Config{
-		Debug:                  getBool("ECONUMO_DEBUG", false),
 		DatabaseURL:            os.Getenv("DATABASE_URL"),
 		CurrencyBase:           getEnv("ECONUMO_CURRENCY_BASE", "USD"),
 		AllowRegistration:      getBool("ECONUMO_ALLOW_REGISTRATION", false),
 		MailerDSN:              os.Getenv("MAILER_DSN"),
 		DataSalt:               os.Getenv("ECONUMO_DATA_SALT"),
 		SQLiteBusyTimeout:      getInt("SQLITE_BUSY_TIMEOUT", 0),
+		CheckUpdates:           getBool("ECONUMO_CHECK_UPDATES", true),
 		Port:                   os.Getenv("PORT"),
 		CORSAllowedOrigins:     getStringList("ECONUMO_CORS_ALLOW_ORIGIN", nil),
 		LogLevel:               getEnv("ECONUMO_LOG_LEVEL", "info"),
 		OpenExchangeRatesToken: os.Getenv("OPEN_EXCHANGE_RATES_TOKEN"),
-		SPADir:                 getEnv("ECONUMO_WEB_DIST", "web/dist"),
+		LiltagConfigURL:        os.Getenv("ECONUMO_LILTAG_CONFIG_URL"),
+		LiltagCacheTTL:         os.Getenv("ECONUMO_LILTAG_CACHE_TTL"),
+		Version:                os.Getenv("ECONUMO_VERSION"),
 	}
 
 	if c.DatabaseURL == "" {
@@ -96,6 +128,97 @@ func Load() (Config, error) {
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
 
+	// Strict parse (unlike the lenient getBool): a typo while trying to
+	// DISABLE analytics must fail at boot, not silently leave it enabled.
+	analytics, err := getBoolStrict("ECONUMO_ANALYTICS", true)
+	if err != nil {
+		return Config{}, err
+	}
+	c.Analytics = analytics
+
+	// Trial length in days. Empty or "none" (case-insensitive) means 0 = no
+	// trial grant, so a new user keeps permanent full access — the self-hosted
+	// default. A positive integer time-boxes the grant.
+	trialRaw := strings.TrimSpace(getEnv("ECONUMO_TRIAL", ""))
+	if trialRaw == "" || strings.EqualFold(trialRaw, "none") {
+		c.TrialDays = 0
+	} else {
+		days, derr := strconv.Atoi(trialRaw)
+		if derr != nil || days < 0 {
+			return Config{}, fmt.Errorf("ECONUMO_TRIAL: invalid value %q (want a non-negative number of days, 0, or none)", trialRaw)
+		}
+		c.TrialDays = days
+	}
+
+	// Strict parse for the same reason as ECONUMO_ANALYTICS: a typo must fail
+	// at boot, not silently disable (or enable) the verification gate.
+	emailVerification, err := getBoolStrict("ECONUMO_EMAIL_VERIFICATION", false)
+	if err != nil {
+		return Config{}, err
+	}
+	c.EmailVerification = emailVerification
+
+	// In-process rate refresh cadence in DAYS; 0 (default) disables it. Strict
+	// parse (like the rate limits): a negative/typo'd value must fail at boot,
+	// not silently disable the poller.
+	interval, err := getIntStrict("ECONUMO_CURRENCY_UPDATE_INTERVAL", 0)
+	if err != nil {
+		return Config{}, err
+	}
+	// A refresh cadence beyond a month is a misconfiguration (rates are daily),
+	// so cap it; this also keeps the poller's time.Duration ticker well clear of
+	// overflow.
+	if interval > 31 {
+		return Config{}, fmt.Errorf("ECONUMO_CURRENCY_UPDATE_INTERVAL %d is too large (max 31 days)", interval)
+	}
+	c.CurrencyUpdateIntervalDays = interval
+
+	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
+	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")
+	// Half-configured is operator error, and a listener that silently fails to
+	// open is the failure mode that costs an afternoon to diagnose.
+	if (c.AdminPort == "") != (c.AdminToken == "") {
+		return Config{}, fmt.Errorf("ECONUMO_ADMIN_PORT and ECONUMO_ADMIN_TOKEN must be set together")
+	}
+	// The token is an HMAC key as well as a bearer credential.
+	if c.AdminToken != "" && len(c.AdminToken) < 32 {
+		return Config{}, fmt.Errorf("ECONUMO_ADMIN_TOKEN: must be at least 32 characters")
+	}
+
+	if v := os.Getenv("ECONUMO_BILLING_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL: not an absolute http(s) URL: %q", v)
+		}
+		// Billing links carry the signed handoff token in the query string, and
+		// users' browsers follow them: a remote http portal would expose live
+		// identity assertions in transit. Loopback stays allowed so portal
+		// development against a real backend works.
+		if u.Scheme == "http" && !isLoopbackHost(u.Hostname()) {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL: must be https (billing links carry signed identity tokens); http is allowed only for loopback hosts: %q", v)
+		}
+		if c.AdminToken == "" {
+			return Config{}, fmt.Errorf("ECONUMO_BILLING_URL requires ECONUMO_ADMIN_TOKEN (the handoff signing key)")
+		}
+		c.BillingURL = v
+	}
+
+	if v := os.Getenv("ECONUMO_URL"); v != "" {
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("ECONUMO_URL: not an absolute http(s) URL: %q", v)
+		}
+		// Unlike ECONUMO_BILLING_URL this carries no signed token, so plain http
+		// stays allowed for LAN self-hosters.
+		c.AppURL = v
+	}
+
+	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
+	if err != nil {
+		return Config{}, err
+	}
+	c.AllowCustomAPI = allowCustomAPI
+
 	// Rate-limit values fail at boot on a malformed value (unlike the lenient
 	// getInt), because a typo here would silently disable brute-force protection.
 	for _, p := range []struct {
@@ -107,6 +230,11 @@ func Load() (Config, error) {
 		{&c.RateLimitReset, "ECONUMO_RATE_LIMIT_RESET", 5},
 		{&c.RateLimitRemind, "ECONUMO_RATE_LIMIT_REMIND", 3},
 		{&c.RateLimitRegister, "ECONUMO_RATE_LIMIT_REGISTER", 5},
+		{&c.RateLimitAccept, "ECONUMO_RATE_LIMIT_ACCEPT_INVITE", 10},
+		{&c.RateLimitVerifyEmail, "ECONUMO_RATE_LIMIT_VERIFY_EMAIL", 3},
+		{&c.RateLimitConfirmEmail, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL", 5},
+		{&c.RateLimitRequestEmailChange, "ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE", 3},
+		{&c.RateLimitConfirmEmailChange, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE", 5},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)
@@ -192,6 +320,33 @@ func getEnv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+func getBoolStrict(key string, def bool) (bool, error) {
+	v, ok := os.LookupEnv(key)
+	if !ok || v == "" {
+		return def, nil
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		return true, nil
+	case "0", "false", "no", "off":
+		return false, nil
+	}
+	return false, fmt.Errorf("%s: invalid boolean %q", key, v)
+}
+
+// getBoolOptional is the tri-state getBoolStrict: nil when the variable is
+// unset/empty, an error on garbage (never a silent fallback).
+func getBoolOptional(key string) (*bool, error) {
+	if v, ok := os.LookupEnv(key); !ok || v == "" {
+		return nil, nil
+	}
+	b, err := getBoolStrict(key, false)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
 }
 
 func getBool(key string, def bool) bool {

@@ -9,6 +9,7 @@ export interface EntityOption {
   value: string
   label: string
   icon?: string
+  disabled?: boolean
 }
 
 interface Row extends EntityOption {
@@ -103,7 +104,7 @@ export function EntitySelect({
       <div
         ref={rootRef}
         data-slot="entity-select"
-        className="flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:opacity-50 dark:bg-input/30"
+        className="flex h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:opacity-50 dark:bg-input/30 max-md:h-11 max-md:text-base"
         onClick={(e) => {
           // clicks on the icon/chevron/padding (and clicks forwarded by
           // SelectCard) open the picker, not just clicks on the input itself
@@ -144,6 +145,7 @@ export function EntitySelect({
             <ComboboxItem
               key={row.create ? '__create__' : row.value}
               value={row}
+              disabled={row.disabled}
               className={row.create ? 'text-econumo-magenta' : undefined}
             >
               {row.create ? (

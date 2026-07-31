@@ -185,7 +185,7 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 		Name:       name,
 		CurrencyId: currencyID,
 		FolderId:   folderID,
-		Balance:    "0",
+		Balance:    vo.NewFlexString("0"),
 		Icon:       "wallet",
 	})
 	if err != nil {

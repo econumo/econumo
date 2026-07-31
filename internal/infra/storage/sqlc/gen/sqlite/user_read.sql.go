@@ -7,6 +7,7 @@ package sqlitegen
 
 import (
 	"context"
+	"time"
 )
 
 const getUserOptionsView = `-- name: GetUserOptionsView :many
@@ -52,23 +53,27 @@ func (q *Queries) GetUserOptionsView(ctx context.Context, userID string) ([]GetU
 
 const getUserView = `-- name: GetUserView :one
 
-SELECT id, email, name, avatar
+SELECT id, email, name, avatar, access_level, access_until
 FROM users
 WHERE id = ?
 `
 
 type GetUserViewRow struct {
-	ID     string
-	Email  string
-	Name   string
-	Avatar string
+	ID          string
+	Email       string
+	Name        string
+	Avatar      string
+	AccessLevel string
+	AccessUntil *time.Time
 }
 
 // Read-model queries for the user module (CQRS read side). These are tailored
 // to the response shape and bypass the domain aggregate. They live separately
 // from the write queries (users.sql / users_options.sql) to keep the read and
 // write concerns visibly distinct.
-// The user's display fields for get-user-data / the login response user object.
+// The user's display fields for get-user-data / the login response user
+// object, plus the raw access_level/access_until columns (the service
+// collapses them against the clock before putting them on the wire).
 func (q *Queries) GetUserView(ctx context.Context, id string) (GetUserViewRow, error) {
 	row := q.db.QueryRowContext(ctx, getUserView, id)
 	var i GetUserViewRow
@@ -77,6 +82,8 @@ func (q *Queries) GetUserView(ctx context.Context, id string) (GetUserViewRow, e
 		&i.Email,
 		&i.Name,
 		&i.Avatar,
+		&i.AccessLevel,
+		&i.AccessUntil,
 	)
 	return i, err
 }

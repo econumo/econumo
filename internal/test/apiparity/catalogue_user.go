@@ -27,6 +27,15 @@ func init() {
 			// Logout revokes the presenting session (DB-backed tokens) — a subsequent
 			// call with the same token must 401 with the frozen envelope. Also pins
 			// the frozen {"result":"test"} quirk.
+			// Billing link: pins the assembled portal URL (the signed assertion
+			// itself is redacted). "for" preselects a beneficiary and is a hint
+			// only — the portal authorizes it server-side.
+			{Label: "create-billing-link", Method: "POST", Path: "/api/v1/user/create-billing-link", Auth: "owner",
+				Body: map[string]any{}},
+			{Label: "create-billing-link-for", Method: "POST", Path: "/api/v1/user/create-billing-link", Auth: "owner",
+				Body: map[string]any{"for": GuestID}},
+			{Label: "err:create-billing-link-bad-for", Method: "POST", Path: "/api/v1/user/create-billing-link", Auth: "owner",
+				Body: map[string]any{"for": "not-a-uuid"}},
 			{Label: "logout-user", Method: "POST", Path: "/api/v1/user/logout-user", Auth: "owner"},
 			{Label: "err:get-user-data-after-logout", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "owner"},
 		}
@@ -50,6 +59,35 @@ func init() {
 			// ResetPasswordRequest also requires "username" (NotBlank+Email) alongside code/password.
 			{Label: "err:reset-password-bad-code", Method: "POST", Path: "/api/v1/user/reset-password", Auth: "",
 				Body: map[string]any{"username": OwnerEmail, "code": "00000000-0000-0000-0000-000000000000", "password": "irrelevant-pw"}},
+			// Default config runs flag-off, so the seeded owner is verified:
+			// confirm with any code pins the generic invalid-code envelope, and
+			// resend pins the silent-success (no email side effect) envelope.
+			{Label: "err:confirm-email-bad-code", Method: "POST", Path: "/api/v1/user/confirm-email", Auth: "",
+				Body: map[string]any{"username": OwnerEmail, "code": "000000000000"}},
+			{Label: "resend-verification-code", Method: "POST", Path: "/api/v1/user/resend-verification-code", Auth: "",
+				Body: map[string]any{"username": OwnerEmail}},
+		}
+	}})
+
+	register(Scenario{Name: "user_change_email", Calls: func() []Call {
+		return []Call{
+			// Wrong password -> the generic incorrect-password validation error.
+			{Label: "err:request-email-change-wrong-password", Method: "POST", Path: "/api/v1/user/request-email-change", Auth: "owner",
+				Body: map[string]any{"newEmail": "owner-new@example.test", "password": "wrong-password"}},
+			// newEmail equal to the current (decrypted) email -> the unchanged-email error.
+			{Label: "err:request-email-change-same-email", Method: "POST", Path: "/api/v1/user/request-email-change", Auth: "owner",
+				Body: map[string]any{"newEmail": OwnerEmail, "password": SeedPassword}},
+			{Label: "request-email-change", Method: "POST", Path: "/api/v1/user/request-email-change", Auth: "owner",
+				Body: map[string]any{"newEmail": "owner-new@example.test", "password": SeedPassword}},
+			// The real code is only known server-side (emailed, hashed at rest), so a
+			// black-box replay can only pin the generic invalid-code path — mirrors
+			// err:confirm-email-bad-code above.
+			{Label: "err:confirm-email-change-bad-code", Method: "POST", Path: "/api/v1/user/confirm-email-change", Auth: "owner",
+				Body: map[string]any{"code": "000000"}},
+			// Immediately after request-email-change, within the resend cooldown: 200
+			// with the pending change untouched (Retry-After carries the wait; the
+			// body has no side channel for it, so only status/body are pinned here).
+			{Label: "resend-email-change-code", Method: "POST", Path: "/api/v1/user/resend-email-change-code", Auth: "owner"},
 		}
 	}})
 }

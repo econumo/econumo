@@ -28,5 +28,5 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/user/get-user-data [get]
 func (h *Handlers) GetUserData(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetUserData)
+	endpoint.HandleNoBody(w, r, h.read.GetUserData)
 }

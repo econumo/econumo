@@ -74,11 +74,12 @@ func (r *Repo) Get(ctx context.Context, accountID, userID vo.Id) (*model.Account
 // Save upserts a grant.
 func (r *Repo) Save(ctx context.Context, a *model.AccountAccess) error {
 	return r.q.UpsertAccountAccess(ctx, r.db(ctx), upsertParams{
-		AccountID: a.AccountID.String(),
-		UserID:    a.UserID.String(),
-		Role:      a.Role.Int16(),
-		CreatedAt: a.CreatedAt,
-		UpdatedAt: a.UpdatedAt,
+		AccountID:  a.AccountID.String(),
+		UserID:     a.UserID.String(),
+		Role:       a.Role.Int16(),
+		IsAccepted: a.IsAccepted,
+		CreatedAt:  a.CreatedAt,
+		UpdatedAt:  a.UpdatedAt,
 	})
 }
 
@@ -174,7 +175,7 @@ func hydrate(row accessRow) (*model.AccountAccess, error) {
 		return nil, err
 	}
 	return &model.AccountAccess{AccountID: accountID, UserID: userID, Role: model.Role(row.Role),
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+		IsAccepted: row.IsAccepted, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateAll(rows []accessRow) ([]*model.AccountAccess, error) {

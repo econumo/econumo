@@ -1,4 +1,4 @@
-import { applyAccountAccess, hasAccountAdminAccess, hasBudgetAdminAccess, removeAccountAccess, sharedAccountsFor, sharedBudgetsFor } from './shared'
+import { canWriteToAccount, hasAccountAdminAccess, hasBudgetAdminAccess, isPendingForMe, sharedAccountsFor, sharedBudgetsFor } from './shared'
 import { fixtureAccounts } from '@/test/fixtures'
 import type { AccountDto } from '@/api/dto/account'
 import type { BudgetMetaDto } from '@/api/dto/budget'
@@ -7,8 +7,8 @@ const me = { id: 'u1', avatar: '', name: 'Me' }
 const partner = { id: 'u2', avatar: '', name: 'Partner' }
 
 const base = fixtureAccounts[0] as unknown as AccountDto
-const mine: AccountDto = { ...base, id: 'a1', name: 'Wallet', owner: me, sharedAccess: [{ user: partner, role: 'user' }] }
-const theirs: AccountDto = { ...base, id: 'a2', name: 'Their cash', owner: partner, sharedAccess: [{ user: me, role: 'guest' }] }
+const mine: AccountDto = { ...base, id: 'a1', name: 'Wallet', owner: me, sharedAccess: [{ user: partner, role: 'user', isAccepted: 1 }] }
+const theirs: AccountDto = { ...base, id: 'a2', name: 'Their cash', owner: partner, sharedAccess: [{ user: me, role: 'guest', isAccepted: 1 }] }
 const unshared: AccountDto = { ...base, id: 'a3', owner: me, sharedAccess: [] }
 
 it('sharedAccountsFor picks both directions with the counterparty role', () => {
@@ -40,18 +40,18 @@ it('sharedBudgetsFor mirrors the logic over budget access', () => {
   ])
 })
 
-it('applyAccountAccess upserts, removeAccountAccess drops', () => {
-  const granted = applyAccountAccess([unshared], 'a3', partner, 'admin')
-  expect(granted[0].sharedAccess).toEqual([{ user: partner, role: 'admin' }])
-  const changed = applyAccountAccess(granted, 'a3', partner, 'guest')
-  expect(changed[0].sharedAccess).toEqual([{ user: partner, role: 'guest' }])
-  expect(removeAccountAccess(changed, 'a3', 'u2')[0].sharedAccess).toEqual([])
+it('isPendingForMe: true only when I have an unaccepted grant on someone else\'s account', () => {
+  const pending: AccountDto = { ...theirs, sharedAccess: [{ user: me, role: 'guest', isAccepted: 0 }] }
+  expect(isPendingForMe(pending, 'u1')).toBe(true)
+  expect(isPendingForMe(theirs, 'u1')).toBe(false)
+  expect(isPendingForMe(mine, 'u1')).toBe(false)
+  expect(isPendingForMe(pending, undefined)).toBe(false)
 })
 
 it('admin access = owner or admin grant (budgets require accepted)', () => {
   expect(hasAccountAdminAccess(mine, 'u1')).toBe(true)
   expect(hasAccountAdminAccess(theirs, 'u1')).toBe(false)
-  expect(hasAccountAdminAccess({ ...theirs, sharedAccess: [{ user: me, role: 'admin' }] }, 'u1')).toBe(true)
+  expect(hasAccountAdminAccess({ ...theirs, sharedAccess: [{ user: me, role: 'admin', isAccepted: 1 }] }, 'u1')).toBe(true)
   const budget: BudgetMetaDto = {
     id: 'b1', ownerUserId: 'u2', name: 'B', startedAt: '', currencyId: 'c1',
     access: [{ user: me, role: 'admin', isAccepted: 1 }],
@@ -59,4 +59,14 @@ it('admin access = owner or admin grant (budgets require accepted)', () => {
   expect(hasBudgetAdminAccess(budget, 'u1')).toBe(true)
   expect(hasBudgetAdminAccess({ ...budget, access: [{ user: me, role: 'admin', isAccepted: 0 }] }, 'u1')).toBe(false)
   expect(hasBudgetAdminAccess({ ...budget, ownerUserId: 'u1' }, 'u1')).toBe(true)
+})
+
+it('canWriteToAccount mirrors the backend gate: owner or accepted admin/user grant', () => {
+  expect(canWriteToAccount(mine, 'u1')).toBe(true) // owner
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [{ user: me, role: 'admin', isAccepted: 1 }] }, 'u1')).toBe(true)
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [{ user: me, role: 'user', isAccepted: 1 }] }, 'u1')).toBe(true)
+  expect(canWriteToAccount(theirs, 'u1')).toBe(false) // guest
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [{ user: me, role: 'admin', isAccepted: 0 }] }, 'u1')).toBe(false) // unaccepted
+  expect(canWriteToAccount({ ...theirs, sharedAccess: [] }, 'u1')).toBe(false) // no grant
+  expect(canWriteToAccount(mine, undefined)).toBe(false) // user not loaded yet
 })

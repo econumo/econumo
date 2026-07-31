@@ -74,6 +74,12 @@ func init() {
 		}
 	}})
 
+	register(Scenario{Name: "system_reads", Calls: func() []Call {
+		return []Call{
+			{Label: "get-update-info", Method: "GET", Path: "/api/v1/system/get-update-info", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
 	// ---- write -> read sequences (per mutating module) ----
 
 	register(Scenario{Name: "category_write_read", Calls: func() []Call {

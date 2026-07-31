@@ -6,18 +6,18 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
 import { getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
+import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
-import { useUserData } from '@/features/user/queries'
+import { dayKey, formatDayHeading } from '@/lib/datetime'
+import { useUserData, useAccessState } from '@/features/user/queries'
+import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
 import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
 import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
 import type { AggregatedImportResult } from '@/features/transactions/importCsv'
-
-// A tagged release (e.g. "v1.2.3") links to its notes; anything else ("dev",
-// a commit sha) has no release page, so it stays plain text.
-const SEMVER = /^v\d+\.\d+\.\d+$/
+import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -29,9 +29,30 @@ function MenuGroup({ label, children }: { label: string; children: React.ReactNo
 }
 
 // Vue renders the hub as light-gray card rows in a narrow column
-function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string; onClick?: () => void; trailing?: React.ReactNode }) {
+function MenuRow({
+  label,
+  to,
+  onClick,
+  trailing,
+  accent,
+}: {
+  label: string
+  to?: string
+  onClick?: () => void
+  trailing?: React.ReactNode
+  // 'hover' tints the row on hover only; 'rest' keeps the accent visible at rest
+  accent?: 'hover' | 'rest'
+}) {
   const inner = (
-    <span className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover">
+    <span
+      className={`flex w-full items-center justify-between gap-2 rounded-lg px-4 py-3.5 text-sm ${
+        accent === 'rest'
+          ? 'bg-primary/10 text-primary hover:bg-primary/15'
+          : accent === 'hover'
+            ? 'bg-econumo-card hover:bg-primary/10 hover:text-primary'
+            : 'bg-econumo-card hover:bg-econumo-hover'
+      }`}
+    >
       <span>{label}</span>
       {trailing ?? <ChevronRight className="size-4 text-muted-foreground" />}
     </span>
@@ -47,7 +68,7 @@ function MenuRow({ label, to, onClick, trailing }: { label: string; to?: string;
 }
 
 export function SettingsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
@@ -55,6 +76,9 @@ export function SettingsPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
   const version = getVersion()
+  const update = useAvailableUpdate()
+  const access = useAccessState()
+  const portal = useOpenBillingPortal()
 
   return (
     <div className="flex h-full flex-col gap-3 p-4">
@@ -84,10 +108,44 @@ export function SettingsPage() {
             </Link>
           ) : null}
 
+          {update ? (
+            <a
+              href={update.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between gap-2 rounded-lg bg-primary/10 px-4 py-3.5 text-sm font-medium text-primary hover:bg-primary/15"
+            >
+              <span>{t('settings.update.available', { version: update.version })}</span>
+              <ChevronRight className="size-4" />
+            </a>
+          ) : null}
+
+          {access.billingEnabled ? (
+            <MenuGroup label={t('subscription.settings.group')}>
+              <MenuRow
+                accent={access.state === 'full_access' ? 'hover' : 'rest'}
+                label={t('subscription.settings.portal')}
+                onClick={() => {
+                  if (!portal.pending) portal.open()
+                }}
+                trailing={
+                  access.state === 'trial' ? (
+                    <span className="shrink-0 text-xs text-primary/80">
+                      {t('subscription.settings.status.trial', { date: formatDayHeading(dayKey(access.accessUntil), i18n.language) })}
+                    </span>
+                  ) : access.state === 'readonly' ? (
+                    <span className="shrink-0 text-xs text-destructive">{t('subscription.settings.status.readonly')}</span>
+                  ) : undefined
+                }
+              />
+            </MenuGroup>
+          ) : null}
+
           <MenuGroup label={t('settings.page.groups.service')}>
             <MenuRow label={t('settings.accounts.menu_item')} to={RouterPage.SETTINGS_ACCOUNTS} />
             <MenuRow label={t('connections.pages.settings.menu_item')} to={RouterPage.SETTINGS_CONNECTIONS} />
             <MenuRow label={t('budgets.page.settings.menu_item')} to={RouterPage.SETTINGS_BUDGETS} />
+            <MenuRow label={t('settings.recurring.menu_item')} to={RouterPage.SETTINGS_RECURRING} />
           </MenuGroup>
 
           <MenuGroup label={t('settings.page.groups.classification')}>

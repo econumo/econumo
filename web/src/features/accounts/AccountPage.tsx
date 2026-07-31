@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { formatDate } from '@/lib/datetime'
 import { ChevronLeft, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router'
+import type { RecurringDto } from '@/api/dto/recurring'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -16,11 +18,14 @@ import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
 import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction } from '@/features/transactions/queries'
+import { useDeleteRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
+import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
+import { canWriteToAccount } from '@/features/connections/shared'
 
 // Accounts hold thousands of transactions; mounting them all at once makes
 // switching accounts visibly slow. Render a chunk and grow it as the scroll
@@ -28,10 +33,52 @@ import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDi
 // filtering happens on the data, not the DOM.
 const LIST_CHUNK = 100
 
-function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; children: (entry: DailyListEntry) => ReactNode }) {
+function WindowedEntries({
+  entries,
+  anchorIndex,
+  ready,
+  children,
+}: {
+  entries: DailyListEntry[]
+  /** index of the first at-or-before-today entry — everything above it is the
+      future block that starts hidden above the fold */
+  anchorIndex: number
+  /** anchoring waits for this so the future block is complete before the
+      scroll position is chosen (the recurring query may land after the
+      transactions) */
+  ready: boolean
+  children: (entry: DailyListEntry) => ReactNode
+}) {
   const [visibleCount, setVisibleCount] = useState(LIST_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const anchorRef = useRef<HTMLDivElement | null>(null)
+  const anchoredRef = useRef(false)
   const hasMore = visibleCount < entries.length
+
+  // Land the initial view on today: future rows stay above the fold and are
+  // pulled into view by scrolling up. Runs once per mount (the list remounts
+  // per account), so later list changes never yank the scroll position.
+  useLayoutEffect(() => {
+    if (anchoredRef.current || !ready || entries.length === 0 || anchorIndex < 0) {
+      return
+    }
+    if (anchorIndex === 0) {
+      // no future block — nothing to hide
+      anchoredRef.current = true
+      return
+    }
+    if (anchorIndex >= visibleCount) {
+      // the anchor row isn't rendered yet — grow the window first, then anchor
+      setVisibleCount(anchorIndex + LIST_CHUNK)
+      return
+    }
+    const anchor = anchorRef.current
+    const container = anchor?.parentElement
+    if (anchor && container) {
+      container.scrollTop += anchor.getBoundingClientRect().top - container.getBoundingClientRect().top
+    }
+    anchoredRef.current = true
+  }, [ready, entries.length, anchorIndex, visibleCount])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -57,7 +104,13 @@ function WindowedEntries({ entries, children }: { entries: DailyListEntry[]; chi
 
   return (
     <>
-      {entries.slice(0, visibleCount).map(children)}
+      {entries.slice(0, visibleCount).flatMap((entry, i) => {
+        const node = children(entry)
+        // the zero-height marker the initial scroll lands on
+        return i === anchorIndex && anchorIndex > 0
+          ? [<div key="future-anchor" data-testid="future-anchor" ref={anchorRef} aria-hidden="true" />, node]
+          : [node]
+      })}
       {hasMore ? <div ref={sentinelRef} aria-hidden="true" className="h-px" /> : null}
     </>
   )
@@ -71,14 +124,49 @@ export function AccountPage() {
   const { data: accounts } = useAccounts()
   const { data: user } = useUserData()
   const deleteTransaction = useDeleteTransaction()
+  const skipRecurring = useSkipRecurring()
+  const deleteRecurring = useDeleteRecurring()
+  // already cached by useAccountTransactions, so resolving a posted
+  // transaction's template costs no extra request
+  const { data: recurringList } = useRecurring()
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const openRecurringModal = useUiStore((s) => s.openRecurringModal)
 
   const [search, setSearch] = useState('')
+  // still reachable from the desktop kebab on an unposted recurring row, even
+  // though the preview dialog itself no longer offers delete
+  const [recurringDeleteTarget, setRecurringDeleteTarget] = useState<RecurringDto | null>(null)
   const [preview, setPreview] = useState<ViewTransaction | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ViewTransaction | null>(null)
+  // the template being previewed: reached either from its own (unposted) list row
+  // or from the provenance row inside a posted transaction's preview
+  const [recurringPreview, setRecurringPreview] = useState<RecurringDto | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const entries = useAccountTransactions(id, search)
+
+  // the template behind the previewed transaction. Stays undefined when it was
+  // deleted or lives on an account the caller can't see (the list is scoped to
+  // visible accounts), in which case the preview shows no provenance row.
+  const previewRecurring = preview?.recurringId
+    ? recurringList?.find((rt) => rt.id === preview.recurringId)
+    : undefined
+
+  // The first entry at or before today; everything above it is the future
+  // block (upcoming templates, post-dated transactions) that the initial
+  // scroll hides above the fold. Day separators lead every group, so matching
+  // on them finds the boundary.
+  const todayKey = formatDate(new Date())
+  const anchorIndex = entries.findIndex((e) => e.kind === 'separator' && e.day <= todayKey)
+
+  // The interval trailing a recurring row's title, as on the settings list. A
+  // virtual row carries its template; a posted one resolves it by recurringId,
+  // and shows nothing when the template is gone or not visible.
+  const scheduleNote = (tx: ViewTransaction): string | undefined => {
+    const schedule =
+      tx.recurring?.schedule ?? (tx.recurringId ? recurringList?.find((rt) => rt.id === tx.recurringId)?.schedule : undefined)
+    return schedule ? t(`recurring.schedule.${schedule}`) : undefined
+  }
 
   const account = accounts?.find((a) => a.id === id)
   if (!account) {
@@ -88,7 +176,10 @@ export function AccountPage() {
   const myRole = account.sharedAccess.find((access) => access.user.id === user?.id)?.role
   const isOwner = account.owner.id === user?.id
   const canUpdateSettings = isOwner || myRole === 'admin'
-  const canChangeTransaction = isOwner || myRole === 'admin' || myRole === 'user'
+  // Read-only access does NOT hide write controls: the backend rejects the
+  // write with 402 and the global handler explains why. Only sharing roles
+  // gate the UI.
+  const canChangeTransaction = canWriteToAccount(account, user?.id)
 
   const canTouchRow = (tx: ViewTransaction): boolean => {
     if (!canChangeTransaction) {
@@ -218,7 +309,7 @@ export function AccountPage() {
       )}
 
       <div className="flex-1 overflow-y-auto">
-        <WindowedEntries key={account.id} entries={entries}>
+        <WindowedEntries key={account.id} entries={entries} anchorIndex={anchorIndex} ready={recurringList !== undefined}>
           {(entry) =>
             entry.kind === 'separator' ? (
             <div key={`sep-${entry.day}`} className="px-2 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
@@ -231,10 +322,31 @@ export function AccountPage() {
             <div
               key={entry.transaction.id}
               className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'}`}
-              onClick={() => setPreview(entry.transaction)}
+              onClick={() => {
+                const rt = entry.transaction.recurring
+                if (rt) {
+                  setRecurringPreview(rt)
+                } else {
+                  setPreview(entry.transaction)
+                }
+              }}
             >
               <div className="min-w-0 flex-1">
-                <TransactionRow transaction={entry.transaction} pageAccount={account} />
+                <TransactionRow
+                  transaction={entry.transaction}
+                  pageAccount={account}
+                  titleNote={scheduleNote(entry.transaction)}
+                  /* the dimming says "not real yet" at a glance; this says why.
+                     Red when due — those rows sit interleaved among past days
+                     (the future block is above the fold) and need to pop */
+                  amountNote={
+                    entry.transaction.recurring ? (
+                      <span className={entry.transaction.isInFuture ? undefined : 'text-destructive'}>
+                        {t('recurring.not_posted')}
+                      </span>
+                    ) : undefined
+                  }
+                />
               </div>
               {!isCompact && canTouchRow(entry.transaction) ? (
                 <DropdownMenu
@@ -255,12 +367,28 @@ export function AccountPage() {
                   </DropdownMenuTrigger>
                   {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onSelect={() => editTransaction(entry.transaction)}>
-                      {t('common.button.edit.label')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(entry.transaction)}>
-                      {t('common.button.delete.label')}
-                    </DropdownMenuItem>
+                    {entry.transaction.recurring ? (
+                      <>
+                        <DropdownMenuItem onSelect={() => openRecurringModal({ recurring: entry.transaction.recurring })}>
+                          {t('common.button.edit.label')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => setRecurringDeleteTarget(entry.transaction.recurring ?? null)}
+                        >
+                          {t('common.button.delete.label')}
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuItem onSelect={() => editTransaction(entry.transaction)}>
+                          {t('common.button.edit.label')}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(entry.transaction)}>
+                          {t('common.button.delete.label')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}
@@ -293,6 +421,23 @@ export function AccountPage() {
             setDeleteTarget(preview)
             setPreview(null)
           }}
+          onMakeRecurring={() => {
+            const txToMakeRecurring = preview
+            setPreview(null)
+            openRecurringModal({ fromTransaction: txToMakeRecurring })
+          }}
+          recurringSchedule={previewRecurring?.schedule}
+          onOpenRecurring={
+            previewRecurring
+              ? () => {
+                  // straight to the template editor: the template PREVIEW renders
+                  // the same body as this dialog, so hopping through it reads as
+                  // the preview merely refreshing
+                  setPreview(null)
+                  openRecurringModal({ recurring: previewRecurring })
+                }
+              : undefined
+          }
           canChange={canTouchRow(preview)}
           isShared={account.sharedAccess.length > 0}
         />
@@ -307,6 +452,40 @@ export function AccountPage() {
           }
         }}
         question={t('accounts.page.delete_transaction_modal.question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
+      />
+
+      {recurringPreview ? (
+        <ViewRecurringDialog
+          recurring={recurringPreview}
+          onClose={() => setRecurringPreview(null)}
+          onPost={() => {
+            openTransactionModal({ postRecurring: recurringPreview })
+            setRecurringPreview(null)
+          }}
+          onSkip={() => {
+            skipRecurring.mutate(recurringPreview.id, { onSuccess: () => setRecurringPreview(null) })
+          }}
+          onEdit={() => {
+            setRecurringPreview(null)
+            openRecurringModal({ recurring: recurringPreview })
+          }}
+          canChange={canChangeTransaction}
+          skipPending={skipRecurring.isPending}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={recurringDeleteTarget !== null}
+        onClose={() => setRecurringDeleteTarget(null)}
+        onConfirm={() => {
+          if (recurringDeleteTarget) {
+            deleteRecurring.mutate(recurringDeleteTarget.id, { onSettled: () => setRecurringDeleteTarget(null) })
+          }
+        }}
+        question={t('settings.recurring.delete_question')}
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
         destructive

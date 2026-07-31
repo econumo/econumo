@@ -10,12 +10,17 @@ import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
 export function useBudgets() {
+  const { data: user } = useUserData()
   return useQuery({
     queryKey: queryKeys.budgets,
     queryFn: budgetApi.getBudgetList,
     staleTime: TEN_MINUTES,
-    // the list is unsorted on the wire; the settings page shows name asc (Vue parity)
-    select: (items) => [...items].sort((a, b) => a.name.localeCompare(b.name)),
+    // the list is unsorted on the wire; the settings page shows name asc (Vue parity).
+    // Invites I have not accepted are surfaced by the sharing-requests modal, not the list.
+    select: (items) =>
+      items
+        .filter((b) => b.ownerUserId === user?.id || b.access.some((a) => a.user.id === user?.id && a.isAccepted === 1))
+        .sort((a, b) => a.name.localeCompare(b.name)),
   })
 }
 
@@ -56,6 +61,12 @@ export function myBudgetRole(meta: BudgetMetaDto | undefined | null, userId: Id 
 export function canConfigureBudget(meta: BudgetMetaDto | undefined | null, userId: Id | undefined): boolean {
   const role = myBudgetRole(meta, userId)
   return role === 'owner' || role === 'admin'
+}
+
+// Mirrors the backend's canUpdate (update-budget): guest is read-only.
+export function canEditBudget(meta: BudgetMetaDto | undefined | null, userId: Id | undefined): boolean {
+  const role = myBudgetRole(meta, userId)
+  return role === 'owner' || role === 'admin' || role === 'user'
 }
 
 export function canUpdateLimits(meta: BudgetMetaDto | undefined | null, userId: Id | undefined, selectedDate: string): boolean {
@@ -115,7 +126,7 @@ export function useSetLimit() {
           structure: {
             ...prev.structure,
             elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId ? { ...el, budgeted: form.amount === null ? 0 : Number(form.amount) } : el,
+              el.id === form.elementId ? { ...el, budgeted: form.amount === null ? '0' : form.amount } : el,
             ),
           },
         }
@@ -328,7 +339,9 @@ export function useDeclineBudgetAccess() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (budgetId: Id) => budgetApi.declineAccess(budgetId),
-    onSuccess: () => {
+    onSuccess: (_r, budgetId) => {
+      // drop it synchronously so the invite disappears before the refetch lands
+      queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => (prev ?? []).filter((b) => b.id !== budgetId))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
       trackEvent(METRICS.BUDGET_DECLINE_ACCESS)
     },

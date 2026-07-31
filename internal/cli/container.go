@@ -69,12 +69,20 @@ func newContainer(ctx context.Context) (*container, error) {
 	userRepo := userrepo.NewRepo(cfg.DatabaseDriver, txm)
 	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
-	budgetExistence := server.NewUserBudgetExistence(cfg.DatabaseDriver, txm)
+	budgetExistence := server.NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
-	resetMailer := mailer.NewResetSender(mailer.New(cfg.MailProvider, cfg.MailAPIKey), cfg.MailFrom, cfg.MailReplyTo)
+	emailVerificationRepo := userrepo.NewEmailVerificationRepo(cfg.DatabaseDriver, txm)
+	emailChangeRepo := userrepo.NewEmailChangeRequestRepo(cfg.DatabaseDriver, txm)
+	mailTransport := mailer.Mailer(mailer.New(cfg.MailProvider, cfg.MailAPIKey))
+	if cfg.AppURL != "" {
+		mailTransport = mailer.WithAppLink(mailTransport, cfg.AppURL)
+	}
+	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
 		userRepo, txm, encodeSvc, hasher, accessTokens, server.NewUserCurrencyLookup(currencyLookup), budgetExistence,
-		passwordReqRepo, resetMailer, appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration,
+		passwordReqRepo, resetMailer, emailVerificationRepo, nil,
+		emailChangeRepo, nil,
+		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
 	)
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)

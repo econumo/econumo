@@ -2,6 +2,7 @@ package budget
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -10,10 +11,27 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// GetTransactionList returns the budget's transactions for a category, tag, or
-// envelope in a period. Exactly one of categoryId / tagId / envelopeId selects
-// the mode. Requires read access.
+// GetTransactionList returns the budget's transactions for a category, tag,
+// envelope, or the uncategorized bucket, in a period. categoryId alone
+// selects that category's UNTAGGED transactions; tagId (with an optional
+// categoryId) selects that tag's transactions, narrowed to the given category
+// when both are set; envelopeId alone selects the envelope's categories'
+// untagged transactions. uncategorized alone selects the top-level
+// uncategorized-and-untagged bucket (category_id IS NULL AND tag_id IS NULL);
+// uncategorized with tagId selects that tag's uncategorized child (tag_id =
+// tagId AND category_id IS NULL) - the two compose. uncategorized and
+// categoryId are mutually exclusive. tagId and envelopeId are mutually
+// exclusive; so are uncategorized and envelopeId - envelopes have no
+// uncategorized bucket of their own, so uncategorized+envelopeId falls
+// through to the same CodeBudgetTransactionFilterRequired error as any other
+// unsupported combination, exactly like tagId+envelopeId. Requires read
+// access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
+	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
+		return nil, errs.NewValidation("Validation failed", errs.FieldError{
+			Key: "categoryId", Message: "This value should not be provided when uncategorized is true.", Code: errs.CodeInvalidChoice,
+		})
+	}
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
 		return nil, model.ValidateBlank(map[string]string{"budgetId": ""})
@@ -40,6 +58,14 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 
 	var rows []model.BudgetTransactionRow
 	switch {
+	case req.Uncategorized && tag == "" && env == "":
+		rows, err = s.read.BudgetTransactionsUncategorized(ctx, f.includedAccountIDs, periodStart, periodEnd)
+	case req.Uncategorized && tag != "" && env == "":
+		tagID, perr := vo.ParseId(tag)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"tagId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, nil, true, f.includedAccountIDs, periodStart, periodEnd)
 	case cat != "" && tag == "" && env == "":
 		catID, perr := vo.ParseId(cat)
 		if perr != nil {
@@ -59,8 +85,8 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			}
 			catFilter = &c
 		}
-		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, catFilter, f.includedAccountIDs, periodStart, periodEnd)
-	case env != "" && tag == "" && cat == "":
+		rows, err = s.read.BudgetTransactionsByTag(ctx, tagID, catFilter, false, f.includedAccountIDs, periodStart, periodEnd)
+	case env != "" && tag == "" && cat == "" && !req.Uncategorized:
 		envID, perr := vo.ParseId(env)
 		if perr != nil {
 			return nil, model.ValidateBlank(map[string]string{"envelopeId": ""})

@@ -19,6 +19,7 @@ import (
 
 type (
 	accessTokenRow            = sqlitegen.AccessToken
+	accessTokenWithAccessRow  = sqlitegen.GetAccessTokenByHashRow
 	insertAccessTokenParams   = sqlitegen.InsertAccessTokenParams
 	updateAccessTokenParams   = sqlitegen.UpdateAccessTokenParams
 	listAccessTokensParams    = sqlitegen.ListAccessTokensByUserParams
@@ -27,7 +28,7 @@ type (
 
 type accessTokenQuerier interface {
 	InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error
-	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenRow, error)
+	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error)
 	GetAccessTokenByID(ctx context.Context, db backend.DBTX, id string) (accessTokenRow, error)
 	UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error
 	ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error)
@@ -63,15 +64,34 @@ func (r *AccessTokenRepo) Insert(ctx context.Context, t *model.AccessToken) erro
 	})
 }
 
-func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.AccessToken, error) {
+func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.AccessToken, model.AccessLevel, *time.Time, error) {
 	row, err := r.q.GetAccessTokenByHash(ctx, r.db(ctx), hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errs.NewNotFound("Access token not found")
+			return nil, "", nil, errs.NewNotFound("Access token not found")
 		}
-		return nil, err
+		return nil, "", nil, err
 	}
-	return accessTokenFromRow(row)
+	t, err := accessTokenFromRow(tokenRowFromHashRow(row))
+	if err != nil {
+		return nil, "", nil, err
+	}
+	level, err := model.ParseAccessLevel(row.AccessLevel)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	return t, level, row.AccessUntil, nil
+}
+
+// tokenRowFromHashRow strips the joined access_level/access_until columns
+// back down to the plain access_tokens row shape shared by every other query.
+func tokenRowFromHashRow(row accessTokenWithAccessRow) accessTokenRow {
+	return accessTokenRow{
+		ID: row.ID, UserID: row.UserID, Kind: row.Kind, TokenHash: row.TokenHash,
+		Name: row.Name, UserAgent: row.UserAgent,
+		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
+		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+	}
 }
 
 func (r *AccessTokenRepo) GetByID(ctx context.Context, id vo.Id) (*model.AccessToken, error) {

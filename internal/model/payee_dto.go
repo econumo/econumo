@@ -122,6 +122,13 @@ func (r OrderPayeeListRequest) Validate() error {
 	if len(r.Changes) == 0 {
 		return &errs.ValidationError{Msg: "Payees list is empty", MsgCode: errs.CodePayeeListEmpty}
 	}
+	var fields []errs.FieldError
+	for _, c := range r.Changes {
+		fields = append(fields, validatePositionField("position", c.Position)...)
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
 	return nil
 }
 

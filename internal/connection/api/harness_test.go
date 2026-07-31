@@ -8,23 +8,36 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
+	appaccount "github.com/econumo/econumo/internal/account"
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
+	appbudget "github.com/econumo/econumo/internal/budget"
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
 	appconnection "github.com/econumo/econumo/internal/connection"
 	handlerconnection "github.com/econumo/econumo/internal/connection/api"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	"github.com/econumo/econumo/internal/infra/ratelimit"
+	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
+	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/router"
 )
+
+// acceptInviteCap is the per-user accept-invite attempt cap the test harness
+// wires into its rate limiter (the production default is 10).
+const acceptInviteCap = 10
 
 const (
 	testDataSalt = "0123456789abcdef"
@@ -55,6 +68,7 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
+	f   *fixture.Builder
 }
 
 func newHarness(t *testing.T) *harness {
@@ -83,21 +97,46 @@ func newHarness(t *testing.T) *harness {
 	txm := tdb.TX
 	folderRepo := accountrepo.NewFolderRepo("sqlite", txm)
 	accountRepo := accountrepo.NewRepo("sqlite", txm)
+	accountAccessRepo := accountrepo.NewAccessRepo("sqlite", txm)
+	userOwnerLookup := server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm))
+	accountCurrencyLookup := server.NewAccountCurrencyLookup(currencyrepo.New("sqlite", txm))
+	opGuard := operationrepo.NewGuard("sqlite", txm)
+	connections := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
+	accountSvc := appaccount.NewService(
+		accountRepo, folderRepo, accountAccessRepo, accountCurrencyLookup, userOwnerLookup, connections, txm, opGuard, clock.New(),
+	)
+	budgetRepo := budgetrepo.NewRepo("sqlite", txm)
+	// Only the slices RemoveMember touches are wired (repo, users, metadata, tx, clock).
+	budgetSvc := appbudget.NewService(
+		budgetRepo, nil, nil, nil,
+		server.NewBudgetUserLookup(userrepo.NewRepo("sqlite", txm), clock.New()),
+		nil, nil,
+		budgetrepo.NewMetadataLookup(
+			server.NewBudgetCategoryMetadataLookup(categoryrepo.NewRepo("sqlite", txm)),
+			server.NewBudgetTagMetadataLookup(tagrepo.NewRepo("sqlite", txm)),
+			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", txm)),
+		),
+		connections,
+		txm, clock.New(),
+	)
+	limiter := ratelimit.New(ratelimit.Config{
+		Limits: map[string]int{appconnection.RateScopeAcceptInvite: acceptInviteCap},
+		Window: time.Hour,
+	}, clock.New())
 	svc := appconnection.NewService(
 		connectionrepo.NewRepo("sqlite", txm),
 		connectionrepo.NewInviteRepo("sqlite", txm),
-		server.NewConnectionFolderPort(folderRepo),
-		accountRepo,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)),
-		server.NewConnectionBudgetRevoker(budgetrepo.NewRepo("sqlite", txm)),
-		txm, clock.New(),
+		userOwnerLookup,
+		server.NewConnectionAccountAccessRevoker(accountSvc),
+		server.NewConnectionBudgetRevoker(budgetRepo, budgetSvc),
+		limiter, txm, clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
-	handlers := handlerconnection.NewHandlers(svc, cfg.IsDev())
-	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, authstub.Authenticator{}, cfg.IsDev())})
+	handlers := handlerconnection.NewHandlers(svc)
+	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerconnection.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db}
+	return &harness{srv: srv, db: db, f: f}
 }
 
 func (h *harness) token(t *testing.T, userID, email string) string {

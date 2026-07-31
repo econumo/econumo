@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/web/apidoc"
@@ -22,11 +23,12 @@ var _ = apidoc.JsonResponseError{}
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.CreateBudgetResult}
 // @Failure  400 {object} apidoc.JsonResponseError
 // @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  402 {object} apidoc.JsonResponseError
 // @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/create-budget [post]
 func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreateBudget)
+	endpoint.Handle(w, r, h.svc.CreateBudget)
 }
 
 // UpdateBudget handles POST /api/v1/budget/update-budget.
@@ -38,10 +40,13 @@ func (h *Handlers) CreateBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    request body model.UpdateBudgetRequest true "Update budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.UpdateBudgetResult}
 // @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  402 {object} apidoc.JsonResponseError
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/update-budget [post]
 func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateBudget)
+	endpoint.Handle(w, r, h.svc.UpdateBudget)
 }
 
 // DeleteBudget handles POST /api/v1/budget/delete-budget.
@@ -52,10 +57,14 @@ func (h *Handlers) UpdateBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    request body model.DeleteBudgetRequest true "Delete budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.DeleteBudgetResult}
+// @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  402 {object} apidoc.JsonResponseError
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/delete-budget [post]
 func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.DeleteBudget)
+	endpoint.Handle(w, r, h.svc.DeleteBudget)
 }
 
 // ResetBudget handles POST /api/v1/budget/reset-budget.
@@ -66,10 +75,14 @@ func (h *Handlers) DeleteBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    request body model.ResetBudgetRequest true "Reset budget"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.ResetBudgetResult}
+// @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  402 {object} apidoc.JsonResponseError
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/reset-budget [post]
 func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ResetBudget)
+	endpoint.Handle(w, r, h.svc.ResetBudget)
 }
 
 // GetBudget handles GET /api/v1/budget/get-budget.
@@ -80,6 +93,8 @@ func (h *Handlers) ResetBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    id    query string true  "Budget id"
 // @Param    date  query string false "Period date (Y-m-d)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetResult}
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget [get]
 func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +105,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 	req := model.GetBudgetRequest{Id: r.URL.Query().Get("id"), Date: r.URL.Query().Get("date")}
 	res, err := h.svc.GetBudget(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	httpx.OK(w, res)
@@ -103,10 +118,13 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Produce  json
 // @Param    budgetId    query string true  "Budget id"
 // @Param    periodStart query string true  "Period start (Y-m-d)"
-// @Param    categoryId  query string false "Category id"
-// @Param    tagId       query string false "Tag id"
-// @Param    envelopeId  query string false "Envelope id"
+// @Param    categoryId    query string false "Category id"
+// @Param    tagId         query string false "Tag id"
+// @Param    envelopeId    query string false "Envelope id"
+// @Param    uncategorized query boolean false "Uncategorized bucket (mutually exclusive with categoryId)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetTransactionListResult}
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/get-transaction-list [get]
 func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
@@ -116,15 +134,16 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	req := model.BudgetTransactionListRequest{
-		BudgetId:    q.Get("budgetId"),
-		PeriodStart: q.Get("periodStart"),
-		CategoryId:  optQuery(q.Get("categoryId")),
-		TagId:       optQuery(q.Get("tagId")),
-		EnvelopeId:  optQuery(q.Get("envelopeId")),
+		BudgetId:      q.Get("budgetId"),
+		PeriodStart:   q.Get("periodStart"),
+		CategoryId:    optQuery(q.Get("categoryId")),
+		TagId:         optQuery(q.Get("tagId")),
+		EnvelopeId:    optQuery(q.Get("envelopeId")),
+		Uncategorized: boolQuery(q.Get("uncategorized")),
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	httpx.OK(w, res)
@@ -137,14 +156,29 @@ func optQuery(v string) *string {
 	return &v
 }
 
+// boolQuery parses a query-param boolean per Go/swagger boolean conventions
+// (strconv.ParseBool: "1", "t", "T", "TRUE", "true", "True", ...), not just
+// the literal "1"/"true" -- a stricter parse would silently accept
+// swagger-generated spellings like "True" as false, taking the wrong branch
+// instead of erroring.
+func boolQuery(v string) bool {
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return b
+}
+
 // GetBudgetList handles GET /api/v1/budget/get-budget-list.
 //
 // @Summary  List budgets
 // @Tags     Budget
 // @Produce  json
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetListResult}
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  500 {object} apidoc.JsonResponseException
 // @Security Bearer
 // @Router   /api/v1/budget/get-budget-list [get]
 func (h *Handlers) GetBudgetList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetBudgetList)
+	endpoint.HandleNoBody(w, r, h.svc.GetBudgetList)
 }

@@ -1,18 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as accountApi from '@/api/account'
-import type { AccountDto, AccountItemDto } from '@/api/dto/account'
+import type { AccountDto, AccountItemDto, AccountRole } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
+import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { isPendingForMe } from '@/features/connections/shared'
+import { useUserData } from '@/features/user/queries'
 
 export function useAccounts() {
+  const { data: user } = useUserData()
   return useQuery({
     queryKey: queryKeys.accounts,
     queryFn: accountApi.getAccountList,
     staleTime: TEN_MINUTES,
-    // get-account-list response order differs from order-account-list; position is authoritative
-    select: (items) => [...items].sort((a, b) => a.position - b.position),
+    // get-account-list response order differs from order-account-list; position is authoritative.
+    // Invites I have not accepted are surfaced by the sharing-requests modal, not the lists.
+    select: (items) =>
+      items
+        .filter((a) => !isPendingForMe(a, user?.id))
+        .sort((a, b) => a.position - b.position),
   })
 }
 
@@ -84,6 +92,25 @@ export function useDeleteAccount() {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
         (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
       )
+      trackEvent(METRICS.ACCOUNT_DELETE)
+    },
+  })
+}
+
+// Leaving an ACCEPTED share (settings page "Decline"): delete-account from a
+// non-owner drops only the caller's own access; the server never deletes a
+// shared account. A PENDING invite is declined via useDeclineAccountAccess
+// (the decline-access endpoint) instead.
+export function useLeaveSharedAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: accountApi.deleteAccount,
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => (prev ?? []).filter((a) => a.id !== id))
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+        (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
+      )
+      trackEvent(METRICS.ACCOUNT_DECLINE_ACCESS)
     },
   })
 }
@@ -110,7 +137,10 @@ export function useOrderAccounts() {
         queryClient.setQueryData(queryKeys.accounts, context.previous)
       }
     },
-    onSuccess: (items) => queryClient.setQueryData(queryKeys.accounts, items),
+    onSuccess: (items) => {
+      queryClient.setQueryData(queryKeys.accounts, items)
+      trackEvent(METRICS.ACCOUNT_ORDER_LIST)
+    },
   })
 }
 
@@ -118,7 +148,10 @@ export function useCreateFolder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: accountApi.createFolder,
-    onSuccess: (item) => queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item)),
+    onSuccess: (item) => {
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item))
+      trackEvent(METRICS.ACCOUNT_FOLDER_CREATE)
+    },
   })
 }
 
@@ -126,7 +159,10 @@ export function useUpdateFolder() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => accountApi.updateFolder(id, name),
-    onSuccess: (item) => queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item)),
+    onSuccess: (item) => {
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => upsert(prev, item))
+      trackEvent(METRICS.ACCOUNT_FOLDER_UPDATE)
+    },
   })
 }
 
@@ -151,7 +187,10 @@ export function useOrderFolders() {
         queryClient.setQueryData(queryKeys.folders, context.previous)
       }
     },
-    onSuccess: (items) => queryClient.setQueryData(queryKeys.folders, items),
+    onSuccess: (items) => {
+      queryClient.setQueryData(queryKeys.folders, items)
+      trackEvent(METRICS.ACCOUNT_FOLDER_ORDER_LIST)
+    },
   })
 }
 
@@ -162,6 +201,7 @@ export function useReplaceFolder() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      trackEvent(METRICS.ACCOUNT_FOLDER_REPLACE)
     },
   })
 }
@@ -186,6 +226,7 @@ function useSetFolderVisibility(mutationFn: (id: string) => Promise<void>, isVis
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      trackEvent(isVisible ? METRICS.ACCOUNT_FOLDER_SHOW : METRICS.ACCOUNT_FOLDER_HIDE)
     },
   })
 }
@@ -196,4 +237,53 @@ export function useHideFolder() {
 
 export function useShowFolder() {
   return useSetFolderVisibility(accountApi.showFolder, 1)
+}
+
+export function useGrantAccountAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { accountId: Id; userId: Id; role: AccountRole }) => accountApi.grantAccess(form),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      trackEvent(METRICS.CONNECTION_UPDATE_ACCOUNT_ACCESS)
+    },
+  })
+}
+
+export function useAcceptAccountAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { accountId: Id; folderId?: Id }) => accountApi.acceptAccess(form),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
+      // the pre-accept cache excludes this account's transactions (pending = no access)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+      trackEvent(METRICS.CONNECTION_ACCEPT_ACCOUNT_ACCESS)
+    },
+  })
+}
+
+export function useDeclineAccountAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (accountId: Id) => accountApi.declineAccess(accountId),
+    onSuccess: (_r, accountId) => {
+      // drop it synchronously so the invite disappears before the refetch lands
+      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => (prev ?? []).filter((a) => a.id !== accountId))
+      void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      trackEvent(METRICS.CONNECTION_DECLINE_ACCOUNT_ACCESS)
+    },
+  })
+}
+
+export function useRevokeAccountAccess() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { accountId: Id; userId: Id }) => accountApi.revokeAccess(form),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      trackEvent(METRICS.CONNECTION_REVOKE_ACCOUNT_ACCESS)
+    },
+  })
 }

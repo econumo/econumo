@@ -120,14 +120,28 @@ function ComboboxContent({
   )
 }
 
-function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
+function ComboboxList({
+  className,
+  onPointerDownCapture,
+  ...props
+}: ComboboxPrimitive.List.Props) {
   return (
     <ComboboxPrimitive.List
       data-slot="combobox-list"
       className={cn(
-        "no-scrollbar max-h-[min(calc(--spacing(72)---spacing(9)),calc(var(--available-height)---spacing(9)))] scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",
+        "no-scrollbar max-h-[min(calc(--spacing(80)---spacing(9)),calc(var(--available-height)---spacing(9)))] touch-pan-y scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0 max-md:max-h-[min(calc(--spacing(96)---spacing(9)),calc(var(--available-height)---spacing(9)))]",
         className
       )}
+      onPointerDownCapture={(event) => {
+        onPointerDownCapture?.(event)
+        if (event.pointerType === "touch") {
+          // Base UI prevents pointerdown on each option to keep the input
+          // focused. On touch browsers that also cancels the native pan before
+          // this overflow container can scroll. Stop the capture path here so
+          // touch taps still click options while touch drags remain scrollable.
+          event.stopPropagation()
+        }
+      }}
       {...props}
     />
   )
@@ -142,7 +156,7 @@ function ComboboxItem({
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex w-full cursor-default items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground not-data-[variant=destructive]:data-highlighted:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 max-md:py-3 max-md:text-base",
         className
       )}
       {...props}

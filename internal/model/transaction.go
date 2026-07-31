@@ -67,6 +67,10 @@ type Transaction struct {
 	SpentAt         time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	// RecurringID is the template this transaction was materialized from (nil
+	// for hand-entered ones). Provenance, not mutable state: Update leaves it
+	// alone, so editing a posted instance never severs its origin.
+	RecurringID *vo.Id
 }
 
 // NewState bundles the fields for constructing/reconstructing a Transaction.
@@ -86,6 +90,23 @@ type NewState struct {
 	SpentAt         time.Time
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	RecurringID     *vo.Id
+}
+
+// TransactionFilter narrows a transaction list query. PeriodStart/PeriodEnd
+// bound spent_at to [start, end) when BOTH are non-zero (a lone bound is
+// ignored); the classification fields (Uncategorized, CategoryID, PayeeID,
+// TagID) AND-compose on top. The zero value filters nothing — callers on the
+// byte-identical REST path pass it unchanged. Uncategorized and CategoryID are
+// mutually exclusive by construction (the service rejects both being set
+// before building this).
+type TransactionFilter struct {
+	PeriodStart   time.Time
+	PeriodEnd     time.Time
+	Uncategorized bool
+	CategoryID    *vo.Id
+	PayeeID       *vo.Id
+	TagID         *vo.Id
 }
 
 // New constructs a freshly-created transaction (CreatedAt == UpdatedAt). The
@@ -97,6 +118,7 @@ func New(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.CreatedAt,
+		RecurringID: s.RecurringID,
 	}
 }
 
@@ -108,6 +130,7 @@ func FromState(s NewState) *Transaction {
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
 		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
+		RecurringID: s.RecurringID,
 	}
 }
 

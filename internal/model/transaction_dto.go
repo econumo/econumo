@@ -28,16 +28,20 @@ type TransactionResult struct {
 	PayeeId            *string    `json:"payeeId"`
 	TagId              *string    `json:"tagId"`
 	Date               string     `json:"date"`
+	// RecurringId is the template this transaction was posted from, null for a
+	// hand-entered one. Read-only provenance: create/update never accept it.
+	RecurringId *string `json:"recurringId"`
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
-// are vo.FlexString: the frontend posts them as JSON numbers, the contract treats
-// them as decimal strings, and FlexString accepts either (see its doc).
+// are vo.FlexString: the contract treats these as decimal strings, but FlexString
+// keeps accepting the deprecated JSON-number form from third-party clients (see
+// vo.FlexString's doc).
 type CreateTransactionRequest struct {
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`
-	Amount             vo.FlexString  `json:"amount"`
-	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	Amount             vo.FlexString  `json:"amount" swaggertype:"string"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient" swaggertype:"string"`
 	AccountId          string         `json:"accountId"`
 	AccountRecipientId *string        `json:"accountRecipientId"`
 	CategoryId         *string        `json:"categoryId"`
@@ -47,9 +51,8 @@ type CreateTransactionRequest struct {
 	TagId              *string        `json:"tagId"`
 }
 
-// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date. (For
-// non-transfers categoryId is required, but that is re-checked tier-2 in
-// buildState.)
+// Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.
+// categoryId is optional for every transaction type, including non-transfers.
 func (r CreateTransactionRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
@@ -77,8 +80,8 @@ type CreateTransactionResult struct {
 type UpdateTransactionRequest struct {
 	Id                 string         `json:"id"`
 	Type               string         `json:"type"`
-	Amount             vo.FlexString  `json:"amount"`
-	AmountRecipient    *vo.FlexString `json:"amountRecipient"`
+	Amount             vo.FlexString  `json:"amount" swaggertype:"string"`
+	AmountRecipient    *vo.FlexString `json:"amountRecipient" swaggertype:"string"`
 	AccountId          string         `json:"accountId"`
 	AccountRecipientId *string        `json:"accountRecipientId"`
 	CategoryId         *string        `json:"categoryId"`
@@ -130,22 +133,47 @@ type DeleteTransactionResult struct {
 }
 
 // TransactionListRequest is the get-transaction-list query (all optional): by
-// accountId, or by [periodStart, periodEnd), or neither (all visible).
+// accountId, or by [periodStart, periodEnd), or neither (all visible). The
+// classification filters (Uncategorized, CategoryId, PayeeId, TagId) are
+// MCP-only — REST's get-transaction-list never populates them (see
+// internal/transaction/api/transactionlist.go), so their zero values MUST
+// leave GetTransactionList's behavior byte-identical to before they existed.
 type TransactionListRequest struct {
-	AccountId   string `json:"accountId"`
-	PeriodStart string `json:"periodStart"`
-	PeriodEnd   string `json:"periodEnd"`
+	AccountId     string `json:"accountId"`
+	PeriodStart   string `json:"periodStart"`
+	PeriodEnd     string `json:"periodEnd"`
+	Uncategorized bool   `json:"uncategorized,omitempty"`
+	CategoryId    string `json:"categoryId,omitempty"`
+	PayeeId       string `json:"payeeId,omitempty"`
+	TagId         string `json:"tagId,omitempty"`
 }
 
-// Validate: every field is optional, but when present accountId must be a UUID
-// and periodStart/periodEnd must match the strict "Y-m-d H:i:s" datetime format.
-// The exact messages and field grouping are wire-frozen.
+// Validate: every field is optional, but when present accountId/categoryId/
+// payeeId/tagId must be UUIDs and periodStart/periodEnd must match the strict
+// "Y-m-d H:i:s" datetime format. uncategorized and categoryId are mutually
+// exclusive (uncategorized means categoryId IS NULL). The exact messages and
+// field grouping for accountId/periodStart/periodEnd are wire-frozen.
 func (r TransactionListRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.AccountId) != "" {
 		if _, err := vo.ParseId(r.AccountId); err != nil {
 			fields = append(fields, errs.FieldError{Key: "accountId", Message: "This value is not a valid UUID.", Code: errs.CodeInvalidUUID})
 		}
+	}
+	for _, f := range []struct{ key, val string }{
+		{"categoryId", r.CategoryId},
+		{"payeeId", r.PayeeId},
+		{"tagId", r.TagId},
+	} {
+		if strings.TrimSpace(f.val) == "" {
+			continue
+		}
+		if _, err := vo.ParseId(f.val); err != nil {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value is not a valid UUID.", Code: errs.CodeInvalidUUID})
+		}
+	}
+	if r.Uncategorized && strings.TrimSpace(r.CategoryId) != "" {
+		fields = append(fields, errs.FieldError{Key: "categoryId", Message: "This value should not be provided when uncategorized is true.", Code: errs.CodeInvalidChoice})
 	}
 	for _, f := range []struct{ key, val string }{
 		{"periodStart", r.PeriodStart},
@@ -167,4 +195,58 @@ func (r TransactionListRequest) Validate() error {
 // GetTransactionListResult is the response: {items: [...]}.
 type GetTransactionListResult struct {
 	Items []TransactionResult `json:"items"`
+}
+
+// BulkUpdateTransactionsRequest is the MCP-only bulk_update_transactions
+// input: re-classify (set or clear category/payee/tag on) an explicit list of
+// transaction ids in one all-or-nothing call. There is no REST route for
+// this. Amount/date/account/type are never touched. A nil pointer field means
+// "leave unchanged"; the matching Clear* flag means "clear to NULL" — setting
+// both for the same field is rejected.
+type BulkUpdateTransactionsRequest struct {
+	Ids           []string `json:"ids"`
+	CategoryId    *string  `json:"categoryId"`
+	PayeeId       *string  `json:"payeeId"`
+	TagId         *string  `json:"tagId"`
+	ClearCategory bool     `json:"clearCategory"`
+	ClearPayee    bool     `json:"clearPayee"`
+	ClearTag      bool     `json:"clearTag"`
+}
+
+// Validate enforces tier-1 shape: at least one id, at least one requested
+// change, and no field both set and cleared at once. The id cap (100), UUID
+// parsing, and the per-transaction access/reference/type invariants are
+// tier-2 in Service.BulkUpdateTransactions — MCP tools call the service
+// directly and never run Validate() (see internal/web/mcp), so that tier-2
+// pass is the one MCP callers actually hit.
+func (r BulkUpdateTransactionsRequest) Validate() error {
+	var fields []errs.FieldError
+	if len(r.Ids) == 0 {
+		fields = append(fields, errs.FieldError{Key: "ids", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	for _, f := range []struct {
+		key   string
+		set   *string
+		clear bool
+	}{
+		{"categoryId", r.CategoryId, r.ClearCategory},
+		{"payeeId", r.PayeeId, r.ClearPayee},
+		{"tagId", r.TagId, r.ClearTag},
+	} {
+		if f.set != nil && f.clear {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be provided together with the matching clear flag.", Code: errs.CodeInvalidChoice})
+		}
+	}
+	if r.CategoryId == nil && r.PayeeId == nil && r.TagId == nil && !r.ClearCategory && !r.ClearPayee && !r.ClearTag {
+		fields = append(fields, errs.FieldError{Key: "categoryId", Message: "At least one classification change is required.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// BulkUpdateTransactionsResult is the response: {updated: <count>}.
+type BulkUpdateTransactionsResult struct {
+	Updated int `json:"updated"`
 }

@@ -5,12 +5,12 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { useUiStore } from '@/app/uiStore'
-import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
+import { BudgetTransactionsDialog, type BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { useBudgetPeriodStore } from './budgetStore'
 
-const target = { id: 'cat-food', type: BudgetElementType.CATEGORY, name: 'Food', icon: 'restaurant', currencyId: null }
+const target: BudgetTransactionsTarget = { id: 'cat-food', type: BudgetElementType.CATEGORY, name: 'Food', icon: 'restaurant', currencyId: null }
 
 const wireItems = [
   {
@@ -27,11 +27,11 @@ const wireItems = [
   },
 ]
 
-function renderDialog() {
+function renderDialog(element: BudgetTransactionsTarget = target) {
   const budget = coerceBudgetFixture(fixtureWireBudget)
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
-      <BudgetTransactionsDialog budget={budget} element={target} onClose={() => {}} />
+      <BudgetTransactionsDialog budget={budget} element={element} onClose={() => {}} />
     </QueryClientProvider>,
   )
 }
@@ -93,4 +93,92 @@ it('delete flows through the confirm dialog', async () => {
   // the confirm dialog takes over
   await user.click(await screen.findByRole('button', { name: 'Delete' }))
   await vi.waitFor(() => expect(deletedId).toBe('t1'))
+})
+
+// The three cases below intercept the actual outgoing request and assert on its
+// query string, rather than a mock's call arguments, so a regression in the
+// params-construction spread (not just the on-click parent shape) is caught.
+function captureTransactionListUrl() {
+  let capturedUrl: string | undefined
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      capturedUrl = request.url
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  return () => capturedUrl
+}
+
+it('a category listed under a tag requests both categoryId and tagId', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: 'cat-food',
+    type: BudgetElementType.CATEGORY,
+    name: 'Food',
+    icon: 'restaurant',
+    currencyId: null,
+    parent: { id: 'tag-groceries', type: BudgetElementType.TAG },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('categoryId')).toBe('cat-food')
+  expect(params.get('tagId')).toBe('tag-groceries')
+})
+
+it('a category listed under an envelope requests categoryId only', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: 'cat-food',
+    type: BudgetElementType.CATEGORY,
+    name: 'Food',
+    icon: 'restaurant',
+    currencyId: null,
+    parent: { id: 'env-fun', type: BudgetElementType.ENVELOPE },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('categoryId')).toBe('cat-food')
+  expect(params.has('tagId')).toBe(false)
+})
+
+it('a top-level tag row requests tagId only, not clobbered by a parent spread', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: 'tag-groceries',
+    type: BudgetElementType.TAG,
+    name: 'Groceries',
+    icon: 'local_grocery_store',
+    currencyId: null,
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('tagId')).toBe('tag-groceries')
+  expect(params.has('categoryId')).toBe(false)
+})
+
+it('the top-level Uncategorized target requests uncategorized=1 and no categoryId', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: UNCATEGORIZED_ID, type: BudgetElementType.CATEGORY, name: 'Uncategorized', icon: 'question_mark', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.has('categoryId')).toBe(false)
+})
+
+it("a tag's Uncategorized child requests uncategorized=1 and tagId, and no categoryId", async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: UNCATEGORIZED_ID,
+    type: BudgetElementType.CATEGORY,
+    name: 'Uncategorized',
+    icon: 'question_mark',
+    currencyId: null,
+    parent: { id: 'tag-x', type: BudgetElementType.TAG },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.get('tagId')).toBe('tag-x')
+  expect(params.has('categoryId')).toBe(false)
 })

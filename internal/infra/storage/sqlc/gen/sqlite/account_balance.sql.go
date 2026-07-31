@@ -85,7 +85,7 @@ SELECT
     AS REAL) as balance
 FROM accounts a
 LEFT JOIN accounts_access aa ON aa.account_id = a.id
-WHERE a.is_deleted = 0 AND (a.user_id = ? OR aa.user_id = ?)
+WHERE a.is_deleted = 0 AND (a.user_id = ? OR (aa.user_id = ? AND aa.is_accepted = 1))
 GROUP BY a.id
 `
 

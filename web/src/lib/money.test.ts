@@ -74,3 +74,13 @@ describe('moneyFormat', () => {
     expect(moneyFormat(0.00000001, btc, { showCurrency: false, useNativePrecision: false, maxPrecision: 8 })).toBe('0.00000001')
   })
 })
+
+describe('large amounts survive without float mangling', () => {
+  it('normalizeNumber keeps every digit', () => {
+    expect(normalizeNumber('12345678901234567.89')).toBe('12345678901234567.89')
+  })
+
+  it('moneyFormat formats large strings exactly', () => {
+    expect(moneyFormat('12345678901234567.89', usd, { showCurrency: false })).toBe('12,345,678,901,234,567.89')
+  })
+})

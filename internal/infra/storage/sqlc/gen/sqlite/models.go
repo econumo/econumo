@@ -34,11 +34,12 @@ type Account struct {
 }
 
 type AccountsAccess struct {
-	AccountID string
-	UserID    string
-	Role      int16
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	AccountID  string
+	UserID     string
+	Role       int16
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	IsAccepted bool
 }
 
 type AccountsFolder struct {
@@ -191,6 +192,24 @@ type Payee struct {
 	UpdatedAt  time.Time
 }
 
+type RecurringTransaction struct {
+	ID                 string
+	UserID             string
+	AccountID          string
+	AccountRecipientID *string
+	CategoryID         *string
+	PayeeID            *string
+	TagID              *string
+	Type               int16
+	Amount             string
+	Description        string
+	Schedule           string
+	NextPaymentAt      time.Time
+	ScheduledDay       int16
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 type Tag struct {
 	ID         string
 	UserID     string
@@ -216,21 +235,26 @@ type Transaction struct {
 	Type               int16
 	Amount             string
 	AmountRecipient    *string
+	RecurringID        *string
 }
 
 type User struct {
-	ID         string
-	Identifier string
-	Email      string
-	Name       string
-	Avatar     string
-	Password   string
-	Salt       string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	IsActive   bool
-	Algorithm  string
-	Language   string
+	ID            string
+	Identifier    string
+	Email         string
+	Name          string
+	Avatar        string
+	Password      string
+	Salt          string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	IsActive      bool
+	Algorithm     string
+	Timezone      string
+	Language      string
+	AccessLevel   string
+	AccessUntil   *time.Time
+	EmailVerified bool
 }
 
 type UsersConnection struct {
@@ -242,6 +266,25 @@ type UsersConnectionsInvite struct {
 	UserID    string
 	Code      *string
 	ExpiredAt *time.Time
+}
+
+type UsersEmailChangeRequest struct {
+	ID        string
+	UserID    string
+	NewEmail  string
+	Code      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	ExpiredAt time.Time
+}
+
+type UsersEmailVerification struct {
+	ID        string
+	UserID    string
+	Code      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	ExpiredAt time.Time
 }
 
 type UsersHiddenCurrency struct {

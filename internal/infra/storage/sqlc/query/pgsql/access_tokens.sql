@@ -6,9 +6,13 @@ INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, crea
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 
 -- name: GetAccessTokenByHash :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
-FROM access_tokens
-WHERE token_hash = $1;
+-- Joins users for access_level/access_until; see the sqlite sibling for why.
+SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
+       t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
+       u.access_level, u.access_until
+FROM access_tokens t
+JOIN users u ON u.id = t.user_id
+WHERE t.token_hash = $1;
 
 -- name: GetAccessTokenByID :one
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at

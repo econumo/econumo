@@ -4,8 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureOwner } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
+import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { TransactionDialog } from './TransactionDialog'
 
@@ -132,7 +133,7 @@ it('creates an expense with the exact payload shape', async () => {
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.type).toBe('expense')
   expect(body!.accountId).toBe('a1')
-  expect(body!.amount).toBe(9.99)
+  expect(body!.amount).toBe('9.99')
   expect(body!.categoryId).toBe('cat-food')
   expect(body!.accountRecipientId).toBeNull()
   expect(body!.amountRecipient).toBeNull()
@@ -140,14 +141,44 @@ it('creates an expense with the exact payload shape', async () => {
   expect(body!.date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 })
 
-it('requires a category for non-transfers with the exact message', async () => {
+it('submits an expense with no category', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho({ categoryId: null }), accounts: fixtureAccounts } })
+    }),
+  )
   const user = userEvent.setup()
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
   await user.type(await screen.findByLabelText('Amount'), '5')
   await user.click(screen.getByRole('button', { name: 'Add' }))
-  expect(await screen.findByText('Category is required')).toBeInTheDocument()
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.categoryId).toBeNull()
+  expect(screen.queryByText('Category is required')).not.toBeInTheDocument()
+})
+
+it('clears an existing category via the select\'s clear row', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho({ categoryId: null }), accounts: fixtureAccounts } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ categoryId: 'cat-food' }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.click(screen.getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByText('—'))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.categoryId).toBeNull()
 })
 
 it('tags show on expense but not income; income payee label is Sender', async () => {
@@ -227,9 +258,9 @@ it('editing a same-currency transfer amount re-syncs the recipient amount', asyn
   await user.type(amount, '25')
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
-  expect(body!.amount).toBe(25)
+  expect(body!.amount).toBe('25')
   // the recipient side must follow the edited amount, not keep the old one
-  expect(body!.amountRecipient).toBe(25)
+  expect(body!.amountRecipient).toBe('25')
 })
 
 it('editing a transfer re-syncs the recipient amount when the destination account changes', async () => {
@@ -255,7 +286,7 @@ it('editing a transfer re-syncs the recipient amount when the destination accoun
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.accountRecipientId).toBe('a3')
-  expect(body!.amountRecipient).toBe(9)
+  expect(body!.amountRecipient).toBe('9')
 })
 
 it('cross-currency transfer prefills the converted recipient amount and prompts to switch', async () => {
@@ -285,7 +316,7 @@ it('cross-currency transfer prefills the converted recipient amount and prompts 
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.type).toBe('transfer')
   expect(body!.accountRecipientId).toBe('a3')
-  expect(body!.amountRecipient).toBe(90)
+  expect(body!.amountRecipient).toBe('90')
   expect(body!.categoryId).toBeNull()
   await waitFor(() => expect(useUiStore.getState().switchAccountPrompt).toBe('a3'))
 })
@@ -313,4 +344,76 @@ it('creates a category on the fly and selects it', async () => {
   expect(created!.name).toBe('Books')
   expect(created!.type).toBe('expense')
   await waitFor(() => expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('Books'))
+})
+
+it('posting a recurring template: regular add dialog + date prefill, submits to post-recurring-transaction (not create-transaction)', async () => {
+  const wireRecurringDto: RecurringDto = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'rent',
+    schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
+  }
+  let createCalled = false
+  let postBody: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () => {
+      createCalled = true
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+    http.post('*/api/v1/recurring/post-recurring-transaction', async ({ request }) => {
+      postBody = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: {
+          item: wireTxEcho({ id: 't-posted', date: wireRecurringDto.nextPaymentAt }),
+          accounts: fixtureAccounts,
+          nextPaymentAt: '2026-08-05 00:00:00',
+        },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ postRecurring: wireRecurringDto })
+
+  // posting reads as the ordinary add dialog — the template only prefills it
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent('2026-07-05')
+  // the account list hasn't resolved yet at the moment the form seeds its
+  // initial state (TransactionForm only mounts once the modal opens), so the
+  // amount echoes normalizeNumber's un-padded value rather than the account's
+  // fraction digits — same limitation the edit-mode seed already has
+  expect(screen.getByLabelText('Amount')).toHaveValue('42.5')
+
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(postBody).toBeDefined())
+  expect(postBody!.recurringId).toBe('r1')
+  expect(postBody!.type).toBe('expense')
+  expect(postBody!.accountId).toBe('a1')
+  expect(createCalled).toBe(false)
+})
+
+it('read-only shared accounts are disabled in the transfer account pickers', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const readOnlyShared = {
+    id: 'a-ro', owner: partner, folderId: null, name: 'Partner cash', position: 9,
+    currency: fixtureUsd, balance: '50', type: 1, icon: 'wallet',
+    sharedAccess: [{ user: fixtureOwner, role: 'guest', isAccepted: 1 }],
+  }
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, readOnlyShared] }))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'transfer' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+
+  const toPicker = () => screen.getByRole('combobox', { name: 'to account' }) as HTMLInputElement
+  await user.click(toPicker())
+  const locked = await screen.findByRole('option', { name: /Partner cash/ })
+  expect(locked).toHaveAttribute('aria-disabled', 'true')
+  await user.click(locked)
+  expect(toPicker().value).not.toContain('Partner cash')
+
+  // a writable account remains selectable
+  await user.click(await screen.findByRole('option', { name: /Bank/ }))
+  await waitFor(() => expect(toPicker().value).toContain('Bank'))
 })

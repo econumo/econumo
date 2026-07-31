@@ -9,6 +9,7 @@ import { getChangedPositions } from '@/lib/ordering'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { Check, ChevronLeft, FolderPlus, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
+import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ import { useCategories } from '@/features/classifications/queries'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import {
   useBudget,
+  useBudgets,
   useSetLimit,
   useCreateEnvelope,
   useUpdateEnvelope,
@@ -44,6 +46,7 @@ import {
   useMoveElements,
   useChangeElementCurrency,
   canConfigureBudget,
+  canEditBudget,
   canUpdateLimits,
   canDeleteEnvelope,
 } from './queries'
@@ -176,7 +179,8 @@ export function BudgetPage() {
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
   // data (isPlaceholderData) while the new one loads
-  const { data: budget, isPending, isPlaceholderData, isFetching } = useBudget()
+  const { data: budget, isPending, isPlaceholderData, isFetching, isError, error, refetch } = useBudget()
+  const { data: budgetList } = useBudgets()
   const showLogoutEscape = useLogoutEscape(isPending)
   const { data: currencies = [] } = useCurrencies()
   const { data: accounts = [] } = useAccounts()
@@ -270,6 +274,7 @@ export function BudgetPage() {
   }, [budget, serverBuckets, dragArrangement, currencies])
 
   const configure = budget ? canConfigureBudget(budget.meta, user?.id) : false
+  const editDetails = budget ? canEditBudget(budget.meta, user?.id) : false
   const limitsEditable = budget ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
 
   const folderNameValidator = (value: string): string | null => {
@@ -282,7 +287,38 @@ export function BudgetPage() {
     return null
   }
 
-  if (!isPending && !budget) {
+  // The default budget can 403/404 while still being the stored option: access
+  // was revoked or the budget deleted. keepPreviousData would otherwise pin
+  // isPlaceholderData forever (the fetch never succeeds), so the error must be
+  // handled before the loader branches below.
+  const errorStatus = isAxiosError(error) ? error.response?.status : undefined
+  const budgetUnavailable = isError && (errorStatus === 403 || errorStatus === 404)
+
+  // Unresolved list counts as "has budgets": the budgets page is the recovery
+  // surface either way; only a confirmed-empty list falls to onboarding below.
+  if (budgetUnavailable && (budgetList === undefined || budgetList.length > 0)) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-unavailable">
+        <h1 className="text-xl font-semibold">{t('budgets.page.budget.unavailable.header')}</h1>
+        <p className="max-w-md text-sm text-muted-foreground">{t('budgets.page.budget.unavailable.no_access')}</p>
+        <Button type="button" onClick={() => navigate(RouterPage.SETTINGS_BUDGETS)}>
+          {t('budgets.page.budget.unavailable.choose_budget')}
+        </Button>
+      </div>
+    )
+  }
+  if (isError && !budgetUnavailable) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="budget-error">
+        <p className="max-w-md text-sm text-muted-foreground">{t('common.app.error')}</p>
+        <Button type="button" onClick={() => void refetch()}>
+          {t('budgets.page.budget.error.retry')}
+        </Button>
+      </div>
+    )
+  }
+
+  if (!isPending && (!budget || budgetUnavailable)) {
     // no default budget — the onboarding empty state (Vue's BudgetOnboarding)
     const hasAccounts = accounts.length > 0
     const hasCategories = categories.length > 0
@@ -425,7 +461,7 @@ export function BudgetPage() {
       return (
         <span className="flex items-center gap-1.5 sm:gap-2">
           {plus}
-          <span className="size-9" />
+          <span className="size-8" />
         </span>
       )
     }
@@ -456,34 +492,33 @@ export function BudgetPage() {
     )
   }
 
-  const elementActions = (element: BudgetElementDto) =>
-    editMode ? (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" aria-label={`element actions ${element.name}`}>
-            <MoreVertical className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {element.type !== BudgetElementType.ENVELOPE ? (
-            <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
-              {t('budgets.page.budget.structure.element.action.change_currency')}
+  const elementActions = (element: BudgetElementDto) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" aria-label={`element actions ${element.name}`}>
+          <MoreVertical className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {element.type !== BudgetElementType.ENVELOPE ? (
+          <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
+            {t('budgets.page.budget.structure.element.action.change_currency')}
+          </DropdownMenuItem>
+        ) : (
+          <>
+            <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
+              {t('common.button.edit.label')}
             </DropdownMenuItem>
-          ) : (
-            <>
-              <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
-                {t('common.button.edit.label')}
+            {canDeleteEnvelope(budget.meta, user?.id) ? (
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget(element)}>
+                {t('common.button.delete.label')}
               </DropdownMenuItem>
-              {canDeleteEnvelope(budget.meta, user?.id) ? (
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleteEnvelopeTarget(element)}>
-                  {t('common.button.delete.label')}
-                </DropdownMenuItem>
-              ) : null}
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ) : null
+            ) : null}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   return (
     <div className="flex h-full flex-col gap-3 p-2.5 sm:p-4">
@@ -536,7 +571,7 @@ export function BudgetPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setUpdateBudgetOpen(true)}>
+              <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
@@ -601,7 +636,7 @@ export function BudgetPage() {
                 renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
                 // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
                 renderFolderActions={editMode ? folderActions : undefined}
-                renderActions={elementActions}
+                renderActions={editMode ? elementActions : undefined}
                 renderBudgetCell={
                   limitsEditable && !editMode && !isCompact
                     ? (element) => (

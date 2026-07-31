@@ -16,9 +16,9 @@ func NewID() string { return vo.NewId().Value() }
 const USD = "dffc2a06-6f29-4704-8575-31709adee926"
 
 // User describes a user row. Zero fields take defaults: a fresh id, a derived
-// email/name, active=true. When the Builder has WithCrypto, identifier + email
-// are stored encrypted and the password is hashed (so login works); otherwise
-// literal placeholder values are stored (fine for tests that never authenticate).
+// email/name, active=true. When the Builder has WithCrypto, email is stored
+// encrypted and the password is hashed (so login works); otherwise literal
+// placeholder values are stored (fine for tests that never authenticate).
 type User struct {
 	ID       string
 	Email    string // default "user-<id8>@example.test"
@@ -27,6 +27,9 @@ type User struct {
 	Password string // default "secret-pw" (only meaningful WithCrypto)
 	Salt     string // default 40-char sha1-shaped salt
 	Inactive bool   // default active
+
+	AccessLevel string     // default "full"
+	AccessUntil *time.Time // default nil (no expiry)
 }
 
 // defaultSalt is a fixed 40-char sha1-shaped salt for seeded users.
@@ -51,28 +54,31 @@ func (b *Builder) User(u User) string {
 		u.Avatar = "diamond:sky"
 	}
 
-	identifier, email, password := u.Email, u.Email, u.Password
+	email, password := u.Email, u.Password
 	if b.encode != nil {
-		identifier = b.encode.Hash(lower(u.Email))
 		enc, err := b.encode.Encode(u.Email)
 		if err != nil {
 			b.t.Fatalf("fixture: encode email: %v", err)
 		}
 		email = enc
 		password = b.hasher.HashSHA512(u.Password, u.Salt)
-	} else {
-		// Keep identifier unique without crypto (the column is UNIQUE).
-		identifier = "ident-" + id[:8]
 	}
+	// The identifier column is retired but still NOT NULL UNIQUE; mirror the
+	// production repo and write the row's own id into it.
+	identifier := id
 
 	now := b.now()
 	active := "TRUE"
 	if u.Inactive {
 		active = "FALSE"
 	}
-	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`)`,
-		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now)
+	level := u.AccessLevel
+	if level == "" {
+		level = "full"
+	}
+	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`, ?, ?)`,
+		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now, level, u.AccessUntil)
 	return id
 }
 
@@ -285,14 +291,22 @@ func (b *Builder) AccountOption(accountID, userID string, position int) {
 		accountID, userID, position, now, now)
 }
 
-// AccountAccess grants a user access to an account (accounts_access). role is
-// stored verbatim (admin=0, user=1, guest=2) — 0 is a real role, not "unset", so
-// it is NOT coerced.
+// AccountAccess grants a user ACCEPTED access to an account (accounts_access).
+// role is stored verbatim (admin=0, user=1, guest=2) — 0 is a real role, not
+// "unset", so it is NOT coerced.
 func (b *Builder) AccountAccess(accountID, userID string, role int) {
 	b.t.Helper()
 	now := b.now()
-	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		accountID, userID, role, now, now)
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		accountID, userID, role, true, now, now)
+}
+
+// AccountAccessPending grants a user a PENDING (not yet accepted) grant.
+func (b *Builder) AccountAccessPending(accountID, userID string, role int) {
+	b.t.Helper()
+	now := b.now()
+	b.insert(`INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		accountID, userID, role, false, now, now)
 }
 
 // Category describes a categories row.
@@ -384,10 +398,15 @@ type Transaction struct {
 	CategoryID  string // optional
 	PayeeID     string // optional
 	TagID       string // optional
-	Type        int    // 0 expense, 1 income (domain transaction.TypeExpense/TypeIncome)
+	Type        int    // 0 expense, 1 income, 2 transfer (domain transaction.TypeExpense/TypeIncome/TypeTransfer)
 	Amount      string // decimal string; default "0"
 	Description string
 	SpentAt     interface{} // time.Time or "Y-m-d H:i:s"; default builder time
+
+	// Transfer-only (Type == 2): the recipient account and the amount credited
+	// to it, which may differ from Amount for a cross-currency transfer.
+	AccountRecipientID string
+	AmountRecipient    string
 }
 
 func (b *Builder) Transaction(tx Transaction) string {
@@ -404,9 +423,11 @@ func (b *Builder) Transaction(tx Transaction) string {
 	cat := nullable(tx.CategoryID)
 	payee := nullable(tx.PayeeID)
 	tag := nullable(tx.TagID)
-	b.insert(`INSERT INTO transactions (id, user_id, account_id, category_id, payee_id, tag_id, type, amount, description, spent_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, tx.UserID, tx.AccountID, cat, payee, tag, tx.Type, tx.Amount, tx.Description, spent, now, now)
+	acctRecipient := nullable(tx.AccountRecipientID)
+	amountRecipient := nullable(tx.AmountRecipient)
+	b.insert(`INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, type, amount, amount_recipient, description, spent_at, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, tx.UserID, tx.AccountID, acctRecipient, cat, payee, tag, tx.Type, tx.Amount, amountRecipient, tx.Description, spent, now, now)
 	return id
 }
 
@@ -569,15 +590,4 @@ func nullable(s string) any {
 		return nil
 	}
 	return s
-}
-
-// lower lowercases ASCII without importing strings (kept tiny + allocation-light).
-func lower(s string) string {
-	b := []byte(s)
-	for i, c := range b {
-		if c >= 'A' && c <= 'Z' {
-			b[i] = c + 32
-		}
-	}
-	return string(b)
 }

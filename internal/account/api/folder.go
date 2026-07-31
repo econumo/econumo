@@ -22,11 +22,12 @@ var _ = model.GetFolderListResult{}
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/create-folder [post]
 func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.CreateFolder)
+	endpoint.Handle(w, r, h.svc.CreateFolder)
 }
 
 // UpdateFolder handles POST /api/v1/account/update-folder (auth).
@@ -40,11 +41,12 @@ func (h *Handlers) CreateFolder(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/update-folder [post]
 func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.UpdateFolder)
+	endpoint.Handle(w, r, h.svc.UpdateFolder)
 }
 
 // HideFolder handles POST /api/v1/account/hide-folder (auth).
@@ -58,11 +60,12 @@ func (h *Handlers) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.HideFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/hide-folder [post]
 func (h *Handlers) HideFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.HideFolder)
+	endpoint.Handle(w, r, h.svc.HideFolder)
 }
 
 // ShowFolder handles POST /api/v1/account/show-folder (auth).
@@ -76,11 +79,12 @@ func (h *Handlers) HideFolder(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.ShowFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/show-folder [post]
 func (h *Handlers) ShowFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ShowFolder)
+	endpoint.Handle(w, r, h.svc.ShowFolder)
 }
 
 // ReplaceFolder handles POST /api/v1/account/replace-folder (auth).
@@ -94,11 +98,12 @@ func (h *Handlers) ShowFolder(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.ReplaceFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/replace-folder [post]
 func (h *Handlers) ReplaceFolder(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.ReplaceFolder)
+	endpoint.Handle(w, r, h.svc.ReplaceFolder)
 }
 
 // GetFolderList handles GET /api/v1/account/get-folder-list (auth).
@@ -113,7 +118,7 @@ func (h *Handlers) ReplaceFolder(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/account/get-folder-list [get]
 func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.svc.GetFolderList)
+	endpoint.HandleNoBody(w, r, h.svc.GetFolderList)
 }
 
 // OrderFolderList handles POST /api/v1/account/order-folder-list (auth).
@@ -127,9 +132,10 @@ func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderFolderListResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/account/order-folder-list [post]
 func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, h.svc.OrderFolderList)
+	endpoint.Handle(w, r, h.svc.OrderFolderList)
 }

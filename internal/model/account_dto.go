@@ -35,10 +35,12 @@ type AccountResult struct {
 }
 
 // SharedAccess is one accounts_access grant on the account: the granted user
-// (id, avatar, name) + the role alias (admin/user/guest).
+// (id, avatar, name), the role alias (admin/user/guest), and whether the
+// grant has been accepted (int 0/1, like isArchived).
 type SharedAccess struct {
-	User UserResult `json:"user"`
-	Role string     `json:"role"`
+	User       UserResult `json:"user"`
+	Role       string     `json:"role"`
+	IsAccepted int        `json:"isAccepted"`
 }
 
 // CreateAccountRequest is the create-account body. balance defaults to 0; icon
@@ -47,7 +49,7 @@ type CreateAccountRequest struct {
 	Id         string        `json:"id"`
 	Name       string        `json:"name"`
 	CurrencyId string        `json:"currencyId"`
-	Balance    vo.FlexString `json:"balance"`
+	Balance    vo.FlexString `json:"balance" swaggertype:"string"`
 	Icon       string        `json:"icon"`
 	FolderId   string        `json:"folderId"`
 }
@@ -86,7 +88,7 @@ type CreateAccountResult struct {
 type UpdateAccountRequest struct {
 	Id         string        `json:"id"`
 	Name       string        `json:"name"`
-	Balance    vo.FlexString `json:"balance"`
+	Balance    vo.FlexString `json:"balance" swaggertype:"string"`
 	Icon       string        `json:"icon"`
 	CurrencyId *string       `json:"currencyId"`
 	UpdatedAt  string        `json:"updatedAt"`
@@ -176,6 +178,13 @@ type OrderAccountListRequest struct {
 func (r OrderAccountListRequest) Validate() error {
 	if len(r.Changes) == 0 {
 		return &errs.ValidationError{Msg: "Accounts list is empty", MsgCode: errs.CodeAccountListEmpty}
+	}
+	var fields []errs.FieldError
+	for _, c := range r.Changes {
+		fields = append(fields, validatePositionField("position", c.Position)...)
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
 	}
 	return nil
 }
@@ -323,3 +332,93 @@ func (r OrderFolderListRequest) Validate() error {
 type OrderFolderListResult struct {
 	Items []AccountFolderResult `json:"items"`
 }
+
+// GrantAccountAccessRequest grants/updates a connected user's role on an owned
+// account. New grants start pending (isAccepted 0).
+type GrantAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+	UserId    string `json:"userId"`
+	Role      string `json:"role"`
+}
+
+// Validate enforces NotBlank on accountId/userId/role (UUID + role-alias
+// validity are checked in the service via the value-object constructors).
+func (r GrantAccountAccessRequest) Validate() error {
+	var fields []errs.FieldError
+	for _, f := range []struct{ key, val string }{
+		{"accountId", r.AccountId}, {"userId", r.UserId}, {"role", r.Role},
+	} {
+		if strings.TrimSpace(f.val) == "" {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// GrantAccountAccessResult is the (empty) response.
+type GrantAccountAccessResult struct{}
+
+// AcceptAccountAccessRequest accepts a pending grant. folderId picks where the
+// account lands; blank is tolerated only when the user has no folders (a
+// "General" folder is then created), same as create-account.
+type AcceptAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+	FolderId  string `json:"folderId"`
+}
+
+// Validate enforces accountId NotBlank.
+func (r AcceptAccountAccessRequest) Validate() error {
+	if strings.TrimSpace(r.AccountId) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// AcceptAccountAccessResult is the (empty) response.
+type AcceptAccountAccessResult struct{}
+
+// DeclineAccountAccessRequest removes the caller's own grant (their side of
+// the share), pending or accepted.
+type DeclineAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+}
+
+// Validate enforces accountId NotBlank.
+func (r DeclineAccountAccessRequest) Validate() error {
+	if strings.TrimSpace(r.AccountId) == "" {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "accountId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// DeclineAccountAccessResult is the (empty) response.
+type DeclineAccountAccessResult struct{}
+
+// RevokeAccountAccessRequest removes a connected user's grant on an owned
+// account.
+type RevokeAccountAccessRequest struct {
+	AccountId string `json:"accountId"`
+	UserId    string `json:"userId"`
+}
+
+// Validate enforces NotBlank on accountId/userId.
+func (r RevokeAccountAccessRequest) Validate() error {
+	var fields []errs.FieldError
+	for _, f := range []struct{ key, val string }{
+		{"accountId", r.AccountId}, {"userId", r.UserId},
+	} {
+		if strings.TrimSpace(f.val) == "" {
+			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+// RevokeAccountAccessResult is the (empty) response.
+type RevokeAccountAccessResult struct{}

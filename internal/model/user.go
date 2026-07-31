@@ -7,6 +7,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -77,50 +78,59 @@ func (o *UserOption) setValue(value *string, now time.Time) {
 }
 
 // Header is a lightweight read projection of a user's public display fields
-// (id, name, avatar) — no options, no credentials. Owner/author embeds use it so
-// they need only a single user-row query rather than hydrating the full aggregate.
+// (id, name, avatar) plus the raw access columns — no options, no credentials.
+// Owner/author embeds use it so they need only a single user-row query rather
+// than hydrating the full aggregate. AccessLevel/AccessUntil are the stored
+// values, not yet collapsed against a clock (see EffectiveAccessLevel); most
+// callers (account/budget/transaction author embeds) ignore them, but the
+// connection list uses them to show a partner's access state.
 type Header struct {
-	ID     string
-	Name   string
-	Avatar string
+	ID          string
+	Name        string
+	Avatar      string
+	AccessLevel AccessLevel
+	AccessUntil *time.Time
 }
 
 // User is the user aggregate root. Strings that are encrypted at rest (Email)
-// or hashed (Password, Identifier) are stored opaquely here; the service layer
+// or hashed (Password) are stored opaquely here; the service layer
 // applies/reverses the crypto. The aggregate owns its Options. Fields are
 // exported for direct read access; all writes after construction go through the
 // mutators.
 type User struct {
-	ID         vo.Id
-	Identifier string // md5(lower(email)+salt) — the auth lookup key
-	Email      string // AES-encrypted ciphertext (opaque here)
-	Name       string
-	Avatar     string
-	Password   string // hash produced by the scheme in Algorithm (see CLAUDE.md)
-	Salt       string // sha1(random) hex, 40 chars (unused by argon2id hashes)
-	Algorithm  string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
-	IsActive   bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	Options    []UserOption
+	ID            vo.Id
+	Email         string // AES-encrypted ciphertext (opaque here)
+	Name          string
+	Avatar        string
+	Password      string // hash produced by the scheme in Algorithm (see CLAUDE.md)
+	Salt          string // sha1(random) hex, 40 chars (unused by argon2id hashes)
+	Algorithm     string // which scheme hashed Password: AlgorithmSHA512 | AlgorithmArgon2id
+	IsActive      bool
+	EmailVerified bool
+	AccessLevel   AccessLevel
+	AccessUntil   *time.Time
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Options       []UserOption
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
-// already computed identifier, encrypted email, avatar value, password hash and
-// salt. Options are seeded separately via SeedDefaultOptions.
-func NewUser(id vo.Id, identifier, encryptedEmail, name, avatar, passwordHash, salt string, now time.Time) *User {
+// already encrypted the email, picked the avatar, and hashed the password.
+// Options are seeded separately via SeedDefaultOptions.
+func NewUser(id vo.Id, encryptedEmail, name, avatar, passwordHash, salt string, now time.Time) *User {
 	return &User{
-		ID:         id,
-		Identifier: identifier,
-		Email:      encryptedEmail,
-		Name:       name,
-		Avatar:     avatar,
-		Password:   passwordHash,
-		Salt:       salt,
-		Algorithm:  AlgorithmArgon2id,
-		IsActive:   true,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:            id,
+		Email:         encryptedEmail,
+		Name:          name,
+		Avatar:        avatar,
+		Password:      passwordHash,
+		Salt:          salt,
+		Algorithm:     AlgorithmArgon2id,
+		IsActive:      true,
+		EmailVerified: true,
+		AccessLevel:   AccessLevelFull,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 }
 
@@ -181,6 +191,21 @@ func (u *User) Deactivate(now time.Time) {
 	u.UpdatedAt = now
 }
 
+// RequireEmailVerification marks a freshly created user as needing email
+// verification before the first login (ECONUMO_EMAIL_VERIFICATION). Creation
+// time only; no UpdatedAt bump.
+func (u *User) RequireEmailVerification() { u.EmailVerified = false }
+
+// MarkEmailVerified records proof of mailbox ownership, bumping UpdatedAt only
+// on a real state change.
+func (u *User) MarkEmailVerified(now time.Time) {
+	if u.EmailVerified {
+		return
+	}
+	u.EmailVerified = true
+	u.UpdatedAt = now
+}
+
 // UpdatePassword replaces the stored password hash and records which algorithm
 // produced it. The caller hashes the plaintext first.
 func (u *User) UpdatePassword(passwordHash, algorithm string, now time.Time) {
@@ -189,10 +214,9 @@ func (u *User) UpdatePassword(passwordHash, algorithm string, now time.Time) {
 	u.UpdatedAt = now
 }
 
-// UpdateEmail replaces the encrypted email and identifier together, both
-// derived by the service.
-func (u *User) UpdateEmail(identifier, encryptedEmail string, now time.Time) {
-	u.Identifier = identifier
+// UpdateEmail replaces the encrypted email. The identifier column is derived
+// from the row id at persistence time, so it needs no update here.
+func (u *User) UpdateEmail(encryptedEmail string, now time.Time) {
 	u.Email = encryptedEmail
 	u.UpdatedAt = now
 }
@@ -218,6 +242,18 @@ func (u *User) UpdateBudget(budgetID string, now time.Time) {
 		v := budgetID
 		o.setValue(&v, now)
 	}
+}
+
+// ClearBudget clears the active-budget option when it points at the given
+// budget (access revoked or budget deleted — a stale id would make the client
+// load a budget it can no longer read). Reports whether anything changed.
+func (u *User) ClearBudget(budgetID string, now time.Time) bool {
+	o := u.Option(OptionBudget)
+	if o == nil || o.Value == nil || *o.Value != budgetID {
+		return false
+	}
+	o.setValue(nil, now)
+	return true
 }
 
 // CompleteOnboarding sets the onboarding option to completed.
@@ -255,4 +291,45 @@ func equalStrPtr(a, b *string) bool {
 	default:
 		return *a == *b
 	}
+}
+
+type AccessLevel string
+
+const (
+	AccessLevelFull     AccessLevel = "full"
+	AccessLevelReadonly AccessLevel = "readonly"
+)
+
+func ParseAccessLevel(s string) (AccessLevel, error) {
+	switch AccessLevel(s) {
+	case AccessLevelFull:
+		return AccessLevelFull, nil
+	case AccessLevelReadonly:
+		return AccessLevelReadonly, nil
+	default:
+		return "", fmt.Errorf("unknown access level %q (want full or readonly)", s)
+	}
+}
+
+// EffectiveAccessLevel collapses the stored level and expiry against the clock.
+// No job "expires" users: an elapsed access_until IS read-only, so no row can be
+// left stale by a run that did not happen.
+func (u *User) EffectiveAccessLevel(now time.Time) AccessLevel {
+	return EffectiveAccessLevel(u.AccessLevel, u.AccessUntil, now)
+}
+
+// EffectiveAccessLevel is the free-function form of the same rule, for callers
+// (read-model projections, owner/connection embeds) that carry the level and
+// expiry without hydrating a full User aggregate.
+func EffectiveAccessLevel(level AccessLevel, until *time.Time, now time.Time) AccessLevel {
+	if until != nil && !now.Before(*until) {
+		return AccessLevelReadonly
+	}
+	return level
+}
+
+func (u *User) SetAccess(level AccessLevel, until *time.Time, now time.Time) {
+	u.AccessLevel = level
+	u.AccessUntil = until
+	u.UpdatedAt = now
 }

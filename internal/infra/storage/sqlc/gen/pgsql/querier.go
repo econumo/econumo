@@ -41,14 +41,20 @@ type Querier interface {
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeletePayee(ctx context.Context, id string) error
+	DeleteRecurringTransaction(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
+	DeleteUserEmailChangeRequestsByUser(ctx context.Context, userID string) error
+	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
+	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
 	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
-	ExistsUserByIdentifier(ctx context.Context, identifier string) (bool, error)
-	GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error)
+	ExistsUserByEmail(ctx context.Context, lower string) (bool, error)
+	// Joins users for access_level/access_until; see the sqlite sibling for why.
+	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
 	// grants to connected users; users_connections is the symmetric user link.
@@ -98,6 +104,10 @@ type Querier interface {
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// Latest rate row per (currency, base) pair. See the sqlite variant.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]GetLatestCurrencyRateListViewRow, error)
+	// Newest stored rate date, for the in-process rate updater's freshness check.
+	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
+	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
+	GetLatestRateDate(ctx context.Context) (time.Time, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
@@ -108,6 +118,7 @@ type Querier interface {
 	// Available payees: own + payees of users who shared an account with this user.
 	// $1 is reused for both positions so the generated param stays single.
 	GetPayeeListView(ctx context.Context, userID string) ([]Payee, error)
+	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
 	// Write-side queries for the tag module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
 	// placeholder syntax. The tags table has no type/icon columns.
@@ -120,8 +131,8 @@ type Querier interface {
 	// Write + read queries for the transaction module (PostgreSQL: $N placeholders).
 	// See the sqlite variant for documentation.
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
+	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
-	GetUserByIdentifier(ctx context.Context, identifier string) (GetUserByIdentifierRow, error)
 	// Read-model queries for the currency module (PostgreSQL variant). No $N
 	// placeholders are needed (neither query is parameterised). See the sqlite
 	// variant for documentation.
@@ -131,6 +142,9 @@ type Querier interface {
 	// currencies). Codes can repeat across owners, so id breaks ties. $1 is
 	// reused for all four user-id positions so the generated param stays single.
 	GetUserCurrencyListView(ctx context.Context, userID *string) ([]GetUserCurrencyListViewRow, error)
+	GetUserEmailChangeRequestByUser(ctx context.Context, userID string) (UsersEmailChangeRequest, error)
+	GetUserEmailVerificationByUser(ctx context.Context, userID string) (UsersEmailVerification, error)
+	GetUserLanguage(ctx context.Context, id string) (string, error)
 	// Tiebreak by id so the order is deterministic and identical across engines even
 	// when option rows share a created_at (the registration case).
 	GetUserOptions(ctx context.Context, userID string) ([]UsersOption, error)
@@ -138,8 +152,10 @@ type Querier interface {
 	// option rows share a created_at (the registration case). See the sqlite variant.
 	GetUserOptionsView(ctx context.Context, userID string) ([]GetUserOptionsViewRow, error)
 	GetUserPasswordRequestByUserAndCode(ctx context.Context, arg GetUserPasswordRequestByUserAndCodeParams) (UsersPasswordRequest, error)
+	GetUserTimezone(ctx context.Context, id string) (string, error)
 	// Read-model queries for the user module (CQRS read side). See the sqlite
 	// variant for rationale. Postgres uses $N placeholders.
+	// See the sqlite variant for rationale on the access columns.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	GlobalCurrencyCodeExists(ctx context.Context, code string) (int64, error)
 	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
@@ -158,6 +174,8 @@ type Querier interface {
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
+	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
+	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
@@ -168,9 +186,9 @@ type Querier interface {
 	// here yields the exact decimal — no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
-	// Available accounts: own OR shared via accounts_access, not deleted (see the
-	// sqlite variant, incl. the ORDER BY rationale). $1 is reused for both sides
-	// so the param stays single.
+	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
+	// (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1
+	// is reused for both sides so the param stays single.
 	ListAvailableAccounts(ctx context.Context, userID string) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
@@ -204,6 +222,10 @@ type Querier interface {
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
+	// Pending grants TO this user (invites awaiting acceptance), excluding grants
+	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
+	// engines return identical row order.
+	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
@@ -220,6 +242,7 @@ type Querier interface {
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
+	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
 	UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error
@@ -237,6 +260,7 @@ type Querier interface {
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
+	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error
 	UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error

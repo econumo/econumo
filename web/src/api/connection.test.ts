@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { acceptInvite, deleteConnection, generateInvite, getConnectionList, revokeAccountAccess, setAccountAccess } from './connection'
+import { acceptInvite, deleteConnection, generateInvite, getConnectionList } from './connection'
 
 beforeEach(() => {
   localStorage.clear()
@@ -56,24 +56,4 @@ it('deleteConnection posts the user id under "id"', async () => {
   )
   await deleteConnection('u2')
   expect(body).toEqual({ id: 'u2' })
-})
-
-it('set/revoke account access post the exact payloads', async () => {
-  const bodies: unknown[] = []
-  server.use(
-    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
-      bodies.push(await request.json())
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
-    http.post('*/api/v1/connection/revoke-account-access', async ({ request }) => {
-      bodies.push(await request.json())
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
-  )
-  await setAccountAccess({ accountId: 'a1', userId: 'u2', role: 'user' })
-  await revokeAccountAccess({ accountId: 'a1', userId: 'u2' })
-  expect(bodies).toEqual([
-    { accountId: 'a1', userId: 'u2', role: 'user' },
-    { accountId: 'a1', userId: 'u2' },
-  ])
 })

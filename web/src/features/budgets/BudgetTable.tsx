@@ -2,14 +2,16 @@ import type { ReactNode } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
+import { cmp } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
+import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, displayAvailable, displaySpent } from './budgetMath'
+import { budgetTotals, displayAvailable, elementDisplayName } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
@@ -38,18 +40,21 @@ interface BudgetTableProps extends ElementRowExtras {
   renderFolderHandle?: (bucket: FolderBucket) => ReactNode
 }
 
+// em dash: a column that carries no value at all, as opposed to a zero
+const EMPTY_CELL = '—'
+
 const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   showCurrency: false,
   useNativePrecision: false,
   maxPrecision: currency?.fractionDigits ?? 2,
 })
 
-function AvailablePill({ available, currency, testId }: { available: number; currency: CurrencyDto | undefined; testId?: string }) {
+function AvailablePill({ available, currency, testId }: { available: string; currency: CurrencyDto | undefined; testId?: string }) {
   return (
     <span
       data-testid={testId}
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-        available >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
+        cmp(available, '0') >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
       }`}
     >
       {moneyFormat(available, currency, cellOpts(currency))}
@@ -63,8 +68,8 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
   return (
     <span className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stat-line">
       <span className="hidden w-24 text-right tabular-nums sm:block">{moneyFormat(stats.budgeted, currency, opts)}</span>
-      <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(displaySpent(stats.spent), currency, opts)}</span>
-      <span className={`w-20 text-center tabular-nums sm:w-24 ${available >= 0 ? 'text-income' : 'text-expense'}`}>
+      <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(stats.spent, currency, opts)}</span>
+      <span className={`w-20 text-center tabular-nums sm:w-24 ${cmp(available, '0') >= 0 ? 'text-income' : 'text-expense'}`}>
         {moneyFormat(available, currency, opts)}
       </span>
       {hideSymbol ? null : <span className="hidden w-6 text-center sm:block">{currency?.symbol}</span>}
@@ -73,6 +78,12 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
 }
 
 
+/* edit mode appends a w-8 actions button to element rows; every row without
+   one must pad the slot or its amount columns drift out of alignment */
+function ActionsSpacer() {
+  return <span data-testid="actions-spacer" className="w-8 shrink-0" />
+}
+
 function ElementRow({
   element,
   bucket,
@@ -80,6 +91,7 @@ function ElementRow({
   currencies,
   accessById,
   extras,
+  actionsColumn = false,
   hideChildren = false,
 }: {
   element: BudgetElementDto
@@ -88,6 +100,8 @@ function ElementRow({
   currencies: CurrencyDto[]
   accessById: Map<string, UserDto>
   extras: ElementRowExtras
+  /** the table renders an actions column (edit mode): rows without their own actions pad it */
+  actionsColumn?: boolean
   hideChildren?: boolean
 }) {
   const { t } = useTranslation()
@@ -100,8 +114,11 @@ function ElementRow({
   const expandable = element.children.length > 0
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
+  const displayName = elementDisplayName(element.id, element.name, t)
+  // categoryless spending can never be budgeted: those columns read as a dash
+  const isUncategorized = element.id === UNCATEGORIZED_ID
 
-  const spentCell = (target: BudgetTransactionsTarget, spent: number) =>
+  const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
       <button
         type="button"
@@ -110,11 +127,11 @@ function ElementRow({
         className="w-20 text-center text-[15px] tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline sm:w-24"
         onClick={() => extras.onSpentClick!(target)}
       >
-        {moneyFormat(displaySpent(spent), currency, opts)}
+        {moneyFormat(spent, currency, opts)}
       </button>
     ) : (
       <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">
-        {moneyFormat(displaySpent(spent), currency, opts)}
+        {moneyFormat(spent, currency, opts)}
       </span>
     )
 
@@ -136,11 +153,17 @@ function ElementRow({
             <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />
           </span>
         </>
+      ) : isUncategorized ? (
+        // mobile keeps the icon — it is the row's only visual anchor there;
+        // on desktop the label alone carries the (single, fixed) row
+        <span className="sm:hidden">
+          <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />
+        </span>
       ) : (
         <EntityIcon name={element.icon} className="text-lg text-muted-foreground" />
       )}
-      <span className="truncate text-[15px]" title={element.name}>
-        {element.name}
+      <span className="truncate text-[15px]" title={displayName}>
+        {displayName}
       </span>
     </>
   )
@@ -162,20 +185,30 @@ function ElementRow({
           <span className="flex min-w-0 flex-1 items-center gap-2">{name}</span>
         )}
         <span className="hidden w-24 text-right text-[15px] tabular-nums sm:block" data-testid="cell-budgeted">
-          {extras.renderBudgetCell ? extras.renderBudgetCell(element) : moneyFormat(element.budgeted, currency, opts)}
+          {isUncategorized ? (
+            EMPTY_CELL
+          ) : extras.renderBudgetCell ? (
+            extras.renderBudgetCell(element)
+          ) : (
+            moneyFormat(element.budgeted, currency, opts)
+          )}
         </span>
         <span data-testid="cell-spent" className="flex justify-end">
           {spentCell(
-            { id: element.id, type: element.type, name: element.name, icon: element.icon, currencyId: element.currencyId },
+            { id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId },
             element.spent,
           )}
         </span>
         <span className="flex w-20 justify-center sm:w-24">
-          {extras.onAvailableClick ? (
+          {isUncategorized ? (
+            <span data-testid="cell-available" className="text-[15px] tabular-nums text-muted-foreground">
+              {EMPTY_CELL}
+            </span>
+          ) : extras.onAvailableClick ? (
             <button
               type="button"
               title={t('budgets.modal.set_limit_form.header')}
-              aria-label={`limit ${element.name}`}
+              aria-label={`limit ${displayName}`}
               onClick={() => extras.onAvailableClick!(element)}
             >
               <AvailablePill available={available} currency={currency} testId="cell-available" />
@@ -185,12 +218,13 @@ function ElementRow({
           )}
         </span>
         <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
-        {extras.renderActions?.(element, bucket)}
+        {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
       </div>
       {expandable && unfolded ? (
         <ul className="pb-1">
           {element.children.map((child) => {
             const owner = accessById.size > 1 && child.ownerUserId ? accessById.get(child.ownerUserId) : undefined
+            const childDisplayName = elementDisplayName(child.id, child.name, t)
             return (
               <li
                 key={child.id}
@@ -198,18 +232,19 @@ function ElementRow({
                 data-testid={`child-${child.id}`}
               >
                 <EntityIcon name={child.icon} className="text-lg" />
-                <span className="min-w-0 flex-1 truncate" title={child.name}>
-                  {child.name}
+                <span className="min-w-0 flex-1 truncate" title={childDisplayName}>
+                  {childDisplayName}
                 </span>
                 {/* owner sits in the budget column slot, flush under the amounts; row hover only (multi-user budgets) */}
                 <span className="hidden w-24 truncate text-right text-xs text-muted-foreground/60 opacity-0 group-hover:opacity-100 sm:block">
                   {owner?.name}
                 </span>
                 <span data-testid="child-spent" className="flex justify-end">
-                  {spentCell({ id: child.id, type: child.type, name: child.name, icon: child.icon, currencyId: element.currencyId }, child.spent)}
+                  {spentCell({ id: child.id, type: child.type, name: childDisplayName, icon: child.icon, currencyId: element.currencyId, parent: { id: element.id, type: element.type } }, child.spent)}
                 </span>
                 <span className="w-20 sm:w-24" />
                 <span className="hidden w-6 sm:block" />
+                {actionsColumn ? <ActionsSpacer /> : null}
               </li>
             )
           })}
@@ -226,6 +261,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const totals = budgetTotals(buckets)
+  const actionsColumn = !!extras.renderActions
   const opts = cellOpts(budgetCurrency)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
 
@@ -233,6 +269,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const sections: { key: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [
     ...realFolders.map((bucket, index) => ({ key: bucket.folder!.id, name: bucket.folder!.name, bucket, folderIndex: index })),
     { key: '__no_folder__', name: t('budgets.page.budget.structure.no_folder'), bucket: buckets.withoutFolder, folderIndex: null },
+    { key: '__uncategorized__', name: t('common.uncategorized'), bucket: buckets.uncategorized, folderIndex: null },
     { key: '__archive__', name: t('budgets.page.budget.structure.in_archive'), bucket: buckets.archive, folderIndex: null },
   ]
 
@@ -244,21 +281,47 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.spent')}</span>
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.available')}</span>
         <span className="hidden w-6 sm:block" />
+        {actionsColumn ? <ActionsSpacer /> : null}
       </div>
 
       {sections.map((section) => {
+        // archive and uncategorized are read-only: no drag handle, no folder
+        // actions, never a drop container
+        const isReadOnlySection = section.key === '__archive__' || section.key === '__uncategorized__'
         if (section.bucket.elements.length === 0 && section.folderIndex === null) {
-          // archive hides when empty; the Default folder stays visible as a drop
-          // target whenever real folders exist (Vue renders it unconditionally)
-          if (section.key === '__archive__' || realFolders.length === 0) {
+          // both read-only sections hide when they have nothing to show; the
+          // empty Default folder survives only in edit mode (folder actions
+          // present), where it is the drop target for dragging elements out
+          if (isReadOnlySection || realFolders.length === 0 || !renderFolderActions) {
             return null
           }
         }
-        const isArchiveSection = section.key === '__archive__'
+        // Uncategorized is a single fixed row, not a group: it renders flat,
+        // with no header, so the label appears once instead of naming both a
+        // section and the lone row inside it.
+        if (section.key === '__uncategorized__') {
+          return (
+            <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
+              {section.bucket.elements.map((element) => (
+                <ElementRow
+                  key={element.id}
+                  element={element}
+                  bucket={section.bucket}
+                  budget={budget}
+                  currencies={currencies}
+                  accessById={accessById}
+                  extras={{ onSpentClick: extras.onSpentClick }}
+                  actionsColumn={actionsColumn}
+                  hideChildren={hideChildren}
+                />
+              ))}
+            </section>
+          )
+        }
         const sectionNode = (
           <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
             <header className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
-              {!isArchiveSection ? renderFolderHandle?.(section.bucket) : null}
+              {!isReadOnlySection ? renderFolderHandle?.(section.bucket) : null}
               <span className="min-w-0 flex-1 truncate text-sm font-medium" title={section.name}>
                 {section.name}
               </span>
@@ -267,10 +330,11 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                   stats={section.bucket.stats}
                   currency={budgetCurrency}
                   // edit mode: the plus button takes the symbol slot instead
-                  hideSymbol={!isArchiveSection && !!renderFolderActions}
+                  hideSymbol={!isReadOnlySection && !!renderFolderActions}
                 />
               ) : null}
-              {!isArchiveSection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
+              {!isReadOnlySection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
+              {isReadOnlySection && actionsColumn ? <ActionsSpacer /> : null}
             </header>
             {hideContents ? null : section.bucket.elements.length === 0 ? (
               <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
@@ -283,14 +347,15 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                   budget={budget}
                   currencies={currencies}
                   accessById={accessById}
-                  extras={isArchiveSection ? { onSpentClick: extras.onSpentClick } : extras}
+                  extras={isReadOnlySection ? { onSpentClick: extras.onSpentClick } : extras}
+                  actionsColumn={actionsColumn}
                   hideChildren={hideChildren}
                 />
               ))
             )}
           </section>
         )
-        return !isArchiveSection && sectionWrapper ? (
+        return !isReadOnlySection && sectionWrapper ? (
           <div key={section.key}>{sectionWrapper(section.bucket, section.key, sectionNode)}</div>
         ) : (
           sectionNode
@@ -301,12 +366,13 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
         <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
         <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
-          {moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}
+          {moneyFormat(totals.spent, budgetCurrency, opts)}
         </span>
         <span className="flex w-24 justify-center">
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
         <span className="w-6 text-center text-xs text-muted-foreground">{budgetCurrency?.symbol}</span>
+        {actionsColumn ? <ActionsSpacer /> : null}
       </div>
 
       {/* the phone table hides the budget column, so the totals unfold into
@@ -322,7 +388,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.spent')}</span>
-          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(displaySpent(totals.spent), budgetCurrency, opts)}</span>
+          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(totals.spent, budgetCurrency, opts)}</span>
         </span>
         <span className="flex items-center justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>

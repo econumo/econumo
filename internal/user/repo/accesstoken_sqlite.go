@@ -15,7 +15,7 @@ func (accessTokenSqliteQuerier) InsertAccessToken(ctx context.Context, db backen
 	return sqlitegen.New(db).InsertAccessToken(ctx, p)
 }
 
-func (accessTokenSqliteQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenRow, error) {
+func (accessTokenSqliteQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error) {
 	return sqlitegen.New(db).GetAccessTokenByHash(ctx, hash)
 }
 

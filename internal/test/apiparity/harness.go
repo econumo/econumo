@@ -15,20 +15,36 @@ package apiparity
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	appuser "github.com/econumo/econumo/internal/user"
 )
+
+// recordingMailer captures sent messages so a scenario can recover the emitted
+// reset code (hashed at rest, so no longer readable from the DB).
+type recordingMailer struct{ last mailer.Message }
+
+func (m *recordingMailer) Send(_ context.Context, msg mailer.Message) error {
+	m.last = msg
+	return nil
+}
+
+// Anchored on the body's marker text so a digit-bearing user name can never be
+// mistaken for the 6-digit code.
+var resetCodeRe = regexp.MustCompile(`code is: (\d{6})`)
 
 // ignoredDataSalt is set on cfg.DataSalt but the seeded fixture is plaintext
 // (WithCrypto("")). The login + parity scenarios still pass, which asserts that
@@ -54,6 +70,7 @@ type Harness struct {
 	engine string
 	clock  fixedClock
 	db     *dbtest.DB
+	mail   *recordingMailer
 	minted map[string]string // userID -> raw session token minted by Token()
 }
 
@@ -81,22 +98,44 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		RateLimitRegister: 5,
 		RateLimitWindow:   15 * time.Minute,
 		RateLimitGlobal:   60,
+		// Billing configured so create-billing-link pins its SUCCESS shape. The
+		// admin token is the handoff signing key; the assertion it produces is
+		// redacted by handoffRe (its exp is clock-derived).
+		AdminToken: "0123456789abcdef0123456789abcdef",
+		BillingURL: "https://pay.example.test/cloud/",
 	}
 
 	Seed(t, db)
 
+	rec := &recordingMailer{}
 	handler := server.BuildAPI(cfg, db.Raw, server.Seams{
 		Clock:   clk,
 		Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar),
+		Mailer:  rec,
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Harness{srv: srv, engine: db.Engine, clock: clk, db: db, minted: map[string]string{}}
+	return &Harness{srv: srv, engine: db.Engine, clock: clk, db: db, mail: rec, minted: map[string]string{}}
 }
 
 // Engine reports which engine ("sqlite" | "postgresql") this harness runs over.
 func (h *Harness) Engine() string { return h.engine }
+
+// LastResetCode returns the reset code from the most recently emailed message.
+// Reset codes are hashed at rest, so the plaintext is only recoverable here.
+func (h *Harness) LastResetCode(t *testing.T) string {
+	t.Helper()
+	m := resetCodeRe.FindStringSubmatch(h.mail.last.Text)
+	if m == nil {
+		t.Fatalf("no reset code found in email body: %q", h.mail.last.Text)
+	}
+	return m[1]
+}
+
+// URL returns the running server's base URL, for callers (e.g. mcpparity)
+// that need to issue requests outside the REST Call/Replay helpers.
+func (h *Harness) URL() string { return h.srv.URL }
 
 // Token returns a live session token for a seeded user: the fixed fixture
 // tokens for owner/guest, or (for any other user a test seeds itself) a
@@ -110,6 +149,8 @@ func (h *Harness) Token(t *testing.T, userID, email string) string {
 		return OwnerToken
 	case GuestID:
 		return GuestToken
+	case ReadonlyID:
+		return ReadonlyToken
 	}
 	if raw, ok := h.minted[userID]; ok {
 		return raw
@@ -178,6 +219,7 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 	t.Helper()
 	ownerTok := h.Token(t, OwnerID, OwnerEmail)
 	guestTok := h.Token(t, GuestID, GuestEmail)
+	readonlyTok := h.Token(t, ReadonlyID, ReadonlyEmail)
 
 	statuses := make([]int, len(calls))
 	bodies := make([][]byte, len(calls))
@@ -188,6 +230,8 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 			tok = ownerTok
 		case "guest":
 			tok = guestTok
+		case "readonly":
+			tok = readonlyTok
 		case "":
 			tok = ""
 		default:

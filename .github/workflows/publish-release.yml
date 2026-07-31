@@ -1,11 +1,21 @@
 name: Publish Release
 
-# Publishes the Go backend image to ghcr.io/econumo/econumo ONLY.
-# - Always pushes the version tag (e.g. v1.2.3).
-# - Also pushes/moves "latest" only when push_latest is checked AND the workflow
-#   is dispatched from the main branch.
+# Publishes the Go backend image to ghcr.io/econumo/econumo and attaches single-file linux binaries (SPA embedded) to the GitHub release.
+# Dispatch from main (the dispatch ref only selects the workflow DEFINITION);
+# the code that gets tagged and built comes from the "branch" input — main by
+# default, or a release/vX.Y.Z branch for hotfixes of older versions.
+# - Always pushes the version tag (e.g. v1.2.3). When the source branch is
+#   main, also creates a release/vX.Y.Z branch at the released commit (the
+#   base for future hotfixes to that version). Any other source creates no
+#   branch — a release/* source IS the release branch, prepared by hand
+#   before dispatch (copied from the previous release branch of that line).
+# - Also pushes/moves "latest" only when push_latest is checked AND the source
+#   branch is main or release/* AND the version is the highest released so far
+#   (a hotfix to an old line can never move "latest").
 # - Also pushes/moves "dev" when push_dev is checked (any branch). Unlike
 #   `make publish-dev`, the UI version label is the release version, not "dev".
+# - The GitHub release's "Latest" badge follows push_latest, so an old-line
+#   hotfix published after a newer version is never badged as latest.
 
 on:
   workflow_dispatch:
@@ -13,6 +23,10 @@ on:
       version:
         description: "Version tag to publish (e.g., v1.2.3)"
         required: true
+      branch:
+        description: "Source branch to release from (e.g., release/v1.2.3)"
+        required: false
+        default: "main"
       push_latest:
         description: "Publish Latest"
         required: false
@@ -35,30 +49,54 @@ jobs:
   create-tag:
     name: Create Git Tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # pushes the release tag + release/vX.Y.Z branch
     outputs:
       version: ${{ steps.set.outputs.version }}
       tags: ${{ steps.set.outputs.tags }}
     steps:
-      - name: Guard "latest" to the main branch
-        if: ${{ github.event.inputs.push_latest == 'true' && github.ref_name != 'main' }}
-        run: |
-          echo "::error::'latest' can only be published from the main branch (dispatched from '${{ github.ref_name }}')."
-          exit 1
-
-      - name: Checkout code
+      - name: Checkout source branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.branch }}
           fetch-depth: 0
 
       - name: Compute image tags
         id: set
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          BRANCH: ${{ github.event.inputs.branch }}
+          PUSH_LATEST: ${{ github.event.inputs.push_latest }}
+          PUSH_DEV: ${{ github.event.inputs.push_dev }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          # The version is a dispatch input: reject anything that is not a plain
+          # vX.Y.Z tag before it reaches git or a docker tag.
+          if ! printf '%s' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Invalid version '$VERSION' (expected vX.Y.Z)"
+            exit 1
+          fi
+          if [ "$PUSH_LATEST" = "true" ]; then
+            # "latest" must stay on the newest line: only main/release/* sources,
+            # and only a version above every tag released so far — a hotfix to an
+            # older line can never move it.
+            case "$BRANCH" in
+              main | release/*) ;;
+              *)
+                echo "::error::'latest' can only be published from main or a release/* branch (source branch is '$BRANCH')."
+                exit 1
+                ;;
+            esac
+            HIGHEST="$(git tag -l 'v[0-9]*' | sort -V | tail -n 1)"
+            if [ -n "$HIGHEST" ] && [ "$(printf '%s\n%s\n' "$HIGHEST" "$VERSION" | sort -V | tail -n 1)" != "$VERSION" ]; then
+              echo "::error::'latest' requires the highest version: $VERSION is not above the highest existing tag $HIGHEST."
+              exit 1
+            fi
+          fi
           TAGS="${IMAGE}:${VERSION}"
-          if [ "${{ github.event.inputs.push_latest }}" = "true" ]; then
+          if [ "$PUSH_LATEST" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:latest"
           fi
-          if [ "${{ github.event.inputs.push_dev }}" = "true" ]; then
+          if [ "$PUSH_DEV" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:dev"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -70,12 +108,36 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create and push tag
+      - name: Create release branch and tag
+        env:
+          TAG: ${{ steps.set.outputs.version }}
+          BRANCH: ${{ github.event.inputs.branch }}
         run: |
-          TAG="${{ github.event.inputs.version }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "::error::Tag $TAG already exists"
             exit 1
+          fi
+          # A release from main leaves a release/<version> branch at the
+          # released commit — the base for future hotfixes to that version.
+          # Any other source creates no branch: a release/* source is itself
+          # the release branch, prepared by hand before dispatch. The branch
+          # is created before the tag so a failed tag push can be re-run
+          # safely.
+          if [ "$BRANCH" = "main" ]; then
+            BRANCH_REF="refs/heads/release/${TAG}"
+            HEAD_SHA="$(git rev-parse HEAD)"
+            EXISTING="$(git ls-remote origin "$BRANCH_REF" | cut -f1)"
+            if [ -z "$EXISTING" ]; then
+              git push origin "HEAD:${BRANCH_REF}"
+              echo "Created release/${TAG} at ${HEAD_SHA}"
+            elif [ "$EXISTING" = "$HEAD_SHA" ]; then
+              echo "release/${TAG} already exists at ${HEAD_SHA}; skipping creation"
+            else
+              echo "::error::release/${TAG} already exists at ${EXISTING}, which is not the commit being released (${HEAD_SHA})."
+              exit 1
+            fi
+          else
+            echo "Source branch '${BRANCH}' is not main; not creating a release branch"
           fi
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
@@ -117,9 +179,77 @@ jobs:
           build-args: |
             ECONUMO_VERSION=${{ needs.create-tag.outputs.version }}
 
+  build-binaries:
+    name: Build Release Binaries
+    needs: create-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-tag.outputs.version }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+
+      # Mirrors the Dockerfile's frontend stage: the SPA build lands in
+      # web/dist, where web/embed.go embeds it into the Go binaries below.
+      - name: Build SPA
+        env:
+          ECONUMO_VERSION: ${{ needs.create-tag.outputs.version }}
+        run: |
+          npm install -g pnpm@11
+          cd web
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binaries
+        env:
+          VERSION: ${{ needs.create-tag.outputs.version }}
+        run: |
+          mkdir -p release-out
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
+              go build -trimpath \
+              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION}" \
+              -o "release-out/econumo-linux-${arch}" ./cmd/econumo
+          done
+          cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: release-out/
+          if-no-files-found: error
+
+      # Mirror the binaries to the private R2 bucket via the Makefile target
+      # (same upload logic as `make cdn-upload` locally). Channels gate exactly
+      # like the Docker image tags in create-tag: the version channel always,
+      # latest/ and dev/ only when their checkbox is set.
+      - name: Mirror binaries to R2
+        env:
+          ECONUMO_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          ECONUMO_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          ECONUMO_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          VERSION: ${{ needs.create-tag.outputs.version }}
+          PUSH_LATEST: ${{ github.event.inputs.push_latest }}
+          PUSH_DEV: ${{ github.event.inputs.push_dev }}
+        run: |
+          make cdn-upload CHANNEL="$VERSION"
+          if [ "$PUSH_LATEST" = "true" ]; then make cdn-upload CHANNEL=latest; fi
+          if [ "$PUSH_DEV" = "true" ]; then make cdn-upload CHANNEL=dev; fi
+
   create-github-release:
     name: Create GitHub Release
-    needs: [create-tag, publish]
+    needs: [create-tag, publish, build-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -140,3 +270,34 @@ jobs:
         run: npx changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download release binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: release-binaries
+          path: release-out
+
+      - name: Attach binaries to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-tag.outputs.version }}
+        run: |
+          gh release upload "$TAG" \
+            release-out/econumo-linux-amd64 \
+            release-out/econumo-linux-arm64 \
+            release-out/SHA256SUMS \
+            --clobber
+
+      # GitHub badges the newest CREATED release as "Latest" by default, which
+      # would mislabel a hotfix to an older line published after a newer version.
+      - name: Align the "Latest" badge with push_latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-tag.outputs.version }}
+          PUSH_LATEST: ${{ github.event.inputs.push_latest }}
+        run: |
+          if [ "$PUSH_LATEST" = "true" ]; then
+            gh release edit "$TAG" --latest
+          else
+            gh release edit "$TAG" --latest=false
+          fi

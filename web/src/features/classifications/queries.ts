@@ -39,7 +39,10 @@ export function useCreateCategory() {
       if (existing && existing.type === form.type) {
         return existing
       }
-      return categoryApi.createCategory({ id: uuidv7(), name: form.name, type: form.type, accountId: form.accountId, icon: form.icon })
+      const item = await categoryApi.createCategory({ id: uuidv7(), name: form.name, type: form.type, accountId: form.accountId, icon: form.icon })
+      // in mutationFn, not onSuccess: the dedupe path above is not a create
+      trackEvent(METRICS.CATEGORY_CREATE)
+      return item
     },
     onSuccess: (item) => {
       queryClient.setQueryData<CategoryDto[]>(queryKeys.categories, (prev) => {
@@ -58,7 +61,9 @@ export function useCreatePayee() {
       if (existing) {
         return existing
       }
-      return payeeApi.createPayee({ id: uuidv7(), name: form.name, accountId: form.accountId })
+      const item = await payeeApi.createPayee({ id: uuidv7(), name: form.name, accountId: form.accountId })
+      trackEvent(METRICS.PAYEE_CREATE)
+      return item
     },
     onSuccess: (item) => {
       queryClient.setQueryData<PayeeDto[]>(queryKeys.payees, (prev) => {
@@ -274,7 +279,9 @@ export function useCreateTag() {
       if (existing) {
         return existing
       }
-      return tagApi.createTag({ id: uuidv7(), name: form.name, accountId: form.accountId })
+      const item = await tagApi.createTag({ id: uuidv7(), name: form.name, accountId: form.accountId })
+      trackEvent(METRICS.TAG_CREATE)
+      return item
     },
     onSuccess: (item) => {
       queryClient.setQueryData<TagDto[]>(queryKeys.tags, (prev) => {

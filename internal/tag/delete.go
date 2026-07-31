@@ -24,7 +24,9 @@ func (s *Service) DeleteTag(ctx context.Context, userID vo.Id, req model.DeleteT
 			return gerr
 		}
 		if !t.UserID.Equal(userID) {
-			return errs.NewAccessDenied("Access denied")
+			// Foreign-owned tag: report as not-found (matching the repo above) so
+			// the response can't probe which tag ids exist.
+			return errs.NewNotFound("Tag not found")
 		}
 		return s.repo.Delete(ctx, id)
 	}); err != nil {

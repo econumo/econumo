@@ -1,0 +1,30 @@
+# Reference unit for running the single-file Econumo binary without Docker.
+# Assumes: binary at /opt/econumo/econumo, env at /etc/econumo/env (modeled on
+# .env.example; at minimum DATABASE_URL and PORT), a dedicated system user
+# `econumo`, and SQLite data under /var/lib/econumo. See the README section
+# "Run without Docker (single binary)" for the setup walkthrough.
+
+[Unit]
+Description=Econumo personal finance server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=econumo
+Group=econumo
+WorkingDirectory=/var/lib/econumo
+EnvironmentFile=/etc/econumo/env
+ExecStart=/opt/econumo/econumo serve
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the process only ever writes its database directory.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/econumo
+
+[Install]
+WantedBy=multi-user.target

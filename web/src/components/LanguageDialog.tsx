@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { getLocaleOptions, locale } from '@/lib/config'
 import { getToken } from '@/lib/storage'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { updateLanguage } from '@/api/user'
 import i18n from '@/app/i18n'
 
 export function applyLocale(value: string): void {
   locale(value)
+  trackEvent(METRICS.USER_UPDATE_LANGUAGE)
   void i18n.changeLanguage(value)
   document.documentElement.lang = value
   // Best-effort server-side persist for future background emails; login

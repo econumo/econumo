@@ -157,10 +157,41 @@ it('account delete confirm posts and removes; edit opens the account modal', asy
   expect(useUiStore.getState().accountModal?.account?.id).toBe('a2')
 })
 
+it('shared-with-me account row offers Decline instead of Delete; confirming posts delete-account', async () => {
+  const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const foreign = {
+    id: 'a-foreign', owner: partner, folderId: 'f1', name: 'Shared wallet', position: 5,
+    currency: fixtureUsd, balance: '10', type: 1, icon: 'wallet',
+    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'user' }],
+  }
+  let posted: unknown
+  server.use(
+    ...coreHandlers({
+      accounts: [...fixtureAccountsForAccess, foreign],
+      connections: [{ user: partner, sharedAccounts: [] }],
+    }),
+    http.post('*/api/v1/account/delete-account', async ({ request }) => {
+      posted = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('folder-General')
+  await user.click(screen.getByRole('button', { name: 'account actions Shared wallet' }))
+  expect(await screen.findByRole('menuitem', { name: 'Decline' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('menuitem', { name: 'Decline' }))
+  expect(await screen.findByText('Are you sure you want to decline access to the account “Shared wallet”?')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Decline' }))
+  await waitFor(() => expect(posted).toEqual({ id: 'a-foreign' }))
+  await waitFor(() => expect(screen.queryByText('Shared wallet')).not.toBeInTheDocument())
+})
+
 it('access control: shared avatars, grant and revoke through the dialogs', async () => {
   const partner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
   const sharedAccounts = [
-    { ...fixtureAccountsForAccess[0], sharedAccess: [{ user: partner, role: 'user' }] },
+    { ...fixtureAccountsForAccess[0], sharedAccess: [{ user: partner, role: 'user', isAccepted: 1 }] },
     ...fixtureAccountsForAccess.slice(1),
   ]
   let granted: unknown
@@ -170,11 +201,11 @@ it('access control: shared avatars, grant and revoke through the dialogs', async
       accounts: sharedAccounts,
       connections: [{ user: partner, sharedAccounts: [] }],
     }),
-    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
       granted = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
-    http.post('*/api/v1/connection/revoke-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/revoke-access', async ({ request }) => {
       revoked = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
@@ -310,7 +341,7 @@ it('compact: the preview sheet lists connections and grants access in place', as
   let granted: unknown
   server.use(
     ...coreHandlers({ connections: [{ user: partner, sharedAccounts: [] }] }),
-    http.post('*/api/v1/connection/set-account-access', async ({ request }) => {
+    http.post('*/api/v1/account/grant-access', async ({ request }) => {
       granted = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
@@ -341,7 +372,7 @@ it('compact: the preview sheet shows a read-only access list to a non-admin memb
   const foreign = {
     id: 'a-foreign', owner: partner, folderId: 'f1', name: 'Shared wallet', position: 5,
     currency: fixtureUsd, balance: '10', type: 1, icon: 'wallet',
-    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'user' }],
+    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'user', isAccepted: 1 }],
   }
   server.use(...coreHandlers({
     accounts: [...fixtureAccountsForAccess, foreign],
@@ -356,4 +387,6 @@ it('compact: the preview sheet shows a read-only access list to a non-admin memb
   expect(await screen.findByText('Owner')).toBeInTheDocument()
   expect(screen.getByText('Manage transactions')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Partner/ })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
 })

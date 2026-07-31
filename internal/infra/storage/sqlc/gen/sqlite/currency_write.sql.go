@@ -139,6 +139,20 @@ func (q *Queries) GetGlobalCurrencyIDByCode(ctx context.Context, code string) (s
 	return id, err
 }
 
+const getLatestRateDate = `-- name: GetLatestRateDate :one
+SELECT published_at FROM currencies_rates ORDER BY published_at DESC LIMIT 1
+`
+
+// Newest stored rate date, for the in-process rate updater's freshness check.
+// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
+// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
+func (q *Queries) GetLatestRateDate(ctx context.Context) (time.Time, error) {
+	row := q.db.QueryRowContext(ctx, getLatestRateDate)
+	var published_at time.Time
+	err := row.Scan(&published_at)
+	return published_at, err
+}
+
 const globalCurrencyCodeExists = `-- name: GlobalCurrencyCodeExists :one
 SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id IS NULL
 `

@@ -1,12 +1,30 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
+import { deriveAccessState } from '@/lib/access'
+import { setAnalyticsAccessState } from '@/lib/metrics'
 
 // login-user is the one endpoint that responds with a bare {token, user}
 // body instead of the standard {success, message, data} envelope.
 export async function login(username: string, password: string): Promise<UserLoginItemDto> {
   const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/user/login-user'), { username, password })
+  const { user } = response.data
+  setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   return response.data
+}
+
+export async function confirmEmail(username: string, code: string): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/confirm-email'), { username, code })
+}
+
+// Returns the seconds to wait before another code may be requested, read from
+// the standard Retry-After header. The server owns this number and enforces it,
+// so a reload or a second tab cannot shorten the wait; the client only renders
+// the countdown.
+export async function resendVerificationCode(username: string): Promise<number> {
+  const response = await api.post(apiUrl('/api/v1/user/resend-verification-code'), { username })
+  const seconds = Number(response.headers?.['retry-after'])
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : 0
 }
 
 export async function logout(): Promise<void> {
@@ -32,6 +50,23 @@ export async function updatePassword(oldPassword: string, newPassword: string): 
   await api.post(apiUrl('/api/v1/user/update-password'), { oldPassword, newPassword })
 }
 
+export async function requestEmailChange(newEmail: string, password: string): Promise<void> {
+  await api.post(apiUrl('/api/v1/user/request-email-change'), { newEmail, password })
+}
+
+export async function confirmEmailChange(code: string): Promise<CurrentUserDto> {
+  const response = await api.post<Envelope<CurrentUserDto>>(apiUrl('/api/v1/user/confirm-email-change'), { code })
+  return response.data.data
+}
+
+// Returns the seconds to wait before another code may be requested, same
+// Retry-After contract as resendVerificationCode.
+export async function resendEmailChangeCode(): Promise<number> {
+  const response = await api.post(apiUrl('/api/v1/user/resend-email-change-code'), {})
+  const seconds = Number(response.headers?.['retry-after'])
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : 0
+}
+
 export async function updateCurrency(currency: string): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-currency'), { currency })
   return response.data.data.user
@@ -44,7 +79,9 @@ export async function updateDefaultBudget(budgetId: Id): Promise<CurrentUserDto>
 
 export async function getUserData(): Promise<CurrentUserDto> {
   const response = await api.get<CurrentUserResponseDto>(apiUrl('/api/v1/user/get-user-data'))
-  return response.data.data.user
+  const user = response.data.data.user
+  setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
+  return user
 }
 
 export async function remindPassword(username: string): Promise<void> {
@@ -62,6 +99,16 @@ export async function updateLanguage(language: string): Promise<void> {
 export async function completeOnboarding(): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/complete-onboarding'))
   return response.data.data.user
+}
+
+// Minted per click: the handoff token in the URL lives 10 minutes, so the
+// link must never be prefetched or cached.
+export async function createBillingLink(forUserId?: Id): Promise<string> {
+  const response = await api.post<Envelope<{ url: string }>>(
+    apiUrl('/api/v1/user/create-billing-link'),
+    forUserId ? { for: forUserId } : {},
+  )
+  return response.data.data.url
 }
 
 interface Envelope<T> {

@@ -6,13 +6,26 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // GetTransactionList returns transactions for: a single account (if accountId
-// given, access-checked), or a [periodStart, periodEnd) window across the user's
-// visible accounts, or all visible-account transactions.
+// given, access-checked, optionally narrowed to a [periodStart, periodEnd)
+// window when BOTH bounds are set — a lone bound is ignored), or a
+// [periodStart, periodEnd) window across the user's visible accounts, or all
+// visible-account transactions. The four classification filter fields
+// (Uncategorized/CategoryId/PayeeId/TagId) are MCP-only — REST never sets
+// them, so the zero-filter path below must stay byte-identical to the
+// pre-filter behavior: the single-account-no-period case keeps calling
+// ListByAccount exactly as before, only routing through the filter-aware
+// ListByAccountIDs when a filter is actually supplied.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.TransactionListRequest) (*model.GetTransactionListResult, error) {
+	filter, hasFilter, err := buildFilter(req)
+	if err != nil {
+		return nil, err
+	}
+
 	var txs []*model.Transaction
 
 	switch {
@@ -24,6 +37,28 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		if aerr := s.checkViewAccess(ctx, userID, accountID); aerr != nil {
 			return nil, aerr
 		}
+		if req.PeriodStart != "" && req.PeriodEnd != "" {
+			if filter.PeriodStart, err = parseFlexible(req.PeriodStart); err != nil {
+				return nil, err
+			}
+			if filter.PeriodEnd, err = parseFlexible(req.PeriodEnd); err != nil {
+				return nil, err
+			}
+			list, lerr := s.repo.ListByAccountIDs(ctx, []vo.Id{accountID}, filter)
+			if lerr != nil {
+				return nil, lerr
+			}
+			txs = list
+			break
+		}
+		if hasFilter {
+			list, lerr := s.repo.ListByAccountIDs(ctx, []vo.Id{accountID}, filter)
+			if lerr != nil {
+				return nil, lerr
+			}
+			txs = list
+			break
+		}
 		list, err := s.repo.ListByAccount(ctx, accountID)
 		if err != nil {
 			return nil, err
@@ -34,16 +69,15 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		if err != nil {
 			return nil, err
 		}
-		var start, end time.Time
 		if req.PeriodStart != "" && req.PeriodEnd != "" {
-			if start, err = parseFlexible(req.PeriodStart); err != nil {
+			if filter.PeriodStart, err = parseFlexible(req.PeriodStart); err != nil {
 				return nil, err
 			}
-			if end, err = parseFlexible(req.PeriodEnd); err != nil {
+			if filter.PeriodEnd, err = parseFlexible(req.PeriodEnd); err != nil {
 				return nil, err
 			}
 		}
-		list, err := s.repo.ListByAccountIDs(ctx, ids, start, end)
+		list, err := s.repo.ListByAccountIDs(ctx, ids, filter)
 		if err != nil {
 			return nil, err
 		}
@@ -71,6 +105,46 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		items = append(items, s.buildResult(t, author))
 	}
 	return &model.GetTransactionListResult{Items: items}, nil
+}
+
+// buildFilter parses the request's classification filter fields (MCP-only;
+// REST leaves them all zero) into a model.TransactionFilter, plus whether any
+// filter was actually supplied. uncategorized and categoryId are rejected
+// together (they contradict: uncategorized means categoryId IS NULL). Ids are
+// parsed independently of TransactionListRequest.Validate() since MCP tools
+// call this service directly and never run Validate() (see
+// internal/web/mcp) — this is the tier-2 pass that actually enforces UUID
+// shape for MCP callers, mirroring how accountId is parsed below regardless
+// of Validate() having run.
+func buildFilter(req model.TransactionListRequest) (model.TransactionFilter, bool, error) {
+	if req.Uncategorized && req.CategoryId != "" {
+		return model.TransactionFilter{}, false, errs.NewValidation("uncategorized and categoryId cannot both be set")
+	}
+	var f model.TransactionFilter
+	f.Uncategorized = req.Uncategorized
+	if req.CategoryId != "" {
+		id, err := vo.ParseId(req.CategoryId)
+		if err != nil {
+			return model.TransactionFilter{}, false, err
+		}
+		f.CategoryID = &id
+	}
+	if req.PayeeId != "" {
+		id, err := vo.ParseId(req.PayeeId)
+		if err != nil {
+			return model.TransactionFilter{}, false, err
+		}
+		f.PayeeID = &id
+	}
+	if req.TagId != "" {
+		id, err := vo.ParseId(req.TagId)
+		if err != nil {
+			return model.TransactionFilter{}, false, err
+		}
+		f.TagID = &id
+	}
+	hasFilter := f.Uncategorized || f.CategoryID != nil || f.PayeeID != nil || f.TagID != nil
+	return f, hasFilter, nil
 }
 
 // parseFlexible parses a period bound, accepting both "Y-m-d H:i:s" and "Y-m-d"

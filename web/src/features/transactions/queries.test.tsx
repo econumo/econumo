@@ -38,18 +38,18 @@ it('create-transaction replaces the accounts cache and prepends the item', async
     ),
   )
   const { queryClient, wrapper } = makeWrapper()
-  queryClient.setQueryData(queryKeys.transactions, [{ ...wireTx, id: 't-existing', amount: 1 }])
+  queryClient.setQueryData(queryKeys.transactions, [{ ...wireTx, id: 't-existing', amount: '1' }])
   queryClient.setQueryData(queryKeys.accounts, [])
 
   const { result } = renderHook(() => useCreateTransaction(), { wrapper })
   result.current.mutate({
-    id: 'op1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: 9.99,
+    id: 'op1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '9.99',
     amountRecipient: null, categoryId: 'cat1', description: '', payeeId: null, tagId: null, date: '2026-07-01 09:30:00',
   })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-  const accounts = queryClient.getQueryData<{ balance: number }[]>(queryKeys.accounts)!
-  expect(accounts[0].balance).toBe(90.01)
+  const accounts = queryClient.getQueryData<{ balance: string }[]>(queryKeys.accounts)!
+  expect(accounts[0].balance).toBe('90.01')
   const txs = queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!
   expect(txs.map((t) => t.id)).toEqual(['t-created', 't-existing'])
 })
@@ -69,5 +69,5 @@ it('delete-transaction removes the item and refreshes accounts', async () => {
 
   const txs = queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!
   expect(txs.map((t) => t.id)).toEqual(['t-other'])
-  expect(queryClient.getQueryData<{ balance: number }[]>(queryKeys.accounts)![0].balance).toBe(90.01)
+  expect(queryClient.getQueryData<{ balance: string }[]>(queryKeys.accounts)![0].balance).toBe('90.01')
 })

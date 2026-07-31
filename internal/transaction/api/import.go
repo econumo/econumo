@@ -14,6 +14,12 @@ import (
 // maxImportUpload bounds the multipart parse at 10M — a frozen upload-size limit.
 const maxImportUpload = 10 << 20
 
+// maxImportRequest caps the WHOLE multipart request. ParseMultipartForm's arg is
+// only the in-memory threshold (excess spills to temp disk), so without a body
+// cap an attacker could exhaust disk. The margin over maxImportUpload covers the
+// multipart envelope and the small override fields.
+const maxImportRequest = maxImportUpload + (1 << 20)
+
 // ImportTransactionList handles POST /api/v1/transaction/import-transaction-list
 // (auth, multipart/form-data). Form fields: file (CSV upload), mapping (JSON
 // string), and optional overrides accountId/date/categoryId/description/payeeId/
@@ -35,6 +41,7 @@ const maxImportUpload = 10 << 20
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.ImportResult}
 // @Failure     400 {object} apidoc.JsonResponseError
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
+// @Failure     402 {object} apidoc.JsonResponseError
 // @Failure     500 {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/transaction/import-transaction-list [post]
@@ -44,15 +51,18 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Bound the whole request body before parsing so oversized uploads are
+	// rejected instead of spilled to disk.
+	r.Body = http.MaxBytesReader(w, r.Body, maxImportRequest)
 	if err := r.ParseMultipartForm(maxImportUpload); err != nil {
-		httpx.WriteError(w, errs.NewValidation("Validation failed",
-			errs.FieldError{Key: "file", Message: "Please upload a valid CSV file", Code: errs.CodeTransactionInvalidImportFile}), h.dev)
+		httpx.WriteError(r.Context(), w, errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "file", Message: "Please upload a valid CSV file", Code: errs.CodeTransactionInvalidImportFile}))
 		return
 	}
 
 	mapping, merr := parseImportMapping(r.FormValue("mapping"))
 	if merr != nil {
-		httpx.WriteError(w, merr, h.dev)
+		httpx.WriteError(r.Context(), w, merr)
 		return
 	}
 
@@ -71,7 +81,7 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 		defer file.Close()
 		data, rerr := io.ReadAll(io.LimitReader(file, maxImportUpload))
 		if rerr != nil {
-			httpx.WriteError(w, rerr, h.dev)
+			httpx.WriteError(r.Context(), w, rerr)
 			return
 		}
 		req.File = data
@@ -79,7 +89,7 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 
 	res, err := h.svc.ImportTransactionList(r.Context(), userID, req)
 	if err != nil {
-		httpx.WriteError(w, err, h.dev)
+		httpx.WriteError(r.Context(), w, err)
 		return
 	}
 	httpx.OK(w, res)

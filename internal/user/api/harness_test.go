@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/econumo/econumo/internal/config"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/infra/handoff"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
@@ -32,8 +34,6 @@ import (
 )
 
 const (
-	testDataSalt = "0123456789abcdef" // 16 bytes -> AES-128 requires exactly 16 key bytes
-
 	seedUserID   = "11111111-1111-1111-1111-111111111111"
 	seedEmail    = "user@example.test"
 	seedPassword = "secret-pw"
@@ -61,6 +61,7 @@ type harness struct {
 	hasher *auth.PasswordHasher
 	tokens *userrepo.AccessTokenRepo
 	clock  fixedClock
+	mail   *recordingMailer
 }
 
 func newHarness(t *testing.T) *harness { return newHarnessWithLimiter(t, nil) }
@@ -84,7 +85,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 		t.Fatalf("migrate: %v", err)
 	}
 
-	encode := auth.NewEncodeService(testDataSalt)
+	encode := auth.NewEncodeService("") // salt-free, matching server.BuildAPI
 	hasher := auth.NewPasswordHasher()
 	// Use a near-now issuance time so tokens verify (the JWT verifier checks exp
 	// against the real wall clock). Truncated to the second to match the
@@ -99,34 +100,61 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	repo := userrepo.NewSQLiteRepo(txm)
 	readRepo := userrepo.NewReadRepo("sqlite", txm)
 	currency := currencyrepo.New("sqlite", txm)
-	budgets := server.NewUserBudgetExistence("sqlite", txm)
+	budgets := server.NewUserBudgetAccess("sqlite", txm)
 	passwordReqs := userrepo.NewPasswordRequestRepo("sqlite", txm)
-	// Discard mailer — the reset test reads the code from the DB, so email output
-	// is irrelevant here (and we keep it off stdout, unlike the console default).
-	resetMailer := mailer.NewResetSender(discardMailer{}, "", "")
+	// Recording mailer — reset codes are hashed at rest, so the plaintext is only
+	// available from the email. The reset test reads it from here.
+	rec := &recordingMailer{}
+	resetMailer := mailer.NewResetSender(rec, "", "")
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
-	svc := appuser.NewService(repo, txm, encode, hasher, tokens, server.NewUserCurrencyLookup(currency), budgets, passwordReqs, resetMailer, appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration)
-	readSvc := appuser.NewReadService(readRepo, encode)
-	handlers := handleruser.NewHandlers(svc, readSvc, cfg.IsDev(), clk)
+	svc := appuser.NewService(repo, txm, encode, hasher, tokens, server.NewUserCurrencyLookup(currency), budgets, passwordReqs, resetMailer,
+		userrepo.NewEmailVerificationRepo("sqlite", txm), nil,
+		userrepo.NewEmailChangeRequestRepo("sqlite", txm), nil,
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration, 0, false)
+	readSvc := appuser.NewReadService(readRepo, encode, clk)
+	billing := appuser.NewBillingService(
+		"https://pay.example.test/cloud/",
+		handoff.NewSigner("0123456789abcdef0123456789abcdef"),
+		clk,
+	)
+	handlers := handleruser.NewHandlers(svc, readSvc, clk, billing)
 
 	h := router.New(router.Deps{
 		Cfg:         cfg,
 		DB:          nil,
-		RegisterAPI: handleruser.RegisterAPI(handlers, svc, cfg.IsDev()),
+		RegisterAPI: handleruser.RegisterAPI(handlers, svc),
 	})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, tokens: tokens, clock: clk}
+	return &harness{srv: srv, db: db, tdb: tdb, encode: encode, hasher: hasher, tokens: tokens, clock: clk, mail: rec}
 }
 
-// discardMailer drops every message; it keeps the reset test silent (the console
-// default would print to stdout) without re-exposing a no-op transport in prod.
-type discardMailer struct{}
+// recordingMailer captures every sent message so tests can recover the emitted
+// reset code (which is hashed at rest and no longer readable from the DB).
+type recordingMailer struct{ last mailer.Message }
 
-func (discardMailer) Send(context.Context, mailer.Message) error { return nil }
+func (m *recordingMailer) Send(_ context.Context, msg mailer.Message) error {
+	m.last = msg
+	return nil
+}
+
+// resetCodeRe matches the 6-digit reset code in the rendered email body. It is
+// anchored on the body's marker text so a digit-bearing user name can never be
+// mistaken for the code.
+var resetCodeRe = regexp.MustCompile(`code is: (\d{6})`)
+
+// lastResetCode extracts the reset code from the most recently sent email.
+func (m *recordingMailer) lastResetCode(t *testing.T) string {
+	t.Helper()
+	match := resetCodeRe.FindStringSubmatch(m.last.Text)
+	if match == nil {
+		t.Fatalf("no reset code found in email body: %q", m.last.Text)
+	}
+	return match[1]
+}
 
 // seed inserts a known user (with hashed password and encrypted email) plus the
 // four default user options so login and get-user-data work. The budget option
@@ -135,7 +163,7 @@ func (discardMailer) Send(context.Context, mailer.Message) error { return nil }
 // existing option — can write to it.
 func seed(t *testing.T, tdb *dbtest.DB) {
 	t.Helper()
-	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
+	f := fixture.New(t, tdb).WithCrypto("")
 	f.User(fixture.User{
 		ID:       seedUserID,
 		Email:    seedEmail,
@@ -170,6 +198,27 @@ func toMigrations(files []migrations.File) []migrate.Migration {
 }
 
 // do issues a request to the harness server. token may be "" for public calls.
+// doHeader is do() for callers that need a response header rather than the body.
+func (h *harness) doHeader(t *testing.T, method, path string, body any, header string) (int, string) {
+	t.Helper()
+	b, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal body: %v", err)
+	}
+	req, err := http.NewRequest(method, h.srv.URL+path, bytes.NewReader(b))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := h.srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("do request: %v", err)
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return resp.StatusCode, resp.Header.Get(header)
+}
+
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {
 	t.Helper()
 	var rdr io.Reader
@@ -246,6 +295,8 @@ type currentUser struct {
 	Avatar       string `json:"avatar"`
 	Currency     string `json:"currency"`
 	ReportPeriod string `json:"reportPeriod"`
+	AccessLevel  string `json:"accessLevel"`
+	AccessUntil  string `json:"accessUntil"`
 	Options      []struct {
 		Name  string  `json:"name"`
 		Value *string `json:"value"`

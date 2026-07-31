@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
@@ -17,50 +16,23 @@ import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
+import { tryNormalize } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenTransactionParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useCategories, usePayees, useTags, useCreateCategory, useCreatePayee, useCreateTag } from '@/features/classifications/queries'
+import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
+import { usePostRecurring } from '@/features/recurring/queries'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
-import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedNumber } from './useTransactionForm'
+import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedAmount } from './useTransactionForm'
 import { EntitySelect } from './EntitySelect'
+import { SelectCard } from './SelectCard'
 import { AddTagDialog } from './AddTagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
-
-// strips the EntitySelect field down so the CardField carries the chrome
-const cardSelectClass =
-  '[&_[data-slot=entity-select]]:h-auto [&_[data-slot=entity-select]]:border-0 [&_[data-slot=entity-select]]:px-0 [&_[data-slot=entity-select]]:ring-0 [&_[data-slot=entity-select]]:bg-transparent dark:[&_[data-slot=entity-select]]:bg-transparent'
-
-// CardField around an EntitySelect where the WHOLE card is the tap target —
-// clicks on the label/padding forward to the field inside
-function SelectCard({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
-  // if the picker was open at pointerdown, that press already dismissed it —
-  // forwarding the click would immediately reopen
-  const wasOpen = useRef(false)
-  const trigger = (root: HTMLElement) => root.querySelector<HTMLInputElement>('[data-slot=entity-select] input')
-  return (
-    <div
-      className="cursor-pointer"
-      onPointerDownCapture={(e) => {
-        wasOpen.current = trigger(e.currentTarget)?.getAttribute('aria-expanded') === 'true'
-      }}
-      onClick={(e) => {
-        if (wasOpen.current || (e.target as HTMLElement).closest('input, button')) {
-          return
-        }
-        trigger(e.currentTarget)?.click()
-      }}
-    >
-      <CardField label={label} error={error}>
-        <div className={cardSelectClass}>{children}</div>
-      </CardField>
-    </div>
-  )
-}
 
 function TransactionForm({ params, onDone }: { params: OpenTransactionParams; onDone: () => void }) {
   const { t, i18n } = useTranslation()
@@ -76,6 +48,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
 
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
+  const postRecurring = usePostRecurring()
   const createCategory = useCreateCategory()
   const createPayee = useCreatePayee()
   const createTag = useCreateTag()
@@ -93,6 +66,17 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const isExpense = form.type === 'expense'
   const ownerId = account?.owner.id
   const canEditData = canChangeAccountData(account, user?.id)
+  const crossCurrency = isTransfer && account && accountRecipient && account.currency.id !== accountRecipient.currency.id
+
+  // posting a recurring template starts with an empty recipient amount
+  // (Task 15's initialFormState); prefill it once from the current rates,
+  // same as a fresh cross-currency transfer would compute on entry
+  useEffect(() => {
+    if (params.postRecurring && crossCurrency && form.amountRecipient === '') {
+      patch({ amountRecipient: recomputeRecipientAmount(form.amount, account, accountRecipient, exchangeFn) })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
   const currentCategories = categoryOptions(categories, form.type, ownerId)
@@ -100,8 +84,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const selectedTag = tags.find((tag) => tag.id === form.tagId)
   const visibleTags = tags.filter((tag) => tag.isArchived === 0 && (!ownerId || tag.ownerUserId === ownerId))
   const tagRow = selectedTag && !visibleTags.some((tg) => tg.id === selectedTag.id) ? [...visibleTags, selectedTag] : visibleTags
-
-  const crossCurrency = isTransfer && account && accountRecipient && account.currency.id !== accountRecipient.currency.id
 
   const setAmount = (amount: string) => {
     if (isTransfer) {
@@ -131,8 +113,8 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       if (!isValidFormula(raw)) {
         return t('common.validation.invalid_formula')
       }
-      const evaluated = evaluatedNumber(raw)
-      if (Number.isNaN(evaluated)) {
+      const evaluated = evaluatedAmount(raw)
+      if (tryNormalize(evaluated) === null) {
         return t('common.validation.invalid_number')
       }
       return null
@@ -158,9 +140,6 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         next.amountRecipient = recipientError
       }
     }
-    if (!isTransfer && !form.categoryId) {
-      next.category = t('transactions.modal.form.category.validation.required_field')
-    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -171,7 +150,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
     const payload = buildPayload(form)
     try {
-      if (form.isNew) {
+      if (params.postRecurring) {
+        await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
+      } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
         if (isTransfer && payload.accountRecipientId) {
           setSwitchAccountPrompt(payload.accountRecipientId)
@@ -186,13 +167,18 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const dateOnly = dayKey(form.date)
-  const pending = createTransaction.isPending || updateTransaction.isPending
-  const title = form.isNew ? t('transactions.modal.create_form.header') : t('transactions.modal.update_form.header')
+  const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending
+  // posting a template creates an ordinary transaction (prefilled from it), so
+  // it reads as the regular add dialog rather than a mode of its own
+  const title = form.isNew
+    ? t('transactions.modal.create_form.header')
+    : t('transactions.modal.update_form.header')
 
   const accountToOption = (a: (typeof accounts)[number]) => ({
     value: a.id,
     label: `${a.name} (${moneyFormat(a.balance, a.currency)})`,
     icon: a.icon,
+    disabled: !canWriteToAccount(a, user?.id),
   })
 
   return (
@@ -358,12 +344,13 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         </>
       ) : (
         <>
-          <SelectCard label={t('transactions.modal.form.category.label')} error={errors.category}>
+          <SelectCard label={t('transactions.modal.form.category.label')}>
               <EntitySelect
                 aria-label={t('transactions.modal.form.category.label')}
                 value={form.categoryId}
                 onChange={(id) => patch({ categoryId: id })}
                 options={currentCategories.map((c) => ({ value: c.id, label: c.name, icon: c.icon || 'pending' }))}
+                clearable
                 onCreate={
                   canEditData
                     ? (name) => {

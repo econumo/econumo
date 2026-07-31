@@ -32,7 +32,7 @@ var (
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-list [get]
 func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCurrencyList)
+	endpoint.HandleNoBody(w, r, h.read.GetCurrencyList)
 }
 
 // GetCurrencyRateList handles GET /api/v1/currency/get-currency-rate-list
@@ -48,7 +48,7 @@ func (h *Handlers) GetCurrencyList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/currency/get-currency-rate-list [get]
 func (h *Handlers) GetCurrencyRateList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, h.read.GetCurrencyRateList)
+	endpoint.HandleNoBody(w, r, h.read.GetCurrencyRateList)
 }
 
 // CreateCurrency handles POST /api/v1/currency/create-currency (auth).
@@ -62,11 +62,12 @@ func (h *Handlers) GetCurrencyRateList(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.CreateCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/create-currency [post]
 func (h *Handlers) CreateCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.CreateCurrencyRequest) (*model.CreateCurrencyResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.CreateCurrencyRequest) (*model.CreateCurrencyResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_code", req.Code)
 		return h.manage.CreateCurrency(ctx, userID, req)
 	})
@@ -83,12 +84,13 @@ func (h *Handlers) CreateCurrency(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UpdateCustomCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/update-currency [post]
 func (h *Handlers) UpdateCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.UpdateCustomCurrencyRequest) (*model.UpdateCustomCurrencyResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.UpdateCustomCurrencyRequest) (*model.UpdateCustomCurrencyResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
 		return h.manage.UpdateCurrency(ctx, userID, req)
 	})
@@ -105,12 +107,13 @@ func (h *Handlers) UpdateCurrency(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.ArchiveCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/archive-currency [post]
 func (h *Handlers) ArchiveCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.ArchiveCurrencyRequest) (*model.ArchiveCurrencyResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.ArchiveCurrencyRequest) (*model.ArchiveCurrencyResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
 		return h.manage.ArchiveCurrency(ctx, userID, req)
 	})
@@ -127,12 +130,13 @@ func (h *Handlers) ArchiveCurrency(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.UnarchiveCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/unarchive-currency [post]
 func (h *Handlers) UnarchiveCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.UnarchiveCurrencyRequest) (*model.UnarchiveCurrencyResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.UnarchiveCurrencyRequest) (*model.UnarchiveCurrencyResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
 		return h.manage.UnarchiveCurrency(ctx, userID, req)
 	})
@@ -149,12 +153,13 @@ func (h *Handlers) UnarchiveCurrency(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.DeleteCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/delete-currency [post]
 func (h *Handlers) DeleteCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.DeleteCurrencyRequest) (*model.DeleteCurrencyResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.DeleteCurrencyRequest) (*model.DeleteCurrencyResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
 		return h.manage.DeleteCurrency(ctx, userID, req)
 	})
@@ -171,12 +176,13 @@ func (h *Handlers) DeleteCurrency(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.SetCurrencyRateResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     403     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/set-currency-rate [post]
 func (h *Handlers) SetCurrencyRate(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.SetCurrencyRateRequest) (*model.SetCurrencyRateResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.SetCurrencyRateRequest) (*model.SetCurrencyRateResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_id", req.CurrencyId)
 		return h.manage.SetCurrencyRate(ctx, userID, req)
 	})
@@ -193,11 +199,12 @@ func (h *Handlers) SetCurrencyRate(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.HideCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/hide-currency [post]
 func (h *Handlers) HideCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.HideCurrencyRequest) (*model.HideCurrencyResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.HideCurrencyRequest) (*model.HideCurrencyResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
 		return h.manage.HideCurrency(ctx, userID, req)
 	})
@@ -214,11 +221,12 @@ func (h *Handlers) HideCurrency(w http.ResponseWriter, r *http.Request) {
 // @Success     200     {object} apidoc.JsonResponseOk{data=model.ShowCurrencyResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
 // @Router      /api/v1/currency/show-currency [post]
 func (h *Handlers) ShowCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.ShowCurrencyRequest) (*model.ShowCurrencyResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.ShowCurrencyRequest) (*model.ShowCurrencyResult, error) {
 		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
 		return h.manage.ShowCurrency(ctx, userID, req)
 	})

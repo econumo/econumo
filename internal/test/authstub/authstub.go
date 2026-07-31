@@ -7,16 +7,25 @@ package authstub
 import (
 	"context"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-type Authenticator struct{}
+// Authenticator's zero value stays valid (Level defaults to full) so the many
+// feature harnesses constructing Authenticator{} keep compiling unchanged.
+type Authenticator struct {
+	Level model.AccessLevel
+}
 
-func (Authenticator) Authenticate(_ context.Context, token string) (vo.Id, vo.Id, error) {
+func (a Authenticator) Authenticate(_ context.Context, token string) (vo.Id, vo.Id, model.AccessLevel, error) {
 	id, err := vo.ParseId(token)
 	if err != nil {
-		return vo.Id{}, vo.Id{}, errs.NewUnauthorized("Invalid access token")
+		return vo.Id{}, vo.Id{}, "", errs.NewUnauthorized("Invalid access token")
 	}
-	return id, id, nil
+	level := a.Level
+	if level == "" {
+		level = model.AccessLevelFull
+	}
+	return id, id, level, nil
 }

@@ -3,6 +3,7 @@ package reqctx
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 func TestLogAttrsAccumulate(t *testing.T) {
@@ -52,5 +53,39 @@ func TestLanguageRoundTrip(t *testing.T) {
 	ctx := WithLanguage(context.Background(), "ru")
 	if got := Language(ctx); got != "ru" {
 		t.Fatalf("Language() = %q, want ru", got)
+	}
+}
+
+func TestExplicitLocation(t *testing.T) {
+	ctx := context.Background()
+	if IsLocationExplicit(ctx) {
+		t.Fatal("empty ctx must not be explicit")
+	}
+	// Plain WithLocation (the Timezone middleware's UTC default) is NOT explicit.
+	ctx = WithLocation(ctx, time.UTC)
+	if IsLocationExplicit(ctx) {
+		t.Fatal("WithLocation must not mark explicit")
+	}
+	loc, err := time.LoadLocation("Europe/Amsterdam")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx = WithExplicitLocation(ctx, loc)
+	if !IsLocationExplicit(ctx) {
+		t.Fatal("WithExplicitLocation must mark explicit")
+	}
+	if got := Location(ctx); got.String() != "Europe/Amsterdam" {
+		t.Fatalf("Location = %s, want Europe/Amsterdam", got)
+	}
+}
+
+func TestIsLanguageExplicit(t *testing.T) {
+	ctx := context.Background()
+	if IsLanguageExplicit(ctx) {
+		t.Fatal("empty ctx must not be explicit")
+	}
+	ctx = WithLanguage(ctx, "ru")
+	if !IsLanguageExplicit(ctx) {
+		t.Fatal("WithLanguage must mark explicit")
 	}
 }

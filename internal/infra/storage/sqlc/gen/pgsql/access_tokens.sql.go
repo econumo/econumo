@@ -39,14 +39,33 @@ func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAcce
 }
 
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
-FROM access_tokens
-WHERE token_hash = $1
+SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
+       t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
+       u.access_level, u.access_until
+FROM access_tokens t
+JOIN users u ON u.id = t.user_id
+WHERE t.token_hash = $1
 `
 
-func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (AccessToken, error) {
+type GetAccessTokenByHashRow struct {
+	ID          string
+	UserID      string
+	Kind        string
+	TokenHash   string
+	Name        *string
+	UserAgent   *string
+	CreatedAt   time.Time
+	LastUsedAt  time.Time
+	ExpiresAt   *time.Time
+	RevokedAt   *time.Time
+	AccessLevel string
+	AccessUntil *time.Time
+}
+
+// Joins users for access_level/access_until; see the sqlite sibling for why.
+func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error) {
 	row := q.db.QueryRowContext(ctx, getAccessTokenByHash, tokenHash)
-	var i AccessToken
+	var i GetAccessTokenByHashRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -58,6 +77,8 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (A
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.AccessLevel,
+		&i.AccessUntil,
 	)
 	return i, err
 }

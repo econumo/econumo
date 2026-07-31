@@ -22,9 +22,10 @@ import { AccessLevelDialog } from '@/features/connections/AccessLevelDialog'
 import { ShareAccessDialog } from '@/features/connections/ShareAccessDialog'
 import type { ShareEntry } from '@/features/connections/shared'
 import { buildShareEntries, hasAccountAdminAccess } from '@/features/connections/shared'
-import { useConnections, useRevokeAccountAccess, useSetAccountAccess } from '@/features/connections/queries'
+import { useConnections } from '@/features/connections/queries'
 import { UserAvatar } from '@/components/UserAvatar'
-import { useAccounts, useCreateAccount, useUpdateAccount } from './queries'
+import { evaluatedAmount } from '../transactions/useTransactionForm'
+import { useAccounts, useCreateAccount, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
 
 export function AccountDialog() {
   const { t } = useTranslation()
@@ -36,7 +37,7 @@ export function AccountDialog() {
   const updateAccount = useUpdateAccount()
   const { data: accounts } = useAccounts()
   const { data: connections = [] } = useConnections({ enabled: !!params?.account })
-  const setAccountAccess = useSetAccountAccess()
+  const grantAccountAccess = useGrantAccountAccess()
   const revokeAccountAccess = useRevokeAccountAccess()
 
   const account = params?.account
@@ -109,14 +110,14 @@ export function AccountDialog() {
     if (!validate() || !currencyId) {
       return
     }
-    const numericBalance = Number(evaluateFormula(sanitizeInput(balance) + '='))
+    const balanceAmount = evaluatedAmount(balance)
     try {
       if (isNew) {
         await createAccount.mutateAsync({
           id: uuidv7(),
           name,
           currencyId,
-          balance: numericBalance,
+          balance: balanceAmount,
           icon,
           folderId: params.folderId ?? null,
         })
@@ -124,7 +125,7 @@ export function AccountDialog() {
         await updateAccount.mutateAsync({
           id: account.id,
           name,
-          balance: numericBalance,
+          balance: balanceAmount,
           icon,
           currencyId,
           updatedAt: formatDateTime(new Date()),
@@ -263,7 +264,7 @@ export function AccountDialog() {
             role={levelEntry?.role ?? null}
             onSelect={(role) => {
               if (levelEntry) {
-                setAccountAccess.mutate({ accountId: liveAccount.id, userId: levelEntry.user.id, role })
+                grantAccountAccess.mutate({ accountId: liveAccount.id, userId: levelEntry.user.id, role })
               }
               setLevelEntry(null)
             }}

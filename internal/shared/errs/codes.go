@@ -12,7 +12,9 @@ const (
 	CodeInvalidEmail       = "common.invalid_email"
 	CodeTooLong            = "common.too_long"
 	CodeTooShort           = "common.too_short"
+	CodeOutOfRange         = "common.out_of_range"
 	CodeTooManyAttempts    = "common.too_many_attempts"
+	CodeReadonlyAccess     = "common.readonly_access"
 	CodeInvalidCredentials = "auth.invalid_credentials"
 
 	// Shared across features (identical English text at more than one call
@@ -79,13 +81,17 @@ const (
 	CodeTransactionItemNotAvailable    = "transaction.item_not_available"
 	CodeTransactionInvalidImportFile   = "transaction.invalid_import_file"
 
-	CodeUserReportPeriodInvalid  = "user.report_period_invalid"
-	CodeUserLanguageInvalid      = "user.language_invalid"
-	CodeUserAlreadyExists        = "user.already_exists"
-	CodeUserRegistrationDisabled = "user.registration_disabled"
-	CodeUserPasswordIncorrect    = "user.password_incorrect"
-	CodeUserResetPasswordError   = "user.reset_password_error"
-	CodeUserResetCodeExpired     = "user.reset_code_expired"
+	CodeUserReportPeriodInvalid       = "user.report_period_invalid"
+	CodeUserLanguageInvalid           = "user.language_invalid"
+	CodeUserAlreadyExists             = "user.already_exists"
+	CodeUserRegistrationDisabled      = "user.registration_disabled"
+	CodeUserPasswordIncorrect         = "user.password_incorrect"
+	CodeUserResetPasswordError        = "user.reset_password_error"
+	CodeUserResetCodeExpired          = "user.reset_code_expired"
+	CodeUserEmailVerificationRequired = "user.email_verification_required"
+	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
+	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
+	CodeUserEmailUnchanged            = "user.email_unchanged"
 )
 
 var AllCodes = []string{
@@ -96,7 +102,9 @@ var AllCodes = []string{
 	CodeInvalidEmail,
 	CodeTooLong,
 	CodeTooShort,
+	CodeOutOfRange,
 	CodeTooManyAttempts,
+	CodeReadonlyAccess,
 	CodeInvalidCredentials,
 
 	CodeOperationLocked,
@@ -166,4 +174,8 @@ var AllCodes = []string{
 	CodeUserPasswordIncorrect,
 	CodeUserResetPasswordError,
 	CodeUserResetCodeExpired,
+	CodeUserEmailVerificationRequired,
+	CodeUserVerificationCodeInvalid,
+	CodeUserVerificationCodeExpired,
+	CodeUserEmailUnchanged,
 }

@@ -25,7 +25,7 @@ import (
 // @Security    Bearer
 // @Router      /api/v1/user/get-session-list [get]
 func (h *Handlers) GetSessionList(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, func(ctx context.Context, userID vo.Id) ([]model.SessionItem, error) {
+	endpoint.HandleNoBody(w, r, func(ctx context.Context, userID vo.Id) ([]model.SessionItem, error) {
 		tokenID, _ := middleware.TokenIDFromCtx(ctx)
 		return h.svc.ListSessions(ctx, userID, tokenID)
 	})
@@ -49,7 +49,7 @@ func (h *Handlers) GetSessionList(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/user/revoke-session [post]
 func (h *Handlers) RevokeSession(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.dev, func(ctx context.Context, userID vo.Id, req model.RevokeSessionRequest) (*model.RevokeSessionResult, error) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.RevokeSessionRequest) (*model.RevokeSessionResult, error) {
 		reqctx.AddLogAttr(ctx, "session_id", req.Id)
 		return h.svc.RevokeSession(ctx, userID, req)
 	})
@@ -68,7 +68,7 @@ func (h *Handlers) RevokeSession(w http.ResponseWriter, r *http.Request) {
 // @Security    Bearer
 // @Router      /api/v1/user/revoke-other-sessions [post]
 func (h *Handlers) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
-	endpoint.HandleNoBody(w, r, h.dev, func(ctx context.Context, userID vo.Id) (*model.RevokeOtherSessionsResult, error) {
+	endpoint.HandleNoBody(w, r, func(ctx context.Context, userID vo.Id) (*model.RevokeOtherSessionsResult, error) {
 		tokenID, _ := middleware.TokenIDFromCtx(ctx)
 		return h.svc.RevokeOtherSessions(ctx, userID, tokenID)
 	})

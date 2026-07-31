@@ -8,17 +8,9 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// AccountAccessRepository persists the per-account grants and reads the
-// symmetric user-connection links. A missing grant returns an
-// *errs.NotFoundError.
+// AccountAccessRepository reads the connection-list embeds (received/issued
+// grants, account ownership) and persists the symmetric user-connection links.
 type AccountAccessRepository interface {
-	Get(ctx context.Context, accountID, userID vo.Id) (*model.AccountAccess, error)
-
-	Save(ctx context.Context, a *model.AccountAccess) error
-
-	// Delete removes the grant for (accountID, userID). No-op if absent.
-	Delete(ctx context.Context, accountID, userID vo.Id) error
-
 	// ListReceived returns grants made TO userID (accounts shared with them).
 	ListReceived(ctx context.Context, userID vo.Id) ([]*model.AccountAccess, error)
 
@@ -37,10 +29,6 @@ type AccountAccessRepository interface {
 	// ConnectUsers creates the symmetric link between the two users (both
 	// directions), idempotent if it already exists.
 	ConnectUsers(ctx context.Context, a, b vo.Id) error
-
-	// DeleteOption removes a user's per-account ordering row (used when revoking
-	// a shared account: the guest's ordering row is dropped).
-	DeleteOption(ctx context.Context, accountID, userID vo.Id) error
 }
 
 // InviteRepository persists the one-per-user connection invite row. A missing

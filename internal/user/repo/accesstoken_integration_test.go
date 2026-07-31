@@ -17,7 +17,7 @@ func seedTokenUser(t *testing.T, db *dbtest.DB, id string) {
 	t.Helper()
 	repo := userrepo.NewRepo(db.Engine, db.TX)
 	u := newTestUser(
-		vo.MustParseId(id), identA, "enc-email", "Alice", "https://av/a",
+		vo.MustParseId(id), "enc-email", "Alice", "https://av/a",
 		"hash", "salt-a", true, fixedTime, fixedTime, nil,
 	)
 	if err := db.TX.WithTx(context.Background(), func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
@@ -43,7 +43,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 		t.Fatalf("Insert: %v", err)
 	}
 
-	got, err := repo.GetByHash(ctx, "hash-1")
+	got, _, _, err := repo.GetByHash(ctx, "hash-1")
 	if err != nil {
 		t.Fatalf("GetByHash: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 		t.Errorf("session Name must be nil, got %q", *got.Name)
 	}
 
-	if _, err := repo.GetByHash(ctx, "nope"); err == nil {
+	if _, _, _, err := repo.GetByHash(ctx, "nope"); err == nil {
 		t.Fatal("GetByHash(miss) must error")
 	} else if _, ok := errs.AsNotFound(err); !ok {
 		t.Errorf("GetByHash(miss) = %T, want NotFound", err)
@@ -69,7 +69,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	if err := repo.Update(ctx, got); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	got2, err := repo.GetByHash(ctx, "hash-1")
+	got2, _, _, err := repo.GetByHash(ctx, "hash-1")
 	if err != nil {
 		t.Fatalf("GetByHash after update: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	if err := repo.Delete(ctx, tok.ID); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	if _, err := repo.GetByHash(ctx, "hash-1"); err == nil {
+	if _, _, _, err := repo.GetByHash(ctx, "hash-1"); err == nil {
 		t.Error("deleted row still found")
 	}
 }

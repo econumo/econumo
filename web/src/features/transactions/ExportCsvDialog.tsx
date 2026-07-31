@@ -7,6 +7,7 @@ import { FailDialog } from '@/components/FailDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
 import { downloadBlob, localDateStamp } from '@/lib/download'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { exportTransactionList } from '@/api/transaction'
 import { useAccounts } from '@/features/accounts/queries'
 import { useUserData } from '@/features/user/queries'
@@ -40,6 +41,7 @@ export function ExportCsvDialog({ open, onClose }: { open: boolean; onClose: () 
     setPending(true)
     try {
       const blob = await exportTransactionList(selected)
+      trackEvent(METRICS.TRANSACTION_EXPORT)
       downloadBlob(blob, `transactions-${localDateStamp()}.csv`)
       onClose()
     } catch {

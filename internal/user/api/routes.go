@@ -7,12 +7,12 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the 21 user endpoints. The public group (login/register/
-// remind/reset) is mounted bare; auth is applied per-handler so the public
-// group stays unauthenticated.
-func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) router.RegisterAPI {
+// RegisterAPI mounts the 27 user endpoints. The public group (login/register/
+// remind/reset/confirm-email/resend-verification-code) is mounted bare; auth
+// is applied per-handler so the public group stays unauthenticated.
+func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
-		authMw := middleware.Auth(authn, dev)
+		authMw := middleware.Auth(authn)
 		auth := func(fn http.HandlerFunc) http.Handler { return authMw(fn) }
 
 		// Public group (no auth).
@@ -20,6 +20,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		mux.HandleFunc("POST /api/v1/user/register-user", h.RegisterUser)
 		mux.HandleFunc("POST /api/v1/user/remind-password", h.RemindPassword)
 		mux.HandleFunc("POST /api/v1/user/reset-password", h.ResetPassword)
+		mux.HandleFunc("POST /api/v1/user/confirm-email", h.ConfirmEmail)
+		mux.HandleFunc("POST /api/v1/user/resend-verification-code", h.ResendVerificationCode)
 
 		// Authenticated group.
 		mux.Handle("POST /api/v1/user/logout-user", auth(h.LogoutUser))
@@ -36,6 +38,10 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator, dev bool) rou
 		mux.Handle("POST /api/v1/user/update-name", auth(h.UpdateName))
 		mux.Handle("POST /api/v1/user/update-avatar", auth(h.UpdateAvatar))
 		mux.Handle("POST /api/v1/user/update-password", auth(h.UpdatePassword))
+		mux.Handle("POST /api/v1/user/request-email-change", auth(h.RequestEmailChange))
+		mux.Handle("POST /api/v1/user/confirm-email-change", auth(h.ConfirmEmailChange))
+		mux.Handle("POST /api/v1/user/resend-email-change-code", auth(h.ResendEmailChangeCode))
+		mux.Handle("POST /api/v1/user/create-billing-link", auth(h.CreateBillingLink))
 		mux.Handle("POST /api/v1/user/update-report-period", auth(h.UpdateReportPeriod))
 		mux.Handle("POST /api/v1/user/update-language", auth(h.UpdateLanguage))
 		mux.Handle("POST /api/v1/user/complete-onboarding", auth(h.CompleteOnboarding))
