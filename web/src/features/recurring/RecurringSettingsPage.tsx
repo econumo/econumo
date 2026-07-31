@@ -15,7 +15,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { useUserData } from '@/features/user/queries'
-import { dayKey, isFuture, parseDateTime } from '@/lib/datetime'
+import { dayKey, isFuture } from '@/lib/datetime'
 import { recurringAsTransaction } from './asTransaction'
 import { useDeleteRecurring, useRecurring } from './queries'
 
@@ -58,16 +58,10 @@ export function RecurringSettingsPage() {
   const post = (rt: RecurringDto) => openTransactionModal({ postRecurring: rt })
   const edit = (rt: RecurringDto) => openRecurringModal({ recurring: rt })
 
-  // Within a group, order by day then month of the next payment, ignoring the
-  // year: a template's calendar slot (rent on the 1st, internet on the 17th)
-  // is stable while nextPaymentAt advances, so the list never reshuffles after
-  // a post or skip.
-  const dayMonthKey = (rt: RecurringDto) => {
-    const d = parseDateTime(rt.nextPaymentAt)
-    return d.getDate() * 100 + d.getMonth()
-  }
+  // Within a group, soonest next payment first (the wire datetime format
+  // sorts lexicographically).
   const sortGroup = (items: RecurringDto[]) =>
-    [...items].sort((a, b) => dayMonthKey(a) - dayMonthKey(b) || a.id.localeCompare(b.id))
+    [...items].sort((a, b) => a.nextPaymentAt.localeCompare(b.nextPaymentAt) || a.id.localeCompare(b.id))
   // Grouped by account, in the account list's own order; templates on an
   // account the caller can't see trail behind under the hidden-name label.
   const byAccount = new Map<string, RecurringDto[]>()

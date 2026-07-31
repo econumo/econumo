@@ -173,16 +173,15 @@ it('renders the account list row, undimmed', async () => {
   expect(row.className).not.toContain('opacity-50')
 })
 
-it('groups templates by account, ordered by day then month with the year ignored', async () => {
+it('groups templates by account, soonest next payment first', async () => {
   server.use(
     ...coreHandlers({
       recurring: [
-        // Bank group listed after Cash (account order), despite the earliest day
+        // Bank group listed after Cash (account order), despite the earliest date
         { ...wireRecurring, id: 'r-bank', accountId: 'a2', nextPaymentAt: '2026-03-09 00:00:00' },
-        { ...wireRecurring, id: 'r-day17', nextPaymentAt: '2026-01-17 00:00:00' },
-        // same day, later YEAR but earlier month — must sort first (year ignored)
-        { ...wireRecurring, id: 'r-day5-jun', nextPaymentAt: '2027-06-05 00:00:00' },
-        { ...wireRecurring, id: 'r-day5-dec', nextPaymentAt: '2026-12-05 00:00:00' },
+        { ...wireRecurring, id: 'r-jun-27', nextPaymentAt: '2027-06-05 00:00:00' },
+        { ...wireRecurring, id: 'r-jan', nextPaymentAt: '2026-01-17 00:00:00' },
+        { ...wireRecurring, id: 'r-dec', nextPaymentAt: '2026-12-05 00:00:00' },
       ],
     }),
   )
@@ -192,7 +191,7 @@ it('groups templates by account, ordered by day then month with the year ignored
   const ids = Array.from(document.querySelectorAll('[data-testid^="recurring-r"]')).map((el) =>
     el.getAttribute('data-testid'),
   )
-  expect(ids).toEqual(['recurring-r-day5-jun', 'recurring-r-day5-dec', 'recurring-r-day17', 'recurring-r-bank'])
+  expect(ids).toEqual(['recurring-r-jan', 'recurring-r-dec', 'recurring-r-jun-27', 'recurring-r-bank'])
   // the rows never name the account, so the captions carry it
   expect(screen.getByText('Cash')).toBeInTheDocument()
   expect(screen.getByText('Bank')).toBeInTheDocument()
