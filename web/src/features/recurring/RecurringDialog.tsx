@@ -46,7 +46,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const updateRecurring = useUpdateRecurring()
   const createTag = useCreateTag()
 
-  const { form, patch, setType, account } = useRecurringForm(params, accounts)
+  const { form, patch, setType, setSchedule, account } = useRecurringForm(params, accounts)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [dateOpen, setDateOpen] = useState(false)
   const [addTagOpen, setAddTagOpen] = useState(false)
@@ -154,7 +154,9 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
               onClick={() => {
                 const d = parseDateTime(form.nextPaymentAt)
                 d.setHours(d.getHours() - 24)
-                patch({ nextPaymentAt: formatDateTime(d) })
+                // a manual date is the user's own — stop re-deriving it from
+                // the source transaction on schedule changes
+                patch({ nextPaymentAt: formatDateTime(d), anchorDate: null })
               }}
             >
               <ChevronLeft className="size-4" />
@@ -173,7 +175,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
                   selected={parseDateTime(dateOnly)}
                   onSelect={(day) => {
                     if (day) {
-                      patch({ nextPaymentAt: `${formatDate(day)} 00:00:00` })
+                      patch({ nextPaymentAt: `${formatDate(day)} 00:00:00`, anchorDate: null })
                       setDateOpen(false)
                     }
                   }}
@@ -314,7 +316,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
 
         <CardField label={t('recurring.modal.form.schedule.label')} htmlFor="rt-schedule">
           <div className="[&_button]:h-auto [&_button]:w-full [&_button]:border-0 [&_button]:bg-transparent [&_button]:p-0 [&_button]:text-sm [&_button]:shadow-none [&_button]:focus-visible:ring-0">
-            <Select value={form.schedule} onValueChange={(v) => patch({ schedule: v as RecurringSchedule })}>
+            <Select value={form.schedule} onValueChange={(v) => setSchedule(v as RecurringSchedule)}>
               <SelectTrigger id="rt-schedule" aria-label={t('recurring.modal.form.schedule.label')} className="w-full">
                 <SelectValue />
               </SelectTrigger>

@@ -5,7 +5,7 @@ import type { CreateRecurringDto, RecurringSchedule } from '@/api/dto/recurring'
 import type { Id } from '@/api/types'
 import type { TransactionType } from '@/api/dto/transaction'
 import type { OpenRecurringParams } from '@/app/uiStore'
-import { formatDateTime } from '@/lib/datetime'
+import { formatDate, formatDateTime, parseDateTime } from '@/lib/datetime'
 import { normalizeNumber } from '@/lib/money'
 import { evaluatedAmount } from '@/features/transactions/useTransactionForm'
 
@@ -22,6 +22,38 @@ export interface RecurringFormState {
   description: string
   schedule: RecurringSchedule
   nextPaymentAt: string
+  /** the source transaction's date when the template is created FROM one; the
+      next payment derives from it (anchor + one interval) and re-derives when
+      the schedule changes. Null once the user picks a date by hand — a manual
+      choice must not be clobbered by a later schedule change — and for the
+      from-scratch and edit flows, which have no anchor. */
+  anchorDate: string | null
+}
+
+const SCHEDULE_STEP: Record<RecurringSchedule, { days: number } | { months: number }> = {
+  weekly: { days: 7 },
+  biweekly: { days: 14 },
+  monthly: { months: 1 },
+  quarterly: { months: 3 },
+  yearly: { months: 12 },
+}
+
+// nextFromAnchor returns anchor + one schedule interval, day-granular. Month
+// steps clamp to the target month's end (Jan 31 + 1 month = Feb 28), mirroring
+// the backend's scheduled-day clamping.
+export function nextFromAnchor(anchor: string, schedule: RecurringSchedule): string {
+  const d = parseDateTime(anchor)
+  const step = SCHEDULE_STEP[schedule]
+  if ('days' in step) {
+    d.setDate(d.getDate() + step.days)
+  } else {
+    const day = d.getDate()
+    d.setDate(1)
+    d.setMonth(d.getMonth() + step.months)
+    const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+    d.setDate(Math.min(day, daysInMonth))
+  }
+  return `${formatDate(d)} 00:00:00`
 }
 
 // unlike TransactionForm's seedAmount, this does NOT pad to the account's
@@ -46,6 +78,7 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
       description: rt.description,
       schedule: rt.schedule,
       nextPaymentAt: rt.nextPaymentAt,
+      anchorDate: null,
     }
   }
   const tx = params.fromTransaction
@@ -62,7 +95,10 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
       tagId: tx.tagId,
       description: tx.description,
       schedule: 'monthly',
-      nextPaymentAt: formatDateTime(new Date()),
+      // the source transaction anchors the schedule: the next payment is one
+      // interval after it, not today
+      nextPaymentAt: nextFromAnchor(tx.date, 'monthly'),
+      anchorDate: tx.date,
     }
   }
   return {
@@ -78,6 +114,7 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
     description: '',
     schedule: 'monthly',
     nextPaymentAt: formatDateTime(new Date()),
+    anchorDate: null,
   }
 }
 
@@ -109,5 +146,16 @@ export function useRecurringForm(params: OpenRecurringParams, accounts: AccountD
     patch({ type, categoryId: null })
   }
 
-  return { form, patch, setType, account, accountRecipient }
+  // schedule changes re-derive the next payment from the anchor (the source
+  // transaction's date), so switching monthly -> weekly moves e.g. Sep 17 back
+  // to Aug 24 for an Aug 17 transaction. Without an anchor the date is the
+  // user's own and stays put.
+  const setSchedule = (schedule: RecurringSchedule) =>
+    setForm((prev) => ({
+      ...prev,
+      schedule,
+      ...(prev.anchorDate ? { nextPaymentAt: nextFromAnchor(prev.anchorDate, schedule) } : {}),
+    }))
+
+  return { form, patch, setType, setSchedule, account, accountRecipient }
 }
