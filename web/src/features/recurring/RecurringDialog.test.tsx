@@ -63,7 +63,7 @@ it('creates a template', async () => {
   const user = userEvent.setup()
   renderDialog()
   useUiStore.getState().openRecurringModal({})
-  await screen.findByRole('heading', { name: 'Add transaction' })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
 
   await user.type(await screen.findByLabelText('Amount'), '10')
   await user.click(screen.getByRole('combobox', { name: 'Category' }))
@@ -73,11 +73,11 @@ it('creates a template', async () => {
   await waitFor(() => expect(useUiStore.getState().recurringModal).toBeNull())
 })
 
-it('edit mode prefills the amount and schedule, under the add-transaction headers', async () => {
+it('edit mode prefills the amount and schedule, under the mode-less header', async () => {
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
-  // same headers as TransactionDialog: the template form is that dialog + one row
-  await screen.findByRole('heading', { name: 'Edit transaction' })
+  // one header for both modes; the footer button carries Add vs Update
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
   expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument()
   expect(screen.getByLabelText('Amount')).toHaveValue('50.5')
   expect(screen.getByRole('combobox', { name: 'Repeats' })).toHaveTextContent('Weekly')
@@ -86,7 +86,7 @@ it('edit mode prefills the amount and schedule, under the add-transaction header
 it('the next payment is the header date chip, not a separate row', async () => {
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
-  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
   // same control as the add-transaction dialog: a chip plus a back-a-day arrow
   expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent(wireRecurringAsDto.nextPaymentAt.slice(0, 10))
   expect(screen.getByRole('button', { name: 'previous day' })).toBeInTheDocument()
@@ -119,7 +119,7 @@ it('tags render as the transaction dialog pill row, toggling the template tag', 
 it('Repeats is the only row the add-transaction dialog does not have', async () => {
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
-  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
   const labels = Array.from(document.querySelectorAll('form label')).map((el) => el.textContent)
   expect(labels).toContain('Repeats')
   expect(labels).not.toContain('Next payment')

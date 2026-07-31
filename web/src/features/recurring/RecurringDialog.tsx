@@ -106,9 +106,9 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
 
   const dateOnly = dayKey(form.nextPaymentAt)
   const pending = createRecurring.isPending || updateRecurring.isPending
-  // the same headers as the add-transaction dialog: a template edit is meant to
-  // read as that dialog with one extra row, not as a form of its own
-  const title = form.isNew ? t('transactions.modal.create_form.header') : t('transactions.modal.update_form.header')
+  // one title for both modes: this names what the form edits — the footer
+  // button already distinguishes Add from Update
+  const title = t('recurring.preview.header')
 
   return (
     <ResponsiveDialog
