@@ -163,6 +163,31 @@ it('renders the account list row, undimmed', async () => {
   expect(row.className).not.toContain('opacity-50')
 })
 
+it('groups templates by account, ordered by day then month with the year ignored', async () => {
+  server.use(
+    ...coreHandlers({
+      recurring: [
+        // Bank group listed after Cash (account order), despite the earliest day
+        { ...wireRecurring, id: 'r-bank', accountId: 'a2', nextPaymentAt: '2026-03-09 00:00:00' },
+        { ...wireRecurring, id: 'r-day17', nextPaymentAt: '2026-01-17 00:00:00' },
+        // same day, later YEAR but earlier month — must sort first (year ignored)
+        { ...wireRecurring, id: 'r-day5-jun', nextPaymentAt: '2027-06-05 00:00:00' },
+        { ...wireRecurring, id: 'r-day5-dec', nextPaymentAt: '2026-12-05 00:00:00' },
+      ],
+    }),
+  )
+  renderPage()
+  await screen.findByTestId('recurring-r-bank')
+
+  const ids = Array.from(document.querySelectorAll('[data-testid^="recurring-r"]')).map((el) =>
+    el.getAttribute('data-testid'),
+  )
+  expect(ids).toEqual(['recurring-r-day5-jun', 'recurring-r-day5-dec', 'recurring-r-day17', 'recurring-r-bank'])
+  // the rows never name the account, so the captions carry it
+  expect(screen.getByText('Cash')).toBeInTheDocument()
+  expect(screen.getByText('Bank')).toBeInTheDocument()
+})
+
 it('labels the create action "Add transaction"', async () => {
   server.use(...coreHandlers({ recurring: [] }))
   renderPage()

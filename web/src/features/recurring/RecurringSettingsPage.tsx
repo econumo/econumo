@@ -15,6 +15,7 @@ import { useCategories, usePayees, useTags } from '@/features/classifications/qu
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { useUserData } from '@/features/user/queries'
+import { parseDateTime } from '@/lib/datetime'
 import { recurringAsTransaction } from './asTransaction'
 import { useDeleteRecurring, useRecurring } from './queries'
 
@@ -57,6 +58,32 @@ export function RecurringSettingsPage() {
   const post = (rt: RecurringDto) => openTransactionModal({ postRecurring: rt })
   const edit = (rt: RecurringDto) => openRecurringModal({ recurring: rt })
 
+  // Within a group, order by day then month of the next payment, ignoring the
+  // year: a template's calendar slot (rent on the 1st, internet on the 17th)
+  // is stable while nextPaymentAt advances, so the list never reshuffles after
+  // a post or skip.
+  const dayMonthKey = (rt: RecurringDto) => {
+    const d = parseDateTime(rt.nextPaymentAt)
+    return d.getDate() * 100 + d.getMonth()
+  }
+  const sortGroup = (items: RecurringDto[]) =>
+    [...items].sort((a, b) => dayMonthKey(a) - dayMonthKey(b) || a.id.localeCompare(b.id))
+  // Grouped by account, in the account list's own order; templates on an
+  // account the caller can't see trail behind under the hidden-name label.
+  const byAccount = new Map<string, RecurringDto[]>()
+  for (const rt of recurring) {
+    byAccount.set(rt.accountId, [...(byAccount.get(rt.accountId) ?? []), rt])
+  }
+  const knownIds = new Set((accounts ?? []).map((a) => a.id))
+  const groups = [
+    ...(accounts ?? [])
+      .filter((a) => byAccount.has(a.id))
+      .map((a) => ({ key: a.id, label: a.name, items: sortGroup(byAccount.get(a.id) as RecurringDto[]) })),
+    ...[...byAccount.entries()]
+      .filter(([id]) => !knownIds.has(id))
+      .map(([id, items]) => ({ key: id, label: t('accounts.account.name_hidden'), items: sortGroup(items) })),
+  ]
+
   const createLabel = t('settings.recurring.create')
 
   return (
@@ -79,7 +106,15 @@ export function RecurringSettingsPage() {
       {recurring.length === 0 ? (
         <p className="px-1 py-2 text-sm text-muted-foreground">{t('settings.recurring.empty')}</p>
       ) : (
-        recurring.map((rt) => {
+        groups.map((group) => (
+          <div key={group.key}>
+            {/* the rows themselves never name the account, so the caption is
+                informative even when a single group is visible */}
+            <div className="mt-2 mb-1 flex items-center gap-3 px-1 pt-3 first:mt-0">
+              <span className="text-sm font-semibold uppercase tracking-wide">{group.label}</span>
+              <span className="h-px flex-1 bg-border" aria-hidden="true" />
+            </div>
+            {group.items.map((rt) => {
           const canChange = canChangeRecurring(rt)
           return (
             <div
@@ -129,7 +164,9 @@ export function RecurringSettingsPage() {
               ) : null}
             </div>
           )
-        })
+        })}
+          </div>
+        ))
       )}
 
       {/* compact tap-on-row action sheet */}
