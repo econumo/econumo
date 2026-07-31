@@ -116,3 +116,73 @@ func assertValidationDenied(t *testing.T, status int, env envelope, wantMsg stri
 		t.Fatalf("message = %q, want %q", env.Message, wantMsg)
 	}
 }
+
+// ownerCreatesTemplate has the shared account's OWNER create a template on it,
+// returning the created item; the seed user's access to it is whatever the
+// preceding shareAccount call granted.
+func ownerCreatesTemplate(t *testing.T, h *harness, opID string) recurringItem {
+	t.Helper()
+	ownerTok := recOwnerTwoID // authstub: the bearer token IS the user id string.
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", ownerTok, sharedCreateRecurringReq(opID, "10"))
+	if status != http.StatusOK {
+		t.Fatalf("owner create failed: status=%d body=%s", status, env.raw)
+	}
+	return mustUnmarshal[struct {
+		Item recurringItem `json:"item"`
+	}](t, env.Data).Item
+}
+
+func TestDeleteRecurringTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, recRoleGuest, true)
+	item := ownerCreatesTemplate(t, h, "0197c300-0000-7000-8000-000000000003")
+
+	tok := h.token(t) // seed user, guest (read-only) grant
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/delete-recurring-transaction", tok, map[string]any{"id": item.ID})
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
+
+	// the template must survive the denied delete
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", recOwnerTwoID, nil)
+	list := mustUnmarshal[recurringList](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].ID != item.ID {
+		t.Fatalf("template should survive a denied delete; items=%+v", list.Items)
+	}
+}
+
+func TestPostRecurringTransaction_ForeignTemplate_OwnAccount_Denied(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, 0, false) // owned by another user, invisible to the seed user
+	item := ownerCreatesTemplate(t, h, "0197c300-0000-7000-8000-000000000004")
+
+	// The transaction half of the request names the caller's OWN account, which
+	// the transaction service happily accepts — only the recurring service's
+	// check on the TEMPLATE's account stands between the caller and advancing a
+	// foreign schedule. This is the mutation that removing that check enables.
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, map[string]any{
+		"recurringId": item.ID, "id": "0197c300-0000-7000-8000-000000000005", "type": "expense",
+		"amount": "10", "accountId": accountID, "date": "2026-08-31 00:00:00", "description": "rent",
+	})
+	assertValidationDenied(t, status, env, "This account is not available for this operation.")
+
+	// a denied post must not have advanced the schedule either
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", recOwnerTwoID, nil)
+	list := mustUnmarshal[recurringList](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].NextPaymentAt != "2026-08-31 00:00:00" {
+		t.Fatalf("denied post must leave the schedule untouched; items=%+v", list.Items)
+	}
+}
+
+func TestGetRecurringTransactionList_HidesForeignTemplates(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, 0, false) // owned by another user, no grant to the seed user
+	ownerCreatesTemplate(t, h, "0197c300-0000-7000-8000-000000000006")
+
+	tok := h.token(t)
+	own := createTemplate(t, h, tok) // on the seed user's own account
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
+	list := mustUnmarshal[recurringList](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].ID != own.ID {
+		t.Fatalf("list must contain only the caller's templates; items=%+v", list.Items)
+	}
+}
