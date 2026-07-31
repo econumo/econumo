@@ -47,6 +47,9 @@ import (
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
+	apprecurring "github.com/econumo/econumo/internal/recurring"
+	handlerrecurring "github.com/econumo/econumo/internal/recurring/api"
+	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/shared/port"
 	appsystem "github.com/econumo/econumo/internal/system"
 	handlersystem "github.com/econumo/econumo/internal/system/api"
@@ -266,6 +269,10 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
+	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, txm, opGuard, clk)
+	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
+
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
 
 	authn := NewTimezoneTrackingAuthenticator(userSvc, userSvc)
@@ -278,6 +285,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlercurrency.RegisterAPI(currencyHandlers, authn),
 		handleraccount.RegisterAPI(accountHandlers, authn),
 		handlertransaction.RegisterAPI(transactionHandlers, authn),
+		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
 		handlersystem.RegisterAPI(systemHandlers, authn),

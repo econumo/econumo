@@ -21,6 +21,7 @@ import { PayeesPage } from '@/features/classifications/PayeesPage'
 import { TagsPage } from '@/features/classifications/TagsPage'
 import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
+import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
 
@@ -59,6 +60,7 @@ export function createRouter() {
                 { path: '/settings/tags', element: <TagsPage /> },
                 { path: '/settings/connections', element: <ConnectionsPage /> },
                 { path: '/settings/budgets', element: <BudgetsPage /> },
+                { path: '/settings/recurring', element: <RecurringSettingsPage /> },
               ],
             },
           ],

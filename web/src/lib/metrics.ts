@@ -97,6 +97,8 @@ export const METRICS = {
   UI_MODAL_ACCOUNT_CLOSE: 'appUIModalAccountClose',
   UI_MODAL_TRANSACTION_OPEN: 'appUIModalTransactionOpen',
   UI_MODAL_TRANSACTION_CLOSE: 'appUIModalTransactionClose',
+  UI_MODAL_RECURRING_OPEN: 'appUIModalRecurringOpen',
+  UI_MODAL_RECURRING_CLOSE: 'appUIModalRecurringClose',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

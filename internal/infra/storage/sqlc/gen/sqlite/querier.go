@@ -41,6 +41,7 @@ type Querier interface {
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
+	DeleteRecurringTransaction(ctx context.Context, id string) error
 	// Transactions referencing this tag have tag_id set to NULL via the ON DELETE
 	// SET NULL FK, matching the PHP delete behaviour.
 	DeleteTag(ctx context.Context, id string) error
@@ -185,6 +186,7 @@ type Querier interface {
 	// granted via accounts_access), ordered by position. The user id is repeated
 	// positionally -> two-field Params struct.
 	GetPayeeListView(ctx context.Context, arg GetPayeeListViewParams) ([]Payee, error)
+	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
 	// Write-side queries for the tag module. The read-side query lives in
 	// tag_read.sql to keep the CQRS boundary visible (matching categories.sql vs
 	// category_read.sql). The tags table has no type/icon columns (unlike
@@ -372,7 +374,11 @@ type Querier interface {
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
+	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error
+	// recurring_id is intentionally absent from the DO UPDATE SET list below: it
+	// records where the row came from, so editing a posted instance must not
+	// overwrite its provenance.
 	UpsertTransaction(ctx context.Context, arg UpsertTransactionParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error
 	UpsertUserOption(ctx context.Context, arg UpsertUserOptionParams) error

@@ -311,6 +311,14 @@
       "menu_item": "Export CSV",
       "error": "Failed to export transactions"
     },
+    "recurring": {
+      "menu_item": "Recurring transactions",
+      "header": "Recurring transactions",
+      "empty": "No recurring transactions yet",
+      "create": "Add transaction",
+      "delete_question": "Delete this recurring transaction?",
+      "info": "Payments that repeat on a schedule live here. The next payment shows on the account page as not posted — nothing is added automatically: post or skip it yourself, and the date moves to the following one."
+    },
     "update": {
       "available": "New version {version} available"
     }
@@ -421,6 +429,29 @@
         "deselect_all": "Deselect all"
       }
     }
+  },
+  "recurring": {
+    "modal": {
+      "form": {
+        "schedule": {
+          "label": "Repeats"
+        }
+      }
+    },
+    "schedule": {
+      "weekly": "Weekly",
+      "biweekly": "Every 2 weeks",
+      "monthly": "Monthly",
+      "quarterly": "Every 3 months",
+      "yearly": "Yearly"
+    },
+    "preview": {
+      "header": "Recurring transaction",
+      "post": "Post",
+      "skip": "Skip"
+    },
+    "make_recurring": "Make recurring",
+    "not_posted": "Not posted"
   },
   "user": {
     "avatar_picker": {

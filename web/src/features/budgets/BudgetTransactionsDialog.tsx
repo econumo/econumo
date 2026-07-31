@@ -127,6 +127,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
       payee: wireTx.payee ? (wireTx.payee as PayeeDto) : undefined,
       tag: wireTx.tag ? (wireTx.tag as TagDto) : undefined,
       isInFuture: isFuture(wireTx.spentAt),
+      // the budget wire carries no provenance; this synthesized shape is
+      // read-only anyway, so no recurring action is offered on it
+      recurringId: null,
     }
   }
 

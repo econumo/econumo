@@ -148,6 +148,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     budgets: fixtureBudgets,
     user: fixtureUser,
     connections: [],
+    recurring: [],
     ...overrides,
   }
   return [
@@ -162,6 +163,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/currency/get-currency-rate-list', () => envelope({ items: data.rates })),
     http.get('*/api/v1/user/get-user-data', () => envelope({ user: data.user })),
     http.get('*/api/v1/budget/get-budget-list', () => envelope({ items: data.budgets })),
+    http.get('*/api/v1/recurring/get-recurring-transaction-list', () => envelope({ items: data.recurring })),
     http.get('*/api/v1/system/get-update-info', () => envelope({ version: 'v0.0.0', url: 'https://econumo.com/releases/v0.0.0/' })),
   ]
 }
