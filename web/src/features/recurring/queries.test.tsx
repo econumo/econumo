@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
 import type { RecurringDto } from '@/api/dto/recurring'
-import { usePostRecurring, useRecurring, useSkipRecurring } from './queries'
+import { useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from './queries'
 
 const wireRecurring = {
   id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
@@ -63,4 +63,27 @@ it('usePostRecurring prepends the transaction, replaces accounts, advances the t
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect((queryClient.getQueryData(queryKeys.transactions) as unknown[]).length).toBe(1)
   expect(queryClient.getQueryData<RecurringDto[]>(queryKeys.recurring)![0].nextPaymentAt).toBe('2026-09-30 00:00:00')
+})
+
+it('useDeleteRecurring drops the template and severs cached transaction links', async () => {
+  server.use(http.post('*/api/v1/recurring/delete-recurring-transaction', () =>
+    HttpResponse.json({ success: true, message: '', data: {} })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, [wireRecurring as RecurringDto])
+  // one posted from r1, one posted from another template, one plain
+  queryClient.setQueryData(queryKeys.transactions, [
+    { id: 't-from-r1', recurringId: 'r1' },
+    { id: 't-from-other', recurringId: 'r2' },
+    { id: 't-plain', recurringId: null },
+  ])
+  const { result } = renderHook(() => useDeleteRecurring(), { wrapper })
+  result.current.mutate('r1')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(queryClient.getQueryData<RecurringDto[]>(queryKeys.recurring)).toEqual([])
+  // mirrors the backend's ON DELETE SET NULL — only r1's transactions lose the link
+  const txs = queryClient.getQueryData<{ id: string; recurringId: string | null }[]>(queryKeys.transactions)!
+  expect(txs.find((tx) => tx.id === 't-from-r1')?.recurringId).toBeNull()
+  expect(txs.find((tx) => tx.id === 't-from-other')?.recurringId).toBe('r2')
+  expect(txs.find((tx) => tx.id === 't-plain')?.recurringId).toBeNull()
 })

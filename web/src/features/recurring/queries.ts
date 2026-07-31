@@ -43,6 +43,12 @@ export function useDeleteRecurring() {
     mutationFn: (id: Id) => recurringApi.deleteRecurring(id),
     onSuccess: (_res, id) => {
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => (prev ?? []).filter((r) => r.id !== id))
+      // mirror the backend's ON DELETE SET NULL: posted transactions lose their
+      // link too, so the recurring sign leaves the account list without a
+      // refetch
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+        prev?.map((tx) => (tx.recurringId === id ? { ...tx, recurringId: null } : tx)),
+      )
     },
   })
 }

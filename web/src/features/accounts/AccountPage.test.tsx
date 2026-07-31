@@ -303,6 +303,36 @@ it('places the today anchor between the future block and the past', async () => 
   expect(order).toEqual(['tx-r1', 'future-anchor', 'tx-t-past'])
 })
 
+it('colours the Not posted label red only when the template is due', async () => {
+  mockViewport(false)
+  const day = 24 * 3600 * 1000
+  const stamp = (d: Date) => `${d.toISOString().slice(0, 10)} 12:00:00`
+  const template = (over: Record<string, unknown>) => ({
+    ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'sub',
+    schedule: 'monthly', ...over,
+  })
+  server.use(
+    ...coreHandlers({
+      transactions: [],
+      recurring: [
+        template({ id: 'r-due', nextPaymentAt: stamp(new Date(Date.now() - 5 * day)) }),
+        template({ id: 'r-ahead', nextPaymentAt: stamp(new Date(Date.now() + 5 * day)) }),
+      ],
+    }),
+  )
+  renderPage()
+
+  // innermost span carrying the text: the wrapper span shares its textContent
+  const label = (id: string) =>
+    Array.from((screen.getByTestId(id) as HTMLElement).querySelectorAll('span'))
+      .filter((el) => el.textContent === 'Not posted')
+      .pop()
+  await screen.findByTestId('tx-r-due')
+  expect(label('tx-r-due')?.className).toContain('text-destructive')
+  expect(label('tx-r-ahead')?.className ?? '').not.toContain('text-destructive')
+})
+
 it('renders no anchor when nothing is scheduled ahead', async () => {
   mockViewport(false)
   const day = 24 * 3600 * 1000

@@ -336,8 +336,16 @@ export function AccountPage() {
                   transaction={entry.transaction}
                   pageAccount={account}
                   titleNote={scheduleNote(entry.transaction)}
-                  /* the dimming says "not real yet" at a glance; this says why */
-                  amountNote={entry.transaction.recurring ? t('recurring.not_posted') : undefined}
+                  /* the dimming says "not real yet" at a glance; this says why.
+                     Red when due — those rows sit interleaved among past days
+                     (the future block is above the fold) and need to pop */
+                  amountNote={
+                    entry.transaction.recurring ? (
+                      <span className={entry.transaction.isInFuture ? undefined : 'text-destructive'}>
+                        {t('recurring.not_posted')}
+                      </span>
+                    ) : undefined
+                  }
                 />
               </div>
               {!isCompact && canTouchRow(entry.transaction) ? (
