@@ -332,7 +332,13 @@ export function AccountPage() {
               }}
             >
               <div className="min-w-0 flex-1">
-                <TransactionRow transaction={entry.transaction} pageAccount={account} titleNote={scheduleNote(entry.transaction)} />
+                <TransactionRow
+                  transaction={entry.transaction}
+                  pageAccount={account}
+                  titleNote={scheduleNote(entry.transaction)}
+                  /* the dimming says "not real yet" at a glance; this says why */
+                  amountNote={entry.transaction.recurring ? t('recurring.not_posted') : undefined}
+                />
               </div>
               {!isCompact && canTouchRow(entry.transaction) ? (
                 <DropdownMenu

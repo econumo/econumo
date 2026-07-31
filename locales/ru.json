@@ -449,7 +449,8 @@
       "post": "Провести",
       "skip": "Пропустить"
     },
-    "make_recurring": "Сделать регулярной"
+    "make_recurring": "Сделать регулярной",
+    "not_posted": "Не проведена"
   },
   "user": {
     "avatar_picker": {

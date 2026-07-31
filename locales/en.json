@@ -449,7 +449,8 @@
       "post": "Post",
       "skip": "Skip"
     },
-    "make_recurring": "Make recurring"
+    "make_recurring": "Make recurring",
+    "not_posted": "Not posted"
   },
   "user": {
     "avatar_picker": {

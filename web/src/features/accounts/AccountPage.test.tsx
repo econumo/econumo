@@ -336,6 +336,9 @@ it('recurring rows carry the interval beside the title; plain rows do not', asyn
   expect(await screen.findByTestId('tx-t-posted')).toHaveTextContent('Weekly')
   // ...and the template's own virtual row carries it directly
   expect(screen.getByTestId('tx-r1')).toHaveTextContent('Weekly')
+  // only the unposted virtual row is marked; the posted one is settled money
+  expect(screen.getByTestId('tx-r1')).toHaveTextContent('Not posted')
+  expect(screen.getByTestId('tx-t-posted')).not.toHaveTextContent('Not posted')
 })
 
 it('a plain transaction row shows no interval note', async () => {
