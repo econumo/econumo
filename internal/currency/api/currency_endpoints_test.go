@@ -120,8 +120,10 @@ func TestGetCurrencyRateList_LatestDateOnly(t *testing.T) {
 		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
 	}
 	res := mustUnmarshal[rateItemsWrapper](t, env.Data)
-	if len(res.Items) != 2 {
-		t.Fatalf("got %d rates, want 2 (latest date only); body: %s", len(res.Items), env.raw)
+	// EUR + RUB from the latest date, plus the synthetic USD/USD=1 row (the
+	// base has no stored rate, so the read side fabricates one for clients).
+	if len(res.Items) != 3 {
+		t.Fatalf("got %d rates, want 3 (latest date only + synthetic base); body: %s", len(res.Items), env.raw)
 	}
 	for _, it := range res.Items {
 		if it.UpdatedAt != "2025-12-14 00:00:00" {
@@ -142,6 +144,9 @@ func TestGetCurrencyRateList_LatestDateOnly(t *testing.T) {
 	}
 	if byCur[rubID].Rate != "95" {
 		t.Fatalf("RUB rate = %q, want '95' (normalized)", byCur[rubID].Rate)
+	}
+	if byCur[usdID].Rate != "1" {
+		t.Fatalf("synthetic base rate = %q, want '1'", byCur[usdID].Rate)
 	}
 }
 

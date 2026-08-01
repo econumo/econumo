@@ -81,7 +81,7 @@ func newHarness(t *testing.T) *harness {
 	profile := &fakeProfileCurrency{code: "EUR"}
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, CurrencyBase: "USD"}
-	readSvc := appcurrency.NewReadService(readRepo)
+	readSvc := appcurrency.NewReadService(readRepo, cfg.CurrencyBase)
 	manageSvc := appcurrency.NewManageService(manageRepo, tdb.TX, opGuard, clk, profile, cfg.CurrencyBase)
 	handlers := handlercurrency.NewHandlers(readSvc, manageSvc)
 

@@ -55,7 +55,7 @@ func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {
 		},
 		hidden: []string{"global-hidden"},
 	}
-	svc := appcurrency.NewReadService(fake)
+	svc := appcurrency.NewReadService(fake, "USD")
 
 	res, err := svc.GetCurrencyList(context.Background(), uid)
 	if err != nil {
@@ -92,11 +92,11 @@ func TestReadService_GetCurrencyRateList_FiltersToVisible(t *testing.T) {
 			{ID: "visible-usd", Code: "USD", Symbol: "$"},
 		},
 		rates: []model.CurrencyRateViewRow{
-			{CurrencyID: "visible-usd", BaseCurrencyID: "base", Rate: "1.00", UpdatedAt: "2026-07-15 00:00:00"},
-			{CurrencyID: "invisible-eur", BaseCurrencyID: "base", Rate: "0.90", UpdatedAt: "2026-07-15 00:00:00"},
+			{CurrencyID: "visible-usd", BaseCurrencyID: "visible-usd", Rate: "1.00", UpdatedAt: "2026-07-15 00:00:00"},
+			{CurrencyID: "invisible-eur", BaseCurrencyID: "visible-usd", Rate: "0.90", UpdatedAt: "2026-07-15 00:00:00"},
 		},
 	}
-	svc := appcurrency.NewReadService(fake)
+	svc := appcurrency.NewReadService(fake, "USD")
 
 	res, err := svc.GetCurrencyRateList(context.Background(), uid)
 	if err != nil {
@@ -104,5 +104,102 @@ func TestReadService_GetCurrencyRateList_FiltersToVisible(t *testing.T) {
 	}
 	if len(res.Items) != 1 || res.Items[0].CurrencyId != "visible-usd" {
 		t.Fatalf("want only the visible currency's rate, got %+v", res.Items)
+	}
+}
+
+// Rates are stored as X-per-base, so the base currency has no stored row
+// against itself unless a rate feed happens to write one. Clients convert
+// through the base and treat a missing rate row as "fall back to 1:1", which
+// silently breaks every base<->custom conversion. The read side therefore
+// synthesizes a base/base = 1 row whenever rates exist but the base has none.
+func TestReadService_GetCurrencyRateList_SynthesizesBaseRate(t *testing.T) {
+	const meID = "10000000-0000-7000-8000-000000000001"
+	uid, err := vo.ParseId(meID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fake := &fakeReadModel{
+		rows: []model.CurrencyViewRow{
+			{ID: "usd-id", Code: "USD", Symbol: "$"},
+			{ID: "pts-id", Code: "PTS", Symbol: "p", UserID: strPtr(meID)},
+		},
+		rates: []model.CurrencyRateViewRow{
+			{CurrencyID: "pts-id", BaseCurrencyID: "usd-id", Rate: "10", UpdatedAt: "2026-07-30 00:00:00"},
+		},
+	}
+	svc := appcurrency.NewReadService(fake, "USD")
+
+	res, err := svc.GetCurrencyRateList(context.Background(), uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 2 {
+		t.Fatalf("want PTS rate + synthetic base rate, got %+v", res.Items)
+	}
+	synthetic := res.Items[1]
+	if synthetic.CurrencyId != "usd-id" || synthetic.BaseCurrencyId != "usd-id" {
+		t.Errorf("synthetic row ids = %s/%s, want usd-id/usd-id", synthetic.CurrencyId, synthetic.BaseCurrencyId)
+	}
+	if synthetic.Rate != "1" {
+		t.Errorf("synthetic rate = %q, want \"1\"", synthetic.Rate)
+	}
+	if synthetic.UpdatedAt != "2026-07-30 00:00:00" {
+		t.Errorf("synthetic updatedAt = %q, want the latest item date", synthetic.UpdatedAt)
+	}
+}
+
+// A stored base rate row (e.g. written by the OXR feed, which returns the base
+// at 1.0) wins: no synthetic duplicate is added.
+func TestReadService_GetCurrencyRateList_NoSyntheticWhenBaseRateStored(t *testing.T) {
+	const meID = "10000000-0000-7000-8000-000000000001"
+	uid, err := vo.ParseId(meID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fake := &fakeReadModel{
+		rows: []model.CurrencyViewRow{
+			{ID: "usd-id", Code: "USD", Symbol: "$"},
+			{ID: "eur-id", Code: "EUR", Symbol: "E"},
+		},
+		rates: []model.CurrencyRateViewRow{
+			{CurrencyID: "eur-id", BaseCurrencyID: "usd-id", Rate: "0.90", UpdatedAt: "2026-07-30 00:00:00"},
+			{CurrencyID: "usd-id", BaseCurrencyID: "usd-id", Rate: "1", UpdatedAt: "2026-07-30 00:00:00"},
+		},
+	}
+	svc := appcurrency.NewReadService(fake, "USD")
+
+	res, err := svc.GetCurrencyRateList(context.Background(), uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 2 {
+		t.Fatalf("stored base rate must not be duplicated, got %+v", res.Items)
+	}
+}
+
+// With no rate rows at all there is nothing to convert against, so no
+// synthetic row is fabricated either.
+func TestReadService_GetCurrencyRateList_NoSyntheticWithoutAnyRates(t *testing.T) {
+	const meID = "10000000-0000-7000-8000-000000000001"
+	uid, err := vo.ParseId(meID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fake := &fakeReadModel{
+		rows: []model.CurrencyViewRow{
+			{ID: "usd-id", Code: "USD", Symbol: "$"},
+		},
+	}
+	svc := appcurrency.NewReadService(fake, "USD")
+
+	res, err := svc.GetCurrencyRateList(context.Background(), uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 0 {
+		t.Fatalf("want empty rate list, got %+v", res.Items)
 	}
 }

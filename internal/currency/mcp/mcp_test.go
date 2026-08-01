@@ -15,7 +15,7 @@ import (
 
 func newCurrencyReadService(t *testing.T, db *dbtest.DB) *appcurrency.ReadService {
 	t.Helper()
-	return appcurrency.NewReadService(currencyrepo.NewReadRepo(db.Engine, db.TX))
+	return appcurrency.NewReadService(currencyrepo.NewReadRepo(db.Engine, db.TX), "USD")
 }
 
 func TestListCurrenciesTool(t *testing.T) {

@@ -5,7 +5,7 @@
 {"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isArchived":0,"isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isArchived":0,"isHidden":0}]}}
 
 == rates-after-create GET /api/v1/currency/get-currency-rate-list [owner] -> 200
-{"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>"}]}}
+{"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>"},{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"1","updatedAt":"<datetime>"}]}}
 
 == err:create-duplicate-code POST /api/v1/currency/create-currency [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"code":["Currency already exists"]}}

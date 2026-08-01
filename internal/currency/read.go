@@ -34,14 +34,17 @@ type ReadModel interface {
 	LatestCurrencyRateListView(ctx context.Context) ([]model.CurrencyRateViewRow, error)
 }
 
-// ReadService serves both currency read endpoints.
+// ReadService serves both currency read endpoints. baseCode is the instance
+// base currency code (cfg.CurrencyBase), needed to synthesize the base's own
+// rate row in GetCurrencyRateList.
 type ReadService struct {
-	read ReadModel
+	read     ReadModel
+	baseCode string
 }
 
 // NewReadService wires the read service.
-func NewReadService(read ReadModel) *ReadService {
-	return &ReadService{read: read}
+func NewReadService(read ReadModel, baseCode string) *ReadService {
+	return &ReadService{read: read, baseCode: baseCode}
 }
 
 // GetCurrencyList returns every currency visible to userID (globals + own +
@@ -108,29 +111,56 @@ func currencyName(r model.CurrencyViewRow) string {
 
 // GetCurrencyRateList returns the latest published rate per currency, filtered
 // to currencies visible to userID, in the wire shape.
+//
+// Rates are stored as X-per-base, so the base currency has no stored row
+// against itself unless a rate feed wrote one (OXR does, at 1.0). Clients
+// convert through the base and treat a missing rate row as "fall back to
+// 1:1", which silently breaks every base<->custom conversion on instances
+// without such a feed — so when rates exist but the base has none, a
+// synthetic base/base = 1 row is appended, dated like the newest real rate.
 func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*model.GetCurrencyRateListResult, error) {
 	visible, err := s.read.UserCurrencyListView(ctx, userID.String())
 	if err != nil {
 		return nil, err
 	}
 	visibleSet := make(map[string]bool, len(visible))
+	baseID := ""
 	for _, v := range visible {
 		visibleSet[v.ID] = true
+		if v.UserID == nil && v.Code == s.baseCode {
+			baseID = v.ID
+		}
 	}
 	rows, err := s.read.LatestCurrencyRateListView(ctx)
 	if err != nil {
 		return nil, err
 	}
 	items := make([]model.CurrencyRateResult, 0, len(rows))
+	baseHasRate := false
+	latest := ""
 	for _, r := range rows {
 		if !visibleSet[r.CurrencyID] {
 			continue
+		}
+		if r.CurrencyID == baseID {
+			baseHasRate = true
+		}
+		if r.UpdatedAt > latest {
+			latest = r.UpdatedAt
 		}
 		items = append(items, model.CurrencyRateResult{
 			CurrencyId:     r.CurrencyID,
 			BaseCurrencyId: r.BaseCurrencyID,
 			Rate:           r.Rate,
 			UpdatedAt:      r.UpdatedAt,
+		})
+	}
+	if baseID != "" && !baseHasRate && len(items) > 0 {
+		items = append(items, model.CurrencyRateResult{
+			CurrencyId:     baseID,
+			BaseCurrencyId: baseID,
+			Rate:           "1",
+			UpdatedAt:      latest,
 		})
 	}
 	return &model.GetCurrencyRateListResult{Items: items}, nil

@@ -190,7 +190,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	payeeHandlers := handlerpayee.NewHandlers(payeeSvc, payeeReadSvc)
 
 	currencyReadRepo := currencyrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo)
+	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo, cfg.CurrencyBase)
 	currencyManageRepo := currencyrepo.NewManageRepo(cfg.DatabaseDriver, txm)
 	currencyManageSvc := appcurrency.NewManageService(currencyManageRepo, txm, opGuard, clk,
 		NewCurrencyProfileCurrency(userRepo), cfg.CurrencyBase)
