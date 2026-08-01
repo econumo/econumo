@@ -1104,7 +1104,6 @@
           "create_currency": "Create currency",
           "my_currencies": "My currencies",
           "global_currencies": "Global currencies",
-          "archived_item": "Archived",
           "empty_state": "Create your own currency, like \"Points\", set its exchange rate, and use it for accounts and budgets.",
           "rate_caption": "1 {base} = {rate} {code}",
           "locked_base": "The base currency is always visible",

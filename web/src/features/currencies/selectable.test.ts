@@ -4,16 +4,16 @@ import { selectableCurrencies } from './selectable'
 
 const cur = (over: Partial<CurrencyListItemDto>): CurrencyListItemDto => ({
   id: 'x', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2,
-  scope: 'global', isArchived: 0, isHidden: 0, ...over,
+  scope: 'global', isHidden: 0, ...over,
 })
 
 describe('selectableCurrencies', () => {
-  it('keeps visible globals and own active customs', () => {
+  it('keeps visible globals and own visible customs', () => {
     const items = [
       cur({ id: 'usd' }),
       cur({ id: 'eur', code: 'EUR', isHidden: 1 }),
       cur({ id: 'pts', code: 'PTS', scope: 'own' }),
-      cur({ id: 'old', code: 'OLD', scope: 'own', isArchived: 1 }),
+      cur({ id: 'old', code: 'OLD', scope: 'own', isHidden: 1 }),
       cur({ id: 'gem', code: 'GEM', scope: 'shared' }),
     ]
     expect(selectableCurrencies(items).map((c) => c.id)).toEqual(['usd', 'pts'])

@@ -36,27 +36,6 @@ export function useUpdateCurrency() {
   })
 }
 
-
-export function useArchiveCurrency() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: Id) => currencyApi.archiveCurrency(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
-    },
-  })
-}
-
-export function useUnarchiveCurrency() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: Id) => currencyApi.unarchiveCurrency(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
-    },
-  })
-}
-
 export function useDeleteCurrency() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -10,16 +10,15 @@ import {
   useCurrencyRates,
   useCreateCurrency,
   useUpdateCurrency,
-  useArchiveCurrency,
-  useUnarchiveCurrency,
   useDeleteCurrency,
   useHideCurrency,
   useShowCurrency,
 } from './queries'
 
-// ClassificationItem wants a position; currencies have none (the server
-// orders by code and the list is not user-orderable), so the index fills in.
-type CurrencyRow = CurrencyListItemDto & { position: number }
+// ClassificationItem wants a position (the index fills in — the server
+// orders by code and the list is not user-orderable) and an isArchived flag
+// (currencies have no archival, so it is constant 0).
+type CurrencyRow = CurrencyListItemDto & { position: number; isArchived: 0 }
 
 export function CurrenciesPage() {
   const { t } = useTranslation()
@@ -29,8 +28,6 @@ export function CurrenciesPage() {
 
   const createCurrency = useCreateCurrency()
   const updateCurrency = useUpdateCurrency()
-  const archiveCurrency = useArchiveCurrency()
-  const unarchiveCurrency = useUnarchiveCurrency()
   const deleteCurrency = useDeleteCurrency()
   const hideCurrency = useHideCurrency()
   const showCurrency = useShowCurrency()
@@ -40,7 +37,7 @@ export function CurrenciesPage() {
 
   const own = currencies?.filter((c) => c.scope === 'own') ?? []
   const globals = currencies?.filter((c) => c.scope === 'global') ?? []
-  const items: CurrencyRow[] = [...own, ...globals].map((c, i) => ({ ...c, position: i }))
+  const items: CurrencyRow[] = [...own, ...globals].map((c, i) => ({ ...c, position: i, isArchived: 0 as const }))
   const baseId = rates?.[0]?.baseCurrencyId
   const profileId = userCurrencyId(user)
   const rateFor = (id: string) => rates?.find((r) => r.currencyId === id)
@@ -86,13 +83,9 @@ export function CurrenciesPage() {
           )
         }}
         rowSwitch={(c): RowSwitchState => {
-          if (c.scope === 'own') {
-            return {
-              checked: c.isArchived === 0,
-              ariaLabel: `archive ${c.name}`,
-              onToggle: () => mutate(c.isArchived === 0 ? archiveCurrency : unarchiveCurrency, c.id),
-            }
-          }
+          // One visible/hidden switch for every row, own customs included;
+          // the base and profile currencies must stay visible, so their
+          // switches are locked.
           const locked = c.id === baseId || c.id === profileId
           return {
             checked: c.isHidden === 0,

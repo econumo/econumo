@@ -8,8 +8,8 @@ import { coreHandlers, fixtureUser, fixtureUsd, fixtureEur } from '@/test/fixtur
 import { queryKeys } from '@/app/queryKeys'
 import { CurrenciesPage } from './CurrenciesPage'
 
-const fixturePts = { id: 'cur-pts', code: 'PTS', name: 'Points', symbol: 'pt', fractionDigits: 0, scope: 'own', isArchived: 0, isHidden: 0 }
-const fixtureGbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isArchived: 0, isHidden: 1 }
+const fixturePts = { id: 'cur-pts', code: 'PTS', name: 'Points', symbol: 'pt', fractionDigits: 0, scope: 'own', isHidden: 0 }
+const fixtureGbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 1 }
 
 const defaultRates = [
   { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', updatedAt: '2026-07-01 00:00:00' },
@@ -65,7 +65,7 @@ it('create flow: uuidv7 id + uppercased code posted, list invalidated', async ()
       body = (await request.json()) as Record<string, unknown>
       return HttpResponse.json({
         success: true, message: '',
-        data: { item: { id: body.id, code: body.code, name: body.name, symbol: 'pt', fractionDigits: 0, scope: 'own', isArchived: 0, isHidden: 0 } },
+        data: { item: { id: body.id, code: body.code, name: body.name, symbol: 'pt', fractionDigits: 0, scope: 'own', isHidden: 0 } },
       })
     }),
   )
@@ -86,19 +86,45 @@ it('create flow: uuidv7 id + uppercased code posted, list invalidated', async ()
   await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.currencies }))
 })
 
-it('archive toggle on an own custom posts archive-currency', async () => {
-  let body: unknown
+it('own custom rows carry the same visibility switch: posts hide-currency / show-currency', async () => {
+  let hideBody: unknown
+  let showBody: unknown
   server.use(
-    http.post('*/api/v1/currency/archive-currency', async ({ request }) => {
-      body = await request.json()
+    ...coreHandlers({
+      currencies: [fixtureUsd, fixtureEur, fixturePts, { ...fixturePts, id: 'cur-old', code: 'OLD', name: 'Old points', isHidden: 1 }, fixtureGbp],
+      rates: defaultRates,
+    }),
+    http.post('*/api/v1/currency/hide-currency', async ({ request }) => {
+      hideBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/currency/show-currency', async ({ request }) => {
+      showBody = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
   const user = userEvent.setup()
   renderPage()
   await screen.findByText('Points')
-  await user.click(screen.getByRole('switch', { name: 'archive Points' }))
-  await waitFor(() => expect(body).toEqual({ id: 'cur-pts' }))
+  await user.click(screen.getByRole('switch', { name: 'show Points' }))
+  await waitFor(() => expect(hideBody).toEqual({ id: 'cur-pts' }))
+  await user.click(screen.getByRole('switch', { name: 'show Old points' }))
+  await waitFor(() => expect(showBody).toEqual({ id: 'cur-old' }))
+})
+
+it("an own custom that is the profile currency has its switch disabled", async () => {
+  server.use(
+    ...coreHandlers({
+      currencies: [fixtureUsd, fixtureEur, fixturePts, fixtureGbp],
+      rates: defaultRates,
+      user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'currency_id' ? { ...o, value: 'cur-pts' } : o)) },
+    }),
+  )
+  renderPage()
+  await screen.findByText('Points')
+  const sw = screen.getByRole('switch', { name: 'show Points' })
+  expect(sw).toBeDisabled()
+  expect(sw).toHaveAttribute('title', 'Your profile currency is always visible')
 })
 
 it('delete flow surfaces server refusal text', async () => {
@@ -225,16 +251,16 @@ it('compact: tapping an own row opens the action sheet; global rows do not react
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-it('no active-only filter: archived own currencies are always listed', async () => {
+it('no active-only filter: hidden currencies are always listed, switch off', async () => {
   server.use(
     ...coreHandlers({
-      currencies: [fixtureUsd, fixtureEur, { ...fixturePts, isArchived: 1 }, fixtureGbp],
+      currencies: [fixtureUsd, fixtureEur, { ...fixturePts, isHidden: 1 }, fixtureGbp],
       rates: defaultRates,
     }),
   )
   renderPage()
   expect(await screen.findByText('Points')).toBeInTheDocument()
-  expect(screen.getByText('Archived')).toBeInTheDocument()
+  expect(screen.getByRole('switch', { name: 'show Points' })).not.toBeChecked()
   expect(screen.getByText('Pound')).toBeInTheDocument()
   expect(screen.queryByRole('switch', { name: 'Active only' })).toBeNull()
 })

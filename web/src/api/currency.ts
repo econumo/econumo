@@ -32,14 +32,6 @@ export async function updateCurrency(form: { id: Id; name: string; symbol: strin
   await api.post(apiUrl('/api/v1/currency/update-currency'), form)
 }
 
-export async function archiveCurrency(id: Id): Promise<void> {
-  await api.post(apiUrl('/api/v1/currency/archive-currency'), { id })
-}
-
-export async function unarchiveCurrency(id: Id): Promise<void> {
-  await api.post(apiUrl('/api/v1/currency/unarchive-currency'), { id })
-}
-
 export async function deleteCurrency(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/currency/delete-currency'), { id })
 }
