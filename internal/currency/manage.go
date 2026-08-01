@@ -27,7 +27,6 @@ type ManageModel interface {
 	SetCurrencyArchived(ctx context.Context, id string, archived bool) error
 	DeleteCurrency(ctx context.Context, id string) error
 	CountCurrencyUsage(ctx context.Context, id, code string) (int64, error)
-	GetGlobalIDByCode(ctx context.Context, code string) (string, error)
 	UpsertRate(ctx context.Context, r model.RateRow) error
 	HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error
 	ShowCurrency(ctx context.Context, userID, currencyID string) error
@@ -42,20 +41,19 @@ type ProfileCurrency interface {
 // ManageService is the currency lifecycle use-case orchestrator (create,
 // update, archive, unarchive, delete, set-rate, hide, show).
 type ManageService struct {
-	repo     ManageModel
-	tx       port.TxRunner
-	ops      port.OperationGuard
-	clock    port.Clock
-	profile  ProfileCurrency
-	baseCode string
-	nextID   func() vo.Id
+	repo    ManageModel
+	tx      port.TxRunner
+	ops     port.OperationGuard
+	clock   port.Clock
+	profile ProfileCurrency
+	base    model.BaseCurrency
+	nextID  func() vo.Id
 }
 
-// NewManageService wires the currency manage service. baseCode is the
-// application-wide base currency (ECONUMO_CURRENCY_BASE), used to resolve the
-// base currency id when an initial rate is supplied at create-currency time.
-func NewManageService(repo ManageModel, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, profile ProfileCurrency, baseCode string) *ManageService {
-	return &ManageService{repo: repo, tx: tx, ops: ops, clock: clock, profile: profile, baseCode: baseCode, nextID: vo.NewId}
+// NewManageService wires the currency manage service. base is the
+// boot-resolved instance base currency; rate rows are denominated against it.
+func NewManageService(repo ManageModel, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, profile ProfileCurrency, base model.BaseCurrency) *ManageService {
+	return &ManageService{repo: repo, tx: tx, ops: ops, clock: clock, profile: profile, base: base, nextID: vo.NewId}
 }
 
 // rateShape: scale-8 positive decimal string, no sign, no exponent.
@@ -198,12 +196,8 @@ func (s *ManageService) CreateCurrency(ctx context.Context, userID vo.Id, req mo
 			return serr
 		}
 		if req.Rate != nil {
-			baseID, berr := s.repo.GetGlobalIDByCode(ctx, s.baseCode)
-			if berr != nil {
-				return berr
-			}
 			if serr := s.repo.UpsertRate(ctx, model.RateRow{
-				ID: s.nextID().String(), CurrencyID: rec.ID, BaseCurrencyID: baseID,
+				ID: s.nextID().String(), CurrencyID: rec.ID, BaseCurrencyID: s.base.ID,
 				Date: todayIn(ctx, now), Rate: *req.Rate,
 			}); serr != nil {
 				return serr

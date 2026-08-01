@@ -211,7 +211,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	currencyReadSvc := appcurrency.NewReadService(currencyReadRepo, base)
 	currencyManageRepo := currencyrepo.NewManageRepo(cfg.DatabaseDriver, txm)
 	currencyManageSvc := appcurrency.NewManageService(currencyManageRepo, txm, opGuard, clk,
-		NewCurrencyProfileCurrency(userRepo), cfg.CurrencyBase)
+		NewCurrencyProfileCurrency(userRepo), base)
 	currencyHandlers := handlercurrency.NewHandlers(currencyReadSvc, currencyManageSvc)
 
 	// In-process exchange-rate updater. Enabled only when a cadence is set AND an

@@ -100,15 +100,6 @@ func (f *fakeManageRepo) CountCurrencyUsage(ctx context.Context, id, code string
 	return f.usage[id], nil
 }
 
-func (f *fakeManageRepo) GetGlobalIDByCode(ctx context.Context, code string) (string, error) {
-	for _, r := range f.records {
-		if r.UserID == nil && r.Code == code {
-			return r.ID, nil
-		}
-	}
-	return "", errs.NewNotFound("Currency not found")
-}
-
 func (f *fakeManageRepo) UpsertRate(ctx context.Context, r model.RateRow) error {
 	f.rates = append(f.rates, r)
 	return nil
@@ -163,10 +154,14 @@ func (f *fakeOps) Claim(ctx context.Context, id vo.Id, now time.Time) (bool, err
 func (f *fakeOps) MarkHandled(ctx context.Context, id vo.Id, now time.Time) error { return nil }
 
 func newManageSvc(repo *fakeManageRepo, ops *fakeOps, now time.Time) *appcurrency.ManageService {
-	return appcurrency.NewManageService(repo, passthroughTx{}, ops, fixedClock{t: now}, fakeProfileCurrency{code: "USD"}, "USD")
+	return appcurrency.NewManageService(repo, passthroughTx{}, ops, fixedClock{t: now}, fakeProfileCurrency{code: "USD"}, testBase)
 }
 
 var manageNow = time.Date(2026, 7, 15, 10, 0, 0, 0, time.UTC)
+
+// testBase mirrors the boot-resolved base: the fakes register the global USD
+// record under the id "global-usd".
+var testBase = model.BaseCurrency{ID: "global-usd", Code: "USD"}
 
 func TestCreateCurrency_HappyPath(t *testing.T) {
 	repo := newFakeManageRepo()
@@ -684,7 +679,7 @@ func TestHideCurrency_BaseCurrency(t *testing.T) {
 func TestHideCurrency_ProfileCurrency(t *testing.T) {
 	repo := newFakeManageRepo()
 	repo.records["global-eur"] = model.CurrencyRecord{ID: "global-eur", Code: "EUR", Symbol: "€"}
-	svc := appcurrency.NewManageService(repo, passthroughTx{}, &fakeOps{}, fixedClock{t: manageNow}, fakeProfileCurrency{code: "EUR"}, "USD")
+	svc := appcurrency.NewManageService(repo, passthroughTx{}, &fakeOps{}, fixedClock{t: manageNow}, fakeProfileCurrency{code: "EUR"}, testBase)
 	uid := vo.MustParseId(manageMeID)
 
 	_, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "global-eur"})

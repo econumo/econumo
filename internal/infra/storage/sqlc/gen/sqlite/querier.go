@@ -160,7 +160,6 @@ type Querier interface {
 	// (SQLite). A folder belongs to a user, has a position and an is_visible flag,
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
-	GetGlobalCurrencyIDByCode(ctx context.Context, code string) (string, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
 	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a

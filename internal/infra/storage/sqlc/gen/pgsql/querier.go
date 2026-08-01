@@ -99,7 +99,6 @@ type Querier interface {
 	// Write-side queries for folders + accounts_folders (PostgreSQL: $N
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
-	GetGlobalCurrencyIDByCode(ctx context.Context, code string) (string, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// Latest rate row per (currency, base) pair. See the sqlite variant.

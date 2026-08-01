@@ -30,12 +30,8 @@ func (s *ManageService) SetCurrencyRate(ctx context.Context, userID vo.Id, req m
 		if err != nil {
 			return err
 		}
-		baseID, err := s.repo.GetGlobalIDByCode(ctx, s.baseCode)
-		if err != nil {
-			return err
-		}
 		return s.repo.UpsertRate(ctx, model.RateRow{
-			ID: s.nextID().String(), CurrencyID: rec.ID, BaseCurrencyID: baseID,
+			ID: s.nextID().String(), CurrencyID: rec.ID, BaseCurrencyID: s.base.ID,
 			Date: date, Rate: req.Rate,
 		})
 	}); err != nil {

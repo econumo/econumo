@@ -46,7 +46,6 @@ type manageQuerier interface {
 	UpdateCurrencyDetails(ctx context.Context, db backend.DBTX, p updateCurrencyDetailsP) error
 	SetCurrencyArchived(ctx context.Context, db backend.DBTX, p setCurrencyArchivedP) error
 	DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error
-	GetGlobalCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error)
 	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id, code string) (int64, error)
 	UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p manageRateP) error
 	InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error
@@ -150,17 +149,6 @@ func (r *ManageRepo) CountCurrencyUsage(ctx context.Context, id, code string) (i
 	return r.q.CountCurrencyUsage(ctx, r.db(ctx), id, code)
 }
 
-func (r *ManageRepo) GetGlobalIDByCode(ctx context.Context, code string) (string, error) {
-	id, err := r.q.GetGlobalCurrencyIDByCode(ctx, r.db(ctx), code)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", errs.NewNotFound("Currency not found")
-		}
-		return "", err
-	}
-	return id, nil
-}
-
 // UpsertRate mirrors WriteRepo.UpsertRate: the published date is truncated to
 // midnight UTC so the per-day ON CONFLICT upsert dedupes correctly.
 func (r *ManageRepo) UpsertRate(ctx context.Context, rr model.RateRow) error {
@@ -229,10 +217,6 @@ func (sqliteManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, 
 	return sqlitegen.New(db).DeleteCurrency(ctx, id)
 }
 
-func (sqliteManageQuerier) GetGlobalCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error) {
-	return sqlitegen.New(db).GetGlobalCurrencyIDByCode(ctx, code)
-}
-
 func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id, code string) (int64, error) {
 	return sqlitegen.New(db).CountCurrencyUsage(ctx, sqlitegen.CountCurrencyUsageParams{
 		CurrencyID:   id,
@@ -290,10 +274,6 @@ func (pgsqlManageQuerier) SetCurrencyArchived(ctx context.Context, db backend.DB
 
 func (pgsqlManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteCurrency(ctx, id)
-}
-
-func (pgsqlManageQuerier) GetGlobalCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error) {
-	return pgsqlgen.New(db).GetGlobalCurrencyIDByCode(ctx, code)
 }
 
 func (pgsqlManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id, code string) (int64, error) {

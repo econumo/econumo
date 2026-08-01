@@ -77,9 +77,6 @@ UPDATE currencies SET is_archived = ? WHERE id = ?;
 -- name: DeleteCurrency :exec
 DELETE FROM currencies WHERE id = ?;
 
--- name: GetGlobalCurrencyIDByCode :one
-SELECT id FROM currencies WHERE code = ? AND user_id IS NULL;
-
 -- Usage census for delete protection: accounts (including soft-deleted ones,
 -- they still hold the FK), budgets, budget elements, and any user whose
 -- profile currency option stores this code.

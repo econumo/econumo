@@ -122,17 +122,6 @@ func (q *Queries) GetCurrencyRecord(ctx context.Context, id string) (GetCurrency
 	return i, err
 }
 
-const getGlobalCurrencyIDByCode = `-- name: GetGlobalCurrencyIDByCode :one
-SELECT id FROM currencies WHERE code = $1 AND user_id IS NULL
-`
-
-func (q *Queries) GetGlobalCurrencyIDByCode(ctx context.Context, code string) (string, error) {
-	row := q.db.QueryRowContext(ctx, getGlobalCurrencyIDByCode, code)
-	var id string
-	err := row.Scan(&id)
-	return id, err
-}
-
 const getLatestRateBase = `-- name: GetLatestRateBase :one
 SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1
 `

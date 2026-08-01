@@ -142,23 +142,6 @@ func TestManageRepo_HideShowIdempotent(t *testing.T) {
 	}
 }
 
-func TestManageRepo_GetGlobalIDByCode(t *testing.T) {
-	r, _, _ := newManage(t)
-	ctx := context.Background()
-	id, err := r.GetGlobalIDByCode(ctx, "USD")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if id != seededUSD {
-		t.Fatalf("want %s, got %s", seededUSD, id)
-	}
-	if _, err := r.GetGlobalIDByCode(ctx, "ZZZ"); err == nil {
-		t.Fatal("expected NotFound for unknown code")
-	} else if _, ok := errs.AsNotFound(err); !ok {
-		t.Fatalf("want NotFound, got %v", err)
-	}
-}
-
 func TestManageRepo_UpsertRate(t *testing.T) {
 	r, _, f := newManage(t)
 	ctx := context.Background()

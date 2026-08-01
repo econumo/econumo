@@ -35,7 +35,10 @@ const (
 	seedSalt    = "0000000000000000000000000000000000000001"
 	seedAvatar  = "https://avatar.test/x"
 
-	usdID = "cccccccc-0000-0000-0000-0000000000us"
+	// usdID matches the baseline migration's seeded USD row: the services get
+	// the base resolved ONCE at construction (mirroring boot), so every test —
+	// reset or not — must agree on the base currency's id.
+	usdID = "dffc2a06-6f29-4704-8575-31709adee926"
 	eurID = "cccccccc-0000-0000-0000-0000000000eu"
 	rubID = "cccccccc-0000-0000-0000-0000000000ru"
 )
@@ -83,7 +86,7 @@ func newHarness(t *testing.T) *harness {
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, CurrencyBase: "USD"}
 	readSvc := appcurrency.NewReadService(readRepo, model.BaseCurrency{ID: usdID, Code: cfg.CurrencyBase})
-	manageSvc := appcurrency.NewManageService(manageRepo, tdb.TX, opGuard, clk, profile, cfg.CurrencyBase)
+	manageSvc := appcurrency.NewManageService(manageRepo, tdb.TX, opGuard, clk, profile, model.BaseCurrency{ID: usdID, Code: cfg.CurrencyBase})
 	handlers := handlercurrency.NewHandlers(readSvc, manageSvc)
 
 	h := router.New(router.Deps{
