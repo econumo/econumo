@@ -47,7 +47,7 @@ SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1
 -- have user_id NULL; custom currencies carry their owner id.
 
 -- name: GetCurrencyRecord :one
-SELECT id, code, symbol, name, fraction_digits, user_id, is_archived, created_at
+SELECT id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at
 FROM currencies WHERE id = $1;
 
 -- name: GlobalCurrencyCodeExists :one
@@ -57,11 +57,16 @@ SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id IS NULL;
 SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id = $2;
 
 -- name: InsertUserCurrency :exec
-INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: UpdateCurrencyDetails :exec
-UPDATE currencies SET name = $1, symbol = $2, fraction_digits = $3 WHERE id = $4;
+UPDATE currencies SET name = $1, symbol = $2, fraction_digits = $3, rate = $4 WHERE id = $5;
+
+-- Fixed custom-currency rates for the convertor overlay: one rate per custom,
+-- period-independent. Globals never carry a rate here.
+-- name: GetFixedCurrencyRates :many
+SELECT id, rate FROM currencies WHERE rate IS NOT NULL;
 
 -- name: SetCurrencyArchived :exec
 UPDATE currencies SET is_archived = $1 WHERE id = $2;

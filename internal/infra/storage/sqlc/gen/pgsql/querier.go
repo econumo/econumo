@@ -96,6 +96,9 @@ type Querier interface {
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
 	GetCurrencyRecord(ctx context.Context, id string) (GetCurrencyRecordRow, error)
+	// Fixed custom-currency rates for the convertor overlay: one rate per custom,
+	// period-independent. Globals never carry a rate here.
+	GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error)
 	// Write-side queries for folders + accounts_folders (PostgreSQL: $N
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)

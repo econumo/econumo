@@ -69,7 +69,7 @@ func (f *fakeManageRepo) InsertUserCurrency(ctx context.Context, c model.Currenc
 	return nil
 }
 
-func (f *fakeManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int) error {
+func (f *fakeManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int, rate *string) error {
 	rec, ok := f.records[id]
 	if !ok {
 		return errs.NewNotFound("Currency not found")
@@ -77,6 +77,7 @@ func (f *fakeManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, sy
 	rec.Name = &name
 	rec.Symbol = symbol
 	rec.FractionDigits = fractionDigits
+	rec.Rate = rate
 	f.records[id] = rec
 	return nil
 }

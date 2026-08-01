@@ -92,6 +92,7 @@ func (r *ManageRepo) GetCurrencyRecord(ctx context.Context, id string) (model.Cu
 		FractionDigits: int(row.FractionDigits),
 		UserID:         row.UserID,
 		IsArchived:     row.IsArchived,
+		Rate:           row.Rate,
 		CreatedAt:      row.CreatedAt,
 	}, nil
 }
@@ -121,15 +122,17 @@ func (r *ManageRepo) InsertUserCurrency(ctx context.Context, c model.CurrencyRec
 		FractionDigits: int16(c.FractionDigits),
 		UserID:         c.UserID,
 		IsArchived:     c.IsArchived,
+		Rate:           c.Rate,
 		CreatedAt:      c.CreatedAt,
 	})
 }
 
-func (r *ManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int) error {
+func (r *ManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int, rate *string) error {
 	return r.q.UpdateCurrencyDetails(ctx, r.db(ctx), updateCurrencyDetailsP{
 		Name:           &name,
 		Symbol:         symbol,
 		FractionDigits: int16(fractionDigits),
+		Rate:           rate,
 		ID:             id,
 	})
 }

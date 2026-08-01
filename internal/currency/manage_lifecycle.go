@@ -26,7 +26,7 @@ func (s *ManageService) UpdateCurrency(ctx context.Context, userID vo.Id, req mo
 		if lerr != nil {
 			return lerr
 		}
-		if uerr := s.repo.UpdateCurrencyDetails(ctx, r.ID, name, symbol, req.FractionDigits); uerr != nil {
+		if uerr := s.repo.UpdateCurrencyDetails(ctx, r.ID, name, symbol, req.FractionDigits, r.Rate); uerr != nil {
 			return uerr
 		}
 		r.Name = &name

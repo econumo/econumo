@@ -89,7 +89,7 @@ func (q *Queries) GetCurrencyByCode(ctx context.Context, code string) (GetCurren
 
 const getCurrencyRecord = `-- name: GetCurrencyRecord :one
 
-SELECT id, code, symbol, name, fraction_digits, user_id, is_archived, created_at
+SELECT id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at
 FROM currencies WHERE id = $1
 `
 
@@ -101,6 +101,7 @@ type GetCurrencyRecordRow struct {
 	FractionDigits int16
 	UserID         *string
 	IsArchived     bool
+	Rate           *string
 	CreatedAt      time.Time
 }
 
@@ -117,9 +118,44 @@ func (q *Queries) GetCurrencyRecord(ctx context.Context, id string) (GetCurrency
 		&i.FractionDigits,
 		&i.UserID,
 		&i.IsArchived,
+		&i.Rate,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getFixedCurrencyRates = `-- name: GetFixedCurrencyRates :many
+SELECT id, rate FROM currencies WHERE rate IS NOT NULL
+`
+
+type GetFixedCurrencyRatesRow struct {
+	ID   string
+	Rate *string
+}
+
+// Fixed custom-currency rates for the convertor overlay: one rate per custom,
+// period-independent. Globals never carry a rate here.
+func (q *Queries) GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFixedCurrencyRates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetFixedCurrencyRatesRow{}
+	for rows.Next() {
+		var i GetFixedCurrencyRatesRow
+		if err := rows.Scan(&i.ID, &i.Rate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getLatestRateBase = `-- name: GetLatestRateBase :one
@@ -205,8 +241,8 @@ func (q *Queries) InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurr
 }
 
 const insertUserCurrency = `-- name: InsertUserCurrency :exec
-INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type InsertUserCurrencyParams struct {
@@ -217,6 +253,7 @@ type InsertUserCurrencyParams struct {
 	FractionDigits int16
 	UserID         *string
 	IsArchived     bool
+	Rate           *string
 	CreatedAt      time.Time
 }
 
@@ -229,6 +266,7 @@ func (q *Queries) InsertUserCurrency(ctx context.Context, arg InsertUserCurrency
 		arg.FractionDigits,
 		arg.UserID,
 		arg.IsArchived,
+		arg.Rate,
 		arg.CreatedAt,
 	)
 	return err
@@ -307,13 +345,14 @@ func (q *Queries) SetCurrencyArchived(ctx context.Context, arg SetCurrencyArchiv
 }
 
 const updateCurrencyDetails = `-- name: UpdateCurrencyDetails :exec
-UPDATE currencies SET name = $1, symbol = $2, fraction_digits = $3 WHERE id = $4
+UPDATE currencies SET name = $1, symbol = $2, fraction_digits = $3, rate = $4 WHERE id = $5
 `
 
 type UpdateCurrencyDetailsParams struct {
 	Name           *string
 	Symbol         string
 	FractionDigits int16
+	Rate           *string
 	ID             string
 }
 
@@ -322,6 +361,7 @@ func (q *Queries) UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyD
 		arg.Name,
 		arg.Symbol,
 		arg.FractionDigits,
+		arg.Rate,
 		arg.ID,
 	)
 	return err

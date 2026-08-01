@@ -8,7 +8,7 @@
 -- accounts or budgets shared to the user (budget currency and element
 -- currencies). Codes can repeat across owners, so id breaks ties. $1 is
 -- reused for all four user-id positions so the generated param stays single.
-SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.is_archived
+SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.is_archived, c.rate, c.created_at
 FROM currencies c
 WHERE c.user_id IS NULL
    OR c.user_id = $1

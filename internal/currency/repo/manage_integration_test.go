@@ -38,7 +38,7 @@ func TestManageRepo_InsertGetUpdateArchiveDelete(t *testing.T) {
 	if got.Code != "PTS" || got.UserID == nil || *got.UserID != uid || got.IsArchived {
 		t.Fatalf("unexpected record: %+v", got)
 	}
-	if err := r.UpdateCurrencyDetails(ctx, rec.ID, "Kid points", "kp", 2); err != nil {
+	if err := r.UpdateCurrencyDetails(ctx, rec.ID, "Kid points", "kp", 2, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := r.SetCurrencyArchived(ctx, rec.ID, true); err != nil {
@@ -79,7 +79,7 @@ func TestManageRepo_NameLength64Chars(t *testing.T) {
 	}
 
 	name64b := strings.Repeat("m", 64)
-	if err := r.UpdateCurrencyDetails(ctx, rec.ID, name64b, "kp", 2); err != nil {
+	if err := r.UpdateCurrencyDetails(ctx, rec.ID, name64b, "kp", 2, nil); err != nil {
 		t.Fatal(err)
 	}
 	got, _ = r.GetCurrencyRecord(ctx, rec.ID)

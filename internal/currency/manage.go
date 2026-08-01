@@ -23,7 +23,7 @@ type ManageModel interface {
 	GlobalCodeExists(ctx context.Context, code string) (bool, error)
 	OwnerCodeExists(ctx context.Context, userID, code string) (bool, error)
 	InsertUserCurrency(ctx context.Context, c model.CurrencyRecord) error
-	UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int) error
+	UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int, rate *string) error
 	SetCurrencyArchived(ctx context.Context, id string, archived bool) error
 	DeleteCurrency(ctx context.Context, id string) error
 	CountCurrencyUsage(ctx context.Context, id, code string) (int64, error)

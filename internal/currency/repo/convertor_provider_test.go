@@ -141,3 +141,33 @@ func mustParse(t *testing.T, s string) vo.Id {
 	}
 	return id
 }
+
+// A custom currency's FIXED rate applies to any requested period — including
+// historical months long before any stored rate row exists. Dated custom
+// rates could never serve this case (the period snap found nothing).
+func TestRateProvider_FixedCustomRate_AppliesToAnyPeriod(t *testing.T) {
+	ctx := context.Background()
+	db, txm := setup(t)
+	f := fixture.New(t, db)
+	uid := f.User(fixture.User{Name: "A"})
+	pts := f.Currency(fixture.Currency{Code: "PTS", Symbol: "p", UserID: uid, Rate: "10.00000000"})
+
+	lookup := currencyrepo.New("sqlite", txm)
+	p := currencyrepo.NewRateProvider("sqlite", txm, lookup, usdID)
+
+	start := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2024, 5, 1, 0, 0, 0, 0, time.UTC)
+	rates, err := p.AverageRates(ctx, start, end)
+	if err != nil {
+		t.Fatalf("AverageRates: %v", err)
+	}
+	var got string
+	for _, r := range rates {
+		if r.CurrencyID.String() == pts {
+			got = r.Rate.String()
+		}
+	}
+	if got != "10" {
+		t.Fatalf("fixed PTS rate for a historical period = %q, want 10; rates=%+v", got, rates)
+	}
+}

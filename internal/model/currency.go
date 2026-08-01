@@ -63,7 +63,10 @@ type CurrencyRecord struct {
 	FractionDigits int
 	UserID         *string
 	IsArchived     bool
-	CreatedAt      time.Time
+	// Rate is the fixed conversion rate for customs ("X per 1 base unit");
+	// always nil for globals. NULL customs predate the mandatory-rate rule.
+	Rate      *string
+	CreatedAt time.Time
 }
 
 // BaseCurrency is the instance base currency, resolved at boot: every stored

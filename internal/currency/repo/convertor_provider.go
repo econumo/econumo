@@ -29,10 +29,17 @@ type avgRow struct {
 	Rate       string
 }
 
+// fixedRateRow is one custom currency's fixed rate.
+type fixedRateRow struct {
+	CurrencyID string
+	Rate       string
+}
+
 // providerQuerier is the engine-agnostic surface the provider needs.
 type providerQuerier interface {
 	GetAverage(ctx context.Context, db backend.DBTX, start, end time.Time, baseID string) ([]avgRow, error)
 	GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error)
+	GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error)
 }
 
 // RateProvider implements domain/currency.RateProvider.
@@ -101,6 +108,21 @@ func (p *RateProvider) AverageRates(ctx context.Context, start, end time.Time) (
 		}
 		out = append(out, model.FullRate{CurrencyID: id, Rate: vo.NewDecimal(r.Rate)})
 	}
+	// Custom currencies carry ONE fixed rate on the currency row, applied to
+	// any requested period (changing it re-values history by design). They
+	// never appear in the AVG result: their dated rows were removed by the
+	// 20260801000000 migration.
+	fixed, err := p.q.GetFixedRates(ctx, p.db(ctx))
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range fixed {
+		id, perr := vo.ParseId(r.CurrencyID)
+		if perr != nil {
+			return nil, perr
+		}
+		out = append(out, model.FullRate{CurrencyID: id, Rate: vo.NewDecimal(r.Rate)})
+	}
 	return out, nil
 }
 
@@ -158,6 +180,18 @@ func (sqliteProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, Datetime: before.Format(datetime.Layout)})
 }
 
+func (sqliteProviderQuerier) GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error) {
+	rows, err := sqlitegen.New(db).GetFixedCurrencyRates(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]fixedRateRow, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, fixedRateRow{CurrencyID: r.ID, Rate: *r.Rate})
+	}
+	return out, nil
+}
+
 type pgsqlProviderQuerier struct{}
 
 func (pgsqlProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, start, end time.Time, baseID string) ([]avgRow, error) {
@@ -176,4 +210,16 @@ func (pgsqlProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, sta
 }
 func (pgsqlProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error) {
 	return pgsqlgen.New(db).GetLatestCurrencyRateDate(ctx, pgsqlgen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, PublishedAt: before})
+}
+
+func (pgsqlProviderQuerier) GetFixedRates(ctx context.Context, db backend.DBTX) ([]fixedRateRow, error) {
+	rows, err := pgsqlgen.New(db).GetFixedCurrencyRates(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]fixedRateRow, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, fixedRateRow{CurrencyID: r.ID, Rate: *r.Rate})
+	}
+	return out, nil
 }
