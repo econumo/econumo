@@ -221,25 +221,18 @@ it('compact: tapping an own row opens the action sheet; global rows do not react
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-it('active-only filter hides archived own currencies, never globals, and persists', async () => {
+it('no active-only filter: archived own currencies are always listed', async () => {
   server.use(
     ...coreHandlers({
       currencies: [fixtureUsd, fixtureEur, { ...fixturePts, isArchived: 1 }, fixtureGbp],
       rates: defaultRates,
     }),
   )
-  const user = userEvent.setup()
   renderPage()
-  // hidden globals are not archived — they stay listed
-  await screen.findByText('Pound')
-  // the filter defaults ON: the archived own custom is hidden, and with a
-  // single visible group the template drops the section captions
-  expect(screen.queryByText('Points')).toBeNull()
-  expect(screen.queryByText('Global currencies')).toBeNull()
-  await user.click(screen.getByRole('switch', { name: 'Active only' }))
   expect(await screen.findByText('Points')).toBeInTheDocument()
   expect(screen.getByText('Archived')).toBeInTheDocument()
-  expect(localStorage.getItem('settings.currencies.activeOnly')).toBe('false')
+  expect(screen.getByText('Pound')).toBeInTheDocument()
+  expect(screen.queryByRole('switch', { name: 'Active only' })).toBeNull()
 })
 
 it('set-rate dialog posts {currencyId, rate, date?}', async () => {

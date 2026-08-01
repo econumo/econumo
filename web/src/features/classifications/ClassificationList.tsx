@@ -53,8 +53,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   createLabel: string
   deleteTitle: string
   items: T[]
-  /** localStorage key for the active-only filter state */
-  storageKey: string
+  /** localStorage key for the active-only filter; absent = no filter control */
+  storageKey?: string
   /** optional visual grouping (e.g. category income/expense) */
   sections?: ClassificationSection<T>[]
   showIcon?: boolean
@@ -102,11 +102,16 @@ export function ClassificationList<T extends ClassificationItem>({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   // compact rows open a bottom-sheet action menu instead of the tiny kebab
   const [sheetItem, setSheetItem] = useState<T | null>(null)
-  const [activeOnly, setActiveOnly] = useState<boolean>(() => (getItem(storageKey) as boolean | null) ?? true)
+  // No storageKey = no active-only filter: every item stays visible.
+  const [activeOnly, setActiveOnly] = useState<boolean>(() =>
+    storageKey ? ((getItem(storageKey) as boolean | null) ?? true) : false,
+  )
 
   const toggleActiveOnly = (value: boolean) => {
     setActiveOnly(value)
-    setItem(storageKey, value)
+    if (storageKey) {
+      setItem(storageKey, value)
+    }
   }
 
   // Items archived from THIS screen stay in place (greyed, switch off) even
@@ -172,12 +177,12 @@ export function ClassificationList<T extends ClassificationItem>({
     </Button>
   )
 
-  const filterControl = (
+  const filterControl = storageKey ? (
     <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground" title={t('common.list.active_only')}>
       <Switch aria-label={t('common.list.active_only')} checked={activeOnly} onCheckedChange={toggleActiveOnly} />
       {t('common.list.active_only')}
     </label>
-  )
+  ) : null
 
   const renderRow = (item: T, handle?: SortableHandleProps) => {
     const actionable = hasActions?.(item) ?? true
@@ -278,7 +283,7 @@ export function ClassificationList<T extends ClassificationItem>({
     >
       {info ? <InfoBox>{info}</InfoBox> : null}
       {alert ?? null}
-      {isCompact ? (
+      {isCompact && (orderable || filterControl) ? (
         // compact toolbar row: reorder on the left, the active-only filter on the right
         <div className="flex items-center justify-between pb-1">
           {orderable ? reorderButton : <span />}
