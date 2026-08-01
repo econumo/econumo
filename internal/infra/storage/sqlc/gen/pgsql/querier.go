@@ -91,6 +91,9 @@ type Querier interface {
 	// add-currency.
 	GetCurrencyByCode(ctx context.Context, code string) (GetCurrencyByCodeRow, error)
 	GetCurrencyByIDView(ctx context.Context, id string) (GetCurrencyByIDViewRow, error)
+	// Maps a stored profile-currency id back to the wire code (the options list
+	// is frozen to show codes).
+	GetCurrencyCodeByID(ctx context.Context, id string) (string, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
 	// User currency management (per-user custom currencies). Global currencies

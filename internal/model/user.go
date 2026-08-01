@@ -144,15 +144,6 @@ func (u *User) Option(name string) *UserOption {
 	return nil
 }
 
-// CurrencyCode returns the user's currency option value, falling back to the
-// default.
-func (u *User) CurrencyCode() string {
-	if o := u.Option(OptionCurrency); o != nil && o.Value != nil && *o.Value != "" {
-		return *o.Value
-	}
-	return DefaultCurrency
-}
-
 // ReportPeriod returns the user's report_period option value or the default.
 func (u *User) ReportPeriod() string {
 	if o := u.Option(OptionReportPeriod); o != nil && o.Value != nil && *o.Value != "" {
@@ -221,10 +212,11 @@ func (u *User) UpdateEmail(encryptedEmail string, now time.Time) {
 	u.UpdatedAt = now
 }
 
-// UpdateCurrency sets the currency option value.
-func (u *User) UpdateCurrency(code string, now time.Time) {
+// UpdateCurrency sets the currency option value (a currency ID; the wire
+// code is derived at render time).
+func (u *User) UpdateCurrency(currencyID string, now time.Time) {
 	if o := u.Option(OptionCurrency); o != nil {
-		v := code
+		v := currencyID
 		o.setValue(&v, now)
 	}
 }
@@ -269,7 +261,9 @@ func (u *User) CompleteOnboarding(now time.Time) {
 // supplies a fresh Id per option (the repo's NextIdentity).
 func (u *User) SeedDefaultOptions(nextID func() vo.Id, now time.Time) {
 	defaults := map[string]*string{
-		OptionCurrency:     strPtr(DefaultCurrency),
+		// The currency option stores a currency ID: the registration service
+		// fills in the resolved default; nil keeps the USD read fallback.
+		OptionCurrency:     nil,
 		OptionReportPeriod: strPtr(DefaultReportPeriod),
 		OptionBudget:       nil,
 		OptionOnboarding:   strPtr(OnboardingStarted),

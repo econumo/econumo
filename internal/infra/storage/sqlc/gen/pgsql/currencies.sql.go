@@ -9,6 +9,19 @@ import (
 	"context"
 )
 
+const getCurrencyCodeByID = `-- name: GetCurrencyCodeByID :one
+SELECT code FROM currencies WHERE id = $1
+`
+
+// Maps a stored profile-currency id back to the wire code (the options list
+// is frozen to show codes).
+func (q *Queries) GetCurrencyCodeByID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getCurrencyCodeByID, id)
+	var code string
+	err := row.Scan(&code)
+	return code, err
+}
+
 const getCurrencyIDByCode = `-- name: GetCurrencyIDByCode :one
 SELECT id FROM currencies WHERE code = $1 AND user_id IS NULL
 `

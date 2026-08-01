@@ -31,6 +31,9 @@ type ReadModel interface {
 	// global); returns sql.ErrNoRows when the code is unknown so the service
 	// can apply the USD fallback.
 	CurrencyIDByCode(ctx context.Context, userID, code string) (string, error)
+	// CurrencyCodeByID maps a stored profile-currency id back to its code
+	// (sql.ErrNoRows for dangling ids; callers apply the USD fallback).
+	CurrencyCodeByID(ctx context.Context, id string) (string, error)
 }
 
 // ReadService serves the user read endpoints.
@@ -64,7 +67,21 @@ func (s *ReadService) GetOptionList(ctx context.Context, userID vo.Id) (*model.G
 	}
 	items := make([]model.OptionResult, 0, len(opts))
 	for _, o := range opts {
-		items = append(items, model.OptionResult{Name: o.Name, Value: o.Value})
+		value := o.Value
+		// The stored currency value is an ID; the options wire is frozen to
+		// show the CODE (dangling/absent falls back to the default code).
+		if o.Name == model.OptionCurrency {
+			code := model.DefaultCurrency
+			if value != nil {
+				if c, cerr := s.read.CurrencyCodeByID(ctx, *value); cerr == nil {
+					code = c
+				} else if !errors.Is(cerr, sql.ErrNoRows) {
+					return nil, cerr
+				}
+			}
+			value = &code
+		}
+		items = append(items, model.OptionResult{Name: o.Name, Value: value})
 	}
 	return &model.GetOptionListResult{Items: items}, nil
 }
@@ -87,15 +104,17 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 		return model.CurrentUserResult{}, err
 	}
 
-	options := make([]model.OptionResult, 0, len(opts)+1)
-	currencyCode := model.DefaultCurrency
+	// The stored currency value is an ID (the wire keeps showing the code).
+	// Dangling/absent -> the frozen USD fallback for both code and id.
+	storedCurrencyID := ""
 	reportPeriod := model.DefaultReportPeriod
+	rawOptions := make([]model.OptionResult, 0, len(opts))
 	for _, o := range opts {
-		options = append(options, model.OptionResult{Name: o.Name, Value: o.Value})
+		rawOptions = append(rawOptions, model.OptionResult{Name: o.Name, Value: o.Value})
 		switch o.Name {
 		case model.OptionCurrency:
 			if o.Value != nil {
-				currencyCode = *o.Value
+				storedCurrencyID = *o.Value
 			}
 		case model.OptionReportPeriod:
 			if o.Value != nil {
@@ -103,19 +122,31 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 			}
 		}
 	}
-
-	// Resolve currency_id (own-first-then-global), falling back to USD when the
-	// code is unknown.
-	currencyID, err := s.read.CurrencyIDByCode(ctx, userID.String(), currencyCode)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return model.CurrentUserResult{}, err
+	currencyCode := ""
+	currencyID := storedCurrencyID
+	if storedCurrencyID != "" {
+		code, cerr := s.read.CurrencyCodeByID(ctx, storedCurrencyID)
+		if cerr != nil && !errors.Is(cerr, sql.ErrNoRows) {
+			return model.CurrentUserResult{}, cerr
 		}
+		currencyCode = code
+	}
+	if currencyCode == "" {
 		currencyCode = model.DefaultCurrency
-		currencyID, err = s.read.CurrencyIDByCode(ctx, userID.String(), currencyCode)
-		if err != nil {
-			return model.CurrentUserResult{}, err
+		fallbackID, cerr := s.read.CurrencyIDByCode(ctx, userID.String(), currencyCode)
+		if cerr != nil {
+			return model.CurrentUserResult{}, cerr
 		}
+		currencyID = fallbackID
+	}
+	options := make([]model.OptionResult, 0, len(rawOptions)+1)
+	for _, o := range rawOptions {
+		if o.Name == model.OptionCurrency {
+			code := currencyCode
+			options = append(options, model.OptionResult{Name: o.Name, Value: &code})
+			continue
+		}
+		options = append(options, o)
 	}
 	cid := currencyID
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})

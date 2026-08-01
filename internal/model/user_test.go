@@ -101,9 +101,6 @@ func TestUser_StructLiteral_RoundTrip(t *testing.T) {
 
 func TestUser_DefaultsWhenNoOptions(t *testing.T) {
 	u := newUser(t) // no options seeded
-	if u.CurrencyCode() != DefaultCurrency {
-		t.Errorf("CurrencyCode()=%q want %q", u.CurrencyCode(), DefaultCurrency)
-	}
 	if u.ReportPeriod() != DefaultReportPeriod {
 		t.Errorf("ReportPeriod()=%q want %q", u.ReportPeriod(), DefaultReportPeriod)
 	}
@@ -128,9 +125,10 @@ func TestUser_SeedDefaultOptions(t *testing.T) {
 			t.Errorf("option[%d] createdAt=%v want %v", i, opts[i].CreatedAt, tu0)
 		}
 	}
-	// Default values.
-	if c := u.Option(OptionCurrency); c == nil || c.Value == nil || *c.Value != DefaultCurrency {
-		t.Errorf("currency default wrong: %+v", c)
+	// Default values. The currency option seeds EMPTY: it stores a currency
+	// ID and the registration service fills the resolved default.
+	if c := u.Option(OptionCurrency); c == nil || c.Value != nil {
+		t.Errorf("currency default wrong (want nil value): %+v", c)
 	}
 	if rp := u.Option(OptionReportPeriod); rp == nil || rp.Value == nil || *rp.Value != DefaultReportPeriod {
 		t.Errorf("report_period default wrong: %+v", rp)
@@ -141,9 +139,10 @@ func TestUser_SeedDefaultOptions(t *testing.T) {
 	if ob := u.Option(OptionOnboarding); ob == nil || ob.Value == nil || *ob.Value != OnboardingStarted {
 		t.Errorf("onboarding default wrong: %+v", ob)
 	}
-	// Surfaced helpers reflect the seeded values.
-	if u.CurrencyCode() != DefaultCurrency {
-		t.Errorf("CurrencyCode()=%q", u.CurrencyCode())
+	// The currency option seeds EMPTY (an id slot; the registration service
+	// fills the resolved default) — surfaced helpers reflect the others.
+	if o := u.Option(OptionCurrency); o == nil || o.Value != nil {
+		t.Errorf("currency option must seed with a nil value, got %+v", o)
 	}
 	if u.ReportPeriod() != DefaultReportPeriod {
 		t.Errorf("ReportPeriod()=%q", u.ReportPeriod())
@@ -197,16 +196,16 @@ func TestUser_UpdateEmail(t *testing.T) {
 
 func TestUser_UpdateCurrency(t *testing.T) {
 	u := seeded(t)
-	u.UpdateCurrency("EUR", tu1)
-	if u.CurrencyCode() != "EUR" {
-		t.Fatalf("CurrencyCode()=%q want EUR", u.CurrencyCode())
+	u.UpdateCurrency("cur-eur-id", tu1)
+	if o := u.Option(OptionCurrency); o == nil || o.Value == nil || *o.Value != "cur-eur-id" {
+		t.Fatalf("currency option = %+v, want the stored id", o)
 	}
 	o := u.Option(OptionCurrency)
 	if !o.UpdatedAt.Equal(tu1) {
 		t.Errorf("currency option updatedAt=%v want %v", o.UpdatedAt, tu1)
 	}
 	// Setting the same value again must not bump the option's updatedAt.
-	u.UpdateCurrency("EUR", tu2)
+	u.UpdateCurrency("cur-eur-id", tu2)
 	if !u.Option(OptionCurrency).UpdatedAt.Equal(tu1) {
 		t.Error("setting same currency bumped option updatedAt")
 	}
@@ -214,12 +213,9 @@ func TestUser_UpdateCurrency(t *testing.T) {
 
 func TestUser_UpdateCurrency_NoOptionIsNoop(t *testing.T) {
 	u := newUser(t) // no options
-	u.UpdateCurrency("EUR", tu1)
+	u.UpdateCurrency("cur-eur-id", tu1)
 	if u.Option(OptionCurrency) != nil {
 		t.Error("UpdateCurrency must not create an option when none exists")
-	}
-	if u.CurrencyCode() != DefaultCurrency {
-		t.Errorf("CurrencyCode()=%q want default", u.CurrencyCode())
 	}
 }
 
@@ -263,10 +259,10 @@ func TestUser_UpdateReportPeriod(t *testing.T) {
 	if rp == nil || rp.Value == nil || *rp.Value != "weekly" {
 		t.Fatalf("expected report_period option 'weekly', got %+v", rp)
 	}
-	// The currency option is untouched at its seeded default.
+	// The currency option is untouched at its seeded default (nil value).
 	cur := u.Option(OptionCurrency)
-	if cur == nil || cur.Value == nil || *cur.Value != DefaultCurrency {
-		t.Fatalf("currency option should be untouched at %q, got %+v", DefaultCurrency, cur)
+	if cur == nil || cur.Value != nil {
+		t.Fatalf("currency option should be untouched (nil value), got %+v", cur)
 	}
 	// ReportPeriod() reads the updated report_period option.
 	if u.ReportPeriod() != "weekly" {

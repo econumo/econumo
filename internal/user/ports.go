@@ -20,6 +20,9 @@ type CurrencyLookup interface {
 	GetIDByCode(ctx context.Context, userID, code string) (string, error)
 	// DefaultCode returns the fallback currency code (USD).
 	DefaultCode() string
+	// CodeByID maps a stored currency id back to its code (the options wire
+	// is frozen to show codes). Missing ids error; callers apply the fallback.
+	CodeByID(ctx context.Context, id string) (string, error)
 }
 
 // BudgetAccess is the minimal budget lookup the update-budget use case needs:

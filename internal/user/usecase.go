@@ -146,21 +146,32 @@ func (s *Service) toCurrentUser(ctx context.Context, u *model.User) (model.Curre
 // resolving the synthetic currency_id, which is a real lookup and therefore
 // lives here in the service rather than in a mapping helper.
 func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, email string) (model.CurrentUserResult, error) {
-	options := make([]model.OptionResult, 0, len(u.Options)+1)
-	for _, o := range u.Options {
-		options = append(options, model.OptionResult{Name: o.Name, Value: o.Value})
+	// The stored currency option value is an ID; the wire keeps showing the
+	// CODE. Dangling/absent -> the frozen USD fallback for both code and id.
+	code := ""
+	currencyID := ""
+	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil && *o.Value != "" {
+		currencyID = *o.Value
+		if c, cerr := s.currency.CodeByID(ctx, currencyID); cerr == nil {
+			code = c
+		}
 	}
-
-	// Resolve currency_id from the currency code (own-first-then-global),
-	// falling back to USD when the code can't be resolved.
-	code := u.CurrencyCode()
-	currencyID, err := s.currency.GetIDByCode(ctx, u.ID.String(), code)
-	if err != nil {
+	if code == "" {
 		code = s.currency.DefaultCode()
-		currencyID, err = s.currency.GetIDByCode(ctx, u.ID.String(), code)
+		fallbackID, err := s.currency.GetIDByCode(ctx, u.ID.String(), code)
 		if err != nil {
 			return model.CurrentUserResult{}, err
 		}
+		currencyID = fallbackID
+	}
+	options := make([]model.OptionResult, 0, len(u.Options)+1)
+	for _, o := range u.Options {
+		value := o.Value
+		if o.Name == model.OptionCurrency {
+			c := code
+			value = &c
+		}
+		options = append(options, model.OptionResult{Name: o.Name, Value: value})
 	}
 	cid := currencyID
 	options = append(options, model.OptionResult{Name: model.OptionCurrencyID, Value: &cid})

@@ -46,6 +46,15 @@ func (l *UserCurrencyLookup) GetIDByCode(ctx context.Context, userID, code strin
 // DefaultCode returns the fallback currency code (USD).
 func (l *UserCurrencyLookup) DefaultCode() string { return l.inner.DefaultCode() }
 
+// CodeByID maps a stored currency id back to its code.
+func (l *UserCurrencyLookup) CodeByID(ctx context.Context, id string) (string, error) {
+	v, err := l.inner.GetByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return v.Code, nil
+}
+
 // budgetOwnerProbe returns the budget's owner id and whether the budget exists.
 type budgetOwnerProbe func(ctx context.Context, db backend.DBTX, budgetID string) (ownerID string, found bool, err error)
 
