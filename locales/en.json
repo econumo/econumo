@@ -1123,8 +1123,7 @@
           "submit": "Save rate"
         },
         "delete": {
-          "title": "Delete currency?",
-          "question": "Are you sure you want to delete “{name}”?"
+          "title": "Delete currency?"
         }
       },
       "forms": {
