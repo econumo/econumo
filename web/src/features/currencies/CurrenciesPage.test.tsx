@@ -17,9 +17,12 @@ const defaultRates = [
   { currencyId: 'cur-pts', baseCurrencyId: 'cur-usd', rate: '3.5', updatedAt: '2026-07-01 00:00:00' },
 ]
 
-function mockViewport() {
+function mockViewport(compact = false) {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('max-width') ? compact : false,
+    media: q,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
   }))
 }
 
@@ -187,6 +190,56 @@ it('set-rate dialog surfaces a server 400 inline and stays open', async () => {
   await user.click(screen.getByRole('button', { name: 'Save rate' }))
   expect(await screen.findByText('Rate must be a positive number')).toBeInTheDocument()
   expect(screen.getByText('Set exchange rate')).toBeInTheDocument()
+})
+
+it('own rows get a kebab with Edit / Set rate / Delete; global rows get none', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Points')
+  expect(screen.getByRole('button', { name: 'actions Points' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'actions Pound' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'actions US Dollar' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'actions Points' }))
+  const menu = await screen.findByRole('menu')
+  expect(within(menu).getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  expect(within(menu).getByRole('menuitem', { name: 'Set exchange rate' })).toBeInTheDocument()
+  expect(within(menu).getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+})
+
+it('compact: tapping an own row opens the action sheet; global rows do not react', async () => {
+  mockViewport(true)
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Points'))
+  const sheet = await screen.findByRole('dialog')
+  expect(within(sheet).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
+  expect(within(sheet).getByRole('button', { name: 'Set exchange rate' })).toBeInTheDocument()
+  expect(within(sheet).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  await user.click(screen.getByText('Pound'))
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+it('active-only filter hides archived own currencies, never globals, and persists', async () => {
+  server.use(
+    ...coreHandlers({
+      currencies: [fixtureUsd, fixtureEur, { ...fixturePts, isArchived: 1 }, fixtureGbp],
+      rates: defaultRates,
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  // hidden globals are not archived — they stay listed
+  await screen.findByText('Pound')
+  // the filter defaults ON: the archived own custom is hidden, and with a
+  // single visible group the template drops the section captions
+  expect(screen.queryByText('Points')).toBeNull()
+  expect(screen.queryByText('Global currencies')).toBeNull()
+  await user.click(screen.getByRole('switch', { name: 'Active only' }))
+  expect(await screen.findByText('Points')).toBeInTheDocument()
+  expect(screen.getByText('Archived')).toBeInTheDocument()
+  expect(localStorage.getItem('settings.currencies.activeOnly')).toBe('false')
 })
 
 it('set-rate dialog posts {currencyId, rate, date?}', async () => {
