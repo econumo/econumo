@@ -15,7 +15,7 @@ export function useCurrencyRates() {
 export function useCreateCurrency() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (form: { code: string; name: string; symbol?: string; fractionDigits?: number; rate?: string }) =>
+    mutationFn: (form: { code: string; name: string; symbol?: string; fractionDigits?: number; rate: string }) =>
       currencyApi.createCurrency({ id: uuidv7(), ...form }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
