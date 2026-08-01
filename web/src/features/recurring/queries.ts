@@ -25,8 +25,22 @@ function useReplaceRecurring() {
 }
 
 export function useCreateRecurring() {
+  const queryClient = useQueryClient()
   const replace = useReplaceRecurring()
-  return useMutation({ mutationFn: recurringApi.createRecurring, onSuccess: replace })
+  return useMutation({
+    mutationFn: recurringApi.createRecurring,
+    onSuccess: (item, form) => {
+      replace(item)
+      // created FROM a transaction: the backend linked the source to the new
+      // template, so mirror that here and the recurring sign shows up on the
+      // account list without a refetch
+      if (form.sourceTransactionId) {
+        queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+          prev?.map((tx) => (tx.id === form.sourceTransactionId ? { ...tx, recurringId: item.id } : tx)),
+        )
+      }
+    },
+  })
 }
 
 export function useUpdateRecurring() {

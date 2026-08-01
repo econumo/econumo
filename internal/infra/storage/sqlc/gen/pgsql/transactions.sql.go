@@ -69,6 +69,24 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id string) (GetTransac
 	return i, err
 }
 
+const linkTransactionToRecurring = `-- name: LinkTransactionToRecurring :exec
+UPDATE transactions SET recurring_id = $1, updated_at = $2 WHERE id = $3
+`
+
+type LinkTransactionToRecurringParams struct {
+	RecurringID *string
+	UpdatedAt   time.Time
+	ID          string
+}
+
+// The one write that touches recurring_id on an existing row: an explicit
+// "make recurring from this transaction" link. UpsertTransaction deliberately
+// never updates the column, so the link needs its own statement.
+func (q *Queries) LinkTransactionToRecurring(ctx context.Context, arg LinkTransactionToRecurringParams) error {
+	_, err := q.db.ExecContext(ctx, linkTransactionToRecurring, arg.RecurringID, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const listTransactionsByAccount = `-- name: ListTransactionsByAccount :many
 SELECT id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, description, created_at, updated_at, spent_at, type, amount, amount_recipient, recurring_id
 FROM transactions

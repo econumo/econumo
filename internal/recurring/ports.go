@@ -23,4 +23,8 @@ type VisibleAccounts interface {
 
 type TransactionCreator interface {
 	CreateTransactionFromRecurring(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest, recurringID vo.Id) (*model.CreateTransactionResult, error)
+
+	// LinkTransactionToRecurring stamps recurringID onto an existing transaction
+	// (create-from-transaction attaches the source as the series' first instance).
+	LinkTransactionToRecurring(ctx context.Context, userID, transactionID, recurringID vo.Id) error
 }

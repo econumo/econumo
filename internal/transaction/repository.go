@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -17,6 +18,11 @@ type Repository interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error)
 
 	Save(ctx context.Context, t *model.Transaction) error
+
+	// LinkRecurring stamps recurring_id on an existing transaction. A dedicated
+	// write because Save deliberately never updates the column (provenance must
+	// survive ordinary edits).
+	LinkRecurring(ctx context.Context, id, recurringID vo.Id, now time.Time) error
 
 	Delete(ctx context.Context, id vo.Id) error
 

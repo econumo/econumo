@@ -16,6 +16,9 @@ export interface CreateRecurringDto {
   description: string
   schedule: RecurringSchedule
   nextPaymentAt: string
+  /** create only: an existing transaction the template is made FROM — the
+      backend links it to the new template (its recurringId) in the same write */
+  sourceTransactionId?: Id
 }
 
 export interface RecurringDto extends CreateRecurringDto {

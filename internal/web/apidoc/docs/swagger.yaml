@@ -526,6 +526,12 @@ definitions:
         type: string
       schedule:
         type: string
+      sourceTransactionId:
+        description: |-
+          SourceTransactionId, when set, is an existing transaction the template is
+          created FROM; it is linked to the new template (its recurringId) in the
+          same write, so the source immediately reads as the series' first instance.
+        type: string
       tagId:
         type: string
       type:

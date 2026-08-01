@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
 import type { RecurringDto } from '@/api/dto/recurring'
-import { useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from './queries'
+import { useCreateRecurring, useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from './queries'
 
 const wireRecurring = {
   id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
@@ -63,6 +63,29 @@ it('usePostRecurring prepends the transaction, replaces accounts, advances the t
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect((queryClient.getQueryData(queryKeys.transactions) as unknown[]).length).toBe(1)
   expect(queryClient.getQueryData<RecurringDto[]>(queryKeys.recurring)![0].nextPaymentAt).toBe('2026-09-30 00:00:00')
+})
+
+it('useCreateRecurring from a transaction links the cached source to the new template', async () => {
+  server.use(http.post('*/api/v1/recurring/create-recurring-transaction', () =>
+    HttpResponse.json({ success: true, message: '', data: { item: wireRecurring } })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.transactions, [
+    { id: 't-source', recurringId: null },
+    { id: 't-other', recurringId: null },
+  ])
+  const { result } = renderHook(() => useCreateRecurring(), { wrapper })
+  result.current.mutate({
+    id: 'op1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '50.5',
+    categoryId: 'c1', payeeId: null, tagId: null, description: 'rent',
+    schedule: 'monthly', nextPaymentAt: '2026-08-31 00:00:00', sourceTransactionId: 't-source',
+  })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(queryClient.getQueryData<RecurringDto[]>(queryKeys.recurring)![0].id).toBe('r1')
+  // the backend linked the source in the same write; the cache mirrors it
+  const txs = queryClient.getQueryData<{ id: string; recurringId: string | null }[]>(queryKeys.transactions)!
+  expect(txs.find((tx) => tx.id === 't-source')?.recurringId).toBe('r1')
+  expect(txs.find((tx) => tx.id === 't-other')?.recurringId).toBeNull()
 })
 
 it('useDeleteRecurring drops the template and severs cached transaction links', async () => {

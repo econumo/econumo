@@ -28,6 +28,9 @@ export interface RecurringFormState {
       choice must not be clobbered by a later schedule change — and for the
       from-scratch and edit flows, which have no anchor. */
   anchorDate: string | null
+  /** the source transaction's id when the template is created FROM one; sent
+      on create so the backend links that transaction to the new template */
+  sourceTransactionId: Id | null
 }
 
 const SCHEDULE_STEP: Record<RecurringSchedule, { days: number } | { months: number }> = {
@@ -79,6 +82,7 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
       schedule: rt.schedule,
       nextPaymentAt: rt.nextPaymentAt,
       anchorDate: null,
+      sourceTransactionId: null,
     }
   }
   const tx = params.fromTransaction
@@ -99,6 +103,7 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
       // interval after it, not today
       nextPaymentAt: nextFromAnchor(tx.date, 'monthly'),
       anchorDate: tx.date,
+      sourceTransactionId: tx.id,
     }
   }
   return {
@@ -115,6 +120,7 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
     schedule: 'monthly',
     nextPaymentAt: formatDateTime(new Date()),
     anchorDate: null,
+    sourceTransactionId: null,
   }
 }
 
@@ -132,6 +138,8 @@ export function buildRecurringPayload(form: RecurringFormState): CreateRecurring
     description: form.description || '',
     schedule: form.schedule,
     nextPaymentAt: form.nextPaymentAt,
+    // create-from-transaction only; edits never carry a source
+    ...(form.sourceTransactionId ? { sourceTransactionId: form.sourceTransactionId } : {}),
   }
 }
 

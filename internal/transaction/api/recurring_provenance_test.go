@@ -38,7 +38,8 @@ func TestCreateTransactionIgnoresClientSuppliedRecurringId(t *testing.T) {
 	tok := h.token(t)
 
 	// A forged recurringId in the create body must not reach the row: provenance
-	// is written only by the post-recurring-transaction path.
+	// is written only by the post-recurring-transaction path and the explicit
+	// create-from-transaction link.
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok,
 		createTxBody("e0000000-0000-0000-0000-0000000000f1", map[string]any{
 			"recurringId": "bbbbbbbb-0000-0000-0000-00000000bbbb",

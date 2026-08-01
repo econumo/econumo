@@ -20,6 +20,10 @@ func (s *Service) CreateRecurringTransaction(ctx context.Context, userID vo.Id, 
 	if err != nil {
 		return nil, err
 	}
+	sourceTxID, err := parseOptID(req.SourceTransactionId)
+	if err != nil {
+		return nil, err
+	}
 	st.ID = vo.NewId()
 	st.UserID = userID
 
@@ -40,6 +44,13 @@ func (s *Service) CreateRecurringTransaction(ctx context.Context, userID vo.Id, 
 		created = model.NewRecurringTransaction(st)
 		if serr := s.repo.Save(ctx, created); serr != nil {
 			return serr
+		}
+		// created FROM an existing transaction: attach the source as the series'
+		// first instance, atomically with the template itself
+		if sourceTxID != nil {
+			if lerr := s.creator.LinkTransactionToRecurring(ctx, userID, *sourceTxID, created.ID); lerr != nil {
+				return lerr
+			}
 		}
 		return s.ops.MarkHandled(ctx, opID, now)
 	}); err != nil {

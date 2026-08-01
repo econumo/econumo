@@ -260,6 +260,10 @@ type Querier interface {
 	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
+	// The one write that touches recurring_id on an existing row: an explicit
+	// "make recurring from this transaction" link. UpsertTransaction deliberately
+	// never updates the column, so the link needs its own statement.
+	LinkTransactionToRecurring(ctx context.Context, arg LinkTransactionToRecurringParams) error
 	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
