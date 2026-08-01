@@ -47,7 +47,7 @@ func TestRateProvider_AverageRates_SnapsToLatestMonth(t *testing.T) {
 	ctx := context.Background()
 	_, txm := setup(t)
 	lookup := currencyrepo.New("sqlite", txm)
-	p := currencyrepo.NewRateProvider("sqlite", txm, lookup, "USD")
+	p := currencyrepo.NewRateProvider("sqlite", txm, lookup, usdID)
 
 	// Period covering all of 2026; latest rate date is 2026-01-20, so the period
 	// snaps to Jan 2026 and AVG(EUR) = (0.90 + 0.92)/2 = 0.91. The Dec row is
@@ -96,7 +96,7 @@ func TestRateProvider_AverageRates_IncludesFirstOfMonth(t *testing.T) {
 	} {
 		f.Rate(fixture.Rate{ID: r.id, CurrencyID: eurID, BaseCurrencyID: usdID, Rate: r.rate, PublishedAt: r.date})
 	}
-	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), "USD")
+	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), usdID)
 
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
@@ -119,7 +119,7 @@ func TestRateProvider_AverageRates_IncludesFirstOfMonth(t *testing.T) {
 func TestRateProvider_SnappedRatePeriod(t *testing.T) {
 	ctx := context.Background()
 	_, txm := setup(t) // seed has latest rate 2026-01-20
-	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), "USD")
+	p := currencyrepo.NewRateProvider("sqlite", txm, currencyrepo.New("sqlite", txm), usdID)
 
 	// Request a far-future period; it must snap back to Jan 2026.
 	start := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)

@@ -260,7 +260,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// removes budget memberships (access + seeded records) via RemoveMember.
 	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, cfg.CurrencyBase)
+	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, base.ID)
 	convertor := appcurrency.NewConvertor(rateProvider)
 	budgetSvc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,

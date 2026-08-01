@@ -289,7 +289,7 @@ func TestCurrencyReadRepo_LatestRateListView(t *testing.T) {
 func TestRateProvider_FractionDigitsAndBase(t *testing.T) {
 	db := dbtest.New(t)
 	lookup := currencyrepo.New(db.Engine, db.TX)
-	provider := currencyrepo.NewRateProvider(db.Engine, db.TX, lookup, "USD")
+	provider := currencyrepo.NewRateProvider(db.Engine, db.TX, lookup, seededUSD)
 	ctx := context.Background()
 
 	baseID, err := provider.BaseCurrencyID(ctx)

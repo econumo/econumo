@@ -37,17 +37,17 @@ type providerQuerier interface {
 
 // RateProvider implements domain/currency.RateProvider.
 type RateProvider struct {
-	tx       *backend.TxManager
-	q        providerQuerier
-	lookup   *Lookup
-	baseCode string
+	tx     *backend.TxManager
+	q      providerQuerier
+	lookup *Lookup
+	baseID string
 }
 
 var _ domcurrency.RateProvider = (*RateProvider)(nil)
 
-// NewRateProvider wires the provider. baseCode is config.CurrencyBase (e.g.
-// "USD"); the lookup resolves base id + fraction digits.
-func NewRateProvider(driver string, tx *backend.TxManager, lookup *Lookup, baseCode string) *RateProvider {
+// NewRateProvider wires the provider. baseID is the boot-resolved base
+// currency id; the lookup resolves fraction digits.
+func NewRateProvider(driver string, tx *backend.TxManager, lookup *Lookup, baseID string) *RateProvider {
 	var q providerQuerier
 	switch driver {
 	case "sqlite":
@@ -57,18 +57,14 @@ func NewRateProvider(driver string, tx *backend.TxManager, lookup *Lookup, baseC
 	default:
 		panic("currencyrepo: unknown database driver " + driver)
 	}
-	return &RateProvider{tx: tx, q: q, lookup: lookup, baseCode: baseCode}
+	return &RateProvider{tx: tx, q: q, lookup: lookup, baseID: baseID}
 }
 
 func (p *RateProvider) db(ctx context.Context) backend.DBTX { return p.tx.Querier(ctx) }
 
-// BaseCurrencyID resolves the base currency's id.
+// BaseCurrencyID returns the boot-resolved base currency's id.
 func (p *RateProvider) BaseCurrencyID(ctx context.Context) (vo.Id, error) {
-	id, err := p.lookup.GetIDByCode(ctx, p.baseCode)
-	if err != nil {
-		return vo.Id{}, err
-	}
-	return vo.ParseId(id)
+	return vo.ParseId(p.baseID)
 }
 
 // FractionDigits returns a currency's fraction digits.
