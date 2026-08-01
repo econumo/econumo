@@ -55,7 +55,7 @@ func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {
 		},
 		hidden: []string{"global-hidden"},
 	}
-	svc := appcurrency.NewReadService(fake, "USD")
+	svc := appcurrency.NewReadService(fake, model.BaseCurrency{ID: "global-usd", Code: "USD"})
 
 	res, err := svc.GetCurrencyList(context.Background(), uid)
 	if err != nil {
@@ -96,7 +96,7 @@ func TestReadService_GetCurrencyRateList_FiltersToVisible(t *testing.T) {
 			{CurrencyID: "invisible-eur", BaseCurrencyID: "visible-usd", Rate: "0.90", UpdatedAt: "2026-07-15 00:00:00"},
 		},
 	}
-	svc := appcurrency.NewReadService(fake, "USD")
+	svc := appcurrency.NewReadService(fake, model.BaseCurrency{ID: "visible-usd", Code: "USD"})
 
 	res, err := svc.GetCurrencyRateList(context.Background(), uid)
 	if err != nil {
@@ -128,7 +128,7 @@ func TestReadService_GetCurrencyRateList_SynthesizesBaseRate(t *testing.T) {
 			{CurrencyID: "pts-id", BaseCurrencyID: "usd-id", Rate: "10", UpdatedAt: "2026-07-30 00:00:00"},
 		},
 	}
-	svc := appcurrency.NewReadService(fake, "USD")
+	svc := appcurrency.NewReadService(fake, model.BaseCurrency{ID: "usd-id", Code: "USD"})
 
 	res, err := svc.GetCurrencyRateList(context.Background(), uid)
 	if err != nil {
@@ -168,7 +168,7 @@ func TestReadService_GetCurrencyRateList_NoSyntheticWhenBaseRateStored(t *testin
 			{CurrencyID: "usd-id", BaseCurrencyID: "usd-id", Rate: "1", UpdatedAt: "2026-07-30 00:00:00"},
 		},
 	}
-	svc := appcurrency.NewReadService(fake, "USD")
+	svc := appcurrency.NewReadService(fake, model.BaseCurrency{ID: "usd-id", Code: "USD"})
 
 	res, err := svc.GetCurrencyRateList(context.Background(), uid)
 	if err != nil {
@@ -193,7 +193,7 @@ func TestReadService_GetCurrencyRateList_NoSyntheticWithoutAnyRates(t *testing.T
 			{ID: "usd-id", Code: "USD", Symbol: "$"},
 		},
 	}
-	svc := appcurrency.NewReadService(fake, "USD")
+	svc := appcurrency.NewReadService(fake, model.BaseCurrency{ID: "usd-id", Code: "USD"})
 
 	res, err := svc.GetCurrencyRateList(context.Background(), uid)
 	if err != nil {

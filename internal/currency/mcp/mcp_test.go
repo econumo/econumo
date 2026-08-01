@@ -8,6 +8,7 @@ import (
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/mcptest"
@@ -15,7 +16,7 @@ import (
 
 func newCurrencyReadService(t *testing.T, db *dbtest.DB) *appcurrency.ReadService {
 	t.Helper()
-	return appcurrency.NewReadService(currencyrepo.NewReadRepo(db.Engine, db.TX), "USD")
+	return appcurrency.NewReadService(currencyrepo.NewReadRepo(db.Engine, db.TX), model.BaseCurrency{ID: "dffc2a06-6f29-4704-8575-31709adee926", Code: "USD"})
 }
 
 func TestListCurrenciesTool(t *testing.T) {

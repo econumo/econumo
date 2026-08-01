@@ -18,6 +18,7 @@ import (
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -81,7 +82,7 @@ func newHarness(t *testing.T) *harness {
 	profile := &fakeProfileCurrency{code: "EUR"}
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, CurrencyBase: "USD"}
-	readSvc := appcurrency.NewReadService(readRepo, cfg.CurrencyBase)
+	readSvc := appcurrency.NewReadService(readRepo, model.BaseCurrency{ID: usdID, Code: cfg.CurrencyBase})
 	manageSvc := appcurrency.NewManageService(manageRepo, tdb.TX, opGuard, clk, profile, cfg.CurrencyBase)
 	handlers := handlercurrency.NewHandlers(readSvc, manageSvc)
 

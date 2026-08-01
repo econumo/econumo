@@ -34,17 +34,17 @@ type ReadModel interface {
 	LatestCurrencyRateListView(ctx context.Context) ([]model.CurrencyRateViewRow, error)
 }
 
-// ReadService serves both currency read endpoints. baseCode is the instance
-// base currency code (cfg.CurrencyBase), needed to synthesize the base's own
-// rate row in GetCurrencyRateList.
+// ReadService serves both currency read endpoints. base is the boot-resolved
+// instance base currency, needed to synthesize the base's own rate row in
+// GetCurrencyRateList.
 type ReadService struct {
-	read     ReadModel
-	baseCode string
+	read ReadModel
+	base model.BaseCurrency
 }
 
 // NewReadService wires the read service.
-func NewReadService(read ReadModel, baseCode string) *ReadService {
-	return &ReadService{read: read, baseCode: baseCode}
+func NewReadService(read ReadModel, base model.BaseCurrency) *ReadService {
+	return &ReadService{read: read, base: base}
 }
 
 // GetCurrencyList returns every currency visible to userID (globals + own +
@@ -124,12 +124,8 @@ func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*m
 		return nil, err
 	}
 	visibleSet := make(map[string]bool, len(visible))
-	baseID := ""
 	for _, v := range visible {
 		visibleSet[v.ID] = true
-		if v.UserID == nil && v.Code == s.baseCode {
-			baseID = v.ID
-		}
 	}
 	rows, err := s.read.LatestCurrencyRateListView(ctx)
 	if err != nil {
@@ -142,7 +138,7 @@ func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*m
 		if !visibleSet[r.CurrencyID] {
 			continue
 		}
-		if r.CurrencyID == baseID {
+		if r.CurrencyID == s.base.ID {
 			baseHasRate = true
 		}
 		if r.UpdatedAt > latest {
@@ -155,10 +151,10 @@ func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*m
 			UpdatedAt:      r.UpdatedAt,
 		})
 	}
-	if baseID != "" && !baseHasRate && len(items) > 0 {
+	if !baseHasRate && len(items) > 0 {
 		items = append(items, model.CurrencyRateResult{
-			CurrencyId:     baseID,
-			BaseCurrencyId: baseID,
+			CurrencyId:     s.base.ID,
+			BaseCurrencyId: s.base.ID,
 			Rate:           "1",
 			UpdatedAt:      latest,
 		})
