@@ -26,16 +26,22 @@ and `2026-08-01-profile-currency-id-design.md` (their semantics stand).
    `202608xx` steps — nothing is deployed). On released databases no custom
    currencies exist, so the fixed-rate backfill and archived→hidden copy
    have nothing to do and disappear entirely.
-5. **The migration runner gains `-- migrate:fk-off`** (first line of a
-   migration file): on SQLite the runner disables `foreign_keys` BEFORE the
-   transaction, applies the migration, re-enables, and fails unless
-   `PRAGMA foreign_key_check` is clean. This makes small single-table
-   rebuilds safe and retires the 317-line FK-closure dance as a pattern.
-   On PostgreSQL the directive is an inert comment.
+5. **Migrations write plain `PRAGMA foreign_keys = OFF;` / `ON;`
+   statements; the runner hoists them.** SQLite silently ignores this
+   pragma inside a transaction, and the runner wraps every migration in
+   one — so the runner recognizes `PRAGMA foreign_keys` statements and
+   executes OFF before BEGIN / ON after COMMIT on the pinned connection.
+   Whenever an OFF was hoisted, the runner runs `PRAGMA foreign_key_check`
+   after re-enabling and FAILS the migration on any violation. The SQL file
+   stays honest, self-describing SQL (empirically verified: sqlc v1.30
+   ignores PRAGMA statements in its schema input). This makes small
+   single-table rebuilds safe and retires the 317-line FK-closure dance as
+   a pattern. PostgreSQL migration files simply never contain the pragma.
 
 ## The squashed migration `20260730000000`
 
-sqlite (`-- migrate:fk-off`):
+sqlite (opens with `PRAGMA foreign_keys = OFF;`, closes with
+`PRAGMA foreign_keys = ON;`):
 - `CREATE TABLE currencies_new` in the FINAL shape: `id, code, symbol,
   created_at, name, fraction_digits, user_id (FK users, CASCADE), rate` —
   no table-level `UNIQUE(code)`, no `is_archived` (it never exists in this
@@ -104,10 +110,11 @@ database exists.
 
 ## Testing
 
-- Consolidated migration test (matrix above) on both engines; the fk-off
-  runner behavior gets its own runner-level test (fk-off migration that
+- Consolidated migration test (matrix above) on both engines; the pragma
+  hoisting gets its own runner-level test (a pragma-wrapped migration that
   would cascade under FK=ON preserves children; a migration that leaves a
-  dangling FK fails the post-check).
+  dangling FK fails the post-check; a migration without pragmas behaves
+  exactly as before).
 - Hide-own-custom happy path in apiparity (previously impossible to cover),
   `err:hide-default` for a custom default, `err:hide-foreign`; archive
   scenario calls removed; goldens regenerated once and inspected;
