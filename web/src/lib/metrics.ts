@@ -55,6 +55,7 @@ export const METRICS = {
   PAYEE_DELETE: 'appPayeeDelete',
   PAYEE_ARCHIVE: 'appPayeeArchive',
   PAYEE_UNARCHIVE: 'appPayeeUnarchive',
+  CLASSIFICATION_SEARCH: 'appClassificationSearch',
   BUDGET_CREATE: 'appBudgetCreate',
   BUDGET_UPDATE: 'appBudgetUpdate',
   BUDGET_DELETE: 'appBudgetDelete',

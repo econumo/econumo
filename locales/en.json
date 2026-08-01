@@ -6,6 +6,8 @@
     },
     "list": {
       "list_empty": "List is empty",
+      "search": "Search",
+      "search_empty": "Nothing found",
       "order_list": "Reorder list",
       "active_only": "Active only"
     },

@@ -38,6 +38,7 @@ export function CategoriesPage() {
         deleteTitle={t('classifications.categories.modals.delete.title')}
         items={own}
         storageKey="settings.categories.activeOnly"
+        analyticsType="category"
         sections={[
           { label: t('classifications.categories.forms.category.type.expense'), match: (c) => c.type === 'expense' },
           { label: t('classifications.categories.forms.category.type.income'), match: (c) => c.type === 'income' },

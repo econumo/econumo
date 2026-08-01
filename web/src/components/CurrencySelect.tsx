@@ -3,24 +3,10 @@ import { ChevronsUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { fuzzyMatch } from '@/lib/fuzzy'
 import { useCurrencies } from '@/features/currencies/queries'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-
-// Port of the Vue CurrencySelect: subsequence ("fuzzy") match on name/symbol/code.
-export function fuzzyMatch(str: string, pattern: string): boolean {
-  const p = pattern.toLowerCase()
-  const s = str.toLowerCase()
-  let patternIdx = 0
-  let strIdx = 0
-  while (patternIdx < p.length && strIdx < s.length) {
-    if (p[patternIdx] === s[strIdx]) {
-      patternIdx++
-    }
-    strIdx++
-  }
-  return patternIdx === p.length
-}
 
 // "USD, $, US Dollar" with duplicates removed, exactly like the Vue option label.
 export function fullCurrencyLabel(currency: CurrencyDto): string {

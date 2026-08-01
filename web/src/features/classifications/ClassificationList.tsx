@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ArrowDownUp, GripVertical, MoreVertical, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -10,6 +11,8 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { SortDialog } from '@/components/SortDialog'
 import { SortableList } from '@/components/SortableList'
+import { fuzzyMatch } from '@/lib/fuzzy'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { getChangedPositions } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -39,6 +42,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   items: T[]
   /** localStorage key for the active-only filter state */
   storageKey: string
+  /** entity name reported with the search analytics event */
+  analyticsType: string
   /** optional visual grouping (e.g. category income/expense) */
   sections?: ClassificationSection<T>[]
   showIcon?: boolean
@@ -57,6 +62,7 @@ export function ClassificationList<T extends ClassificationItem>({
   deleteTitle,
   items,
   storageKey,
+  analyticsType,
   sections,
   showIcon,
   onCreate,
@@ -73,10 +79,21 @@ export function ClassificationList<T extends ClassificationItem>({
   // compact rows open a bottom-sheet action menu instead of the tiny kebab
   const [sheetItem, setSheetItem] = useState<T | null>(null)
   const [activeOnly, setActiveOnly] = useState<boolean>(() => (getItem(storageKey) as boolean | null) ?? true)
+  const [query, setQuery] = useState('')
+  // one analytics event per visit, not one per keystroke
+  const searchTracked = useRef(false)
 
   const toggleActiveOnly = (value: boolean) => {
     setActiveOnly(value)
     setItem(storageKey, value)
+  }
+
+  const handleSearch = (value: string) => {
+    setQuery(value)
+    if (value.trim() && !searchTracked.current) {
+      searchTracked.current = true
+      trackEvent(METRICS.CLASSIFICATION_SEARCH, { type: analyticsType })
+    }
   }
 
   // Items archived from THIS screen stay in place (greyed, switch off) even
@@ -89,7 +106,10 @@ export function ClassificationList<T extends ClassificationItem>({
     onToggleArchive(item)
   }
 
-  const visible = activeOnly ? items.filter((item) => item.isArchived === 0 || stickyArchivedIds.has(item.id)) : items
+  const active = activeOnly ? items.filter((item) => item.isArchived === 0 || stickyArchivedIds.has(item.id)) : items
+  const trimmedQuery = query.trim()
+  const searching = trimmedQuery.length > 0
+  const visible = searching ? active.filter((item) => fuzzyMatch(item.name, trimmedQuery)) : active
 
   // Every list is group-shaped (tags/payees get one implicit group); captions
   // appear only when more than one group is actually visible.
@@ -128,6 +148,16 @@ export function ClassificationList<T extends ClassificationItem>({
     </Button>
   )
 
+  const searchField = (className: string) => (
+    <Input
+      aria-label={t('common.list.search')}
+      placeholder={t('common.list.search')}
+      className={`border-0 bg-econumo-card shadow-none ${className}`}
+      value={query}
+      onChange={(e) => handleSearch(e.target.value)}
+    />
+  )
+
   const filterControl = (
     <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground" title={t('common.list.active_only')}>
       <Switch aria-label={t('common.list.active_only')} checked={activeOnly} onCheckedChange={toggleActiveOnly} />
@@ -152,6 +182,7 @@ export function ClassificationList<T extends ClassificationItem>({
               {createLabel}
             </Button>
             <span className="ml-auto flex items-center gap-3">
+              {searchField('w-48')}
               {items.length > 1 ? reorderButton : null}
               {filterControl}
             </span>
@@ -162,13 +193,18 @@ export function ClassificationList<T extends ClassificationItem>({
       {info ? <InfoBox>{info}</InfoBox> : null}
       {isCompact ? (
         // compact toolbar row: reorder on the left, the active-only filter on the right
-        <div className="flex items-center justify-between pb-1">
-          {items.length > 1 ? reorderButton : <span />}
-          {filterControl}
+        <div className="flex flex-col gap-2 pb-1">
+          {searchField('')}
+          <div className="flex items-center justify-between">
+            {items.length > 1 ? reorderButton : <span />}
+            {filterControl}
+          </div>
         </div>
       ) : null}
       {visible.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
+        <p className="px-1 py-2 text-sm text-muted-foreground">
+          {searching ? t('common.list.search_empty') : t('common.list.list_empty')}
+        </p>
       ) : (
         visibleSections.map((section) => {
           const sectionItems = section.items
@@ -191,16 +227,19 @@ export function ClassificationList<T extends ClassificationItem>({
                     }`}
                     onClick={() => (isCompact ? setSheetItem(item) : setOpenMenuId(item.id))}
                   >
-                    <button
-                      type="button"
-                      aria-label={`drag ${item.name}`}
-                      className="cursor-grab touch-none text-muted-foreground"
-                      onClick={(e) => e.stopPropagation()}
-                      {...handle.attributes}
-                      {...(handle.listeners ?? {})}
-                    >
-                      <GripVertical className="size-4" />
-                    </button>
+                    {/* reordering a fuzzy-filtered subset is disorienting — handles return when the query clears */}
+                    {!searching ? (
+                      <button
+                        type="button"
+                        aria-label={`drag ${item.name}`}
+                        className="cursor-grab touch-none text-muted-foreground"
+                        onClick={(e) => e.stopPropagation()}
+                        {...handle.attributes}
+                        {...(handle.listeners ?? {})}
+                      >
+                        <GripVertical className="size-4" />
+                      </button>
+                    ) : null}
                     {showIcon ? <EntityIcon name={item.icon} className="text-base text-muted-foreground" /> : null}
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className={`truncate text-sm ${item.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={item.name}>
