@@ -22,18 +22,14 @@ export async function createCurrency(form: {
   name: string
   symbol?: string
   fractionDigits?: number
-  rate?: string
+  rate: string
 }): Promise<CurrencyListItemDto> {
   const response = await api.post<Envelope<{ item: CurrencyListItemDto }>>(apiUrl('/api/v1/currency/create-currency'), form)
   return response.data.data.item
 }
 
-export async function updateCurrency(form: { id: Id; name: string; symbol: string; fractionDigits: number }): Promise<void> {
+export async function updateCurrency(form: { id: Id; name: string; symbol: string; fractionDigits: number; rate: string }): Promise<void> {
   await api.post(apiUrl('/api/v1/currency/update-currency'), form)
-}
-
-export async function setCurrencyRate(form: { currencyId: Id; rate: string; date?: string }): Promise<void> {
-  await api.post(apiUrl('/api/v1/currency/set-currency-rate'), form)
 }
 
 export async function archiveCurrency(id: Id): Promise<void> {

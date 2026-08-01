@@ -5,13 +5,11 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { ClassificationList, type RowSwitchState } from '@/features/classifications/ClassificationList'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { CurrencyDialog } from './CurrencyDialog'
-import { RateDialog } from './RateDialog'
 import {
   useCurrencies,
   useCurrencyRates,
   useCreateCurrency,
   useUpdateCurrency,
-  useSetCurrencyRate,
   useArchiveCurrency,
   useUnarchiveCurrency,
   useDeleteCurrency,
@@ -31,7 +29,6 @@ export function CurrenciesPage() {
 
   const createCurrency = useCreateCurrency()
   const updateCurrency = useUpdateCurrency()
-  const setCurrencyRate = useSetCurrencyRate()
   const archiveCurrency = useArchiveCurrency()
   const unarchiveCurrency = useUnarchiveCurrency()
   const deleteCurrency = useDeleteCurrency()
@@ -39,9 +36,7 @@ export function CurrenciesPage() {
   const showCurrency = useShowCurrency()
 
   const [dialog, setDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
-  const [rateDialog, setRateDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
   const [error, setError] = useState<string | null>(null)
-  const [rateError, setRateError] = useState<string | null>(null)
 
   const own = currencies?.filter((c) => c.scope === 'own') ?? []
   const globals = currencies?.filter((c) => c.scope === 'global') ?? []
@@ -57,10 +52,6 @@ export function CurrenciesPage() {
   }
 
   const closeDialog = () => setDialog({ open: false, currency: null })
-  const closeRateDialog = () => {
-    setRateDialog({ open: false, currency: null })
-    setRateError(null)
-  }
 
   return (
     <>
@@ -77,9 +68,6 @@ export function CurrenciesPage() {
           { label: t('classifications.currencies.pages.settings.global_currencies'), match: (c) => c.scope === 'global' },
         ]}
         hasActions={(c) => c.scope === 'own'}
-        extraActions={(c) => [
-          { label: t('classifications.currencies.modals.rate.header'), onSelect: () => setRateDialog({ open: true, currency: c }) },
-        ]}
         meta={(c) => {
           const rate = c.scope === 'own' ? rateFor(c.id) : undefined
           return (
@@ -127,39 +115,24 @@ export function CurrenciesPage() {
       <CurrencyDialog
         open={dialog.open}
         currency={dialog.currency}
+        currentRate={dialog.currency ? rateFor(dialog.currency.id)?.rate : undefined}
         onClose={closeDialog}
         onSubmit={(form) => {
           setError(null)
           if (dialog.currency) {
             updateCurrency.mutate(
-              { id: dialog.currency.id, name: form.name, symbol: form.symbol, fractionDigits: form.fractionDigits },
+              { id: dialog.currency.id, name: form.name, symbol: form.symbol, fractionDigits: form.fractionDigits, rate: form.rate },
               { onSuccess: closeDialog, onError: (e) => setError(apiErrorMessage(e)) },
             )
           } else {
             createCurrency.mutate(
-              { code: form.code, name: form.name, symbol: form.symbol || undefined, fractionDigits: form.fractionDigits, rate: form.rate || undefined },
+              { code: form.code, name: form.name, symbol: form.symbol || undefined, fractionDigits: form.fractionDigits, rate: form.rate },
               { onSuccess: closeDialog, onError: (e) => setError(apiErrorMessage(e)) },
             )
           }
         }}
       />
 
-      <RateDialog
-        open={rateDialog.open}
-        currency={rateDialog.currency}
-        serverError={rateError}
-        onClose={closeRateDialog}
-        onSubmit={(form) => {
-          if (!rateDialog.currency) {
-            return
-          }
-          setRateError(null)
-          setCurrencyRate.mutate(
-            { currencyId: rateDialog.currency.id, rate: form.rate, date: form.date },
-            { onSuccess: closeRateDialog, onError: (e) => setRateError(apiErrorMessage(e)) },
-          )
-        }}
-      />
     </>
   )
 }

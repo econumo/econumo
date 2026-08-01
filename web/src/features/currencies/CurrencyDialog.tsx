@@ -18,11 +18,13 @@ export interface CurrencyDialogForm {
 interface CurrencyDialogProps {
   open: boolean
   currency?: CurrencyDto | null
+  /** the currency's current fixed rate, prefilled in edit mode */
+  currentRate?: string
   onClose: () => void
   onSubmit: (form: CurrencyDialogForm) => void
 }
 
-export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDialogProps) {
+export function CurrencyDialog({ open, currency, currentRate, onClose, onSubmit }: CurrencyDialogProps) {
   const { t } = useTranslation()
   const isNew = !currency
   const [code, setCode] = useState('')
@@ -31,6 +33,7 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
   const [fractionDigits, setFractionDigits] = useState(2)
   const [rate, setRate] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [rateError, setRateError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -38,14 +41,20 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
       setName(currency?.name ?? '')
       setSymbol(currency?.symbol ?? '')
       setFractionDigits(currency?.fractionDigits ?? 2)
-      setRate('')
+      setRate(currency ? (currentRate ?? '') : '')
       setError(null)
+      setRateError(null)
     }
-  }, [open, currency])
+  }, [open, currency, currentRate])
 
   const submit = () => {
     if (!isNotEmpty(name)) {
       setError(t('classifications.currencies.forms.currency.name.validation.required_field'))
+      return
+    }
+    // the fixed rate is mandatory: a custom currency cannot exist without one
+    if (!isNotEmpty(rate)) {
+      setRateError(t('common.validation.required_field'))
       return
     }
     onSubmit({ code, name, symbol, fractionDigits, rate })
@@ -111,12 +120,11 @@ export function CurrencyDialog({ open, currency, onClose, onSubmit }: CurrencyDi
           />
         </div>
 
-        {isNew ? (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="currency-rate">{t('classifications.currencies.forms.currency.rate.label')}</Label>
-            <Input id="currency-rate" value={rate} onChange={(e) => setRate(e.target.value)} />
-          </div>
-        ) : null}
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="currency-rate">{t('classifications.currencies.forms.currency.rate.label')}</Label>
+          <Input id="currency-rate" value={rate} onChange={(e) => setRate(e.target.value)} />
+          {rateError ? <p className="text-sm text-destructive">{rateError}</p> : null}
+        </div>
       </form>
     </ResponsiveDialog>
   )

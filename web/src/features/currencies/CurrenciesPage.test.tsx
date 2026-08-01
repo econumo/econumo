@@ -170,26 +170,27 @@ it("profile currency row's visibility switch is disabled", async () => {
   expect(sw).toHaveAttribute('title', 'Your profile currency is always visible')
 })
 
-it('set-rate dialog surfaces a server 400 inline and stays open', async () => {
+it('edit dialog prefills the fixed rate and posts it with update-currency', async () => {
+  let body: Record<string, unknown> | undefined
   server.use(
-    http.post('*/api/v1/currency/set-currency-rate', () =>
-      HttpResponse.json(
-        { success: false, message: 'Rate must be a positive number', code: 400, errors: {} },
-        { status: 400 },
-      ),
-    ),
+    http.post('*/api/v1/currency/update-currency', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
   )
   const user = userEvent.setup()
   renderPage()
   await screen.findByText('Points')
   await user.click(screen.getByRole('button', { name: 'actions Points' }))
-  const menu = await screen.findByRole('menu')
-  await user.click(within(menu).getByRole('menuitem', { name: 'Set exchange rate' }))
-  await screen.findByText('Set exchange rate')
-  await user.type(screen.getByLabelText('Exchange rate'), '-1')
-  await user.click(screen.getByRole('button', { name: 'Save rate' }))
-  expect(await screen.findByText('Rate must be a positive number')).toBeInTheDocument()
-  expect(screen.getByText('Set exchange rate')).toBeInTheDocument()
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+  const rateInput = await screen.findByLabelText('Exchange rate')
+  // prefilled from the rates query (cur-pts fixed rate 3.5)
+  expect(rateInput).toHaveValue('3.5')
+  await user.clear(rateInput)
+  await user.type(rateInput, '20')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body).toEqual({ id: 'cur-pts', name: 'Points', symbol: 'pt', fractionDigits: 0, rate: '20' })
 })
 
 it('own rows get a kebab with Edit / Set rate / Delete; global rows get none', async () => {
@@ -202,7 +203,7 @@ it('own rows get a kebab with Edit / Set rate / Delete; global rows get none', a
   await user.click(screen.getByRole('button', { name: 'actions Points' }))
   const menu = await screen.findByRole('menu')
   expect(within(menu).getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
-  expect(within(menu).getByRole('menuitem', { name: 'Set exchange rate' })).toBeInTheDocument()
+  expect(within(menu).queryByRole('menuitem', { name: 'Set exchange rate' })).toBeNull()
   expect(within(menu).getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
 })
 
@@ -213,7 +214,7 @@ it('compact: tapping an own row opens the action sheet; global rows do not react
   await user.click(await screen.findByText('Points'))
   const sheet = await screen.findByRole('dialog')
   expect(within(sheet).getByRole('button', { name: 'Edit' })).toBeInTheDocument()
-  expect(within(sheet).getByRole('button', { name: 'Set exchange rate' })).toBeInTheDocument()
+  expect(within(sheet).queryByRole('button', { name: 'Set exchange rate' })).toBeNull()
   expect(within(sheet).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   await user.keyboard('{Escape}')
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
@@ -235,11 +236,11 @@ it('no active-only filter: archived own currencies are always listed', async () 
   expect(screen.queryByRole('switch', { name: 'Active only' })).toBeNull()
 })
 
-it('set-rate dialog posts {currencyId, rate, date?}', async () => {
-  let body: Record<string, unknown> | undefined
+it('the rate is required: an empty rate blocks submit with a validation message', async () => {
+  let called = false
   server.use(
-    http.post('*/api/v1/currency/set-currency-rate', async ({ request }) => {
-      body = (await request.json()) as Record<string, unknown>
+    http.post('*/api/v1/currency/update-currency', () => {
+      called = true
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
   )
@@ -247,11 +248,10 @@ it('set-rate dialog posts {currencyId, rate, date?}', async () => {
   renderPage()
   await screen.findByText('Points')
   await user.click(screen.getByRole('button', { name: 'actions Points' }))
-  const menu = await screen.findByRole('menu')
-  await user.click(within(menu).getByRole('menuitem', { name: 'Set exchange rate' }))
-  await screen.findByText('Set exchange rate')
-  await user.type(screen.getByLabelText('Exchange rate'), '4.2')
-  await user.click(screen.getByRole('button', { name: 'Save rate' }))
-  await waitFor(() => expect(body).toBeDefined())
-  expect(body).toEqual({ currencyId: 'cur-pts', rate: '4.2' })
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+  const rateInput = await screen.findByLabelText('Exchange rate')
+  await user.clear(rateInput)
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  expect(await screen.findAllByText('Required field')).not.toHaveLength(0)
+  expect(called).toBe(false)
 })

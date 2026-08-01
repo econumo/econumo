@@ -1118,10 +1118,6 @@
         "edit": {
           "header": "Edit currency"
         },
-        "rate": {
-          "header": "Set exchange rate",
-          "submit": "Save rate"
-        },
         "delete": {
           "title": "Delete currency?"
         }
@@ -1145,9 +1141,6 @@
           },
           "rate": {
             "label": "Exchange rate"
-          },
-          "date": {
-            "label": "Date"
           }
         }
       }

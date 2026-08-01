@@ -34,16 +34,6 @@ export function useUpdateCurrency() {
   })
 }
 
-export function useSetCurrencyRate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: currencyApi.setCurrencyRate,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.currencyRates })
-    },
-  })
-}
 
 export function useArchiveCurrency() {
   const queryClient = useQueryClient()
