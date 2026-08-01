@@ -78,6 +78,8 @@ func (r *ReadRepo) UserCurrencyListView(ctx context.Context, userID string) ([]m
 			FractionDigits: c.FractionDigits,
 			UserID:         c.UserID,
 			IsArchived:     c.IsArchived,
+			Rate:           c.Rate,
+			CreatedAt:      c.CreatedAt,
 		})
 	}
 	return out, nil

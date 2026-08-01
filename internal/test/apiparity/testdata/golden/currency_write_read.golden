@@ -10,16 +10,13 @@
 == err:create-duplicate-code POST /api/v1/currency/create-currency [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"code":["Currency already exists"]}}
 
+== err:create-missing-rate POST /api/v1/currency/create-currency [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"rate":["This value should not be blank."]}}
+
 == update-currency POST /api/v1/currency/update-currency [owner] -> 200
 {"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isArchived":0,"isHidden":0}}}
 
 == err:update-foreign POST /api/v1/currency/update-currency [guest] -> 403
-{"success":false,"message":"","code":0,"errors":[]}
-
-== set-currency-rate POST /api/v1/currency/set-currency-rate [owner] -> 200
-{"success":true,"message":"","data":{}}
-
-== err:set-rate-global POST /api/v1/currency/set-currency-rate [owner] -> 403
 {"success":false,"message":"","code":0,"errors":[]}
 
 == archive-currency POST /api/v1/currency/archive-currency [owner] -> 200

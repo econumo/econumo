@@ -26,7 +26,6 @@ func intPtr(i int) *int { return &i }
 type fakeManageRepo struct {
 	records map[string]model.CurrencyRecord
 	usage   map[string]int64
-	rates   []model.RateRow
 	hidden  map[string]bool
 }
 
@@ -101,11 +100,6 @@ func (f *fakeManageRepo) CountCurrencyUsage(ctx context.Context, id, code string
 	return f.usage[id], nil
 }
 
-func (f *fakeManageRepo) UpsertRate(ctx context.Context, r model.RateRow) error {
-	f.rates = append(f.rates, r)
-	return nil
-}
-
 func (f *fakeManageRepo) HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error {
 	f.hidden[userID+"|"+currencyID] = true
 	return nil
@@ -168,7 +162,7 @@ func TestCreateCurrency_HappyPath(t *testing.T) {
 	repo := newFakeManageRepo()
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
-	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points"}
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Rate: strPtr("1")}
 
 	res, err := svc.CreateCurrency(context.Background(), uid, req)
 	if err != nil {
@@ -193,11 +187,15 @@ func TestCreateCurrency_HappyPath(t *testing.T) {
 	if rec.UserID == nil || *rec.UserID != manageMeID {
 		t.Errorf("persisted UserID = %v, want %s", rec.UserID, manageMeID)
 	}
+	if rec.Rate == nil || *rec.Rate != "1" {
+		t.Errorf("persisted Rate = %v, want the fixed rate 1", rec.Rate)
+	}
 }
 
-func TestCreateCurrency_WithInitialRate(t *testing.T) {
+// The fixed rate lives ON the currency record: no rate rows are ever written
+// for customs.
+func TestCreateCurrency_StoresFixedRate(t *testing.T) {
 	repo := newFakeManageRepo()
-	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$", FractionDigits: 2}
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
 	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Rate: strPtr("1.5")}
@@ -206,23 +204,25 @@ func TestCreateCurrency_WithInitialRate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCurrency: %v", err)
 	}
-	if len(repo.rates) != 1 {
-		t.Fatalf("rates upserted = %d, want 1", len(repo.rates))
+	rec := repo.records[res.Item.Id]
+	if rec.Rate == nil || *rec.Rate != "1.5" {
+		t.Fatalf("persisted Rate = %v, want 1.5", rec.Rate)
 	}
-	rr := repo.rates[0]
-	if rr.CurrencyID != res.Item.Id {
-		t.Errorf("rate CurrencyID = %q, want %q", rr.CurrencyID, res.Item.Id)
+}
+
+// The rate is mandatory: a custom currency without one cannot exist.
+func TestCreateCurrency_MissingRate(t *testing.T) {
+	repo := newFakeManageRepo()
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points"}
+
+	_, err := svc.CreateCurrency(context.Background(), uid, req)
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
 	}
-	if rr.BaseCurrencyID != "global-usd" {
-		t.Errorf("rate BaseCurrencyID = %q, want global-usd", rr.BaseCurrencyID)
-	}
-	if rr.Rate != "1.5" {
-		t.Errorf("rate Rate = %q, want 1.5", rr.Rate)
-	}
-	wantDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
-	if !rr.Date.Equal(wantDate) {
-		t.Errorf("rate Date = %v, want %v", rr.Date, wantDate)
-	}
+	assertField(t, v, "rate", "This value should not be blank.")
 }
 
 func TestCreateCurrency_BadCode(t *testing.T) {
@@ -231,7 +231,7 @@ func TestCreateCurrency_BadCode(t *testing.T) {
 			repo := newFakeManageRepo()
 			svc := newManageSvc(repo, &fakeOps{}, manageNow)
 			uid := vo.MustParseId(manageMeID)
-			req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: code, Name: "X"}
+			req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: code, Name: "X", Rate: strPtr("1")}
 
 			_, err := svc.CreateCurrency(context.Background(), uid, req)
 			v, ok := errs.AsValidation(err)
@@ -248,7 +248,7 @@ func TestCreateCurrency_DuplicateOwnCode(t *testing.T) {
 	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
-	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points"}
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Rate: strPtr("1")}
 
 	_, err := svc.CreateCurrency(context.Background(), uid, req)
 	v, ok := errs.AsValidation(err)
@@ -263,7 +263,7 @@ func TestCreateCurrency_CollidesWithGlobalCode(t *testing.T) {
 	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
-	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "usd", Name: "US Dollar"}
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "usd", Name: "US Dollar", Rate: strPtr("1")}
 
 	_, err := svc.CreateCurrency(context.Background(), uid, req)
 	v, ok := errs.AsValidation(err)
@@ -277,7 +277,7 @@ func TestCreateCurrency_NameLength(t *testing.T) {
 	repo := newFakeManageRepo()
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
-	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: strings.Repeat("a", 65)}
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: strings.Repeat("a", 65), Rate: strPtr("1")}
 
 	_, err := svc.CreateCurrency(context.Background(), uid, req)
 	v, ok := errs.AsValidation(err)
@@ -291,7 +291,7 @@ func TestCreateCurrency_SymbolLength(t *testing.T) {
 	repo := newFakeManageRepo()
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
-	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Symbol: strPtr(strings.Repeat("a", 13))}
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Symbol: strPtr(strings.Repeat("a", 13)), Rate: strPtr("1")}
 
 	_, err := svc.CreateCurrency(context.Background(), uid, req)
 	v, ok := errs.AsValidation(err)
@@ -306,7 +306,7 @@ func TestCreateCurrency_NameLength_MultibyteWithinLimit(t *testing.T) {
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
 	name := strings.Repeat("я", 33)
-	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: name}
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: name, Rate: strPtr("1")}
 
 	res, err := svc.CreateCurrency(context.Background(), uid, req)
 	if err != nil {
@@ -322,7 +322,7 @@ func TestCreateCurrency_SymbolLength_MultibyteWithinLimit(t *testing.T) {
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
 	symbol := "₽₽₽₽₽"
-	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Symbol: strPtr(symbol)}
+	req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", Symbol: strPtr(symbol), Rate: strPtr("1")}
 
 	res, err := svc.CreateCurrency(context.Background(), uid, req)
 	if err != nil {
@@ -338,7 +338,7 @@ func TestCreateCurrency_FractionDigitsRange(t *testing.T) {
 		repo := newFakeManageRepo()
 		svc := newManageSvc(repo, &fakeOps{}, manageNow)
 		uid := vo.MustParseId(manageMeID)
-		req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", FractionDigits: intPtr(d)}
+		req := model.CreateCurrencyRequest{Id: vo.NewId().String(), Code: "pts", Name: "Points", FractionDigits: intPtr(d), Rate: strPtr("1")}
 
 		_, err := svc.CreateCurrency(context.Background(), uid, req)
 		v, ok := errs.AsValidation(err)
@@ -373,7 +373,7 @@ func TestCreateCurrency_DuplicateOperation(t *testing.T) {
 	svc := newManageSvc(repo, ops, manageNow)
 	uid := vo.MustParseId(manageMeID)
 	opID := vo.NewId().String()
-	req := model.CreateCurrencyRequest{Id: opID, Code: "pts", Name: "Points"}
+	req := model.CreateCurrencyRequest{Id: opID, Code: "pts", Name: "Points", Rate: strPtr("1")}
 
 	if _, err := svc.CreateCurrency(context.Background(), uid, req); err != nil {
 		t.Fatalf("first CreateCurrency: %v", err)
@@ -393,7 +393,7 @@ func TestUpdateCurrency_HappyPath(t *testing.T) {
 	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", FractionDigits: 2, UserID: strPtr(manageMeID)}
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
-	req := model.UpdateCustomCurrencyRequest{Id: "own-pts", Name: "Reward Points", Symbol: "RP", FractionDigits: 0}
+	req := model.UpdateCustomCurrencyRequest{Id: "own-pts", Name: "Reward Points", Symbol: "RP", FractionDigits: 0, Rate: "2.5"}
 
 	res, err := svc.UpdateCurrency(context.Background(), uid, req)
 	if err != nil {
@@ -406,6 +406,26 @@ func TestUpdateCurrency_HappyPath(t *testing.T) {
 	if rec.Symbol != "RP" || rec.FractionDigits != 0 {
 		t.Errorf("persisted record = %+v, want updated fields", rec)
 	}
+	if rec.Rate == nil || *rec.Rate != "2.5" {
+		t.Errorf("persisted Rate = %v, want 2.5 (update re-values history)", rec.Rate)
+	}
+}
+
+// Update is a full replace and the rate is part of it — omitting it is a
+// validation error, never a clear.
+func TestUpdateCurrency_MissingRate(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", FractionDigits: 2, UserID: strPtr(manageMeID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.UpdateCustomCurrencyRequest{Id: "own-pts", Name: "Reward Points", Symbol: "RP", FractionDigits: 0}
+
+	_, err := svc.UpdateCurrency(context.Background(), uid, req)
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	assertField(t, v, "rate", "This value should not be blank.")
 }
 
 func TestUpdateCurrency_NotOwner(t *testing.T) {
@@ -419,7 +439,7 @@ func TestUpdateCurrency_NotOwner(t *testing.T) {
 			repo.records[rec.ID] = rec
 			svc := newManageSvc(repo, &fakeOps{}, manageNow)
 			uid := vo.MustParseId(manageMeID)
-			req := model.UpdateCustomCurrencyRequest{Id: rec.ID, Name: "X", Symbol: "X", FractionDigits: 2}
+			req := model.UpdateCustomCurrencyRequest{Id: rec.ID, Name: "X", Symbol: "X", FractionDigits: 2, Rate: "2.5"}
 
 			_, err := svc.UpdateCurrency(context.Background(), uid, req)
 			ad, ok := errs.AsAccessDenied(err)
@@ -437,7 +457,7 @@ func TestUpdateCurrency_NotFound(t *testing.T) {
 	repo := newFakeManageRepo()
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
 	uid := vo.MustParseId(manageMeID)
-	req := model.UpdateCustomCurrencyRequest{Id: "missing", Name: "X", Symbol: "X", FractionDigits: 2}
+	req := model.UpdateCustomCurrencyRequest{Id: "missing", Name: "X", Symbol: "X", FractionDigits: 2, Rate: "2.5"}
 
 	_, err := svc.UpdateCurrency(context.Background(), uid, req)
 	if _, ok := errs.AsNotFound(err); !ok {
@@ -522,112 +542,6 @@ func TestDeleteCurrency_NotOwner(t *testing.T) {
 	_, err := svc.DeleteCurrency(context.Background(), uid, model.DeleteCurrencyRequest{Id: "foreign-pts"})
 	if _, ok := errs.AsAccessDenied(err); !ok {
 		t.Fatalf("err = %v, want *AccessDeniedError", err)
-	}
-}
-
-func TestSetCurrencyRate_HappyPathDefaultDate(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "1.5"}
-
-	if _, err := svc.SetCurrencyRate(context.Background(), uid, req); err != nil {
-		t.Fatalf("SetCurrencyRate: %v", err)
-	}
-	if len(repo.rates) != 1 {
-		t.Fatalf("rates upserted = %d, want 1", len(repo.rates))
-	}
-	rr := repo.rates[0]
-	if rr.CurrencyID != "own-pts" || rr.BaseCurrencyID != "global-usd" || rr.Rate != "1.5" {
-		t.Errorf("rate = %+v, want CurrencyID=own-pts BaseCurrencyID=global-usd Rate=1.5", rr)
-	}
-	wantDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
-	if !rr.Date.Equal(wantDate) {
-		t.Errorf("rate Date = %v, want %v", rr.Date, wantDate)
-	}
-}
-
-func TestSetCurrencyRate_ExplicitDate(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "1.5", Date: strPtr("2026-01-15")}
-
-	if _, err := svc.SetCurrencyRate(context.Background(), uid, req); err != nil {
-		t.Fatalf("SetCurrencyRate: %v", err)
-	}
-	wantDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
-	if !repo.rates[0].Date.Equal(wantDate) {
-		t.Errorf("rate Date = %v, want %v", repo.rates[0].Date, wantDate)
-	}
-}
-
-func TestSetCurrencyRate_BadDate(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "1.5", Date: strPtr("15/01/2026")}
-
-	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
-	v, ok := errs.AsValidation(err)
-	if !ok {
-		t.Fatalf("err = %v, want *ValidationError", err)
-	}
-	assertField(t, v, "date", "Date is not valid")
-}
-
-func TestSetCurrencyRate_BadRate(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-	req := model.SetCurrencyRateRequest{CurrencyId: "own-pts", Rate: "0"}
-
-	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
-	v, ok := errs.AsValidation(err)
-	if !ok {
-		t.Fatalf("err = %v, want *ValidationError", err)
-	}
-	assertField(t, v, "rate", "Rate must be a positive number")
-}
-
-func TestSetCurrencyRate_GlobalTarget(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD", Symbol: "$"}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-	req := model.SetCurrencyRateRequest{CurrencyId: "global-usd", Rate: "1.5"}
-
-	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
-	ad, ok := errs.AsAccessDenied(err)
-	if !ok {
-		t.Fatalf("err = %v, want *AccessDeniedError", err)
-	}
-	if ad.Msg != "" {
-		t.Errorf("Msg = %q, want empty", ad.Msg)
-	}
-}
-
-func TestSetCurrencyRate_ForeignTarget(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["foreign-pts"] = model.CurrencyRecord{ID: "foreign-pts", Code: "GEM", Symbol: "GEM", UserID: strPtr(manageOtherID)}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-	req := model.SetCurrencyRateRequest{CurrencyId: "foreign-pts", Rate: "1.5"}
-
-	_, err := svc.SetCurrencyRate(context.Background(), uid, req)
-	ad, ok := errs.AsAccessDenied(err)
-	if !ok {
-		t.Fatalf("err = %v, want *AccessDeniedError", err)
-	}
-	if ad.Msg != "" {
-		t.Errorf("Msg = %q, want empty", ad.Msg)
 	}
 }
 

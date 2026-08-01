@@ -2,6 +2,7 @@ package currency
 
 import (
 	"context"
+	"strings"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -20,18 +21,26 @@ func (s *ManageService) UpdateCurrency(ctx context.Context, userID vo.Id, req mo
 	if err := validateFractionDigits(req.FractionDigits); err != nil {
 		return nil, err
 	}
+	if strings.TrimSpace(req.Rate) == "" {
+		return nil, errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "rate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if err := validateRate(req.Rate); err != nil {
+		return nil, err
+	}
 	var rec model.CurrencyRecord
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		r, lerr := s.ownedRecord(ctx, req.Id, userID)
 		if lerr != nil {
 			return lerr
 		}
-		if uerr := s.repo.UpdateCurrencyDetails(ctx, r.ID, name, symbol, req.FractionDigits, r.Rate); uerr != nil {
+		if uerr := s.repo.UpdateCurrencyDetails(ctx, r.ID, name, symbol, req.FractionDigits, &req.Rate); uerr != nil {
 			return uerr
 		}
 		r.Name = &name
 		r.Symbol = symbol
 		r.FractionDigits = req.FractionDigits
+		r.Rate = &req.Rate
 		rec = r
 		return nil
 	}); err != nil {

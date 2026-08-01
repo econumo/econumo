@@ -141,6 +141,7 @@ func init() {
 	register(Scenario{Name: "currency_write_read", Calls: func() []Call {
 		const opCreate = "cc000000-0000-0000-0000-0000000000f1"
 		const opCreate2 = "cc000000-0000-0000-0000-0000000000f2"
+		const opCreate3 = "cc000000-0000-0000-0000-0000000000f3"
 		var curID string
 		return []Call{
 			{Label: "create-currency", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
@@ -148,15 +149,13 @@ func init() {
 			{Label: "read-after-create", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "rates-after-create", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "err:create-duplicate-code", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
-				Body: map[string]any{"id": opCreate2, "code": "PTS", "name": "Points again"}},
+				Body: map[string]any{"id": opCreate2, "code": "PTS", "name": "Points again", "rate": "3"}},
+			{Label: "err:create-missing-rate", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
+				Body: map[string]any{"id": opCreate3, "code": "PTX", "name": "No rate"}},
 			{Label: "update-currency", Method: "POST", Path: "/api/v1/currency/update-currency", Auth: "owner",
-				Body: map[string]any{"id": &curID, "name": "Kid points", "symbol": "kp", "fractionDigits": 2}},
+				Body: map[string]any{"id": &curID, "name": "Kid points", "symbol": "kp", "fractionDigits": 2, "rate": "120.5"}},
 			{Label: "err:update-foreign", Method: "POST", Path: "/api/v1/currency/update-currency", Auth: "guest",
-				Body: map[string]any{"id": &curID, "name": "Hijack", "symbol": "x", "fractionDigits": 2}},
-			{Label: "set-currency-rate", Method: "POST", Path: "/api/v1/currency/set-currency-rate", Auth: "owner",
-				Body: map[string]any{"currencyId": &curID, "rate": "120.5", "date": "2026-01-15"}},
-			{Label: "err:set-rate-global", Method: "POST", Path: "/api/v1/currency/set-currency-rate", Auth: "owner",
-				Body: map[string]any{"currencyId": USD, "rate": "2"}},
+				Body: map[string]any{"id": &curID, "name": "Hijack", "symbol": "x", "fractionDigits": 2, "rate": "1"}},
 			{Label: "archive-currency", Method: "POST", Path: "/api/v1/currency/archive-currency", Auth: "owner", Body: map[string]any{"id": &curID}},
 			{Label: "read-after-archive", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "unarchive-currency", Method: "POST", Path: "/api/v1/currency/unarchive-currency", Auth: "owner", Body: map[string]any{"id": &curID}},

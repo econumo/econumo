@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -149,6 +150,26 @@ func (s *ReadService) GetCurrencyRateList(ctx context.Context, userID vo.Id) (*m
 			BaseCurrencyId: r.BaseCurrencyID,
 			Rate:           r.Rate,
 			UpdatedAt:      r.UpdatedAt,
+		})
+	}
+	// Custom currencies carry ONE fixed rate on the currency row (no dated
+	// history); serving it here keeps this endpoint every client's single
+	// conversion source. updatedAt is the currency's creation time — cosmetic,
+	// since a fixed rate has no publication date. NULL-rate legacy customs
+	// (created before the rate became mandatory) yield nothing.
+	for _, v := range visible {
+		if v.UserID == nil || v.Rate == nil {
+			continue
+		}
+		updatedAt := v.CreatedAt.Format(datetime.Layout)
+		if updatedAt > latest {
+			latest = updatedAt
+		}
+		items = append(items, model.CurrencyRateResult{
+			CurrencyId:     v.ID,
+			BaseCurrencyId: s.base.ID,
+			Rate:           vo.NewDecimal(*v.Rate).String(),
+			UpdatedAt:      updatedAt,
 		})
 	}
 	if !baseHasRate && len(items) > 0 {

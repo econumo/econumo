@@ -165,29 +165,6 @@ func (h *Handlers) DeleteCurrency(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// SetCurrencyRate handles POST /api/v1/currency/set-currency-rate (auth).
-//
-// @Summary     Set a custom currency's rate
-// @Description Upserts one dated rate for an owned custom currency against the instance base currency. Date defaults to today in the caller's timezone.
-// @Tags        Currency
-// @Accept      json
-// @Produce     json
-// @Param       request body     model.SetCurrencyRateRequest true "Set currency rate request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.SetCurrencyRateResult}
-// @Failure     400     {object} apidoc.JsonResponseError
-// @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     402     {object} apidoc.JsonResponseError
-// @Failure     403     {object} apidoc.JsonResponseError
-// @Failure     500     {object} apidoc.JsonResponseException
-// @Security    Bearer
-// @Router      /api/v1/currency/set-currency-rate [post]
-func (h *Handlers) SetCurrencyRate(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.SetCurrencyRateRequest) (*model.SetCurrencyRateResult, error) {
-		reqctx.AddLogAttr(ctx, "currency_id", req.CurrencyId)
-		return h.manage.SetCurrencyRate(ctx, userID, req)
-	})
-}
-
 // HideCurrency handles POST /api/v1/currency/hide-currency (auth).
 //
 // @Summary     Hide a global currency

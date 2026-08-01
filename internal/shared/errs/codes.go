@@ -66,7 +66,6 @@ const (
 	CodeCurrencySymbolLength        = "currency.symbol_length"
 	CodeCurrencyFractionDigitsRange = "currency.fraction_digits_range"
 	CodeCurrencyRateInvalid         = "currency.rate_invalid"
-	CodeCurrencyDateInvalid         = "currency.date_invalid"
 	CodeCurrencyNotAvailable        = "currency.not_available"
 	CodeCurrencyInUse               = "currency.in_use"
 	CodeCurrencyBaseImmutable       = "currency.base_immutable"
@@ -152,7 +151,6 @@ var AllCodes = []string{
 	CodeCurrencySymbolLength,
 	CodeCurrencyFractionDigitsRange,
 	CodeCurrencyRateInvalid,
-	CodeCurrencyDateInvalid,
 	CodeCurrencyNotAvailable,
 	CodeCurrencyInUse,
 	CodeCurrencyBaseImmutable,

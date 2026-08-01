@@ -1420,17 +1420,6 @@ definitions:
         description: '"" when the login sent no User-Agent'
         type: string
     type: object
-  model.SetCurrencyRateRequest:
-    properties:
-      currencyId:
-        type: string
-      date:
-        type: string
-      rate:
-        type: string
-    type: object
-  model.SetCurrencyRateResult:
-    type: object
   model.SetLimitRequest:
     properties:
       amount:
@@ -1692,6 +1681,8 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      rate:
         type: string
       symbol:
         type: string
@@ -4319,56 +4310,6 @@ paths:
       security:
       - Bearer: []
       summary: Hide a global currency
-      tags:
-      - Currency
-  /api/v1/currency/set-currency-rate:
-    post:
-      consumes:
-      - application/json
-      description: Upserts one dated rate for an owned custom currency against the
-        instance base currency. Date defaults to today in the caller's timezone.
-      parameters:
-      - description: Set currency rate request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.SetCurrencyRateRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.SetCurrencyRateResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Set a custom currency's rate
       tags:
       - Currency
   /api/v1/currency/show-currency:

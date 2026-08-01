@@ -4079,87 +4079,6 @@
                 }
             }
         },
-        "/api/v1/currency/set-currency-rate": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Upserts one dated rate for an owned custom currency against the instance base currency. Date defaults to today in the caller's timezone.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Currency"
-                ],
-                "summary": "Set a custom currency's rate",
-                "parameters": [
-                    {
-                        "description": "Set currency rate request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.SetCurrencyRateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.SetCurrencyRateResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
-                        }
-                    },
-                    "402": {
-                        "description": "Payment Required",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/apidoc.JsonResponseException"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/currency/show-currency": {
             "post": {
                 "security": [
@@ -10277,23 +10196,6 @@
                 }
             }
         },
-        "model.SetCurrencyRateRequest": {
-            "type": "object",
-            "properties": {
-                "currencyId": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "rate": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.SetCurrencyRateResult": {
-            "type": "object"
-        },
         "model.SetLimitRequest": {
             "type": "object",
             "properties": {
@@ -10696,6 +10598,9 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "rate": {
                     "type": "string"
                 },
                 "symbol": {

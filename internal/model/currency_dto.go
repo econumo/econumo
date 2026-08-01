@@ -75,6 +75,9 @@ func (r CreateCurrencyRequest) Validate() error {
 	if strings.TrimSpace(r.Name) == "" {
 		fields = append(fields, errs.FieldError{Key: "name", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
+	if r.Rate == nil || strings.TrimSpace(*r.Rate) == "" {
+		fields = append(fields, errs.FieldError{Key: "rate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
 	}
@@ -94,6 +97,7 @@ type UpdateCustomCurrencyRequest struct {
 	Name           string `json:"name"`
 	Symbol         string `json:"symbol"`
 	FractionDigits int    `json:"fractionDigits"`
+	Rate           string `json:"rate"`
 }
 
 func (r UpdateCustomCurrencyRequest) Validate() error {
@@ -106,6 +110,9 @@ func (r UpdateCustomCurrencyRequest) Validate() error {
 	}
 	if strings.TrimSpace(r.Symbol) == "" {
 		fields = append(fields, errs.FieldError{Key: "symbol", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(r.Rate) == "" {
+		fields = append(fields, errs.FieldError{Key: "rate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -140,28 +147,6 @@ type DeleteCurrencyRequest struct {
 func (r DeleteCurrencyRequest) Validate() error { return validateBlankId(r.Id) }
 
 type DeleteCurrencyResult struct{}
-
-type SetCurrencyRateRequest struct {
-	CurrencyId string  `json:"currencyId"`
-	Rate       string  `json:"rate"`
-	Date       *string `json:"date"`
-}
-
-func (r SetCurrencyRateRequest) Validate() error {
-	var fields []errs.FieldError
-	if strings.TrimSpace(r.CurrencyId) == "" {
-		fields = append(fields, errs.FieldError{Key: "currencyId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
-	}
-	if strings.TrimSpace(r.Rate) == "" {
-		fields = append(fields, errs.FieldError{Key: "rate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
-	}
-	return nil
-}
-
-type SetCurrencyRateResult struct{}
 
 type HideCurrencyRequest struct {
 	Id string `json:"id"`

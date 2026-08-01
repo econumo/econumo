@@ -47,7 +47,6 @@ type manageQuerier interface {
 	SetCurrencyArchived(ctx context.Context, db backend.DBTX, p setCurrencyArchivedP) error
 	DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error
 	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id, code string) (int64, error)
-	UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p manageRateP) error
 	InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error
 	DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error
 }
@@ -152,19 +151,6 @@ func (r *ManageRepo) CountCurrencyUsage(ctx context.Context, id, code string) (i
 	return r.q.CountCurrencyUsage(ctx, r.db(ctx), id, code)
 }
 
-// UpsertRate mirrors WriteRepo.UpsertRate: the published date is truncated to
-// midnight UTC so the per-day ON CONFLICT upsert dedupes correctly.
-func (r *ManageRepo) UpsertRate(ctx context.Context, rr model.RateRow) error {
-	day := time.Date(rr.Date.Year(), rr.Date.Month(), rr.Date.Day(), 0, 0, 0, 0, time.UTC)
-	return r.q.UpsertCurrencyRate(ctx, r.db(ctx), manageRateP{
-		ID:             rr.ID,
-		CurrencyID:     rr.CurrencyID,
-		BaseCurrencyID: rr.BaseCurrencyID,
-		PublishedAt:    day,
-		Rate:           rr.Rate,
-	})
-}
-
 // HideCurrency marks a global currency hidden for a user. Idempotent: a
 // repeat call ON CONFLICTs into a no-op.
 func (r *ManageRepo) HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error {
@@ -229,10 +215,6 @@ func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DB
 	})
 }
 
-func (sqliteManageQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p manageRateP) error {
-	return sqlitegen.New(db).UpsertCurrencyRate(ctx, p)
-}
-
 func (sqliteManageQuerier) InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error {
 	return sqlitegen.New(db).InsertHiddenCurrency(ctx, p)
 }
@@ -285,10 +267,6 @@ func (pgsqlManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBT
 		Value:      &code,
 	})
 	return int64(n), err
-}
-
-func (pgsqlManageQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p manageRateP) error {
-	return pgsqlgen.New(db).UpsertCurrencyRate(ctx, pgsqlgen.UpsertCurrencyRateParams(p))
 }
 
 func (pgsqlManageQuerier) InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error {

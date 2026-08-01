@@ -205,12 +205,12 @@ func TestCreateCurrency_DuplicateCode_400(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	body := map[string]any{"id": "aaaaaaaa-0000-0000-0000-000000000003", "code": "PTS", "name": "Points"}
+	body := map[string]any{"id": "aaaaaaaa-0000-0000-0000-000000000003", "code": "PTS", "name": "Points", "rate": "3"}
 	if status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/create-currency", token, body); status != http.StatusOK {
 		t.Fatalf("first create status = %d, want 200; body: %s", status, env.raw)
 	}
 
-	dup := map[string]any{"id": "aaaaaaaa-0000-0000-0000-000000000004", "code": "PTS", "name": "Points again"}
+	dup := map[string]any{"id": "aaaaaaaa-0000-0000-0000-000000000004", "code": "PTS", "name": "Points again", "rate": "3"}
 	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/create-currency", token, dup)
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
@@ -230,7 +230,7 @@ func TestUpdateCurrency_Success(t *testing.T) {
 	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-0000-000000000001", seedUserID, "PTS", "pts", 2)
 
 	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/update-currency", token, map[string]any{
-		"id": "bbbbbbbb-0000-0000-0000-000000000001", "name": "Kid points", "symbol": "kp", "fractionDigits": 3,
+		"id": "bbbbbbbb-0000-0000-0000-000000000001", "name": "Kid points", "symbol": "kp", "fractionDigits": 3, "rate": "120.5",
 	})
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
@@ -245,7 +245,7 @@ func TestUpdateCurrency_NoToken_401(t *testing.T) {
 	h := newHarness(t)
 	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-0000-000000000002", seedUserID, "PTS", "pts", 2)
 	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/update-currency", "", map[string]any{
-		"id": "bbbbbbbb-0000-0000-0000-000000000002", "name": "X", "symbol": "x", "fractionDigits": 2,
+		"id": "bbbbbbbb-0000-0000-0000-000000000002", "name": "X", "symbol": "x", "fractionDigits": 2, "rate": "1",
 	})
 	if status != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401; body: %s", status, env.raw)
@@ -257,7 +257,7 @@ func TestUpdateCurrency_Foreign_403(t *testing.T) {
 	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-0000-000000000003", otherUserID, "PTS", "pts", 2)
 
 	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/update-currency", seedUserID, map[string]any{
-		"id": "bbbbbbbb-0000-0000-0000-000000000003", "name": "Hijack", "symbol": "x", "fractionDigits": 2,
+		"id": "bbbbbbbb-0000-0000-0000-000000000003", "name": "Hijack", "symbol": "x", "fractionDigits": 2, "rate": "1",
 	})
 	if status != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
@@ -349,39 +349,19 @@ func TestDeleteCurrency_InUse_400(t *testing.T) {
 	}
 }
 
-func TestSetCurrencyRate_Success(t *testing.T) {
+// The rate is mandatory at creation: a custom currency cannot exist without one.
+func TestCreateCurrency_MissingRate_400(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
-	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-0000-000000000009", seedUserID, "PTS", "pts", 2)
-
-	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/set-currency-rate", token, map[string]any{
-		"currencyId": "bbbbbbbb-0000-0000-0000-000000000009", "rate": "120.5", "date": "2026-01-15",
+	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/create-currency", token, map[string]any{
+		"id": "aaaaaaaa-0000-0000-0000-000000000005", "code": "PTX", "name": "No rate",
 	})
-	if status != http.StatusOK {
-		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}
-}
-
-func TestSetCurrencyRate_NoToken_401(t *testing.T) {
-	h := newHarness(t)
-	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-000-00000000000a", seedUserID, "PTS", "pts", 2)
-	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/set-currency-rate", "", map[string]any{
-		"currencyId": "bbbbbbbb-0000-0000-000-00000000000a", "rate": "1",
-	})
-	if status != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401; body: %s", status, env.raw)
-	}
-}
-
-func TestSetCurrencyRate_Global_403(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/set-currency-rate", token, map[string]any{
-		"currencyId": usdSeedID, "rate": "2",
-	})
-	if status != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body: %s", status, env.raw)
+	errsMap := env.errorsMap()
+	if len(errsMap["rate"]) == 0 || errsMap["rate"][0] != "This value should not be blank." {
+		t.Fatalf("errors[rate] = %v; body: %s", errsMap["rate"], env.raw)
 	}
 }
 

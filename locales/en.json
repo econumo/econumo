@@ -1327,7 +1327,6 @@
       "symbol_length": "Currency symbol must be 1-12 characters",
       "fraction_digits_range": "Fraction digits must be between 0 and 8",
       "rate_invalid": "Rate must be a positive number",
-      "date_invalid": "Date is not valid",
       "not_available": "Currency is not available",
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",

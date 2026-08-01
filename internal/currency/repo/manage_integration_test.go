@@ -141,23 +141,3 @@ func TestManageRepo_HideShowIdempotent(t *testing.T) {
 		t.Fatal(err) // idempotent
 	}
 }
-
-func TestManageRepo_UpsertRate(t *testing.T) {
-	r, _, f := newManage(t)
-	ctx := context.Background()
-	uid := f.User(fixture.User{Name: "A"})
-	cid := f.Currency(fixture.Currency{Code: "PTS", UserID: uid})
-	rr := model.RateRow{
-		ID: fixture.NewID(), CurrencyID: cid, BaseCurrencyID: seededUSD,
-		Date: time.Date(2026, 7, 15, 13, 45, 0, 0, time.UTC), Rate: "1.50000000",
-	}
-	if err := r.UpsertRate(ctx, rr); err != nil {
-		t.Fatal(err)
-	}
-	// upsert again with a different rate value; should not error (ON CONFLICT
-	// dedupes per day).
-	rr.Rate = "1.75000000"
-	if err := r.UpsertRate(ctx, rr); err != nil {
-		t.Fatal(err)
-	}
-}

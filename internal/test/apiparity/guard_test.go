@@ -81,7 +81,9 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// constant or concatenation) so routePatternRe stops matching it. Update
 	// handlerGlobs for cause (1); for cause (2), keep routes literal or extend
 	// the regex. Raise minRoutes as routes are added — never lower it.
-	const minRoutes = 102
+	// 102 -> 101 on 2026-07-31: set-currency-rate was deliberately removed
+	// pre-release (fixed custom rates ride create/update-currency).
+	const minRoutes = 101
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}

@@ -8,6 +8,7 @@ package currency_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/model"
@@ -176,6 +177,54 @@ func TestReadService_GetCurrencyRateList_NoSyntheticWhenBaseRateStored(t *testin
 	}
 	if len(res.Items) != 2 {
 		t.Fatalf("stored base rate must not be duplicated, got %+v", res.Items)
+	}
+}
+
+// Custom currencies carry a FIXED rate on the currency row; the rate list
+// serves it as a synthesized row so every client keeps one conversion source.
+// NULL-rate legacy customs yield nothing.
+func TestReadService_GetCurrencyRateList_ServesFixedCustomRates(t *testing.T) {
+	const meID = "10000000-0000-7000-8000-000000000001"
+	const otherID = "20000000-0000-7000-8000-000000000002"
+	uid, err := vo.ParseId(meID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	created := time.Date(2026, 7, 15, 10, 30, 0, 0, time.UTC)
+	fake := &fakeReadModel{
+		rows: []model.CurrencyViewRow{
+			{ID: "usd-id", Code: "USD", Symbol: "$"},
+			{ID: "pts-id", Code: "PTS", Symbol: "p", UserID: strPtr(meID), Rate: strPtr("10.00000000"), CreatedAt: created},
+			{ID: "gem-id", Code: "GEM", Symbol: "g", UserID: strPtr(otherID), Rate: strPtr("2.5"), CreatedAt: created},
+			{ID: "nul-id", Code: "NUL", Symbol: "n", UserID: strPtr(meID)},
+		},
+		rates: []model.CurrencyRateViewRow{
+			{CurrencyID: "usd-id", BaseCurrencyID: "usd-id", Rate: "1", UpdatedAt: "2026-07-30 00:00:00"},
+		},
+	}
+	svc := appcurrency.NewReadService(fake, model.BaseCurrency{ID: "usd-id", Code: "USD"})
+
+	res, err := svc.GetCurrencyRateList(context.Background(), uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 3 {
+		t.Fatalf("want USD row + 2 fixed custom rows, got %+v", res.Items)
+	}
+	byID := map[string]model.CurrencyRateResult{}
+	for _, it := range res.Items {
+		byID[it.CurrencyId] = it
+	}
+	pts := byID["pts-id"]
+	if pts.BaseCurrencyId != "usd-id" || pts.Rate != "10" || pts.UpdatedAt != "2026-07-15 10:30:00" {
+		t.Fatalf("pts synthesized row = %+v, want base usd-id / rate 10 / created-at datetime", pts)
+	}
+	if _, ok := byID["gem-id"]; !ok {
+		t.Fatal("shared-visible custom's fixed rate missing")
+	}
+	if _, ok := byID["nul-id"]; ok {
+		t.Fatal("NULL-rate legacy custom must yield no row")
 	}
 }
 

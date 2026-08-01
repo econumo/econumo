@@ -12,7 +12,6 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
-	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -27,7 +26,6 @@ type ManageModel interface {
 	SetCurrencyArchived(ctx context.Context, id string, archived bool) error
 	DeleteCurrency(ctx context.Context, id string) error
 	CountCurrencyUsage(ctx context.Context, id, code string) (int64, error)
-	UpsertRate(ctx context.Context, r model.RateRow) error
 	HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error
 	ShowCurrency(ctx context.Context, userID, currencyID string) error
 }
@@ -160,15 +158,17 @@ func (s *ManageService) CreateCurrency(ctx context.Context, userID vo.Id, req mo
 	if err := validateFractionDigits(digits); err != nil {
 		return nil, err
 	}
-	if req.Rate != nil {
-		if err := validateRate(*req.Rate); err != nil {
-			return nil, err
-		}
+	if req.Rate == nil || strings.TrimSpace(*req.Rate) == "" {
+		return nil, errs.NewValidation("Validation failed",
+			errs.FieldError{Key: "rate", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if err := validateRate(*req.Rate); err != nil {
+		return nil, err
 	}
 	uid := userID.String()
 	rec := model.CurrencyRecord{
 		ID: s.nextID().String(), Code: code, Symbol: symbol, Name: &name,
-		FractionDigits: digits, UserID: &uid,
+		FractionDigits: digits, UserID: &uid, Rate: req.Rate,
 	}
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		now := s.clock.Now()
@@ -195,24 +195,9 @@ func (s *ManageService) CreateCurrency(ctx context.Context, userID vo.Id, req mo
 		if serr := s.repo.InsertUserCurrency(ctx, rec); serr != nil {
 			return serr
 		}
-		if req.Rate != nil {
-			if serr := s.repo.UpsertRate(ctx, model.RateRow{
-				ID: s.nextID().String(), CurrencyID: rec.ID, BaseCurrencyID: s.base.ID,
-				Date: todayIn(ctx, now), Rate: *req.Rate,
-			}); serr != nil {
-				return serr
-			}
-		}
 		return s.ops.MarkHandled(ctx, opID, now)
 	}); err != nil {
 		return nil, err
 	}
 	return &model.CreateCurrencyResult{Item: toCurrencyResult(rec, ScopeOwn)}, nil
-}
-
-// todayIn resolves "today" in the caller's timezone (X-Timezone header via
-// reqctx), truncated to a date, expressed in UTC for storage.
-func todayIn(ctx context.Context, now time.Time) time.Time {
-	local := now.In(reqctx.Location(ctx))
-	return time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, time.UTC)
 }
