@@ -327,7 +327,7 @@ Tests live alongside the Go code:
   as `apiparity`.
 
 Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
-default 78). CI surfaces the coverage % in the Actions job summary plus an HTML
+default 80). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
 
 ## Configuration
