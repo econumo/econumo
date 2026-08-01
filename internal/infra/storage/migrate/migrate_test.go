@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -273,5 +274,100 @@ func TestValidIdentifier(t *testing.T) {
 		if validIdentifier(s) {
 			t.Errorf("expected %q to be invalid", s)
 		}
+	}
+}
+
+// openMemoryFK is openMemory with foreign-key enforcement ON, matching the
+// production connection pragmas.
+func openMemoryFK(t *testing.T) *sql.DB {
+	t.Helper()
+	db := openMemory(t)
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+		t.Fatalf("enable foreign_keys: %v", err)
+	}
+	return db
+}
+
+const fkFixture = `
+CREATE TABLE parents (id TEXT NOT NULL PRIMARY KEY, code TEXT NOT NULL UNIQUE);
+CREATE TABLE children (id TEXT NOT NULL PRIMARY KEY, parent_id TEXT NOT NULL,
+    FOREIGN KEY (parent_id) REFERENCES parents (id) ON DELETE CASCADE);
+INSERT INTO parents (id, code) VALUES ('p1', 'A');
+INSERT INTO children (id, parent_id) VALUES ('c1', 'p1');
+`
+
+// A pragma-wrapped single-table rebuild must not cascade-delete children:
+// the runner hoists PRAGMA foreign_keys outside its transaction (inside the
+// transaction the pragma is a silent no-op and the drop would cascade).
+func TestRun_FKPragmasHoisted_RebuildPreservesChildren(t *testing.T) {
+	db := openMemoryFK(t)
+	ctx := context.Background()
+
+	migs := []Migration{
+		{Version: "0001_base", SQL: fkFixture},
+		{Version: "0002_rebuild", SQL: `
+PRAGMA foreign_keys = OFF;
+CREATE TABLE parents_new (id TEXT NOT NULL PRIMARY KEY, code TEXT NOT NULL);
+INSERT INTO parents_new (id, code) SELECT id, code FROM parents;
+DROP TABLE parents;
+ALTER TABLE parents_new RENAME TO parents;
+PRAGMA foreign_keys = ON;
+`},
+	}
+	if err := Run(ctx, db, migs); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM children`).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("children after rebuild = %d (err %v), want 1 — the rebuild cascaded", n, err)
+	}
+	rows, err := db.Query(`PRAGMA foreign_key_check`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		t.Fatal("foreign_key_check reported violations after the rebuild")
+	}
+	// The connection must come back with enforcement re-enabled.
+	var fk int
+	if err := db.QueryRow(`PRAGMA foreign_keys`).Scan(&fk); err != nil || fk != 1 {
+		t.Fatalf("foreign_keys after Run = %d (err %v), want 1", fk, err)
+	}
+}
+
+// A pragma-wrapped migration that leaves a dangling FK must fail, roll back,
+// and record nothing.
+func TestRun_FKPragmasHoisted_DanglingFKFailsAndRollsBack(t *testing.T) {
+	db := openMemoryFK(t)
+	ctx := context.Background()
+
+	migs := []Migration{
+		{Version: "0001_base", SQL: fkFixture},
+		{Version: "0002_dangle", SQL: `
+PRAGMA foreign_keys = OFF;
+DROP TABLE parents;
+CREATE TABLE parents (id TEXT NOT NULL PRIMARY KEY, code TEXT NOT NULL);
+PRAGMA foreign_keys = ON;
+`},
+	}
+	err := Run(ctx, db, migs)
+	if err == nil {
+		t.Fatal("Run must fail when the migration leaves a dangling FK")
+	}
+	if !strings.Contains(err.Error(), "foreign_key_check") {
+		t.Fatalf("error should name foreign_key_check, got: %v", err)
+	}
+	if appliedSet(t, db)["0002_dangle"] {
+		t.Fatal("the failed migration must not be recorded")
+	}
+	// Rolled back: the original parent row (with its UNIQUE code column) is intact.
+	var code string
+	if err := db.QueryRow(`SELECT code FROM parents WHERE id = 'p1'`).Scan(&code); err != nil || code != "A" {
+		t.Fatalf("parents not rolled back (code=%q err=%v)", code, err)
+	}
+	var fk int
+	if err := db.QueryRow(`PRAGMA foreign_keys`).Scan(&fk); err != nil || fk != 1 {
+		t.Fatalf("foreign_keys after failed Run = %d (err %v), want 1", fk, err)
 	}
 }
