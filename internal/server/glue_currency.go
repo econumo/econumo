@@ -9,10 +9,10 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// CurrencyProfileCurrency answers "what is this user's profile currency code"
-// for the hide-currency guard, over the SAME user-repo dependency
-// BudgetUserLookup.CurrencyCode already uses (see glue_budget.go) rather than
-// through the user feature's public Service, keeping this a thin repo read.
+// CurrencyProfileCurrency answers "what is this user's profile currency id"
+// for the hide/archive guards, over the SAME user-repo dependency
+// BudgetUserLookup uses (see glue_budget.go) rather than through the user
+// feature's public Service, keeping this a thin repo read.
 type CurrencyProfileCurrency struct {
 	users budgetUserRepo
 }
@@ -24,9 +24,9 @@ func NewCurrencyProfileCurrency(users budgetUserRepo) *CurrencyProfileCurrency {
 	return &CurrencyProfileCurrency{users: users}
 }
 
-// CurrencyCode returns the user's profile currency option, defaulting to the
-// domain default when the option is unset.
-func (p *CurrencyProfileCurrency) CurrencyCode(ctx context.Context, userID string) (string, error) {
+// CurrencyID returns the user's stored profile currency id, or "" when no
+// default is set (legacy rows the migration dropped; guards skip then).
+func (p *CurrencyProfileCurrency) CurrencyID(ctx context.Context, userID string) (string, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
 		return "", err
@@ -38,5 +38,5 @@ func (p *CurrencyProfileCurrency) CurrencyCode(ctx context.Context, userID strin
 	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil {
 		return *o.Value, nil
 	}
-	return model.DefaultCurrency, nil
+	return "", nil
 }

@@ -35,11 +35,15 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	// as update-currency's own code resolution).
 	currencyID := req.CurrencyId
 	if currencyID == "" {
-		code, cerr := s.users.CurrencyCode(ctx, userID.String())
+		stored, cerr := s.users.DefaultCurrencyID(ctx, userID.String())
 		if cerr != nil {
 			return nil, cerr
 		}
-		id, cerr := s.currency.GetIDByCode(ctx, userID.String(), code)
+		currencyID = stored
+	}
+	if currencyID == "" {
+		// No stored default: fall back to the domain default code.
+		id, cerr := s.currency.GetIDByCode(ctx, userID.String(), model.DefaultCurrency)
 		if cerr != nil {
 			return nil, cerr
 		}

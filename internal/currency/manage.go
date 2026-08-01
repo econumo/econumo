@@ -26,14 +26,16 @@ type ManageModel interface {
 	SetCurrencyArchived(ctx context.Context, id string, archived bool) error
 	DeleteCurrency(ctx context.Context, id string) error
 	CountCurrencyUsage(ctx context.Context, id string) (int64, error)
+	CountDefaultCurrencyUsage(ctx context.Context, id string) (int64, error)
 	HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error
 	ShowCurrency(ctx context.Context, userID, currencyID string) error
 }
 
 // ProfileCurrency is the consumer-side port onto the user feature's profile
-// currency lookup, satisfied by a glue adapter at composition time.
+// currency lookup, satisfied by a glue adapter at composition time. The
+// stored value is a currency id; an empty string means "no default set".
 type ProfileCurrency interface {
-	CurrencyCode(ctx context.Context, userID string) (string, error)
+	CurrencyID(ctx context.Context, userID string) (string, error)
 }
 
 // ManageService is the currency lifecycle use-case orchestrator (create,

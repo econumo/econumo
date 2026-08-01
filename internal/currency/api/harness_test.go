@@ -50,11 +50,11 @@ func (c fixedClock) Now() time.Time { return c.t }
 // fakeProfileCurrency stubs the currency feature's ProfileCurrency port
 // (normally satisfied by a glue adapter over the user feature). Mutable so a
 // test can point the caller's profile currency away from the default before
-// exercising the hide-currency guard.
-type fakeProfileCurrency struct{ code string }
+// exercising the hide/archive guards.
+type fakeProfileCurrency struct{ id string }
 
-func (f *fakeProfileCurrency) CurrencyCode(ctx context.Context, userID string) (string, error) {
-	return f.code, nil
+func (f *fakeProfileCurrency) CurrencyID(ctx context.Context, userID string) (string, error) {
+	return f.id, nil
 }
 
 var _ appcurrency.ProfileCurrency = (*fakeProfileCurrency)(nil)
@@ -82,7 +82,7 @@ func newHarness(t *testing.T) *harness {
 	readRepo := currencyrepo.NewReadRepo("sqlite", tdb.TX)
 	manageRepo := currencyrepo.NewManageRepo("sqlite", tdb.TX)
 	opGuard := operationrepo.NewGuard("sqlite", tdb.TX)
-	profile := &fakeProfileCurrency{code: "EUR"}
+	profile := &fakeProfileCurrency{id: eurID}
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, CurrencyBase: "USD"}
 	readSvc := appcurrency.NewReadService(readRepo, model.BaseCurrency{ID: usdID, Code: cfg.CurrencyBase})

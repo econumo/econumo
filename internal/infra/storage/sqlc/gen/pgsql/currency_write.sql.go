@@ -28,6 +28,19 @@ func (q *Queries) CountCurrencyUsage(ctx context.Context, currencyID string) (in
 	return usage_count, err
 }
 
+const countDefaultCurrencyUsage = `-- name: CountDefaultCurrencyUsage :one
+SELECT COUNT(*) FROM users_options WHERE name = 'currency' AND value = $1
+`
+
+// Profile defaults holding this currency id, for the archive guard (a
+// default must stay pickable).
+func (q *Queries) CountDefaultCurrencyUsage(ctx context.Context, value *string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDefaultCurrencyUsage, value)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteCurrency = `-- name: DeleteCurrency :exec
 DELETE FROM currencies WHERE id = $1
 `

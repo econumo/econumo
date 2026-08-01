@@ -250,8 +250,10 @@ func (l *BudgetUserLookup) GetOwner(ctx context.Context, userID string) (model.O
 	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.Avatar}, nil
 }
 
-// CurrencyCode returns the user's default currency code (the currency option).
-func (l *BudgetUserLookup) CurrencyCode(ctx context.Context, userID string) (string, error) {
+// DefaultCurrencyID returns the user's stored default currency id, or ""
+// when no default is set (createBudget then falls back to the domain
+// default code).
+func (l *BudgetUserLookup) DefaultCurrencyID(ctx context.Context, userID string) (string, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
 		return "", err
@@ -263,7 +265,7 @@ func (l *BudgetUserLookup) CurrencyCode(ctx context.Context, userID string) (str
 	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil {
 		return *o.Value, nil
 	}
-	return model.DefaultCurrency, nil
+	return "", nil
 }
 
 // SetActiveBudget writes the user's active-budget option.

@@ -46,6 +46,7 @@ type manageQuerier interface {
 	SetCurrencyArchived(ctx context.Context, db backend.DBTX, p setCurrencyArchivedP) error
 	DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error
 	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error)
+	CountDefaultCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error
 	DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error
 }
@@ -150,6 +151,10 @@ func (r *ManageRepo) CountCurrencyUsage(ctx context.Context, id string) (int64, 
 	return r.q.CountCurrencyUsage(ctx, r.db(ctx), id)
 }
 
+func (r *ManageRepo) CountDefaultCurrencyUsage(ctx context.Context, id string) (int64, error) {
+	return r.q.CountDefaultCurrencyUsage(ctx, r.db(ctx), id)
+}
+
 // HideCurrency marks a global currency hidden for a user. Idempotent: a
 // repeat call ON CONFLICTs into a no-op.
 func (r *ManageRepo) HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error {
@@ -214,6 +219,10 @@ func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DB
 	})
 }
 
+func (sqliteManageQuerier) CountDefaultCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	return sqlitegen.New(db).CountDefaultCurrencyUsage(ctx, &id)
+}
+
 func (sqliteManageQuerier) InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error {
 	return sqlitegen.New(db).InsertHiddenCurrency(ctx, p)
 }
@@ -262,6 +271,11 @@ func (pgsqlManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, i
 
 func (pgsqlManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
 	n, err := pgsqlgen.New(db).CountCurrencyUsage(ctx, id)
+	return int64(n), err
+}
+
+func (pgsqlManageQuerier) CountDefaultCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	n, err := pgsqlgen.New(db).CountDefaultCurrencyUsage(ctx, &id)
 	return int64(n), err
 }
 

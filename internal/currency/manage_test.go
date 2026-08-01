@@ -24,16 +24,18 @@ const (
 func intPtr(i int) *int { return &i }
 
 type fakeManageRepo struct {
-	records map[string]model.CurrencyRecord
-	usage   map[string]int64
-	hidden  map[string]bool
+	records  map[string]model.CurrencyRecord
+	usage    map[string]int64
+	defaults map[string]int64
+	hidden   map[string]bool
 }
 
 func newFakeManageRepo() *fakeManageRepo {
 	return &fakeManageRepo{
-		records: map[string]model.CurrencyRecord{},
-		usage:   map[string]int64{},
-		hidden:  map[string]bool{},
+		records:  map[string]model.CurrencyRecord{},
+		usage:    map[string]int64{},
+		defaults: map[string]int64{},
+		hidden:   map[string]bool{},
 	}
 }
 
@@ -100,6 +102,10 @@ func (f *fakeManageRepo) CountCurrencyUsage(ctx context.Context, id string) (int
 	return f.usage[id], nil
 }
 
+func (f *fakeManageRepo) CountDefaultCurrencyUsage(ctx context.Context, id string) (int64, error) {
+	return f.defaults[id], nil
+}
+
 func (f *fakeManageRepo) HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error {
 	f.hidden[userID+"|"+currencyID] = true
 	return nil
@@ -112,10 +118,10 @@ func (f *fakeManageRepo) ShowCurrency(ctx context.Context, userID, currencyID st
 
 var _ appcurrency.ManageModel = (*fakeManageRepo)(nil)
 
-type fakeProfileCurrency struct{ code string }
+type fakeProfileCurrency struct{ id string }
 
-func (f fakeProfileCurrency) CurrencyCode(ctx context.Context, userID string) (string, error) {
-	return f.code, nil
+func (f fakeProfileCurrency) CurrencyID(ctx context.Context, userID string) (string, error) {
+	return f.id, nil
 }
 
 var _ appcurrency.ProfileCurrency = fakeProfileCurrency{}
@@ -149,7 +155,7 @@ func (f *fakeOps) Claim(ctx context.Context, id vo.Id, now time.Time) (bool, err
 func (f *fakeOps) MarkHandled(ctx context.Context, id vo.Id, now time.Time) error { return nil }
 
 func newManageSvc(repo *fakeManageRepo, ops *fakeOps, now time.Time) *appcurrency.ManageService {
-	return appcurrency.NewManageService(repo, passthroughTx{}, ops, fixedClock{t: now}, fakeProfileCurrency{code: "USD"}, testBase)
+	return appcurrency.NewManageService(repo, passthroughTx{}, ops, fixedClock{t: now}, fakeProfileCurrency{id: "global-usd"}, testBase)
 }
 
 var manageNow = time.Date(2026, 7, 15, 10, 0, 0, 0, time.UTC)
@@ -485,6 +491,42 @@ func TestArchiveCurrency_OwnerOnly(t *testing.T) {
 	}
 }
 
+// Archiving a currency that is someone's profile default is refused: the
+// default must stay pickable.
+func TestArchiveCurrency_DefaultRefused(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "p", UserID: strPtr(manageMeID)}
+	repo.defaults["own-pts"] = 1
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	_, err := svc.ArchiveCurrency(context.Background(), uid, model.ArchiveCurrencyRequest{Id: "own-pts"})
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	if v.Msg != "Currency is in use and cannot be archived" {
+		t.Errorf("Msg = %q, want the frozen archive-guard message", v.Msg)
+	}
+	if rec := repo.records["own-pts"]; rec.IsArchived {
+		t.Error("the currency must not be archived")
+	}
+}
+
+func TestArchiveCurrency_SucceedsAfterDefaultMovedAway(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "p", UserID: strPtr(manageMeID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	if _, err := svc.ArchiveCurrency(context.Background(), uid, model.ArchiveCurrencyRequest{Id: "own-pts"}); err != nil {
+		t.Fatalf("ArchiveCurrency: %v", err)
+	}
+	if rec := repo.records["own-pts"]; !rec.IsArchived {
+		t.Error("expected the currency to be archived")
+	}
+}
+
 func TestUnarchiveCurrency(t *testing.T) {
 	repo := newFakeManageRepo()
 	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID), IsArchived: true}
@@ -594,7 +636,7 @@ func TestHideCurrency_BaseCurrency(t *testing.T) {
 func TestHideCurrency_ProfileCurrency(t *testing.T) {
 	repo := newFakeManageRepo()
 	repo.records["global-eur"] = model.CurrencyRecord{ID: "global-eur", Code: "EUR", Symbol: "€"}
-	svc := appcurrency.NewManageService(repo, passthroughTx{}, &fakeOps{}, fixedClock{t: manageNow}, fakeProfileCurrency{code: "EUR"}, testBase)
+	svc := appcurrency.NewManageService(repo, passthroughTx{}, &fakeOps{}, fixedClock{t: manageNow}, fakeProfileCurrency{id: "global-eur"}, testBase)
 	uid := vo.MustParseId(manageMeID)
 
 	_, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "global-eur"})

@@ -8,7 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -20,25 +19,25 @@ const (
 	currencyGlueUserB = "44444444-4444-4444-4444-444444444444"
 )
 
-func TestCurrencyProfileCurrency_CurrencyCode(t *testing.T) {
+func TestCurrencyProfileCurrency_CurrencyID(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	f.User(fixture.User{ID: currencyGlueUserA, Name: "u"})
-	f.DefaultOptions(currencyGlueUserA) // seeds currency=USD among the standard options
+	f.DefaultOptions(currencyGlueUserA) // seeds the USD id among the standard options
 
 	users := userrepo.NewRepo("sqlite", db.TX)
 	profile := server.NewCurrencyProfileCurrency(users)
 
-	code, err := profile.CurrencyCode(context.Background(), currencyGlueUserA)
+	id, err := profile.CurrencyID(context.Background(), currencyGlueUserA)
 	if err != nil {
-		t.Fatalf("CurrencyCode: %v", err)
+		t.Fatalf("CurrencyID: %v", err)
 	}
-	if code != "USD" {
-		t.Errorf("want USD from the seeded currency option, got %q", code)
+	if id != fixture.USD {
+		t.Errorf("want the seeded USD id from the currency option, got %q", id)
 	}
 }
 
-func TestCurrencyProfileCurrency_CurrencyCode_DefaultsWhenOptionMissing(t *testing.T) {
+func TestCurrencyProfileCurrency_CurrencyID_EmptyWhenOptionMissing(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	f.User(fixture.User{ID: currencyGlueUserB, Name: "u"})
@@ -47,21 +46,21 @@ func TestCurrencyProfileCurrency_CurrencyCode_DefaultsWhenOptionMissing(t *testi
 	users := userrepo.NewRepo("sqlite", db.TX)
 	profile := server.NewCurrencyProfileCurrency(users)
 
-	code, err := profile.CurrencyCode(context.Background(), currencyGlueUserB)
+	id, err := profile.CurrencyID(context.Background(), currencyGlueUserB)
 	if err != nil {
-		t.Fatalf("CurrencyCode: %v", err)
+		t.Fatalf("CurrencyID: %v", err)
 	}
-	if code != model.DefaultCurrency {
-		t.Errorf("want the domain default currency, got %q", code)
+	if id != "" {
+		t.Errorf(`want "" (no default set; guards skip), got %q`, id)
 	}
 }
 
-func TestCurrencyProfileCurrency_CurrencyCode_InvalidID(t *testing.T) {
+func TestCurrencyProfileCurrency_CurrencyID_InvalidID(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	users := userrepo.NewRepo("sqlite", db.TX)
 	profile := server.NewCurrencyProfileCurrency(users)
 
-	if _, err := profile.CurrencyCode(context.Background(), "not-a-uuid"); err == nil {
+	if _, err := profile.CurrencyID(context.Background(), "not-a-uuid"); err == nil {
 		t.Error("want an error for a malformed user id")
 	}
 }

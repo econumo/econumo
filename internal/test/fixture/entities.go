@@ -119,7 +119,8 @@ func (b *Builder) DefaultOptions(userID string) {
 		name  string
 		value *string
 	}{
-		{"currency", s("USD")},
+		// The currency option stores a currency ID (the seeded global USD).
+		{"currency", s(USD)},
 		{"report_period", s("monthly")},
 		{"onboarding", s("started")},
 		{"budget", nil},

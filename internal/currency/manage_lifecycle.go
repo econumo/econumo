@@ -72,6 +72,17 @@ func (s *ManageService) setArchived(ctx context.Context, userID vo.Id, id string
 		if rec.IsArchived == archived {
 			return nil
 		}
+		if archived {
+			// A profile default must stay pickable: archiving it would leave
+			// the user defaulting to a currency their pickers no longer offer.
+			defaults, derr := s.repo.CountDefaultCurrencyUsage(ctx, rec.ID)
+			if derr != nil {
+				return derr
+			}
+			if defaults > 0 {
+				return &errs.ValidationError{Msg: "Currency is in use and cannot be archived", MsgCode: errs.CodeCurrencyCannotArchive}
+			}
+		}
 		return s.repo.SetCurrencyArchived(ctx, rec.ID, archived)
 	})
 }

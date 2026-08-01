@@ -98,3 +98,8 @@ ON CONFLICT (user_id, currency_id) DO NOTHING;
 
 -- name: DeleteHiddenCurrency :exec
 DELETE FROM users_hidden_currencies WHERE user_id = ? AND currency_id = ?;
+
+-- Profile defaults holding this currency id, for the archive guard (a
+-- default must stay pickable).
+-- name: CountDefaultCurrencyUsage :one
+SELECT COUNT(*) FROM users_options WHERE name = 'currency' AND value = ?;
