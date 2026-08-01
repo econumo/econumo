@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ArrowDownUp, GripVertical, MoreVertical, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { InfoBox } from '@/components/InfoBox'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { SortDialog } from '@/components/SortDialog'
-import { SortableList } from '@/components/SortableList'
+import { SortableList, type SortableHandleProps } from '@/components/SortableList'
 import { getChangedPositions } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -24,6 +24,20 @@ export interface ClassificationItem {
   icon?: string
 }
 
+export interface RowAction {
+  label: string
+  destructive?: boolean
+  onSelect: () => void
+}
+
+export interface RowSwitchState {
+  checked: boolean
+  disabled?: boolean
+  title?: string
+  ariaLabel: string
+  onToggle: () => void
+}
+
 interface ClassificationSection<T> {
   label: string
   match: (item: T) => boolean
@@ -34,6 +48,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   heading?: string
   /** informational hint rendered above the list */
   info?: string
+  /** page-level banner (e.g. a server refusal) rendered between info and the list */
+  alert?: ReactNode
   createLabel: string
   deleteTitle: string
   items: T[]
@@ -42,23 +58,37 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** optional visual grouping (e.g. category income/expense) */
   sections?: ClassificationSection<T>[]
   showIcon?: boolean
+  /** extra muted lines rendered under the name */
+  meta?: (item: T) => ReactNode
+  /** per-item switch semantics; default = the archive toggle */
+  rowSwitch?: (item: T) => RowSwitchState
+  /** false suppresses the kebab/tap-sheet for the row; default true */
+  hasActions?: (item: T) => boolean
+  /** actions inserted between Edit and Delete in the menu and the sheet */
+  extraActions?: (item: T) => RowAction[]
   onCreate: () => void
   onEdit: (item: T) => void
   onDelete: (id: string) => void
-  onToggleArchive: (item: T) => void
-  onOrder: (changes: { id: string; position: number }[]) => void
+  onToggleArchive?: (item: T) => void
+  /** absent = the list is not orderable: no drag grips, no reorder button */
+  onOrder?: (changes: { id: string; position: number }[]) => void
 }
 
 export function ClassificationList<T extends ClassificationItem>({
   title,
   heading,
   info,
+  alert,
   createLabel,
   deleteTitle,
   items,
   storageKey,
   sections,
   showIcon,
+  meta,
+  rowSwitch,
+  hasActions,
+  extraActions,
   onCreate,
   onEdit,
   onDelete,
@@ -82,11 +112,21 @@ export function ClassificationList<T extends ClassificationItem>({
   // Items archived from THIS screen stay in place (greyed, switch off) even
   // with the active-only filter on — they disappear only on the next visit.
   const [stickyArchivedIds] = useState(() => new Set<string>())
-  const handleToggleArchive = (item: T) => {
-    if (item.isArchived === 0 && activeOnly) {
-      stickyArchivedIds.add(item.id)
+  const switchFor = (item: T): RowSwitchState => {
+    const base: RowSwitchState = rowSwitch?.(item) ?? {
+      checked: item.isArchived === 0,
+      ariaLabel: `archive ${item.name}`,
+      onToggle: () => onToggleArchive?.(item),
     }
-    onToggleArchive(item)
+    return {
+      ...base,
+      onToggle: () => {
+        if (item.isArchived === 0 && activeOnly) {
+          stickyArchivedIds.add(item.id)
+        }
+        base.onToggle()
+      },
+    }
   }
 
   const visible = activeOnly ? items.filter((item) => item.isArchived === 0 || stickyArchivedIds.has(item.id)) : items
@@ -109,12 +149,16 @@ export function ClassificationList<T extends ClassificationItem>({
   }
 
   const commitOrder = (orderedIds: string[]) => {
+    if (!onOrder) {
+      return
+    }
     const changes = getChangedPositions(items, rebuildFullOrder(orderedIds))
     if (changes.length > 0) {
       onOrder(changes)
     }
   }
 
+  const orderable = onOrder !== undefined && items.length > 1
   const reorderButton = (
     <Button
       type="button"
@@ -135,6 +179,79 @@ export function ClassificationList<T extends ClassificationItem>({
     </label>
   )
 
+  const renderRow = (item: T, handle?: SortableHandleProps) => {
+    const actionable = hasActions?.(item) ?? true
+    const rowSwitchState = switchFor(item)
+    return (
+      <div
+        className={`flex items-center rounded-md px-1 ${
+          isCompact
+            ? `gap-3 py-3 ${actionable ? 'active:bg-accent' : ''}`
+            : `gap-2 py-1.5 ${actionable ? 'cursor-pointer hover:bg-accent' : ''}`
+        }`}
+        onClick={actionable ? () => (isCompact ? setSheetItem(item) : setOpenMenuId(item.id)) : undefined}
+      >
+        {handle ? (
+          <button
+            type="button"
+            aria-label={`drag ${item.name}`}
+            className="cursor-grab touch-none text-muted-foreground"
+            onClick={(e) => e.stopPropagation()}
+            {...handle.attributes}
+            {...(handle.listeners ?? {})}
+          >
+            <GripVertical className="size-4" />
+          </button>
+        ) : null}
+        {showIcon ? <EntityIcon name={item.icon} className="text-base text-muted-foreground" /> : null}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className={`truncate text-sm ${item.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={item.name}>
+            {item.name}
+          </span>
+          {item.isArchived === 1 ? (
+            <span className="text-xs text-muted-foreground">{t('classifications.categories.pages.settings.archived_item')}</span>
+          ) : null}
+          {meta?.(item)}
+        </span>
+        <Switch
+          aria-label={rowSwitchState.ariaLabel}
+          checked={rowSwitchState.checked}
+          disabled={rowSwitchState.disabled}
+          title={rowSwitchState.title}
+          onClick={(e) => e.stopPropagation()}
+          onCheckedChange={() => rowSwitchState.onToggle()}
+        />
+        {actionable && !isCompact ? (
+          <DropdownMenu open={openMenuId === item.id} onOpenChange={(open) => setOpenMenuId(open ? item.id : null)}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`actions ${item.name}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onSelect={() => onEdit(item)}>{t('common.button.edit.label')}</DropdownMenuItem>
+              {extraActions?.(item).map((action) => (
+                <DropdownMenuItem key={action.label} variant={action.destructive ? 'destructive' : undefined} onSelect={action.onSelect}>
+                  {action.label}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(item)}>
+                {t('common.button.delete.label')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <SettingsShell
       title={title}
@@ -152,7 +269,7 @@ export function ClassificationList<T extends ClassificationItem>({
               {createLabel}
             </Button>
             <span className="ml-auto flex items-center gap-3">
-              {items.length > 1 ? reorderButton : null}
+              {orderable ? reorderButton : null}
               {filterControl}
             </span>
           </>
@@ -160,10 +277,11 @@ export function ClassificationList<T extends ClassificationItem>({
       }
     >
       {info ? <InfoBox>{info}</InfoBox> : null}
+      {alert ?? null}
       {isCompact ? (
         // compact toolbar row: reorder on the left, the active-only filter on the right
         <div className="flex items-center justify-between pb-1">
-          {items.length > 1 ? reorderButton : <span />}
+          {orderable ? reorderButton : <span />}
           {filterControl}
         </div>
       ) : null}
@@ -181,66 +299,11 @@ export function ClassificationList<T extends ClassificationItem>({
                   <span className="h-px flex-1 bg-border" aria-hidden="true" />
                 </div>
               ) : null}
-              <SortableList
-                items={sectionItems}
-                onReorder={commitOrder}
-                renderItem={(item, handle) => (
-                  <div
-                    className={`flex items-center rounded-md px-1 ${
-                      isCompact ? 'gap-3 py-3 active:bg-accent' : 'gap-2 py-1.5 cursor-pointer hover:bg-accent'
-                    }`}
-                    onClick={() => (isCompact ? setSheetItem(item) : setOpenMenuId(item.id))}
-                  >
-                    <button
-                      type="button"
-                      aria-label={`drag ${item.name}`}
-                      className="cursor-grab touch-none text-muted-foreground"
-                      onClick={(e) => e.stopPropagation()}
-                      {...handle.attributes}
-                      {...(handle.listeners ?? {})}
-                    >
-                      <GripVertical className="size-4" />
-                    </button>
-                    {showIcon ? <EntityIcon name={item.icon} className="text-base text-muted-foreground" /> : null}
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className={`truncate text-sm ${item.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={item.name}>
-                        {item.name}
-                      </span>
-                      {item.isArchived === 1 ? (
-                        <span className="text-xs text-muted-foreground">{t('classifications.categories.pages.settings.archived_item')}</span>
-                      ) : null}
-                    </span>
-                    <Switch
-                      aria-label={`archive ${item.name}`}
-                      checked={item.isArchived === 0}
-                      onClick={(e) => e.stopPropagation()}
-                      onCheckedChange={() => handleToggleArchive(item)}
-                    />
-                    {!isCompact ? (
-                      <DropdownMenu open={openMenuId === item.id} onOpenChange={(open) => setOpenMenuId(open ? item.id : null)}>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`actions ${item.name}`}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
-                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenuItem onSelect={() => onEdit(item)}>{t('common.button.edit.label')}</DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(item)}>
-                            {t('common.button.delete.label')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : null}
-                  </div>
-                )}
-              />
+              {onOrder ? (
+                <SortableList items={sectionItems} onReorder={commitOrder} renderItem={(item, handle) => renderRow(item, handle)} />
+              ) : (
+                sectionItems.map((item) => <div key={item.id}>{renderRow(item)}</div>)
+              )}
             </div>
           )
         })
@@ -261,6 +324,22 @@ export function ClassificationList<T extends ClassificationItem>({
           >
             {t('common.button.edit.label')}
           </Button>
+          {sheetItem
+            ? extraActions?.(sheetItem).map((action) => (
+                <Button
+                  key={action.label}
+                  type="button"
+                  variant="outline"
+                  className={action.destructive ? 'text-destructive hover:text-destructive' : undefined}
+                  onClick={() => {
+                    action.onSelect()
+                    setSheetItem(null)
+                  }}
+                >
+                  {action.label}
+                </Button>
+              ))
+            : null}
           <Button
             type="button"
             variant="outline"
@@ -275,15 +354,17 @@ export function ClassificationList<T extends ClassificationItem>({
         </div>
       </ResponsiveDialog>
 
-      <SortDialog
-        open={sortOpen}
-        onClose={() => setSortOpen(false)}
-        onPick={(direction) => {
-          const ordered = [...items].sort((a, b) => (direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)))
-          commitOrder(ordered.map((i) => i.id))
-          setSortOpen(false)
-        }}
-      />
+      {onOrder ? (
+        <SortDialog
+          open={sortOpen}
+          onClose={() => setSortOpen(false)}
+          onPick={(direction) => {
+            const ordered = [...items].sort((a, b) => (direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)))
+            commitOrder(ordered.map((i) => i.id))
+            setSortOpen(false)
+          }}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={deleteTarget !== null}
