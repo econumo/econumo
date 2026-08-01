@@ -47,6 +47,9 @@ func (s *Service) MoveElementList(ctx context.Context, userID vo.Id, req model.M
 				if ferr != nil {
 					return model.ValidateBlank(map[string]string{"folderId": ""})
 				}
+				if !b.hasFolder(fid) {
+					return accessDenied()
+				}
 				folderID = &fid
 			}
 			el.UpdateFolder(folderID, now)
