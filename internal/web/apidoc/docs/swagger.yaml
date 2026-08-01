@@ -163,13 +163,6 @@ definitions:
     type: object
   model.ArchiveCategoryResult:
     type: object
-  model.ArchiveCurrencyRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  model.ArchiveCurrencyResult:
-    type: object
   model.ArchivePayeeRequest:
     properties:
       id:
@@ -636,8 +629,6 @@ definitions:
         type: integer
       id:
         type: string
-      isArchived:
-        type: integer
       isHidden:
         type: integer
       name:
@@ -1555,13 +1546,6 @@ definitions:
         type: string
     type: object
   model.UnarchiveCategoryResult:
-    type: object
-  model.UnarchiveCurrencyRequest:
-    properties:
-      id:
-        type: string
-    type: object
-  model.UnarchiveCurrencyResult:
     type: object
   model.UnarchivePayeeRequest:
     properties:
@@ -4063,55 +4047,6 @@ paths:
       summary: List connections
       tags:
       - Connection
-  /api/v1/currency/archive-currency:
-    post:
-      consumes:
-      - application/json
-      description: Marks a custom currency archived. Requires ownership.
-      parameters:
-      - description: Archive currency request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.ArchiveCurrencyRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.ArchiveCurrencyResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Archive a custom currency
-      tags:
-      - Currency
   /api/v1/currency/create-currency:
     post:
       consumes:
@@ -4355,55 +4290,6 @@ paths:
       security:
       - Bearer: []
       summary: Show a hidden global currency
-      tags:
-      - Currency
-  /api/v1/currency/unarchive-currency:
-    post:
-      consumes:
-      - application/json
-      description: Clears a custom currency's archived flag. Requires ownership.
-      parameters:
-      - description: Unarchive currency request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.UnarchiveCurrencyRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.UnarchiveCurrencyResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Unarchive a custom currency
       tags:
       - Currency
   /api/v1/currency/update-currency:

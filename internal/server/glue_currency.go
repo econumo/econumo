@@ -3,6 +3,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	"github.com/econumo/econumo/internal/model"
@@ -24,8 +25,8 @@ func NewCurrencyProfileCurrency(users budgetUserRepo) *CurrencyProfileCurrency {
 	return &CurrencyProfileCurrency{users: users}
 }
 
-// CurrencyID returns the user's stored profile currency id, or "" when no
-// default is set (legacy rows the migration dropped; guards skip then).
+// CurrencyID returns the user's stored profile currency id. The migration
+// guarantees every user holds one, so an absent option is an error.
 func (p *CurrencyProfileCurrency) CurrencyID(ctx context.Context, userID string) (string, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
@@ -35,8 +36,8 @@ func (p *CurrencyProfileCurrency) CurrencyID(ctx context.Context, userID string)
 	if err != nil {
 		return "", err
 	}
-	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil {
+	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil && *o.Value != "" {
 		return *o.Value, nil
 	}
-	return "", nil
+	return "", fmt.Errorf("user %s: currency option missing", userID)
 }

@@ -15,7 +15,6 @@ type CurrencyViewRow struct {
 	Name           *string
 	FractionDigits int16
 	UserID         *string
-	IsArchived     bool
 	// Rate is the custom currency's fixed rate (nil for globals and for
 	// legacy customs created before the rate became mandatory).
 	Rate      *string

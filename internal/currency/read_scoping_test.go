@@ -1,8 +1,8 @@
 package currency_test
 
 // Service-level test for ReadService.GetCurrencyList/GetCurrencyRateList,
-// against an in-package fake ReadModel (no DB). Covers the scope/isArchived/
-// isHidden mapping and the rate-list visibility filter; the DB-backed scoping
+// against an in-package fake ReadModel (no DB). Covers the scope/isHidden
+// mapping and the rate-list visibility filter; the DB-backed scoping
 // itself is covered by internal/currency/repo/lookup_read_integration_test.go.
 
 import (
@@ -49,12 +49,13 @@ func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {
 
 	fake := &fakeReadModel{
 		rows: []model.CurrencyViewRow{
-			{ID: "global-usd", Code: "USD", Symbol: "$", UserID: nil, IsArchived: false},
-			{ID: "global-hidden", Code: "HHH", Symbol: "H", UserID: nil, IsArchived: false},
-			{ID: "own-archived", Code: "PTS", Symbol: "p", UserID: strPtr(meID), IsArchived: true},
-			{ID: "foreign-custom", Code: "GEM", Symbol: "g", UserID: strPtr(otherID), IsArchived: false},
+			{ID: "global-usd", Code: "USD", Symbol: "$", UserID: nil},
+			{ID: "global-hidden", Code: "HHH", Symbol: "H", UserID: nil},
+			{ID: "own-hidden", Code: "PTS", Symbol: "p", UserID: strPtr(meID)},
+			{ID: "foreign-custom", Code: "GEM", Symbol: "g", UserID: strPtr(otherID)},
 		},
-		hidden: []string{"global-hidden"},
+		// A hidden entry for a foreign custom must NOT surface on its row.
+		hidden: []string{"global-hidden", "own-hidden", "foreign-custom"},
 	}
 	svc := appcurrency.NewReadService(fake, model.BaseCurrency{ID: "global-usd", Code: "USD"})
 
@@ -73,11 +74,11 @@ func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {
 	if got := byID["global-hidden"]; got.Scope != appcurrency.ScopeGlobal || got.IsHidden != 1 {
 		t.Errorf("global-hidden: scope=%q isHidden=%d, want global/1", got.Scope, got.IsHidden)
 	}
-	if got := byID["own-archived"]; got.Scope != appcurrency.ScopeOwn || got.IsArchived != 1 {
-		t.Errorf("own-archived: scope=%q isArchived=%d, want own/1", got.Scope, got.IsArchived)
+	if got := byID["own-hidden"]; got.Scope != appcurrency.ScopeOwn || got.IsHidden != 1 {
+		t.Errorf("own-hidden: scope=%q isHidden=%d, want own/1", got.Scope, got.IsHidden)
 	}
-	if got := byID["foreign-custom"]; got.Scope != appcurrency.ScopeShared {
-		t.Errorf("foreign-custom: scope=%q, want shared", got.Scope)
+	if got := byID["foreign-custom"]; got.Scope != appcurrency.ScopeShared || got.IsHidden != 0 {
+		t.Errorf("foreign-custom: scope=%q isHidden=%d, want shared/0", got.Scope, got.IsHidden)
 	}
 }
 

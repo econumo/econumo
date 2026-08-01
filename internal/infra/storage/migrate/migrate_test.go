@@ -371,3 +371,32 @@ PRAGMA foreign_keys = ON;
 		t.Fatalf("foreign_keys after failed Run = %d (err %v), want 1", fk, err)
 	}
 }
+
+// A pool whose connections run with foreign_keys OFF (SQLite's default) must
+// get its connection back in that state: the hoisted pragmas may not leak an
+// enforcement change into the caller's pool.
+func TestRun_FKPragmasHoisted_RestoresPriorOffState(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:TestRun_FKRestoreOff?mode=memory&cache=shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+	t.Cleanup(func() { db.Close() })
+	// No PRAGMA foreign_keys here: the single connection runs with the SQLite
+	// default (OFF).
+	ctx := context.Background()
+	ms := []Migration{
+		{Version: "001", SQL: fkFixture},
+		{Version: "002", SQL: "PRAGMA foreign_keys = OFF;\nCREATE TABLE rebuilt (id TEXT);\nPRAGMA foreign_keys = ON;"},
+	}
+	if err := Run(ctx, db, ms); err != nil {
+		t.Fatal(err)
+	}
+	var fk int
+	if err := db.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&fk); err != nil {
+		t.Fatal(err)
+	}
+	if fk != 0 {
+		t.Fatalf("foreign_keys = %d after migration, want 0 (the runner leaked an enforcement change into the pool)", fk)
+	}
+}

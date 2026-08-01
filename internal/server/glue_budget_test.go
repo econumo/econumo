@@ -38,7 +38,9 @@ func TestBudgetUserLookup_CurrencyCode(t *testing.T) {
 	}
 }
 
-func TestBudgetUserLookup_CurrencyCode_DefaultsWhenOptionMissing(t *testing.T) {
+// The migration guarantees every user holds a currency option; a user without
+// one is data corruption and must surface as an error, not a silent fallback.
+func TestBudgetUserLookup_CurrencyCode_ErrorWhenOptionMissing(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	f.User(fixture.User{ID: glueUserB, Name: "u"})
@@ -47,12 +49,8 @@ func TestBudgetUserLookup_CurrencyCode_DefaultsWhenOptionMissing(t *testing.T) {
 	users := userrepo.NewRepo("sqlite", db.TX)
 	lookup := server.NewBudgetUserLookup(users, clock.New())
 
-	id, err := lookup.DefaultCurrencyID(context.Background(), glueUserB)
-	if err != nil {
-		t.Fatalf("DefaultCurrencyID: %v", err)
-	}
-	if id != "" {
-		t.Errorf(`want "" (no default set; the budget service falls back), got %q`, id)
+	if _, err := lookup.DefaultCurrencyID(context.Background(), glueUserB); err == nil {
+		t.Error("want an error for a user without a currency option")
 	}
 }
 

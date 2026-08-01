@@ -205,39 +205,22 @@ func TestCreateAccount_OwnCustomCurrency_Success(t *testing.T) {
 	}
 }
 
-func TestUpdateAccount_UnchangedArchivedCurrency_Success(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t)
-	archivedCur := "cccc2222-0000-7000-8000-000000000003"
-	h.f.Currency(fixture.Currency{ID: archivedCur, Code: "OLD", UserID: seedUserID, IsArchived: true})
-	h.f.Account(fixture.Account{ID: acctID1, UserID: seedUserID, CurrencyID: archivedCur, Name: "Cash", Type: 2, Icon: "wallet"})
-
-	// Rename, but resend the SAME (archived) currencyId: must not be rejected.
-	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
-		"id": acctID1, "name": "Renamed", "currencyId": archivedCur, "balance": "0", "icon": "wallet",
-		"updatedAt": "2024-01-01 12:00:00",
-	})
-	if status != http.StatusOK {
-		t.Fatalf("update keeping archived currency = %d, want 200; body: %s", status, env.raw)
-	}
-}
-
-func TestUpdateAccount_ChangeToArchivedCurrency_400(t *testing.T) {
+// Hiding a currency is a picker preference, not a lock: a hidden own custom
+// stays usable for accounts.
+func TestUpdateAccount_ChangeToHiddenOwnCurrency_Success(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	acctID, _ := h.createAccount(t, acctID1, "Cash", "0")
-	archivedCur := "cccc2222-0000-7000-8000-000000000004"
-	h.f.Currency(fixture.Currency{ID: archivedCur, Code: "OLD", UserID: seedUserID, IsArchived: true})
+	hiddenCur := "cccc2222-0000-7000-8000-000000000004"
+	h.f.Currency(fixture.Currency{ID: hiddenCur, Code: "OLD", UserID: seedUserID})
+	h.f.HiddenCurrency(seedUserID, hiddenCur)
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
-		"id": acctID, "name": "Cash", "currencyId": archivedCur, "balance": "0", "icon": "wallet",
+		"id": acctID, "name": "Cash", "currencyId": hiddenCur, "balance": "0", "icon": "wallet",
 		"updatedAt": "2024-01-01 12:00:00",
 	})
-	if status != http.StatusBadRequest {
-		t.Fatalf("update to archived currency = %d, want 400; body: %s", status, env.raw)
-	}
-	if msgs := env.errorsMap()["currencyId"]; len(msgs) == 0 || msgs[0] != "Currency is not available" {
-		t.Fatalf("currencyId error = %v, want \"Currency is not available\"", env.errorsMap()["currencyId"])
+	if status != http.StatusOK {
+		t.Fatalf("update to hidden own currency = %d, want 200; body: %s", status, env.raw)
 	}
 }
 

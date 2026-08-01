@@ -28,9 +28,8 @@ type CurrencyResult struct {
 // not owned by the caller); isArchived/isHidden are ints 0/1.
 type CurrencyListItem struct {
 	CurrencyResult
-	Scope      string `json:"scope"`
-	IsArchived int    `json:"isArchived"`
-	IsHidden   int    `json:"isHidden"`
+	Scope    string `json:"scope"`
+	IsHidden int    `json:"isHidden"`
 }
 
 // GetCurrencyListResult is the get-currency-list response: {items: [...]}.
@@ -123,22 +122,6 @@ func (r UpdateCustomCurrencyRequest) Validate() error {
 type UpdateCustomCurrencyResult struct {
 	Item CurrencyListItem `json:"item"`
 }
-
-type ArchiveCurrencyRequest struct {
-	Id string `json:"id"`
-}
-
-func (r ArchiveCurrencyRequest) Validate() error { return validateBlankId(r.Id) }
-
-type ArchiveCurrencyResult struct{}
-
-type UnarchiveCurrencyRequest struct {
-	Id string `json:"id"`
-}
-
-func (r UnarchiveCurrencyRequest) Validate() error { return validateBlankId(r.Id) }
-
-type UnarchiveCurrencyResult struct{}
 
 type DeleteCurrencyRequest struct {
 	Id string `json:"id"`

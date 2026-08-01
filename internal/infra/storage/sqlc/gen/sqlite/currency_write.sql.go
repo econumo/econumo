@@ -39,19 +39,6 @@ func (q *Queries) CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsage
 	return usage_count, err
 }
 
-const countDefaultCurrencyUsage = `-- name: CountDefaultCurrencyUsage :one
-SELECT COUNT(*) FROM users_options WHERE name = 'currency' AND value = ?
-`
-
-// Profile defaults holding this currency id, for the archive guard (a
-// default must stay pickable).
-func (q *Queries) CountDefaultCurrencyUsage(ctx context.Context, value *string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countDefaultCurrencyUsage, value)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const deleteCurrency = `-- name: DeleteCurrency :exec
 DELETE FROM currencies WHERE id = ?
 `
@@ -108,7 +95,7 @@ func (q *Queries) GetCurrencyByCode(ctx context.Context, code string) (GetCurren
 
 const getCurrencyRecord = `-- name: GetCurrencyRecord :one
 
-SELECT id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at
+SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at
 FROM currencies WHERE id = ?
 `
 
@@ -119,7 +106,6 @@ type GetCurrencyRecordRow struct {
 	Name           *string
 	FractionDigits int16
 	UserID         *string
-	IsArchived     bool
 	Rate           *string
 	CreatedAt      time.Time
 }
@@ -136,7 +122,6 @@ func (q *Queries) GetCurrencyRecord(ctx context.Context, id string) (GetCurrency
 		&i.Name,
 		&i.FractionDigits,
 		&i.UserID,
-		&i.IsArchived,
 		&i.Rate,
 		&i.CreatedAt,
 	)
@@ -260,8 +245,8 @@ func (q *Queries) InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurr
 }
 
 const insertUserCurrency = `-- name: InsertUserCurrency :exec
-INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertUserCurrencyParams struct {
@@ -271,7 +256,6 @@ type InsertUserCurrencyParams struct {
 	Name           *string
 	FractionDigits int16
 	UserID         *string
-	IsArchived     bool
 	Rate           *string
 	CreatedAt      time.Time
 }
@@ -284,7 +268,6 @@ func (q *Queries) InsertUserCurrency(ctx context.Context, arg InsertUserCurrency
 		arg.Name,
 		arg.FractionDigits,
 		arg.UserID,
-		arg.IsArchived,
 		arg.Rate,
 		arg.CreatedAt,
 	)
@@ -352,20 +335,6 @@ func (q *Queries) OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrency
 	var count int64
 	err := row.Scan(&count)
 	return count, err
-}
-
-const setCurrencyArchived = `-- name: SetCurrencyArchived :exec
-UPDATE currencies SET is_archived = ? WHERE id = ?
-`
-
-type SetCurrencyArchivedParams struct {
-	IsArchived bool
-	ID         string
-}
-
-func (q *Queries) SetCurrencyArchived(ctx context.Context, arg SetCurrencyArchivedParams) error {
-	_, err := q.db.ExecContext(ctx, setCurrencyArchived, arg.IsArchived, arg.ID)
-	return err
 }
 
 const updateCurrencyDetails = `-- name: UpdateCurrencyDetails :exec

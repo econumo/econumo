@@ -49,44 +49,6 @@ func (s *ManageService) UpdateCurrency(ctx context.Context, userID vo.Id, req mo
 	return &model.UpdateCustomCurrencyResult{Item: toCurrencyResult(rec, ScopeOwn)}, nil
 }
 
-func (s *ManageService) ArchiveCurrency(ctx context.Context, userID vo.Id, req model.ArchiveCurrencyRequest) (*model.ArchiveCurrencyResult, error) {
-	if err := s.setArchived(ctx, userID, req.Id, true); err != nil {
-		return nil, err
-	}
-	return &model.ArchiveCurrencyResult{}, nil
-}
-
-func (s *ManageService) UnarchiveCurrency(ctx context.Context, userID vo.Id, req model.UnarchiveCurrencyRequest) (*model.UnarchiveCurrencyResult, error) {
-	if err := s.setArchived(ctx, userID, req.Id, false); err != nil {
-		return nil, err
-	}
-	return &model.UnarchiveCurrencyResult{}, nil
-}
-
-func (s *ManageService) setArchived(ctx context.Context, userID vo.Id, id string, archived bool) error {
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
-		rec, err := s.ownedRecord(ctx, id, userID)
-		if err != nil {
-			return err
-		}
-		if rec.IsArchived == archived {
-			return nil
-		}
-		if archived {
-			// A profile default must stay pickable: archiving it would leave
-			// the user defaulting to a currency their pickers no longer offer.
-			defaults, derr := s.repo.CountDefaultCurrencyUsage(ctx, rec.ID)
-			if derr != nil {
-				return derr
-			}
-			if defaults > 0 {
-				return &errs.ValidationError{Msg: "Currency is in use and cannot be archived", MsgCode: errs.CodeCurrencyCannotArchive}
-			}
-		}
-		return s.repo.SetCurrencyArchived(ctx, rec.ID, archived)
-	})
-}
-
 func (s *ManageService) DeleteCurrency(ctx context.Context, userID vo.Id, req model.DeleteCurrencyRequest) (*model.DeleteCurrencyResult, error) {
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		rec, err := s.ownedRecord(ctx, req.Id, userID)

@@ -73,12 +73,14 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 
 	u := model.NewUser(s.repo.NextIdentity(), encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
-	// The currency option stores an ID: seed the resolved default. When the
-	// default code has no row (unusual instance), the option stays empty and
-	// reads apply their USD fallback.
-	if defaultID, cerr := s.currency.GetIDByCode(ctx, u.ID.String(), s.currency.DefaultCode()); cerr == nil {
-		u.UpdateCurrency(defaultID, now)
+	// The currency option stores an ID: seed the resolved default. Reads treat
+	// a user without a live currency id as data corruption, so a missing
+	// default-currency row fails registration instead of minting such a user.
+	defaultID, cerr := s.currency.GetIDByCode(ctx, u.ID.String(), s.currency.DefaultCode())
+	if cerr != nil {
+		return nil, cerr
 	}
+	u.UpdateCurrency(defaultID, now)
 	if selfService && s.trialDays > 0 {
 		until := model.TrialEnd(now, s.trialDays)
 		u.SetAccess(model.AccessLevelFull, &until, now)

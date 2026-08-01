@@ -19,9 +19,8 @@ type currencyItemsWrapper struct {
 }
 type currencyListItem struct {
 	currencyItem
-	Scope      string `json:"scope"`
-	IsArchived int    `json:"isArchived"`
-	IsHidden   int    `json:"isHidden"`
+	Scope    string `json:"scope"`
+	IsHidden int    `json:"isHidden"`
 }
 type rateItemsWrapper struct {
 	Items []rateItem `json:"items"`
@@ -183,7 +182,7 @@ func TestCreateCurrency_Success(t *testing.T) {
 	if res.Item.Code != "PTS" || res.Item.Name != "Points" || res.Item.Symbol != "pts" || res.Item.FractionDigits != 0 {
 		t.Fatalf("item = %+v, want PTS/Points/pts/0", res.Item)
 	}
-	if res.Item.Scope != "own" || res.Item.IsArchived != 0 || res.Item.IsHidden != 0 {
+	if res.Item.Scope != "own" || res.Item.IsHidden != 0 {
 		t.Fatalf("item scope/flags = %+v, want own/0/0", res.Item)
 	}
 	if res.Item.ID == "" {
@@ -264,49 +263,6 @@ func TestUpdateCurrency_Foreign_403(t *testing.T) {
 	}
 	if env.Success {
 		t.Fatalf("expected success=false; body: %s", env.raw)
-	}
-}
-
-func TestArchiveUnarchiveCurrency_Success(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-0000-000000000004", seedUserID, "PTS", "pts", 2)
-
-	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/archive-currency", token, map[string]any{"id": "bbbbbbbb-0000-0000-0000-000000000004"})
-	if status != http.StatusOK {
-		t.Fatalf("archive status = %d, want 200; body: %s", status, env.raw)
-	}
-
-	listStatus, listEnv := h.do(t, http.MethodGet, "/api/v1/currency/get-currency-list", token)
-	if listStatus != http.StatusOK {
-		t.Fatalf("list status = %d, want 200; body: %s", listStatus, listEnv.raw)
-	}
-	list := mustUnmarshal[currencyItemsWrapperFull](t, listEnv.Data)
-	found := false
-	for _, it := range list.Items {
-		if it.ID == "bbbbbbbb-0000-0000-0000-000000000004" {
-			found = true
-			if it.IsArchived != 1 {
-				t.Fatalf("isArchived = %d, want 1 after archive; body: %s", it.IsArchived, listEnv.raw)
-			}
-		}
-	}
-	if !found {
-		t.Fatalf("archived currency missing from list; body: %s", listEnv.raw)
-	}
-
-	status, env = h.doJSON(t, http.MethodPost, "/api/v1/currency/unarchive-currency", token, map[string]any{"id": "bbbbbbbb-0000-0000-0000-000000000004"})
-	if status != http.StatusOK {
-		t.Fatalf("unarchive status = %d, want 200; body: %s", status, env.raw)
-	}
-}
-
-func TestArchiveCurrency_NoToken_401(t *testing.T) {
-	h := newHarness(t)
-	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-0000-000000000005", seedUserID, "PTS", "pts", 2)
-	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/archive-currency", "", map[string]any{"id": "bbbbbbbb-0000-0000-0000-000000000005"})
-	if status != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401; body: %s", status, env.raw)
 	}
 }
 
@@ -393,12 +349,41 @@ func TestHideCurrency_NoToken_401(t *testing.T) {
 	}
 }
 
-func TestHideCurrency_Custom_400(t *testing.T) {
+func TestHideCurrency_OwnCustom_200(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-000-00000000000b", seedUserID, "PTS", "pts", 2)
 
 	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/hide-currency", token, map[string]any{"id": "bbbbbbbb-0000-0000-000-00000000000b"})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+
+	listStatus, listEnv := h.do(t, http.MethodGet, "/api/v1/currency/get-currency-list", token)
+	if listStatus != http.StatusOK {
+		t.Fatalf("list status = %d, want 200; body: %s", listStatus, listEnv.raw)
+	}
+	list := mustUnmarshal[currencyItemsWrapperFull](t, listEnv.Data)
+	found := false
+	for _, it := range list.Items {
+		if it.ID == "bbbbbbbb-0000-0000-000-00000000000b" {
+			found = true
+			if it.IsHidden != 1 {
+				t.Fatalf("isHidden = %d, want 1 after hiding an own custom; body: %s", it.IsHidden, listEnv.raw)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("hidden own custom missing from list; body: %s", listEnv.raw)
+	}
+}
+
+func TestHideCurrency_ForeignCustom_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+	h.seedCustomCurrency(t, "bbbbbbbb-0000-0000-000-00000000000c", otherUserID, "PTS", "pts", 2)
+
+	status, env := h.doJSON(t, http.MethodPost, "/api/v1/currency/hide-currency", token, map[string]any{"id": "bbbbbbbb-0000-0000-000-00000000000c"})
 	if status != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
 	}

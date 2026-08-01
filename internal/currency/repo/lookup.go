@@ -85,8 +85,9 @@ func (l *Lookup) GetIDByCodeForUser(ctx context.Context, userID, code string) (s
 
 // EnsureUsable reports whether the user may denominate new entities in the
 // currency: global, or their own non-archived custom. A foreign custom or an
-// own archived custom is rejected with a field-level validation error; a
-// missing currency id is NotFound.
+// foreign custom is rejected with a field-level validation error; a missing
+// currency id is NotFound. Hidden currencies stay usable: hiding is a picker
+// preference, not a lock.
 func (l *Lookup) EnsureUsable(ctx context.Context, userID, currencyID string) error {
 	row, err := l.q.GetCurrencyRecord(ctx, l.tx.Querier(ctx), currencyID)
 	if err != nil {
@@ -98,7 +99,7 @@ func (l *Lookup) EnsureUsable(ctx context.Context, userID, currencyID string) er
 	if row.UserID == nil {
 		return nil
 	}
-	if *row.UserID == userID && !row.IsArchived {
+	if *row.UserID == userID {
 		return nil
 	}
 	return errs.NewValidation("Validation failed",

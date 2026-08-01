@@ -183,8 +183,9 @@ func applyMigration(ctx context.Context, db *sql.DB, m Migration) error {
 	// SQLite's foreign_keys pragma is a silent no-op inside a transaction, so
 	// migrations that need it OFF (single-table rebuilds) write plain
 	// "PRAGMA foreign_keys = OFF/ON;" statements and the runner HOISTS them:
-	// OFF runs on a pinned connection before the transaction, ON is restored
-	// afterwards no matter what, and PRAGMA foreign_key_check gates the
+	// OFF runs on a pinned connection before the transaction, the connection's
+	// PRIOR enforcement state is restored afterwards no matter what (the pool
+	// must not observe a state change), and PRAGMA foreign_key_check gates the
 	// result INSIDE the transaction so violations roll the migration back.
 	body := stmts[:0:0]
 	hoistFK := false
@@ -216,12 +217,18 @@ func applyMigration(ctx context.Context, db *sql.DB, m Migration) error {
 		return fmt.Errorf("acquire connection: %w", err)
 	}
 	defer func() { _ = conn.Close() }()
+	var fkWasOn int
+	if err := conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&fkWasOn); err != nil {
+		return fmt.Errorf("read foreign_keys state: %w", err)
+	}
 	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
 		return fmt.Errorf("disable foreign_keys: %w", err)
 	}
-	// The connection returns to the pool with enforcement re-enabled even
+	// The connection returns to the pool in its prior enforcement state even
 	// when the migration fails.
-	defer func() { _, _ = conn.ExecContext(ctx, "PRAGMA foreign_keys = ON") }()
+	defer func() {
+		_, _ = conn.ExecContext(ctx, fmt.Sprintf("PRAGMA foreign_keys = %d", fkWasOn))
+	}()
 
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {

@@ -55,7 +55,7 @@ SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1
 -- have user_id NULL; custom currencies carry their owner id.
 
 -- name: GetCurrencyRecord :one
-SELECT id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at
+SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at
 FROM currencies WHERE id = ?;
 
 -- name: GlobalCurrencyCodeExists :one
@@ -65,8 +65,8 @@ SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id IS NULL;
 SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id = ?;
 
 -- name: InsertUserCurrency :exec
-INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateCurrencyDetails :exec
 UPDATE currencies SET name = ?, symbol = ?, fraction_digits = ?, rate = ? WHERE id = ?;
@@ -76,8 +76,6 @@ UPDATE currencies SET name = ?, symbol = ?, fraction_digits = ?, rate = ? WHERE 
 -- name: GetFixedCurrencyRates :many
 SELECT id, rate FROM currencies WHERE rate IS NOT NULL;
 
--- name: SetCurrencyArchived :exec
-UPDATE currencies SET is_archived = ? WHERE id = ?;
 
 -- name: DeleteCurrency :exec
 DELETE FROM currencies WHERE id = ?;
@@ -101,5 +99,3 @@ DELETE FROM users_hidden_currencies WHERE user_id = ? AND currency_id = ?;
 
 -- Profile defaults holding this currency id, for the archive guard (a
 -- default must stay pickable).
--- name: CountDefaultCurrencyUsage :one
-SELECT COUNT(*) FROM users_options WHERE name = 'currency' AND value = ?;

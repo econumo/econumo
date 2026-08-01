@@ -90,49 +90,6 @@ func TestCreateBudget_OwnCustomCurrency_Success(t *testing.T) {
 	}
 }
 
-func TestUpdateBudget_UnchangedArchivedCurrency_Success(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t)
-	notYetArchivedCur := "cccc3333-0000-7000-8000-000000000003"
-	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{ID: notYetArchivedCur, Code: "OLD", UserID: seedUserID})
-	req := createBudgetReq(budgetID1, "Test Budget")
-	req["currencyId"] = notYetArchivedCur
-	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, req); st != http.StatusOK {
-		t.Fatalf("create-budget=%d body=%s", st, e.raw)
-	}
-	// Archive the currency AFTER the budget already uses it (an update that
-	// doesn't touch currencyId must not be blocked by this).
-	if _, err := h.db.Exec("UPDATE currencies SET is_archived = 1 WHERE id = ?", notYetArchivedCur); err != nil {
-		t.Fatalf("archive currency: %v", err)
-	}
-
-	// Rename only, resending the SAME (now archived) currencyId: must not be rejected.
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/update-budget", tok, map[string]any{
-		"id": budgetID1, "name": "Renamed Budget", "currencyId": notYetArchivedCur,
-	})
-	if status != http.StatusOK {
-		t.Fatalf("update-budget keeping archived currency=%d want 200 body=%s", status, env.raw)
-	}
-}
-
-func TestUpdateBudget_ChangeToArchivedCurrency_400(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t)
-	seedBudget(t, h, tok)
-	archivedCur := "cccc3333-0000-7000-8000-000000000004"
-	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{ID: archivedCur, Code: "OLD", UserID: seedUserID, IsArchived: true})
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/update-budget", tok, map[string]any{
-		"id": budgetID1, "name": "Test Budget", "currencyId": archivedCur,
-	})
-	if status != http.StatusBadRequest {
-		t.Fatalf("update-budget to archived currency=%d want 400 body=%s", status, env.raw)
-	}
-	if msgs := env.errorsMap()["currencyId"]; len(msgs) == 0 || msgs[0] != "Currency is not available" {
-		t.Fatalf("currencyId error = %v, want \"Currency is not available\"", env.errorsMap()["currencyId"])
-	}
-}
-
 func TestChangeElementCurrency_ForeignCustom_400(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

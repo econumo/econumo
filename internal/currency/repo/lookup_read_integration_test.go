@@ -100,7 +100,6 @@ func TestLookup_EnsureUsable(t *testing.T) {
 	alice := f.User(fixture.User{ID: "a2000000-0000-7000-8000-000000000001", Name: "Alice"})
 	bob := f.User(fixture.User{ID: "b2000000-0000-7000-8000-000000000002", Name: "Bob"})
 	pts := f.Currency(fixture.Currency{Code: "PTS", UserID: alice})
-	old := f.Currency(fixture.Currency{Code: "OLD", UserID: alice, IsArchived: true})
 	if err := lk.EnsureUsable(ctx, alice, seededUSD); err != nil {
 		t.Errorf("global should be usable: %v", err)
 	}
@@ -111,9 +110,6 @@ func TestLookup_EnsureUsable(t *testing.T) {
 		t.Error("foreign custom must be rejected")
 	} else if v, ok := errs.AsValidation(err); !ok || v.Msg != "Validation failed" || v.Fields[0].Message != "Currency is not available" {
 		t.Errorf("wrong error: %v", err)
-	}
-	if err := lk.EnsureUsable(ctx, alice, old); err == nil {
-		t.Error("own archived custom must be rejected")
 	}
 	if err := lk.EnsureUsable(ctx, alice, fixture.NewID()); err == nil {
 		t.Error("missing currency must error")

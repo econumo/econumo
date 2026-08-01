@@ -152,7 +152,6 @@ type Currency struct {
 	Name           *string
 	FractionDigits int16
 	UserID         *string
-	IsArchived     bool
 	Rate           *string
 }
 

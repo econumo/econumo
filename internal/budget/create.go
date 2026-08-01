@@ -31,8 +31,7 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	}
 
 	// Resolve currency: explicit id (checked usable below), else the user's
-	// default currency code (own-first-then-global; not usability-checked, same
-	// as update-currency's own code resolution).
+	// stored default currency id (which every user holds).
 	currencyID := req.CurrencyId
 	if currencyID == "" {
 		stored, cerr := s.users.DefaultCurrencyID(ctx, userID.String())
@@ -40,14 +39,6 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 			return nil, cerr
 		}
 		currencyID = stored
-	}
-	if currencyID == "" {
-		// No stored default: fall back to the domain default code.
-		id, cerr := s.currency.GetIDByCode(ctx, userID.String(), model.DefaultCurrency)
-		if cerr != nil {
-			return nil, cerr
-		}
-		currencyID = id
 	}
 	curID, err := vo.ParseId(currencyID)
 	if err != nil {

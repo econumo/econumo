@@ -17,7 +17,9 @@ func (s *ManageService) HideCurrency(ctx context.Context, userID vo.Id, req mode
 		if err != nil {
 			return err
 		}
-		if rec.UserID != nil {
+		// Globals and the caller's OWN customs are hideable; foreign customs
+		// are not (hide is each user's own picker preference).
+		if rec.UserID != nil && *rec.UserID != userID.String() {
 			return &errs.ValidationError{Msg: "This currency cannot be hidden", MsgCode: errs.CodeCurrencyCannotBeHidden}
 		}
 		if rec.ID == s.base.ID {

@@ -88,3 +88,29 @@ func TestProfileCurrency_StoredAsID_WireShowsCode(t *testing.T) {
 		t.Fatalf("wire currency_id = %q, want %s", got, pts)
 	}
 }
+
+// Strict reads: a violated invariant (dangling stored id) is an ERROR, not a
+// silent USD substitution — the migration guarantees the invariant, so a
+// violation means real corruption that must surface.
+func TestProfileCurrency_DanglingID_Errors(t *testing.T) {
+	db := dbtest.New(t)
+	svc, _, _ := newTrialSvc(t, db, 0)
+	ctx := context.Background()
+
+	res, err := svc.Register(ctx, model.RegisterRequest{
+		Name: "Dan", Email: "dan@econumo.test", Password: "secretpass",
+	})
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+	if _, err := db.Raw.Exec(db.Rebind(`UPDATE users_options SET value = 'ffffffff-0000-7000-8000-000000000bad' WHERE user_id = ? AND name = 'currency'`), res.User.Id); err != nil {
+		t.Fatal(err)
+	}
+	uid, err := vo.ParseId(res.User.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.UpdateName(ctx, uid, model.UpdateNameRequest{Name: "Dan2"}); err == nil {
+		t.Fatal("a dangling currency option id must surface as an error, not fall back to USD")
+	}
+}

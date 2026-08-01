@@ -76,12 +76,8 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, userID vo.Id) (*model
 				scope = ScopeShared
 			}
 		}
-		archived := 0
-		if r.IsArchived {
-			archived = 1
-		}
 		isHidden := 0
-		if scope == ScopeGlobal && hiddenSet[r.ID] {
+		if scope != ScopeShared && hiddenSet[r.ID] {
 			isHidden = 1
 		}
 		items = append(items, model.CurrencyListItem{
@@ -92,9 +88,8 @@ func (s *ReadService) GetCurrencyList(ctx context.Context, userID vo.Id) (*model
 				Symbol:         r.Symbol,
 				FractionDigits: int(r.FractionDigits),
 			},
-			Scope:      scope,
-			IsArchived: archived,
-			IsHidden:   isHidden,
+			Scope:    scope,
+			IsHidden: isHidden,
 		})
 	}
 	return &model.GetCurrencyListResult{Items: items}, nil

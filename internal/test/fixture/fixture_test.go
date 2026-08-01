@@ -24,7 +24,7 @@ func TestBuilder_SeedsEveryEntity(t *testing.T) {
 
 	eur := f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
 	f.Rate(fixture.Rate{CurrencyID: eur, Rate: "0.85000000"})
-	f.Currency(fixture.Currency{Code: "PTS", Symbol: "pts", Name: "Points", UserID: owner, IsArchived: true})
+	f.Currency(fixture.Currency{Code: "PTS", Symbol: "pts", Name: "Points", UserID: owner})
 	f.HiddenCurrency(guest, eur)
 
 	folder := f.Folder(fixture.Folder{UserID: owner})

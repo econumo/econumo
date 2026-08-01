@@ -1323,8 +1323,7 @@
       "not_available": "Currency is not available",
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",
-      "cannot_be_hidden": "This currency cannot be hidden",
-      "cannot_archive": "Currency is in use and cannot be archived"
+      "cannot_be_hidden": "This currency cannot be hidden"
     },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",

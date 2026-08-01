@@ -21,9 +21,6 @@ type Querier interface {
 	// they still hold the FK), budgets, budget elements, and any user whose
 	// profile currency option stores this currency id.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
-	// Profile defaults holding this currency id, for the archive guard (a
-	// default must stay pickable).
-	CountDefaultCurrencyUsage(ctx context.Context, value *string) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
 	// New-payee position = count of the owner's existing payees.
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
@@ -379,7 +376,6 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
-	SetCurrencyArchived(ctx context.Context, arg SetCurrencyArchivedParams) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error

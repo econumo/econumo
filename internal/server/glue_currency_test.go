@@ -37,7 +37,9 @@ func TestCurrencyProfileCurrency_CurrencyID(t *testing.T) {
 	}
 }
 
-func TestCurrencyProfileCurrency_CurrencyID_EmptyWhenOptionMissing(t *testing.T) {
+// The migration guarantees every user holds a currency option; a user without
+// one is data corruption and must surface as an error, not a silent skip.
+func TestCurrencyProfileCurrency_CurrencyID_ErrorWhenOptionMissing(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	f.User(fixture.User{ID: currencyGlueUserB, Name: "u"})
@@ -46,12 +48,8 @@ func TestCurrencyProfileCurrency_CurrencyID_EmptyWhenOptionMissing(t *testing.T)
 	users := userrepo.NewRepo("sqlite", db.TX)
 	profile := server.NewCurrencyProfileCurrency(users)
 
-	id, err := profile.CurrencyID(context.Background(), currencyGlueUserB)
-	if err != nil {
-		t.Fatalf("CurrencyID: %v", err)
-	}
-	if id != "" {
-		t.Errorf(`want "" (no default set; guards skip), got %q`, id)
+	if _, err := profile.CurrencyID(context.Background(), currencyGlueUserB); err == nil {
+		t.Error("want an error for a user without a currency option")
 	}
 }
 

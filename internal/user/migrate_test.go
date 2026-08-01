@@ -109,7 +109,8 @@ func TestMigrateThenLoginSaltFree(t *testing.T) {
 
 	const email = "Carol@Econumo.test"
 	const password = "secret-pw" // the fixture default
-	fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: email, Password: password})
+	f := fixture.New(t, db).WithCrypto(testSalt)
+	f.DefaultOptions(f.User(fixture.User{Email: email, Password: password}))
 
 	if _, _, err := saltedSvc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
 		t.Fatalf("migrate: %v", err)

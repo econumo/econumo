@@ -24,18 +24,16 @@ const (
 func intPtr(i int) *int { return &i }
 
 type fakeManageRepo struct {
-	records  map[string]model.CurrencyRecord
-	usage    map[string]int64
-	defaults map[string]int64
-	hidden   map[string]bool
+	records map[string]model.CurrencyRecord
+	usage   map[string]int64
+	hidden  map[string]bool
 }
 
 func newFakeManageRepo() *fakeManageRepo {
 	return &fakeManageRepo{
-		records:  map[string]model.CurrencyRecord{},
-		usage:    map[string]int64{},
-		defaults: map[string]int64{},
-		hidden:   map[string]bool{},
+		records: map[string]model.CurrencyRecord{},
+		usage:   map[string]int64{},
+		hidden:  map[string]bool{},
 	}
 }
 
@@ -83,16 +81,6 @@ func (f *fakeManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, sy
 	return nil
 }
 
-func (f *fakeManageRepo) SetCurrencyArchived(ctx context.Context, id string, archived bool) error {
-	rec, ok := f.records[id]
-	if !ok {
-		return errs.NewNotFound("Currency not found")
-	}
-	rec.IsArchived = archived
-	f.records[id] = rec
-	return nil
-}
-
 func (f *fakeManageRepo) DeleteCurrency(ctx context.Context, id string) error {
 	delete(f.records, id)
 	return nil
@@ -100,10 +88,6 @@ func (f *fakeManageRepo) DeleteCurrency(ctx context.Context, id string) error {
 
 func (f *fakeManageRepo) CountCurrencyUsage(ctx context.Context, id string) (int64, error) {
 	return f.usage[id], nil
-}
-
-func (f *fakeManageRepo) CountDefaultCurrencyUsage(ctx context.Context, id string) (int64, error) {
-	return f.defaults[id], nil
 }
 
 func (f *fakeManageRepo) HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error {
@@ -471,76 +455,6 @@ func TestUpdateCurrency_NotFound(t *testing.T) {
 	}
 }
 
-func TestArchiveCurrency_OwnerOnly(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
-	repo.records["foreign-pts"] = model.CurrencyRecord{ID: "foreign-pts", Code: "GEM", Symbol: "GEM", UserID: strPtr(manageOtherID)}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-
-	if _, err := svc.ArchiveCurrency(context.Background(), uid, model.ArchiveCurrencyRequest{Id: "own-pts"}); err != nil {
-		t.Fatalf("ArchiveCurrency (owner): %v", err)
-	}
-	if !repo.records["own-pts"].IsArchived {
-		t.Error("expected own-pts to be archived")
-	}
-
-	_, err := svc.ArchiveCurrency(context.Background(), uid, model.ArchiveCurrencyRequest{Id: "foreign-pts"})
-	if _, ok := errs.AsAccessDenied(err); !ok {
-		t.Fatalf("err = %v, want *AccessDeniedError", err)
-	}
-}
-
-// Archiving a currency that is someone's profile default is refused: the
-// default must stay pickable.
-func TestArchiveCurrency_DefaultRefused(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "p", UserID: strPtr(manageMeID)}
-	repo.defaults["own-pts"] = 1
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-
-	_, err := svc.ArchiveCurrency(context.Background(), uid, model.ArchiveCurrencyRequest{Id: "own-pts"})
-	v, ok := errs.AsValidation(err)
-	if !ok {
-		t.Fatalf("err = %v, want *ValidationError", err)
-	}
-	if v.Msg != "Currency is in use and cannot be archived" {
-		t.Errorf("Msg = %q, want the frozen archive-guard message", v.Msg)
-	}
-	if rec := repo.records["own-pts"]; rec.IsArchived {
-		t.Error("the currency must not be archived")
-	}
-}
-
-func TestArchiveCurrency_SucceedsAfterDefaultMovedAway(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "p", UserID: strPtr(manageMeID)}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-
-	if _, err := svc.ArchiveCurrency(context.Background(), uid, model.ArchiveCurrencyRequest{Id: "own-pts"}); err != nil {
-		t.Fatalf("ArchiveCurrency: %v", err)
-	}
-	if rec := repo.records["own-pts"]; !rec.IsArchived {
-		t.Error("expected the currency to be archived")
-	}
-}
-
-func TestUnarchiveCurrency(t *testing.T) {
-	repo := newFakeManageRepo()
-	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID), IsArchived: true}
-	svc := newManageSvc(repo, &fakeOps{}, manageNow)
-	uid := vo.MustParseId(manageMeID)
-
-	if _, err := svc.UnarchiveCurrency(context.Background(), uid, model.UnarchiveCurrencyRequest{Id: "own-pts"}); err != nil {
-		t.Fatalf("UnarchiveCurrency: %v", err)
-	}
-	if repo.records["own-pts"].IsArchived {
-		t.Error("expected own-pts to be unarchived")
-	}
-}
-
 func TestDeleteCurrency_RefusesWhenUsed(t *testing.T) {
 	repo := newFakeManageRepo()
 	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
@@ -601,10 +515,45 @@ func TestHideCurrency_HappyPath(t *testing.T) {
 	}
 }
 
-func TestHideCurrency_CustomTarget(t *testing.T) {
+// Hiding your OWN custom is allowed: it replaces archival as the way to
+// retire a currency from your pickers.
+func TestHideCurrency_OwnCustomAllowed(t *testing.T) {
 	repo := newFakeManageRepo()
 	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
 	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	if _, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "own-pts"}); err != nil {
+		t.Fatalf("HideCurrency(own custom): %v", err)
+	}
+	if !repo.hidden[manageMeID+"|own-pts"] {
+		t.Fatal("expected the own custom to be hidden")
+	}
+}
+
+// A FOREIGN custom stays refused.
+func TestHideCurrency_ForeignCustomRefused(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["their-pts"] = model.CurrencyRecord{ID: "their-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageOtherID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	_, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "their-pts"})
+	v, ok := errs.AsValidation(err)
+	if !ok {
+		t.Fatalf("err = %v, want *ValidationError", err)
+	}
+	if v.Msg != "This currency cannot be hidden" {
+		t.Errorf("Msg = %q, want %q", v.Msg, "This currency cannot be hidden")
+	}
+}
+
+// Hiding your own custom while it is your profile default stays refused
+// (the existing profile guard, now the only guard).
+func TestHideCurrency_OwnDefaultRefused(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
+	svc := appcurrency.NewManageService(repo, passthroughTx{}, &fakeOps{}, fixedClock{t: manageNow}, fakeProfileCurrency{id: "own-pts"}, testBase)
 	uid := vo.MustParseId(manageMeID)
 
 	_, err := svc.HideCurrency(context.Background(), uid, model.HideCurrencyRequest{Id: "own-pts"})

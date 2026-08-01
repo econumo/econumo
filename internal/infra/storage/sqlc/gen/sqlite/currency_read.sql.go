@@ -180,7 +180,7 @@ func (q *Queries) GetLatestCurrencyRateListView(ctx context.Context) ([]Currenci
 
 const getUserCurrencyListView = `-- name: GetUserCurrencyListView :many
 
-SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.is_archived, c.rate, c.created_at
+SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.rate, c.created_at
 FROM currencies c
 WHERE c.user_id IS NULL
    OR c.user_id = ?
@@ -216,7 +216,6 @@ type GetUserCurrencyListViewRow struct {
 	Name           *string
 	FractionDigits int16
 	UserID         *string
-	IsArchived     bool
 	Rate           *string
 	CreatedAt      time.Time
 }
@@ -250,7 +249,6 @@ func (q *Queries) GetUserCurrencyListView(ctx context.Context, arg GetUserCurren
 			&i.Name,
 			&i.FractionDigits,
 			&i.UserID,
-			&i.IsArchived,
 			&i.Rate,
 			&i.CreatedAt,
 		); err != nil {

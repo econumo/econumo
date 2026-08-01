@@ -23,10 +23,8 @@ type ManageModel interface {
 	OwnerCodeExists(ctx context.Context, userID, code string) (bool, error)
 	InsertUserCurrency(ctx context.Context, c model.CurrencyRecord) error
 	UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int, rate *string) error
-	SetCurrencyArchived(ctx context.Context, id string, archived bool) error
 	DeleteCurrency(ctx context.Context, id string) error
 	CountCurrencyUsage(ctx context.Context, id string) (int64, error)
-	CountDefaultCurrencyUsage(ctx context.Context, id string) (int64, error)
 	HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error
 	ShowCurrency(ctx context.Context, userID, currencyID string) error
 }
@@ -39,7 +37,7 @@ type ProfileCurrency interface {
 }
 
 // ManageService is the currency lifecycle use-case orchestrator (create,
-// update, archive, unarchive, delete, set-rate, hide, show).
+// update, delete, hide, show).
 type ManageService struct {
 	repo    ManageModel
 	tx      port.TxRunner
@@ -116,10 +114,6 @@ func toCurrencyResult(rec model.CurrencyRecord, scope string) model.CurrencyList
 	if rec.Name != nil && *rec.Name != "" {
 		name = *rec.Name
 	}
-	archived := 0
-	if rec.IsArchived {
-		archived = 1
-	}
 	return model.CurrencyListItem{
 		CurrencyResult: model.CurrencyResult{
 			Id:             rec.ID,
@@ -128,9 +122,8 @@ func toCurrencyResult(rec model.CurrencyRecord, scope string) model.CurrencyList
 			Symbol:         rec.Symbol,
 			FractionDigits: rec.FractionDigits,
 		},
-		Scope:      scope,
-		IsArchived: archived,
-		IsHidden:   0,
+		Scope:    scope,
+		IsHidden: 0,
 	}
 }
 

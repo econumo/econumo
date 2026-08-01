@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -147,22 +148,16 @@ func (s *Service) toCurrentUser(ctx context.Context, u *model.User) (model.Curre
 // lives here in the service rather than in a mapping helper.
 func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, email string) (model.CurrentUserResult, error) {
 	// The stored currency option value is an ID; the wire keeps showing the
-	// CODE. Dangling/absent -> the frozen USD fallback for both code and id.
-	code := ""
-	currencyID := ""
-	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil && *o.Value != "" {
-		currencyID = *o.Value
-		if c, cerr := s.currency.CodeByID(ctx, currencyID); cerr == nil {
-			code = c
-		}
+	// CODE. The migration guarantees every user holds a live currency id: an
+	// absent option or dangling id is data corruption and surfaces as an error.
+	o := u.Option(model.OptionCurrency)
+	if o == nil || o.Value == nil || *o.Value == "" {
+		return model.CurrentUserResult{}, fmt.Errorf("user %s: currency option missing", u.ID)
 	}
-	if code == "" {
-		code = s.currency.DefaultCode()
-		fallbackID, err := s.currency.GetIDByCode(ctx, u.ID.String(), code)
-		if err != nil {
-			return model.CurrentUserResult{}, err
-		}
-		currencyID = fallbackID
+	currencyID := *o.Value
+	code, cerr := s.currency.CodeByID(ctx, currencyID)
+	if cerr != nil {
+		return model.CurrentUserResult{}, fmt.Errorf("user %s: profile currency %s: %w", u.ID, currencyID, cerr)
 	}
 	options := make([]model.OptionResult, 0, len(u.Options)+1)
 	for _, o := range u.Options {

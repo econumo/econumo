@@ -152,7 +152,6 @@ type Currency struct {
 	Name           string // nullable; empty -> NULL
 	FractionDigits *int   // default 2; pointer so an explicit 0 (e.g. JPY/unknown) is honored
 	UserID         string // empty = global (NULL)
-	IsArchived     bool
 	Rate           string // fixed rate for customs (e.g. "10.00000000"); empty -> NULL
 }
 
@@ -169,22 +168,18 @@ func (b *Builder) Currency(c Currency) string {
 	if c.FractionDigits != nil {
 		digits = *c.FractionDigits
 	}
-	arch := "FALSE"
-	if c.IsArchived {
-		arch = "TRUE"
-	}
 	now := b.now()
 	if c.Name == "" {
-		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at) VALUES (?, ?, ?, NULL, ?, ?, `+arch+`, ?, ?)`,
+		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
 			id, c.Code, c.Symbol, digits, nullable(c.UserID), nullable(c.Rate), now)
 	} else {
-		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, is_archived, rate, created_at) VALUES (?, ?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
+		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, c.Code, c.Symbol, c.Name, digits, nullable(c.UserID), nullable(c.Rate), now)
 	}
 	return id
 }
 
-// HiddenCurrency marks a global currency hidden for the user.
+// HiddenCurrency marks a currency hidden for the user.
 func (b *Builder) HiddenCurrency(userID, currencyID string) {
 	b.t.Helper()
 	b.insert(`INSERT INTO users_hidden_currencies (user_id, currency_id, created_at) VALUES (?, ?, ?)`,

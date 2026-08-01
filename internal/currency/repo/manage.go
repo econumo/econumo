@@ -1,8 +1,8 @@
-// Write side for per-user custom currencies (create/update/archive/delete/hide
+// Write side for per-user custom currencies (create/update/delete/hide
 // a currency the caller owns). Kept apart from write.go (the CLI admin write
 // path over GLOBAL currencies only) even though both hit the same table: the
 // two write paths have disjoint callers (HTTP API vs CLI) and disjoint
-// invariants (ownership + archival vs admin-only inserts).
+// invariants (ownership vs admin-only inserts).
 package repo
 
 import (
@@ -24,10 +24,8 @@ type (
 	currencyRecordRow      = sqlitegen.GetCurrencyRecordRow
 	insertUserCurrencyP    = sqlitegen.InsertUserCurrencyParams
 	updateCurrencyDetailsP = sqlitegen.UpdateCurrencyDetailsParams
-	setCurrencyArchivedP   = sqlitegen.SetCurrencyArchivedParams
 	hideP                  = sqlitegen.InsertHiddenCurrencyParams
 	unhideP                = sqlitegen.DeleteHiddenCurrencyParams
-	manageRateP            = sqlitegen.UpsertCurrencyRateParams
 )
 
 // manageQuerier is the engine-agnostic manage surface, in the canonical types.
@@ -43,10 +41,8 @@ type manageQuerier interface {
 	OwnerCurrencyCodeExists(ctx context.Context, db backend.DBTX, code, userID string) (int64, error)
 	InsertUserCurrency(ctx context.Context, db backend.DBTX, p insertUserCurrencyP) error
 	UpdateCurrencyDetails(ctx context.Context, db backend.DBTX, p updateCurrencyDetailsP) error
-	SetCurrencyArchived(ctx context.Context, db backend.DBTX, p setCurrencyArchivedP) error
 	DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error
 	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error)
-	CountDefaultCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error
 	DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error
 }
@@ -90,7 +86,6 @@ func (r *ManageRepo) GetCurrencyRecord(ctx context.Context, id string) (model.Cu
 		Name:           row.Name,
 		FractionDigits: int(row.FractionDigits),
 		UserID:         row.UserID,
-		IsArchived:     row.IsArchived,
 		Rate:           row.Rate,
 		CreatedAt:      row.CreatedAt,
 	}, nil
@@ -120,7 +115,6 @@ func (r *ManageRepo) InsertUserCurrency(ctx context.Context, c model.CurrencyRec
 		Name:           c.Name,
 		FractionDigits: int16(c.FractionDigits),
 		UserID:         c.UserID,
-		IsArchived:     c.IsArchived,
 		Rate:           c.Rate,
 		CreatedAt:      c.CreatedAt,
 	})
@@ -136,23 +130,12 @@ func (r *ManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, symbol
 	})
 }
 
-func (r *ManageRepo) SetCurrencyArchived(ctx context.Context, id string, archived bool) error {
-	return r.q.SetCurrencyArchived(ctx, r.db(ctx), setCurrencyArchivedP{
-		IsArchived: archived,
-		ID:         id,
-	})
-}
-
 func (r *ManageRepo) DeleteCurrency(ctx context.Context, id string) error {
 	return r.q.DeleteCurrency(ctx, r.db(ctx), id)
 }
 
 func (r *ManageRepo) CountCurrencyUsage(ctx context.Context, id string) (int64, error) {
 	return r.q.CountCurrencyUsage(ctx, r.db(ctx), id)
-}
-
-func (r *ManageRepo) CountDefaultCurrencyUsage(ctx context.Context, id string) (int64, error) {
-	return r.q.CountDefaultCurrencyUsage(ctx, r.db(ctx), id)
 }
 
 // HideCurrency marks a global currency hidden for a user. Idempotent: a
@@ -202,10 +185,6 @@ func (sqliteManageQuerier) UpdateCurrencyDetails(ctx context.Context, db backend
 	return sqlitegen.New(db).UpdateCurrencyDetails(ctx, p)
 }
 
-func (sqliteManageQuerier) SetCurrencyArchived(ctx context.Context, db backend.DBTX, p setCurrencyArchivedP) error {
-	return sqlitegen.New(db).SetCurrencyArchived(ctx, p)
-}
-
 func (sqliteManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteCurrency(ctx, id)
 }
@@ -217,10 +196,6 @@ func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DB
 		CurrencyID_3: &id,
 		Value:        &id,
 	})
-}
-
-func (sqliteManageQuerier) CountDefaultCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
-	return sqlitegen.New(db).CountDefaultCurrencyUsage(ctx, &id)
 }
 
 func (sqliteManageQuerier) InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error {
@@ -261,21 +236,12 @@ func (pgsqlManageQuerier) UpdateCurrencyDetails(ctx context.Context, db backend.
 	return pgsqlgen.New(db).UpdateCurrencyDetails(ctx, pgsqlgen.UpdateCurrencyDetailsParams(p))
 }
 
-func (pgsqlManageQuerier) SetCurrencyArchived(ctx context.Context, db backend.DBTX, p setCurrencyArchivedP) error {
-	return pgsqlgen.New(db).SetCurrencyArchived(ctx, pgsqlgen.SetCurrencyArchivedParams(p))
-}
-
 func (pgsqlManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteCurrency(ctx, id)
 }
 
 func (pgsqlManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
 	n, err := pgsqlgen.New(db).CountCurrencyUsage(ctx, id)
-	return int64(n), err
-}
-
-func (pgsqlManageQuerier) CountDefaultCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
-	n, err := pgsqlgen.New(db).CountDefaultCurrencyUsage(ctx, &id)
 	return int64(n), err
 }
 

@@ -96,52 +96,6 @@ func (h *Handlers) UpdateCurrency(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ArchiveCurrency handles POST /api/v1/currency/archive-currency (auth).
-//
-// @Summary     Archive a custom currency
-// @Description Marks a custom currency archived. Requires ownership.
-// @Tags        Currency
-// @Accept      json
-// @Produce     json
-// @Param       request body     model.ArchiveCurrencyRequest true "Archive currency request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.ArchiveCurrencyResult}
-// @Failure     400     {object} apidoc.JsonResponseError
-// @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     402     {object} apidoc.JsonResponseError
-// @Failure     403     {object} apidoc.JsonResponseError
-// @Failure     500     {object} apidoc.JsonResponseException
-// @Security    Bearer
-// @Router      /api/v1/currency/archive-currency [post]
-func (h *Handlers) ArchiveCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.ArchiveCurrencyRequest) (*model.ArchiveCurrencyResult, error) {
-		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
-		return h.manage.ArchiveCurrency(ctx, userID, req)
-	})
-}
-
-// UnarchiveCurrency handles POST /api/v1/currency/unarchive-currency (auth).
-//
-// @Summary     Unarchive a custom currency
-// @Description Clears a custom currency's archived flag. Requires ownership.
-// @Tags        Currency
-// @Accept      json
-// @Produce     json
-// @Param       request body     model.UnarchiveCurrencyRequest true "Unarchive currency request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.UnarchiveCurrencyResult}
-// @Failure     400     {object} apidoc.JsonResponseError
-// @Failure     401     {object} apidoc.JsonResponseUnauthorized
-// @Failure     402     {object} apidoc.JsonResponseError
-// @Failure     403     {object} apidoc.JsonResponseError
-// @Failure     500     {object} apidoc.JsonResponseException
-// @Security    Bearer
-// @Router      /api/v1/currency/unarchive-currency [post]
-func (h *Handlers) UnarchiveCurrency(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.UnarchiveCurrencyRequest) (*model.UnarchiveCurrencyResult, error) {
-		reqctx.AddLogAttr(ctx, "currency_id", req.Id)
-		return h.manage.UnarchiveCurrency(ctx, userID, req)
-	})
-}
-
 // DeleteCurrency handles POST /api/v1/currency/delete-currency (auth).
 //
 // @Summary     Delete a custom currency
