@@ -84,7 +84,7 @@ DELETE FROM currencies WHERE id = ?;
 
 -- Usage census for delete protection: accounts (including soft-deleted ones,
 -- they still hold the FK), budgets, budget elements, and any user whose
--- profile currency option stores this code.
+-- profile currency option stores this currency id.
 -- name: CountCurrencyUsage :one
 SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = ?)
      + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = ?)

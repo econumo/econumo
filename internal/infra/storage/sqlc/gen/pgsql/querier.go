@@ -18,9 +18,9 @@ type Querier interface {
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection: accounts (including soft-deleted ones,
 	// they still hold the FK), budgets, budget elements, and any user whose
-	// profile currency option stores this code. $1 is reused for all three
-	// currency-id positions so the generated param stays two fields.
-	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int32, error)
+	// profile currency option stores this currency id. $1 is reused everywhere,
+	// so the generated param is a single field.
+	CountCurrencyUsage(ctx context.Context, currencyID string) (int32, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)

@@ -76,13 +76,13 @@ DELETE FROM currencies WHERE id = $1;
 
 -- Usage census for delete protection: accounts (including soft-deleted ones,
 -- they still hold the FK), budgets, budget elements, and any user whose
--- profile currency option stores this code. $1 is reused for all three
--- currency-id positions so the generated param stays two fields.
+-- profile currency option stores this currency id. $1 is reused everywhere,
+-- so the generated param is a single field.
 -- name: CountCurrencyUsage :one
 SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = $1)
      + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = $1)
      + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = $1)
-     + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = $2) AS usage_count;
+     + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = $1) AS usage_count;
 
 -- name: InsertHiddenCurrency :exec
 INSERT INTO users_hidden_currencies (user_id, currency_id, created_at)

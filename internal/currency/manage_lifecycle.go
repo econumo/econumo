@@ -82,7 +82,7 @@ func (s *ManageService) DeleteCurrency(ctx context.Context, userID vo.Id, req mo
 		if err != nil {
 			return err
 		}
-		used, err := s.repo.CountCurrencyUsage(ctx, rec.ID, rec.Code)
+		used, err := s.repo.CountCurrencyUsage(ctx, rec.ID)
 		if err != nil {
 			return err
 		}

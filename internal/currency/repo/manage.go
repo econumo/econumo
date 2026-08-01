@@ -34,10 +34,9 @@ type (
 // CountCurrencyUsage and OwnerCurrencyCodeExists take plain args rather than
 // the generated param structs: sqlc's sqlite and pgsql codegen diverge on
 // their shapes for these two queries (the sqlite CountCurrencyUsageParams
-// repeats the currency id three times, once oddly as *string; the pgsql one
-// collapses the repeated $1 into a single field, and returns int32 not
-// int64), so each adapter builds its own param struct and normalizes its
-// return type internally.
+// repeats the currency id, once oddly as *string; the pgsql one collapses
+// the repeated $1 into a single arg and returns int32 not int64), so each
+// adapter builds its own params and normalizes its return type internally.
 type manageQuerier interface {
 	GetCurrencyRecord(ctx context.Context, db backend.DBTX, id string) (currencyRecordRow, error)
 	GlobalCurrencyCodeExists(ctx context.Context, db backend.DBTX, code string) (int64, error)
@@ -46,7 +45,7 @@ type manageQuerier interface {
 	UpdateCurrencyDetails(ctx context.Context, db backend.DBTX, p updateCurrencyDetailsP) error
 	SetCurrencyArchived(ctx context.Context, db backend.DBTX, p setCurrencyArchivedP) error
 	DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error
-	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id, code string) (int64, error)
+	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error
 	DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error
 }
@@ -147,8 +146,8 @@ func (r *ManageRepo) DeleteCurrency(ctx context.Context, id string) error {
 	return r.q.DeleteCurrency(ctx, r.db(ctx), id)
 }
 
-func (r *ManageRepo) CountCurrencyUsage(ctx context.Context, id, code string) (int64, error) {
-	return r.q.CountCurrencyUsage(ctx, r.db(ctx), id, code)
+func (r *ManageRepo) CountCurrencyUsage(ctx context.Context, id string) (int64, error) {
+	return r.q.CountCurrencyUsage(ctx, r.db(ctx), id)
 }
 
 // HideCurrency marks a global currency hidden for a user. Idempotent: a
@@ -206,12 +205,12 @@ func (sqliteManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, 
 	return sqlitegen.New(db).DeleteCurrency(ctx, id)
 }
 
-func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id, code string) (int64, error) {
+func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
 	return sqlitegen.New(db).CountCurrencyUsage(ctx, sqlitegen.CountCurrencyUsageParams{
 		CurrencyID:   id,
 		CurrencyID_2: id,
 		CurrencyID_3: &id,
-		Value:        &code,
+		Value:        &id,
 	})
 }
 
@@ -261,11 +260,8 @@ func (pgsqlManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, i
 	return pgsqlgen.New(db).DeleteCurrency(ctx, id)
 }
 
-func (pgsqlManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id, code string) (int64, error) {
-	n, err := pgsqlgen.New(db).CountCurrencyUsage(ctx, pgsqlgen.CountCurrencyUsageParams{
-		CurrencyID: id,
-		Value:      &code,
-	})
+func (pgsqlManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
+	n, err := pgsqlgen.New(db).CountCurrencyUsage(ctx, id)
 	return int64(n), err
 }
 

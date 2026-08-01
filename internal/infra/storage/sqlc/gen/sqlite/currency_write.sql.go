@@ -26,7 +26,7 @@ type CountCurrencyUsageParams struct {
 
 // Usage census for delete protection: accounts (including soft-deleted ones,
 // they still hold the FK), budgets, budget elements, and any user whose
-// profile currency option stores this code.
+// profile currency option stores this currency id.
 func (q *Queries) CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countCurrencyUsage,
 		arg.CurrencyID,

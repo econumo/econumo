@@ -19,7 +19,7 @@ type Querier interface {
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection: accounts (including soft-deleted ones,
 	// they still hold the FK), budgets, budget elements, and any user whose
-	// profile currency option stores this code.
+	// profile currency option stores this currency id.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
 	// New-payee position = count of the owner's existing payees.

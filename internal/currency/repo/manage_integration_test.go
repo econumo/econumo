@@ -112,14 +112,33 @@ func TestManageRepo_UsageCount(t *testing.T) {
 	ctx := context.Background()
 	uid := f.User(fixture.User{Name: "A"})
 	cid := f.Currency(fixture.Currency{Code: "PTS", UserID: uid})
-	if n, _ := r.CountCurrencyUsage(ctx, cid, "PTS"); n != 0 {
+	if n, _ := r.CountCurrencyUsage(ctx, cid); n != 0 {
 		t.Fatalf("fresh currency usage = %d, want 0", n)
 	}
 	f.Account(fixture.Account{UserID: uid, CurrencyID: cid, Name: "Kid"})
-	value := "PTS"
-	f.Option(uid, "currency", &value)
-	if n, _ := r.CountCurrencyUsage(ctx, cid, "PTS"); n != 2 {
+	// The profile option stores the currency ID.
+	f.Option(uid, "currency", &cid)
+	if n, _ := r.CountCurrencyUsage(ctx, cid); n != 2 {
 		t.Fatalf("usage = %d, want 2 (account + profile option)", n)
+	}
+}
+
+// Same-code customs of DIFFERENT owners must not cross-block deletion: the
+// census matches profile defaults by ID, not code.
+func TestManageRepo_UsageCount_SameCodeOtherOwnerDefault(t *testing.T) {
+	r, _, f := newManage(t)
+	ctx := context.Background()
+	alice := f.User(fixture.User{Name: "Alice", Email: "alice@census.test"})
+	bob := f.User(fixture.User{Name: "Bob", Email: "bob@census.test"})
+	alicePTS := f.Currency(fixture.Currency{Code: "PTS", UserID: alice})
+	bobPTS := f.Currency(fixture.Currency{Code: "PTS", UserID: bob})
+	// Bob's profile default is HIS OWN PTS.
+	f.Option(bob, "currency", &bobPTS)
+	if n, _ := r.CountCurrencyUsage(ctx, alicePTS); n != 0 {
+		t.Fatalf("usage of Alice's PTS = %d, want 0 (Bob's default is his own)", n)
+	}
+	if n, _ := r.CountCurrencyUsage(ctx, bobPTS); n != 1 {
+		t.Fatalf("usage of Bob's PTS = %d, want 1 (his profile default)", n)
 	}
 }
 

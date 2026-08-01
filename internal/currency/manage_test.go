@@ -96,7 +96,7 @@ func (f *fakeManageRepo) DeleteCurrency(ctx context.Context, id string) error {
 	return nil
 }
 
-func (f *fakeManageRepo) CountCurrencyUsage(ctx context.Context, id, code string) (int64, error) {
+func (f *fakeManageRepo) CountCurrencyUsage(ctx context.Context, id string) (int64, error) {
 	return f.usage[id], nil
 }
 

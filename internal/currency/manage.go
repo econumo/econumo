@@ -25,7 +25,7 @@ type ManageModel interface {
 	UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int, rate *string) error
 	SetCurrencyArchived(ctx context.Context, id string, archived bool) error
 	DeleteCurrency(ctx context.Context, id string) error
-	CountCurrencyUsage(ctx context.Context, id, code string) (int64, error)
+	CountCurrencyUsage(ctx context.Context, id string) (int64, error)
 	HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error
 	ShowCurrency(ctx context.Context, userID, currencyID string) error
 }
