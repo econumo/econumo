@@ -46,6 +46,11 @@ DO UPDATE SET rate = excluded.rate;
 -- (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 SELECT published_at FROM currencies_rates ORDER BY published_at DESC LIMIT 1;
 
+-- name: GetLatestRateBase :one
+-- Base currency of the newest stored rate, for the boot-time drift WARN when
+-- ECONUMO_CURRENCY_BASE no longer matches what the rates were written against.
+SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1;
+
 -- User currency management (per-user custom currencies). Global currencies
 -- have user_id NULL; custom currencies carry their owner id.
 

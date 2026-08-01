@@ -104,6 +104,9 @@ type Querier interface {
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// Latest rate row per (currency, base) pair. See the sqlite variant.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]GetLatestCurrencyRateListViewRow, error)
+	// Base currency of the newest stored rate, for the boot-time drift WARN when
+	// ECONUMO_CURRENCY_BASE no longer matches what the rates were written against.
+	GetLatestRateBase(ctx context.Context) (string, error)
 	// Newest stored rate date, for the in-process rate updater's freshness check.
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.

@@ -9,6 +9,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -43,6 +44,7 @@ import (
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
@@ -95,7 +97,12 @@ type Seams struct {
 // at either engine; the engine is read from cfg.DatabaseDriver, which selects
 // the per-engine sqlc query adapters in every repository constructor.
 func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
-	api, _, _ := Build(cfg, db, seams)
+	api, _, _, err := Build(cfg, db, seams)
+	if err != nil {
+		// Test-only entry: every harness uses the seeded USD base. serve calls
+		// Build directly and reports the error.
+		panic(err)
+	}
 	return api
 }
 
@@ -104,7 +111,7 @@ func BuildAPI(cfg config.Config, db *sql.DB, seams Seams) http.Handler {
 // than each opening its own, and serve decides whether to listen on the admin
 // one (see cfg.AdminPort/AdminToken). The third return is the in-process
 // currency-rate updater; serve starts its poller, BuildAPI and tests discard it.
-func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handler, *appcurrency.RateUpdater) {
+func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handler, *appcurrency.RateUpdater, error) {
 	clk := seams.Clock
 	if clk == nil {
 		clk = clock.New()
@@ -125,6 +132,17 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	userReadRepo := userrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	accessTokens := userrepo.NewAccessTokenRepo(cfg.DatabaseDriver, txm)
 	currencyLookup := currencyrepo.New(cfg.DatabaseDriver, txm)
+
+	// The base currency is resolved exactly once: every stored rate is
+	// denominated "X per 1 base unit", so consumers get the resolved row, not
+	// a code to re-look-up. A bad code refuses to boot instead of failing at
+	// runtime as lookup errors.
+	baseID, err := currencyLookup.GetIDByCode(context.Background(), cfg.CurrencyBase)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("ECONUMO_CURRENCY_BASE=%q does not match any global currency; add it first with currency:add", cfg.CurrencyBase)
+	}
+	base := model.BaseCurrency{ID: baseID, Code: cfg.CurrencyBase}
+
 	budgetAccess := NewUserBudgetAccess(cfg.DatabaseDriver, txm)
 
 	passwordReqRepo := userrepo.NewPasswordRequestRepo(cfg.DatabaseDriver, txm)
@@ -200,6 +218,13 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// OER token is present; serve starts its poller (Build's third return),
 	// BuildAPI and tests discard it (a disabled updater never polls).
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
+	// An admin MAY change the base; old rate rows stay untouched and inert
+	// (they carry their own base_currency_id). This WARN is the only
+	// acknowledgment of such a change.
+	if latestBase, ok, lbErr := currencyWriteRepo.LatestRateBase(context.Background()); lbErr == nil && ok && latestBase != base.ID {
+		slog.Warn("stored rates were written against a different base currency; conversions will use only rates written against the current base",
+			"configured_base", base.Code, "stored_base_currency_id", latestBase)
+	}
 	currencyWriteSvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
 	rateLoader := currencyrepo.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
 	rateUpdaterEnabled := cfg.CurrencyUpdateIntervalDays > 0 && cfg.OpenExchangeRatesToken != ""
@@ -339,7 +364,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		MCP:                mcpHandler,
 		SPA:                spaFS,
 		SPAVersion:         spaVersion,
-	}), adminHandler, rateUpdater
+	}), adminHandler, rateUpdater, nil
 }
 
 type pinger struct{ db *sql.DB }

@@ -133,6 +133,19 @@ func (q *Queries) GetGlobalCurrencyIDByCode(ctx context.Context, code string) (s
 	return id, err
 }
 
+const getLatestRateBase = `-- name: GetLatestRateBase :one
+SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1
+`
+
+// Base currency of the newest stored rate, for the boot-time drift WARN when
+// ECONUMO_CURRENCY_BASE no longer matches what the rates were written against.
+func (q *Queries) GetLatestRateBase(ctx context.Context) (string, error) {
+	row := q.db.QueryRowContext(ctx, getLatestRateBase)
+	var base_currency_id string
+	err := row.Scan(&base_currency_id)
+	return base_currency_id, err
+}
+
 const getLatestRateDate = `-- name: GetLatestRateDate :one
 SELECT published_at FROM currencies_rates ORDER BY published_at DESC LIMIT 1
 `

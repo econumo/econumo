@@ -65,3 +65,12 @@ type CurrencyRecord struct {
 	IsArchived     bool
 	CreatedAt      time.Time
 }
+
+// BaseCurrency is the instance base currency, resolved at boot: every stored
+// rate is denominated "X units per 1 base unit". Constructing one is the
+// composition root's job, so consumers can trust ID references an existing
+// global currency row.
+type BaseCurrency struct {
+	ID   string
+	Code string
+}
