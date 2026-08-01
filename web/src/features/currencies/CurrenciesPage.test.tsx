@@ -179,7 +179,8 @@ it('edit dialog prefills the fixed rate and posts it with update-currency', asyn
     }),
   )
   const user = userEvent.setup()
-  renderPage()
+  const queryClient = renderPage()
+  const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
   await screen.findByText('Points')
   await user.click(screen.getByRole('button', { name: 'actions Points' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
@@ -191,6 +192,8 @@ it('edit dialog prefills the fixed rate and posts it with update-currency', asyn
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body).toEqual({ id: 'cur-pts', name: 'Points', symbol: 'pt', fractionDigits: 0, rate: '20' })
+  // the fixed rate rides update-currency: BOTH the list and the rates view refresh
+  await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.currencyRates }))
 })
 
 it('own rows get a kebab with Edit / Set rate / Delete; global rows get none', async () => {

@@ -30,6 +30,8 @@ export function useUpdateCurrency() {
     mutationFn: currencyApi.updateCurrency,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
+      // the fixed rate rides update-currency, so the rates view changes too
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currencyRates })
     },
   })
 }
