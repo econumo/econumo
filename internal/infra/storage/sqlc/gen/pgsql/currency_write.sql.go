@@ -11,30 +11,20 @@ import (
 )
 
 const countCurrencyUsage = `-- name: CountCurrencyUsage :one
-SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = $1)
+SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = $1 AND accounts.is_deleted = false)
      + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = $1)
      + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = $1)
      + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = $1) AS usage_count
 `
 
-// Usage census for delete protection: accounts (including soft-deleted ones,
-// they still hold the FK), budgets, budget elements, and any user whose
-// profile currency option stores this currency id. $1 is reused everywhere,
-// so the generated param is a single field.
+// Usage census for delete protection. Only LIVE references count: a soft-deleted
+// account is unreachable and unrestorable, so it must not pin a currency forever.
+// $1 is reused everywhere, so the generated param is a single field.
 func (q *Queries) CountCurrencyUsage(ctx context.Context, currencyID string) (int32, error) {
 	row := q.db.QueryRowContext(ctx, countCurrencyUsage, currencyID)
 	var usage_count int32
 	err := row.Scan(&usage_count)
 	return usage_count, err
-}
-
-const deleteCurrency = `-- name: DeleteCurrency :exec
-DELETE FROM currencies WHERE id = $1
-`
-
-func (q *Queries) DeleteCurrency(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteCurrency, id)
-	return err
 }
 
 const deleteHiddenCurrency = `-- name: DeleteHiddenCurrency :exec
@@ -84,7 +74,7 @@ func (q *Queries) GetCurrencyByCode(ctx context.Context, code string) (GetCurren
 
 const getCurrencyRecord = `-- name: GetCurrencyRecord :one
 
-SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at
+SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at, is_deleted
 FROM currencies WHERE id = $1
 `
 
@@ -97,6 +87,7 @@ type GetCurrencyRecordRow struct {
 	UserID         *string
 	Rate           *string
 	CreatedAt      time.Time
+	IsDeleted      bool
 }
 
 // User currency management (per-user custom currencies). Global currencies
@@ -113,6 +104,7 @@ func (q *Queries) GetCurrencyRecord(ctx context.Context, id string) (GetCurrency
 		&i.UserID,
 		&i.Rate,
 		&i.CreatedAt,
+		&i.IsDeleted,
 	)
 	return i, err
 }
@@ -333,7 +325,7 @@ func (q *Queries) ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow
 }
 
 const ownerCurrencyCodeExists = `-- name: OwnerCurrencyCodeExists :one
-SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id = $2
+SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id = $2 AND is_deleted = false
 `
 
 type OwnerCurrencyCodeExistsParams struct {
@@ -341,6 +333,7 @@ type OwnerCurrencyCodeExistsParams struct {
 	UserID *string
 }
 
+// Deleted customs release their code, so they must not block a re-create.
 func (q *Queries) OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, ownerCurrencyCodeExists, arg.Code, arg.UserID)
 	var count int64
@@ -356,6 +349,17 @@ WHERE users_hidden_currencies.user_id = $1
 
 func (q *Queries) ShowGlobalCurrencies(ctx context.Context, userID string) error {
 	_, err := q.db.ExecContext(ctx, showGlobalCurrencies, userID)
+	return err
+}
+
+const softDeleteCurrency = `-- name: SoftDeleteCurrency :exec
+UPDATE currencies SET is_deleted = true WHERE id = $1
+`
+
+// Currencies are never removed: accounts.currency_id and transactions.account_id
+// both cascade, so a DELETE would destroy account and transaction history.
+func (q *Queries) SoftDeleteCurrency(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, softDeleteCurrency, id)
 	return err
 }
 

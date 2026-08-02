@@ -19,6 +19,7 @@ type CurrencyViewRow struct {
 	// legacy customs created before the rate became mandatory).
 	Rate      *string
 	CreatedAt time.Time
+	IsDeleted bool
 }
 
 // CurrencyRateViewRow is the read-side rate row. UpdatedAt arrives pre-formatted

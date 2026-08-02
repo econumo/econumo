@@ -153,6 +153,7 @@ type Currency struct {
 	FractionDigits int16
 	UserID         *string
 	Rate           *string
+	IsDeleted      bool
 }
 
 type Folder struct {

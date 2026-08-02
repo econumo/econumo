@@ -23,7 +23,7 @@ type ManageModel interface {
 	OwnerCodeExists(ctx context.Context, userID, code string) (bool, error)
 	InsertUserCurrency(ctx context.Context, c model.CurrencyRecord) error
 	UpdateCurrencyDetails(ctx context.Context, id, name, symbol string, fractionDigits int, rate *string) error
-	DeleteCurrency(ctx context.Context, id string) error
+	SoftDeleteCurrency(ctx context.Context, id string) error
 	CountCurrencyUsage(ctx context.Context, id string) (int64, error)
 	HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error
 	ShowCurrency(ctx context.Context, userID, currencyID string) error
@@ -119,6 +119,10 @@ func toCurrencyResult(rec model.CurrencyRecord, scope string) model.CurrencyList
 	if rec.Name != nil && *rec.Name != "" {
 		name = *rec.Name
 	}
+	isDeleted := 0
+	if rec.IsDeleted {
+		isDeleted = 1
+	}
 	return model.CurrencyListItem{
 		CurrencyResult: model.CurrencyResult{
 			Id:             rec.ID,
@@ -127,8 +131,9 @@ func toCurrencyResult(rec model.CurrencyRecord, scope string) model.CurrencyList
 			Symbol:         rec.Symbol,
 			FractionDigits: rec.FractionDigits,
 		},
-		Scope:    scope,
-		IsHidden: 0,
+		Scope:     scope,
+		IsHidden:  0,
+		IsDeleted: isDeleted,
 	}
 }
 

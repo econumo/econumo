@@ -55,14 +55,15 @@ SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1
 -- have user_id NULL; custom currencies carry their owner id.
 
 -- name: GetCurrencyRecord :one
-SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at
+SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at, is_deleted
 FROM currencies WHERE id = ?;
 
 -- name: GlobalCurrencyCodeExists :one
 SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id IS NULL;
 
+-- Deleted customs release their code, so they must not block a re-create.
 -- name: OwnerCurrencyCodeExists :one
-SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id = ?;
+SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id = ? AND is_deleted = 0;
 
 -- name: InsertUserCurrency :exec
 INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at)
@@ -77,14 +78,15 @@ UPDATE currencies SET name = ?, symbol = ?, fraction_digits = ?, rate = ? WHERE 
 SELECT id, rate FROM currencies WHERE rate IS NOT NULL;
 
 
--- name: DeleteCurrency :exec
-DELETE FROM currencies WHERE id = ?;
+-- Currencies are never removed: accounts.currency_id and transactions.account_id
+-- both cascade, so a DELETE would destroy account and transaction history.
+-- name: SoftDeleteCurrency :exec
+UPDATE currencies SET is_deleted = 1 WHERE id = ?;
 
--- Usage census for delete protection: accounts (including soft-deleted ones,
--- they still hold the FK), budgets, budget elements, and any user whose
--- profile currency option stores this currency id.
+-- Usage census for delete protection. Only LIVE references count: a soft-deleted
+-- account is unreachable and unrestorable, so it must not pin a currency forever.
 -- name: CountCurrencyUsage :one
-SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = ?)
+SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = ? AND accounts.is_deleted = 0)
      + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = ?)
      + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = ?)
      + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = ?) AS usage_count;

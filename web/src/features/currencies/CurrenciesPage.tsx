@@ -44,8 +44,10 @@ export function CurrenciesPage() {
   const [dialog, setDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
   const [error, setError] = useState<string | null>(null)
 
-  const own = currencies?.filter((c) => c.scope === 'own').sort(enabledFirst) ?? []
-  const globals = currencies?.filter((c) => c.scope === 'global').sort(enabledFirst) ?? []
+  // Own customs are not sorted by isHidden: they have no enable/disable switch,
+  // so the flag would reorder them by something the user cannot see.
+  const own = currencies?.filter((c) => c.scope === 'own' && c.isDeleted === 0) ?? []
+  const globals = currencies?.filter((c) => c.scope === 'global' && c.isDeleted === 0).sort(enabledFirst) ?? []
   const items: CurrencyRow[] = [...own, ...globals].map((c, i) => ({ ...c, position: i, isArchived: 0 as const }))
   const baseId = rates?.[0]?.baseCurrencyId
   const profileId = userCurrencyId(user)
@@ -123,10 +125,10 @@ export function CurrenciesPage() {
         }}
         rowActions={(c) => {
           if (c.scope === 'own') {
-            return undefined // default Edit/Delete menu; the switch covers hide
+            return undefined // default Edit/Delete menu; Delete is the only lifecycle action
           }
-          // Global rows carry a kebab too, so every row's switch sits on the
-          // same vertical line; its one action mirrors the switch.
+          // Globals still need the kebab menu for the mobile sheet's
+          // Enable/Disable action, since the switch itself isn't reachable there.
           const locked = c.id === baseId || c.id === profileId
           return [
             {
@@ -142,10 +144,13 @@ export function CurrenciesPage() {
             },
           ]
         }}
-        rowSwitch={(c): RowSwitchState => {
-          // One enabled/disabled switch for every row, own customs included;
-          // the base and profile currencies must stay enabled, so their
-          // switches are locked.
+        rowSwitch={(c): RowSwitchState | null => {
+          // Own customs have one lifecycle action, Delete, so they carry no
+          // switch. Globals keep the enable/disable toggle; the base and
+          // profile currencies must stay enabled, so theirs are locked.
+          if (c.scope === 'own') {
+            return null
+          }
           const locked = c.id === baseId || c.id === profileId
           return {
             checked: c.isHidden === 0,

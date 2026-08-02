@@ -73,8 +73,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   showIcon?: boolean
   /** extra muted lines rendered under the name */
   meta?: (item: T) => ReactNode
-  /** per-item switch semantics; default = the archive toggle */
-  rowSwitch?: (item: T) => RowSwitchState
+  /** per-item switch semantics; default = the archive toggle. null = no switch on this row */
+  rowSwitch?: (item: T) => RowSwitchState | null
   /** false suppresses the kebab/tap-sheet for the row; default true */
   hasActions?: (item: T) => boolean
   /** actions inserted between Edit and Delete in the menu and the sheet */
@@ -148,11 +148,18 @@ export function ClassificationList<T extends ClassificationItem>({
   // Items archived from THIS screen stay in place (greyed, switch off) even
   // with the active-only filter on — they disappear only on the next visit.
   const [stickyArchivedIds] = useState(() => new Set<string>())
-  const switchFor = (item: T): RowSwitchState => {
-    const base: RowSwitchState = rowSwitch?.(item) ?? {
-      checked: item.isArchived === 0,
-      ariaLabel: `archive ${item.name}`,
-      onToggle: () => onToggleArchive?.(item),
+  const switchFor = (item: T): RowSwitchState | null => {
+    let base: RowSwitchState
+    if (rowSwitch) {
+      const custom = rowSwitch(item)
+      if (!custom) return null
+      base = custom
+    } else {
+      base = {
+        checked: item.isArchived === 0,
+        ariaLabel: `archive ${item.name}`,
+        onToggle: () => onToggleArchive?.(item),
+      }
     }
     return {
       ...base,
@@ -289,14 +296,16 @@ export function ClassificationList<T extends ClassificationItem>({
           ) : null}
           {meta?.(item)}
         </span>
-        <Switch
-          aria-label={rowSwitchState.ariaLabel}
-          checked={rowSwitchState.checked}
-          disabled={rowSwitchState.disabled}
-          title={rowSwitchState.title}
-          onClick={(e) => e.stopPropagation()}
-          onCheckedChange={() => rowSwitchState.onToggle()}
-        />
+        {rowSwitchState ? (
+          <Switch
+            aria-label={rowSwitchState.ariaLabel}
+            checked={rowSwitchState.checked}
+            disabled={rowSwitchState.disabled}
+            title={rowSwitchState.title}
+            onClick={(e) => e.stopPropagation()}
+            onCheckedChange={() => rowSwitchState.onToggle()}
+          />
+        ) : null}
         {actionable && !isCompact ? (
           <DropdownMenu open={openMenuId === item.id} onOpenChange={(open) => setOpenMenuId(open ? item.id : null)}>
             <DropdownMenuTrigger asChild>
