@@ -24,7 +24,7 @@ making income categories first-class budget elements.
 | Row structure | Mirrors the budget page exactly (folders, envelopes with children, uncategorized, archived) |
 | Placement | A Budget \| Plan toggle on the existing budget page |
 | Visible window | Responsive: as many month columns as fit the screen (min 3, max 12); left/right arrows shift the first month; no horizon selector |
-| Initial position | ~¼ of visible columns are past months; clamped at the budget start month; persisted |
+| Initial position | Current month in the second column (one past month first); clamped at the budget start month; persisted |
 | Backend approach | Income categories become budget elements (new element type); planned income reuses `budgets_elements_limits` and `set-limit`; one new read endpoint `get-budget-plan` |
 | Carryover | Not shown per cell; enters the totals via the running Balance row |
 | Balance row seed | Real account balances at the window start (existing financial-summary machinery, excluded accounts respected) |
@@ -138,9 +138,11 @@ the plan sheet.
 - **Navigation**: left/right arrow buttons shift the first visible month by one
   month (press-and-hold repeats). Navigation clamps at the budget's start month;
   there is no forward limit.
-- **Initial position**: roughly a quarter of the visible columns are past months
-  (3 visible → 1 back; 8 visible → 2 back), clamped at the budget start. The first
-  visible month persists in the budget store and is restored on return.
+- **Initial position**: the current month sits in the **second column** — one past
+  month for comparison, the rest of the width looking forward — regardless of how
+  many columns fit; clamped at the budget start (a budget starting this month shows
+  the current month first). The first visible month persists in the budget store
+  and is restored on return.
 - **Current month column** is visually highlighted.
 - Sections top to bottom: **Incomes** (envelopes expandable to children, then
   standalone income categories), **expense structure** exactly as the budget page
