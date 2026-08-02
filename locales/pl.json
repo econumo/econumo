@@ -1,0 +1,1386 @@
+{
+  "common": {
+    "help": {
+      "label": "© econumo.com",
+      "url": "https://econumo.com/"
+    },
+    "list": {
+      "list_empty": "Lista jest pusta",
+      "search": "Szukaj",
+      "search_empty": "Nic nie znaleziono",
+      "order_list": "Zmień kolejność",
+      "active_only": "Tylko aktywne"
+    },
+    "nav": {
+      "budget": "Budżet",
+      "onboarding": "Pierwsze kroki",
+      "create_account": "Dodaj konto",
+      "collapse_menu": "Zwiń menu",
+      "expand_menu": "Rozwiń menu",
+      "sharing_requests": "Zaproszenia"
+    },
+    "econumo": {
+      "label": "Econumo"
+    },
+    "uncategorized": "Bez kategorii",
+    "loader": {
+      "label": "wczytywanie",
+      "having_trouble": "Coś nie działa?"
+    },
+    "select": {
+      "search_placeholder": "Szukaj",
+      "create_placeholder": "Wyszukaj lub wpisz nową nazwę",
+      "create_hint": "Wpisz nazwę, aby ją utworzyć"
+    },
+    "password": {
+      "show": "Pokaż hasło",
+      "hide": "Ukryj hasło"
+    },
+    "button": {
+      "ok": {
+        "label": "OK"
+      },
+      "close": {
+        "label": "Zamknij"
+      },
+      "cancel": {
+        "label": "Anuluj"
+      },
+      "create": {
+        "label": "Utwórz"
+      },
+      "add": {
+        "label": "Dodaj"
+      },
+      "edit": {
+        "label": "Edytuj"
+      },
+      "update": {
+        "label": "Zaktualizuj"
+      },
+      "save": {
+        "label": "Zapisz"
+      },
+      "delete": {
+        "label": "Usuń"
+      },
+      "view": {
+        "label": "Podgląd"
+      },
+      "up": {
+        "label": "Przenieś w górę"
+      },
+      "down": {
+        "label": "Przenieś w dół"
+      },
+      "hide": {
+        "label": "Ukryj"
+      },
+      "show": {
+        "label": "Pokaż"
+      },
+      "accept": {
+        "label": "Przyjmij"
+      },
+      "expand": {
+        "label": "Rozwiń"
+      },
+      "collapse": {
+        "label": "Zwiń"
+      },
+      "decline": {
+        "label": "Odrzuć"
+      },
+      "back": {
+        "label": "Wstecz"
+      },
+      "import": {
+        "label": "Import"
+      },
+      "export": {
+        "label": "Eksport"
+      },
+      "change": {
+        "label": "Zmień"
+      }
+    },
+    "date": {
+      "just_now": "przed chwilą",
+      "month_short": {
+        "jan": "sty",
+        "feb": "lut",
+        "mar": "mar",
+        "apr": "kwi",
+        "may": "maj",
+        "jun": "cze",
+        "jul": "lip",
+        "aug": "sie",
+        "sep": "wrz",
+        "oct": "paź",
+        "nov": "lis",
+        "dec": "gru"
+      }
+    },
+    "validation": {
+      "required_field": "Pole wymagane",
+      "invalid_number": "Wpisz poprawną liczbę",
+      "invalid_decimal_number": "Wpisz poprawną liczbę (maksymalnie 8 miejsc po przecinku)",
+      "invalid_formula": "Dozwolone są tylko cyfry i operatory (+, -, *, /, . oraz =)"
+    },
+    "sort": {
+      "header": "Sortowanie",
+      "mode": {
+        "alphabet": {
+          "asc": "Alfabetycznie (A-Z)",
+          "desc": "Alfabetycznie (Z-A)"
+        }
+      }
+    },
+    "app": {
+      "error": "Coś poszło nie tak. Spróbuj ponownie.",
+      "modal": {
+        "self_hosted": {
+          "information": "Econumo możesz uruchomić na własnym serwerze. Wpisz adres serwera, aby się połączyć."
+        },
+        "loading": {
+          "data_loading": "Wczytywanie danych"
+        }
+      }
+    },
+    "update": {
+      "notice": "Econumo {version} jest już dostępne",
+      "dismiss": "Ukryj"
+    }
+  },
+  "accounts": {
+    "folders": {
+      "default_folder": "Wszystkie konta"
+    },
+    "account": {
+      "name_hidden": "[Ukryte konto]"
+    },
+    "switch_to_account": "Przełącz na",
+    "form": {
+      "folder": {
+        "label": "Nazwa",
+        "validation": {
+          "empty_name": "Wpisz nazwę folderu",
+          "error_name_length": "Nazwa folderu musi mieć od 3 do 64 znaków"
+        }
+      },
+      "name": {
+        "label": "Nazwa",
+        "placeholder": "Wpisz nazwę",
+        "validation": {
+          "invalid_name": "Nazwa konta musi mieć od 3 do 64 znaków"
+        }
+      },
+      "balance": {
+        "label": "Saldo",
+        "placeholder": "Wpisz saldo"
+      },
+      "currency": {
+        "label": "Waluta"
+      }
+    },
+    "page": {
+      "toolbar": {
+        "settings": "Konfiguruj",
+        "search": "Szukaj",
+        "shared_with": "Konto współdzielone"
+      },
+      "transaction_list": {
+        "none": "Nie znaleziono transakcji",
+        "today": "Dzisiaj",
+        "yesterday": "Wczoraj",
+        "item": {
+          "transfer_from": "Przelew z konta {account}",
+          "transfer_to": "Przelew na konto {account}"
+        },
+        "action": {
+          "add_transaction": "Dodaj transakcję"
+        }
+      },
+      "preview_transaction_modal": {
+        "header": "Szczegóły transakcji",
+        "type": {
+          "expense": "Wydatek",
+          "income": "Przychód",
+          "transfer": "Przelew"
+        },
+        "recipient": {
+          "label": "Odbiorca"
+        },
+        "sender": {
+          "label": "Nadawca"
+        },
+        "category": {
+          "label": "Kategoria"
+        },
+        "description": {
+          "label": "Notatki"
+        },
+        "payee": {
+          "label": "Odbiorca"
+        },
+        "tags": {
+          "label": "Tagi"
+        },
+        "author": {
+          "label": "Autor"
+        },
+        "created_at": {
+          "label": "Data"
+        }
+      },
+      "delete_transaction_modal": {
+        "question": "Czy na pewno chcesz usunąć tę transakcję?"
+      }
+    },
+    "modal": {
+      "create_form": {
+        "header": "Nowe konto"
+      },
+      "update_form": {
+        "header": "Edytuj konto"
+      },
+      "form": {
+        "icon": {
+          "label": "Ikona"
+        }
+      }
+    }
+  },
+  "settings": {
+    "page": {
+      "header": "Ustawienia",
+      "header_desktop": "Ustawienia",
+      "menu_item": "Ustawienia",
+      "logout": "Wyloguj się",
+      "groups": {
+        "service": "Finanse",
+        "classification": "Klasyfikacja",
+        "data": "Dane",
+        "preferences": "Preferencje"
+      },
+      "footer": {
+        "api": "API"
+      }
+    },
+    "sync": {
+      "menu_item": "Pełna synchronizacja",
+      "failing": "Brak połączenia z serwerem — ponawianie próby"
+    },
+    "accounts": {
+      "menu_item": "Konta",
+      "header": "Konta",
+      "info": "Konta są pogrupowane w foldery. Ukryj folder, aby schować rzadko używane konta.",
+      "folder_toggle": "Zwiń folder",
+      "list_empty_create": "Dodaj",
+      "list_empty_new_account": "nowe konto",
+      "list_actions": {
+        "access": "Zarządzanie dostępem"
+      },
+      "create_folder": "Utwórz folder",
+      "create_folder_modal": {
+        "header": "Nowy folder"
+      },
+      "update_folder_modal": {
+        "header": "Zmień nazwę folderu"
+      },
+      "delete_folder_modal": {
+        "title": "Usunąć folder?",
+        "question": "Czy na pewno chcesz usunąć folder „{folder}”?"
+      },
+      "delete_account_modal": {
+        "question": "Czy na pewno chcesz usunąć konto „{account}”?"
+      },
+      "decline_access_modal": {
+        "title": "Odrzucić dostęp do konta?",
+        "question": "Czy na pewno chcesz odrzucić dostęp do konta „{account}”?"
+      },
+      "preview_account_modal": {
+        "header": "Informacje o koncie"
+      }
+    },
+    "language": {
+      "menu_item": "Język"
+    },
+    "import_csv": {
+      "menu_item": "Import CSV"
+    },
+    "export_csv": {
+      "menu_item": "Eksport CSV",
+      "error": "Nie udało się wyeksportować transakcji"
+    },
+    "recurring": {
+      "menu_item": "Transakcje cykliczne",
+      "header": "Transakcje cykliczne",
+      "empty": "Nie masz jeszcze transakcji cyklicznych",
+      "create": "Dodaj transakcję",
+      "delete_question": "Usunąć tę transakcję cykliczną?",
+      "info": "Tutaj znajdziesz płatności, które powtarzają się według harmonogramu. Najbliższa płatność pojawia się na stronie konta jako niezaksięgowana — nic nie jest dodawane automatycznie: zaksięguj ją lub pomiń samodzielnie, a data przesunie się na kolejną."
+    },
+    "update": {
+      "available": "Dostępna jest nowa wersja {version}"
+    }
+  },
+  "transactions": {
+    "modal": {
+      "transaction_type": {
+        "expense": "Wydatek",
+        "transfer": "Przelew",
+        "income": "Przychód"
+      },
+      "create_form": {
+        "header": "Dodaj transakcję"
+      },
+      "update_form": {
+        "header": "Edytuj transakcję"
+      },
+      "form": {
+        "amount": {
+          "label": "Kwota",
+          "validation": {
+            "required_field": "Podaj kwotę"
+          }
+        },
+        "amount_recipient": {
+          "label": "Kwota w {currency}",
+          "validation": {
+            "required_field": "Podaj kwotę odbiorcy"
+          }
+        },
+        "category": {
+          "label": "Kategoria"
+        },
+        "payee": {
+          "expense": "Odbiorca",
+          "income": "Nadawca"
+        },
+        "description": {
+          "label": "Notatki",
+          "placeholder": "Wpisz notatkę"
+        },
+        "from": {
+          "label": "Z konta"
+        },
+        "to": {
+          "label": "Na konto"
+        }
+      },
+      "dialog": {
+        "new_tag": {
+          "header": "Nowy tag",
+          "name": {
+            "label": "Nowy tag",
+            "placeholder": "Wpisz nazwę tagu",
+            "validation": {
+              "required_field": "Pole wymagane"
+            }
+          }
+        }
+      }
+    },
+    "import_csv": {
+      "header": "Import CSV",
+      "none": "Brak",
+      "file": {
+        "label": "Plik CSV",
+        "hint": "Maksymalny rozmiar pliku: 10 MB"
+      },
+      "mapping": {
+        "description": "Dopasuj kolumny z pliku CSV do pól transakcji. Pola wymagane są oznaczone gwiazdką (*)."
+      },
+      "amount_mode": {
+        "switch_to_single": "Użyj jednej kolumny z kwotą",
+        "switch_to_dual": "Podziel na kolumny wpływów i wydatków"
+      },
+      "switch_to_manual": "Wpisz wartość ręcznie",
+      "switch_to_csv": "Użyj kolumny z pliku CSV",
+      "fields": {
+        "account": "Konto",
+        "date": "Data",
+        "amount": "Kwota",
+        "amount_inflow": "Kwota (wpływ)",
+        "amount_outflow": "Kwota (wydatek)",
+        "category": "Kategoria",
+        "description": "Opis",
+        "description_placeholder": "Wpisz opis dla wszystkich transakcji",
+        "payee": "Odbiorca",
+        "tag": "Tag"
+      }
+    },
+    "import_result": {
+      "success_title": "Import zakończony",
+      "partial_success_title": "Import zakończony z błędami",
+      "error_title": "Import nie powiódł się",
+      "imported": "{count} transakcja została zaimportowana | {count} transakcje zostały zaimportowane | {count} transakcji zostało zaimportowanych",
+      "failed": "{count} transakcja nie została zaimportowana | {count} transakcje nie zostały zaimportowane | {count} transakcji nie zostało zaimportowanych",
+      "errors_detail": "Szczegóły błędów",
+      "row": "Wiersz",
+      "rows": "Wiersze",
+      "more": "więcej",
+      "and_more": "i jeszcze {count} błędów"
+    },
+    "export_csv": {
+      "export_csv_form": {
+        "header": "Eksport CSV",
+        "accounts": "Wybierz konta",
+        "select_all": "Zaznacz wszystkie",
+        "deselect_all": "Odznacz wszystkie"
+      }
+    }
+  },
+  "recurring": {
+    "modal": {
+      "form": {
+        "schedule": {
+          "label": "Powtarzanie"
+        }
+      }
+    },
+    "schedule": {
+      "weekly": "Co tydzień",
+      "biweekly": "Co 2 tygodnie",
+      "monthly": "Co miesiąc",
+      "quarterly": "Co 3 miesiące",
+      "yearly": "Co rok"
+    },
+    "preview": {
+      "header": "Transakcja cykliczna",
+      "post": "Zaksięguj",
+      "skip": "Pomiń"
+    },
+    "make_recurring": "Ustaw jako cykliczną",
+    "not_posted": "Niezaksięgowana"
+  },
+  "user": {
+    "avatar_picker": {
+      "title": "Wybierz awatar",
+      "icons": "Ikony awatara",
+      "colors": "Kolory awatara",
+      "change": "Zmień awatar"
+    },
+    "change_password": {
+      "success": {
+        "text": "Hasło zostało zmienione"
+      },
+      "error": {
+        "header": "Nie udało się zmienić hasła",
+        "text": "Coś poszło nie tak podczas zmiany hasła. Sprawdź obecne hasło i spróbuj ponownie."
+      },
+      "loading": {
+        "label": "Zmienianie hasła…"
+      },
+      "form": {
+        "password": {
+          "label": "Obecne hasło",
+          "placeholder": "Wpisz hasło",
+          "validation": {
+            "invalid_password": "Wpisz obecne hasło"
+          }
+        },
+        "new_password": {
+          "label": "Nowe hasło",
+          "placeholder": "Wpisz nowe hasło",
+          "validation": {
+            "not_equals": "Nowe hasło musi różnić się od obecnego"
+          }
+        },
+        "new_password_retry": {
+          "label": "Potwierdź nowe hasło",
+          "placeholder": "Wpisz nowe hasło ponownie",
+          "validation": {
+            "not_equals": "Hasła nie są takie same"
+          }
+        },
+        "submit": {
+          "label": "Zmień hasło"
+        }
+      }
+    },
+    "change_email": {
+      "header": "Zmień adres e-mail",
+      "success": {
+        "text": "Adres e-mail został zmieniony"
+      },
+      "loading": {
+        "label": "Wysyłanie kodu potwierdzającego…"
+      },
+      "form": {
+        "new_email": {
+          "label": "Nowy adres e-mail",
+          "placeholder": "Wpisz nowy adres e-mail"
+        },
+        "password": {
+          "label": "Obecne hasło",
+          "placeholder": "Wpisz hasło",
+          "validation": {
+            "required_field": "Wpisz obecne hasło"
+          }
+        },
+        "submit": {
+          "label": "Wyślij kod potwierdzający"
+        }
+      },
+      "confirm": {
+        "information": "Wysłaliśmy kod potwierdzający na adres {email}. Wpisz go poniżej, aby potwierdzić nowy adres e-mail.",
+        "resent": "Nowy kod został wysłany.",
+        "action": {
+          "verify": "Potwierdź nowy adres e-mail",
+          "resend": "Wyślij kod ponownie",
+          "resend_in": "Wyślij kod ponownie za {seconds} s"
+        }
+      }
+    },
+    "form": {
+      "name": {
+        "label": "Imię",
+        "placeholder": "Twoje imię",
+        "validation": {
+          "required_field": "Pole wymagane",
+          "invalid_name": "Wpisz swoje imię"
+        }
+      },
+      "email": {
+        "label": "E-mail",
+        "placeholder": "Twój adres e-mail",
+        "validation": {
+          "required_field": "Pole wymagane",
+          "invalid_email": "Wpisz poprawny adres e-mail"
+        }
+      },
+      "code": {
+        "placeholder": "Kod potwierdzający",
+        "validation": {
+          "required_field": "Pole wymagane",
+          "invalid_code": "Wpisz poprawny kod"
+        }
+      },
+      "password": {
+        "label": "Hasło",
+        "placeholder": "Hasło",
+        "validation": {
+          "required_field": "Pole wymagane",
+          "invalid_password": "Hasło musi mieć co najmniej 8 znaków"
+        }
+      },
+      "password_retry": {
+        "label": "Potwierdź hasło",
+        "placeholder": "Wpisz hasło ponownie",
+        "validation": {
+          "required_field": "Pole wymagane",
+          "invalid_password": "Wpisz hasło ponownie",
+          "not_equals": "Hasła nie są takie same"
+        }
+      },
+      "server_host": {
+        "connect": "Połącz z własnym serwerem",
+        "label": "Adres serwera",
+        "placeholder": "https://",
+        "validation": {
+          "required_field": "Pole wymagane",
+          "invalid_url": "Wpisz poprawny adres serwera"
+        }
+      }
+    },
+    "page": {
+      "settings": {
+        "profile": {
+          "menu_item": "Profil",
+          "header": "Profil",
+          "groups": {
+            "personal_details": "Dane osobowe",
+            "preferences": "Preferencje",
+            "security": "Bezpieczeństwo"
+          },
+          "currency": {
+            "label": "Waluta"
+          },
+          "change_password": {
+            "menu_item": "Zmień hasło",
+            "header": "Zmień hasło"
+          },
+          "change_email": {
+            "menu_item": "Zmień adres e-mail"
+          },
+          "sessions": {
+            "menu_item": "Sesje",
+            "header": "Sesje",
+            "description": "Urządzenia, na których jesteś obecnie zalogowany. Odwołaj sesję, aby wylogować dane urządzenie.",
+            "current": "Bieżąca",
+            "unknown_device": "Nieznane urządzenie",
+            "last_active": "Ostatnia aktywność",
+            "sign_out": "Wyloguj",
+            "revoke": "Odwołaj",
+            "revoke_others": "Wyloguj inne urządzenia",
+            "confirm_sign_out": "Wylogować to urządzenie?",
+            "confirm_revoke": "Odwołać tę sesję? Urządzenie zostanie wylogowane.",
+            "confirm_revoke_others": "Wylogować wszystkie pozostałe urządzenia? Aktywna pozostanie tylko ta sesja."
+          },
+          "tokens": {
+            "menu_item": "Tokeny API",
+            "header": "Tokeny API",
+            "description": "Osobiste tokeny dostępu dają pełny dostęp do Twojego konta przez API. Traktuj je jak hasła.",
+            "empty": "Nie masz jeszcze tokenów API.",
+            "created": "Utworzono",
+            "last_used": "Ostatnio użyty",
+            "expires": "Wygasa",
+            "never_expires": "Nigdy nie wygasa",
+            "create": {
+              "label": "Utwórz token"
+            },
+            "form": {
+              "name": {
+                "label": "Nazwa",
+                "placeholder": "np. Home Assistant",
+                "validation": {
+                  "required_field": "Wpisz nazwę tokena"
+                }
+              },
+              "expiry": {
+                "label": "Wygasa",
+                "options": {
+                  "d30": "30 dni",
+                  "d90": "90 dni",
+                  "d365": "365 dni",
+                  "custom": "Inna data",
+                  "never": "Nigdy"
+                },
+                "validation": {
+                  "invalid_date": "Wybierz datę w przyszłości"
+                }
+              },
+              "submit": {
+                "label": "Utwórz token"
+              }
+            },
+            "created_dialog": {
+              "title": "Token utworzony",
+              "warning": "Skopiuj token teraz — nie zobaczysz go ponownie.",
+              "copy": "Kopiuj",
+              "copied": "Skopiowano",
+              "done": "Gotowe"
+            },
+            "revoke": "Odwołaj",
+            "confirm_revoke": "Odwołać ten token? Integracje, które go używają, natychmiast przestaną działać."
+          }
+        }
+      }
+    }
+  },
+  "auth": {
+    "sign_in_failed": {
+      "header": "Nie udało się zalogować",
+      "information": "Sprawdź adres e-mail i hasło, a następnie spróbuj ponownie. Jeśli problem się powtarza, skontaktuj się z pomocą techniczną."
+    },
+    "access_recovery_modal": {
+      "header": "Reset hasła",
+      "information": "Wpisz adres e-mail podany przy rejestracji, a wyślemy Ci kod potwierdzający.",
+      "instruction": "Wysłaliśmy kod potwierdzający na Twój adres e-mail. Wpisz go poniżej i ustaw nowe hasło.",
+      "new_password": "Nowe hasło",
+      "send_failed": "Nie udało się wysłać kodu. Sprawdź adres e-mail i spróbuj ponownie.",
+      "reset_failed": "Hasło nie zostało zresetowane. Sprawdź kod i spróbuj ponownie."
+    },
+    "verify_email": {
+      "header": "Potwierdź swój adres e-mail",
+      "information": "Wysłaliśmy kod potwierdzający na adres {email}. Wpisz go poniżej, aby dokończyć logowanie.",
+      "resent": "Nowy kod został wysłany.",
+      "action": {
+        "verify": "Potwierdź i zaloguj się",
+        "resend": "Wyślij kod ponownie",
+        "resend_in": "Wyślij kod ponownie za {seconds} s"
+      }
+    },
+    "sign_up_failed": {
+      "header": "Nie udało się zarejestrować",
+      "information": "Sprawdź wprowadzone dane i spróbuj ponownie. Jeśli problem się powtarza, skontaktuj się z pomocą techniczną."
+    },
+    "sign_out": {
+      "title": "Wylogowanie",
+      "question": "Czy na pewno chcesz się wylogować?",
+      "action": {
+        "logout": "Wyloguj się",
+        "cancel": "Zostań"
+      }
+    },
+    "form": {
+      "sign_in": {
+        "remember_me": "Zapamiętaj mnie",
+        "action": {
+          "sign_in": "Zaloguj się",
+          "forget_password": "Nie pamiętasz hasła?"
+        }
+      },
+      "sign_up": {
+        "action": {
+          "sign_up": "Zarejestruj się"
+        }
+      },
+      "access_recovery": {
+        "action": {
+          "recover": {
+            "label": "Wyślij kod"
+          },
+          "change_password": {
+            "label": "Zresetuj hasło"
+          }
+        }
+      }
+    },
+    "page": {
+      "sign_in": {
+        "header": "Logowanie",
+        "session_expired": "Twoja sesja wygasła. Zaloguj się ponownie."
+      },
+      "sign_up": {
+        "header": "Rejestracja",
+        "privacy": {
+          "text": "Rejestrując się, akceptujesz naszą <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Politykę prywatności</a> oraz <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Regulamin</a>"
+        }
+      }
+    }
+  },
+  "onboarding": {
+    "header": "Pierwsze kroki",
+    "title": "Witamy w Econumo!",
+    "complete": "Zakończ konfigurację",
+    "add_account": "Dodaj konto",
+    "import_transactions": "Zaimportuj transakcje",
+    "steps": {
+      "accounts": {
+        "title": "Dodaj swoje konta",
+        "text": "Na początek dodaj konto, klikając przycisk poniżej. Kontami możesz też zarządzać i porządkować je w folderach na stronie <settings>Ustawienia</settings> -> <accounts>Konta</accounts>."
+      },
+      "transactions": {
+        "title": "Dodaj pierwszą transakcję",
+        "text": "Aby dodać transakcję, wybierz dowolne konto w menu po lewej stronie i kliknij przycisk <action>Dodaj transakcję</action>.",
+        "hint": "Kategorie, tagi i odbiorców możesz tworzyć bezpośrednio w oknie transakcji — wpisz nazwę i naciśnij Enter."
+      },
+      "classifications": {
+        "title": "Zarządzaj kategoriami, tagami i odbiorcami",
+        "text": "Kategoriami, tagami i odbiorcami zarządzasz na stronach <settings>Ustawienia</settings> -> <categories>Kategorie</categories>, <tags>Tagi</tags> lub <payees>Odbiorcy</payees>. Możesz je także sortować i archiwizować."
+      },
+      "avatar": {
+        "title": "Zaktualizuj awatar",
+        "text": "Wybierz ikonę i kolor awatara — reprezentuje Cię on na kontach współdzielonych. <choose>Wybierz awatar</choose>"
+      },
+      "connections": {
+        "title": "Połącz się z partnerem",
+        "text": "Aby połączyć się z partnerem i wspólnie zarządzać budżetem lub kontami, przejdź do <settings>Ustawienia</settings> -> <connections>Wspólny dostęp</connections>."
+      },
+      "budget": {
+        "title": "Utwórz budżet",
+        "text": "Pierwszy budżet możesz utworzyć na stronie <budget>Budżet</budget>.",
+        "text_secondary": "Z kolei na stronie <settings>Ustawienia</settings> -> <budgets>Budżety</budgets> zarządzasz budżetami, wspólnym dostępem i nie tylko."
+      }
+    },
+    "user_guide": {
+      "accounts": "Przewodnik użytkownika: konta",
+      "transactions": "Przewodnik użytkownika: transakcje",
+      "classifications": "Przewodnik użytkownika: klasyfikacja",
+      "user_profile": "Przewodnik użytkownika: profil użytkownika",
+      "shared_access": "Przewodnik użytkownika: wspólny dostęp",
+      "budgets": "Przewodnik użytkownika: budżety"
+    }
+  },
+  "budgets": {
+    "modal": {
+      "budget_form": {
+        "accounts": "Konta",
+        "accounts_included": "Uwzględniono {count} z {total}",
+        "accounts_hidden": "W ukrytych folderach"
+      },
+      "create_budget_form": {
+        "header": "Nowy budżet"
+      },
+      "update_budget_form": {
+        "header": "Edytuj budżet"
+      },
+      "create_folder_form": {
+        "header": "Nowy folder"
+      },
+      "update_folder_form": {
+        "header": "Zmień nazwę folderu"
+      },
+      "create_envelope_form": {
+        "header": "Nowa koperta"
+      },
+      "update_envelope_form": {
+        "header": "Edytuj kopertę"
+      },
+      "change_element_currency_form": {
+        "header": "Zmień walutę"
+      },
+      "delete_envelope": {
+        "header": "Usunąć kopertę?",
+        "question": "Czy na pewno chcesz usunąć tę kopertę?"
+      },
+      "delete_folder": {
+        "header": "Usunąć folder?",
+        "question": "Czy na pewno chcesz usunąć folder „{name}”?"
+      },
+      "set_limit_form": {
+        "header": "Ustaw budżet"
+      },
+      "generic_error": {
+        "header": "Coś poszło nie tak",
+        "description": "Spróbuj ponownie. Jeśli błąd się powtarza, zgłoś problem."
+      },
+      "access_error": {
+        "header": "Brak dostępu",
+        "description": "Aby uzyskać dostęp do tego budżetu, najpierw przyjmij zaproszenie."
+      },
+      "expense_widget": {
+        "header": "Postęp wydatków",
+        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}"
+      }
+    },
+    "form": {
+      "budget": {
+        "name": {
+          "label": "Nazwa",
+          "placeholder": "Mój budżet",
+          "validation": {
+            "required_field": "Pole wymagane",
+            "invalid_name": "Nazwa budżetu musi mieć od 3 do 64 znaków"
+          }
+        },
+        "folder_name": {
+          "label": "Nazwa folderu",
+          "placeholder": "Wpisz nazwę folderu",
+          "validation": {
+            "required_field": "Pole wymagane",
+            "invalid_name": "Nazwa folderu musi mieć od 3 do 64 znaków"
+          }
+        }
+      },
+      "budget_envelope": {
+        "name": {
+          "label": "Nazwa",
+          "placeholder": "",
+          "validation": {
+            "required_field": "Pole wymagane",
+            "invalid_name": "Nazwa koperty musi mieć od 3 do 64 znaków"
+          }
+        },
+        "currency": {
+          "label": "Waluta",
+          "validation": {
+            "required_field": "Pole wymagane"
+          }
+        },
+        "categories": {
+          "label": "Kategorie",
+          "selected": "Wybrano: {count}"
+        },
+        "icon": {
+          "label": "Ikona"
+        },
+        "status": {
+          "label": "Status",
+          "option": {
+            "active": "Aktywna",
+            "archive": "W archiwum"
+          }
+        }
+      },
+      "budget_limit": {
+        "limit": {
+          "label": "Budżet",
+          "validation": {
+            "invalid_number": "Nieprawidłowa liczba",
+            "required_field": "Pole wymagane",
+            "invalid_formula": "Nieprawidłowa formuła"
+          }
+        }
+      }
+    },
+    "page": {
+      "budget": {
+        "empty": {
+          "header": "Budżet",
+          "no_budget": "Nie masz jeszcze żadnego budżetu.",
+          "description": "Utwórz budżet lub przyjmij zaproszenie, aby zacząć planować finanse.",
+          "create_budget": "Utwórz budżet",
+          "initial_setup": "Aby utworzyć budżet, dodaj najpierw konto i co najmniej jedną kategorię.",
+          "create_account": "Dodaj konto"
+        },
+        "unavailable": {
+          "header": "Budżet niedostępny",
+          "no_access": "Nie masz już dostępu do tego budżetu. Mógł zostać usunięty lub dostęp został odwołany.",
+          "choose_budget": "Wybierz inny budżet"
+        },
+        "error": {
+          "retry": "Spróbuj ponownie"
+        },
+        "settings": {
+          "button": "Konfiguruj",
+          "menu": {
+            "edit": "Informacje o budżecie",
+            "edit_structure": "Edytuj strukturę",
+            "edit_structure_done": "Zakończ edycję",
+            "budget_list": "Otwórz listę budżetów"
+          }
+        },
+        "structure": {
+          "no_folder": "Folder domyślny",
+          "in_archive": "W archiwum",
+          "tab": {
+            "budgeted": "Budżet",
+            "spent": "Wydano",
+            "available": "Dostępne"
+          },
+          "action": {
+            "create_folder": "Utwórz folder",
+            "delete_folder": "Usuń folder"
+          },
+          "empty_folder": {
+            "note": "Ten folder jest pusty. Przenieś tutaj kategorię, tag lub kopertę albo utwórz nową kopertę."
+          },
+          "element": {
+            "action": {
+              "change_currency": "Zmień walutę",
+              "show_transactions": "Pokaż transakcje"
+            }
+          },
+          "total": {
+            "name": "Razem",
+            "expenses": "Suma wydatków"
+          }
+        }
+      },
+      "settings": {
+        "menu_item": "Budżety",
+        "header": "Budżety",
+        "info": "Tutaj znajdziesz wszystkie swoje budżety. Twórz osobne budżety na różne cele i udostępniaj je rodzinie.",
+        "create_budget": "Utwórz budżet",
+        "edit_modal": {
+          "header": "Edytuj budżet"
+        },
+        "create_modal": {
+          "header": "Nowy budżet"
+        },
+        "delete_modal": {
+          "title": "Usunąć budżet?",
+          "question": "Czy na pewno chcesz usunąć „{name}”?"
+        },
+        "decline_access_modal": {
+          "title": "Odrzucić dostęp do budżetu?",
+          "question": "Czy na pewno chcesz odrzucić dostęp do budżetu „{name}”?"
+        },
+        "not_accepted": "zaproszenie oczekuje",
+        "level": {
+          "guest": "Tylko podgląd",
+          "user": "Zarządzanie budżetem",
+          "admin": "Pełna kontrola"
+        },
+        "list_actions": {
+          "access": "Zarządzanie dostępem",
+          "go_to": "Otwórz budżet"
+        }
+      }
+    }
+  },
+  "classifications": {
+    "categories": {
+      "pages": {
+        "settings": {
+          "menu_item": "Kategorie",
+          "header": "Kategorie",
+          "info": "Kategorie grupują Twoje wydatki i przychody. Zarchiwizuj te, których już nie używasz — ich historia zostanie zachowana.",
+          "archived_item": "W archiwum",
+          "create_category": "Utwórz kategorię"
+        }
+      },
+      "modals": {
+        "replace": {
+          "header": "Zastąp przez",
+          "note": "Pierwotna kategoria zostanie usunięta i zastąpiona wybraną"
+        },
+        "delete": {
+          "title": "Usunąć kategorię?",
+          "question": "Czy na pewno chcesz usunąć „{name}”?"
+        },
+        "edit": {
+          "header": "Edytuj kategorię"
+        },
+        "create": {
+          "header": "Nowa kategoria"
+        }
+      },
+      "forms": {
+        "category": {
+          "type": {
+            "income": "Przychód",
+            "expense": "Wydatek"
+          },
+          "name": {
+            "label": "Nazwa",
+            "placeholder": "Wpisz nazwę",
+            "validation": {
+              "required_field": "Pole wymagane",
+              "invalid_name": "Nazwa kategorii musi mieć od 3 do 64 znaków"
+            }
+          },
+          "icon": {
+            "label": "Ikona"
+          }
+        }
+      }
+    },
+    "tags": {
+      "pages": {
+        "settings": {
+          "menu_item": "Tagi",
+          "header": "Tagi",
+          "info": "Tagi automatycznie grupują wydatki w budżecie — przydają się na przykład w podróży: oznacz jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie.",
+          "create_tag": "Utwórz tag",
+          "archived_item": "W archiwum"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edytuj tag"
+        },
+        "create": {
+          "header": "Nowy tag"
+        },
+        "delete": {
+          "title": "Usunąć tag?",
+          "question": "Czy na pewno chcesz usunąć „{name}”?"
+        }
+      },
+      "forms": {
+        "tag": {
+          "name": {
+            "label": "Nazwa",
+            "validation": {
+              "required_field": "Pole wymagane",
+              "invalid_name": "Nazwa tagu musi mieć od 3 do 64 znaków"
+            }
+          }
+        }
+      }
+    },
+    "payees": {
+      "pages": {
+        "settings": {
+          "menu_item": "Odbiorcy",
+          "header": "Odbiorcy",
+          "info": "Odbiorcy pokazują, gdzie trafiają Twoje pieniądze. Zarchiwizuj odbiorców, których już nie potrzebujesz.",
+          "create_payee": "Utwórz odbiorcę",
+          "archived_item": "W archiwum"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edytuj odbiorcę"
+        },
+        "create": {
+          "header": "Nowy odbiorca"
+        },
+        "delete": {
+          "title": "Usunąć odbiorcę?",
+          "question": "Czy na pewno chcesz usunąć „{name}”?"
+        }
+      },
+      "forms": {
+        "payee": {
+          "name": {
+            "label": "Nazwa",
+            "validation": {
+              "required_field": "Pole wymagane",
+              "invalid_name": "Nazwa odbiorcy musi mieć od 3 do 64 znaków"
+            }
+          }
+        }
+      }
+    },
+    "currencies": {
+      "pages": {
+        "settings": {
+          "menu_item": "Waluty",
+          "header": "Waluty",
+          "create_currency": "Dodaj walutę",
+          "my_currencies": "Moje waluty",
+          "global_currencies": "Waluty Econumo",
+          "rate_caption": "1 {base} = {rate} {code}",
+          "locked_base": "Waluta bazowa jest zawsze włączona",
+          "locked_profile": "Waluta Twojego profilu jest zawsze włączona",
+          "disable_currency": "Wyłącz",
+          "enable_currency": "Włącz",
+          "disable_all": "Wyłącz wszystkie",
+          "enable_all": "Włącz wszystkie",
+          "info": "Możesz dodawać własne waluty — widoczne tylko dla Ciebie, z ustalonym przez Ciebie stałym kursem — i używać ich na kontach oraz w budżetach. Waluty Econumo są dostępne dla wszystkich użytkowników tego serwera; ich kursy są zarządzane centralnie i aktualizują się automatycznie, jeśli na serwerze skonfigurowano aktualizację kursów."
+        }
+      },
+      "modals": {
+        "create": {
+          "header": "Nowa waluta"
+        },
+        "edit": {
+          "header": "Edytuj walutę"
+        },
+        "delete": {
+          "title": "Usunąć walutę?"
+        }
+      },
+      "forms": {
+        "currency": {
+          "code": {
+            "label": "Kod"
+          },
+          "name": {
+            "label": "Nazwa",
+            "validation": {
+              "required_field": "Pole wymagane"
+            }
+          },
+          "symbol": {
+            "label": "Symbol"
+          },
+          "fraction_digits": {
+            "label": "Miejsca dziesiętne"
+          },
+          "rate": {
+            "label": "Kurs wymiany"
+          }
+        }
+      }
+    }
+  },
+  "connections": {
+    "pages": {
+      "settings": {
+        "menu_item": "Wspólny dostęp",
+        "header": "Wspólny dostęp",
+        "info": "Połączenia pozwalają wspólnie zarządzać budżetami i kontami z inną osobą. Zaproś partnera za pomocą kodu, a następnie ustaw poziom dostępu do poszczególnych kont.",
+        "generate_invite": "Utwórz zaproszenie",
+        "accept_invite": "Przyjmij zaproszenie"
+      }
+    },
+    "accounts": {
+      "roles": {
+        "owner": "Właściciel",
+        "admin": "Pełna kontrola",
+        "user": "Zarządzanie transakcjami",
+        "guest": "Tylko podgląd",
+        "no_access": "Brak dostępu"
+      }
+    },
+    "budgets": {
+      "roles": {
+        "owner": "Właściciel",
+        "admin": "Pełna kontrola",
+        "user": "Zarządzanie budżetem",
+        "guest": "Tylko podgląd",
+        "no_access": "Brak dostępu"
+      }
+    },
+    "modals": {
+      "delete_connection": {
+        "question": "Czy na pewno chcesz usunąć połączenie z {name}?"
+      },
+      "generate_invite": {
+        "instruction": "Przekaż ten kod osobie, z którą chcesz się połączyć. Kod jest ważny przez 5 minut.",
+        "code": {
+          "label": "Kod zaproszenia"
+        }
+      },
+      "accept_invite": {
+        "label": "Przyjmij zaproszenie",
+        "instruction": "Poproś drugą osobę o kod zaproszenia i wpisz go poniżej. Kod jest ważny przez 5 minut.",
+        "code": {
+          "label": "Kod zaproszenia"
+        }
+      },
+      "preview_connection": {
+        "accounts": "Wspólne konta",
+        "budgets": "Wspólne budżety",
+        "budgets_empty": "Brak wspólnych budżetów",
+        "accounts_empty": "Brak wspólnych kont",
+        "shared_with_you": "Udostępnione Tobie",
+        "your_account": "Twoje konto",
+        "your_budget": "Twój budżet",
+        "tap_to_manage": "Wybierz element, aby zarządzać dostępem"
+      },
+      "decline_access": {
+        "decline_access": "Odrzuć dostęp"
+      },
+      "share_access": {
+        "not_accepted": "zaproszenie oczekuje",
+        "revoke_access": "Odwołaj dostęp",
+        "revoke_confirm": {
+          "title": "Odwołać dostęp?",
+          "question": "Czy na pewno chcesz odwołać dostęp dla {name}?"
+        },
+        "list_empty": "Nie znaleziono połączeń",
+        "tap_to_share": "Wybierz użytkownika, któremu chcesz udostępnić dostęp",
+        "choose_access_level": "Wybierz poziom dostępu",
+        "select_user": "Wybierz użytkownika {name}"
+      }
+    },
+    "forms": {
+      "invitation_code": {
+        "validation": {
+          "required_field": "Pole wymagane"
+        }
+      }
+    },
+    "sharing_requests": {
+      "title": "Zaproszenia",
+      "empty": "Brak oczekujących zaproszeń",
+      "invited_you": "{name} zaprasza Cię",
+      "account": "Konto",
+      "budget": "Budżet",
+      "choose_folder": "Wybierz folder dla tego konta",
+      "general_folder_hint": "General (zostanie utworzony)",
+      "decline_question": "Odrzucić dostęp do „{name}”?"
+    }
+  },
+  "subscription": {
+    "banner": {
+      "trial": "Twoja subskrypcja kończy się za {count} dzień | Twoja subskrypcja kończy się za {count} dni | Twoja subskrypcja kończy się za {count} dni",
+      "readonly": "Twoje konto działa w trybie tylko do odczytu — możesz przeglądać i eksportować dane, ale nie możesz ich dodawać ani zmieniać",
+      "cta": "Zarządzaj subskrypcją",
+      "dismiss": "Ukryj",
+      "connection_trial": "Subskrypcja użytkownika {name} kończy się za {count} dzień | Subskrypcja użytkownika {name} kończy się za {count} dni | Subskrypcja użytkownika {name} kończy się za {count} dni",
+      "connection_readonly": "Subskrypcja użytkownika {name} wygasła — wspólne konta może już tylko przeglądać"
+    },
+    "settings": {
+      "group": "Płatności",
+      "portal": "Zarządzaj subskrypcją",
+      "status": {
+        "trial": "Subskrypcja do {date}",
+        "readonly": "Wygasła"
+      }
+    },
+    "connections": {
+      "status": {
+        "readonly": "Tylko do odczytu",
+        "ends": "Subskrypcja kończy się za {count} dzień | Subskrypcja kończy się za {count} dni | Subskrypcja kończy się za {count} dni"
+      },
+      "pay_for": "Opłać subskrypcję: {name}"
+    },
+    "toast": {
+      "readonly": "Dostęp tylko do odczytu — zmiany są wyłączone"
+    }
+  },
+  "errors": {
+    "common": {
+      "is_blank": "Ta wartość nie powinna być pusta.",
+      "invalid_choice": "Wybrana wartość jest nieprawidłowa.",
+      "invalid_format": "Ta wartość jest nieprawidłowa.",
+      "invalid_uuid": "Ta wartość nie jest prawidłowym UUID.",
+      "invalid_email": "Ta wartość nie jest prawidłowym adresem e-mail.",
+      "too_long": "Ta wartość jest za długa.",
+      "too_short": "Ta wartość jest za krótka.",
+      "out_of_range": "Ta wartość jest poza dozwolonym zakresem.",
+      "too_many_attempts": "Zbyt wiele prób. Spróbuj ponownie później.",
+      "readonly_access": "Dostęp tylko do odczytu. Operacje zapisu są wyłączone.",
+      "operation_locked": "Operacja jest zablokowana.",
+      "invalid_datetime_format": "Nieprawidłowy format daty, oczekiwano Y-m-d H:i:s.",
+      "invalid_datetime": "Ta wartość nie jest prawidłową datą i godziną.",
+      "icon_required": "Wartość ikony nie może być pusta.",
+      "folder_name_length": "Nazwa folderu musi mieć od {min} do {max} znaków.",
+      "invalid_currency_code": "Nieprawidłowy kod waluty.",
+      "invalid_id": "nieprawidłowy identyfikator"
+    },
+    "auth": {
+      "invalid_credentials": "Nieprawidłowe dane logowania."
+    },
+    "account": {
+      "name_length": "Nazwa konta musi mieć od {min} do {max} znaków.",
+      "list_empty": "Lista kont jest pusta.",
+      "folder_list_empty": "Lista folderów jest pusta.",
+      "folder_already_exists": "Taki folder już istnieje."
+    },
+    "budget": {
+      "name_length": "Nazwa budżetu musi mieć od {min} do {max} znaków.",
+      "envelope_name_length": "Nazwa koperty musi mieć od {min} do {max} znaków.",
+      "invalid_element_type_alias": "Typ elementu budżetu o aliasie {alias} nie istnieje.",
+      "invalid_role_alias": "Rola użytkownika budżetu o aliasie {alias} nie istnieje.",
+      "transaction_filter_required": "Weryfikacja nie powiodła się."
+    },
+    "category": {
+      "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",
+      "type_invalid": "Podany typ kategorii nie istnieje.",
+      "replace_id_required": "Przy mode=replace wymagane jest replaceId.",
+      "not_found": "Nie znaleziono kategorii.",
+      "cannot_be_replaced": "Kategorii nie można zastąpić.",
+      "list_empty": "Lista kategorii jest pusta."
+    },
+    "connection": {
+      "invalid_uuid": "To nie jest prawidłowy UUID.",
+      "invalid_role_alias": "Rola dostępu do konta o aliasie {alias} nie istnieje.",
+      "invalid_code": "Nieprawidłowy kod połączenia.",
+      "inviting_yourself": "Zapraszasz samego siebie?",
+      "deleting_yourself": "Usuwasz samego siebie?"
+    },
+    "currency": {
+      "already_exists": "Taka waluta już istnieje.",
+      "name_length": "Nazwa waluty musi mieć od 1 do 64 znaków.",
+      "symbol_length": "Symbol waluty musi mieć od 1 do 12 znaków.",
+      "fraction_digits_range": "Liczba miejsc dziesiętnych musi mieścić się w zakresie od 0 do 8.",
+      "rate_invalid": "Kurs musi być liczbą dodatnią.",
+      "not_available": "Waluta jest niedostępna.",
+      "in_use": "Waluta jest używana i nie można jej usunąć.",
+      "base_immutable": "Waluty bazowej nie można zmienić.",
+      "cannot_be_hidden": "Tej waluty nie można ukryć."
+    },
+    "payee": {
+      "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
+      "already_exists": "Taki odbiorca już istnieje.",
+      "list_empty": "Lista odbiorców jest pusta."
+    },
+    "tag": {
+      "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
+      "already_exists": "Taki tag już istnieje.",
+      "list_empty": "Lista tagów jest pusta."
+    },
+    "token": {
+      "name_length": "Nazwa tokena musi mieć od {min} do {max} znaków.",
+      "invalid_expiration_date": "Nieprawidłowa data wygaśnięcia.",
+      "expiration_in_future": "Data wygaśnięcia musi być w przyszłości.",
+      "retention_negative": "Okres przechowywania nie może być ujemny."
+    },
+    "transaction": {
+      "account_not_available": "To konto jest niedostępne dla tej operacji.",
+      "item_not_available": "Ta transakcja jest niedostępna dla tej operacji.",
+      "invalid_import_file": "Prześlij prawidłowy plik CSV."
+    },
+    "user": {
+      "report_period_invalid": "Nieprawidłowy okres raportu.",
+      "language_invalid": "Nieprawidłowy język.",
+      "already_exists": "Taki użytkownik już istnieje.",
+      "registration_disabled": "Rejestracja jest wyłączona.",
+      "password_incorrect": "Nieprawidłowe hasło.",
+      "reset_password_error": "Błąd resetowania hasła.",
+      "reset_code_expired": "Kod wygasł.",
+      "email_verification_required": "Potwierdź swój adres e-mail.",
+      "verification_code_invalid": "Nieprawidłowy kod potwierdzający.",
+      "verification_code_expired": "Kod wygasł.",
+      "email_unchanged": "Nowy adres e-mail jest taki sam jak obecny."
+    }
+  },
+  "emails": {
+    "reset": {
+      "subject": "Kod potwierdzający resetowanie hasła",
+      "body": "Witaj, {name}!\nTwój kod potwierdzający: {code}.\n\nJeśli ta prośba nie pochodzi od Ciebie, zignoruj tę wiadomość.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+    },
+    "verify": {
+      "subject": "Kod weryfikacyjny adresu e-mail",
+      "body": "Witaj, {name}!\nTwój kod potwierdzający: {code}.\n\nWpisz ten kod na ekranie logowania, aby potwierdzić swój adres e-mail.\n\nJeśli konto w Econumo nie zostało założone przez Ciebie, zignoruj tę wiadomość.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+    },
+    "change_email": {
+      "subject": "Potwierdź nowy adres e-mail",
+      "body": "Witaj, {name}!\n\nUżyj tego kodu, aby potwierdzić swój nowy adres e-mail: {code}\n\nKod jest ważny przez 10 minut. Jeśli ta prośba nie pochodzi od Ciebie, zignoruj tę wiadomość."
+    },
+    "change_email_notice": {
+      "subject": "Prośba o zmianę adresu e-mail",
+      "body": "Witaj, {name}!\n\nKtoś poprosił o zmianę adresu e-mail na Twoim koncie na {email}. Jeśli to nie Ty, natychmiast zmień hasło."
+    }
+  }
+}

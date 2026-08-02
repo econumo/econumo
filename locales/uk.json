@@ -1,0 +1,1386 @@
+{
+  "common": {
+    "help": {
+      "label": "© econumo.com",
+      "url": "https://econumo.com/"
+    },
+    "list": {
+      "list_empty": "Список порожній",
+      "search": "Пошук",
+      "search_empty": "Нічого не знайдено",
+      "order_list": "Змінити порядок",
+      "active_only": "Лише активні"
+    },
+    "nav": {
+      "budget": "Бюджет",
+      "onboarding": "Початок роботи",
+      "create_account": "Додати рахунок",
+      "collapse_menu": "Згорнути меню",
+      "expand_menu": "Розгорнути меню",
+      "sharing_requests": "Вхідні запити"
+    },
+    "econumo": {
+      "label": "Econumo"
+    },
+    "uncategorized": "Без категорії",
+    "loader": {
+      "label": "завантаження",
+      "having_trouble": "Виникли проблеми?"
+    },
+    "select": {
+      "search_placeholder": "Пошук",
+      "create_placeholder": "Введіть назву",
+      "create_hint": "Введіть назву, щоб створити"
+    },
+    "password": {
+      "show": "Показати пароль",
+      "hide": "Сховати пароль"
+    },
+    "button": {
+      "ok": {
+        "label": "ОК"
+      },
+      "close": {
+        "label": "Закрити"
+      },
+      "cancel": {
+        "label": "Скасувати"
+      },
+      "create": {
+        "label": "Створити"
+      },
+      "add": {
+        "label": "Додати"
+      },
+      "edit": {
+        "label": "Змінити"
+      },
+      "update": {
+        "label": "Оновити"
+      },
+      "save": {
+        "label": "Зберегти"
+      },
+      "delete": {
+        "label": "Видалити"
+      },
+      "view": {
+        "label": "Перегляд"
+      },
+      "up": {
+        "label": "Перемістити вгору"
+      },
+      "down": {
+        "label": "Перемістити вниз"
+      },
+      "hide": {
+        "label": "Сховати"
+      },
+      "show": {
+        "label": "Показати"
+      },
+      "accept": {
+        "label": "Прийняти"
+      },
+      "expand": {
+        "label": "Розгорнути"
+      },
+      "collapse": {
+        "label": "Згорнути"
+      },
+      "decline": {
+        "label": "Відхилити"
+      },
+      "back": {
+        "label": "Назад"
+      },
+      "import": {
+        "label": "Імпорт"
+      },
+      "export": {
+        "label": "Експорт"
+      },
+      "change": {
+        "label": "Змінити"
+      }
+    },
+    "date": {
+      "just_now": "щойно",
+      "month_short": {
+        "jan": "січень",
+        "feb": "лютий",
+        "mar": "березень",
+        "apr": "квітень",
+        "may": "травень",
+        "jun": "червень",
+        "jul": "липень",
+        "aug": "серпень",
+        "sep": "вересень",
+        "oct": "жовтень",
+        "nov": "листопад",
+        "dec": "грудень"
+      }
+    },
+    "validation": {
+      "required_field": "Обов’язкове поле",
+      "invalid_number": "Введіть коректне число",
+      "invalid_decimal_number": "Введіть коректне число (не більше 8 знаків після коми)",
+      "invalid_formula": "Дозволені лише цифри та оператори (+, -, *, /, . і =)"
+    },
+    "sort": {
+      "header": "Сортування",
+      "mode": {
+        "alphabet": {
+          "asc": "За абеткою (А-Я)",
+          "desc": "За абеткою (Я-А)"
+        }
+      }
+    },
+    "app": {
+      "error": "Щось пішло не так. Спробуйте ще раз.",
+      "modal": {
+        "self_hosted": {
+          "information": "Econumo можна розгорнути на власному сервері. Введіть адресу сервера, щоб підключитися."
+        },
+        "loading": {
+          "data_loading": "Триває завантаження"
+        }
+      }
+    },
+    "update": {
+      "notice": "Вийшла Econumo {version}",
+      "dismiss": "Сховати"
+    }
+  },
+  "accounts": {
+    "folders": {
+      "default_folder": "Усі рахунки"
+    },
+    "account": {
+      "name_hidden": "[Прихований рахунок]"
+    },
+    "switch_to_account": "Перемкнутися на",
+    "form": {
+      "folder": {
+        "label": "Назва",
+        "validation": {
+          "empty_name": "Введіть назву папки",
+          "error_name_length": "Назва папки має містити від 3 до 64 символів"
+        }
+      },
+      "name": {
+        "label": "Назва",
+        "placeholder": "Введіть назву",
+        "validation": {
+          "invalid_name": "Назва рахунку має містити від 3 до 64 символів"
+        }
+      },
+      "balance": {
+        "label": "Баланс",
+        "placeholder": "Введіть баланс"
+      },
+      "currency": {
+        "label": "Валюта"
+      }
+    },
+    "page": {
+      "toolbar": {
+        "settings": "Налаштувати",
+        "search": "Пошук",
+        "shared_with": "Спільний рахунок"
+      },
+      "transaction_list": {
+        "none": "Транзакцій не знайдено",
+        "today": "Сьогодні",
+        "yesterday": "Вчора",
+        "item": {
+          "transfer_from": "Переказ із рахунку {account}",
+          "transfer_to": "Переказ на рахунок {account}"
+        },
+        "action": {
+          "add_transaction": "Додати транзакцію"
+        }
+      },
+      "preview_transaction_modal": {
+        "header": "Деталі транзакції",
+        "type": {
+          "expense": "Витрата",
+          "income": "Дохід",
+          "transfer": "Переказ"
+        },
+        "recipient": {
+          "label": "Одержувач"
+        },
+        "sender": {
+          "label": "Відправник"
+        },
+        "category": {
+          "label": "Категорія"
+        },
+        "description": {
+          "label": "Нотатки"
+        },
+        "payee": {
+          "label": "Отримувач"
+        },
+        "tags": {
+          "label": "Теги"
+        },
+        "author": {
+          "label": "Автор"
+        },
+        "created_at": {
+          "label": "Дата"
+        }
+      },
+      "delete_transaction_modal": {
+        "question": "Ви впевнені, що хочете видалити цю транзакцію?"
+      }
+    },
+    "modal": {
+      "create_form": {
+        "header": "Новий рахунок"
+      },
+      "update_form": {
+        "header": "Змінити рахунок"
+      },
+      "form": {
+        "icon": {
+          "label": "Значок"
+        }
+      }
+    }
+  },
+  "settings": {
+    "page": {
+      "header": "Налаштування",
+      "header_desktop": "Налаштування",
+      "menu_item": "Налаштування",
+      "logout": "Вийти",
+      "groups": {
+        "service": "Фінанси",
+        "classification": "Списки",
+        "data": "Дані",
+        "preferences": "Уподобання"
+      },
+      "footer": {
+        "api": "API"
+      }
+    },
+    "sync": {
+      "menu_item": "Повна синхронізація",
+      "failing": "Не вдається підключитися до сервера — повторна спроба"
+    },
+    "accounts": {
+      "menu_item": "Рахунки",
+      "header": "Рахунки",
+      "info": "Рахунки групуються за папками. Сховайте папку, щоб прибрати з очей рідко використовувані рахунки.",
+      "folder_toggle": "Згорнути папку",
+      "list_empty_create": "Додати",
+      "list_empty_new_account": "новий рахунок",
+      "list_actions": {
+        "access": "Керування доступом"
+      },
+      "create_folder": "Створити папку",
+      "create_folder_modal": {
+        "header": "Нова папка"
+      },
+      "update_folder_modal": {
+        "header": "Перейменувати папку"
+      },
+      "delete_folder_modal": {
+        "title": "Видалити папку?",
+        "question": "Ви впевнені, що хочете видалити папку «{folder}»?"
+      },
+      "delete_account_modal": {
+        "question": "Ви впевнені, що хочете видалити рахунок «{account}»?"
+      },
+      "decline_access_modal": {
+        "title": "Відхилити доступ до рахунку?",
+        "question": "Ви впевнені, що хочете відхилити доступ до рахунку «{account}»?"
+      },
+      "preview_account_modal": {
+        "header": "Інформація про рахунок"
+      }
+    },
+    "language": {
+      "menu_item": "Мова"
+    },
+    "import_csv": {
+      "menu_item": "Імпорт CSV"
+    },
+    "export_csv": {
+      "menu_item": "Експорт CSV",
+      "error": "Не вдалося експортувати транзакції"
+    },
+    "recurring": {
+      "menu_item": "Регулярні транзакції",
+      "header": "Регулярні транзакції",
+      "empty": "Поки що немає регулярних транзакцій",
+      "create": "Додати транзакцію",
+      "delete_question": "Видалити цю регулярну транзакцію?",
+      "info": "Тут зібрані платежі, які повторюються за розкладом. Наступний платіж показується на сторінці рахунку як не проведений — нічого не додається автоматично: проведіть або пропустіть його вручну, і дата зсунеться на наступну."
+    },
+    "update": {
+      "available": "Доступна нова версія {version}"
+    }
+  },
+  "transactions": {
+    "modal": {
+      "transaction_type": {
+        "expense": "Витрата",
+        "transfer": "Переказ",
+        "income": "Дохід"
+      },
+      "create_form": {
+        "header": "Додати транзакцію"
+      },
+      "update_form": {
+        "header": "Змінити транзакцію"
+      },
+      "form": {
+        "amount": {
+          "label": "Сума",
+          "validation": {
+            "required_field": "Вкажіть суму"
+          }
+        },
+        "amount_recipient": {
+          "label": "Сума в {currency}",
+          "validation": {
+            "required_field": "Вкажіть суму одержувача"
+          }
+        },
+        "category": {
+          "label": "Категорія"
+        },
+        "payee": {
+          "expense": "Одержувач",
+          "income": "Відправник"
+        },
+        "description": {
+          "label": "Нотатки",
+          "placeholder": "Введіть нотатку"
+        },
+        "from": {
+          "label": "Звідки"
+        },
+        "to": {
+          "label": "Куди"
+        }
+      },
+      "dialog": {
+        "new_tag": {
+          "header": "Новий тег",
+          "name": {
+            "label": "Новий тег",
+            "placeholder": "Введіть назву тега",
+            "validation": {
+              "required_field": "Обов’язкове поле"
+            }
+          }
+        }
+      }
+    },
+    "import_csv": {
+      "header": "Імпорт CSV",
+      "none": "Немає",
+      "file": {
+        "label": "Файл CSV",
+        "hint": "Максимальний розмір файлу: 10 МБ"
+      },
+      "mapping": {
+        "description": "Зіставте стовпці CSV-файлу з полями транзакції. Обов’язкові поля позначені зірочкою (*)."
+      },
+      "amount_mode": {
+        "switch_to_single": "Використовувати один стовпець суми",
+        "switch_to_dual": "Розділити на стовпці надходжень і витрат"
+      },
+      "switch_to_manual": "Вказати значення вручну",
+      "switch_to_csv": "Використовувати стовпець CSV",
+      "fields": {
+        "account": "Рахунок",
+        "date": "Дата",
+        "amount": "Сума",
+        "amount_inflow": "Сума (надходження)",
+        "amount_outflow": "Сума (витрата)",
+        "category": "Категорія",
+        "description": "Опис",
+        "description_placeholder": "Введіть опис для всіх транзакцій",
+        "payee": "Отримувач",
+        "tag": "Тег"
+      }
+    },
+    "import_result": {
+      "success_title": "Імпорт завершено",
+      "partial_success_title": "Імпорт завершено з помилками",
+      "error_title": "Імпорт не виконано",
+      "imported": "{count} транзакція імпортована | {count} транзакції імпортовані | {count} транзакцій імпортовано",
+      "failed": "{count} транзакція не імпортована | {count} транзакції не імпортовані | {count} транзакцій не імпортовано",
+      "errors_detail": "Подробиці помилок",
+      "row": "Рядок",
+      "rows": "Рядки",
+      "more": "ще",
+      "and_more": "і ще {count} помилок"
+    },
+    "export_csv": {
+      "export_csv_form": {
+        "header": "Експорт CSV",
+        "accounts": "Виберіть рахунки",
+        "select_all": "Вибрати всі",
+        "deselect_all": "Зняти вибір"
+      }
+    }
+  },
+  "recurring": {
+    "modal": {
+      "form": {
+        "schedule": {
+          "label": "Повторюється"
+        }
+      }
+    },
+    "schedule": {
+      "weekly": "Щотижня",
+      "biweekly": "Раз на 2 тижні",
+      "monthly": "Щомісяця",
+      "quarterly": "Раз на 3 місяці",
+      "yearly": "Щороку"
+    },
+    "preview": {
+      "header": "Регулярна транзакція",
+      "post": "Провести",
+      "skip": "Пропустити"
+    },
+    "make_recurring": "Зробити регулярною",
+    "not_posted": "Не проведена"
+  },
+  "user": {
+    "avatar_picker": {
+      "title": "Виберіть аватар",
+      "icons": "Значки аватара",
+      "colors": "Кольори аватара",
+      "change": "Змінити аватар"
+    },
+    "change_password": {
+      "success": {
+        "text": "Пароль змінено"
+      },
+      "error": {
+        "header": "Не вдалося змінити пароль",
+        "text": "Щось пішло не так під час зміни пароля. Перевірте поточний пароль і спробуйте ще раз."
+      },
+      "loading": {
+        "label": "Зміна пароля…"
+      },
+      "form": {
+        "password": {
+          "label": "Поточний пароль",
+          "placeholder": "Введіть пароль",
+          "validation": {
+            "invalid_password": "Введіть поточний пароль"
+          }
+        },
+        "new_password": {
+          "label": "Новий пароль",
+          "placeholder": "Введіть новий пароль",
+          "validation": {
+            "not_equals": "Новий пароль має відрізнятися від поточного"
+          }
+        },
+        "new_password_retry": {
+          "label": "Підтвердьте новий пароль",
+          "placeholder": "Введіть новий пароль ще раз",
+          "validation": {
+            "not_equals": "Паролі не збігаються"
+          }
+        },
+        "submit": {
+          "label": "Змінити пароль"
+        }
+      }
+    },
+    "change_email": {
+      "header": "Змінити email",
+      "success": {
+        "text": "Email змінено"
+      },
+      "loading": {
+        "label": "Надсилання коду підтвердження…"
+      },
+      "form": {
+        "new_email": {
+          "label": "Новий email",
+          "placeholder": "Введіть новий email"
+        },
+        "password": {
+          "label": "Поточний пароль",
+          "placeholder": "Введіть пароль",
+          "validation": {
+            "required_field": "Введіть поточний пароль"
+          }
+        },
+        "submit": {
+          "label": "Надіслати код підтвердження"
+        }
+      },
+      "confirm": {
+        "information": "Ми надіслали код підтвердження на {email}. Введіть його нижче, щоб підтвердити новий email.",
+        "resent": "Новий код надіслано.",
+        "action": {
+          "verify": "Підтвердити новий email",
+          "resend": "Надіслати код повторно",
+          "resend_in": "Повторне надсилання через {seconds} с"
+        }
+      }
+    },
+    "form": {
+      "name": {
+        "label": "Ім’я",
+        "placeholder": "Ваше ім’я",
+        "validation": {
+          "required_field": "Обов’язкове поле",
+          "invalid_name": "Введіть ваше ім’я"
+        }
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "Ваш email",
+        "validation": {
+          "required_field": "Обов’язкове поле",
+          "invalid_email": "Введіть коректний email"
+        }
+      },
+      "code": {
+        "placeholder": "Код підтвердження",
+        "validation": {
+          "required_field": "Обов’язкове поле",
+          "invalid_code": "Введіть коректний код"
+        }
+      },
+      "password": {
+        "label": "Пароль",
+        "placeholder": "Пароль",
+        "validation": {
+          "required_field": "Обов’язкове поле",
+          "invalid_password": "Пароль має містити щонайменше 8 символів"
+        }
+      },
+      "password_retry": {
+        "label": "Підтвердьте пароль",
+        "placeholder": "Введіть пароль ще раз",
+        "validation": {
+          "required_field": "Обов’язкове поле",
+          "invalid_password": "Введіть пароль ще раз",
+          "not_equals": "Паролі не збігаються"
+        }
+      },
+      "server_host": {
+        "connect": "Підключитися до власного сервера",
+        "label": "Адреса сервера",
+        "placeholder": "https://",
+        "validation": {
+          "required_field": "Обов’язкове поле",
+          "invalid_url": "Введіть коректну адресу сервера"
+        }
+      }
+    },
+    "page": {
+      "settings": {
+        "profile": {
+          "menu_item": "Профіль",
+          "header": "Профіль",
+          "groups": {
+            "personal_details": "Особисті дані",
+            "preferences": "Уподобання",
+            "security": "Безпека"
+          },
+          "currency": {
+            "label": "Валюта"
+          },
+          "change_password": {
+            "menu_item": "Змінити пароль",
+            "header": "Змінити пароль"
+          },
+          "change_email": {
+            "menu_item": "Змінити email"
+          },
+          "sessions": {
+            "menu_item": "Сесії",
+            "header": "Сесії",
+            "description": "Пристрої, на яких виконано вхід у ваш акаунт. Видаліть сесію, щоб вийти на цьому пристрої.",
+            "current": "Поточний",
+            "unknown_device": "Невідомий пристрій",
+            "last_active": "Остання активність",
+            "sign_out": "Вийти",
+            "revoke": "Видалити",
+            "revoke_others": "Вийти на інших пристроях",
+            "confirm_sign_out": "Вийти на цьому пристрої?",
+            "confirm_revoke": "Видалити цю сесію? Пристрій буде відключено.",
+            "confirm_revoke_others": "Вийти на всіх інших пристроях? Активною залишиться лише ця сесія."
+          },
+          "tokens": {
+            "menu_item": "API-токени",
+            "header": "API-токени",
+            "description": "Персональні токени доступу дають повний доступ до вашого акаунта через API. Зберігайте їх як паролі.",
+            "empty": "Поки що немає API-токенів.",
+            "created": "Створено",
+            "last_used": "Останнє використання",
+            "expires": "Діє до",
+            "never_expires": "Безстроковий",
+            "create": {
+              "label": "Створити токен"
+            },
+            "form": {
+              "name": {
+                "label": "Назва",
+                "placeholder": "наприклад, Home Assistant",
+                "validation": {
+                  "required_field": "Введіть назву токена"
+                }
+              },
+              "expiry": {
+                "label": "Термін дії",
+                "options": {
+                  "d30": "30 днів",
+                  "d90": "90 днів",
+                  "d365": "365 днів",
+                  "custom": "Інша дата",
+                  "never": "Ніколи"
+                },
+                "validation": {
+                  "invalid_date": "Виберіть дату в майбутньому"
+                }
+              },
+              "submit": {
+                "label": "Створити токен"
+              }
+            },
+            "created_dialog": {
+              "title": "Токен створено",
+              "warning": "Скопіюйте токен зараз — удруге побачити його буде неможливо.",
+              "copy": "Копіювати",
+              "copied": "Скопійовано",
+              "done": "Готово"
+            },
+            "revoke": "Відкликати",
+            "confirm_revoke": "Відкликати цей токен? Інтеграції, які його використовують, одразу перестануть працювати."
+          }
+        }
+      }
+    }
+  },
+  "auth": {
+    "sign_in_failed": {
+      "header": "Не вдалося увійти",
+      "information": "Перевірте email і пароль та спробуйте ще раз. Якщо проблема повторюється, зверніться до підтримки."
+    },
+    "access_recovery_modal": {
+      "header": "Скидання пароля",
+      "information": "Введіть email, указаний під час реєстрації, і ми надішлемо вам код підтвердження.",
+      "instruction": "Ми надіслали код підтвердження на ваш email. Введіть його нижче та вкажіть новий пароль.",
+      "new_password": "Новий пароль",
+      "send_failed": "Не вдалося надіслати код. Перевірте адресу email і спробуйте ще раз.",
+      "reset_failed": "Пароль не було скинуто. Перевірте код і спробуйте ще раз."
+    },
+    "verify_email": {
+      "header": "Підтвердьте ваш email",
+      "information": "Ми надіслали код підтвердження на {email}. Введіть його нижче, щоб завершити вхід.",
+      "resent": "Новий код надіслано.",
+      "action": {
+        "verify": "Підтвердити та увійти",
+        "resend": "Надіслати код ще раз",
+        "resend_in": "Надіслати код ще раз через {seconds} с"
+      }
+    },
+    "sign_up_failed": {
+      "header": "Не вдалося зареєструватися",
+      "information": "Перевірте введені дані та спробуйте ще раз. Якщо проблема повторюється, зверніться до підтримки."
+    },
+    "sign_out": {
+      "title": "Вихід",
+      "question": "Ви впевнені, що хочете вийти?",
+      "action": {
+        "logout": "Вийти",
+        "cancel": "Залишитися"
+      }
+    },
+    "form": {
+      "sign_in": {
+        "remember_me": "Запам’ятати мене",
+        "action": {
+          "sign_in": "Увійти",
+          "forget_password": "Забули пароль?"
+        }
+      },
+      "sign_up": {
+        "action": {
+          "sign_up": "Зареєструватися"
+        }
+      },
+      "access_recovery": {
+        "action": {
+          "recover": {
+            "label": "Надіслати код"
+          },
+          "change_password": {
+            "label": "Скинути пароль"
+          }
+        }
+      }
+    },
+    "page": {
+      "sign_in": {
+        "header": "Вхід",
+        "session_expired": "Ваша сесія завершилася. Будь ласка, увійдіть знову."
+      },
+      "sign_up": {
+        "header": "Реєстрація",
+        "privacy": {
+          "text": "Реєструючись, ви погоджуєтеся з нашою <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Політикою конфіденційності</a> та <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Умовами використання</a>"
+        }
+      }
+    }
+  },
+  "onboarding": {
+    "header": "Початок роботи",
+    "title": "Ласкаво просимо до Econumo!",
+    "complete": "Завершити налаштування",
+    "add_account": "Додати рахунок",
+    "import_transactions": "Імпортувати транзакції",
+    "steps": {
+      "accounts": {
+        "title": "Додайте рахунки",
+        "text": "Для початку додайте рахунок, натиснувши кнопку нижче. Керувати рахунками та розкладати їх по папках можна на сторінці <settings>Налаштування</settings> -> <accounts>Рахунки</accounts>."
+      },
+      "transactions": {
+        "title": "Додайте першу транзакцію",
+        "text": "Щоб додати транзакцію, виберіть будь-який рахунок у меню ліворуч і натисніть кнопку <action>Додати транзакцію</action>.",
+        "hint": "Категорії, теги та отримувачів можна створювати просто у вікні транзакції — введіть назву й натисніть Enter."
+      },
+      "classifications": {
+        "title": "Налаштуйте категорії, теги та отримувачів",
+        "text": "Керувати категоріями, тегами та отримувачами можна на сторінках <settings>Налаштування</settings> -> <categories>Категорії</categories>, <tags>Теги</tags> та <payees>Отримувачі</payees>. Їх також можна сортувати й архівувати."
+      },
+      "avatar": {
+        "title": "Оновіть аватар",
+        "text": "Виберіть значок і колір аватара — він представляє вас у спільних рахунках. <choose>Вибрати аватар</choose>"
+      },
+      "connections": {
+        "title": "Підключіть партнера",
+        "text": "Щоб вести бюджет або рахунки разом із партнером, відкрийте <settings>Налаштування</settings> -> <connections>Спільний доступ</connections>."
+      },
+      "budget": {
+        "title": "Створіть бюджет",
+        "text": "Перший бюджет можна створити на сторінці <budget>Бюджет</budget>.",
+        "text_secondary": "А на сторінці <settings>Налаштування</settings> -> <budgets>Бюджети</budgets> можна керувати бюджетами, спільним доступом та іншим."
+      }
+    },
+    "user_guide": {
+      "accounts": "Посібник користувача: рахунки",
+      "transactions": "Посібник користувача: транзакції",
+      "classifications": "Посібник користувача: класифікація",
+      "user_profile": "Посібник користувача: профіль",
+      "shared_access": "Посібник користувача: спільний доступ",
+      "budgets": "Посібник користувача: бюджети"
+    }
+  },
+  "budgets": {
+    "modal": {
+      "budget_form": {
+        "accounts": "Рахунки",
+        "accounts_included": "Включено {count} з {total}",
+        "accounts_hidden": "У прихованих папках"
+      },
+      "create_budget_form": {
+        "header": "Новий бюджет"
+      },
+      "update_budget_form": {
+        "header": "Змінити бюджет"
+      },
+      "create_folder_form": {
+        "header": "Нова папка"
+      },
+      "update_folder_form": {
+        "header": "Перейменувати папку"
+      },
+      "create_envelope_form": {
+        "header": "Новий конверт"
+      },
+      "update_envelope_form": {
+        "header": "Змінити конверт"
+      },
+      "change_element_currency_form": {
+        "header": "Змінити валюту"
+      },
+      "delete_envelope": {
+        "header": "Видалити конверт?",
+        "question": "Ви впевнені, що хочете видалити цей конверт?"
+      },
+      "delete_folder": {
+        "header": "Видалити папку?",
+        "question": "Ви впевнені, що хочете видалити папку «{name}»?"
+      },
+      "set_limit_form": {
+        "header": "Задати бюджет"
+      },
+      "generic_error": {
+        "header": "Щось пішло не так",
+        "description": "Спробуйте ще раз. Якщо помилка повторюється, повідомте про проблему."
+      },
+      "access_error": {
+        "header": "Доступ заборонено",
+        "description": "Щоб отримати доступ до цього бюджету, спочатку прийміть запрошення."
+      },
+      "expense_widget": {
+        "header": "Витрати",
+        "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}"
+      }
+    },
+    "form": {
+      "budget": {
+        "name": {
+          "label": "Назва",
+          "placeholder": "Мій бюджет",
+          "validation": {
+            "required_field": "Обов’язкове поле",
+            "invalid_name": "Назва бюджету має містити від 3 до 64 символів"
+          }
+        },
+        "folder_name": {
+          "label": "Назва папки",
+          "placeholder": "Введіть назву папки",
+          "validation": {
+            "required_field": "Обов’язкове поле",
+            "invalid_name": "Назва папки має містити від 3 до 64 символів"
+          }
+        }
+      },
+      "budget_envelope": {
+        "name": {
+          "label": "Назва",
+          "placeholder": "",
+          "validation": {
+            "required_field": "Обов’язкове поле",
+            "invalid_name": "Назва конверта має містити від 3 до 64 символів"
+          }
+        },
+        "currency": {
+          "label": "Валюта",
+          "validation": {
+            "required_field": "Обов’язкове поле"
+          }
+        },
+        "categories": {
+          "label": "Категорії",
+          "selected": "Вибрано: {count}"
+        },
+        "icon": {
+          "label": "Значок"
+        },
+        "status": {
+          "label": "Статус",
+          "option": {
+            "active": "Активний",
+            "archive": "В архіві"
+          }
+        }
+      },
+      "budget_limit": {
+        "limit": {
+          "label": "Бюджет",
+          "validation": {
+            "invalid_number": "Некоректне число",
+            "required_field": "Обов’язкове поле",
+            "invalid_formula": "Некоректна формула"
+          }
+        }
+      }
+    },
+    "page": {
+      "budget": {
+        "empty": {
+          "header": "Бюджет",
+          "no_budget": "Ви ще не створили бюджет.",
+          "description": "Створіть бюджет або прийміть запрошення, щоб почати планувати фінанси.",
+          "create_budget": "Створити бюджет",
+          "initial_setup": "Щоб створити бюджет, спочатку додайте рахунок і хоча б одну категорію.",
+          "create_account": "Додати рахунок"
+        },
+        "unavailable": {
+          "header": "Бюджет недоступний",
+          "no_access": "У вас більше немає доступу до цього бюджету. Можливо, його видалено або доступ відкликано.",
+          "choose_budget": "Вибрати інший бюджет"
+        },
+        "error": {
+          "retry": "Повторити"
+        },
+        "settings": {
+          "button": "Налаштувати",
+          "menu": {
+            "edit": "Інформація про бюджет",
+            "edit_structure": "Змінити структуру",
+            "edit_structure_done": "Готово",
+            "budget_list": "Відкрити список бюджетів"
+          }
+        },
+        "structure": {
+          "no_folder": "Папка за замовчуванням",
+          "in_archive": "В архіві",
+          "tab": {
+            "budgeted": "Бюджет",
+            "spent": "Витрачено",
+            "available": "Доступно"
+          },
+          "action": {
+            "create_folder": "Створити папку",
+            "delete_folder": "Видалити папку"
+          },
+          "empty_folder": {
+            "note": "Ця папка порожня. Перемістіть сюди категорію, тег або конверт чи створіть новий конверт."
+          },
+          "element": {
+            "action": {
+              "change_currency": "Змінити валюту",
+              "show_transactions": "Показати транзакції"
+            }
+          },
+          "total": {
+            "name": "Разом",
+            "expenses": "Усього витрат"
+          }
+        }
+      },
+      "settings": {
+        "menu_item": "Бюджети",
+        "header": "Бюджети",
+        "info": "Тут усі ваші бюджети. Створюйте окремі бюджети для різних цілей і діліться ними з близькими.",
+        "create_budget": "Створити бюджет",
+        "edit_modal": {
+          "header": "Змінити бюджет"
+        },
+        "create_modal": {
+          "header": "Новий бюджет"
+        },
+        "delete_modal": {
+          "title": "Видалити бюджет?",
+          "question": "Ви впевнені, що хочете видалити «{name}»?"
+        },
+        "decline_access_modal": {
+          "title": "Відхилити доступ до бюджету?",
+          "question": "Ви впевнені, що хочете відхилити доступ до бюджету «{name}»?"
+        },
+        "not_accepted": "запрошення не прийнято",
+        "level": {
+          "guest": "Лише перегляд",
+          "user": "Керування бюджетом",
+          "admin": "Повний доступ"
+        },
+        "list_actions": {
+          "access": "Керування доступом",
+          "go_to": "Відкрити бюджет"
+        }
+      }
+    }
+  },
+  "classifications": {
+    "categories": {
+      "pages": {
+        "settings": {
+          "menu_item": "Категорії",
+          "header": "Категорії",
+          "info": "Категорії групують ваші витрати та доходи. Архівуйте непотрібні категорії — їхня історія збережеться.",
+          "archived_item": "В архіві",
+          "create_category": "Створити категорію"
+        }
+      },
+      "modals": {
+        "replace": {
+          "header": "Замінити на",
+          "note": "Початкову категорію буде видалено та замінено вибраною"
+        },
+        "delete": {
+          "title": "Видалити категорію?",
+          "question": "Ви впевнені, що хочете видалити «{name}»?"
+        },
+        "edit": {
+          "header": "Змінити категорію"
+        },
+        "create": {
+          "header": "Нова категорія"
+        }
+      },
+      "forms": {
+        "category": {
+          "type": {
+            "income": "Дохід",
+            "expense": "Витрата"
+          },
+          "name": {
+            "label": "Назва",
+            "placeholder": "Введіть назву",
+            "validation": {
+              "required_field": "Обов’язкове поле",
+              "invalid_name": "Назва категорії має містити від 3 до 64 символів"
+            }
+          },
+          "icon": {
+            "label": "Значок"
+          }
+        }
+      }
+    },
+    "tags": {
+      "pages": {
+        "settings": {
+          "menu_item": "Теги",
+          "header": "Теги",
+          "info": "Теги автоматично групують витрати в межах бюджету — зручно, наприклад, у подорожах: позначте всі витрати поїздки одним тегом і отримайте розбивку витрат просто в бюджеті.",
+          "create_tag": "Створити тег",
+          "archived_item": "В архіві"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Змінити тег"
+        },
+        "create": {
+          "header": "Новий тег"
+        },
+        "delete": {
+          "title": "Видалити тег?",
+          "question": "Ви впевнені, що хочете видалити «{name}»?"
+        }
+      },
+      "forms": {
+        "tag": {
+          "name": {
+            "label": "Назва",
+            "validation": {
+              "required_field": "Обов’язкове поле",
+              "invalid_name": "Назва тега має містити від 3 до 64 символів"
+            }
+          }
+        }
+      }
+    },
+    "payees": {
+      "pages": {
+        "settings": {
+          "menu_item": "Отримувачі",
+          "header": "Отримувачі",
+          "info": "Отримувачі показують, куди йдуть ваші гроші. Непотрібних отримувачів можна архівувати.",
+          "create_payee": "Створити отримувача",
+          "archived_item": "В архіві"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Змінити отримувача"
+        },
+        "create": {
+          "header": "Новий отримувач"
+        },
+        "delete": {
+          "title": "Видалити отримувача?",
+          "question": "Ви впевнені, що хочете видалити «{name}»?"
+        }
+      },
+      "forms": {
+        "payee": {
+          "name": {
+            "label": "Назва",
+            "validation": {
+              "required_field": "Обов’язкове поле",
+              "invalid_name": "Назва отримувача має містити від 3 до 64 символів"
+            }
+          }
+        }
+      }
+    },
+    "currencies": {
+      "pages": {
+        "settings": {
+          "menu_item": "Валюти",
+          "header": "Валюти",
+          "create_currency": "Додати валюту",
+          "my_currencies": "Мої валюти",
+          "global_currencies": "Валюти Econumo",
+          "rate_caption": "1 {base} = {rate} {code}",
+          "locked_base": "Базова валюта завжди увімкнена",
+          "locked_profile": "Валюта вашого профілю завжди увімкнена",
+          "disable_currency": "Вимкнути",
+          "enable_currency": "Увімкнути",
+          "disable_all": "Вимкнути всі",
+          "enable_all": "Увімкнути всі",
+          "info": "Ви можете додавати власні валюти — вони видимі лише вам і мають фіксований курс, який задаєте ви, — та використовувати їх для рахунків і бюджетів. Валюти Econumo доступні всім користувачам цього сервера; їхні курси керуються централізовано й оновлюються автоматично, якщо на сервері налаштовано оновлення курсів."
+        }
+      },
+      "modals": {
+        "create": {
+          "header": "Нова валюта"
+        },
+        "edit": {
+          "header": "Змінити валюту"
+        },
+        "delete": {
+          "title": "Видалити валюту?"
+        }
+      },
+      "forms": {
+        "currency": {
+          "code": {
+            "label": "Код"
+          },
+          "name": {
+            "label": "Назва",
+            "validation": {
+              "required_field": "Обов’язкове поле"
+            }
+          },
+          "symbol": {
+            "label": "Символ"
+          },
+          "fraction_digits": {
+            "label": "Знаків після коми"
+          },
+          "rate": {
+            "label": "Курс обміну"
+          }
+        }
+      }
+    }
+  },
+  "connections": {
+    "pages": {
+      "settings": {
+        "menu_item": "Спільний доступ",
+        "header": "Спільний доступ",
+        "info": "Спільний доступ дозволяє вести бюджети та рахунки разом з іншою людиною. Запросіть партнера за кодом, а потім налаштуйте рівень доступу до рахунків.",
+        "generate_invite": "Створити запрошення",
+        "accept_invite": "Прийняти запрошення"
+      }
+    },
+    "accounts": {
+      "roles": {
+        "owner": "Власник",
+        "admin": "Повний доступ",
+        "user": "Керування транзакціями",
+        "guest": "Лише перегляд",
+        "no_access": "Немає доступу"
+      }
+    },
+    "budgets": {
+      "roles": {
+        "owner": "Власник",
+        "admin": "Повний доступ",
+        "user": "Керування бюджетом",
+        "guest": "Лише перегляд",
+        "no_access": "Немає доступу"
+      }
+    },
+    "modals": {
+      "delete_connection": {
+        "question": "Ви впевнені, що хочете видалити зв’язок з {name}?"
+      },
+      "generate_invite": {
+        "instruction": "Передайте цей код людині, з якою хочете поділитися доступом. Код дійсний 5 хвилин.",
+        "code": {
+          "label": "Код запрошення"
+        }
+      },
+      "accept_invite": {
+        "label": "Прийняти запрошення",
+        "instruction": "Отримайте код запрошення в іншої людини та введіть його нижче. Код дійсний 5 хвилин.",
+        "code": {
+          "label": "Код запрошення"
+        }
+      },
+      "preview_connection": {
+        "accounts": "Спільні рахунки",
+        "budgets": "Спільні бюджети",
+        "budgets_empty": "Немає спільних бюджетів",
+        "accounts_empty": "Немає спільних рахунків",
+        "shared_with_you": "Доступно вам",
+        "your_account": "Ваш рахунок",
+        "your_budget": "Ваш бюджет",
+        "tap_to_manage": "Виберіть елемент, щоб керувати доступом"
+      },
+      "decline_access": {
+        "decline_access": "Відхилити доступ"
+      },
+      "share_access": {
+        "not_accepted": "запрошення не прийнято",
+        "revoke_access": "Відкликати доступ",
+        "revoke_confirm": {
+          "title": "Відкликати доступ?",
+          "question": "Ви впевнені, що хочете відкликати доступ у {name}?"
+        },
+        "list_empty": "Зв’язків не знайдено",
+        "tap_to_share": "Виберіть користувача, щоб надати доступ",
+        "choose_access_level": "Виберіть рівень доступу",
+        "select_user": "Вибрати користувача {name}"
+      }
+    },
+    "forms": {
+      "invitation_code": {
+        "validation": {
+          "required_field": "Обов’язкове поле"
+        }
+      }
+    },
+    "sharing_requests": {
+      "title": "Вхідні запити",
+      "empty": "Немає запитів, що очікують",
+      "invited_you": "{name} запрошує вас",
+      "account": "Рахунок",
+      "budget": "Бюджет",
+      "choose_folder": "Виберіть папку для цього рахунку",
+      "general_folder_hint": "General (буде створена)",
+      "decline_question": "Відхилити доступ до «{name}»?"
+    }
+  },
+  "subscription": {
+    "banner": {
+      "trial": "Підписка закінчиться через {count} день | Підписка закінчиться через {count} дні | Підписка закінчиться через {count} днів",
+      "readonly": "Ваш акаунт у режимі «лише читання» — дані можна переглядати й експортувати, але не змінювати",
+      "cta": "Керувати підпискою",
+      "dismiss": "Сховати",
+      "connection_trial": "Підписка {name} закінчиться через {count} день | Підписка {name} закінчиться через {count} дні | Підписка {name} закінчиться через {count} днів",
+      "connection_readonly": "Підписка {name} закінчилася — спільні рахунки доступні їм лише для перегляду"
+    },
+    "settings": {
+      "group": "Оплата",
+      "portal": "Керувати підпискою",
+      "status": {
+        "trial": "Підписка до {date}",
+        "readonly": "Завершилася"
+      }
+    },
+    "connections": {
+      "status": {
+        "readonly": "Лише читання",
+        "ends": "Підписка закінчиться через {count} день | Підписка закінчиться через {count} дні | Підписка закінчиться через {count} днів"
+      },
+      "pay_for": "Оплатити підписку: {name}"
+    },
+    "toast": {
+      "readonly": "Доступ лише для читання — зміни вимкнено"
+    }
+  },
+  "errors": {
+    "common": {
+      "is_blank": "Це значення не повинно бути порожнім.",
+      "invalid_choice": "Вибране вами значення неприпустиме.",
+      "invalid_format": "Це значення недійсне.",
+      "invalid_uuid": "Це значення не є дійсним UUID.",
+      "invalid_email": "Це значення не є дійсною адресою електронної пошти.",
+      "too_long": "Це значення занадто довге.",
+      "too_short": "Це значення занадто коротке.",
+      "out_of_range": "Значення поза допустимим діапазоном.",
+      "too_many_attempts": "Забагато спроб. Повторіть спробу пізніше.",
+      "readonly_access": "Вам доступне лише читання.",
+      "operation_locked": "Операцію заблоковано.",
+      "invalid_datetime_format": "Невірний формат дати, очікується Y-m-d H:i:s.",
+      "invalid_datetime": "Це значення не є дійсною датою й часом.",
+      "icon_required": "Значення піктограми не повинно бути порожнім.",
+      "folder_name_length": "Назва папки має містити від {min} до {max} символів.",
+      "invalid_currency_code": "Код валюти вказано невірно.",
+      "invalid_id": "недійсний ідентифікатор"
+    },
+    "auth": {
+      "invalid_credentials": "Невірні облікові дані."
+    },
+    "account": {
+      "name_length": "Назва рахунку має містити від {min} до {max} символів.",
+      "list_empty": "Список рахунків порожній.",
+      "folder_list_empty": "Список папок порожній.",
+      "folder_already_exists": "Така папка вже існує."
+    },
+    "budget": {
+      "name_length": "Назва бюджету має містити від {min} до {max} символів.",
+      "envelope_name_length": "Назва конверта має містити від {min} до {max} символів.",
+      "invalid_element_type_alias": "Тип елемента бюджету з псевдонімом {alias} не існує.",
+      "invalid_role_alias": "Роль користувача бюджету з псевдонімом {alias} не існує.",
+      "transaction_filter_required": "Перевірку не пройдено."
+    },
+    "category": {
+      "name_length": "Назва категорії має містити від {min} до {max} символів.",
+      "type_invalid": "Указаний тип категорії не існує.",
+      "replace_id_required": "Для mode=replace потрібно вказати replaceId.",
+      "not_found": "Категорію не знайдено.",
+      "cannot_be_replaced": "Категорії не можна замінити.",
+      "list_empty": "Список категорій порожній."
+    },
+    "connection": {
+      "invalid_uuid": "Це не є дійсним UUID.",
+      "invalid_role_alias": "Роль доступу до рахунку з псевдонімом {alias} не існує.",
+      "invalid_code": "Код підключення вказано невірно.",
+      "inviting_yourself": "Запросити самого себе?",
+      "deleting_yourself": "Видалити самого себе?"
+    },
+    "currency": {
+      "already_exists": "Така валюта вже існує.",
+      "name_length": "Назва валюти має містити від 1 до 64 символів.",
+      "symbol_length": "Символ валюти має містити від 1 до 12 символів.",
+      "fraction_digits_range": "Кількість знаків після коми має бути від 0 до 8.",
+      "rate_invalid": "Курс має бути додатним числом.",
+      "not_available": "Валюта недоступна.",
+      "in_use": "Валюта використовується і не може бути видалена.",
+      "base_immutable": "Базову валюту не можна змінити.",
+      "cannot_be_hidden": "Цю валюту не можна сховати."
+    },
+    "payee": {
+      "name_length": "Назва отримувача має містити від {min} до {max} символів.",
+      "already_exists": "Такий отримувач уже існує.",
+      "list_empty": "Список отримувачів порожній."
+    },
+    "tag": {
+      "name_length": "Назва тега має містити від {min} до {max} символів.",
+      "already_exists": "Такий тег уже існує.",
+      "list_empty": "Список тегів порожній."
+    },
+    "token": {
+      "name_length": "Назва токена має містити від {min} до {max} символів.",
+      "invalid_expiration_date": "Невірна дата завершення терміну дії.",
+      "expiration_in_future": "Дата завершення терміну дії має бути в майбутньому.",
+      "retention_negative": "Термін зберігання не може бути від’ємним."
+    },
+    "transaction": {
+      "account_not_available": "Рахунок недоступний для цієї операції.",
+      "item_not_available": "Транзакція недоступна для цієї операції.",
+      "invalid_import_file": "Будь ласка, завантажте коректний CSV-файл."
+    },
+    "user": {
+      "report_period_invalid": "Період звіту вказано невірно.",
+      "language_invalid": "Некоректна мова",
+      "already_exists": "Такий користувач уже існує.",
+      "registration_disabled": "Реєстрацію вимкнено.",
+      "password_incorrect": "Невірний пароль.",
+      "reset_password_error": "Помилка скидання пароля.",
+      "reset_code_expired": "Термін дії коду минув.",
+      "email_verification_required": "Підтвердьте адресу електронної пошти.",
+      "verification_code_invalid": "Невірний код підтвердження.",
+      "verification_code_expired": "Термін дії коду минув.",
+      "email_unchanged": "Новий email збігається з поточним."
+    }
+  },
+  "emails": {
+    "reset": {
+      "subject": "Код підтвердження для скидання пароля",
+      "body": "Вітаємо, {name}!\nВаш код підтвердження: {code}.\n\nЯкщо ви не запитували цей код, просто проігноруйте цей лист.\n\n--\nEconumo — Керуйте грошима. Разом.\n"
+    },
+    "verify": {
+      "subject": "Код підтвердження email",
+      "body": "Вітаємо, {name}!\nВаш код підтвердження: {code}.\n\nВведіть цей код на екрані входу, щоб підтвердити адресу електронної пошти.\n\nЯкщо ви не створювали акаунт Econumo, просто проігноруйте цей лист.\n\n--\nEconumo — Керуйте грошима. Разом.\n"
+    },
+    "change_email": {
+      "subject": "Підтвердьте новий email",
+      "body": "Вітаємо, {name}!\n\nВикористайте цей код, щоб підтвердити нову адресу електронної пошти: {code}\n\nКод дійсний протягом 10 хвилин. Якщо ви цього не запитували, просто проігноруйте цей лист."
+    },
+    "change_email_notice": {
+      "subject": "Запитано зміну email",
+      "body": "Вітаємо, {name}!\n\nХтось запитав зміну email на вашому акаунті на {email}. Якщо це були не ви, негайно змініть пароль."
+    }
+  }
+}
