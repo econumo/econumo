@@ -101,6 +101,7 @@ export function getLocaleOptions(): LocaleOption[] {
     { value: 'nl', label: 'Nederlands', short: 'NL' },
     { value: 'uk', label: 'Українська', short: 'УК' },
     { value: 'es', label: 'Español', short: 'ES' },
+    { value: 'zh', label: '简体中文', short: '中文' },
   ]
 }
 
