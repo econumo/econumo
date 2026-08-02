@@ -48,6 +48,9 @@ Two constraints rule out simply relaxing the count:
   on it, so re-creating a deleted code works without dropping the index.
 - **No un-delete.** Deleted means gone from the user's perspective; there is
   no recycle bin and no UI affordance to bring one back.
+- **A deleted currency keeps loading for the entities that hold it.**
+  Deletion removes a currency from the pickers and the settings list, not
+  from the data. See "A deleted currency still renders".
 
 ### Rejected alternatives
 
@@ -116,10 +119,13 @@ deleted, so the migration is behaviour-neutral on existing data.
    and the usage guard; replace the row delete with a soft delete. The
    hard-delete query and its repo method become unreachable and are removed,
    leaving one delete path and one behaviour to test.
-3. **`UserCurrencyListView`** — `AND is_deleted = 0`, so deleted customs
-   leave every client's list at the source. `GetCurrencyList`
-   (`internal/currency/read.go:56`) needs no filtering of its own, and REST,
-   MCP and the SPA agree by construction.
+3. **`UserCurrencyListView` is NOT filtered.** A deleted currency must keep
+   loading for accounts that still hold it — see "A deleted currency still
+   renders" below. Instead `GetCurrencyList` (`internal/currency/read.go:56`)
+   reports the flag on the wire as `isDeleted`, an int `0`/`1` matching the
+   existing `isArchived`/`isHidden` convention, and each consumer decides
+   what to do with it. REST and MCP agree because both read through
+   `GetCurrencyList`.
 4. **`EnsureUsable`** (`internal/currency/repo/lookup.go:86`) currently
    documents *"Hidden currencies stay usable: hiding is a picker preference,
    not a lock."* A deleted currency **is** a lock. `GetCurrencyRecord`
@@ -139,6 +145,44 @@ deleted, so the migration is behaviour-neutral on existing data.
 `GetCurrencyRecord`, `GetCurrencyByID` and the other by-id reads stay
 unfiltered: historical rows still need to resolve their currency for display.
 
+### A deleted currency still renders
+
+**A currency that is soft-deleted while live accounts still hold it must keep
+loading, with its rate.** Under the user-facing delete this cannot arise —
+delete is refused while a live account exists — but the planned admin
+`currency:delete --force` (separate spec) retires a currency precisely in
+that state, and the read paths must already be correct when it lands.
+
+The failure this avoids is not cosmetic. `GetCurrencyRateList`
+(`internal/currency/read.go:117`) gates the rate list on
+`UserCurrencyListView` membership, and the SPA converts using exactly those
+two endpoints (`web/src/features/currencies/useExchange.ts`). As the comment
+above that function records, clients "treat a missing rate row as fall back
+to 1:1" — so dropping a deleted currency from the list view would strip both
+its display attributes and its exchange rate, and every total involving an
+account in that currency would silently compute at 1:1. Wrong numbers, not a
+missing label.
+
+Hence the flag travels on the wire and the filtering happens per consumer:
+
+| Consumer | Behaviour for `isDeleted = 1` |
+|---|---|
+| account/transaction hydration (by-id reads) | unchanged — renders normally |
+| `GetCurrencyRateList` | unchanged — the rate is still published |
+| `selectableCurrencies` | excluded from pickers |
+| `CurrenciesPage` "My currencies" | excluded from the list |
+| `EnsureUsable` | rejected — no NEW entity may be denominated in it |
+
+`selectableCurrencies` (`web/src/features/currencies/selectable.ts`) already
+carries a `c.id === currentId` escape hatch, added so "an edit form cannot
+self-corrupt". It starts doing real work here: editing an account still
+denominated in a retired currency keeps offering that currency, while no
+other form does.
+
+Implementation note: audit every `useCurrencies()` consumer for one that
+iterates the list without going through `selectableCurrencies`, since those
+would start rendering deleted currencies.
+
 ## Frontend changes
 
 `CurrenciesPage.tsx:140` builds one enable/disable switch for every row, own
@@ -146,9 +190,11 @@ customs included. Restrict it to globals — Delete is the action people want
 on their own currencies, and one control beats two. Own customs keep the
 Edit/Delete menu (`:119`), and Delete now succeeds instead of erroring.
 
-Deleted customs never reach the client, so no "deleted" state renders
-anywhere and `selectableCurrencies`
-(`web/src/features/currencies/selectable.ts`) needs no change.
+Deleted customs DO reach the client (they must, so accounts holding them
+still render), so two filters are needed: the "My currencies" section drops
+`scope === 'own' && isDeleted === 1`, and `selectableCurrencies` drops
+`isDeleted === 1` while keeping its `currentId` escape hatch. Nothing renders
+a "deleted" state — the user simply stops seeing the currency.
 
 Hiding and deleting are independent states in this design, so restoring the
 toggle on own customs later is a pure UI change requiring no data work.
@@ -165,9 +211,16 @@ toggle on own customs later is a pure UI change requiring no data work.
   user remove a currency out from under every other user on the instance.
 - Creating a currency reusing a deleted code succeeds, and the rewritten
   partial unique index still rejects a duplicate among live rows.
+- A currency soft-deleted while a live account holds it still appears in
+  `get-currency-list` and still carries a rate in `get-currency-rate-list`.
+  This is the regression guard for the silent 1:1 conversion described above,
+  and it is worth writing now even though only the admin CLI can reach that
+  state — it is the assertion that will fail if someone later "simplifies"
+  the list view by filtering deleted rows at the source.
 - `apiparity`: a scenario for deleting a currency used only by a soft-deleted
-  account. Existing goldens should not move — the delete response is `{}`
-  either way — so any golden diff means something unintended changed.
+  account. The `get-currency-list` goldens WILL move — every item gains
+  `isDeleted` — and that diff should show exactly the new field and nothing
+  else. The delete response stays `{}`.
 - `enginecompare` picks all of the above up for free and is the check that
   the SQLite and PostgreSQL partial indexes behave identically.
 
