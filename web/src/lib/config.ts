@@ -99,6 +99,7 @@ export function getLocaleOptions(): LocaleOption[] {
     { value: 'pt', label: 'Português', short: 'PT' },
     { value: 'pl', label: 'Polski', short: 'PL' },
     { value: 'nl', label: 'Nederlands', short: 'NL' },
+    { value: 'uk', label: 'Українська', short: 'УК' },
   ]
 }
 
