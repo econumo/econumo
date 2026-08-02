@@ -260,6 +260,42 @@ toggle on own customs later is a pure UI change requiring no data work.
 - `enginecompare` picks all of the above up for free and is the check that
   the SQLite and PostgreSQL partial indexes behave identically.
 
+## Follow-up: `currency:delete` (admin CLI)
+
+Not built here — it gets its own spec — but the decisions were taken during
+this brainstorm and the read paths above were designed to satisfy them, so
+they are recorded rather than re-litigated later.
+
+**Exactly one new command**, `currency:delete`. It retires any currency,
+global or user-owned, by setting `is_deleted = 1` — never a row removal, per
+the invariant.
+
+- **Addressing:** `currency:delete <code>` targets the global;
+  `currency:delete <code> <user-email>` targets that user's custom. Codes are
+  no longer unique on their own, and the email form matches the `user:*`
+  commands.
+- **The base currency is refused unconditionally.** Retiring
+  `ECONUMO_CURRENCY_BASE` breaks conversion instance-wide and it is resolved
+  at boot; this is not a `--force` case.
+- **In-use requires `--force`,** after printing the usage counts (accounts,
+  budgets, budget elements, profile defaults). Unlike the user-facing delete
+  this is not refused outright: retiring a currency people still hold is
+  exactly the deprecation case, and it is non-destructive. This is the only
+  path that reaches the state "A deleted currency still renders" protects.
+- **The rate updater skips retired globals.** `CurrencyCodes()`
+  (`internal/currency/admin.go:54`) feeds `currency:update-rates`; filtering
+  there stops fetching quotes nobody can select.
+- **No `currency:restore`.** For a global, `currency:add` on a retired code
+  clears the flag instead of inserting a second row — re-adding is the
+  restore, which is also why `UNIQ_currencies_code_global` does NOT gain an
+  `is_deleted` predicate the way the per-user index does. Globals are an
+  admin-curated catalogue keyed by code; customs are per-user objects where
+  the same code recurring over time is normal. For a user's custom the
+  recovery is better still: the owner re-creates it, since the rewritten
+  partial index leaves the code free. Their old accounts stay bound to the
+  old row while new ones use the new one — two rows sharing a code is untidy
+  but correct, as rates are per-row and conversion is per-id.
+
 ## Out of scope
 
 - Restoring a soft-deleted account, or purging one. The absence of a restore
