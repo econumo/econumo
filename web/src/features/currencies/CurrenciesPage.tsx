@@ -22,6 +22,11 @@ import {
 // (currencies have no archival, so it is constant 0).
 type CurrencyRow = CurrencyListItemDto & { position: number; isArchived: 0 }
 
+// The globals list is the whole ISO table, so the few a user actually enabled
+// would otherwise be scattered through the alphabet: float them to the top of
+// their section, server code order preserved inside each half.
+const enabledFirst = (a: CurrencyListItemDto, b: CurrencyListItemDto) => a.isHidden - b.isHidden
+
 export function CurrenciesPage() {
   const { t } = useTranslation()
   const { data: user } = useUserData()
@@ -39,8 +44,8 @@ export function CurrenciesPage() {
   const [dialog, setDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
   const [error, setError] = useState<string | null>(null)
 
-  const own = currencies?.filter((c) => c.scope === 'own') ?? []
-  const globals = currencies?.filter((c) => c.scope === 'global') ?? []
+  const own = currencies?.filter((c) => c.scope === 'own').sort(enabledFirst) ?? []
+  const globals = currencies?.filter((c) => c.scope === 'global').sort(enabledFirst) ?? []
   const items: CurrencyRow[] = [...own, ...globals].map((c, i) => ({ ...c, position: i, isArchived: 0 as const }))
   const baseId = rates?.[0]?.baseCurrencyId
   const profileId = userCurrencyId(user)

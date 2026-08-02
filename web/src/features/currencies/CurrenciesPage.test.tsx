@@ -296,6 +296,33 @@ it('no active-only filter: hidden currencies are always listed, switch off', asy
   expect(screen.queryByRole('switch', { name: 'Active only' })).toBeNull()
 })
 
+it('enabled currencies sort above disabled ones inside each section, code order kept within each half', async () => {
+  server.use(
+    ...coreHandlers({
+      currencies: [
+        fixtureUsd, // global, enabled
+        fixtureGbp, // global, disabled
+        fixtureEur, // global, enabled
+        { ...fixturePts, id: 'cur-old', code: 'OLD', name: 'Old points', isHidden: 1 },
+        fixturePts, // own, enabled
+      ],
+      rates: defaultRates,
+    }),
+  )
+  renderPage()
+  await screen.findByText('Points')
+  const names = screen.getAllByRole('switch').map((sw) => sw.getAttribute('aria-label'))
+  expect(names).toEqual([
+    // own: enabled Points before disabled Old points
+    'enable Points',
+    'enable Old points',
+    // globals: enabled USD/EUR (server order) before disabled GBP
+    'enable US Dollar',
+    'enable Euro',
+    'enable Pound',
+  ])
+})
+
 it('the rate is required: an empty rate blocks submit with a validation message', async () => {
   let called = false
   server.use(
