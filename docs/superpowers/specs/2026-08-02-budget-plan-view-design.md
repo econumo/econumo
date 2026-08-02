@@ -163,7 +163,10 @@ the plan sheet.
 ### Cells
 
 - Each cell: actual on top (muted, read-only; rendered as a dash when zero in a
-  future month), planned below (editable where permitted).
+  future month), planned below (editable where permitted). In the current and
+  future months an expense cell whose actual exceeds its planned value gets a
+  subtle overspend highlight — that cell's actual is what feeds the Balance
+  projection, so the user can see where the plan is already broken.
 - Editing reuses the existing machinery: `LimitEditor` popover with
   `CalculatorInput` on desktop, `SetLimitDialog` on compact screens — committing
   `set-limit` with the cell's month, optimistic cell patch, invalidating both the
@@ -200,8 +203,14 @@ Per visible month, converted with that month's average rates via the existing
 - **Net** — actual | planned (income − expenses)
 - **Balance** — one running row: `balance(m) = balance(m−1) + net(m)`, seeded from
   the FX-converted `openingBalances` at the fetch-window start. Fully elapsed
-  months contribute their **actual** net; the current and future months contribute
-  their **planned** net. Unspent money rolls forward automatically — this is where
+  months contribute their **actual** net. The current and future months contribute
+  an **effective** net computed per cell as `max(actual, planned)`: an overspent
+  category counts at its actual spend (overspending never vanishes from the
+  projection), an underspent one at its plan (the rest is still expected to be
+  spent). The same rule applies on the income side (income already received above
+  plan counts at its actual). The max is taken **per element cell**, not on the
+  totals — overspend in one category must not be offset by another category's
+  not-yet-spent budget. Unspent money rolls forward automatically — this is where
   carryover surfaces, telescoped into one number.
 
 ### Data fetching
@@ -245,7 +254,9 @@ homogeneity error) go into **every** catalogue in `locales/`; the parity guards
   homogeneity rejection (with the coded error); income elements excluded from every
   `get-budget` builder; `months` bounds validation.
 - **Frontend (vitest)**: window math (responsive count, initial anchoring,
-  clamping), totals + Balance rolling math (actual-past / planned-future split),
+  clamping), totals + Balance rolling math (actual for past months; per-cell
+  `max(actual, planned)` for current/future, including the overspent-category
+  case),
   a grid-cell edit component test; keyboard navigation (arrow movement, window
   shift at the visible edge, Enter-to-edit/Esc, read-only cells inert);
   metrics-coverage; `pnpm exec tsc -b` before claiming done.
