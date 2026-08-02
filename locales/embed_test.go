@@ -6,7 +6,7 @@ import (
 )
 
 func TestCataloguesEmbedAndParse(t *testing.T) {
-	for _, lang := range []string{"en", "ru", "de"} {
+	for _, lang := range []string{"en", "ru", "de", "fr"} {
 		raw, err := FS.ReadFile(lang + ".json")
 		if err != nil {
 			t.Fatalf("read %s.json: %v", lang, err)

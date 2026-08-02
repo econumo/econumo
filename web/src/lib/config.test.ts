@@ -62,7 +62,7 @@ describe('locale and version', () => {
   })
 
   it('falls back to english when nothing is supported', () => {
-    vi.stubGlobal('navigator', { ...navigator, languages: ['it-IT', 'fr-FR'], language: 'it-IT' })
+    vi.stubGlobal('navigator', { ...navigator, languages: ['it-IT', 'nl-NL'], language: 'it-IT' })
     expect(locale()).toBe('en')
   })
 })
