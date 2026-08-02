@@ -16,10 +16,9 @@ type Querier interface {
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	CountAvailableAccounts(ctx context.Context, userID string) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
-	// Usage census for delete protection: accounts (including soft-deleted ones,
-	// they still hold the FK), budgets, budget elements, and any user whose
-	// profile currency option stores this currency id. $1 is reused everywhere,
-	// so the generated param is a single field.
+	// Usage census for delete protection. Only LIVE references count: a soft-deleted
+	// account is unreachable and unrestorable, so it must not pin a currency forever.
+	// $1 is reused everywhere, so the generated param is a single field.
 	CountCurrencyUsage(ctx context.Context, currencyID string) (int32, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
@@ -36,7 +35,6 @@ type Querier interface {
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
-	DeleteCurrency(ctx context.Context, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
@@ -95,6 +93,8 @@ type Querier interface {
 	// is frozen to show codes).
 	GetCurrencyCodeByID(ctx context.Context, id string) (string, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
+	// Deleted rows are excluded: an owner may hold a live and a deleted currency with
+	// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
@@ -247,6 +247,7 @@ type Querier interface {
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
 	RemoveAccountFromAllFolders(ctx context.Context, accountID string) error
@@ -254,6 +255,9 @@ type Querier interface {
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
+	// Currencies are never removed: accounts.currency_id and transactions.account_id
+	// both cascade, so a DELETE would destroy account and transaction history.
+	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error

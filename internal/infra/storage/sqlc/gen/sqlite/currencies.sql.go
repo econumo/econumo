@@ -35,7 +35,7 @@ func (q *Queries) GetCurrencyIDByCode(ctx context.Context, code string) (string,
 
 const getCurrencyIDByCodeForUser = `-- name: GetCurrencyIDByCodeForUser :one
 SELECT id FROM currencies
-WHERE code = ? AND (user_id IS NULL OR user_id = ?)
+WHERE code = ? AND (user_id IS NULL OR user_id = ?) AND is_deleted = 0
 ORDER BY (user_id IS NULL) ASC
 LIMIT 1
 `
@@ -45,6 +45,8 @@ type GetCurrencyIDByCodeForUserParams struct {
 	UserID *string
 }
 
+// Deleted rows are excluded: an owner may hold a live and a deleted currency with
+// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 func (q *Queries) GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error) {
 	row := q.db.QueryRowContext(ctx, getCurrencyIDByCodeForUser, arg.Code, arg.UserID)
 	var id string

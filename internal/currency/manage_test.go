@@ -81,8 +81,13 @@ func (f *fakeManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, sy
 	return nil
 }
 
-func (f *fakeManageRepo) DeleteCurrency(ctx context.Context, id string) error {
-	delete(f.records, id)
+func (f *fakeManageRepo) SoftDeleteCurrency(ctx context.Context, id string) error {
+	rec, ok := f.records[id]
+	if !ok {
+		return errs.NewNotFound("Currency not found")
+	}
+	rec.IsDeleted = true
+	f.records[id] = rec
 	return nil
 }
 
@@ -510,8 +515,12 @@ func TestDeleteCurrency_HappyPath(t *testing.T) {
 	if _, err := svc.DeleteCurrency(context.Background(), uid, model.DeleteCurrencyRequest{Id: "own-pts"}); err != nil {
 		t.Fatalf("DeleteCurrency: %v", err)
 	}
-	if _, ok := repo.records["own-pts"]; ok {
-		t.Error("record should have been deleted")
+	rec, ok := repo.records["own-pts"]
+	if !ok {
+		t.Fatal("the record must survive a delete (currencies are never hard-deleted)")
+	}
+	if !rec.IsDeleted {
+		t.Error("record should have IsDeleted = true")
 	}
 }
 

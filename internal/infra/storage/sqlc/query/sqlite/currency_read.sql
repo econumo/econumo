@@ -8,7 +8,7 @@
 -- included, the settings page needs them), and foreign customs reachable via
 -- accounts or budgets shared to the user (budget currency and element
 -- currencies). Codes can repeat across owners, so id breaks ties.
-SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.rate, c.created_at
+SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.rate, c.created_at, c.is_deleted
 FROM currencies c
 WHERE c.user_id IS NULL
    OR c.user_id = ?
