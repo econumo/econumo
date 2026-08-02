@@ -23,7 +23,7 @@ making income categories first-class budget elements.
 | Income rows | Per income category, groupable into envelopes (shared budgets need e.g. one "Salaries" envelope across members). All income rows live under a single fixed "Income" section — rendered like a folder but synthetic, not a `budget_folders` row; user-created folders stay expense-only |
 | Row structure | Mirrors the budget page exactly (folders, envelopes with children, uncategorized, archived) |
 | Placement | A Budget \| Plan toggle on the existing budget page |
-| Visible window | Responsive: as many month columns as fit the screen (min 3, max 12); left/right arrows shift the first month; no horizon selector |
+| Visible window | Responsive: as many month columns as fit the screen (3–12); on phones the sheet collapses to a single month column; left/right arrows shift the window; no horizon selector. Plan mode is desktop-first — mobile gets a usable degradation, not parity |
 | Initial position | Current month in the second column (one past month first); clamped at the budget start month; persisted |
 | Backend approach | Income categories become budget elements (new element type); planned income reuses `budgets_elements_limits` and `set-limit`; one new read endpoint `get-budget-plan` |
 | Carryover | Not shown per cell; enters the totals via the running Balance row |
@@ -158,15 +158,20 @@ the plan sheet.
 
 - **Responsive column count**: the grid measures its container (ResizeObserver);
   after the sticky row-name column it shows as many month columns as fit at a
-  comfortable minimum column width — never fewer than 3 (narrow phones), up to 12
-  on wide screens, reflowing live on resize.
+  comfortable minimum column width, from 3 up to 12, reflowing live on resize.
+  Below the 3-column fit threshold (phones) the sheet collapses to a **single
+  month column** — never an awkward two — and the arrows become a month switcher.
+  Plan mode is expected to live mainly on desktop; the mobile single-month view is
+  a deliberate degradation that keeps the two-value cells, sections, and the
+  totals block fully usable.
 - **Navigation**: left/right arrow buttons shift the first visible month by one
   month (press-and-hold repeats). Navigation clamps at the budget's start month;
   there is no forward limit.
 - **Initial position**: the current month sits in the **second column** — one past
   month for comparison, the rest of the width looking forward — regardless of how
   many columns fit; clamped at the budget start (a budget starting this month shows
-  the current month first). The first visible month persists in the budget store
+  the current month first). In the single-column mobile view the initial month is
+  simply the current month. The first visible month persists in the budget store
   and is restored on return.
 - **Current month column** is visually highlighted.
 - Sections top to bottom: **Income** — a single fixed section header (styled like a
