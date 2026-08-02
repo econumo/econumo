@@ -92,7 +92,7 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, serverEr
         }}
       >
         <div className="flex flex-col gap-2">
-          <Label htmlFor="currency-name">{t('classifications.currencies.forms.currency.name.label')}</Label>
+          <Label htmlFor="currency-name">{t('classifications.currencies.forms.currency.name.label')} *</Label>
           <Input id="currency-name" maxLength={64} value={name} onChange={(e) => setName(e.target.value)} />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
@@ -100,7 +100,7 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, serverEr
         <div className="grid grid-cols-5 gap-3">
           {isNew ? (
             <div className="col-span-3 flex flex-col gap-2">
-              <Label htmlFor="currency-code">{t('classifications.currencies.forms.currency.code.label')}</Label>
+              <Label htmlFor="currency-code">{t('classifications.currencies.forms.currency.code.label')} *</Label>
               <Input
                 id="currency-code"
                 maxLength={3}
@@ -110,10 +110,7 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, serverEr
             </div>
           ) : null}
           <div className="col-span-2 flex flex-col gap-2">
-            <Label htmlFor="currency-symbol">
-              {t('classifications.currencies.forms.currency.symbol.label')}
-              <span className="font-normal text-muted-foreground"> ({t('classifications.currencies.forms.currency.symbol.optional')})</span>
-            </Label>
+            <Label htmlFor="currency-symbol">{t('classifications.currencies.forms.currency.symbol.label')}</Label>
             <Input
               id="currency-symbol"
               maxLength={12}
@@ -142,7 +139,7 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, serverEr
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="currency-rate">{t('classifications.currencies.forms.currency.rate.label')}</Label>
+          <Label htmlFor="currency-rate">{t('classifications.currencies.forms.currency.rate.label')} *</Label>
           <InputGroup>
             {baseCode ? (
               <InputGroupAddon align="inline-start">

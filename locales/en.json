@@ -1137,8 +1137,7 @@
             }
           },
           "symbol": {
-            "label": "Symbol",
-            "optional": "optional"
+            "label": "Symbol"
           },
           "fraction_digits": {
             "label": "Decimal places"
