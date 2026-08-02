@@ -73,6 +73,11 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	}
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = db.Close() })
+	// Same pragmas as production (sqlite.Backend.Open) and dbtest: the schema
+	// relies on FK cascade/SET NULL semantics.
+	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("pragma foreign_keys: %v", err)
+	}
 	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
