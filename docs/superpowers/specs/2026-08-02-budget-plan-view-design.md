@@ -305,3 +305,7 @@ homogeneity error) go into **every** catalogue in `locales/`; the parity guards
 - Per-cell carryover ("available") display.
 - Server-side totals.
 - Any change to the budget page's single-month view or its wire contract.
+- Archive/unarchive actions in the budget/plan row menus (deferred; the
+  `archive-category`/`archive-tag` + unarchive endpoints already exist, so this is
+  a frontend-only follow-up — until then the classifications pages remain the
+  place to archive).
