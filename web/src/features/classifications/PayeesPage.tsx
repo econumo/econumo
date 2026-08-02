@@ -39,6 +39,7 @@ export function PayeesPage() {
         heading={t('classifications.payees.pages.settings.menu_item')}
         createLabel={t('classifications.payees.pages.settings.create_payee')}
         deleteTitle={t('classifications.payees.modals.delete.title')}
+        archivedLabel={t('classifications.payees.pages.settings.archived_item')}
         items={own}
         storageKey="settings.payees.activeOnly"
         analyticsType="payee"
