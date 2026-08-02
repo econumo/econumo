@@ -172,7 +172,10 @@ export function ClassificationList<T extends ClassificationItem>({
   const visibleSections = sectionDefs
     .map((section) => ({ label: section.label, action: section.action, items: visible.filter(section.match) }))
     .filter((section) => section.items.length > 0)
-  const showGroupHeaders = visibleSections.length > 1
+  // A lone group needs no caption to disambiguate — but its caption row is
+  // also the only mount point for a section action (the currencies bulk
+  // enable/disable link), so keep the header when one is present.
+  const showGroupHeaders = visibleSections.length > 1 || visibleSections.some((section) => section.action)
 
   // A drag reorders only the rows on screen (a section, possibly with the
   // archived ones filtered out); rebuild the full id order so every other
