@@ -224,9 +224,19 @@ the running math consistent.
 ### Envelope management for incomes
 
 Income rows exist only in the plan view, so the income section header exposes the
-existing envelope create/edit dialogs (offering income categories) for members with
-edit rights. Drag re-ordering of income rows is out of scope for v1 (seed order =
-category order; `MoveElementList` already exists server-side if we add UI later).
+existing envelope create/edit dialogs for members with edit rights. Drag
+re-ordering of income rows is out of scope for v1 (seed order = category order;
+`MoveElementList` already exists server-side if we add UI later).
+
+The envelope dialog's category picker is **side-constrained** — the UI enforcement
+of the homogeneity rule (the server's coded rejection remains the backstop):
+
+- **Budget view** (expense structure only): the dialog offers expense categories
+  only — exactly today's behavior, unchanged.
+- **Plan view**: the offered categories follow the envelope's side — editing or
+  creating from the Income section offers income categories only; editing or
+  creating from the expense structure offers expense categories only. A single
+  dialog never mixes the two sides.
 
 ### Analytics
 
