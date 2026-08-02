@@ -1111,7 +1111,7 @@
           "enable_currency": "Enable",
           "disable_all": "Disable all",
           "enable_all": "Enable all",
-          "info": "Your own currencies — like “Points” — carry a fixed exchange rate you set and can denominate your accounts and budgets. Global currencies are shared by the whole server and get automatic rate updates; disable the ones you don’t need to keep your pickers short."
+          "info": "You can add your own currencies — visible only to you, with a fixed exchange rate you set — and use them for your accounts and budgets. Global currencies are available to everyone on this server; their exchange rates are managed centrally and update automatically when the server has rate updates configured."
         }
       },
       "modals": {
