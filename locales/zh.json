@@ -1,0 +1,1386 @@
+{
+  "common": {
+    "help": {
+      "label": "© econumo.com",
+      "url": "https://econumo.com/"
+    },
+    "list": {
+      "list_empty": "列表为空",
+      "search": "搜索",
+      "search_empty": "未找到任何内容",
+      "order_list": "调整顺序",
+      "active_only": "仅显示启用中的项目"
+    },
+    "nav": {
+      "budget": "预算",
+      "onboarding": "快速入门",
+      "create_account": "添加账户",
+      "collapse_menu": "收起菜单",
+      "expand_menu": "展开菜单",
+      "sharing_requests": "共享请求"
+    },
+    "econumo": {
+      "label": "Econumo"
+    },
+    "uncategorized": "未分类",
+    "loader": {
+      "label": "加载中",
+      "having_trouble": "遇到问题？"
+    },
+    "select": {
+      "search_placeholder": "搜索",
+      "create_placeholder": "搜索或输入新名称",
+      "create_hint": "输入名称即可创建"
+    },
+    "password": {
+      "show": "显示密码",
+      "hide": "隐藏密码"
+    },
+    "button": {
+      "ok": {
+        "label": "确定"
+      },
+      "close": {
+        "label": "关闭"
+      },
+      "cancel": {
+        "label": "取消"
+      },
+      "create": {
+        "label": "创建"
+      },
+      "add": {
+        "label": "添加"
+      },
+      "edit": {
+        "label": "编辑"
+      },
+      "update": {
+        "label": "更新"
+      },
+      "save": {
+        "label": "保存"
+      },
+      "delete": {
+        "label": "删除"
+      },
+      "view": {
+        "label": "查看"
+      },
+      "up": {
+        "label": "上移"
+      },
+      "down": {
+        "label": "下移"
+      },
+      "hide": {
+        "label": "隐藏"
+      },
+      "show": {
+        "label": "显示"
+      },
+      "accept": {
+        "label": "接受"
+      },
+      "expand": {
+        "label": "展开"
+      },
+      "collapse": {
+        "label": "收起"
+      },
+      "decline": {
+        "label": "拒绝"
+      },
+      "back": {
+        "label": "返回"
+      },
+      "import": {
+        "label": "导入"
+      },
+      "export": {
+        "label": "导出"
+      },
+      "change": {
+        "label": "更改"
+      }
+    },
+    "date": {
+      "just_now": "刚刚",
+      "month_short": {
+        "jan": "1月",
+        "feb": "2月",
+        "mar": "3月",
+        "apr": "4月",
+        "may": "5月",
+        "jun": "6月",
+        "jul": "7月",
+        "aug": "8月",
+        "sep": "9月",
+        "oct": "10月",
+        "nov": "11月",
+        "dec": "12月"
+      }
+    },
+    "validation": {
+      "required_field": "必填项",
+      "invalid_number": "请输入有效的数字",
+      "invalid_decimal_number": "请输入有效的数字（最多 8 位小数）",
+      "invalid_formula": "仅允许使用数字和运算符（+、-、*、/、. 和 =）"
+    },
+    "sort": {
+      "header": "排序",
+      "mode": {
+        "alphabet": {
+          "asc": "按名称升序（A-Z）",
+          "desc": "按名称降序（Z-A）"
+        }
+      }
+    },
+    "app": {
+      "error": "出了点问题，请重试。",
+      "modal": {
+        "self_hosted": {
+          "information": "Econumo 可以部署在您自己的服务器上。请输入服务器地址以连接。"
+        },
+        "loading": {
+          "data_loading": "正在加载您的数据"
+        }
+      }
+    },
+    "update": {
+      "notice": "Econumo {version} 已发布",
+      "dismiss": "忽略"
+    }
+  },
+  "accounts": {
+    "folders": {
+      "default_folder": "所有账户"
+    },
+    "account": {
+      "name_hidden": "[隐藏账户]"
+    },
+    "switch_to_account": "切换到",
+    "form": {
+      "folder": {
+        "label": "名称",
+        "validation": {
+          "empty_name": "请输入文件夹名称",
+          "error_name_length": "文件夹名称需为 3-64 个字符"
+        }
+      },
+      "name": {
+        "label": "名称",
+        "placeholder": "请输入名称",
+        "validation": {
+          "invalid_name": "账户名称需为 3-64 个字符"
+        }
+      },
+      "balance": {
+        "label": "余额",
+        "placeholder": "请输入余额"
+      },
+      "currency": {
+        "label": "货币"
+      }
+    },
+    "page": {
+      "toolbar": {
+        "settings": "配置",
+        "search": "搜索",
+        "shared_with": "共享账户"
+      },
+      "transaction_list": {
+        "none": "未找到交易",
+        "today": "今天",
+        "yesterday": "昨天",
+        "item": {
+          "transfer_from": "从账户 {account} 转入",
+          "transfer_to": "转出至账户 {account}"
+        },
+        "action": {
+          "add_transaction": "添加交易"
+        }
+      },
+      "preview_transaction_modal": {
+        "header": "交易详情",
+        "type": {
+          "expense": "支出",
+          "income": "收入",
+          "transfer": "转账"
+        },
+        "recipient": {
+          "label": "收款方"
+        },
+        "sender": {
+          "label": "付款方"
+        },
+        "category": {
+          "label": "分类"
+        },
+        "description": {
+          "label": "备注"
+        },
+        "payee": {
+          "label": "收款人"
+        },
+        "tags": {
+          "label": "标签"
+        },
+        "author": {
+          "label": "创建者"
+        },
+        "created_at": {
+          "label": "日期"
+        }
+      },
+      "delete_transaction_modal": {
+        "question": "确定要删除这笔交易吗？"
+      }
+    },
+    "modal": {
+      "create_form": {
+        "header": "新建账户"
+      },
+      "update_form": {
+        "header": "编辑账户"
+      },
+      "form": {
+        "icon": {
+          "label": "图标"
+        }
+      }
+    }
+  },
+  "settings": {
+    "page": {
+      "header": "设置",
+      "header_desktop": "设置",
+      "menu_item": "设置",
+      "logout": "退出登录",
+      "groups": {
+        "service": "财务",
+        "classification": "列表",
+        "data": "数据",
+        "preferences": "偏好设置"
+      },
+      "footer": {
+        "api": "API"
+      }
+    },
+    "sync": {
+      "menu_item": "完整同步",
+      "failing": "无法连接到服务器——正在重试"
+    },
+    "accounts": {
+      "menu_item": "账户",
+      "header": "账户",
+      "info": "账户按文件夹分组。隐藏文件夹可以让不常用的账户不再显示。",
+      "folder_toggle": "收起文件夹",
+      "list_empty_create": "添加",
+      "list_empty_new_account": "新账户",
+      "list_actions": {
+        "access": "访问控制"
+      },
+      "create_folder": "创建文件夹",
+      "create_folder_modal": {
+        "header": "新建文件夹"
+      },
+      "update_folder_modal": {
+        "header": "重命名文件夹"
+      },
+      "delete_folder_modal": {
+        "title": "删除文件夹？",
+        "question": "确定要删除文件夹“{folder}”吗？"
+      },
+      "delete_account_modal": {
+        "question": "确定要删除账户“{account}”吗？"
+      },
+      "decline_access_modal": {
+        "title": "拒绝该账户的访问权限？",
+        "question": "确定要拒绝对账户“{account}”的访问权限吗？"
+      },
+      "preview_account_modal": {
+        "header": "账户详情"
+      }
+    },
+    "language": {
+      "menu_item": "语言"
+    },
+    "import_csv": {
+      "menu_item": "导入 CSV"
+    },
+    "export_csv": {
+      "menu_item": "导出 CSV",
+      "error": "导出交易失败"
+    },
+    "recurring": {
+      "menu_item": "定期交易",
+      "header": "定期交易",
+      "empty": "暂无定期交易",
+      "create": "添加交易",
+      "delete_question": "删除这笔定期交易？",
+      "info": "这里存放按计划重复的付款。下一笔付款会在账户页面显示为未入账——系统不会自动添加任何内容：请您自行入账或跳过，日期随即顺延至下一次。"
+    },
+    "update": {
+      "available": "有新版本 {version} 可用"
+    }
+  },
+  "transactions": {
+    "modal": {
+      "transaction_type": {
+        "expense": "支出",
+        "transfer": "转账",
+        "income": "收入"
+      },
+      "create_form": {
+        "header": "添加交易"
+      },
+      "update_form": {
+        "header": "编辑交易"
+      },
+      "form": {
+        "amount": {
+          "label": "金额",
+          "validation": {
+            "required_field": "请输入金额"
+          }
+        },
+        "amount_recipient": {
+          "label": "金额（{currency}）",
+          "validation": {
+            "required_field": "请输入收款方金额"
+          }
+        },
+        "category": {
+          "label": "分类"
+        },
+        "payee": {
+          "expense": "收款人",
+          "income": "付款人"
+        },
+        "description": {
+          "label": "备注",
+          "placeholder": "输入备注"
+        },
+        "from": {
+          "label": "转出账户"
+        },
+        "to": {
+          "label": "转入账户"
+        }
+      },
+      "dialog": {
+        "new_tag": {
+          "header": "新建标签",
+          "name": {
+            "label": "新建标签",
+            "placeholder": "输入标签名称",
+            "validation": {
+              "required_field": "必填项"
+            }
+          }
+        }
+      }
+    },
+    "import_csv": {
+      "header": "导入 CSV",
+      "none": "无",
+      "file": {
+        "label": "CSV 文件",
+        "hint": "文件大小上限：10 MB"
+      },
+      "mapping": {
+        "description": "将 CSV 文件中的列与交易字段对应。带星号（*）的为必填字段。"
+      },
+      "amount_mode": {
+        "switch_to_single": "使用单个金额列",
+        "switch_to_dual": "拆分为收入和支出两列"
+      },
+      "switch_to_manual": "手动输入值",
+      "switch_to_csv": "使用 CSV 列",
+      "fields": {
+        "account": "账户",
+        "date": "日期",
+        "amount": "金额",
+        "amount_inflow": "金额（收入）",
+        "amount_outflow": "金额（支出）",
+        "category": "分类",
+        "description": "说明",
+        "description_placeholder": "为所有交易填写统一说明",
+        "payee": "收款人",
+        "tag": "标签"
+      }
+    },
+    "import_result": {
+      "success_title": "导入完成",
+      "partial_success_title": "导入完成，但有错误",
+      "error_title": "导入失败",
+      "imported": "已导入 {count} 笔交易",
+      "failed": "{count} 笔交易导入失败",
+      "errors_detail": "错误详情",
+      "row": "行",
+      "rows": "行",
+      "more": "更多",
+      "and_more": "另有 {count} 个错误"
+    },
+    "export_csv": {
+      "export_csv_form": {
+        "header": "导出 CSV",
+        "accounts": "选择账户",
+        "select_all": "全选",
+        "deselect_all": "取消全选"
+      }
+    }
+  },
+  "recurring": {
+    "modal": {
+      "form": {
+        "schedule": {
+          "label": "重复周期"
+        }
+      }
+    },
+    "schedule": {
+      "weekly": "每周",
+      "biweekly": "每 2 周",
+      "monthly": "每月",
+      "quarterly": "每 3 个月",
+      "yearly": "每年"
+    },
+    "preview": {
+      "header": "定期交易",
+      "post": "入账",
+      "skip": "跳过"
+    },
+    "make_recurring": "设为定期交易",
+    "not_posted": "未入账"
+  },
+  "user": {
+    "avatar_picker": {
+      "title": "选择您的头像",
+      "icons": "头像图标",
+      "colors": "头像颜色",
+      "change": "更改头像"
+    },
+    "change_password": {
+      "success": {
+        "text": "密码已更改"
+      },
+      "error": {
+        "header": "无法更改密码",
+        "text": "更改密码时出了点问题。请检查当前密码后重试。"
+      },
+      "loading": {
+        "label": "正在更改密码…"
+      },
+      "form": {
+        "password": {
+          "label": "当前密码",
+          "placeholder": "请输入密码",
+          "validation": {
+            "invalid_password": "请输入当前密码"
+          }
+        },
+        "new_password": {
+          "label": "新密码",
+          "placeholder": "请输入新密码",
+          "validation": {
+            "not_equals": "新密码必须与当前密码不同"
+          }
+        },
+        "new_password_retry": {
+          "label": "确认新密码",
+          "placeholder": "请再次输入新密码",
+          "validation": {
+            "not_equals": "两次输入的密码不一致"
+          }
+        },
+        "submit": {
+          "label": "更改密码"
+        }
+      }
+    },
+    "change_email": {
+      "header": "更改邮箱",
+      "success": {
+        "text": "邮箱已更改"
+      },
+      "loading": {
+        "label": "正在发送验证码…"
+      },
+      "form": {
+        "new_email": {
+          "label": "新邮箱",
+          "placeholder": "请输入新邮箱"
+        },
+        "password": {
+          "label": "当前密码",
+          "placeholder": "请输入密码",
+          "validation": {
+            "required_field": "请输入当前密码"
+          }
+        },
+        "submit": {
+          "label": "发送验证码"
+        }
+      },
+      "confirm": {
+        "information": "我们已将验证码发送至 {email}。请在下方输入验证码以确认您的新邮箱。",
+        "resent": "新的验证码已发送。",
+        "action": {
+          "verify": "确认新邮箱",
+          "resend": "重新发送验证码",
+          "resend_in": "{seconds} 秒后可重新发送"
+        }
+      }
+    },
+    "form": {
+      "name": {
+        "label": "姓名",
+        "placeholder": "您的姓名",
+        "validation": {
+          "required_field": "必填项",
+          "invalid_name": "请输入您的姓名"
+        }
+      },
+      "email": {
+        "label": "邮箱",
+        "placeholder": "您的邮箱",
+        "validation": {
+          "required_field": "必填项",
+          "invalid_email": "请输入有效的邮箱"
+        }
+      },
+      "code": {
+        "placeholder": "验证码",
+        "validation": {
+          "required_field": "必填项",
+          "invalid_code": "请输入有效的验证码"
+        }
+      },
+      "password": {
+        "label": "密码",
+        "placeholder": "密码",
+        "validation": {
+          "required_field": "必填项",
+          "invalid_password": "密码至少需为 8 个字符"
+        }
+      },
+      "password_retry": {
+        "label": "确认密码",
+        "placeholder": "请再次输入密码",
+        "validation": {
+          "required_field": "必填项",
+          "invalid_password": "请再次输入密码",
+          "not_equals": "两次输入的密码不一致"
+        }
+      },
+      "server_host": {
+        "connect": "连接到自定义服务器",
+        "label": "服务器地址",
+        "placeholder": "https://",
+        "validation": {
+          "required_field": "必填项",
+          "invalid_url": "请输入有效的服务器地址"
+        }
+      }
+    },
+    "page": {
+      "settings": {
+        "profile": {
+          "menu_item": "个人资料",
+          "header": "个人资料",
+          "groups": {
+            "personal_details": "个人信息",
+            "preferences": "偏好设置",
+            "security": "安全"
+          },
+          "currency": {
+            "label": "货币"
+          },
+          "change_password": {
+            "menu_item": "更改密码",
+            "header": "更改密码"
+          },
+          "change_email": {
+            "menu_item": "更改邮箱"
+          },
+          "sessions": {
+            "menu_item": "会话",
+            "header": "会话",
+            "description": "当前已登录您账户的设备。删除某个会话即可让该设备退出登录。",
+            "current": "当前",
+            "unknown_device": "未知设备",
+            "last_active": "最后活动时间",
+            "sign_out": "退出登录",
+            "revoke": "删除",
+            "revoke_others": "退出其他设备的登录",
+            "confirm_sign_out": "确定要在此设备上退出登录吗？",
+            "confirm_revoke": "确定要删除此会话吗？该设备将退出登录。",
+            "confirm_revoke_others": "确定要退出其他所有设备的登录吗？仅当前会话将保持登录状态。"
+          },
+          "tokens": {
+            "menu_item": "API 令牌",
+            "header": "API 令牌",
+            "description": "个人访问令牌可通过 API 完全访问您的账户。请像对待密码一样妥善保管。",
+            "empty": "暂无 API 令牌。",
+            "created": "创建时间",
+            "last_used": "最后使用时间",
+            "expires": "过期时间",
+            "never_expires": "永不过期",
+            "create": {
+              "label": "创建令牌"
+            },
+            "form": {
+              "name": {
+                "label": "名称",
+                "placeholder": "例如 Home Assistant",
+                "validation": {
+                  "required_field": "请输入令牌名称"
+                }
+              },
+              "expiry": {
+                "label": "有效期",
+                "options": {
+                  "d30": "30 天",
+                  "d90": "90 天",
+                  "d365": "365 天",
+                  "custom": "自定义日期",
+                  "never": "永不"
+                },
+                "validation": {
+                  "invalid_date": "请选择将来的日期"
+                }
+              },
+              "submit": {
+                "label": "创建令牌"
+              }
+            },
+            "created_dialog": {
+              "title": "令牌已创建",
+              "warning": "请立即复制该令牌，之后将无法再次查看。",
+              "copy": "复制",
+              "copied": "已复制",
+              "done": "完成"
+            },
+            "revoke": "撤销",
+            "confirm_revoke": "确定要撤销此令牌吗？使用该令牌的集成将立即停止工作。"
+          }
+        }
+      }
+    }
+  },
+  "auth": {
+    "sign_in_failed": {
+      "header": "登录失败",
+      "information": "请检查您的邮箱和密码后重试。如果问题仍然存在，请联系客服。"
+    },
+    "access_recovery_modal": {
+      "header": "重置密码",
+      "information": "请输入您注册时使用的邮箱，我们将向您发送验证码。",
+      "instruction": "我们已将验证码发送到您的邮箱。请在下方输入验证码并设置新密码。",
+      "new_password": "新密码",
+      "send_failed": "验证码发送失败。请检查邮箱地址后重试。",
+      "reset_failed": "密码重置失败。请检查验证码后重试。"
+    },
+    "verify_email": {
+      "header": "验证您的邮箱",
+      "information": "我们已将验证码发送至 {email}。请在下方输入验证码以完成登录。",
+      "resent": "新的验证码已发送。",
+      "action": {
+        "verify": "验证并登录",
+        "resend": "重新发送验证码",
+        "resend_in": "{seconds} 秒后可重新发送"
+      }
+    },
+    "sign_up_failed": {
+      "header": "注册失败",
+      "information": "请检查填写的信息后重试。如果问题仍然存在，请联系客服。"
+    },
+    "sign_out": {
+      "title": "退出登录",
+      "question": "确定要退出登录吗？",
+      "action": {
+        "logout": "退出登录",
+        "cancel": "暂不退出"
+      }
+    },
+    "form": {
+      "sign_in": {
+        "remember_me": "记住我",
+        "action": {
+          "sign_in": "登录",
+          "forget_password": "忘记密码？"
+        }
+      },
+      "sign_up": {
+        "action": {
+          "sign_up": "注册"
+        }
+      },
+      "access_recovery": {
+        "action": {
+          "recover": {
+            "label": "发送验证码"
+          },
+          "change_password": {
+            "label": "重置密码"
+          }
+        }
+      }
+    },
+    "page": {
+      "sign_in": {
+        "header": "登录",
+        "session_expired": "您的会话已过期，请重新登录。"
+      },
+      "sign_up": {
+        "header": "注册",
+        "privacy": {
+          "text": "注册即表示您同意我们的<a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>隐私政策</a>和<a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>服务条款</a>"
+        }
+      }
+    }
+  },
+  "onboarding": {
+    "header": "快速入门",
+    "title": "欢迎使用 Econumo！",
+    "complete": "完成设置",
+    "add_account": "添加账户",
+    "import_transactions": "导入交易",
+    "steps": {
+      "accounts": {
+        "title": "添加您的账户",
+        "text": "首先，您可以点击下方按钮添加账户。您也可以随时前往<settings>设置</settings> -> <accounts>账户</accounts>页面管理账户，并将它们整理到文件夹中。"
+      },
+      "transactions": {
+        "title": "添加第一笔交易",
+        "text": "在左侧边栏中选择任意账户，然后点击<action>添加交易</action>按钮，即可录入交易。",
+        "hint": "您可以直接在交易窗口中创建分类、标签和收款人：输入名称后按 Enter 键即可。"
+      },
+      "classifications": {
+        "title": "管理分类、标签和收款人",
+        "text": "要管理分类、标签和收款人，请前往<settings>设置</settings> -> <categories>分类</categories>、<tags>标签</tags>或<payees>收款人</payees>页面。您还可以根据需要对它们排序或归档。"
+      },
+      "avatar": {
+        "title": "更新您的头像",
+        "text": "为您的头像选择一个图标和颜色，它将在共享账户中代表您。<choose>选择头像</choose>"
+      },
+      "connections": {
+        "title": "与您的伴侣建立关联",
+        "text": "要与伴侣一起管理预算或账户的共享访问，请前往<settings>设置</settings> -> <connections>共享访问</connections>。"
+      },
+      "budget": {
+        "title": "创建您的预算",
+        "text": "您可以在<budget>预算</budget>页面创建第一个预算。",
+        "text_secondary": "此外，您还可以在<settings>设置</settings> -> <budgets>预算</budgets>页面管理预算、共享访问等内容。"
+      }
+    },
+    "user_guide": {
+      "accounts": "用户指南：账户",
+      "transactions": "用户指南：交易",
+      "classifications": "用户指南：分类管理",
+      "user_profile": "用户指南：个人资料",
+      "shared_access": "用户指南：共享访问",
+      "budgets": "用户指南：预算"
+    }
+  },
+  "budgets": {
+    "modal": {
+      "budget_form": {
+        "accounts": "账户",
+        "accounts_included": "已包含 {count} 个，共 {total} 个",
+        "accounts_hidden": "在隐藏文件夹中"
+      },
+      "create_budget_form": {
+        "header": "新建预算"
+      },
+      "update_budget_form": {
+        "header": "编辑预算"
+      },
+      "create_folder_form": {
+        "header": "新建文件夹"
+      },
+      "update_folder_form": {
+        "header": "重命名文件夹"
+      },
+      "create_envelope_form": {
+        "header": "新建信封"
+      },
+      "update_envelope_form": {
+        "header": "编辑信封"
+      },
+      "change_element_currency_form": {
+        "header": "更改货币"
+      },
+      "delete_envelope": {
+        "header": "删除信封？",
+        "question": "确定要删除此信封吗？"
+      },
+      "delete_folder": {
+        "header": "删除文件夹？",
+        "question": "确定要删除文件夹“{name}”吗？"
+      },
+      "set_limit_form": {
+        "header": "设置预算"
+      },
+      "generic_error": {
+        "header": "出了点问题",
+        "description": "请重试。如果问题仍然存在，请反馈该问题。"
+      },
+      "access_error": {
+        "header": "访问被拒绝",
+        "description": "访问此预算前，请先接受邀请。"
+      },
+      "expense_widget": {
+        "header": "支出进度",
+        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
+      }
+    },
+    "form": {
+      "budget": {
+        "name": {
+          "label": "名称",
+          "placeholder": "我的预算",
+          "validation": {
+            "required_field": "必填项",
+            "invalid_name": "预算名称需为 3-64 个字符"
+          }
+        },
+        "folder_name": {
+          "label": "文件夹名称",
+          "placeholder": "请输入文件夹名称",
+          "validation": {
+            "required_field": "必填项",
+            "invalid_name": "文件夹名称需为 3-64 个字符"
+          }
+        }
+      },
+      "budget_envelope": {
+        "name": {
+          "label": "名称",
+          "placeholder": "",
+          "validation": {
+            "required_field": "必填项",
+            "invalid_name": "信封名称需为 3-64 个字符"
+          }
+        },
+        "currency": {
+          "label": "货币",
+          "validation": {
+            "required_field": "必填项"
+          }
+        },
+        "categories": {
+          "label": "分类",
+          "selected": "已选择 {count} 个"
+        },
+        "icon": {
+          "label": "图标"
+        },
+        "status": {
+          "label": "状态",
+          "option": {
+            "active": "启用中",
+            "archive": "已归档"
+          }
+        }
+      },
+      "budget_limit": {
+        "limit": {
+          "label": "预算额度",
+          "validation": {
+            "invalid_number": "无效的数字",
+            "required_field": "必填项",
+            "invalid_formula": "无效的公式"
+          }
+        }
+      }
+    },
+    "page": {
+      "budget": {
+        "empty": {
+          "header": "预算",
+          "no_budget": "您还没有创建预算。",
+          "description": "创建预算或接受邀请，开始规划您的财务。",
+          "create_budget": "创建预算",
+          "initial_setup": "要创建预算，请先添加一个账户和至少一个分类。",
+          "create_account": "添加账户"
+        },
+        "unavailable": {
+          "header": "预算不可用",
+          "no_access": "您已无权访问此预算。它可能已被删除，或您的访问权限已被撤销。",
+          "choose_budget": "选择其他预算"
+        },
+        "error": {
+          "retry": "重试"
+        },
+        "settings": {
+          "button": "配置",
+          "menu": {
+            "edit": "预算详情",
+            "edit_structure": "编辑结构",
+            "edit_structure_done": "完成编辑",
+            "budget_list": "打开预算列表"
+          }
+        },
+        "structure": {
+          "no_folder": "默认文件夹",
+          "in_archive": "已归档",
+          "tab": {
+            "budgeted": "预算",
+            "spent": "已支出",
+            "available": "可用"
+          },
+          "action": {
+            "create_folder": "创建文件夹",
+            "delete_folder": "删除文件夹"
+          },
+          "empty_folder": {
+            "note": "此文件夹为空。请将分类、标签或信封移动到这里，或创建一个新信封。"
+          },
+          "element": {
+            "action": {
+              "change_currency": "更改货币",
+              "show_transactions": "显示交易"
+            }
+          },
+          "total": {
+            "name": "合计",
+            "expenses": "支出合计"
+          }
+        }
+      },
+      "settings": {
+        "menu_item": "预算",
+        "header": "预算",
+        "info": "您的所有预算都在这里。为不同目标创建独立的预算，并与家人共享。",
+        "create_budget": "创建预算",
+        "edit_modal": {
+          "header": "编辑预算"
+        },
+        "create_modal": {
+          "header": "新建预算"
+        },
+        "delete_modal": {
+          "title": "删除预算？",
+          "question": "确定要删除“{name}”吗？"
+        },
+        "decline_access_modal": {
+          "title": "拒绝该预算的访问权限？",
+          "question": "确定要拒绝对预算“{name}”的访问吗？"
+        },
+        "not_accepted": "邀请待接受",
+        "level": {
+          "guest": "仅查看",
+          "user": "管理预算",
+          "admin": "完全控制"
+        },
+        "list_actions": {
+          "access": "访问控制",
+          "go_to": "打开预算"
+        }
+      }
+    }
+  },
+  "classifications": {
+    "categories": {
+      "pages": {
+        "settings": {
+          "menu_item": "分类",
+          "header": "分类",
+          "info": "分类用于归集您的支出和收入。不再使用的分类可以归档，其历史记录会保留。",
+          "archived_item": "已归档",
+          "create_category": "创建分类"
+        }
+      },
+      "modals": {
+        "replace": {
+          "header": "替换为",
+          "note": "原分类将被删除，并替换为所选分类"
+        },
+        "delete": {
+          "title": "删除分类？",
+          "question": "确定要删除“{name}”吗？"
+        },
+        "edit": {
+          "header": "编辑分类"
+        },
+        "create": {
+          "header": "新建分类"
+        }
+      },
+      "forms": {
+        "category": {
+          "type": {
+            "income": "收入",
+            "expense": "支出"
+          },
+          "name": {
+            "label": "名称",
+            "placeholder": "请输入名称",
+            "validation": {
+              "required_field": "必填项",
+              "invalid_name": "分类名称需为 3-64 个字符"
+            }
+          },
+          "icon": {
+            "label": "图标"
+          }
+        }
+      }
+    },
+    "tags": {
+      "pages": {
+        "settings": {
+          "menu_item": "标签",
+          "header": "标签",
+          "info": "标签会在预算内自动归集支出——例如出行时很实用：为旅途中的每笔支出打上同一个标签，即可直接在预算中看到支出明细。",
+          "create_tag": "创建标签",
+          "archived_item": "已归档"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "编辑标签"
+        },
+        "create": {
+          "header": "新建标签"
+        },
+        "delete": {
+          "title": "删除标签？",
+          "question": "确定要删除“{name}”吗？"
+        }
+      },
+      "forms": {
+        "tag": {
+          "name": {
+            "label": "名称",
+            "validation": {
+              "required_field": "必填项",
+              "invalid_name": "标签名称需为 3-64 个字符"
+            }
+          }
+        }
+      }
+    },
+    "payees": {
+      "pages": {
+        "settings": {
+          "menu_item": "收款人",
+          "header": "收款人",
+          "info": "收款人显示您的钱花在了何处。不再需要的收款人可以归档。",
+          "create_payee": "创建收款人",
+          "archived_item": "已归档"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "编辑收款人"
+        },
+        "create": {
+          "header": "新建收款人"
+        },
+        "delete": {
+          "title": "删除收款人？",
+          "question": "确定要删除“{name}”吗？"
+        }
+      },
+      "forms": {
+        "payee": {
+          "name": {
+            "label": "名称",
+            "validation": {
+              "required_field": "必填项",
+              "invalid_name": "收款人名称需为 3-64 个字符"
+            }
+          }
+        }
+      }
+    },
+    "currencies": {
+      "pages": {
+        "settings": {
+          "menu_item": "货币",
+          "header": "货币",
+          "create_currency": "添加货币",
+          "my_currencies": "我的货币",
+          "global_currencies": "Econumo 货币",
+          "rate_caption": "1 {base} = {rate} {code}",
+          "locked_base": "基准货币始终处于启用状态",
+          "locked_profile": "您的个人资料货币始终处于启用状态",
+          "disable_currency": "停用",
+          "enable_currency": "启用",
+          "disable_all": "全部停用",
+          "enable_all": "全部启用",
+          "info": "您可以添加自己的货币——它们仅对您可见，汇率由您自行设定并保持固定——并将其用于账户和预算。Econumo 货币对本服务器上的所有用户开放，其汇率由系统统一管理；当服务器配置了汇率更新时，会自动更新。"
+        }
+      },
+      "modals": {
+        "create": {
+          "header": "新建货币"
+        },
+        "edit": {
+          "header": "编辑货币"
+        },
+        "delete": {
+          "title": "删除货币？"
+        }
+      },
+      "forms": {
+        "currency": {
+          "code": {
+            "label": "代码"
+          },
+          "name": {
+            "label": "名称",
+            "validation": {
+              "required_field": "必填项"
+            }
+          },
+          "symbol": {
+            "label": "符号"
+          },
+          "fraction_digits": {
+            "label": "小数位数"
+          },
+          "rate": {
+            "label": "汇率"
+          }
+        }
+      }
+    }
+  },
+  "connections": {
+    "pages": {
+      "settings": {
+        "menu_item": "共享访问",
+        "header": "共享访问",
+        "info": "通过关联，您可以与他人共同管理预算和账户。用邀请码邀请对方，然后为每个账户设置访问权限。",
+        "generate_invite": "创建邀请",
+        "accept_invite": "接受邀请"
+      }
+    },
+    "accounts": {
+      "roles": {
+        "owner": "所有者",
+        "admin": "完全控制",
+        "user": "管理交易",
+        "guest": "仅查看",
+        "no_access": "无权限"
+      }
+    },
+    "budgets": {
+      "roles": {
+        "owner": "所有者",
+        "admin": "完全控制",
+        "user": "管理预算",
+        "guest": "仅查看",
+        "no_access": "无权限"
+      }
+    },
+    "modals": {
+      "delete_connection": {
+        "question": "确定要删除与 {name} 的关联吗？"
+      },
+      "generate_invite": {
+        "instruction": "请将此邀请码发送给您想要关联的人。邀请码有效期为 5 分钟。",
+        "code": {
+          "label": "邀请码"
+        }
+      },
+      "accept_invite": {
+        "label": "接受邀请",
+        "instruction": "向对方索取邀请码，并在下方输入。邀请码有效期为 5 分钟。",
+        "code": {
+          "label": "邀请码"
+        }
+      },
+      "preview_connection": {
+        "accounts": "共享账户",
+        "budgets": "共享预算",
+        "budgets_empty": "没有共享预算",
+        "accounts_empty": "没有共享账户",
+        "shared_with_you": "共享给您",
+        "your_account": "您的账户",
+        "your_budget": "您的预算",
+        "tap_to_manage": "选择一项以管理访问权限"
+      },
+      "decline_access": {
+        "decline_access": "拒绝访问权限"
+      },
+      "share_access": {
+        "not_accepted": "邀请待接受",
+        "revoke_access": "撤销访问权限",
+        "revoke_confirm": {
+          "title": "撤销访问权限？",
+          "question": "确定要撤销 {name} 的访问权限吗？"
+        },
+        "list_empty": "未找到关联",
+        "tap_to_share": "选择要与之共享访问权限的用户",
+        "choose_access_level": "选择要授予的访问权限级别",
+        "select_user": "选择用户 {name}"
+      }
+    },
+    "forms": {
+      "invitation_code": {
+        "validation": {
+          "required_field": "必填项"
+        }
+      }
+    },
+    "sharing_requests": {
+      "title": "共享请求",
+      "empty": "没有待处理的请求",
+      "invited_you": "{name} 邀请了您",
+      "account": "账户",
+      "budget": "预算",
+      "choose_folder": "为此账户选择文件夹",
+      "general_folder_hint": "General（将自动创建）",
+      "decline_question": "拒绝“{name}”的访问权限吗？"
+    }
+  },
+  "subscription": {
+    "banner": {
+      "trial": "您的订阅将在 {count} 天后到期",
+      "readonly": "您的账户处于只读模式——可以查看和导出数据，但无法添加或修改",
+      "cta": "管理订阅",
+      "dismiss": "忽略",
+      "connection_trial": "{name} 的订阅将在 {count} 天后到期",
+      "connection_readonly": "{name} 的订阅已到期——对方只能查看共享账户，无法编辑"
+    },
+    "settings": {
+      "group": "账单",
+      "portal": "管理订阅",
+      "status": {
+        "trial": "订阅有效期至 {date}",
+        "readonly": "已到期"
+      }
+    },
+    "connections": {
+      "status": {
+        "readonly": "只读",
+        "ends": "订阅将在 {count} 天后到期"
+      },
+      "pay_for": "为 {name} 付款"
+    },
+    "toast": {
+      "readonly": "只读访问权限——已禁用修改"
+    }
+  },
+  "errors": {
+    "common": {
+      "is_blank": "此值不能为空。",
+      "invalid_choice": "您选择的值无效。",
+      "invalid_format": "此值无效。",
+      "invalid_uuid": "此值不是有效的 UUID。",
+      "invalid_email": "此值不是有效的邮箱地址。",
+      "too_long": "此值过长。",
+      "too_short": "此值过短。",
+      "out_of_range": "此值超出允许范围。",
+      "too_many_attempts": "尝试次数过多，请稍后再试。",
+      "readonly_access": "您当前仅有查看权限，无法进行写入操作。",
+      "operation_locked": "操作已锁定。",
+      "invalid_datetime_format": "日期格式无效，应为 Y-m-d H:i:s。",
+      "invalid_datetime": "此值不是有效的日期和时间。",
+      "icon_required": "图标值不能为空。",
+      "folder_name_length": "文件夹名称需为 {min}-{max} 个字符。",
+      "invalid_currency_code": "货币代码不正确。",
+      "invalid_id": "无效的标识符"
+    },
+    "auth": {
+      "invalid_credentials": "登录信息有误。"
+    },
+    "account": {
+      "name_length": "账户名称需为 {min}-{max} 个字符。",
+      "list_empty": "账户列表为空。",
+      "folder_list_empty": "文件夹列表为空。",
+      "folder_already_exists": "该文件夹已存在。"
+    },
+    "budget": {
+      "name_length": "预算名称需为 {min}-{max} 个字符。",
+      "envelope_name_length": "信封名称需为 {min}-{max} 个字符。",
+      "invalid_element_type_alias": "别名为 {alias} 的预算元素类型不存在。",
+      "invalid_role_alias": "别名为 {alias} 的预算用户角色不存在。",
+      "transaction_filter_required": "校验未通过。"
+    },
+    "category": {
+      "name_length": "分类名称需为 {min}-{max} 个字符。",
+      "type_invalid": "指定的分类类型不存在。",
+      "replace_id_required": "使用 mode=replace 时必须指定 replaceId。",
+      "not_found": "未找到该分类。",
+      "cannot_be_replaced": "分类无法替换。",
+      "list_empty": "分类列表为空。"
+    },
+    "connection": {
+      "invalid_uuid": "这不是有效的 UUID。",
+      "invalid_role_alias": "别名为 {alias} 的账户访问角色不存在。",
+      "invalid_code": "邀请码不正确。",
+      "inviting_yourself": "您不能邀请自己。",
+      "deleting_yourself": "您不能删除自己。"
+    },
+    "currency": {
+      "already_exists": "该货币已存在。",
+      "name_length": "货币名称需为 1-64 个字符。",
+      "symbol_length": "货币符号需为 1-12 个字符。",
+      "fraction_digits_range": "小数位数需为 0 至 8。",
+      "rate_invalid": "汇率必须为正数。",
+      "not_available": "该货币不可用。",
+      "in_use": "该货币正在使用中，无法删除。",
+      "base_immutable": "基准货币无法修改。",
+      "cannot_be_hidden": "该货币无法隐藏。"
+    },
+    "payee": {
+      "name_length": "收款人名称需为 {min}-{max} 个字符。",
+      "already_exists": "该收款人已存在。",
+      "list_empty": "收款人列表为空。"
+    },
+    "tag": {
+      "name_length": "标签名称需为 {min}-{max} 个字符。",
+      "already_exists": "该标签已存在。",
+      "list_empty": "标签列表为空。"
+    },
+    "token": {
+      "name_length": "令牌名称需为 {min}-{max} 个字符。",
+      "invalid_expiration_date": "过期日期无效。",
+      "expiration_in_future": "过期日期必须晚于当前时间。",
+      "retention_negative": "保留期限不能为负数。"
+    },
+    "transaction": {
+      "account_not_available": "该账户不可用于此操作。",
+      "item_not_available": "该交易不可用于此操作。",
+      "invalid_import_file": "请上传有效的 CSV 文件。"
+    },
+    "user": {
+      "report_period_invalid": "报表周期不正确。",
+      "language_invalid": "语言不正确。",
+      "already_exists": "该用户已存在。",
+      "registration_disabled": "注册功能已关闭。",
+      "password_incorrect": "密码不正确。",
+      "reset_password_error": "重置密码失败。",
+      "reset_code_expired": "验证码已过期。",
+      "email_verification_required": "请先验证您的邮箱地址。",
+      "verification_code_invalid": "验证码不正确。",
+      "verification_code_expired": "验证码已过期。",
+      "email_unchanged": "新邮箱与当前邮箱相同。"
+    }
+  },
+  "emails": {
+    "reset": {
+      "subject": "密码重置验证码",
+      "body": "您好，{name}：\n您的验证码是：{code}。\n\n如果您没有请求此验证码，请忽略这封邮件。\n\n--\nEconumo — 一起管理财务。\n"
+    },
+    "verify": {
+      "subject": "邮箱验证码",
+      "body": "您好，{name}：\n您的验证码是：{code}。\n\n请在登录页面输入此验证码，以验证您的邮箱地址。\n\n如果您没有注册 Econumo 账户，请忽略这封邮件。\n\n--\nEconumo — 一起管理财务。\n"
+    },
+    "change_email": {
+      "subject": "确认您的新邮箱",
+      "body": "您好，{name}：\n\n请使用此验证码确认您的新邮箱地址：{code}\n\n验证码将在 10 分钟后失效。如果这不是您本人的操作，可以忽略这封邮件。"
+    },
+    "change_email_notice": {
+      "subject": "收到更改邮箱的请求",
+      "body": "您好，{name}：\n\n有人请求将您账户的邮箱更改为 {email}。如果这不是您本人的操作，请立即更改密码。"
+    }
+  }
+}

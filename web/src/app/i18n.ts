@@ -10,6 +10,7 @@ import pl from '../../../locales/pl.json'
 import nl from '../../../locales/nl.json'
 import uk from '../../../locales/uk.json'
 import es from '../../../locales/es.json'
+import zh from '../../../locales/zh.json'
 import { locale } from '@/lib/config'
 
 i18n.use(initReactI18next).init({
@@ -26,6 +27,7 @@ i18n.use(initReactI18next).init({
     nl: { translation: nl },
     uk: { translation: uk },
     es: { translation: es },
+    zh: { translation: zh },
   },
   interpolation: {
     escapeValue: false,
