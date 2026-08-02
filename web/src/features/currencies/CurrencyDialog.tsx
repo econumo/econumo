@@ -102,7 +102,6 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose,
               <Input
                 id="currency-code"
                 maxLength={3}
-                placeholder="PTS"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
               />
