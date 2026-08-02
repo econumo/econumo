@@ -98,6 +98,7 @@ export function getLocaleOptions(): LocaleOption[] {
     { value: 'it', label: 'Italiano', short: 'IT' },
     { value: 'pt', label: 'Português', short: 'PT' },
     { value: 'pl', label: 'Polski', short: 'PL' },
+    { value: 'nl', label: 'Nederlands', short: 'NL' },
   ]
 }
 
