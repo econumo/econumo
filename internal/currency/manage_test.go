@@ -100,6 +100,28 @@ func (f *fakeManageRepo) ShowCurrency(ctx context.Context, userID, currencyID st
 	return nil
 }
 
+func (f *fakeManageRepo) HideGlobalCurrencies(ctx context.Context, userID string, excludeIDs []string, now time.Time) error {
+	excluded := map[string]bool{}
+	for _, id := range excludeIDs {
+		excluded[id] = true
+	}
+	for _, r := range f.records {
+		if r.UserID == nil && !excluded[r.ID] {
+			f.hidden[userID+"|"+r.ID] = true
+		}
+	}
+	return nil
+}
+
+func (f *fakeManageRepo) ShowGlobalCurrencies(ctx context.Context, userID string) error {
+	for _, r := range f.records {
+		if r.UserID == nil {
+			delete(f.hidden, userID+"|"+r.ID)
+		}
+	}
+	return nil
+}
+
 var _ appcurrency.ManageModel = (*fakeManageRepo)(nil)
 
 type fakeProfileCurrency struct{ id string }
@@ -139,7 +161,11 @@ func (f *fakeOps) Claim(ctx context.Context, id vo.Id, now time.Time) (bool, err
 func (f *fakeOps) MarkHandled(ctx context.Context, id vo.Id, now time.Time) error { return nil }
 
 func newManageSvc(repo *fakeManageRepo, ops *fakeOps, now time.Time) *appcurrency.ManageService {
-	return appcurrency.NewManageService(repo, passthroughTx{}, ops, fixedClock{t: now}, fakeProfileCurrency{id: "global-usd"}, testBase)
+	return newManageSvcWithProfile(repo, ops, now, &fakeProfileCurrency{id: "global-usd"})
+}
+
+func newManageSvcWithProfile(repo *fakeManageRepo, ops *fakeOps, now time.Time, profile *fakeProfileCurrency) *appcurrency.ManageService {
+	return appcurrency.NewManageService(repo, passthroughTx{}, ops, fixedClock{t: now}, *profile, testBase)
 }
 
 var manageNow = time.Date(2026, 7, 15, 10, 0, 0, 0, time.UTC)
@@ -628,4 +654,54 @@ func assertField(t *testing.T, v *errs.ValidationError, key, message string) {
 		}
 	}
 	t.Errorf("Fields = %+v, want a field {Key:%q Message:%q}", v.Fields, key, message)
+}
+
+// Bulk disable: every global except the base and the caller's profile default
+// becomes hidden; customs (own and foreign) are untouched.
+func TestHideAllCurrencies_SkipsBaseProfileAndCustoms(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-usd"] = model.CurrencyRecord{ID: "global-usd", Code: "USD"}
+	repo.records["global-eur"] = model.CurrencyRecord{ID: "global-eur", Code: "EUR"}
+	repo.records["global-cad"] = model.CurrencyRecord{ID: "global-cad", Code: "CAD"}
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", UserID: strPtr(manageMeID)}
+	svc := newManageSvcWithProfile(repo, &fakeOps{}, manageNow, &fakeProfileCurrency{id: "global-eur"})
+	uid := vo.MustParseId(manageMeID)
+
+	if _, err := svc.HideAllCurrencies(context.Background(), uid); err != nil {
+		t.Fatalf("HideAllCurrencies: %v", err)
+	}
+	if repo.hidden[manageMeID+"|global-usd"] {
+		t.Error("base currency must not be hidden")
+	}
+	if repo.hidden[manageMeID+"|global-eur"] {
+		t.Error("profile currency must not be hidden")
+	}
+	if !repo.hidden[manageMeID+"|global-cad"] {
+		t.Error("expected the remaining global to be hidden")
+	}
+	if repo.hidden[manageMeID+"|own-pts"] {
+		t.Error("own customs are out of bulk scope")
+	}
+}
+
+// Bulk enable: every hidden global is shown again; a hidden own custom stays
+// hidden (out of bulk scope).
+func TestShowAllCurrencies_GlobalsOnly(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-cad"] = model.CurrencyRecord{ID: "global-cad", Code: "CAD"}
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", UserID: strPtr(manageMeID)}
+	repo.hidden[manageMeID+"|global-cad"] = true
+	repo.hidden[manageMeID+"|own-pts"] = true
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+
+	if _, err := svc.ShowAllCurrencies(context.Background(), uid); err != nil {
+		t.Fatalf("ShowAllCurrencies: %v", err)
+	}
+	if repo.hidden[manageMeID+"|global-cad"] {
+		t.Error("expected the hidden global to be shown again")
+	}
+	if !repo.hidden[manageMeID+"|own-pts"] {
+		t.Error("a hidden own custom stays hidden")
+	}
 }

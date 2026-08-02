@@ -27,6 +27,9 @@ export interface ClassificationItem {
 export interface RowAction {
   label: string
   destructive?: boolean
+  disabled?: boolean
+  /** tooltip, e.g. why a disabled action is unavailable */
+  title?: string
   onSelect: () => void
 }
 
@@ -41,6 +44,8 @@ export interface RowSwitchState {
 interface ClassificationSection<T> {
   label: string
   match: (item: T) => boolean
+  /** control rendered on the caption row's right edge (e.g. a bulk action) */
+  action?: ReactNode
 }
 
 interface ClassificationListProps<T extends ClassificationItem> {
@@ -66,6 +71,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   hasActions?: (item: T) => boolean
   /** actions inserted between Edit and Delete in the menu and the sheet */
   extraActions?: (item: T) => RowAction[]
+  /** when defined for an item, the menu/sheet shows ONLY these actions (no Edit/Delete) */
+  rowActions?: (item: T) => RowAction[] | undefined
   onCreate: () => void
   onEdit: (item: T) => void
   onDelete: (id: string) => void
@@ -89,6 +96,7 @@ export function ClassificationList<T extends ClassificationItem>({
   rowSwitch,
   hasActions,
   extraActions,
+  rowActions,
   onCreate,
   onEdit,
   onDelete,
@@ -140,7 +148,7 @@ export function ClassificationList<T extends ClassificationItem>({
   // appear only when more than one group is actually visible.
   const sectionDefs: ClassificationSection<T>[] = sections ?? [{ label: '', match: () => true }]
   const visibleSections = sectionDefs
-    .map((section) => ({ label: section.label, items: visible.filter(section.match) }))
+    .map((section) => ({ label: section.label, action: section.action, items: visible.filter(section.match) }))
     .filter((section) => section.items.length > 0)
   const showGroupHeaders = visibleSections.length > 1
 
@@ -241,15 +249,35 @@ export function ClassificationList<T extends ClassificationItem>({
             </DropdownMenuTrigger>
             {/* portaled content still bubbles React clicks to the row — don't reopen the menu */}
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onSelect={() => onEdit(item)}>{t('common.button.edit.label')}</DropdownMenuItem>
-              {extraActions?.(item).map((action) => (
-                <DropdownMenuItem key={action.label} variant={action.destructive ? 'destructive' : undefined} onSelect={action.onSelect}>
-                  {action.label}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(item)}>
-                {t('common.button.delete.label')}
-              </DropdownMenuItem>
+              {(() => {
+                const only = rowActions?.(item)
+                if (only) {
+                  return only.map((action) => (
+                    <DropdownMenuItem
+                      key={action.label}
+                      variant={action.destructive ? 'destructive' : undefined}
+                      disabled={action.disabled}
+                      title={action.title}
+                      onSelect={action.onSelect}
+                    >
+                      {action.label}
+                    </DropdownMenuItem>
+                  ))
+                }
+                return (
+                  <>
+                    <DropdownMenuItem onSelect={() => onEdit(item)}>{t('common.button.edit.label')}</DropdownMenuItem>
+                    {extraActions?.(item).map((action) => (
+                      <DropdownMenuItem key={action.label} variant={action.destructive ? 'destructive' : undefined} onSelect={action.onSelect}>
+                        {action.label}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(item)}>
+                      {t('common.button.delete.label')}
+                    </DropdownMenuItem>
+                  </>
+                )
+              })()}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
@@ -302,6 +330,7 @@ export function ClassificationList<T extends ClassificationItem>({
                 <div className="mt-2 mb-1 flex items-center gap-3 px-1 pt-3 first:mt-0">
                   <span className="text-sm font-semibold uppercase tracking-wide">{section.label}</span>
                   <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                  {section.action ?? null}
                 </div>
               ) : null}
               {onOrder ? (
@@ -317,45 +346,56 @@ export function ClassificationList<T extends ClassificationItem>({
       {/* compact tap-on-row action sheet */}
       <ResponsiveDialog open={sheetItem !== null} onOpenChange={(open) => !open && setSheetItem(null)} title={sheetItem?.name ?? ''}>
         <div className="flex flex-col gap-2 [&_button]:h-11">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              if (sheetItem) {
-                onEdit(sheetItem)
-              }
-              setSheetItem(null)
-            }}
-          >
-            {t('common.button.edit.label')}
-          </Button>
-          {sheetItem
-            ? extraActions?.(sheetItem).map((action) => (
+          {(() => {
+            const only = sheetItem ? rowActions?.(sheetItem) : undefined
+            const actionButton = (action: RowAction) => (
+              <Button
+                key={action.label}
+                type="button"
+                variant="outline"
+                disabled={action.disabled}
+                title={action.title}
+                className={action.destructive ? 'text-destructive hover:text-destructive' : undefined}
+                onClick={() => {
+                  action.onSelect()
+                  setSheetItem(null)
+                }}
+              >
+                {action.label}
+              </Button>
+            )
+            if (only) {
+              return only.map(actionButton)
+            }
+            return (
+              <>
                 <Button
-                  key={action.label}
                   type="button"
                   variant="outline"
-                  className={action.destructive ? 'text-destructive hover:text-destructive' : undefined}
                   onClick={() => {
-                    action.onSelect()
+                    if (sheetItem) {
+                      onEdit(sheetItem)
+                    }
                     setSheetItem(null)
                   }}
                 >
-                  {action.label}
+                  {t('common.button.edit.label')}
                 </Button>
-              ))
-            : null}
-          <Button
-            type="button"
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={() => {
-              setDeleteTarget(sheetItem)
-              setSheetItem(null)
-            }}
-          >
-            {t('common.button.delete.label')}
-          </Button>
+                {sheetItem ? extraActions?.(sheetItem).map(actionButton) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => {
+                    setDeleteTarget(sheetItem)
+                    setSheetItem(null)
+                  }}
+                >
+                  {t('common.button.delete.label')}
+                </Button>
+              </>
+            )
+          })()}
         </div>
       </ResponsiveDialog>
 

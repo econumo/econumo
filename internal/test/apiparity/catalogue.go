@@ -163,6 +163,10 @@ func init() {
 			{Label: "err:hide-currency-base", Method: "POST", Path: "/api/v1/currency/hide-currency", Auth: "owner", Body: map[string]any{"id": USD}},
 			{Label: "show-currency", Method: "POST", Path: "/api/v1/currency/show-currency", Auth: "owner", Body: map[string]any{"id": USD}},
 			{Label: "err:hide-foreign", Method: "POST", Path: "/api/v1/currency/hide-currency", Auth: "guest", Body: map[string]any{"id": &curID}},
+			{Label: "hide-all-currencies", Method: "POST", Path: "/api/v1/currency/hide-all-currencies", Auth: "owner", Body: map[string]any{}},
+			{Label: "read-after-hide-all", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "show-all-currencies", Method: "POST", Path: "/api/v1/currency/show-all-currencies", Auth: "owner", Body: map[string]any{}},
+			{Label: "read-after-show-all", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "delete-currency", Method: "POST", Path: "/api/v1/currency/delete-currency", Auth: "owner", Body: map[string]any{"id": &curID}},
 			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
 		}

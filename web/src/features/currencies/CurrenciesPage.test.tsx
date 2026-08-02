@@ -106,9 +106,9 @@ it('own custom rows carry the same visibility switch: posts hide-currency / show
   const user = userEvent.setup()
   renderPage()
   await screen.findByText('Points')
-  await user.click(screen.getByRole('switch', { name: 'show Points' }))
+  await user.click(screen.getByRole('switch', { name: 'enable Points' }))
   await waitFor(() => expect(hideBody).toEqual({ id: 'cur-pts' }))
-  await user.click(screen.getByRole('switch', { name: 'show Old points' }))
+  await user.click(screen.getByRole('switch', { name: 'enable Old points' }))
   await waitFor(() => expect(showBody).toEqual({ id: 'cur-old' }))
 })
 
@@ -122,9 +122,9 @@ it("an own custom that is the profile currency has its switch disabled", async (
   )
   renderPage()
   await screen.findByText('Points')
-  const sw = screen.getByRole('switch', { name: 'show Points' })
+  const sw = screen.getByRole('switch', { name: 'enable Points' })
   expect(sw).toBeDisabled()
-  expect(sw).toHaveAttribute('title', 'Your profile currency is always visible')
+  expect(sw).toHaveAttribute('title', 'Your profile currency is always enabled')
 })
 
 it('delete flow surfaces server refusal text', async () => {
@@ -166,19 +166,19 @@ it('hide/show switch on globals posts hide-currency / show-currency', async () =
   renderPage()
   await screen.findByText('Euro')
   // EUR is visible (isHidden 0), not base, not profile currency -> togglable, hides it
-  await user.click(screen.getByRole('switch', { name: 'show Euro' }))
+  await user.click(screen.getByRole('switch', { name: 'enable Euro' }))
   await waitFor(() => expect(hideBody).toEqual({ id: 'cur-eur' }))
   // GBP starts hidden -> toggling shows it
-  await user.click(screen.getByRole('switch', { name: 'show Pound' }))
+  await user.click(screen.getByRole('switch', { name: 'enable Pound' }))
   await waitFor(() => expect(showBody).toEqual({ id: 'cur-gbp' }))
 })
 
 it("base currency row's visibility switch is disabled", async () => {
   renderPage()
   await screen.findByText('US Dollar')
-  const sw = screen.getByRole('switch', { name: 'show US Dollar' })
+  const sw = screen.getByRole('switch', { name: 'enable US Dollar' })
   expect(sw).toBeDisabled()
-  expect(sw).toHaveAttribute('title', 'The base currency is always visible')
+  expect(sw).toHaveAttribute('title', 'The base currency is always enabled')
 })
 
 it("profile currency row's visibility switch is disabled", async () => {
@@ -191,9 +191,9 @@ it("profile currency row's visibility switch is disabled", async () => {
   )
   renderPage()
   await screen.findByText('Euro')
-  const sw = screen.getByRole('switch', { name: 'show Euro' })
+  const sw = screen.getByRole('switch', { name: 'enable Euro' })
   expect(sw).toBeDisabled()
-  expect(sw).toHaveAttribute('title', 'Your profile currency is always visible')
+  expect(sw).toHaveAttribute('title', 'Your profile currency is always enabled')
 })
 
 it('edit dialog prefills the fixed rate and posts it with update-currency', async () => {
@@ -222,21 +222,47 @@ it('edit dialog prefills the fixed rate and posts it with update-currency', asyn
   await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.currencyRates }))
 })
 
-it('own rows get a kebab with Edit / Set rate / Delete; global rows get none', async () => {
+it('own rows get a kebab with Edit / Delete; global rows get a kebab with only Enable/Disable', async () => {
   const user = userEvent.setup()
   renderPage()
   await screen.findByText('Points')
-  expect(screen.getByRole('button', { name: 'actions Points' })).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'actions Pound' })).toBeNull()
-  expect(screen.queryByRole('button', { name: 'actions US Dollar' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'actions Points' }))
-  const menu = await screen.findByRole('menu')
-  expect(within(menu).getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
-  expect(within(menu).queryByRole('menuitem', { name: 'Set exchange rate' })).toBeNull()
-  expect(within(menu).getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  const ownMenu = await screen.findByRole('menu')
+  expect(within(ownMenu).getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  expect(within(ownMenu).queryByRole('menuitem', { name: 'Set exchange rate' })).toBeNull()
+  expect(within(ownMenu).getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  // Pound is hidden -> its single menu action reads Enable; no Edit/Delete.
+  await user.click(screen.getByRole('button', { name: 'actions Pound' }))
+  const globalMenu = await screen.findByRole('menu')
+  expect(within(globalMenu).getByRole('menuitem', { name: 'Enable' })).toBeInTheDocument()
+  expect(within(globalMenu).queryByRole('menuitem', { name: 'Edit' })).toBeNull()
+  expect(within(globalMenu).queryByRole('menuitem', { name: 'Delete' })).toBeNull()
 })
 
-it('compact: tapping an own row opens the action sheet; global rows do not react', async () => {
+it('the global kebab Disable action posts hide-currency; locked rows have it disabled', async () => {
+  let hideBody: unknown
+  server.use(
+    http.post('*/api/v1/currency/hide-currency', async ({ request }) => {
+      hideBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Euro')
+  await user.click(screen.getByRole('button', { name: 'actions Euro' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Disable' }))
+  await waitFor(() => expect(hideBody).toEqual({ id: 'cur-eur' }))
+
+  // USD is base + profile currency: the action is present but disabled.
+  await user.click(screen.getByRole('button', { name: 'actions US Dollar' }))
+  const menu = await screen.findByRole('menu')
+  expect(within(menu).getByRole('menuitem', { name: 'Disable' })).toHaveAttribute('aria-disabled', 'true')
+})
+
+it('compact: own rows sheet has Edit/Delete; global rows sheet has only Enable/Disable', async () => {
   mockViewport(true)
   const user = userEvent.setup()
   renderPage()
@@ -248,7 +274,10 @@ it('compact: tapping an own row opens the action sheet; global rows do not react
   await user.keyboard('{Escape}')
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   await user.click(screen.getByText('Pound'))
-  expect(screen.queryByRole('dialog')).toBeNull()
+  const globalSheet = await screen.findByRole('dialog')
+  expect(within(globalSheet).getByRole('button', { name: 'Enable' })).toBeInTheDocument()
+  expect(within(globalSheet).queryByRole('button', { name: 'Edit' })).toBeNull()
+  expect(within(globalSheet).queryByRole('button', { name: 'Delete' })).toBeNull()
 })
 
 it('no active-only filter: hidden currencies are always listed, switch off', async () => {
@@ -260,7 +289,7 @@ it('no active-only filter: hidden currencies are always listed, switch off', asy
   )
   renderPage()
   expect(await screen.findByText('Points')).toBeInTheDocument()
-  expect(screen.getByRole('switch', { name: 'show Points' })).not.toBeChecked()
+  expect(screen.getByRole('switch', { name: 'enable Points' })).not.toBeChecked()
   expect(screen.getByText('Pound')).toBeInTheDocument()
   expect(screen.queryByRole('switch', { name: 'Active only' })).toBeNull()
 })
@@ -283,4 +312,40 @@ it('the rate is required: an empty rate blocks submit with a validation message'
   await user.click(screen.getByRole('button', { name: 'Update' }))
   expect(await screen.findAllByText('Required field')).not.toHaveLength(0)
   expect(called).toBe(false)
+})
+
+it("the globals section carries a 'Disable all' link that posts hide-all-currencies", async () => {
+  let called = false
+  server.use(
+    http.post('*/api/v1/currency/hide-all-currencies', () => {
+      called = true
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Euro')
+  await user.click(screen.getByRole('button', { name: 'Disable all' }))
+  await waitFor(() => expect(called).toBe(true))
+})
+
+it("with every non-locked global disabled the link flips to 'Enable all' posting show-all-currencies", async () => {
+  let called = false
+  server.use(
+    ...coreHandlers({
+      // EUR hidden too: only the locked USD stays enabled -> Enable all
+      currencies: [fixtureUsd, { ...fixtureEur, isHidden: 1 }, fixturePts, fixtureGbp],
+      rates: defaultRates,
+    }),
+    http.post('*/api/v1/currency/show-all-currencies', () => {
+      called = true
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Euro')
+  expect(screen.queryByRole('button', { name: 'Disable all' })).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Enable all' }))
+  await waitFor(() => expect(called).toBe(true))
 })

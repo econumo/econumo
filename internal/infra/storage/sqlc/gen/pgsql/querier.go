@@ -166,6 +166,9 @@ type Querier interface {
 	// See the sqlite variant for rationale on the access columns.
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	GlobalCurrencyCodeExists(ctx context.Context, code string) (int64, error)
+	// Bulk visibility over the GLOBAL currencies (customs keep their per-row
+	// preference). The two exclusion slots carry the base and profile ids.
+	HideGlobalCurrencies(ctx context.Context, arg HideGlobalCurrenciesParams) error
 	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
 	// liveness is evaluated in the app layer, not SQL.
 	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
@@ -246,6 +249,7 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error

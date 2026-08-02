@@ -141,6 +141,38 @@ func (h *Handlers) HideCurrency(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HideAllCurrencies handles POST /api/v1/currency/hide-all-currencies (auth).
+//
+// @Summary     Hide all global currencies
+// @Description Hides every global currency for the caller in one step; the base currency and the caller's profile currency stay visible. Custom currencies keep their per-currency preference.
+// @Tags        Currency
+// @Produce     json
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.HideAllCurrenciesResult}
+// @Failure     401 {object} apidoc.JsonResponseUnauthorized
+// @Failure     402 {object} apidoc.JsonResponseError
+// @Failure     500 {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/currency/hide-all-currencies [post]
+func (h *Handlers) HideAllCurrencies(w http.ResponseWriter, r *http.Request) {
+	endpoint.HandleNoBody(w, r, h.manage.HideAllCurrencies)
+}
+
+// ShowAllCurrencies handles POST /api/v1/currency/show-all-currencies (auth).
+//
+// @Summary     Show all global currencies
+// @Description Clears the caller's hidden flag on every global currency. Custom currencies keep their per-currency preference.
+// @Tags        Currency
+// @Produce     json
+// @Success     200 {object} apidoc.JsonResponseOk{data=model.ShowAllCurrenciesResult}
+// @Failure     401 {object} apidoc.JsonResponseUnauthorized
+// @Failure     402 {object} apidoc.JsonResponseError
+// @Failure     500 {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/currency/show-all-currencies [post]
+func (h *Handlers) ShowAllCurrencies(w http.ResponseWriter, r *http.Request) {
+	endpoint.HandleNoBody(w, r, h.manage.ShowAllCurrencies)
+}
+
 // ShowCurrency handles POST /api/v1/currency/show-currency (auth).
 //
 // @Summary     Show a hidden global currency

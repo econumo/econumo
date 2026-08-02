@@ -157,3 +157,58 @@ func TestManageRepo_HideShowIdempotent(t *testing.T) {
 		t.Fatal(err) // idempotent
 	}
 }
+
+func TestManageRepo_BulkGlobalVisibility(t *testing.T) {
+	r, db, f := newManage(t)
+	ctx := context.Background()
+	uid := f.User(fixture.User{Name: "A"})
+	eur := f.Currency(fixture.Currency{Code: "EUR", Symbol: "E"})
+	cad := f.Currency(fixture.Currency{Code: "CAD", Symbol: "C"})
+	pts := f.Currency(fixture.Currency{Code: "PTS", UserID: uid})
+	f.HiddenCurrency(uid, pts) // own custom, hidden per-row: bulk must not touch it
+
+	// USD (seeded base) + EUR excluded (base + profile slots); CAD gets hidden.
+	if err := r.HideGlobalCurrencies(ctx, uid, []string{"dffc2a06-6f29-4704-8575-31709adee926", eur}, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("HideGlobalCurrencies: %v", err)
+	}
+	// Idempotent: a second run must not violate the (user, currency) key.
+	if err := r.HideGlobalCurrencies(ctx, uid, []string{"dffc2a06-6f29-4704-8575-31709adee926", eur}, time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("HideGlobalCurrencies (rerun): %v", err)
+	}
+	hidden := hiddenSet(t, db, uid)
+	if !hidden[cad] || hidden[eur] || hidden["dffc2a06-6f29-4704-8575-31709adee926"] {
+		t.Fatalf("after bulk hide: %v (want CAD only among globals)", hidden)
+	}
+	if !hidden[pts] {
+		t.Fatal("own custom's per-row hidden flag must survive bulk hide")
+	}
+
+	if err := r.ShowGlobalCurrencies(ctx, uid); err != nil {
+		t.Fatalf("ShowGlobalCurrencies: %v", err)
+	}
+	hidden = hiddenSet(t, db, uid)
+	if hidden[cad] {
+		t.Fatal("bulk show must clear hidden globals")
+	}
+	if !hidden[pts] {
+		t.Fatal("own custom's per-row hidden flag must survive bulk show")
+	}
+}
+
+func hiddenSet(t *testing.T, db *dbtest.DB, userID string) map[string]bool {
+	t.Helper()
+	rows, err := db.Raw.Query(db.Rebind(`SELECT currency_id FROM users_hidden_currencies WHERE user_id = ?`), userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	out := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		out[id] = true
+	}
+	return out
+}

@@ -254,6 +254,9 @@ type Querier interface {
 	// collapses them against the clock before putting them on the wire).
 	GetUserView(ctx context.Context, id string) (GetUserViewRow, error)
 	GlobalCurrencyCodeExists(ctx context.Context, code string) (int64, error)
+	// Bulk visibility over the GLOBAL currencies (customs keep their per-row
+	// preference). The two exclusion slots carry the base and profile ids.
+	HideGlobalCurrencies(ctx context.Context, arg HideGlobalCurrenciesParams) error
 	// Access-token queries (access_tokens): login sessions + personal access
 	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
 	// time.Time), not in SQL, to avoid engine date-format differences; the
@@ -376,6 +379,7 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error

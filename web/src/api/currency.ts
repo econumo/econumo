@@ -43,3 +43,11 @@ export async function hideCurrency(id: Id): Promise<void> {
 export async function showCurrency(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/currency/show-currency'), { id })
 }
+
+export async function hideAllCurrencies(): Promise<void> {
+  await api.post(apiUrl('/api/v1/currency/hide-all-currencies'), {})
+}
+
+export async function showAllCurrencies(): Promise<void> {
+  await api.post(apiUrl('/api/v1/currency/show-all-currencies'), {})
+}

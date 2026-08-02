@@ -46,6 +46,18 @@
 == err:hide-foreign POST /api/v1/currency/hide-currency [guest] -> 400
 {"success":false,"message":"This currency cannot be hidden","code":400,"errors":{}}
 
+== hide-all-currencies POST /api/v1/currency/hide-all-currencies [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-hide-all GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0}]}}
+
+== show-all-currencies POST /api/v1/currency/show-all-currencies [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-show-all GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0}]}}
+
 == delete-currency POST /api/v1/currency/delete-currency [owner] -> 200
 {"success":true,"message":"","data":{}}
 

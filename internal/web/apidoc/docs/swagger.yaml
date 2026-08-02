@@ -967,6 +967,8 @@ definitions:
     type: object
   model.GrantAccountAccessResult:
     type: object
+  model.HideAllCurrenciesResult:
+    type: object
   model.HideCurrencyRequest:
     properties:
       id:
@@ -1432,6 +1434,8 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/model.UserResult'
+    type: object
+  model.ShowAllCurrenciesResult:
     type: object
   model.ShowCurrencyRequest:
     properties:
@@ -4201,6 +4205,40 @@ paths:
       summary: Get the latest currency rates
       tags:
       - Currency
+  /api/v1/currency/hide-all-currencies:
+    post:
+      description: Hides every global currency for the caller in one step; the base
+        currency and the caller's profile currency stay visible. Custom currencies
+        keep their per-currency preference.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.HideAllCurrenciesResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Hide all global currencies
+      tags:
+      - Currency
   /api/v1/currency/hide-currency:
     post:
       consumes:
@@ -4245,6 +4283,39 @@ paths:
       security:
       - Bearer: []
       summary: Hide a global currency
+      tags:
+      - Currency
+  /api/v1/currency/show-all-currencies:
+    post:
+      description: Clears the caller's hidden flag on every global currency. Custom
+        currencies keep their per-currency preference.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ShowAllCurrenciesResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Show all global currencies
       tags:
       - Currency
   /api/v1/currency/show-currency:

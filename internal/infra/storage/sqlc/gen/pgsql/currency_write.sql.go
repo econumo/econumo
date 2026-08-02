@@ -189,6 +189,33 @@ func (q *Queries) GlobalCurrencyCodeExists(ctx context.Context, code string) (in
 	return count, err
 }
 
+const hideGlobalCurrencies = `-- name: HideGlobalCurrencies :exec
+INSERT INTO users_hidden_currencies (user_id, currency_id, created_at)
+SELECT $1, c.id, $2
+FROM currencies c
+WHERE c.user_id IS NULL AND c.id != $3 AND c.id != $4
+ON CONFLICT (user_id, currency_id) DO NOTHING
+`
+
+type HideGlobalCurrenciesParams struct {
+	UserID    string
+	CreatedAt time.Time
+	ID        string
+	ID_2      string
+}
+
+// Bulk visibility over the GLOBAL currencies (customs keep their per-row
+// preference). The two exclusion slots carry the base and profile ids.
+func (q *Queries) HideGlobalCurrencies(ctx context.Context, arg HideGlobalCurrenciesParams) error {
+	_, err := q.db.ExecContext(ctx, hideGlobalCurrencies,
+		arg.UserID,
+		arg.CreatedAt,
+		arg.ID,
+		arg.ID_2,
+	)
+	return err
+}
+
 const insertCurrency = `-- name: InsertCurrency :exec
 INSERT INTO currencies (id, code, symbol, name, fraction_digits, created_at)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -319,6 +346,17 @@ func (q *Queries) OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrency
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const showGlobalCurrencies = `-- name: ShowGlobalCurrencies :exec
+DELETE FROM users_hidden_currencies
+WHERE users_hidden_currencies.user_id = $1
+  AND currency_id IN (SELECT c.id FROM currencies c WHERE c.user_id IS NULL)
+`
+
+func (q *Queries) ShowGlobalCurrencies(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, showGlobalCurrencies, userID)
+	return err
 }
 
 const updateCurrencyDetails = `-- name: UpdateCurrencyDetails :exec

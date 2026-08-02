@@ -8,8 +8,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// HideCurrency removes a GLOBAL currency from the caller's dropdowns. Custom
-// currencies archive instead; the base currency and the caller's profile
+// HideCurrency removes a currency (a global, or the caller's own custom)
+// from the caller's dropdowns. The base currency and the caller's profile
 // currency must stay visible.
 func (s *ManageService) HideCurrency(ctx context.Context, userID vo.Id, req model.HideCurrencyRequest) (*model.HideCurrencyResult, error) {
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -50,4 +50,36 @@ func (s *ManageService) ShowCurrency(ctx context.Context, userID vo.Id, req mode
 		return nil, err
 	}
 	return &model.ShowCurrencyResult{}, nil
+}
+
+// HideAllCurrencies hides every GLOBAL currency for the caller in one step,
+// keeping the base currency and the caller's profile default visible. Customs
+// (own and foreign) are out of scope: the bulk action lives on the globals
+// section.
+func (s *ManageService) HideAllCurrencies(ctx context.Context, userID vo.Id) (*model.HideAllCurrenciesResult, error) {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		profileID, err := s.profile.CurrencyID(ctx, userID.String())
+		if err != nil {
+			return err
+		}
+		exclude := []string{s.base.ID}
+		if profileID != "" && profileID != s.base.ID {
+			exclude = append(exclude, profileID)
+		}
+		return s.repo.HideGlobalCurrencies(ctx, userID.String(), exclude, s.clock.Now())
+	}); err != nil {
+		return nil, err
+	}
+	return &model.HideAllCurrenciesResult{}, nil
+}
+
+// ShowAllCurrencies clears the caller's hidden flag on every GLOBAL currency.
+// A hidden own custom keeps its per-row preference.
+func (s *ManageService) ShowAllCurrencies(ctx context.Context, userID vo.Id) (*model.ShowAllCurrenciesResult, error) {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		return s.repo.ShowGlobalCurrencies(ctx, userID.String())
+	}); err != nil {
+		return nil, err
+	}
+	return &model.ShowAllCurrenciesResult{}, nil
 }

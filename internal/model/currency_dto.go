@@ -139,6 +139,10 @@ func (r HideCurrencyRequest) Validate() error { return validateBlankId(r.Id) }
 
 type HideCurrencyResult struct{}
 
+type HideAllCurrenciesResult struct{}
+
+type ShowAllCurrenciesResult struct{}
+
 type ShowCurrencyRequest struct {
 	Id string `json:"id"`
 }

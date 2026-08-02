@@ -27,6 +27,11 @@ type ManageModel interface {
 	CountCurrencyUsage(ctx context.Context, id string) (int64, error)
 	HideCurrency(ctx context.Context, userID, currencyID string, now time.Time) error
 	ShowCurrency(ctx context.Context, userID, currencyID string) error
+	// HideGlobalCurrencies hides every global currency for userID except
+	// excludeIDs, idempotently; ShowGlobalCurrencies clears the hidden flag
+	// on every global (customs keep their per-row preference).
+	HideGlobalCurrencies(ctx context.Context, userID string, excludeIDs []string, now time.Time) error
+	ShowGlobalCurrencies(ctx context.Context, userID string) error
 }
 
 // ProfileCurrency is the consumer-side port onto the user feature's profile

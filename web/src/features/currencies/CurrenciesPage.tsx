@@ -13,6 +13,8 @@ import {
   useDeleteCurrency,
   useHideCurrency,
   useShowCurrency,
+  useHideAllCurrencies,
+  useShowAllCurrencies,
 } from './queries'
 
 // ClassificationItem wants a position (the index fills in — the server
@@ -31,6 +33,8 @@ export function CurrenciesPage() {
   const deleteCurrency = useDeleteCurrency()
   const hideCurrency = useHideCurrency()
   const showCurrency = useShowCurrency()
+  const hideAllCurrencies = useHideAllCurrencies()
+  const showAllCurrencies = useShowAllCurrencies()
 
   const [dialog, setDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
   const [error, setError] = useState<string | null>(null)
@@ -48,6 +52,28 @@ export function CurrenciesPage() {
     fn.mutate(id, { onError: (e) => setError(apiErrorMessage(e)) })
   }
 
+  // The bulk link acts on the non-locked globals: with any still enabled it
+  // disables all, otherwise it re-enables all. No non-locked globals = no link.
+  const bulkTargets = globals.filter((c) => c.id !== baseId && c.id !== profileId)
+  const anyGlobalEnabled = bulkTargets.some((c) => c.isHidden === 0)
+  const bulkAction =
+    bulkTargets.length === 0 ? null : (
+      <button
+        type="button"
+        className="cursor-pointer text-sm text-muted-foreground hover:text-foreground hover:underline"
+        onClick={() => {
+          setError(null)
+          ;(anyGlobalEnabled ? hideAllCurrencies : showAllCurrencies).mutate(undefined, {
+            onError: (e) => setError(apiErrorMessage(e)),
+          })
+        }}
+      >
+        {anyGlobalEnabled
+          ? t('classifications.currencies.pages.settings.disable_all')
+          : t('classifications.currencies.pages.settings.enable_all')}
+      </button>
+    )
+
   const closeDialog = () => setDialog({ open: false, currency: null })
 
   return (
@@ -62,9 +88,8 @@ export function CurrenciesPage() {
         items={items}
         sections={[
           { label: t('classifications.currencies.pages.settings.my_currencies'), match: (c) => c.scope === 'own' },
-          { label: t('classifications.currencies.pages.settings.global_currencies'), match: (c) => c.scope === 'global' },
+          { label: t('classifications.currencies.pages.settings.global_currencies'), match: (c) => c.scope === 'global', action: bulkAction },
         ]}
-        hasActions={(c) => c.scope === 'own'}
         meta={(c) => {
           const rate = c.scope === 'own' ? rateFor(c.id) : undefined
           return (
@@ -82,9 +107,30 @@ export function CurrenciesPage() {
             </>
           )
         }}
+        rowActions={(c) => {
+          if (c.scope === 'own') {
+            return undefined // default Edit/Delete menu; the switch covers hide
+          }
+          // Global rows carry a kebab too, so every row's switch sits on the
+          // same vertical line; its one action mirrors the switch.
+          const locked = c.id === baseId || c.id === profileId
+          return [
+            {
+              label: c.isHidden === 0 ? t('classifications.currencies.pages.settings.disable_currency') : t('classifications.currencies.pages.settings.enable_currency'),
+              disabled: locked,
+              title:
+                c.id === baseId
+                  ? t('classifications.currencies.pages.settings.locked_base')
+                  : c.id === profileId
+                    ? t('classifications.currencies.pages.settings.locked_profile')
+                    : undefined,
+              onSelect: () => mutate(c.isHidden === 0 ? hideCurrency : showCurrency, c.id),
+            },
+          ]
+        }}
         rowSwitch={(c): RowSwitchState => {
-          // One visible/hidden switch for every row, own customs included;
-          // the base and profile currencies must stay visible, so their
+          // One enabled/disabled switch for every row, own customs included;
+          // the base and profile currencies must stay enabled, so their
           // switches are locked.
           const locked = c.id === baseId || c.id === profileId
           return {
@@ -96,7 +142,7 @@ export function CurrenciesPage() {
                 : c.id === profileId
                   ? t('classifications.currencies.pages.settings.locked_profile')
                   : undefined,
-            ariaLabel: `show ${c.name}`,
+            ariaLabel: `enable ${c.name}`,
             onToggle: () => mutate(c.isHidden === 0 ? hideCurrency : showCurrency, c.id),
           }
         }}

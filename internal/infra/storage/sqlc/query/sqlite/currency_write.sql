@@ -97,5 +97,19 @@ ON CONFLICT (user_id, currency_id) DO NOTHING;
 -- name: DeleteHiddenCurrency :exec
 DELETE FROM users_hidden_currencies WHERE user_id = ? AND currency_id = ?;
 
+-- Bulk visibility over the GLOBAL currencies (customs keep their per-row
+-- preference). The two exclusion slots carry the base and profile ids.
+-- name: HideGlobalCurrencies :exec
+INSERT INTO users_hidden_currencies (user_id, currency_id, created_at)
+SELECT ?, c.id, ?
+FROM currencies c
+WHERE c.user_id IS NULL AND c.id != ? AND c.id != ?
+ON CONFLICT (user_id, currency_id) DO NOTHING;
+
+-- name: ShowGlobalCurrencies :exec
+DELETE FROM users_hidden_currencies
+WHERE users_hidden_currencies.user_id = ?
+  AND currency_id IN (SELECT c.id FROM currencies c WHERE c.user_id IS NULL);
+
 -- Profile defaults holding this currency id, for the archive guard (a
 -- default must stay pickable).

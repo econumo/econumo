@@ -26,6 +26,7 @@ type (
 	updateCurrencyDetailsP = sqlitegen.UpdateCurrencyDetailsParams
 	hideP                  = sqlitegen.InsertHiddenCurrencyParams
 	unhideP                = sqlitegen.DeleteHiddenCurrencyParams
+	hideAllP               = sqlitegen.HideGlobalCurrenciesParams
 )
 
 // manageQuerier is the engine-agnostic manage surface, in the canonical types.
@@ -45,6 +46,8 @@ type manageQuerier interface {
 	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error
 	DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error
+	HideGlobalCurrencies(ctx context.Context, db backend.DBTX, p hideAllP) error
+	ShowGlobalCurrencies(ctx context.Context, db backend.DBTX, userID string) error
 }
 
 // ManageRepo implements the currency feature's write-side port for per-user
@@ -150,6 +153,31 @@ func (r *ManageRepo) HideCurrency(ctx context.Context, userID, currencyID string
 
 // ShowCurrency clears a hidden-currency mark. Idempotent: deleting an absent
 // row affects zero rows without erroring.
+// HideGlobalCurrencies hides every global for userID except the two exclusion
+// slots (base + profile default; callers pad with the base id when the profile
+// default IS the base).
+func (r *ManageRepo) HideGlobalCurrencies(ctx context.Context, userID string, excludeIDs []string, now time.Time) error {
+	first := ""
+	second := ""
+	if len(excludeIDs) > 0 {
+		first = excludeIDs[0]
+		second = excludeIDs[0]
+	}
+	if len(excludeIDs) > 1 {
+		second = excludeIDs[1]
+	}
+	return r.q.HideGlobalCurrencies(ctx, r.db(ctx), hideAllP{
+		UserID:    userID,
+		CreatedAt: now,
+		ID:        first,
+		ID_2:      second,
+	})
+}
+
+func (r *ManageRepo) ShowGlobalCurrencies(ctx context.Context, userID string) error {
+	return r.q.ShowGlobalCurrencies(ctx, r.db(ctx), userID)
+}
+
 func (r *ManageRepo) ShowCurrency(ctx context.Context, userID, currencyID string) error {
 	return r.q.DeleteHiddenCurrency(ctx, r.db(ctx), unhideP{
 		UserID:     userID,
@@ -206,6 +234,14 @@ func (sqliteManageQuerier) DeleteHiddenCurrency(ctx context.Context, db backend.
 	return sqlitegen.New(db).DeleteHiddenCurrency(ctx, p)
 }
 
+func (sqliteManageQuerier) HideGlobalCurrencies(ctx context.Context, db backend.DBTX, p hideAllP) error {
+	return sqlitegen.New(db).HideGlobalCurrencies(ctx, p)
+}
+
+func (sqliteManageQuerier) ShowGlobalCurrencies(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).ShowGlobalCurrencies(ctx, userID)
+}
+
 // pgsqlManageQuerier is the thin conversion shim: whole-struct casts where the
 // generated types are field-identical, field-copy where they diverge.
 type pgsqlManageQuerier struct{}
@@ -251,4 +287,12 @@ func (pgsqlManageQuerier) InsertHiddenCurrency(ctx context.Context, db backend.D
 
 func (pgsqlManageQuerier) DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error {
 	return pgsqlgen.New(db).DeleteHiddenCurrency(ctx, pgsqlgen.DeleteHiddenCurrencyParams(p))
+}
+
+func (pgsqlManageQuerier) HideGlobalCurrencies(ctx context.Context, db backend.DBTX, p hideAllP) error {
+	return pgsqlgen.New(db).HideGlobalCurrencies(ctx, pgsqlgen.HideGlobalCurrenciesParams(p))
+}
+
+func (pgsqlManageQuerier) ShowGlobalCurrencies(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).ShowGlobalCurrencies(ctx, userID)
 }
