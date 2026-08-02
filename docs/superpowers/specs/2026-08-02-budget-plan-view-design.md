@@ -33,10 +33,19 @@ making income categories first-class budget elements.
 
 ### Income elements
 
-- `budget_elements.type` gains a new value for *income category* (the next unused
-  SMALLINT value; existing values envelope/category/tag stay untouched). No schema
-  migration — the column and the `UNIQUE(budget_id, external_id)` constraint already
-  accommodate it (a category is either income or expense, never both).
+- `budget_elements.type` gains two new values — *income category* and *income
+  envelope* — mirroring the existing envelope/category split (existing values
+  envelope/category/tag stay untouched). No schema migration — the column and the
+  `UNIQUE(budget_id, external_id)` constraint already accommodate them.
+- *Considered and rejected*: reusing the existing `category` type value and
+  deriving the side from the category's income flag. Rejected because (a) every
+  `get-budget` exclusion site (structure, limits/carryover queries, seeding) would
+  need category data joined in instead of a self-describing `type` predicate on
+  the elements table — fragile protection for a byte-frozen contract; and (b)
+  envelopes have no category to derive a side from, so income envelopes need a
+  stored side regardless — one consistent representation beats a split one. The
+  stored side cannot drift: a category's income/expense type is immutable
+  (`UpdateCategory` changes only name and icon).
 - **Seeding**: `seedCategoryElements` (budget creation) also seeds the members'
   income categories with the income type, positioned after their category order.
   The `SetLimit` self-heal path learns to create income-typed elements for income
