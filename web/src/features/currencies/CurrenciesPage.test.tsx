@@ -365,6 +365,8 @@ it('the dialog frames the rate as a live equation and sizes fields compactly', a
   const slider = screen.getByRole('slider', { hidden: true })
   expect(slider).toHaveAttribute('aria-valuenow', '2')
   expect(slider).toHaveAttribute('aria-valuemax', '8')
+  // one tick dot per selectable value, 0 through 8
+  expect(document.querySelectorAll('[data-slot="slider-tick"]')).toHaveLength(9)
 })
 
 it('the decimal-places slider prefills in edit mode and rides the update', async () => {

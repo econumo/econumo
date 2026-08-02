@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
@@ -94,9 +95,9 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose,
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-5 gap-3">
           {isNew ? (
-            <div className="flex flex-col gap-2">
+            <div className="col-span-3 flex flex-col gap-2">
               <Label htmlFor="currency-code">{t('classifications.currencies.forms.currency.code.label')}</Label>
               <Input
                 id="currency-code"
@@ -107,7 +108,7 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose,
               />
             </div>
           ) : null}
-          <div className="flex flex-col gap-2">
+          <div className="col-span-2 flex flex-col gap-2">
             <Label htmlFor="currency-symbol">
               {t('classifications.currencies.forms.currency.symbol.label')}
               <span className="font-normal text-muted-foreground"> ({t('classifications.currencies.forms.currency.symbol.optional')})</span>
@@ -128,6 +129,7 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose,
             <span className="text-sm text-muted-foreground">{fractionDigits}</span>
           </div>
           <Slider
+            ticks
             id="currency-fraction-digits"
             aria-label={t('classifications.currencies.forms.currency.fraction_digits.label')}
             min={0}
@@ -140,13 +142,19 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose,
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="currency-rate">{t('classifications.currencies.forms.currency.rate.label')}</Label>
-          <div className="flex items-center gap-2">
-            {baseCode ? <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">1 {baseCode} =</span> : null}
-            <Input id="currency-rate" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />
-            {(code || currency?.code) && baseCode ? (
-              <span className="shrink-0 text-sm text-muted-foreground">{code || currency?.code}</span>
+          <InputGroup>
+            {baseCode ? (
+              <InputGroupAddon align="inline-start">
+                <InputGroupText className="whitespace-nowrap">1 {baseCode} =</InputGroupText>
+              </InputGroupAddon>
             ) : null}
-          </div>
+            <InputGroupInput id="currency-rate" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />
+            {code || currency?.code ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupText>{code || currency?.code}</InputGroupText>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
           {rateError ? <p className="text-sm text-destructive">{rateError}</p> : null}
         </div>
       </form>
