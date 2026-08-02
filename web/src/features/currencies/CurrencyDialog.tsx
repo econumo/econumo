@@ -24,11 +24,13 @@ interface CurrencyDialogProps {
   currentRate?: string
   /** the instance base currency code, framing the rate equation */
   baseCode?: string
+  /** server refusal for the in-flight submit, shown inside the dialog */
+  serverError?: string | null
   onClose: () => void
   onSubmit: (form: CurrencyDialogForm) => void
 }
 
-export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose, onSubmit }: CurrencyDialogProps) {
+export function CurrencyDialog({ open, currency, currentRate, baseCode, serverError, onClose, onSubmit }: CurrencyDialogProps) {
   const { t } = useTranslation()
   const isNew = !currency
   const [code, setCode] = useState('')
@@ -156,6 +158,8 @@ export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose,
           </InputGroup>
           {rateError ? <p className="text-sm text-destructive">{rateError}</p> : null}
         </div>
+
+        {serverError ? <p className="text-sm text-destructive">{serverError}</p> : null}
       </form>
     </ResponsiveDialog>
   )

@@ -392,3 +392,24 @@ it('the decimal-places slider prefills in edit mode and rides the update', async
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.fractionDigits).toBe(3)
 })
+
+it('a server refusal on create shows INSIDE the dialog, not behind it', async () => {
+  server.use(
+    http.post('*/api/v1/currency/create-currency', () =>
+      HttpResponse.json(
+        { success: false, message: 'Form validation error', code: 400, errors: { code: ['Currency already exists'] } },
+        { status: 400 },
+      ),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Points')
+  await user.click(screen.getByRole('button', { name: /Create currency/ }))
+  await user.type(await screen.findByLabelText('Code'), 'PTS')
+  await user.type(screen.getByLabelText('Name'), 'Duplicate points')
+  await user.type(screen.getByLabelText('Exchange rate'), '2')
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  const dialog = await screen.findByRole('dialog')
+  expect(await within(dialog).findByText('Currency already exists')).toBeInTheDocument()
+})

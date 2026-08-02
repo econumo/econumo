@@ -74,7 +74,14 @@ export function CurrenciesPage() {
       </button>
     )
 
-  const closeDialog = () => setDialog({ open: false, currency: null })
+  const closeDialog = () => {
+    setDialog({ open: false, currency: null })
+    setError(null)
+  }
+  const openDialog = (currency: CurrencyListItemDto | null) => {
+    setError(null)
+    setDialog({ open: true, currency })
+  }
 
   return (
     <>
@@ -82,7 +89,7 @@ export function CurrenciesPage() {
         title={t('classifications.currencies.pages.settings.header')}
         heading={t('classifications.currencies.pages.settings.menu_item')}
         info={t('classifications.currencies.pages.settings.info')}
-        alert={error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
+        alert={error && !dialog.open ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
         createLabel={t('classifications.currencies.pages.settings.create_currency')}
         deleteTitle={t('classifications.currencies.modals.delete.title')}
         items={items}
@@ -146,8 +153,8 @@ export function CurrenciesPage() {
             onToggle: () => mutate(c.isHidden === 0 ? hideCurrency : showCurrency, c.id),
           }
         }}
-        onCreate={() => setDialog({ open: true, currency: null })}
-        onEdit={(c) => setDialog({ open: true, currency: c })}
+        onCreate={() => openDialog(null)}
+        onEdit={(c) => openDialog(c)}
         onDelete={(id) => mutate(deleteCurrency, id)}
       />
 
@@ -156,6 +163,7 @@ export function CurrenciesPage() {
         currency={dialog.currency}
         currentRate={dialog.currency ? rateFor(dialog.currency.id)?.rate : undefined}
         baseCode={baseCurrency?.code}
+        serverError={error}
         onClose={closeDialog}
         onSubmit={(form) => {
           setError(null)
