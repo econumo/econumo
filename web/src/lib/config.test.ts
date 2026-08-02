@@ -52,17 +52,17 @@ describe('locale and version', () => {
 
   it('ignores an unsupported stored locale', () => {
     // getItem/setItem JSON-encode under the raw 'locale' key (no prefix, see lib/storage.ts)
-    localStorage.setItem('locale', JSON.stringify('de'))
+    localStorage.setItem('locale', JSON.stringify('it'))
     expect(locale()).toBe('en')
   })
 
   it('detects the first supported language from navigator.languages', () => {
-    vi.stubGlobal('navigator', { ...navigator, languages: ['de-DE', 'ru-RU'], language: 'de-DE' })
+    vi.stubGlobal('navigator', { ...navigator, languages: ['it-IT', 'ru-RU'], language: 'it-IT' })
     expect(locale()).toBe('ru')
   })
 
   it('falls back to english when nothing is supported', () => {
-    vi.stubGlobal('navigator', { ...navigator, languages: ['de-DE', 'it-IT'], language: 'de-DE' })
+    vi.stubGlobal('navigator', { ...navigator, languages: ['it-IT', 'nl-NL'], language: 'it-IT' })
     expect(locale()).toBe('en')
   })
 })
