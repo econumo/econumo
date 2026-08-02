@@ -221,9 +221,10 @@ func LocationFromCtx(ctx context.Context) *time.Location {
 // and stores it in the request context. Entries are honored in header order
 // (q-values are ignored: browsers already order by preference); the primary
 // subtag is matched case-insensitively. No match or no header means the
-// context default ("en") applies. supported is passed in by the composition
-// root (e.g. i18n.Supported) so this package stays decoupled from the
-// translation catalogue.
+// context default ("en") applies, and an unservable preference is recorded on
+// the operation line as unsupported_language. supported is passed in by the
+// composition root (e.g. i18n.Supported) so this package stays decoupled from
+// the translation catalogue.
 func Language(supported []string) func(http.Handler) http.Handler {
 	set := make(map[string]bool, len(supported))
 	for _, s := range supported {
@@ -231,17 +232,46 @@ func Language(supported []string) func(http.Handler) http.Handler {
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var matched, unmatched string
 			for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
 				tag := strings.ToLower(strings.TrimSpace(strings.SplitN(part, ";", 2)[0]))
 				if primary, _, found := strings.Cut(tag, "-"); found {
 					tag = primary
 				}
 				if set[tag] {
-					next.ServeHTTP(w, r.WithContext(reqctx.WithLanguage(r.Context(), tag)))
-					return
+					matched = tag
+					break
 				}
+				if unmatched == "" && isLanguageSubtag(tag) {
+					unmatched = tag
+				}
+			}
+			// Demand signal for locales we don't ship yet: the caller's top
+			// preference we could not serve, recorded even when a lower-ranked
+			// entry did match — a non-English speaker almost always lists en as a
+			// fallback, so match-only logging would miss exactly who we want to count.
+			if unmatched != "" {
+				reqctx.AddLogAttr(r.Context(), "unsupported_language", unmatched)
+			}
+			if matched != "" {
+				r = r.WithContext(reqctx.WithLanguage(r.Context(), matched))
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// isLanguageSubtag reports whether tag is a bare 2-3 letter primary subtag. The
+// Accept-Language header is caller-controlled, so only this shape is recorded —
+// it keeps arbitrary bytes out of the logs and the dimension's cardinality bounded.
+func isLanguageSubtag(tag string) bool {
+	if len(tag) < 2 || len(tag) > 3 {
+		return false
+	}
+	for i := 0; i < len(tag); i++ {
+		if tag[i] < 'a' || tag[i] > 'z' {
+			return false
+		}
+	}
+	return true
 }
