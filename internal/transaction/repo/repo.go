@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -22,6 +23,7 @@ import (
 type (
 	txRow         = sqlitegen.Transaction
 	upsertParams  = sqlitegen.UpsertTransactionParams
+	linkParams    = sqlitegen.LinkTransactionToRecurringParams
 	listAccParams = sqlitegen.ListTransactionsByAccountParams
 	exportAcctRow = sqlitegen.ListExportAccountsForUserRow
 )
@@ -29,6 +31,7 @@ type (
 type querier interface {
 	GetTransactionByID(ctx context.Context, db backend.DBTX, id string) (txRow, error)
 	UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error
+	LinkTransactionToRecurring(ctx context.Context, db backend.DBTX, p linkParams) error
 	DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error
 	ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error)
 	ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error)
@@ -100,6 +103,17 @@ func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
 		Amount:             t.Amount,
 		AmountRecipient:    t.AmountRecipient,
 		RecurringID:        idPtr(t.RecurringID),
+	})
+}
+
+// LinkRecurring stamps recurring_id on an existing transaction (Save never
+// touches the column, so an explicit link needs this dedicated write).
+func (r *Repo) LinkRecurring(ctx context.Context, id, recurringID vo.Id, now time.Time) error {
+	rid := recurringID.String()
+	return r.q.LinkTransactionToRecurring(ctx, r.db(ctx), linkParams{
+		ID:          id.String(),
+		RecurringID: &rid,
+		UpdatedAt:   now,
 	})
 }
 
@@ -319,6 +333,9 @@ func (sqliteQuerier) GetTransactionByID(ctx context.Context, db backend.DBTX, id
 func (sqliteQuerier) UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error {
 	return sqlitegen.New(db).UpsertTransaction(ctx, p)
 }
+func (sqliteQuerier) LinkTransactionToRecurring(ctx context.Context, db backend.DBTX, p linkParams) error {
+	return sqlitegen.New(db).LinkTransactionToRecurring(ctx, p)
+}
 func (sqliteQuerier) DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteTransaction(ctx, id)
 }
@@ -337,6 +354,9 @@ func (pgsqlQuerier) GetTransactionByID(ctx context.Context, db backend.DBTX, id 
 }
 func (pgsqlQuerier) UpsertTransaction(ctx context.Context, db backend.DBTX, p upsertParams) error {
 	return pgsqlgen.New(db).UpsertTransaction(ctx, pgsqlgen.UpsertTransactionParams(p))
+}
+func (pgsqlQuerier) LinkTransactionToRecurring(ctx context.Context, db backend.DBTX, p linkParams) error {
+	return pgsqlgen.New(db).LinkTransactionToRecurring(ctx, pgsqlgen.LinkTransactionToRecurringParams(p))
 }
 func (pgsqlQuerier) DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteTransaction(ctx, id)

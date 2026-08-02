@@ -28,6 +28,12 @@ ON CONFLICT (id) DO UPDATE SET
     amount               = excluded.amount,
     amount_recipient     = excluded.amount_recipient;
 
+-- name: LinkTransactionToRecurring :exec
+-- The one write that touches recurring_id on an existing row: an explicit
+-- "make recurring from this transaction" link. UpsertTransaction deliberately
+-- never updates the column, so the link needs its own statement.
+UPDATE transactions SET recurring_id = ?, updated_at = ? WHERE id = ?;
+
 -- name: DeleteTransaction :exec
 DELETE FROM transactions WHERE id = ?;
 

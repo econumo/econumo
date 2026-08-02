@@ -8794,6 +8794,10 @@ const docTemplate = `{
                 "schedule": {
                     "type": "string"
                 },
+                "sourceTransactionId": {
+                    "description": "SourceTransactionId, when set, is an existing transaction the template is\ncreated FROM; it is linked to the new template (its recurringId) in the\nsame write, so the source immediately reads as the series' first instance.",
+                    "type": "string"
+                },
                 "tagId": {
                     "type": "string"
                 },

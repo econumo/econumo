@@ -28,6 +28,30 @@ func init() {
 		}
 	}})
 
+	// The create-from-transaction flow: the source transaction is linked to the
+	// new template in the same write (its recurringId points at the template).
+	register(Scenario{Name: "recurring_create_from_transaction", Calls: func() []Call {
+		const opTx = "e0000000-0000-0000-0000-0000000000c1"
+		const opCreate = "e0000000-0000-0000-0000-0000000000c2"
+		var txID string
+		return []Call{
+			{Label: "create-source-transaction", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": opTx, "type": "expense", "amount": "50.00",
+					"accountId": OwnerAccount, "categoryId": CatFood,
+					"date": "2026-07-31 10:00:00", "description": "rent",
+				}, CaptureIDInto: &txID},
+			{Label: "create-recurring-from-transaction", Method: "POST", Path: "/api/v1/recurring/create-recurring-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": opCreate, "type": "expense", "amount": "50.00",
+					"accountId": OwnerAccount, "categoryId": CatFood,
+					"schedule": "monthly", "nextPaymentAt": "2026-08-31 00:00:00",
+					"description": "rent", "sourceTransactionId": &txID,
+				}},
+			{Label: "transaction-list-after-link", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "owner"},
+		}
+	}})
+
 	register(Scenario{Name: "recurring_post", Calls: func() []Call {
 		const opCreate = "e0000000-0000-0000-0000-0000000000b1"
 		const opTx = "e0000000-0000-0000-0000-0000000000b2"

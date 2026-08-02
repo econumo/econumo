@@ -53,6 +53,10 @@ type CreateRecurringTransactionRequest struct {
 	Description        *string       `json:"description"`
 	Schedule           string        `json:"schedule"`
 	NextPaymentAt      string        `json:"nextPaymentAt"`
+	// SourceTransactionId, when set, is an existing transaction the template is
+	// created FROM; it is linked to the new template (its recurringId) in the
+	// same write, so the source immediately reads as the series' first instance.
+	SourceTransactionId *string `json:"sourceTransactionId"`
 }
 
 // Validate enforces tier-1 NotBlank on id/type/amount/accountId/schedule/nextPaymentAt

@@ -118,6 +118,62 @@ func TestTransactionRepo_SaveGetRoundTrip_Transfer(t *testing.T) {
 	}
 }
 
+// seedRecurringTemplate inserts a template row directly: recurring_id on
+// transactions is a real FK, so LinkRecurring needs a target to point at.
+func seedRecurringTemplate(t *testing.T, db *dbtest.DB, id, userID, accountID string) {
+	t.Helper()
+	q := db.Rebind(`INSERT INTO recurring_transactions
+		(id, user_id, account_id, type, amount, description, schedule, next_payment_at, scheduled_day, created_at, updated_at)
+		VALUES (?, ?, ?, 0, '10', 'rent', 'monthly', ?, 1, ?, ?)`)
+	if _, err := db.Raw.Exec(q, id, userID, accountID, fixedTime, fixedTime, fixedTime); err != nil {
+		t.Fatalf("seed recurring template: %v", err)
+	}
+}
+
+func TestTransactionRepo_LinkRecurring(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	const txID = "7c000000-0000-0000-0000-000000000009"
+	const rtID = "7c000000-0000-0000-0000-00000000000a"
+	seedRecurringTemplate(t, db, rtID, userA, acct1)
+	if err := repo.Save(ctx, expense(txID, acct1, "10.5", fixedTime)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	linkedAt := fixedTime.Add(time.Hour)
+	if err := repo.LinkRecurring(ctx, vo.MustParseId(txID), vo.MustParseId(rtID), linkedAt); err != nil {
+		t.Fatalf("LinkRecurring: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, vo.MustParseId(txID))
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.RecurringID == nil || got.RecurringID.String() != rtID {
+		t.Fatalf("RecurringID = %v, want %s", got.RecurringID, rtID)
+	}
+	if !got.UpdatedAt.Equal(linkedAt) {
+		t.Errorf("UpdatedAt = %v, want %v", got.UpdatedAt, linkedAt)
+	}
+
+	// An ordinary Save must not clear the link (upsert skips recurring_id).
+	got.Update(model.NewState{
+		ID: got.ID, UserID: got.UserID, Type: got.Type, AccountID: got.AccountID,
+		Amount: "11.5", Description: "edited", SpentAt: got.SpentAt,
+		CreatedAt: got.CreatedAt, UpdatedAt: got.UpdatedAt,
+	}, linkedAt.Add(time.Hour))
+	if err := repo.Save(ctx, got); err != nil {
+		t.Fatalf("Save after link: %v", err)
+	}
+	again, err := repo.GetByID(ctx, vo.MustParseId(txID))
+	if err != nil {
+		t.Fatalf("GetByID after edit: %v", err)
+	}
+	if again.RecurringID == nil || again.RecurringID.String() != rtID {
+		t.Fatalf("edit cleared the link: RecurringID = %v", again.RecurringID)
+	}
+}
+
 func TestTransactionRepo_GetByID_NotFound(t *testing.T) {
 	repo, _ := setup(t)
 	_, err := repo.GetByID(context.Background(), vo.NewId())

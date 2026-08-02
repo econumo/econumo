@@ -27,6 +27,22 @@ describe('useRecurringForm', () => {
     expect(s.schedule).toBe('monthly')
     expect(s.nextPaymentAt).toBe('2026-09-17 00:00:00')
     expect(s.anchorDate).toBe(tx.date)
+    // the source travels with the payload so the backend links it to the template
+    expect(s.sourceTransactionId).toBe('t1')
+    expect(buildRecurringPayload(s).sourceTransactionId).toBe('t1')
+  })
+
+  it('only the from-transaction flow sends sourceTransactionId', () => {
+    const scratch = initialRecurringFormState({}, accounts)
+    expect(scratch.sourceTransactionId).toBeNull()
+    expect('sourceTransactionId' in buildRecurringPayload(scratch)).toBe(false)
+
+    const rt = {
+      id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '50.5',
+      categoryId: 'c1', payeeId: null, tagId: null, description: 'rent', schedule: 'weekly', nextPaymentAt: '2026-08-31 00:00:00',
+    } as RecurringDto
+    const edit = initialRecurringFormState({ recurring: rt }, accounts)
+    expect('sourceTransactionId' in buildRecurringPayload(edit)).toBe(false)
   })
 
   it('nextFromAnchor steps one interval, clamping month ends', () => {
