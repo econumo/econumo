@@ -196,6 +196,10 @@ the plan sheet.
   simply the current month. The first visible month persists in the budget store
   and is restored on return.
 - **Current month column** is visually highlighted.
+- **Hard layout invariant: income on top, expenses under it — always.** Every row
+  (folder, envelope, category, tag) renders in exactly one of the two areas,
+  determined solely by its side; the two areas never interleave, whatever folders
+  or envelopes exist and however they are ordered.
 - Sections top to bottom: **Income** — a single fixed section header (styled like a
   folder, but synthetic: no `budget_folders` row, so it cannot be renamed, deleted,
   or receive expense elements) holding income-sided folders, income envelopes
