@@ -60,6 +60,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   alert?: ReactNode
   createLabel: string
   deleteTitle: string
+  /** badge on archived rows; per-list because languages inflect it per noun */
+  archivedLabel: string
   items: T[]
   /** localStorage key for the active-only filter; absent = no filter control */
   storageKey?: string
@@ -93,6 +95,7 @@ export function ClassificationList<T extends ClassificationItem>({
   alert,
   createLabel,
   deleteTitle,
+  archivedLabel,
   items,
   storageKey,
   analyticsType,
@@ -281,7 +284,7 @@ export function ClassificationList<T extends ClassificationItem>({
             {item.name}
           </span>
           {item.isArchived === 1 ? (
-            <span className="text-xs text-muted-foreground">{t('classifications.categories.pages.settings.archived_item')}</span>
+            <span className="text-xs text-muted-foreground">{archivedLabel}</span>
           ) : null}
           {meta?.(item)}
         </span>

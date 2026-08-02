@@ -97,6 +97,7 @@ export function CurrenciesPage() {
         alert={error && !dialog.open ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
         createLabel={t('classifications.currencies.pages.settings.create_currency')}
         deleteTitle={t('classifications.currencies.modals.delete.title')}
+        archivedLabel="" // never rendered: CurrencyRow pins isArchived to 0
         items={items}
         analyticsType="currency"
         sections={[

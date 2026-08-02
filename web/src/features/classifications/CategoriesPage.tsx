@@ -36,6 +36,7 @@ export function CategoriesPage() {
         info={t('classifications.categories.pages.settings.info')}
         createLabel={t('classifications.categories.pages.settings.create_category')}
         deleteTitle={t('classifications.categories.modals.delete.title')}
+        archivedLabel={t('classifications.categories.pages.settings.archived_item')}
         items={own}
         storageKey="settings.categories.activeOnly"
         analyticsType="category"
