@@ -352,6 +352,19 @@ it("with every non-locked global disabled the link flips to 'Enable all' posting
   await waitFor(() => expect(called).toBe(true))
 })
 
+it('with no own currencies the globals section still carries the bulk link', async () => {
+  server.use(
+    ...coreHandlers({
+      currencies: [fixtureUsd, fixtureEur, fixtureGbp],
+      rates: defaultRates,
+    }),
+  )
+  renderPage()
+  await screen.findByText('Euro')
+  expect(screen.queryByText('My currencies')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Disable all' })).toBeInTheDocument()
+})
+
 it('the dialog frames the rate as a live equation and sizes fields compactly', async () => {
   const user = userEvent.setup()
   renderPage()
