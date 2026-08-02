@@ -20,7 +20,7 @@ making income categories first-class budget elements.
 
 | Topic | Decision |
 |---|---|
-| Income rows | Per income category, groupable into envelopes (shared budgets need e.g. one "Salaries" envelope across members) |
+| Income rows | Per income category, groupable into envelopes (shared budgets need e.g. one "Salaries" envelope across members). All income rows live under a single fixed "Income" section — rendered like a folder but synthetic, not a `budget_folders` row; user-created folders stay expense-only |
 | Row structure | Mirrors the budget page exactly (folders, envelopes with children, uncategorized, archived) |
 | Placement | A Budget \| Plan toggle on the existing budget page |
 | Visible window | Responsive: as many month columns as fit the screen (min 3, max 12); left/right arrows shift the first month; no horizon selector |
@@ -144,10 +144,12 @@ the plan sheet.
   the current month first). The first visible month persists in the budget store
   and is restored on return.
 - **Current month column** is visually highlighted.
-- Sections top to bottom: **Incomes** (envelopes expandable to children, then
-  standalone income categories), **expense structure** exactly as the budget page
-  orders it (folders as section headers, elements, uncategorized, archived), then
-  the **Totals block**.
+- Sections top to bottom: **Income** — a single fixed section header (styled like a
+  folder, but synthetic: no `budget_folders` row, so it cannot be renamed, deleted,
+  or receive expense elements) holding income envelopes (expandable to children)
+  and standalone income categories; then the **expense structure** exactly as the
+  budget page orders it (folders as section headers, elements, uncategorized,
+  archived); then the **Totals block**.
 
 ### Cells
 
@@ -222,7 +224,8 @@ homogeneity error) go into **every** catalogue in `locales/`; the parity guards
 
 ## Out of scope (v1)
 
-- Drag re-ordering of income rows; folders for income rows.
+- Drag re-ordering of income rows; user-created folders for income rows (the single
+  synthetic "Income" section is the only income-side grouping above envelopes).
 - Per-cell carryover ("available") display.
 - Server-side totals.
 - Any change to the budget page's single-month view or its wire contract.
