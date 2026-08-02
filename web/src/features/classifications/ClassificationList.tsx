@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { ArrowDownUp, GripVertical, MoreVertical, Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { compareNames } from '@/lib/collate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -109,7 +110,7 @@ export function ClassificationList<T extends ClassificationItem>({
   onToggleArchive,
   onOrder,
 }: ClassificationListProps<T>) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [sortOpen, setSortOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
@@ -472,7 +473,9 @@ export function ClassificationList<T extends ClassificationItem>({
           open={sortOpen}
           onClose={() => setSortOpen(false)}
           onPick={(direction) => {
-            const ordered = [...items].sort((a, b) => (direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)))
+            const ordered = [...items].sort((a, b) =>
+              direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language),
+            )
             commitOrder(ordered.map((i) => i.id))
             setSortOpen(false)
           }}
