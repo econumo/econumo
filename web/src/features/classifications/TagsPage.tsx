@@ -40,6 +40,7 @@ export function TagsPage() {
         deleteTitle={t('classifications.tags.modals.delete.title')}
         items={own}
         storageKey="settings.tags.activeOnly"
+        analyticsType="tag"
         onCreate={() => setDialog({ open: true, tag: null })}
         onEdit={(tag) => setDialog({ open: true, tag })}
         onDelete={(id) => deleteTag.mutate(id)}

@@ -41,6 +41,7 @@ export function PayeesPage() {
         deleteTitle={t('classifications.payees.modals.delete.title')}
         items={own}
         storageKey="settings.payees.activeOnly"
+        analyticsType="payee"
         onCreate={() => setDialog({ open: true, payee: null })}
         onEdit={(payee) => setDialog({ open: true, payee })}
         onDelete={(id) => deletePayee.mutate(id)}

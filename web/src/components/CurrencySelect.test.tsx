@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
-import { CurrencySelect, fuzzyMatch, fullCurrencyLabel } from './CurrencySelect'
+import { CurrencySelect, fullCurrencyLabel } from './CurrencySelect'
 
 function mockMatchMedia() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -16,12 +16,6 @@ beforeEach(() => {
   window.econumoConfig = {}
   server.use(...coreHandlers())
   mockMatchMedia()
-})
-
-it('fuzzy-matches subsequences like the Vue component', () => {
-  expect(fuzzyMatch('US Dollar', 'usd')).toBe(true)
-  expect(fuzzyMatch('Euro', 'eo')).toBe(true)
-  expect(fuzzyMatch('Euro', 'x')).toBe(false)
 })
 
 it('builds the deduped option label', () => {

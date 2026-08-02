@@ -93,6 +93,7 @@ export function CurrenciesPage() {
         createLabel={t('classifications.currencies.pages.settings.create_currency')}
         deleteTitle={t('classifications.currencies.modals.delete.title')}
         items={items}
+        analyticsType="currency"
         sections={[
           { label: t('classifications.currencies.pages.settings.my_currencies'), match: (c) => c.scope === 'own' },
           { label: t('classifications.currencies.pages.settings.global_currencies'), match: (c) => c.scope === 'global', action: bulkAction },

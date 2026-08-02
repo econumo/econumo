@@ -56,6 +56,19 @@ it('groups categories under expense/income headers', async () => {
   expect(screen.getByText('Income')).toBeInTheDocument()
 })
 
+it('search drops empty sections and their captions', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Food')
+  await user.click(screen.getByRole('button', { name: 'Search' }))
+  await user.type(screen.getByRole('textbox', { name: 'Search' }), 'sal')
+  expect(screen.getByText('Salary')).toBeInTheDocument()
+  expect(screen.queryByText('Food')).not.toBeInTheDocument()
+  // a single remaining group renders without captions
+  expect(screen.queryByText('Expense')).not.toBeInTheDocument()
+  expect(screen.queryByText('Income')).not.toBeInTheDocument()
+})
+
 it('archiving under the active-only filter keeps the row on screen until the next visit', async () => {
   server.use(
     http.post('*/api/v1/category/archive-category', () => HttpResponse.json({ success: true, message: '', data: {} })),

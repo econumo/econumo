@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react'
-import { ArrowDownUp, GripVertical, MoreVertical, Plus } from 'lucide-react'
+import { useRef, useState, type ReactNode } from 'react'
+import { ArrowDownUp, GripVertical, MoreVertical, Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -10,6 +11,8 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { EntityIcon } from '@/components/EntityIcon'
 import { SortDialog } from '@/components/SortDialog'
 import { SortableList, type SortableHandleProps } from '@/components/SortableList'
+import { fuzzyMatch } from '@/lib/fuzzy'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { getChangedPositions } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -60,6 +63,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   items: T[]
   /** localStorage key for the active-only filter; absent = no filter control */
   storageKey?: string
+  /** entity name reported with the search analytics event */
+  analyticsType: string
   /** optional visual grouping (e.g. category income/expense) */
   sections?: ClassificationSection<T>[]
   showIcon?: boolean
@@ -90,6 +95,7 @@ export function ClassificationList<T extends ClassificationItem>({
   deleteTitle,
   items,
   storageKey,
+  analyticsType,
   sections,
   showIcon,
   meta,
@@ -114,11 +120,24 @@ export function ClassificationList<T extends ClassificationItem>({
   const [activeOnly, setActiveOnly] = useState<boolean>(() =>
     storageKey ? ((getItem(storageKey) as boolean | null) ?? true) : false,
   )
+  const [query, setQuery] = useState('')
+  // desktop only: the field is collapsed behind the magnifier until asked for
+  const [searchOpen, setSearchOpen] = useState(false)
+  // one analytics event per visit, not one per keystroke
+  const searchTracked = useRef(false)
 
   const toggleActiveOnly = (value: boolean) => {
     setActiveOnly(value)
     if (storageKey) {
       setItem(storageKey, value)
+    }
+  }
+
+  const handleSearch = (value: string) => {
+    setQuery(value)
+    if (value.trim() && !searchTracked.current) {
+      searchTracked.current = true
+      trackEvent(METRICS.CLASSIFICATION_SEARCH, { type: analyticsType })
     }
   }
 
@@ -142,7 +161,10 @@ export function ClassificationList<T extends ClassificationItem>({
     }
   }
 
-  const visible = activeOnly ? items.filter((item) => item.isArchived === 0 || stickyArchivedIds.has(item.id)) : items
+  const active = activeOnly ? items.filter((item) => item.isArchived === 0 || stickyArchivedIds.has(item.id)) : items
+  const trimmedQuery = query.trim()
+  const searching = trimmedQuery.length > 0
+  const visible = searching ? active.filter((item) => fuzzyMatch(item.name, trimmedQuery)) : active
 
   // Every list is group-shaped (tags/payees get one implicit group); captions
   // appear only when more than one group is actually visible.
@@ -182,6 +204,40 @@ export function ClassificationList<T extends ClassificationItem>({
     >
       <ArrowDownUp className="size-4 text-econumo-purple" />
       {t('common.list.order_list')}
+    </Button>
+  )
+
+  const searchField = (className: string, autoFocus?: boolean) => (
+    <Input
+      aria-label={t('common.list.search')}
+      placeholder={t('common.list.search')}
+      className={`border-0 bg-econumo-card shadow-none ${className}`}
+      value={query}
+      autoFocus={autoFocus}
+      onChange={(e) => handleSearch(e.target.value)}
+      // an empty field that lost focus has nothing to show for the space it takes
+      onBlur={() => !query.trim() && setSearchOpen(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          handleSearch('')
+          setSearchOpen(false)
+        }
+      }}
+    />
+  )
+
+  const searchToggle = searchOpen ? (
+    searchField('w-56', true)
+  ) : (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={t('common.list.search')}
+      title={t('common.list.search')}
+      onClick={() => setSearchOpen(true)}
+    >
+      <Search className="size-4" />
     </Button>
   )
 
@@ -290,6 +346,7 @@ export function ClassificationList<T extends ClassificationItem>({
       title={title}
       heading={heading}
       backTo={RouterPage.SETTINGS}
+      titleAction={isCompact ? undefined : searchToggle}
       actions={
         isCompact ? (
           <Button type="button" size="icon" aria-label={createLabel} title={createLabel} onClick={onCreate}>
@@ -311,15 +368,22 @@ export function ClassificationList<T extends ClassificationItem>({
     >
       {info ? <InfoBox>{info}</InfoBox> : null}
       {alert ?? null}
-      {isCompact && (orderable || filterControl) ? (
-        // compact toolbar row: reorder on the left, the active-only filter on the right
-        <div className="flex items-center justify-between pb-1">
-          {orderable ? reorderButton : <span />}
-          {filterControl}
+      {isCompact ? (
+        // compact toolbar: full-width search, then reorder on the left and the active-only filter on the right
+        <div className="flex flex-col gap-2 pb-1">
+          {searchField('')}
+          {orderable || filterControl ? (
+            <div className="flex items-center justify-between">
+              {orderable ? reorderButton : <span />}
+              {filterControl}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {visible.length === 0 ? (
-        <p className="px-1 py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</p>
+        <p className="px-1 py-2 text-sm text-muted-foreground">
+          {searching ? t('common.list.search_empty') : t('common.list.list_empty')}
+        </p>
       ) : (
         visibleSections.map((section) => {
           const sectionItems = section.items
@@ -334,7 +398,8 @@ export function ClassificationList<T extends ClassificationItem>({
                 </div>
               ) : null}
               {onOrder ? (
-                <SortableList items={sectionItems} onReorder={commitOrder} renderItem={(item, handle) => renderRow(item, handle)} />
+                // reordering a fuzzy-filtered subset is disorienting — handles return when the query clears
+                <SortableList items={sectionItems} onReorder={commitOrder} renderItem={(item, handle) => renderRow(item, searching ? undefined : handle)} />
               ) : (
                 sectionItems.map((item) => <div key={item.id}>{renderRow(item)}</div>)
               )}
