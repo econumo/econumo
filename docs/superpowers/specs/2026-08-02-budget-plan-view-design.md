@@ -183,6 +183,25 @@ the plan sheet.
   month ≥ budget start). Past months remain editable, months before the budget
   start are read-only. Envelope children and Uncategorized are actual-only.
 
+### Row density controls
+
+Large category sets (e.g. ~30 income categories spanning two countries) must not
+drown the sheet. Three complementary mechanisms, all client-side:
+
+- **Combine**: envelopes — the primary tool; children stay collapsed until
+  expanded.
+- **Collapse**: the Income section header and expense folders fold/unfold in the
+  plan sheet, fold state persisted (extending the budget store's existing
+  fold-state pattern).
+- **Hide**: a **"hide empty rows"** toggle hides any row (income and expense
+  alike) with no actual and no planned value in every fetched month. Dormant
+  categories disappear automatically and return the moment they get activity or a
+  plan. While on, each section header shows an "N hidden — show" affordance so a
+  dormant category can be revealed to start planning it. Persisted per user,
+  default off; toggling fires a `METRICS` event.
+
+Archived categories keep today's treatment (tucked into the Archived section).
+
 ### Keyboard interaction
 
 The sheet follows the ARIA grid pattern with a roving cell selection:
