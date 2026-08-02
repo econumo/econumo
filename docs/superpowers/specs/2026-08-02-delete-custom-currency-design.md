@@ -77,7 +77,17 @@ The budget, budget-element and profile-currency terms of the usage count all
 reference live data and must keep blocking; only the `accounts` term gains
 the `is_deleted = 0` filter. That one predicate is the actual bug fix.
 
-Global currencies are unaffected: they have no owner and no delete action.
+**Only the owner's own custom currencies are deletable.** A global currency
+can never be deleted, by anyone — nor can another user's custom. This is
+already enforced and does not change: `DeleteCurrency` calls `ownedRecord`
+(`internal/currency/manage.go:111`) first, which rejects a row with
+`user_id IS NULL` or a foreign owner with 403 `AccessDenied` before the usage
+check ever runs. `is_deleted` therefore only ever becomes 1 on a row that has
+an owner, and the rewritten partial unique index — predicated on
+`user_id IS NOT NULL` — is unaffected on the global side.
+
+Globals remain hideable per user through `users_hidden_currencies`, exactly
+as today. Hide is the only lifecycle action a global has.
 
 ## Migration
 
@@ -150,6 +160,9 @@ toggle on own customs later is a pure UI change requiring no data work.
   element or profile currency does not.
 - `EnsureUsable` rejects a deleted own custom (guards the REST and MCP
   create paths).
+- Deleting a global currency, and deleting another user's custom, both still
+  return 403 and leave `is_deleted` at 0. A regression here would let one
+  user remove a currency out from under every other user on the instance.
 - Creating a currency reusing a deleted code succeeds, and the rewritten
   partial unique index still rejects a duplicate among live rows.
 - `apiparity`: a scenario for deleting a currency used only by a soft-deleted
