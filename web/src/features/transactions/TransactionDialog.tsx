@@ -105,6 +105,16 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     })
   }
 
+  const setSenderAccount = (id: string | null) => {
+    const sender = accounts.find((a) => a.id === id)
+    patch({
+      accountId: id,
+      // the recipient amount is derived from the SENDER's currency too — a
+      // stale value would silently mis-fund the recipient on a currency change
+      amountRecipient: recomputeRecipientAmount(form.amount, sender, accountRecipient, exchangeFn),
+    })
+  }
+
   const amountErrors = (raw: string, withFormula: boolean): string | null => {
     if (!isNotEmpty(raw)) {
       return t('common.validation.required_field')
@@ -316,7 +326,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                   <EntitySelect
                     aria-label="from account"
                     value={form.accountId}
-                    onChange={(id) => patch({ accountId: id })}
+                    onChange={setSenderAccount}
                     options={selectableAccounts.filter((a) => a.id !== form.accountRecipientId).map(accountToOption)}
                   />
                 </SelectCard>

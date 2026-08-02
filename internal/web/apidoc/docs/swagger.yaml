@@ -438,6 +438,26 @@ definitions:
       item:
         $ref: '#/definitions/model.CategoryResult'
     type: object
+  model.CreateCurrencyRequest:
+    properties:
+      code:
+        type: string
+      fractionDigits:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      rate:
+        type: string
+      symbol:
+        type: string
+    type: object
+  model.CreateCurrencyResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.CurrencyListItem'
+    type: object
   model.CreateEnvelopeRequest:
     properties:
       budgetId:
@@ -601,6 +621,23 @@ definitions:
       startBalance:
         type: string
     type: object
+  model.CurrencyListItem:
+    properties:
+      code:
+        type: string
+      fractionDigits:
+        type: integer
+      id:
+        type: string
+      isHidden:
+        type: integer
+      name:
+        type: string
+      scope:
+        type: string
+      symbol:
+        type: string
+    type: object
   model.CurrencyRateResult:
     properties:
       baseCurrencyId:
@@ -693,6 +730,13 @@ definitions:
         type: string
     type: object
   model.DeleteConnectionResult:
+    type: object
+  model.DeleteCurrencyRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteCurrencyResult:
     type: object
   model.DeleteEnvelopeRequest:
     properties:
@@ -832,7 +876,7 @@ definitions:
     properties:
       items:
         items:
-          $ref: '#/definitions/model.CurrencyResult'
+          $ref: '#/definitions/model.CurrencyListItem'
         type: array
     type: object
   model.GetCurrencyRateListResult:
@@ -922,6 +966,15 @@ definitions:
         type: string
     type: object
   model.GrantAccountAccessResult:
+    type: object
+  model.HideAllCurrenciesResult:
+    type: object
+  model.HideCurrencyRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.HideCurrencyResult:
     type: object
   model.HideFolderRequest:
     properties:
@@ -1382,6 +1435,15 @@ definitions:
       user:
         $ref: '#/definitions/model.UserResult'
     type: object
+  model.ShowAllCurrenciesResult:
+    type: object
+  model.ShowCurrencyRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ShowCurrencyResult:
+    type: object
   model.ShowFolderRequest:
     properties:
       id:
@@ -1599,6 +1661,24 @@ definitions:
     properties:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
+    type: object
+  model.UpdateCustomCurrencyRequest:
+    properties:
+      fractionDigits:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      rate:
+        type: string
+      symbol:
+        type: string
+    type: object
+  model.UpdateCustomCurrencyResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.CurrencyListItem'
     type: object
   model.UpdateEnvelopeRequest:
     properties:
@@ -3971,6 +4051,102 @@ paths:
       summary: List connections
       tags:
       - Connection
+  /api/v1/currency/create-currency:
+    post:
+      consumes:
+      - application/json
+      description: Creates a per-user custom currency. Idempotent on the request id.
+      parameters:
+      - description: Create currency request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateCurrencyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a custom currency
+      tags:
+      - Currency
+  /api/v1/currency/delete-currency:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a custom currency. Requires ownership; fails if the currency
+        is still referenced by an account, budget, budget element, or a user's profile
+        currency.
+      parameters:
+      - description: Delete currency request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteCurrencyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a custom currency
+      tags:
+      - Currency
   /api/v1/currency/get-currency-list:
     get:
       description: Returns all currencies ordered by ISO code. The name is the English
@@ -4027,6 +4203,214 @@ paths:
       security:
       - Bearer: []
       summary: Get the latest currency rates
+      tags:
+      - Currency
+  /api/v1/currency/hide-all-currencies:
+    post:
+      description: Hides every global currency for the caller in one step; the base
+        currency and the caller's profile currency stay visible. Custom currencies
+        keep their per-currency preference.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.HideAllCurrenciesResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Hide all global currencies
+      tags:
+      - Currency
+  /api/v1/currency/hide-currency:
+    post:
+      consumes:
+      - application/json
+      description: Removes a global currency from the caller's dropdowns. The base
+        currency and the caller's own profile currency cannot be hidden.
+      parameters:
+      - description: Hide currency request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.HideCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.HideCurrencyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Hide a global currency
+      tags:
+      - Currency
+  /api/v1/currency/show-all-currencies:
+    post:
+      description: Clears the caller's hidden flag on every global currency. Custom
+        currencies keep their per-currency preference.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ShowAllCurrenciesResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Show all global currencies
+      tags:
+      - Currency
+  /api/v1/currency/show-currency:
+    post:
+      consumes:
+      - application/json
+      description: Clears a caller's hide flag on a global currency.
+      parameters:
+      - description: Show currency request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ShowCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ShowCurrencyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Show a hidden global currency
+      tags:
+      - Currency
+  /api/v1/currency/update-currency:
+    post:
+      consumes:
+      - application/json
+      description: Full replace of a custom currency's name, symbol and fraction digits.
+        Requires ownership; the code is immutable.
+      parameters:
+      - description: Update currency request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateCustomCurrencyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateCustomCurrencyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a custom currency
       tags:
       - Currency
   /api/v1/payee/archive-payee:

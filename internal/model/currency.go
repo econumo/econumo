@@ -52,3 +52,27 @@ type RateInput struct {
 	Rate string
 	Date time.Time
 }
+
+// CurrencyRecord is one currencies row with ownership and archival state.
+// UserID nil = global (admin-managed); non-nil = custom, owned by that user.
+type CurrencyRecord struct {
+	ID             string
+	Code           string
+	Symbol         string
+	Name           *string
+	FractionDigits int
+	UserID         *string
+	// Rate is the fixed conversion rate for customs ("X per 1 base unit");
+	// always nil for globals. NULL customs predate the mandatory-rate rule.
+	Rate      *string
+	CreatedAt time.Time
+}
+
+// BaseCurrency is the instance base currency, resolved at boot: every stored
+// rate is denominated "X units per 1 base unit". Constructing one is the
+// composition root's job, so consumers can trust ID references an existing
+// global currency row.
+type BaseCurrency struct {
+	ID   string
+	Code string
+}

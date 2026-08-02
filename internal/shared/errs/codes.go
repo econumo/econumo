@@ -61,6 +61,16 @@ const (
 	CodeTagAlreadyExists = "tag.already_exists"
 	CodeTagListEmpty     = "tag.list_empty"
 
+	CodeCurrencyAlreadyExists       = "currency.already_exists"
+	CodeCurrencyNameLength          = "currency.name_length"
+	CodeCurrencySymbolLength        = "currency.symbol_length"
+	CodeCurrencyFractionDigitsRange = "currency.fraction_digits_range"
+	CodeCurrencyRateInvalid         = "currency.rate_invalid"
+	CodeCurrencyNotAvailable        = "currency.not_available"
+	CodeCurrencyInUse               = "currency.in_use"
+	CodeCurrencyBaseImmutable       = "currency.base_immutable"
+	CodeCurrencyCannotBeHidden      = "currency.cannot_be_hidden"
+
 	CodeTokenNameLength            = "token.name_length"
 	CodeTokenInvalidExpirationDate = "token.invalid_expiration_date"
 	CodeTokenExpirationInFuture    = "token.expiration_in_future"
@@ -135,6 +145,16 @@ var AllCodes = []string{
 	CodeTagNameLength,
 	CodeTagAlreadyExists,
 	CodeTagListEmpty,
+
+	CodeCurrencyAlreadyExists,
+	CodeCurrencyNameLength,
+	CodeCurrencySymbolLength,
+	CodeCurrencyFractionDigitsRange,
+	CodeCurrencyRateInvalid,
+	CodeCurrencyNotAvailable,
+	CodeCurrencyInUse,
+	CodeCurrencyBaseImmutable,
+	CodeCurrencyCannotBeHidden,
 
 	CodeTokenNameLength,
 	CodeTokenInvalidExpirationDate,

@@ -28,7 +28,7 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	budgets := server.NewUserBudgetAccess("sqlite", db.TX)
 	// Login mints an opaque session token backed by the access_tokens table.
 	tokens := userrepo.NewAccessTokenRepo("sqlite", db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil,
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo("sqlite", db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo("sqlite", db.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
@@ -109,7 +109,8 @@ func TestMigrateThenLoginSaltFree(t *testing.T) {
 
 	const email = "Carol@Econumo.test"
 	const password = "secret-pw" // the fixture default
-	fixture.New(t, db).WithCrypto(testSalt).User(fixture.User{Email: email, Password: password})
+	f := fixture.New(t, db).WithCrypto(testSalt)
+	f.DefaultOptions(f.User(fixture.User{Email: email, Password: password}))
 
 	if _, _, err := saltedSvc.MigrateRemoveDataSalt(ctx, testSalt); err != nil {
 		t.Fatalf("migrate: %v", err)

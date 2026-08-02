@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/infra/clock"
-	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -30,16 +29,18 @@ func TestBudgetUserLookup_CurrencyCode(t *testing.T) {
 	users := userrepo.NewRepo("sqlite", db.TX)
 	lookup := server.NewBudgetUserLookup(users, clock.New())
 
-	code, err := lookup.CurrencyCode(context.Background(), glueUserA)
+	id, err := lookup.DefaultCurrencyID(context.Background(), glueUserA)
 	if err != nil {
-		t.Fatalf("CurrencyCode: %v", err)
+		t.Fatalf("DefaultCurrencyID: %v", err)
 	}
-	if code != "USD" {
-		t.Errorf("want USD from the seeded currency option, got %q", code)
+	if id != fixture.USD {
+		t.Errorf("want the seeded USD id from the currency option, got %q", id)
 	}
 }
 
-func TestBudgetUserLookup_CurrencyCode_DefaultsWhenOptionMissing(t *testing.T) {
+// The migration guarantees every user holds a currency option; a user without
+// one is data corruption and must surface as an error, not a silent fallback.
+func TestBudgetUserLookup_CurrencyCode_ErrorWhenOptionMissing(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	f.User(fixture.User{ID: glueUserB, Name: "u"})
@@ -48,12 +49,8 @@ func TestBudgetUserLookup_CurrencyCode_DefaultsWhenOptionMissing(t *testing.T) {
 	users := userrepo.NewRepo("sqlite", db.TX)
 	lookup := server.NewBudgetUserLookup(users, clock.New())
 
-	code, err := lookup.CurrencyCode(context.Background(), glueUserB)
-	if err != nil {
-		t.Fatalf("CurrencyCode: %v", err)
-	}
-	if code != model.DefaultCurrency {
-		t.Errorf("want the domain default currency, got %q", code)
+	if _, err := lookup.DefaultCurrencyID(context.Background(), glueUserB); err == nil {
+		t.Error("want an error for a user without a currency option")
 	}
 }
 
@@ -62,7 +59,7 @@ func TestBudgetUserLookup_CurrencyCode_InvalidID(t *testing.T) {
 	users := userrepo.NewRepo("sqlite", db.TX)
 	lookup := server.NewBudgetUserLookup(users, clock.New())
 
-	if _, err := lookup.CurrencyCode(context.Background(), "not-a-uuid"); err == nil {
+	if _, err := lookup.DefaultCurrencyID(context.Background(), "not-a-uuid"); err == nil {
 		t.Error("want an error for a malformed user id")
 	}
 }

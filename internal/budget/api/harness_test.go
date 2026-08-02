@@ -102,13 +102,13 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 
 	budgetRepo := budgetrepo.NewRepo("sqlite", txm)
 	budgetReadRepo := budgetrepo.NewReadRepo("sqlite", txm)
-	rateProvider := currencyrepo.NewRateProvider("sqlite", txm, currencyLookup, "USD")
+	rateProvider := currencyrepo.NewRateProvider("sqlite", txm, currencyLookup, usdID)
 	convertor := domcurrency.NewConvertor(rateProvider)
 	svc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
+		server.NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), server.NewBudgetTagMetadataLookup(tagRepo), server.NewBudgetPayeeMetadataLookup(payeeRepo)),
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		txm, clk,

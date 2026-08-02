@@ -216,19 +216,6 @@ func TestUserReadRepo_Views(t *testing.T) {
 	}
 }
 
-func TestUserReadRepo_CurrencyIDByCode(t *testing.T) {
-	_, read, _ := newRepos(t)
-	ctx := context.Background()
-	// USD is seeded by the baseline migration.
-	id, err := read.CurrencyIDByCode(ctx, "USD")
-	if err != nil {
-		t.Fatalf("CurrencyIDByCode(USD): %v", err)
-	}
-	if id != "dffc2a06-6f29-4704-8575-31709adee926" {
-		t.Errorf("want seeded USD id, got %q", id)
-	}
-}
-
 func TestUserRepo_UpdateLanguage(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()

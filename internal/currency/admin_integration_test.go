@@ -180,7 +180,7 @@ func eurRate(t *testing.T, db *dbtest.DB) string {
 	t.Helper()
 	var rate string
 	err := db.Raw.QueryRow(
-		`SELECT rate FROM currencies_rates r JOIN currencies c ON c.id = r.currency_id WHERE c.code = 'EUR'`,
+		`SELECT r.rate FROM currencies_rates r JOIN currencies c ON c.id = r.currency_id WHERE c.code = 'EUR'`,
 	).Scan(&rate)
 	if err != nil {
 		t.Fatalf("read EUR rate: %v", err)

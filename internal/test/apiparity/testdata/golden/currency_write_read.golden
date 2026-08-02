@@ -1,0 +1,66 @@
+== create-currency POST /api/v1/currency/create-currency [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0}}}
+
+== read-after-create GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0}]}}
+
+== rates-after-create GET /api/v1/currency/get-currency-rate-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>"},{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"1","updatedAt":"<datetime>"}]}}
+
+== err:create-duplicate-code POST /api/v1/currency/create-currency [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"code":["Currency already exists"]}}
+
+== err:create-missing-rate POST /api/v1/currency/create-currency [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"rate":["This value should not be blank."]}}
+
+== update-currency POST /api/v1/currency/update-currency [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isHidden":0}}}
+
+== err:update-foreign POST /api/v1/currency/update-currency [guest] -> 403
+{"success":false,"message":"","code":0,"errors":[]}
+
+== set-default-pts POST /api/v1/user/update-currency [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"PTS"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"<generated-uuid>"}],"currency":"PTS","reportPeriod":"monthly","accessLevel":"full","accessUntil":""}}}
+
+== err:hide-default POST /api/v1/currency/hide-currency [owner] -> 400
+{"success":false,"message":"This currency cannot be hidden","code":400,"errors":{}}
+
+== set-default-usd POST /api/v1/user/update-currency [owner] -> 200
+{"success":true,"message":"","data":{"user":{"id":"11111111-1111-1111-1111-111111111111","name":"User 1111","email":"owner@example.test","avatar":"diamond:sky","options":[{"name":"currency","value":"USD"},{"name":"report_period","value":"monthly"},{"name":"onboarding","value":"started"},{"name":"budget","value":null},{"name":"currency_id","value":"dffc2a06-6f29-4704-8575-31709adee926"}],"currency":"USD","reportPeriod":"monthly","accessLevel":"full","accessUntil":""}}}
+
+== hide-own-currency POST /api/v1/currency/hide-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-hide GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isHidden":1},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0}]}}
+
+== show-own-currency POST /api/v1/currency/show-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:hide-currency-base POST /api/v1/currency/hide-currency [owner] -> 400
+{"success":false,"message":"The base currency cannot be modified","code":400,"errors":{}}
+
+== show-currency POST /api/v1/currency/show-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:hide-foreign POST /api/v1/currency/hide-currency [guest] -> 400
+{"success":false,"message":"This currency cannot be hidden","code":400,"errors":{}}
+
+== hide-all-currencies POST /api/v1/currency/hide-all-currencies [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-hide-all GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0}]}}
+
+== show-all-currencies POST /api/v1/currency/show-all-currencies [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-show-all GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Kid points","symbol":"kp","fractionDigits":2,"scope":"own","isHidden":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0}]}}
+
+== delete-currency POST /api/v1/currency/delete-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-delete GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0}]}}
+

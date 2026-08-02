@@ -10,9 +10,10 @@ import (
 var _ = apidoc.JsonResponseOk{}
 
 type Handlers struct {
-	read *appcurrency.ReadService
+	read   *appcurrency.ReadService
+	manage *appcurrency.ManageService
 }
 
-func NewHandlers(read *appcurrency.ReadService) *Handlers {
-	return &Handlers{read: read}
+func NewHandlers(read *appcurrency.ReadService, manage *appcurrency.ManageService) *Handlers {
+	return &Handlers{read: read, manage: manage}
 }

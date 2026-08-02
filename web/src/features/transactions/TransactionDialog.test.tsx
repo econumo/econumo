@@ -289,6 +289,33 @@ it('editing a transfer re-syncs the recipient amount when the destination accoun
   expect(body!.amountRecipient).toBe('9')
 })
 
+it('editing a transfer re-syncs the recipient amount when the SENDER account changes', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ type: 'transfer', accountId: 'a3', accountRecipientId: 'a2' }), accounts: fixtureAccounts },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({
+    transaction: wireTxEcho({ type: 'transfer', accountId: 'a1', accountRecipientId: 'a2', amount: '10', amountRecipient: '10', categoryId: null }) as unknown as TransactionDto,
+  })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  // EUR -> USD at rate 0.9: 10 EUR = 11.11 USD; the stale same-currency
+  // recipient amount must not survive a sender-currency change
+  await user.click(screen.getByRole('combobox', { name: 'from account' }))
+  await user.click(await screen.findByText(/Euro Stash/))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.accountId).toBe('a3')
+  expect(body!.amountRecipient).toBe('11.11')
+})
+
 it('cross-currency transfer prefills the converted recipient amount and prompts to switch', async () => {
   let body: Record<string, unknown> | undefined
   server.use(

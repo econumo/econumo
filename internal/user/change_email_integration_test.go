@@ -57,7 +57,7 @@ func newChangeEmailEnv(t *testing.T) (svc *appuser.Service, repo *userrepo.Repo,
 		Window: time.Hour,
 		Global: 0,
 	}, clk)
-	svc = appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets, nil, nil,
+	svc = appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		evRepo, nil,
 		ecRepo, changeMailer,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, false, 0, false)

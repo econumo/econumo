@@ -127,6 +127,51 @@ func init() {
 		}
 	}})
 
+	// The fixture's only global currency is USD (seeded by the baseline
+	// migration), which is ALSO both the instance base currency
+	// (harness CurrencyBase="USD") and the owner's profile currency
+	// (f.DefaultOptions seeds currency=USD) — so hiding it exercises the
+	// base-currency guard. Hide/show's happy path runs on the scenario's own
+	// custom currency instead: hideable once it is no longer the profile
+	// default, refused while it is (err:hide-default) and for a foreign caller
+	// (err:hide-foreign). show-currency on USD stays as the idempotent no-op
+	// call on a never-hidden currency.
+	register(Scenario{Name: "currency_write_read", Calls: func() []Call {
+		const opCreate = "cc000000-0000-0000-0000-0000000000f1"
+		const opCreate2 = "cc000000-0000-0000-0000-0000000000f2"
+		const opCreate3 = "cc000000-0000-0000-0000-0000000000f3"
+		var curID string
+		return []Call{
+			{Label: "create-currency", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
+				Body: map[string]any{"id": opCreate, "code": "PTS", "name": "Points", "symbol": "pts", "fractionDigits": 0, "rate": "100"}, CaptureIDInto: &curID},
+			{Label: "read-after-create", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "rates-after-create", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "err:create-duplicate-code", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
+				Body: map[string]any{"id": opCreate2, "code": "PTS", "name": "Points again", "rate": "3"}},
+			{Label: "err:create-missing-rate", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
+				Body: map[string]any{"id": opCreate3, "code": "PTX", "name": "No rate"}},
+			{Label: "update-currency", Method: "POST", Path: "/api/v1/currency/update-currency", Auth: "owner",
+				Body: map[string]any{"id": &curID, "name": "Kid points", "symbol": "kp", "fractionDigits": 2, "rate": "120.5"}},
+			{Label: "err:update-foreign", Method: "POST", Path: "/api/v1/currency/update-currency", Auth: "guest",
+				Body: map[string]any{"id": &curID, "name": "Hijack", "symbol": "x", "fractionDigits": 2, "rate": "1"}},
+			{Label: "set-default-pts", Method: "POST", Path: "/api/v1/user/update-currency", Auth: "owner", Body: map[string]any{"currency": "PTS"}},
+			{Label: "err:hide-default", Method: "POST", Path: "/api/v1/currency/hide-currency", Auth: "owner", Body: map[string]any{"id": &curID}},
+			{Label: "set-default-usd", Method: "POST", Path: "/api/v1/user/update-currency", Auth: "owner", Body: map[string]any{"currency": "USD"}},
+			{Label: "hide-own-currency", Method: "POST", Path: "/api/v1/currency/hide-currency", Auth: "owner", Body: map[string]any{"id": &curID}},
+			{Label: "read-after-hide", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "show-own-currency", Method: "POST", Path: "/api/v1/currency/show-currency", Auth: "owner", Body: map[string]any{"id": &curID}},
+			{Label: "err:hide-currency-base", Method: "POST", Path: "/api/v1/currency/hide-currency", Auth: "owner", Body: map[string]any{"id": USD}},
+			{Label: "show-currency", Method: "POST", Path: "/api/v1/currency/show-currency", Auth: "owner", Body: map[string]any{"id": USD}},
+			{Label: "err:hide-foreign", Method: "POST", Path: "/api/v1/currency/hide-currency", Auth: "guest", Body: map[string]any{"id": &curID}},
+			{Label: "hide-all-currencies", Method: "POST", Path: "/api/v1/currency/hide-all-currencies", Auth: "owner", Body: map[string]any{}},
+			{Label: "read-after-hide-all", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "show-all-currencies", Method: "POST", Path: "/api/v1/currency/show-all-currencies", Auth: "owner", Body: map[string]any{}},
+			{Label: "read-after-show-all", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "delete-currency", Method: "POST", Path: "/api/v1/currency/delete-currency", Auth: "owner", Body: map[string]any{"id": &curID}},
+			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
 	register(Scenario{Name: "account_write_read", Calls: func() []Call {
 		const newAcct = "a0000000-0000-0000-0000-0000000000ff"
 		var acctID string
