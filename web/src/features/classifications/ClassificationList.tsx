@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { ArrowDownUp, GripVertical, MoreVertical, Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { compareNames } from '@/lib/collate'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -60,6 +61,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   alert?: ReactNode
   createLabel: string
   deleteTitle: string
+  /** badge on archived rows; per-list because languages inflect it per noun */
+  archivedLabel: string
   items: T[]
   /** localStorage key for the active-only filter; absent = no filter control */
   storageKey?: string
@@ -93,6 +96,7 @@ export function ClassificationList<T extends ClassificationItem>({
   alert,
   createLabel,
   deleteTitle,
+  archivedLabel,
   items,
   storageKey,
   analyticsType,
@@ -109,7 +113,7 @@ export function ClassificationList<T extends ClassificationItem>({
   onToggleArchive,
   onOrder,
 }: ClassificationListProps<T>) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [sortOpen, setSortOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
@@ -179,7 +183,10 @@ export function ClassificationList<T extends ClassificationItem>({
   const visibleSections = sectionDefs
     .map((section) => ({ label: section.label, action: section.action, items: visible.filter(section.match) }))
     .filter((section) => section.items.length > 0)
-  const showGroupHeaders = visibleSections.length > 1
+  // A lone group needs no caption to disambiguate — but its caption row is
+  // also the only mount point for a section action (the currencies bulk
+  // enable/disable link), so keep the header when one is present.
+  const showGroupHeaders = visibleSections.length > 1 || visibleSections.some((section) => section.action)
 
   // A drag reorders only the rows on screen (a section, possibly with the
   // archived ones filtered out); rebuild the full id order so every other
@@ -285,7 +292,7 @@ export function ClassificationList<T extends ClassificationItem>({
             {item.name}
           </span>
           {item.isArchived === 1 ? (
-            <span className="text-xs text-muted-foreground">{t('classifications.categories.pages.settings.archived_item')}</span>
+            <span className="text-xs text-muted-foreground">{archivedLabel}</span>
           ) : null}
           {meta?.(item)}
         </span>
@@ -478,7 +485,9 @@ export function ClassificationList<T extends ClassificationItem>({
           open={sortOpen}
           onClose={() => setSortOpen(false)}
           onPick={(direction) => {
-            const ordered = [...items].sort((a, b) => (direction === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)))
+            const ordered = [...items].sort((a, b) =>
+              direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language),
+            )
             commitOrder(ordered.map((i) => i.id))
             setSortOpen(false)
           }}

@@ -270,6 +270,32 @@ it('no active-only filter: hidden currencies are always listed, Pound switch off
   expect(screen.queryByRole('switch', { name: 'Active only' })).toBeNull()
 })
 
+it('enabled globals sort above disabled ones, code order kept within each half; own customs carry no switch', async () => {
+  server.use(
+    ...coreHandlers({
+      currencies: [
+        fixtureUsd, // global, enabled
+        fixtureGbp, // global, disabled
+        fixtureEur, // global, enabled
+        { ...fixturePts, id: 'cur-old', code: 'OLD', name: 'Old points', isHidden: 1 },
+        fixturePts, // own, enabled
+      ],
+      rates: defaultRates,
+    }),
+  )
+  renderPage()
+  await screen.findByText('Points')
+  const names = screen.getAllByRole('switch').map((sw) => sw.getAttribute('aria-label'))
+  expect(names).toEqual([
+    // Only globals carry a switch -- own customs have Delete as their one
+    // lifecycle action, so Points and Old points contribute none, and the
+    // enabled-first sort applies to the globals section alone.
+    'enable US Dollar',
+    'enable Euro',
+    'enable Pound',
+  ])
+})
+
 it('the rate is required: an empty rate blocks submit with a validation message', async () => {
   let called = false
   server.use(
@@ -324,6 +350,19 @@ it("with every non-locked global disabled the link flips to 'Enable all' posting
   expect(screen.queryByRole('button', { name: 'Disable all' })).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Enable all' }))
   await waitFor(() => expect(called).toBe(true))
+})
+
+it('with no own currencies the globals section still carries the bulk link', async () => {
+  server.use(
+    ...coreHandlers({
+      currencies: [fixtureUsd, fixtureEur, fixtureGbp],
+      rates: defaultRates,
+    }),
+  )
+  renderPage()
+  await screen.findByText('Euro')
+  expect(screen.queryByText('My currencies')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Disable all' })).toBeInTheDocument()
 })
 
 it('the dialog frames the rate as a live equation and sizes fields compactly', async () => {

@@ -1,6 +1,7 @@
 import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
+import { compareNames } from '@/lib/collate'
 import { abs, add, cmp, div } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 
@@ -48,7 +49,7 @@ export function bucketStats(elements: BudgetElementDto[], budget: BudgetDto, exc
   return { budgeted, spent, available }
 }
 
-export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): BudgetBuckets {
+export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang = 'en'): BudgetBuckets {
   const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
   const elements = budget.structure.elements
   // The uncategorized element is presentation-only (no persisted row to move or
@@ -74,7 +75,7 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn): Budge
   const archived = elements
     .filter((el) => el.isArchived === 1 && el.id !== UNCATEGORIZED_ID)
     .filter((el) => cmp(el.budgeted, '0') !== 0 || cmp(el.spent, '0') !== 0 || cmp(displayAvailable(el), '0') !== 0)
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => compareNames(a.name, b.name, lang))
 
   return {
     withFolder,

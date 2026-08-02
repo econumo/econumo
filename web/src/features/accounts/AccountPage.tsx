@@ -18,8 +18,10 @@ import { RouterPage } from '@/app/router-pages'
 import { useAccounts } from './queries'
 import { useUserData } from '@/features/user/queries'
 import { useDeleteTransaction } from '@/features/transactions/queries'
-import { useDeleteRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
+import { useDeleteRecurring, usePostRecurring, useRecurring, useSkipRecurring } from '@/features/recurring/queries'
 import { ViewRecurringDialog } from '@/features/recurring/ViewRecurringDialog'
+import { recurringPostPayload } from '@/features/recurring/postPayload'
+import { useExchange } from '@/features/currencies/useExchange'
 import { separatorText, useAccountTransactions } from '@/features/transactions/useAccountTransactions'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
 import type { DailyListEntry } from '@/features/transactions/useAccountTransactions'
@@ -125,7 +127,9 @@ export function AccountPage() {
   const { data: user } = useUserData()
   const deleteTransaction = useDeleteTransaction()
   const skipRecurring = useSkipRecurring()
+  const postRecurring = usePostRecurring()
   const deleteRecurring = useDeleteRecurring()
+  const exchangeFn = useExchange()
   // already cached by useAccountTransactions, so resolving a posted
   // transaction's template costs no extra request
   const { data: recurringList } = useRecurring()
@@ -462,8 +466,9 @@ export function AccountPage() {
           recurring={recurringPreview}
           onClose={() => setRecurringPreview(null)}
           onPost={() => {
-            openTransactionModal({ postRecurring: recurringPreview })
-            setRecurringPreview(null)
+            postRecurring.mutate(recurringPostPayload(recurringPreview, accounts ?? [], exchangeFn), {
+              onSuccess: () => setRecurringPreview(null),
+            })
           }}
           onSkip={() => {
             skipRecurring.mutate(recurringPreview.id, { onSuccess: () => setRecurringPreview(null) })
@@ -474,6 +479,7 @@ export function AccountPage() {
           }}
           canChange={canChangeTransaction}
           skipPending={skipRecurring.isPending}
+          postPending={postRecurring.isPending}
         />
       ) : null}
 

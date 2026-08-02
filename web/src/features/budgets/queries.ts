@@ -1,15 +1,18 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as budgetApi from '@/api/budget'
 import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { compareNames } from '@/lib/collate'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
 export function useBudgets() {
+  const { i18n } = useTranslation()
   const { data: user } = useUserData()
   return useQuery({
     queryKey: queryKeys.budgets,
@@ -20,7 +23,7 @@ export function useBudgets() {
     select: (items) =>
       items
         .filter((b) => b.ownerUserId === user?.id || b.access.some((a) => a.user.id === user?.id && a.isAccepted === 1))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .sort((a, b) => compareNames(a.name, b.name, i18n.language)),
   })
 }
 

@@ -38,6 +38,7 @@ export function TagsPage() {
         info={t('classifications.tags.pages.settings.info')}
         createLabel={t('classifications.tags.pages.settings.create_tag')}
         deleteTitle={t('classifications.tags.modals.delete.title')}
+        archivedLabel={t('classifications.tags.pages.settings.archived_item')}
         items={own}
         storageKey="settings.tags.activeOnly"
         analyticsType="tag"

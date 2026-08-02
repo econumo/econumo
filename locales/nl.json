@@ -1,0 +1,1386 @@
+{
+  "common": {
+    "help": {
+      "label": "© econumo.com",
+      "url": "https://econumo.com/"
+    },
+    "list": {
+      "list_empty": "Lijst is leeg",
+      "search": "Zoeken",
+      "search_empty": "Niets gevonden",
+      "order_list": "Volgorde wijzigen",
+      "active_only": "Alleen actieve"
+    },
+    "nav": {
+      "budget": "Budget",
+      "onboarding": "Aan de slag",
+      "create_account": "Rekening toevoegen",
+      "collapse_menu": "Menu inklappen",
+      "expand_menu": "Menu uitklappen",
+      "sharing_requests": "Deelverzoeken"
+    },
+    "econumo": {
+      "label": "Econumo"
+    },
+    "uncategorized": "Zonder categorie",
+    "loader": {
+      "label": "laden",
+      "having_trouble": "Problemen?"
+    },
+    "select": {
+      "search_placeholder": "Zoeken",
+      "create_placeholder": "Zoek of voer een nieuwe naam in",
+      "create_hint": "Typ een naam om die aan te maken"
+    },
+    "password": {
+      "show": "Wachtwoord tonen",
+      "hide": "Wachtwoord verbergen"
+    },
+    "button": {
+      "ok": {
+        "label": "OK"
+      },
+      "close": {
+        "label": "Sluiten"
+      },
+      "cancel": {
+        "label": "Annuleren"
+      },
+      "create": {
+        "label": "Aanmaken"
+      },
+      "add": {
+        "label": "Toevoegen"
+      },
+      "edit": {
+        "label": "Bewerken"
+      },
+      "update": {
+        "label": "Bijwerken"
+      },
+      "save": {
+        "label": "Opslaan"
+      },
+      "delete": {
+        "label": "Verwijderen"
+      },
+      "view": {
+        "label": "Bekijken"
+      },
+      "up": {
+        "label": "Omhoog verplaatsen"
+      },
+      "down": {
+        "label": "Omlaag verplaatsen"
+      },
+      "hide": {
+        "label": "Verbergen"
+      },
+      "show": {
+        "label": "Tonen"
+      },
+      "accept": {
+        "label": "Accepteren"
+      },
+      "expand": {
+        "label": "Uitklappen"
+      },
+      "collapse": {
+        "label": "Inklappen"
+      },
+      "decline": {
+        "label": "Weigeren"
+      },
+      "back": {
+        "label": "Terug"
+      },
+      "import": {
+        "label": "Importeren"
+      },
+      "export": {
+        "label": "Exporteren"
+      },
+      "change": {
+        "label": "Wijzigen"
+      }
+    },
+    "date": {
+      "just_now": "zojuist",
+      "month_short": {
+        "jan": "jan",
+        "feb": "feb",
+        "mar": "mrt",
+        "apr": "apr",
+        "may": "mei",
+        "jun": "jun",
+        "jul": "jul",
+        "aug": "aug",
+        "sep": "sep",
+        "oct": "okt",
+        "nov": "nov",
+        "dec": "dec"
+      }
+    },
+    "validation": {
+      "required_field": "Verplicht veld",
+      "invalid_number": "Voer een geldig getal in",
+      "invalid_decimal_number": "Voer een geldig getal in (maximaal 8 decimalen)",
+      "invalid_formula": "Alleen cijfers en operatoren (+, -, *, /, . en =) zijn toegestaan"
+    },
+    "sort": {
+      "header": "Sorteren",
+      "mode": {
+        "alphabet": {
+          "asc": "Alfabetisch (A-Z)",
+          "desc": "Alfabetisch (Z-A)"
+        }
+      }
+    },
+    "app": {
+      "error": "Er is iets misgegaan. Probeer het opnieuw.",
+      "modal": {
+        "self_hosted": {
+          "information": "Econumo kan op uw eigen server draaien. Voer het adres van uw server in om verbinding te maken."
+        },
+        "loading": {
+          "data_loading": "Uw gegevens worden geladen"
+        }
+      }
+    },
+    "update": {
+      "notice": "Econumo {version} is beschikbaar",
+      "dismiss": "Sluiten"
+    }
+  },
+  "accounts": {
+    "folders": {
+      "default_folder": "Alle rekeningen"
+    },
+    "account": {
+      "name_hidden": "[Verborgen rekening]"
+    },
+    "switch_to_account": "Wisselen naar",
+    "form": {
+      "folder": {
+        "label": "Naam",
+        "validation": {
+          "empty_name": "Voer een mapnaam in",
+          "error_name_length": "Mapnaam moet 3-64 tekens bevatten"
+        }
+      },
+      "name": {
+        "label": "Naam",
+        "placeholder": "Voer een naam in",
+        "validation": {
+          "invalid_name": "Rekeningnaam moet 3-64 tekens bevatten"
+        }
+      },
+      "balance": {
+        "label": "Saldo",
+        "placeholder": "Voer het saldo in"
+      },
+      "currency": {
+        "label": "Valuta"
+      }
+    },
+    "page": {
+      "toolbar": {
+        "settings": "Instellen",
+        "search": "Zoeken",
+        "shared_with": "Gedeelde rekening"
+      },
+      "transaction_list": {
+        "none": "Geen transacties gevonden",
+        "today": "Vandaag",
+        "yesterday": "Gisteren",
+        "item": {
+          "transfer_from": "Overboeking van {account}",
+          "transfer_to": "Overboeking naar {account}"
+        },
+        "action": {
+          "add_transaction": "Transactie toevoegen"
+        }
+      },
+      "preview_transaction_modal": {
+        "header": "Transactiedetails",
+        "type": {
+          "expense": "Uitgave",
+          "income": "Inkomsten",
+          "transfer": "Overboeking"
+        },
+        "recipient": {
+          "label": "Ontvanger"
+        },
+        "sender": {
+          "label": "Afzender"
+        },
+        "category": {
+          "label": "Categorie"
+        },
+        "description": {
+          "label": "Notities"
+        },
+        "payee": {
+          "label": "Begunstigde"
+        },
+        "tags": {
+          "label": "Tags"
+        },
+        "author": {
+          "label": "Auteur"
+        },
+        "created_at": {
+          "label": "Datum"
+        }
+      },
+      "delete_transaction_modal": {
+        "question": "Weet u zeker dat u deze transactie wilt verwijderen?"
+      }
+    },
+    "modal": {
+      "create_form": {
+        "header": "Nieuwe rekening"
+      },
+      "update_form": {
+        "header": "Rekening bewerken"
+      },
+      "form": {
+        "icon": {
+          "label": "Pictogram"
+        }
+      }
+    }
+  },
+  "settings": {
+    "page": {
+      "header": "Instellingen",
+      "header_desktop": "Instellingen",
+      "menu_item": "Instellingen",
+      "logout": "Uitloggen",
+      "groups": {
+        "service": "Financiën",
+        "classification": "Indeling",
+        "data": "Gegevens",
+        "preferences": "Voorkeuren"
+      },
+      "footer": {
+        "api": "API"
+      }
+    },
+    "sync": {
+      "menu_item": "Volledige synchronisatie",
+      "failing": "Geen verbinding met de server — opnieuw proberen"
+    },
+    "accounts": {
+      "menu_item": "Rekeningen",
+      "header": "Rekeningen",
+      "info": "Rekeningen worden in mappen geordend. Verberg een map om rekeningen die u zelden gebruikt uit het zicht te houden.",
+      "folder_toggle": "Map inklappen",
+      "list_empty_create": "Voeg",
+      "list_empty_new_account": "een nieuwe rekening toe",
+      "list_actions": {
+        "access": "Toegangsbeheer"
+      },
+      "create_folder": "Map aanmaken",
+      "create_folder_modal": {
+        "header": "Nieuwe map"
+      },
+      "update_folder_modal": {
+        "header": "Map hernoemen"
+      },
+      "delete_folder_modal": {
+        "title": "Map verwijderen?",
+        "question": "Weet u zeker dat u de map “{folder}” wilt verwijderen?"
+      },
+      "delete_account_modal": {
+        "question": "Weet u zeker dat u de rekening “{account}” wilt verwijderen?"
+      },
+      "decline_access_modal": {
+        "title": "Toegang tot de rekening weigeren?",
+        "question": "Weet u zeker dat u de toegang tot de rekening “{account}” wilt weigeren?"
+      },
+      "preview_account_modal": {
+        "header": "Rekeninggegevens"
+      }
+    },
+    "language": {
+      "menu_item": "Taal"
+    },
+    "import_csv": {
+      "menu_item": "CSV importeren"
+    },
+    "export_csv": {
+      "menu_item": "CSV exporteren",
+      "error": "Exporteren van transacties is mislukt"
+    },
+    "recurring": {
+      "menu_item": "Terugkerende transacties",
+      "header": "Terugkerende transacties",
+      "empty": "Nog geen terugkerende transacties",
+      "create": "Transactie toevoegen",
+      "delete_question": "Deze terugkerende transactie verwijderen?",
+      "info": "Hier staan betalingen die volgens een schema worden herhaald. De volgende betaling verschijnt op de rekeningpagina als niet geboekt — er wordt niets automatisch toegevoegd: boek of sla de betaling zelf over, waarna de datum naar de volgende opschuift."
+    },
+    "update": {
+      "available": "Nieuwe versie {version} beschikbaar"
+    }
+  },
+  "transactions": {
+    "modal": {
+      "transaction_type": {
+        "expense": "Uitgave",
+        "transfer": "Overboeking",
+        "income": "Inkomsten"
+      },
+      "create_form": {
+        "header": "Transactie toevoegen"
+      },
+      "update_form": {
+        "header": "Transactie bewerken"
+      },
+      "form": {
+        "amount": {
+          "label": "Bedrag",
+          "validation": {
+            "required_field": "Voer een bedrag in"
+          }
+        },
+        "amount_recipient": {
+          "label": "Bedrag in {currency}",
+          "validation": {
+            "required_field": "Voer het bedrag van de ontvanger in"
+          }
+        },
+        "category": {
+          "label": "Categorie"
+        },
+        "payee": {
+          "expense": "Ontvanger",
+          "income": "Afzender"
+        },
+        "description": {
+          "label": "Notities",
+          "placeholder": "Voer een notitie in"
+        },
+        "from": {
+          "label": "Van"
+        },
+        "to": {
+          "label": "Naar"
+        }
+      },
+      "dialog": {
+        "new_tag": {
+          "header": "Nieuwe tag",
+          "name": {
+            "label": "Nieuwe tag",
+            "placeholder": "Voer een tagnaam in",
+            "validation": {
+              "required_field": "Verplicht veld"
+            }
+          }
+        }
+      }
+    },
+    "import_csv": {
+      "header": "CSV importeren",
+      "none": "Geen",
+      "file": {
+        "label": "CSV-bestand",
+        "hint": "Maximale bestandsgrootte: 10 MB"
+      },
+      "mapping": {
+        "description": "Koppel de kolommen uit uw CSV-bestand aan de transactievelden. Verplichte velden zijn gemarkeerd met een sterretje (*)."
+      },
+      "amount_mode": {
+        "switch_to_single": "Overschakelen naar één bedragkolom",
+        "switch_to_dual": "Splitsen in kolommen voor bij- en afschrijvingen"
+      },
+      "switch_to_manual": "Handmatig een waarde invoeren",
+      "switch_to_csv": "Een CSV-kolom gebruiken",
+      "fields": {
+        "account": "Rekening",
+        "date": "Datum",
+        "amount": "Bedrag",
+        "amount_inflow": "Bedrag (bijschrijving)",
+        "amount_outflow": "Bedrag (afschrijving)",
+        "category": "Categorie",
+        "description": "Omschrijving",
+        "description_placeholder": "Voer een omschrijving in voor alle transacties",
+        "payee": "Begunstigde",
+        "tag": "Tag"
+      }
+    },
+    "import_result": {
+      "success_title": "Import voltooid",
+      "partial_success_title": "Import voltooid met fouten",
+      "error_title": "Import mislukt",
+      "imported": "{count} transactie geïmporteerd | {count} transacties geïmporteerd",
+      "failed": "{count} transactie mislukt | {count} transacties mislukt",
+      "errors_detail": "Foutdetails",
+      "row": "Rij",
+      "rows": "Rijen",
+      "more": "meer",
+      "and_more": "en nog {count} fout(en)"
+    },
+    "export_csv": {
+      "export_csv_form": {
+        "header": "CSV exporteren",
+        "accounts": "Selecteer rekeningen",
+        "select_all": "Alles selecteren",
+        "deselect_all": "Selectie opheffen"
+      }
+    }
+  },
+  "recurring": {
+    "modal": {
+      "form": {
+        "schedule": {
+          "label": "Herhaling"
+        }
+      }
+    },
+    "schedule": {
+      "weekly": "Wekelijks",
+      "biweekly": "Elke 2 weken",
+      "monthly": "Maandelijks",
+      "quarterly": "Elke 3 maanden",
+      "yearly": "Jaarlijks"
+    },
+    "preview": {
+      "header": "Terugkerende transactie",
+      "post": "Boeken",
+      "skip": "Overslaan"
+    },
+    "make_recurring": "Terugkerend maken",
+    "not_posted": "Niet geboekt"
+  },
+  "user": {
+    "avatar_picker": {
+      "title": "Kies uw avatar",
+      "icons": "Avatarpictogrammen",
+      "colors": "Avatarkleuren",
+      "change": "Avatar wijzigen"
+    },
+    "change_password": {
+      "success": {
+        "text": "Wachtwoord gewijzigd"
+      },
+      "error": {
+        "header": "Wachtwoord wijzigen mislukt",
+        "text": "Er is iets misgegaan bij het wijzigen van uw wachtwoord. Controleer uw huidige wachtwoord en probeer het opnieuw."
+      },
+      "loading": {
+        "label": "Wachtwoord wijzigen…"
+      },
+      "form": {
+        "password": {
+          "label": "Huidig wachtwoord",
+          "placeholder": "Voer uw wachtwoord in",
+          "validation": {
+            "invalid_password": "Voer uw huidige wachtwoord in"
+          }
+        },
+        "new_password": {
+          "label": "Nieuw wachtwoord",
+          "placeholder": "Voer een nieuw wachtwoord in",
+          "validation": {
+            "not_equals": "Het nieuwe wachtwoord moet verschillen van het huidige"
+          }
+        },
+        "new_password_retry": {
+          "label": "Bevestig het nieuwe wachtwoord",
+          "placeholder": "Voer het nieuwe wachtwoord nogmaals in",
+          "validation": {
+            "not_equals": "Wachtwoorden komen niet overeen"
+          }
+        },
+        "submit": {
+          "label": "Wachtwoord wijzigen"
+        }
+      }
+    },
+    "change_email": {
+      "header": "E-mailadres wijzigen",
+      "success": {
+        "text": "E-mailadres gewijzigd"
+      },
+      "loading": {
+        "label": "Bevestigingscode verzenden…"
+      },
+      "form": {
+        "new_email": {
+          "label": "Nieuw e-mailadres",
+          "placeholder": "Voer uw nieuwe e-mailadres in"
+        },
+        "password": {
+          "label": "Huidig wachtwoord",
+          "placeholder": "Voer uw wachtwoord in",
+          "validation": {
+            "required_field": "Voer uw huidige wachtwoord in"
+          }
+        },
+        "submit": {
+          "label": "Bevestigingscode verzenden"
+        }
+      },
+      "confirm": {
+        "information": "We hebben een bevestigingscode naar {email} gestuurd. Voer die hieronder in om uw nieuwe e-mailadres te bevestigen.",
+        "resent": "Er is een nieuwe code verzonden.",
+        "action": {
+          "verify": "Nieuw e-mailadres bevestigen",
+          "resend": "Code opnieuw verzenden",
+          "resend_in": "Opnieuw verzenden over {seconds} s"
+        }
+      }
+    },
+    "form": {
+      "name": {
+        "label": "Naam",
+        "placeholder": "Uw naam",
+        "validation": {
+          "required_field": "Verplicht veld",
+          "invalid_name": "Voer uw naam in"
+        }
+      },
+      "email": {
+        "label": "E-mailadres",
+        "placeholder": "Uw e-mailadres",
+        "validation": {
+          "required_field": "Verplicht veld",
+          "invalid_email": "Voer een geldig e-mailadres in"
+        }
+      },
+      "code": {
+        "placeholder": "Bevestigingscode",
+        "validation": {
+          "required_field": "Verplicht veld",
+          "invalid_code": "Voer een geldige code in"
+        }
+      },
+      "password": {
+        "label": "Wachtwoord",
+        "placeholder": "Wachtwoord",
+        "validation": {
+          "required_field": "Verplicht veld",
+          "invalid_password": "Het wachtwoord moet minimaal 8 tekens bevatten"
+        }
+      },
+      "password_retry": {
+        "label": "Bevestig het wachtwoord",
+        "placeholder": "Voer het wachtwoord nogmaals in",
+        "validation": {
+          "required_field": "Verplicht veld",
+          "invalid_password": "Voer het wachtwoord nogmaals in",
+          "not_equals": "Wachtwoorden komen niet overeen"
+        }
+      },
+      "server_host": {
+        "connect": "Verbinden met een eigen server",
+        "label": "Serveradres",
+        "placeholder": "https://",
+        "validation": {
+          "required_field": "Verplicht veld",
+          "invalid_url": "Voer een geldig serveradres in"
+        }
+      }
+    },
+    "page": {
+      "settings": {
+        "profile": {
+          "menu_item": "Profiel",
+          "header": "Profiel",
+          "groups": {
+            "personal_details": "Persoonlijke gegevens",
+            "preferences": "Voorkeuren",
+            "security": "Beveiliging"
+          },
+          "currency": {
+            "label": "Valuta"
+          },
+          "change_password": {
+            "menu_item": "Wachtwoord wijzigen",
+            "header": "Wachtwoord wijzigen"
+          },
+          "change_email": {
+            "menu_item": "E-mailadres wijzigen"
+          },
+          "sessions": {
+            "menu_item": "Sessies",
+            "header": "Sessies",
+            "description": "Apparaten die momenteel zijn ingelogd op uw account. Trek een sessie in om dat apparaat uit te loggen.",
+            "current": "Huidige",
+            "unknown_device": "Onbekend apparaat",
+            "last_active": "Laatst actief",
+            "sign_out": "Uitloggen",
+            "revoke": "Intrekken",
+            "revoke_others": "Andere apparaten uitloggen",
+            "confirm_sign_out": "Op dit apparaat uitloggen?",
+            "confirm_revoke": "Deze sessie intrekken? Het apparaat wordt uitgelogd.",
+            "confirm_revoke_others": "Op alle andere apparaten uitloggen? Alleen deze sessie blijft actief."
+          },
+          "tokens": {
+            "menu_item": "API-tokens",
+            "header": "API-tokens",
+            "description": "Persoonlijke toegangstokens geven via de API volledige toegang tot uw account. Behandel ze als wachtwoorden.",
+            "empty": "Nog geen API-tokens.",
+            "created": "Aangemaakt",
+            "last_used": "Laatst gebruikt",
+            "expires": "Verloopt",
+            "never_expires": "Verloopt nooit",
+            "create": {
+              "label": "Token aanmaken"
+            },
+            "form": {
+              "name": {
+                "label": "Naam",
+                "placeholder": "bijv. Home Assistant",
+                "validation": {
+                  "required_field": "Voer een tokennaam in"
+                }
+              },
+              "expiry": {
+                "label": "Verloopt",
+                "options": {
+                  "d30": "30 dagen",
+                  "d90": "90 dagen",
+                  "d365": "365 dagen",
+                  "custom": "Andere datum",
+                  "never": "Nooit"
+                },
+                "validation": {
+                  "invalid_date": "Kies een datum in de toekomst"
+                }
+              },
+              "submit": {
+                "label": "Token aanmaken"
+              }
+            },
+            "created_dialog": {
+              "title": "Token aangemaakt",
+              "warning": "Kopieer het token nu — u kunt het later niet meer bekijken.",
+              "copy": "Kopiëren",
+              "copied": "Gekopieerd",
+              "done": "Klaar"
+            },
+            "revoke": "Intrekken",
+            "confirm_revoke": "Dit token intrekken? Integraties die het gebruiken werken direct niet meer."
+          }
+        }
+      }
+    }
+  },
+  "auth": {
+    "sign_in_failed": {
+      "header": "Inloggen mislukt",
+      "information": "Controleer uw e-mailadres en wachtwoord en probeer het opnieuw. Neem contact op met de klantenservice als het probleem aanhoudt."
+    },
+    "access_recovery_modal": {
+      "header": "Wachtwoord resetten",
+      "information": "Voer het e-mailadres in waarmee u zich hebt geregistreerd; wij sturen u een beveiligingscode.",
+      "instruction": "We hebben een beveiligingscode naar uw e-mailadres gestuurd. Voer die hieronder in en kies een nieuw wachtwoord.",
+      "new_password": "Nieuw wachtwoord",
+      "send_failed": "De code kon niet worden verzonden. Controleer het e-mailadres en probeer het opnieuw.",
+      "reset_failed": "Het wachtwoord is niet gereset. Controleer de code en probeer het opnieuw."
+    },
+    "verify_email": {
+      "header": "Bevestig uw e-mailadres",
+      "information": "We hebben een bevestigingscode naar {email} gestuurd. Voer die hieronder in om het inloggen te voltooien.",
+      "resent": "Er is een nieuwe code verzonden.",
+      "action": {
+        "verify": "Bevestigen en inloggen",
+        "resend": "Code opnieuw verzenden",
+        "resend_in": "Code opnieuw verzenden over {seconds} s"
+      }
+    },
+    "sign_up_failed": {
+      "header": "Registratie mislukt",
+      "information": "Controleer de ingevoerde gegevens en probeer het opnieuw. Neem contact op met de klantenservice als het probleem aanhoudt."
+    },
+    "sign_out": {
+      "title": "Uitloggen",
+      "question": "Weet u zeker dat u wilt uitloggen?",
+      "action": {
+        "logout": "Uitloggen",
+        "cancel": "Blijven"
+      }
+    },
+    "form": {
+      "sign_in": {
+        "remember_me": "Onthoud mij",
+        "action": {
+          "sign_in": "Inloggen",
+          "forget_password": "Wachtwoord vergeten?"
+        }
+      },
+      "sign_up": {
+        "action": {
+          "sign_up": "Registreren"
+        }
+      },
+      "access_recovery": {
+        "action": {
+          "recover": {
+            "label": "Code verzenden"
+          },
+          "change_password": {
+            "label": "Wachtwoord resetten"
+          }
+        }
+      }
+    },
+    "page": {
+      "sign_in": {
+        "header": "Inloggen",
+        "session_expired": "Uw sessie is verlopen. Log opnieuw in."
+      },
+      "sign_up": {
+        "header": "Registreren",
+        "privacy": {
+          "text": "Door u te registreren gaat u akkoord met ons <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Privacybeleid</a> en onze <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Servicevoorwaarden</a>"
+        }
+      }
+    }
+  },
+  "onboarding": {
+    "header": "Aan de slag",
+    "title": "Welkom bij Econumo!",
+    "complete": "Setup voltooien",
+    "add_account": "Rekening toevoegen",
+    "import_transactions": "Transacties importeren",
+    "steps": {
+      "accounts": {
+        "title": "Voeg uw rekeningen toe",
+        "text": "Voeg om te beginnen een rekening toe met de knop hieronder. U kunt uw rekeningen ook altijd beheren en in mappen ordenen via <settings>Instellingen</settings> -> <accounts>Rekeningen</accounts>."
+      },
+      "transactions": {
+        "title": "Voer uw eerste transactie in",
+        "text": "U voert transacties in door links in het menu een rekening te kiezen en op de knop <action>Transactie toevoegen</action> te klikken.",
+        "hint": "Categorieën, tags en begunstigden kunt u rechtstreeks vanuit het transactievenster aanmaken: typ de naam en druk op Enter."
+      },
+      "classifications": {
+        "title": "Beheer categorieën, tags en begunstigden",
+        "text": "Categorieën, tags en begunstigden beheert u via <settings>Instellingen</settings> -> <categories>Categorieën</categories>, <tags>Tags</tags> of <payees>Begunstigden</payees>. U kunt ze ook sorteren of archiveren."
+      },
+      "avatar": {
+        "title": "Werk uw avatar bij",
+        "text": "Kies een pictogram en een kleur voor uw avatar — die vertegenwoordigt u in gedeelde rekeningen. <choose>Kies uw avatar</choose>"
+      },
+      "connections": {
+        "title": "Maak verbinding met uw partner",
+        "text": "Ga naar <settings>Instellingen</settings> -> <connections>Gedeelde toegang</connections> om verbinding te maken met uw partner en de gedeelde toegang tot uw budget of rekeningen te beheren."
+      },
+      "budget": {
+        "title": "Maak uw budget",
+        "text": "Uw eerste budget maakt u op de pagina <budget>Budget</budget>.",
+        "text_secondary": "Op de pagina <settings>Instellingen</settings> -> <budgets>Budgetten</budgets> beheert u bovendien uw budgetten, de gedeelde toegang en meer."
+      }
+    },
+    "user_guide": {
+      "accounts": "Handleiding: rekeningen",
+      "transactions": "Handleiding: transacties",
+      "classifications": "Handleiding: indeling",
+      "user_profile": "Handleiding: gebruikersprofiel",
+      "shared_access": "Handleiding: gedeelde toegang",
+      "budgets": "Handleiding: budgetten"
+    }
+  },
+  "budgets": {
+    "modal": {
+      "budget_form": {
+        "accounts": "Rekeningen",
+        "accounts_included": "{count} van {total} opgenomen",
+        "accounts_hidden": "In verborgen mappen"
+      },
+      "create_budget_form": {
+        "header": "Nieuw budget"
+      },
+      "update_budget_form": {
+        "header": "Budget bewerken"
+      },
+      "create_folder_form": {
+        "header": "Nieuwe map"
+      },
+      "update_folder_form": {
+        "header": "Map hernoemen"
+      },
+      "create_envelope_form": {
+        "header": "Nieuwe envelop"
+      },
+      "update_envelope_form": {
+        "header": "Envelop bewerken"
+      },
+      "change_element_currency_form": {
+        "header": "Valuta wijzigen"
+      },
+      "delete_envelope": {
+        "header": "Envelop verwijderen?",
+        "question": "Weet u zeker dat u deze envelop wilt verwijderen?"
+      },
+      "delete_folder": {
+        "header": "Map verwijderen?",
+        "question": "Weet u zeker dat u de map “{name}” wilt verwijderen?"
+      },
+      "set_limit_form": {
+        "header": "Budget instellen"
+      },
+      "generic_error": {
+        "header": "Er is iets misgegaan",
+        "description": "Probeer het opnieuw. Meld het probleem als de fout zich blijft voordoen."
+      },
+      "access_error": {
+        "header": "Toegang geweigerd",
+        "description": "U moet de uitnodiging accepteren voordat u toegang krijgt tot dit budget."
+      },
+      "expense_widget": {
+        "header": "Uitgaven",
+        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}"
+      }
+    },
+    "form": {
+      "budget": {
+        "name": {
+          "label": "Naam",
+          "placeholder": "Mijn budget",
+          "validation": {
+            "required_field": "Verplicht veld",
+            "invalid_name": "Budgetnaam moet 3-64 tekens bevatten"
+          }
+        },
+        "folder_name": {
+          "label": "Mapnaam",
+          "placeholder": "Voer een mapnaam in",
+          "validation": {
+            "required_field": "Verplicht veld",
+            "invalid_name": "Mapnaam moet 3-64 tekens bevatten"
+          }
+        }
+      },
+      "budget_envelope": {
+        "name": {
+          "label": "Naam",
+          "placeholder": "",
+          "validation": {
+            "required_field": "Verplicht veld",
+            "invalid_name": "Envelopnaam moet 3-64 tekens bevatten"
+          }
+        },
+        "currency": {
+          "label": "Valuta",
+          "validation": {
+            "required_field": "Verplicht veld"
+          }
+        },
+        "categories": {
+          "label": "Categorieën",
+          "selected": "{count} geselecteerd"
+        },
+        "icon": {
+          "label": "Pictogram"
+        },
+        "status": {
+          "label": "Status",
+          "option": {
+            "active": "Actief",
+            "archive": "Gearchiveerd"
+          }
+        }
+      },
+      "budget_limit": {
+        "limit": {
+          "label": "Budget",
+          "validation": {
+            "invalid_number": "Ongeldig getal",
+            "required_field": "Verplicht veld",
+            "invalid_formula": "Ongeldige formule"
+          }
+        }
+      }
+    },
+    "page": {
+      "budget": {
+        "empty": {
+          "header": "Budget",
+          "no_budget": "U hebt nog geen budget aangemaakt.",
+          "description": "Maak een budget aan of accepteer een uitnodiging om uw financiën te gaan plannen.",
+          "create_budget": "Een budget aanmaken",
+          "initial_setup": "Voeg eerst een rekening en minstens één categorie toe om een budget te kunnen maken.",
+          "create_account": "Rekening toevoegen"
+        },
+        "unavailable": {
+          "header": "Budget niet beschikbaar",
+          "no_access": "U hebt geen toegang meer tot dit budget. Mogelijk is het verwijderd of is uw toegang ingetrokken.",
+          "choose_budget": "Een ander budget kiezen"
+        },
+        "error": {
+          "retry": "Opnieuw proberen"
+        },
+        "settings": {
+          "button": "Instellen",
+          "menu": {
+            "edit": "Budgetgegevens",
+            "edit_structure": "Structuur bewerken",
+            "edit_structure_done": "Klaar met bewerken",
+            "budget_list": "Budgetlijst openen"
+          }
+        },
+        "structure": {
+          "no_folder": "Standaardmap",
+          "in_archive": "Gearchiveerd",
+          "tab": {
+            "budgeted": "Budget",
+            "spent": "Uitgegeven",
+            "available": "Beschikbaar"
+          },
+          "action": {
+            "create_folder": "Map aanmaken",
+            "delete_folder": "Map verwijderen"
+          },
+          "empty_folder": {
+            "note": "Deze map is leeg. Verplaats hier een categorie, tag of envelop naartoe of maak een nieuwe envelop aan."
+          },
+          "element": {
+            "action": {
+              "change_currency": "Valuta wijzigen",
+              "show_transactions": "Transacties tonen"
+            }
+          },
+          "total": {
+            "name": "Totaal",
+            "expenses": "Totale uitgaven"
+          }
+        }
+      },
+      "settings": {
+        "menu_item": "Budgetten",
+        "header": "Budgetten",
+        "info": "Hier staan al uw budgetten. Maak aparte budgetten voor verschillende doelen en deel ze met uw gezin.",
+        "create_budget": "Budget aanmaken",
+        "edit_modal": {
+          "header": "Budget bewerken"
+        },
+        "create_modal": {
+          "header": "Nieuw budget"
+        },
+        "delete_modal": {
+          "title": "Budget verwijderen?",
+          "question": "Weet u zeker dat u “{name}” wilt verwijderen?"
+        },
+        "decline_access_modal": {
+          "title": "Toegang tot het budget weigeren?",
+          "question": "Weet u zeker dat u de toegang tot het budget “{name}” wilt weigeren?"
+        },
+        "not_accepted": "uitnodiging nog niet geaccepteerd",
+        "level": {
+          "guest": "Alleen bekijken",
+          "user": "Budget beheren",
+          "admin": "Volledig beheer"
+        },
+        "list_actions": {
+          "access": "Toegangsbeheer",
+          "go_to": "Budget openen"
+        }
+      }
+    }
+  },
+  "classifications": {
+    "categories": {
+      "pages": {
+        "settings": {
+          "menu_item": "Categorieën",
+          "header": "Categorieën",
+          "info": "Categorieën groeperen uw uitgaven en inkomsten. Archiveer de categorieën die u niet meer gebruikt — hun historie blijft bewaard.",
+          "archived_item": "Gearchiveerd",
+          "create_category": "Categorie aanmaken"
+        }
+      },
+      "modals": {
+        "replace": {
+          "header": "Vervangen door",
+          "note": "De oorspronkelijke categorie wordt verwijderd en vervangen door de geselecteerde categorie"
+        },
+        "delete": {
+          "title": "Categorie verwijderen?",
+          "question": "Weet u zeker dat u “{name}” wilt verwijderen?"
+        },
+        "edit": {
+          "header": "Categorie bewerken"
+        },
+        "create": {
+          "header": "Nieuwe categorie"
+        }
+      },
+      "forms": {
+        "category": {
+          "type": {
+            "income": "Inkomsten",
+            "expense": "Uitgave"
+          },
+          "name": {
+            "label": "Naam",
+            "placeholder": "Voer een naam in",
+            "validation": {
+              "required_field": "Verplicht veld",
+              "invalid_name": "Categorienaam moet 3-64 tekens bevatten"
+            }
+          },
+          "icon": {
+            "label": "Pictogram"
+          }
+        }
+      }
+    },
+    "tags": {
+      "pages": {
+        "settings": {
+          "menu_item": "Tags",
+          "header": "Tags",
+          "info": "Tags groeperen uitgaven automatisch binnen uw budget — handig voor bijvoorbeeld reizen: markeer alle uitgaven van een reis met één tag en zie de uitsplitsing direct in het budget.",
+          "create_tag": "Tag aanmaken",
+          "archived_item": "Gearchiveerd"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Tag bewerken"
+        },
+        "create": {
+          "header": "Nieuwe tag"
+        },
+        "delete": {
+          "title": "Tag verwijderen?",
+          "question": "Weet u zeker dat u “{name}” wilt verwijderen?"
+        }
+      },
+      "forms": {
+        "tag": {
+          "name": {
+            "label": "Naam",
+            "validation": {
+              "required_field": "Verplicht veld",
+              "invalid_name": "Tagnaam moet 3-64 tekens bevatten"
+            }
+          }
+        }
+      }
+    },
+    "payees": {
+      "pages": {
+        "settings": {
+          "menu_item": "Begunstigden",
+          "header": "Begunstigden",
+          "info": "Begunstigden laten zien waar uw geld naartoe gaat. Archiveer begunstigden die u niet meer nodig hebt.",
+          "create_payee": "Begunstigde aanmaken",
+          "archived_item": "Gearchiveerd"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Begunstigde bewerken"
+        },
+        "create": {
+          "header": "Nieuwe begunstigde"
+        },
+        "delete": {
+          "title": "Begunstigde verwijderen?",
+          "question": "Weet u zeker dat u “{name}” wilt verwijderen?"
+        }
+      },
+      "forms": {
+        "payee": {
+          "name": {
+            "label": "Naam",
+            "validation": {
+              "required_field": "Verplicht veld",
+              "invalid_name": "Naam van begunstigde moet 3-64 tekens bevatten"
+            }
+          }
+        }
+      }
+    },
+    "currencies": {
+      "pages": {
+        "settings": {
+          "menu_item": "Valuta's",
+          "header": "Valuta's",
+          "create_currency": "Valuta toevoegen",
+          "my_currencies": "Mijn valuta's",
+          "global_currencies": "Econumo-valuta's",
+          "rate_caption": "1 {base} = {rate} {code}",
+          "locked_base": "De basisvaluta is altijd ingeschakeld",
+          "locked_profile": "De valuta van uw profiel is altijd ingeschakeld",
+          "disable_currency": "Uitschakelen",
+          "enable_currency": "Inschakelen",
+          "disable_all": "Alles uitschakelen",
+          "enable_all": "Alles inschakelen",
+          "info": "U kunt eigen valuta's toevoegen — die alleen voor u zichtbaar zijn en een vaste wisselkoers hebben die u zelf instelt — en ze gebruiken voor uw rekeningen en budgetten. Econumo-valuta's zijn beschikbaar voor iedereen op deze server; hun wisselkoersen worden centraal beheerd en worden automatisch bijgewerkt als op de server koersupdates zijn ingesteld."
+        }
+      },
+      "modals": {
+        "create": {
+          "header": "Nieuwe valuta"
+        },
+        "edit": {
+          "header": "Valuta bewerken"
+        },
+        "delete": {
+          "title": "Valuta verwijderen?"
+        }
+      },
+      "forms": {
+        "currency": {
+          "code": {
+            "label": "Code"
+          },
+          "name": {
+            "label": "Naam",
+            "validation": {
+              "required_field": "Verplicht veld"
+            }
+          },
+          "symbol": {
+            "label": "Symbool"
+          },
+          "fraction_digits": {
+            "label": "Decimalen"
+          },
+          "rate": {
+            "label": "Wisselkoers"
+          }
+        }
+      }
+    }
+  },
+  "connections": {
+    "pages": {
+      "settings": {
+        "menu_item": "Gedeelde toegang",
+        "header": "Gedeelde toegang",
+        "info": "Met verbindingen beheert u budgetten en rekeningen samen met iemand anders. Nodig uw partner uit met een code en stel daarna per rekening het toegangsniveau in.",
+        "generate_invite": "Uitnodiging maken",
+        "accept_invite": "Uitnodiging accepteren"
+      }
+    },
+    "accounts": {
+      "roles": {
+        "owner": "Eigenaar",
+        "admin": "Volledig beheer",
+        "user": "Transacties beheren",
+        "guest": "Alleen bekijken",
+        "no_access": "Geen toegang"
+      }
+    },
+    "budgets": {
+      "roles": {
+        "owner": "Eigenaar",
+        "admin": "Volledig beheer",
+        "user": "Budget beheren",
+        "guest": "Alleen bekijken",
+        "no_access": "Geen toegang"
+      }
+    },
+    "modals": {
+      "delete_connection": {
+        "question": "Weet u zeker dat u de verbinding met {name} wilt verwijderen?"
+      },
+      "generate_invite": {
+        "instruction": "Deel deze code met de persoon met wie u verbinding wilt maken. De code is 5 minuten geldig.",
+        "code": {
+          "label": "Uitnodigingscode"
+        }
+      },
+      "accept_invite": {
+        "label": "Uitnodiging accepteren",
+        "instruction": "Vraag de uitnodigingscode op bij de andere persoon en voer die hieronder in. De code is 5 minuten geldig.",
+        "code": {
+          "label": "Uitnodigingscode"
+        }
+      },
+      "preview_connection": {
+        "accounts": "Gedeelde rekeningen",
+        "budgets": "Gedeelde budgetten",
+        "budgets_empty": "Geen gedeelde budgetten",
+        "accounts_empty": "Geen gedeelde rekeningen",
+        "shared_with_you": "Met u gedeeld",
+        "your_account": "Uw rekening",
+        "your_budget": "Uw budget",
+        "tap_to_manage": "Selecteer een item om de toegang te beheren"
+      },
+      "decline_access": {
+        "decline_access": "Toegang weigeren"
+      },
+      "share_access": {
+        "not_accepted": "uitnodiging nog niet geaccepteerd",
+        "revoke_access": "Toegang intrekken",
+        "revoke_confirm": {
+          "title": "Toegang intrekken?",
+          "question": "Weet u zeker dat u de toegang van {name} wilt intrekken?"
+        },
+        "list_empty": "Geen verbindingen gevonden",
+        "tap_to_share": "Selecteer een gebruiker om toegang mee te delen",
+        "choose_access_level": "Kies het toegangsniveau dat u wilt verlenen",
+        "select_user": "Gebruiker {name} selecteren"
+      }
+    },
+    "forms": {
+      "invitation_code": {
+        "validation": {
+          "required_field": "Verplicht veld"
+        }
+      }
+    },
+    "sharing_requests": {
+      "title": "Deelverzoeken",
+      "empty": "Geen openstaande verzoeken",
+      "invited_you": "{name} heeft u uitgenodigd",
+      "account": "Rekening",
+      "budget": "Budget",
+      "choose_folder": "Kies een map voor deze rekening",
+      "general_folder_hint": "General (wordt aangemaakt)",
+      "decline_question": "Toegang tot “{name}” weigeren?"
+    }
+  },
+  "subscription": {
+    "banner": {
+      "trial": "Uw abonnement eindigt over {count} dag | Uw abonnement eindigt over {count} dagen",
+      "readonly": "Uw account is alleen-lezen — u kunt uw gegevens bekijken en exporteren, maar niet toevoegen of wijzigen",
+      "cta": "Abonnement beheren",
+      "dismiss": "Sluiten",
+      "connection_trial": "Het abonnement van {name} eindigt over {count} dag | Het abonnement van {name} eindigt over {count} dagen",
+      "connection_readonly": "Het abonnement van {name} is afgelopen — gedeelde rekeningen kunnen wel worden bekeken, maar niet bewerkt"
+    },
+    "settings": {
+      "group": "Facturering",
+      "portal": "Abonnement beheren",
+      "status": {
+        "trial": "Abonnement loopt tot {date}",
+        "readonly": "Verlopen"
+      }
+    },
+    "connections": {
+      "status": {
+        "readonly": "Alleen-lezen",
+        "ends": "Abonnement eindigt over {count} dag | Abonnement eindigt over {count} dagen"
+      },
+      "pay_for": "Betalen voor {name}"
+    },
+    "toast": {
+      "readonly": "Alleen-lezen toegang — wijzigen is uitgeschakeld"
+    }
+  },
+  "errors": {
+    "common": {
+      "is_blank": "Deze waarde mag niet leeg zijn.",
+      "invalid_choice": "De waarde die u hebt geselecteerd is geen geldige keuze.",
+      "invalid_format": "Deze waarde is ongeldig.",
+      "invalid_uuid": "Deze waarde is geen geldige UUID.",
+      "invalid_email": "Deze waarde is geen geldig e-mailadres.",
+      "too_long": "Deze waarde is te lang.",
+      "too_short": "Deze waarde is te kort.",
+      "out_of_range": "Deze waarde valt buiten het toegestane bereik.",
+      "too_many_attempts": "Te veel pogingen. Probeer het later opnieuw.",
+      "readonly_access": "Alleen-lezen toegang. Schrijfbewerkingen zijn uitgeschakeld.",
+      "operation_locked": "De bewerking is vergrendeld.",
+      "invalid_datetime_format": "Ongeldige datumnotatie, verwacht Y-m-d H:i:s.",
+      "invalid_datetime": "Deze waarde is geen geldige datum en tijd.",
+      "icon_required": "De waarde van het pictogram mag niet leeg zijn.",
+      "folder_name_length": "Mapnaam moet {min}-{max} tekens bevatten.",
+      "invalid_currency_code": "De valutacode is onjuist.",
+      "invalid_id": "ongeldige id"
+    },
+    "auth": {
+      "invalid_credentials": "Ongeldige inloggegevens."
+    },
+    "account": {
+      "name_length": "Rekeningnaam moet {min}-{max} tekens bevatten.",
+      "list_empty": "De lijst met rekeningen is leeg.",
+      "folder_list_empty": "De lijst met mappen is leeg.",
+      "folder_already_exists": "Deze map bestaat al."
+    },
+    "budget": {
+      "name_length": "Budgetnaam moet {min}-{max} tekens bevatten.",
+      "envelope_name_length": "Envelopnaam moet {min}-{max} tekens bevatten.",
+      "invalid_element_type_alias": "Een budgetelementtype met alias {alias} bestaat niet.",
+      "invalid_role_alias": "Een budgetgebruikersrol met alias {alias} bestaat niet.",
+      "transaction_filter_required": "Validatie mislukt."
+    },
+    "category": {
+      "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",
+      "type_invalid": "Het opgegeven categorietype bestaat niet.",
+      "replace_id_required": "Bij mode=replace is replaceId verplicht.",
+      "not_found": "Categorie niet gevonden.",
+      "cannot_be_replaced": "Categorieën kunnen niet worden vervangen.",
+      "list_empty": "De lijst met categorieën is leeg."
+    },
+    "connection": {
+      "invalid_uuid": "Dit is geen geldige UUID.",
+      "invalid_role_alias": "Een rekeningrol met alias {alias} bestaat niet.",
+      "invalid_code": "De verbindingscode is onjuist.",
+      "inviting_yourself": "Uzelf uitnodigen?",
+      "deleting_yourself": "Uzelf verwijderen?"
+    },
+    "currency": {
+      "already_exists": "Deze valuta bestaat al.",
+      "name_length": "Valutanaam moet 1-64 tekens bevatten.",
+      "symbol_length": "Valutasymbool moet 1-12 tekens bevatten.",
+      "fraction_digits_range": "Het aantal decimalen moet tussen 0 en 8 liggen.",
+      "rate_invalid": "De koers moet een positief getal zijn.",
+      "not_available": "De valuta is niet beschikbaar.",
+      "in_use": "De valuta is in gebruik en kan niet worden verwijderd.",
+      "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
+      "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
+    },
+    "payee": {
+      "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
+      "already_exists": "Deze begunstigde bestaat al.",
+      "list_empty": "De lijst met begunstigden is leeg."
+    },
+    "tag": {
+      "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
+      "already_exists": "Deze tag bestaat al.",
+      "list_empty": "De lijst met tags is leeg."
+    },
+    "token": {
+      "name_length": "Tokennaam moet {min}-{max} tekens bevatten.",
+      "invalid_expiration_date": "Ongeldige vervaldatum.",
+      "expiration_in_future": "De vervaldatum moet in de toekomst liggen.",
+      "retention_negative": "De bewaartermijn mag niet negatief zijn."
+    },
+    "transaction": {
+      "account_not_available": "Deze rekening is niet beschikbaar voor deze bewerking.",
+      "item_not_available": "Deze transactie is niet beschikbaar voor deze bewerking.",
+      "invalid_import_file": "Upload een geldig CSV-bestand."
+    },
+    "user": {
+      "report_period_invalid": "De rapportageperiode is onjuist.",
+      "language_invalid": "Ongeldige taal",
+      "already_exists": "Deze gebruiker bestaat al.",
+      "registration_disabled": "Registratie is uitgeschakeld.",
+      "password_incorrect": "Het wachtwoord is onjuist.",
+      "reset_password_error": "Fout bij het resetten van het wachtwoord.",
+      "reset_code_expired": "De code is verlopen.",
+      "email_verification_required": "Bevestig uw e-mailadres.",
+      "verification_code_invalid": "De bevestigingscode is ongeldig.",
+      "verification_code_expired": "De code is verlopen.",
+      "email_unchanged": "Het nieuwe e-mailadres is hetzelfde als uw huidige e-mailadres."
+    }
+  },
+  "emails": {
+    "reset": {
+      "subject": "Bevestigingscode voor het resetten van uw wachtwoord",
+      "body": "Hallo {name},\nUw bevestigingscode is: {code}.\n\nAls u deze code niet hebt aangevraagd, kunt u dit bericht negeren.\n\n--\nEconumo — Beheer geld. Samen.\n"
+    },
+    "verify": {
+      "subject": "Verificatiecode voor uw e-mailadres",
+      "body": "Hallo {name},\nUw bevestigingscode is: {code}.\n\nVoer deze code in op het inlogscherm om uw e-mailadres te bevestigen.\n\nAls u geen Econumo-account hebt aangemaakt, kunt u dit bericht negeren.\n\n--\nEconumo — Beheer geld. Samen.\n"
+    },
+    "change_email": {
+      "subject": "Bevestig uw nieuwe e-mailadres",
+      "body": "Hallo {name},\n\nGebruik deze code om uw nieuwe e-mailadres te bevestigen: {code}\n\nDe code verloopt over 10 minuten. Als u dit niet hebt aangevraagd, kunt u dit bericht negeren."
+    },
+    "change_email_notice": {
+      "subject": "Wijziging van e-mailadres aangevraagd",
+      "body": "Hallo {name},\n\nIemand heeft aangevraagd om het e-mailadres van uw account te wijzigen in {email}. Als u dit niet was, wijzig dan onmiddellijk uw wachtwoord."
+    }
+  }
+}

@@ -22,6 +22,11 @@ import {
 // (currencies have no archival, so it is constant 0).
 type CurrencyRow = CurrencyListItemDto & { position: number; isArchived: 0 }
 
+// The globals list is the whole ISO table, so the few a user actually enabled
+// would otherwise be scattered through the alphabet: float them to the top of
+// their section, server code order preserved inside each half.
+const enabledFirst = (a: CurrencyListItemDto, b: CurrencyListItemDto) => a.isHidden - b.isHidden
+
 export function CurrenciesPage() {
   const { t } = useTranslation()
   const { data: user } = useUserData()
@@ -39,8 +44,10 @@ export function CurrenciesPage() {
   const [dialog, setDialog] = useState<{ open: boolean; currency: CurrencyListItemDto | null }>({ open: false, currency: null })
   const [error, setError] = useState<string | null>(null)
 
+  // Own customs are not sorted by isHidden: they have no enable/disable switch,
+  // so the flag would reorder them by something the user cannot see.
   const own = currencies?.filter((c) => c.scope === 'own' && c.isDeleted === 0) ?? []
-  const globals = currencies?.filter((c) => c.scope === 'global' && c.isDeleted === 0) ?? []
+  const globals = currencies?.filter((c) => c.scope === 'global' && c.isDeleted === 0).sort(enabledFirst) ?? []
   const items: CurrencyRow[] = [...own, ...globals].map((c, i) => ({ ...c, position: i, isArchived: 0 as const }))
   const baseId = rates?.[0]?.baseCurrencyId
   const profileId = userCurrencyId(user)
@@ -92,6 +99,7 @@ export function CurrenciesPage() {
         alert={error && !dialog.open ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
         createLabel={t('classifications.currencies.pages.settings.create_currency')}
         deleteTitle={t('classifications.currencies.modals.delete.title')}
+        archivedLabel="" // never rendered: CurrencyRow pins isArchived to 0
         items={items}
         analyticsType="currency"
         sections={[

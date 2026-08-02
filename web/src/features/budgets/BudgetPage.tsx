@@ -172,7 +172,7 @@ function ElementLongPress({ element, onLongPress, children }: { element: BudgetE
 }
 
 export function BudgetPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
@@ -260,8 +260,8 @@ export function BudgetPage() {
     if (!budget) {
       return null
     }
-    return bucketElements(budget, makeBudgetExchange(budget, currencies))
-  }, [budget, currencies])
+    return bucketElements(budget, makeBudgetExchange(budget, currencies), i18n.language)
+  }, [budget, currencies, i18n.language])
 
   const buckets = useMemo(() => {
     if (!budget || !serverBuckets) {
@@ -270,8 +270,8 @@ export function BudgetPage() {
     if (!dragArrangement) {
       return serverBuckets
     }
-    return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies))
-  }, [budget, serverBuckets, dragArrangement, currencies])
+    return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
+  }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
   const configure = budget ? canConfigureBudget(budget.meta, user?.id) : false
   const editDetails = budget ? canEditBudget(budget.meta, user?.id) : false

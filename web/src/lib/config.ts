@@ -91,8 +91,18 @@ export function locale(value?: string): string {
 
 export function getLocaleOptions(): LocaleOption[] {
   return [
+    // English first, every other language by locale code.
     { value: 'en', label: 'English', short: 'EN' },
+    { value: 'de', label: 'Deutsch', short: 'DE' },
+    { value: 'es', label: 'Español', short: 'ES' },
+    { value: 'fr', label: 'Français', short: 'FR' },
+    { value: 'it', label: 'Italiano', short: 'IT' },
+    { value: 'nl', label: 'Nederlands', short: 'NL' },
+    { value: 'pl', label: 'Polski', short: 'PL' },
+    { value: 'pt', label: 'Português', short: 'PT' },
     { value: 'ru', label: 'Русский', short: 'РУ' },
+    { value: 'uk', label: 'Українська', short: 'УК' },
+    { value: 'zh', label: '简体中文', short: '中文' },
   ]
 }
 
