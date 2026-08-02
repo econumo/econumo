@@ -20,7 +20,8 @@ making income categories first-class budget elements.
 
 | Topic | Decision |
 |---|---|
-| Income rows | Per income category, groupable into envelopes (shared budgets need e.g. one "Salaries" envelope across members). All income rows live under a single fixed "Income" section — rendered like a folder but synthetic, not a `budget_folders` row; user-created folders stay expense-only |
+| Income rows | Per income category, groupable into envelopes (shared budgets need e.g. one "Salaries" envelope across members). All income rows live under a single fixed "Income" section — rendered like a folder but synthetic, not a `budget_folders` row |
+| Folder sides | Content-derived: an empty folder is neutral (shows in both views); its first member's side makes it income-only or expense-only; cross-side moves are rejected. Income folders render inside the plan's Income section; `get-budget` filters income-sided folders out |
 | Row structure | Mirrors the budget page exactly (folders, envelopes with children, uncategorized, archived) |
 | Placement | A Budget \| Plan toggle on the existing budget page |
 | Visible window | Responsive: as many month columns as fit the screen (3–12); on phones the sheet collapses to a single month column; left/right arrows shift the window; no horizon selector. Plan mode is desktop-first — mobile gets a usable degradation, not parity |
@@ -64,6 +65,26 @@ making income categories first-class budget elements.
 - An envelope containing income categories is an income-typed element and appears
   in the plan view's income section, never in `get-budget`.
 
+### Folders with content-derived sides
+
+Folders follow the same principle as envelopes — **a container has no side of its
+own; its contents give it one** — but derived rather than stored:
+
+- A folder's side is computed from its member elements: no members → **neutral**,
+  any income member → **income folder**, any expense member → **expense folder**.
+  Both reads already load all elements, so derivation is a free pass over data in
+  hand — no schema change, and no stale state (removing the last income element
+  reverts the folder to neutral automatically).
+- **Enforcement**: `MoveElementList` (and any path assigning an element a
+  `folderId`) rejects a move that would mix sides, with a coded error sibling to
+  the envelope homogeneity one. The UI never offers cross-side targets; the error
+  is the API backstop.
+- **`get-budget` filters income-sided folders out**; neutral (empty) folders keep
+  appearing exactly as today. So: create an empty folder → it shows in both views
+  and moves like any folder; give it an income member → it disappears from the
+  budget view and lives in the plan's Income section. The plan read returns all
+  folders.
+
 ### Frozen contract: get-budget unchanged
 
 Every existing builder (`buildStructure`, `buildFilters`, `buildElementsSpending`,
@@ -101,11 +122,12 @@ Response sketch (final field names to follow the existing DTO conventions in
 There is **no separate incomes section**: income elements (income envelopes with
 children, standalone income categories) appear in `structure.elements` alongside
 the expense rows, distinguished solely by their `type` value — it fully encodes
-the side, so a dedicated array would duplicate it. Income elements carry no
-`folderId` (the SPA renders them under the synthetic Income section, one more
-bucket in the existing `bucketElements` pattern). One builder pass on the server,
-one shape for clients, and the wire doesn't change if income rows ever gain
-folders or reordering.
+the side, so a dedicated array would duplicate it. Income elements may carry a
+`folderId` like any other element (see folder sides below); the SPA renders the
+income rows — foldered or loose — under the synthetic Income section, one more
+bucket in the existing `bucketElements` pattern. `structure.folders` in the plan
+response includes **all** folders: income-sided, expense-sided, and neutral. One
+builder pass on the server, one shape for clients.
 
 `PlanElement`: id, type, name, icon, currencyId, isArchived, position, folderId?,
 ownerUserId?, `cells: [{actual, planned}]` aligned with `months` (`planned` is `""`
@@ -176,10 +198,12 @@ the plan sheet.
 - **Current month column** is visually highlighted.
 - Sections top to bottom: **Income** — a single fixed section header (styled like a
   folder, but synthetic: no `budget_folders` row, so it cannot be renamed, deleted,
-  or receive expense elements) holding income envelopes (expandable to children)
-  and standalone income categories; then the **expense structure** exactly as the
-  budget page orders it (folders as section headers, elements, uncategorized,
-  archived); then the **Totals block**.
+  or receive expense elements) holding income-sided folders, income envelopes
+  (expandable to children), and standalone income categories; then the **expense
+  structure** exactly as the budget page orders it (folders as section headers,
+  elements, uncategorized, archived); then the **Totals block**. Neutral (empty)
+  folders render in the expense structure area, as on the budget page, until they
+  gain a side.
 
 ### Cells
 
@@ -264,9 +288,11 @@ the running math consistent.
 ### Envelope management for incomes
 
 Income rows exist only in the plan view, so the income section header exposes the
-existing envelope create/edit dialogs for members with edit rights. Drag
-re-ordering of income rows is out of scope for v1 (seed order = category order;
-`MoveElementList` already exists server-side if we add UI later).
+existing envelope create/edit dialogs for members with edit rights. Row menus in
+the plan view offer a **"Move to folder…"** action (reusing `MoveElementList`)
+whose target list is side-filtered: an income row sees income and neutral folders,
+an expense row sees expense and neutral folders. Drag re-ordering of income rows
+stays out of scope for v1 (seed order = category order).
 
 The envelope dialog's category picker is **side-constrained** — the UI enforcement
 of the homogeneity rule (the server's coded rejection remains the backstop):
@@ -301,7 +327,9 @@ homogeneity error) go into **every** catalogue in `locales/`; the parity guards
 - **MCP**: a `get-budget-plan` tool in `internal/budget/mcp` mirroring the REST
   read, with an `mcpparity` golden.
 - **Behavior tests**: `SetLimit` self-heals an income-typed element; envelope
-  homogeneity rejection (with the coded error); income elements excluded from every
+  homogeneity rejection (with the coded error); folder-side derivation
+  (neutral/income/expense, reverting to neutral when emptied) and cross-side move
+  rejection; income elements and income-sided folders excluded from every
   `get-budget` builder; `months` bounds validation.
 - **Frontend (vitest)**: window math (responsive count, initial anchoring,
   clamping), totals + Balance rolling math (actual for past months; per-cell
@@ -313,8 +341,9 @@ homogeneity error) go into **every** catalogue in `locales/`; the parity guards
 
 ## Out of scope (v1)
 
-- Drag re-ordering of income rows; user-created folders for income rows (the single
-  synthetic "Income" section is the only income-side grouping above envelopes).
+- Drag re-ordering of income rows and folders in the plan view (assignment happens
+  via the "Move to folder…" row menu; full dnd arranging stays on the budget page
+  and remains expense-side only).
 - Per-cell carryover ("available") display.
 - Server-side totals.
 - Any change to the budget page's single-month view or its wire contract.
