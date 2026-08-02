@@ -25,12 +25,12 @@
     "uncategorized": "Sem categoria",
     "loader": {
       "label": "a carregar",
-      "having_trouble": "Está com problemas?"
+      "having_trouble": "Está a ter problemas?"
     },
     "select": {
       "search_placeholder": "Pesquisar",
       "create_placeholder": "Pesquise ou introduza um novo nome",
-      "create_hint": "Escreva um nome para o criar"
+      "create_hint": "Escreva um nome para criar"
     },
     "password": {
       "show": "Mostrar palavra-passe",
@@ -259,7 +259,7 @@
       "logout": "Terminar sessão",
       "groups": {
         "service": "Finanças",
-        "classification": "Classificação",
+        "classification": "Listas",
         "data": "Dados",
         "preferences": "Preferências"
       },
@@ -428,7 +428,7 @@
         "header": "Exportar CSV",
         "accounts": "Selecionar contas",
         "select_all": "Selecionar todas",
-        "deselect_all": "Desmarcar todas"
+        "deselect_all": "Desselecionar todas"
       }
     }
   },
@@ -608,7 +608,7 @@
           "sessions": {
             "menu_item": "Sessões",
             "header": "Sessões",
-            "description": "Dispositivos com sessão iniciada na sua conta. Revogue uma sessão para terminar a sessão nesse dispositivo.",
+            "description": "Dispositivos com sessão iniciada na sua conta. Revogue uma sessão para desligar esse dispositivo.",
             "current": "Atual",
             "unknown_device": "Dispositivo desconhecido",
             "last_active": "Última atividade",
@@ -640,7 +640,7 @@
                 }
               },
               "expiry": {
-                "label": "Expira",
+                "label": "Validade",
                 "options": {
                   "d30": "30 dias",
                   "d90": "90 dias",
@@ -715,7 +715,7 @@
       },
       "sign_up": {
         "action": {
-          "sign_up": "Registar"
+          "sign_up": "Registar-se"
         }
       },
       "access_recovery": {
@@ -744,18 +744,18 @@
   },
   "onboarding": {
     "header": "Primeiros passos",
-    "title": "Bem-vindo ao Econumo!",
+    "title": "Boas-vindas ao Econumo!",
     "complete": "Concluir configuração",
     "add_account": "Adicionar conta",
     "import_transactions": "Importar transações",
     "steps": {
       "accounts": {
         "title": "Adicione as suas contas",
-        "text": "Para começar, pode adicionar uma conta clicando no botão abaixo. Em alternativa, pode sempre ir à página <settings>Definições</settings> -> <accounts>Contas</accounts> para gerir as suas contas e organizá-las em pastas."
+        "text": "Para começar, pode adicionar uma conta ao clicar no botão abaixo. Em alternativa, pode sempre ir à página <settings>Definições</settings> -> <accounts>Contas</accounts> para gerir as suas contas e organizá-las em pastas."
       },
       "transactions": {
         "title": "Registe a sua primeira transação",
-        "text": "Pode registar transações selecionando qualquer conta na barra lateral esquerda e clicando no botão <action>Adicionar transação</action>.",
+        "text": "Pode registar transações ao selecionar qualquer conta na barra lateral esquerda e clicar no botão <action>Adicionar transação</action>.",
         "hint": "Pode criar categorias, etiquetas e beneficiários diretamente na janela da transação — introduza o nome e prima Enter."
       },
       "classifications": {
@@ -764,7 +764,7 @@
       },
       "avatar": {
         "title": "Atualize o seu avatar",
-        "text": "Escolha um ícone e uma cor para o seu avatar — ele representa-o nas contas partilhadas. <choose>Escolher o seu avatar</choose>"
+        "text": "Escolha um ícone e uma cor para o seu avatar — é a sua imagem nas contas partilhadas. <choose>Escolher o seu avatar</choose>"
       },
       "connections": {
         "title": "Ligue-se ao seu parceiro",
@@ -779,7 +779,7 @@
     "user_guide": {
       "accounts": "Guia do utilizador: contas",
       "transactions": "Guia do utilizador: transações",
-      "classifications": "Guia do utilizador: classificação",
+      "classifications": "Guia do utilizador: listas",
       "user_profile": "Guia do utilizador: perfil",
       "shared_access": "Guia do utilizador: acesso partilhado",
       "budgets": "Guia do utilizador: orçamentos"
@@ -926,7 +926,7 @@
         },
         "structure": {
           "no_folder": "Pasta predefinida",
-          "in_archive": "Arquivado",
+          "in_archive": "Em arquivo",
           "tab": {
             "budgeted": "Orçamento",
             "spent": "Gasto",
@@ -990,7 +990,7 @@
           "menu_item": "Categorias",
           "header": "Categorias",
           "info": "As categorias agrupam as suas despesas e receitas. Arquive as que já não usa — o histórico mantém-se.",
-          "archived_item": "Arquivadas",
+          "archived_item": "Em arquivo",
           "create_category": "Criar categoria"
         }
       },
@@ -1037,7 +1037,7 @@
           "header": "Etiquetas",
           "info": "As etiquetas agrupam automaticamente as despesas dentro do orçamento — útil em viagens, por exemplo: marque todas as despesas da viagem com uma etiqueta e obtenha a repartição dos gastos diretamente no orçamento.",
           "create_tag": "Criar etiqueta",
-          "archived_item": "Arquivadas"
+          "archived_item": "Em arquivo"
         }
       },
       "modals": {
@@ -1071,7 +1071,7 @@
           "header": "Beneficiários",
           "info": "Os beneficiários mostram para onde vai o seu dinheiro. Arquive os beneficiários de que já não precisa.",
           "create_payee": "Criar beneficiário",
-          "archived_item": "Arquivados"
+          "archived_item": "Em arquivo"
         }
       },
       "modals": {
@@ -1286,7 +1286,7 @@
       "icon_required": "O valor do ícone não deve estar vazio.",
       "folder_name_length": "O nome da pasta deve ter entre {min} e {max} caracteres.",
       "invalid_currency_code": "O código da moeda está incorreto.",
-      "invalid_id": "identificador inválido"
+      "invalid_id": "Identificador inválido."
     },
     "auth": {
       "invalid_credentials": "Credenciais inválidas."
