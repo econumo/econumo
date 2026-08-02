@@ -14,6 +14,9 @@ export interface CurrencyDto {
 export interface CurrencyListItemDto extends CurrencyDto {
   scope: 'global' | 'own' | 'shared'
   isHidden: 0 | 1
+  // Deleted currencies are still returned: accounts and rates referencing them
+  // must keep resolving. Every picker and list filters them out itself.
+  isDeleted: 0 | 1
 }
 
 export interface CurrencyRateDto {
