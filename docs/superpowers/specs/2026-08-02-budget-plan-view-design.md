@@ -94,10 +94,18 @@ Response sketch (final field names to follow the existing DTO conventions in
   "months": ["2026-06-01", "..."],                  // ordered, length = months
   "openingBalances": [ {"currencyId": "...", "amount": "..."} ],
   "currencyRates": [ { "period": "2026-06-01", "rates": [ /* AverageCurrencyRateResult */ ] } ],
-  "incomes":   { "elements": [ /* PlanElement: income envelopes + standalone income categories, ordered */ ] },
-  "structure": { "folders": [ /* as get-budget */ ], "elements": [ /* PlanElement: expense rows as get-budget orders them */ ] }
+  "structure": { "folders": [ /* as get-budget */ ], "elements": [ /* PlanElement: ALL rows — income and expense */ ] }
 }
 ```
+
+There is **no separate incomes section**: income elements (income envelopes with
+children, standalone income categories) appear in `structure.elements` alongside
+the expense rows, distinguished solely by their `type` value — it fully encodes
+the side, so a dedicated array would duplicate it. Income elements carry no
+`folderId` (the SPA renders them under the synthetic Income section, one more
+bucket in the existing `bucketElements` pattern). One builder pass on the server,
+one shape for clients, and the wire doesn't change if income rows ever gain
+folders or reordering.
 
 `PlanElement`: id, type, name, icon, currencyId, isArchived, position, folderId?,
 ownerUserId?, `cells: [{actual, planned}]` aligned with `months` (`planned` is `""`
