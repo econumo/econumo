@@ -661,6 +661,11 @@ data unreadable. Most are also asserted by the test suite.
   month-end clamping via a persisted scheduled day (31st → Feb 28 → Mar 31); posting is
   manual (the user acts on a due template) and idempotent on the client-supplied
   transaction id.
+- **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
+  never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
+  so a hard delete would silently destroy every account and transaction in that currency. A
+  deleted currency still appears in `get-currency-list`/`get-currency-rate-list` so entities
+  that hold it keep resolving their symbol and rate.
 
 ## Deployment
 

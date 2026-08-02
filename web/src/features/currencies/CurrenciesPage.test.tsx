@@ -256,7 +256,7 @@ it('compact: own rows sheet has Edit/Delete; global rows sheet has only Enable/D
   expect(within(globalSheet).queryByRole('button', { name: 'Delete' })).toBeNull()
 })
 
-it('no active-only filter: hidden currencies are always listed, switch off', async () => {
+it('no active-only filter: hidden currencies are always listed, Pound switch off', async () => {
   server.use(
     ...coreHandlers({
       currencies: [fixtureUsd, fixtureEur, { ...fixturePts, isHidden: 1 }, fixtureGbp],

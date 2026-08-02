@@ -229,7 +229,13 @@ still render), so two filters are needed: the "My currencies" section drops
 a "deleted" state — the user simply stops seeing the currency.
 
 Hiding and deleting are independent states in this design, so restoring the
-toggle on own customs later is a pure UI change requiring no data work.
+toggle on own customs later is a pure UI change requiring no data work. One
+consequence in the meantime: `selectableCurrencies` ignores `isHidden` for
+`scope === 'own'` rows entirely, since own customs have no hide affordance
+to act on it — a pre-existing hidden own custom (written by the previous UI,
+or by an API/MCP client still calling `hide-currency`) must stay selectable
+rather than going permanently stranded. Restoring the toggle would need to
+revisit that clause too.
 
 ## Testing
 

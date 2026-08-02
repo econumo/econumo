@@ -119,6 +119,10 @@ func toCurrencyResult(rec model.CurrencyRecord, scope string) model.CurrencyList
 	if rec.Name != nil && *rec.Name != "" {
 		name = *rec.Name
 	}
+	isDeleted := 0
+	if rec.IsDeleted {
+		isDeleted = 1
+	}
 	return model.CurrencyListItem{
 		CurrencyResult: model.CurrencyResult{
 			Id:             rec.ID,
@@ -129,7 +133,7 @@ func toCurrencyResult(rec model.CurrencyRecord, scope string) model.CurrencyList
 		},
 		Scope:     scope,
 		IsHidden:  0,
-		IsDeleted: 0,
+		IsDeleted: isDeleted,
 	}
 }
 

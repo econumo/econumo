@@ -8,7 +8,7 @@ const cur = (over: Partial<CurrencyListItemDto>): CurrencyListItemDto => ({
 })
 
 describe('selectableCurrencies', () => {
-  it('keeps visible globals and own visible customs', () => {
+  it('keeps visible globals, hides hidden globals, and keeps all own customs', () => {
     const items = [
       cur({ id: 'usd' }),
       cur({ id: 'eur', code: 'EUR', isHidden: 1 }),
@@ -16,7 +16,13 @@ describe('selectableCurrencies', () => {
       cur({ id: 'old', code: 'OLD', scope: 'own', isHidden: 1 }),
       cur({ id: 'gem', code: 'GEM', scope: 'shared' }),
     ]
-    expect(selectableCurrencies(items).map((c) => c.id)).toEqual(['usd', 'pts'])
+    expect(selectableCurrencies(items).map((c) => c.id)).toEqual(['usd', 'pts', 'old'])
+  })
+  // Own customs have no hide affordance; a hidden row left by a previous UI
+  // version or an API/MCP client must not become stranded out of every picker.
+  it('keeps a hidden own custom selectable', () => {
+    const items = [cur({ id: 'pts', code: 'PTS', scope: 'own', isHidden: 1 })]
+    expect(selectableCurrencies(items).map((c) => c.id)).toEqual(['pts'])
   })
   it('keeps the current value even when filtered out', () => {
     const items = [cur({ id: 'usd' }), cur({ id: 'gem', code: 'GEM', scope: 'shared' })]

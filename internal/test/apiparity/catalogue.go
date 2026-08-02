@@ -179,8 +179,10 @@ func init() {
 	register(Scenario{Name: "currency_delete_after_account_delete", Calls: func() []Call {
 		const opCreate = "cd000000-0000-0000-0000-0000000000f1"
 		const newAcct = "cd000000-0000-0000-0000-0000000000f2"
+		const opRecreate = "cd000000-0000-0000-0000-0000000000f3"
 		var curID string
 		var acctID string
+		var curID2 string
 		return []Call{
 			{Label: "create-currency", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
 				Body: map[string]any{"id": opCreate, "code": "PTS", "name": "Points", "symbol": "pts", "fractionDigits": 0, "rate": "100"}, CaptureIDInto: &curID},
@@ -191,6 +193,9 @@ func init() {
 			{Label: "delete-currency", Method: "POST", Path: "/api/v1/currency/delete-currency", Auth: "owner", Body: map[string]any{"id": &curID}},
 			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "rates-after-delete", Method: "GET", Path: "/api/v1/currency/get-currency-rate-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "create-currency-reused-code", Method: "POST", Path: "/api/v1/currency/create-currency", Auth: "owner",
+				Body: map[string]any{"id": opRecreate, "code": "PTS", "name": "Points reborn", "symbol": "pts", "fractionDigits": 0, "rate": "150"}, CaptureIDInto: &curID2},
+			{Label: "read-after-recreate", Method: "GET", Path: "/api/v1/currency/get-currency-list", Auth: "owner", Body: map[string]any{}},
 		}
 	}})
 

@@ -19,3 +19,9 @@
 == rates-after-delete GET /api/v1/currency/get-currency-rate-list [owner] -> 200
 {"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>"},{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"1","updatedAt":"<datetime>"}]}}
 
+== create-currency-reused-code POST /api/v1/currency/create-currency [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Points reborn","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0,"isDeleted":0}}}
+
+== read-after-recreate GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0,"isDeleted":1},{"id":"<generated-uuid>","code":"PTS","name":"Points reborn","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0,"isDeleted":0},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0,"isDeleted":0}]}}
+
