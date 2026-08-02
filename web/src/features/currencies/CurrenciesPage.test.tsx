@@ -52,6 +52,8 @@ beforeEach(() => {
 it('renders My currencies and Global currencies sections; own customs show name+code+rate label', async () => {
   renderPage()
   expect(await screen.findByText('My currencies')).toBeInTheDocument()
+  // The user-vs-global note is always visible, like the recurring page's.
+  expect(screen.getByText(/Global currencies are shared by the whole server/)).toBeInTheDocument()
   expect(screen.getByText('Global currencies')).toBeInTheDocument()
   expect(await screen.findByText('Points')).toBeInTheDocument()
   expect(screen.getByText('PTS · pt')).toBeInTheDocument()

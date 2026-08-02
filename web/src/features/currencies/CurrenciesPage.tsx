@@ -81,7 +81,7 @@ export function CurrenciesPage() {
       <ClassificationList<CurrencyRow>
         title={t('classifications.currencies.pages.settings.header')}
         heading={t('classifications.currencies.pages.settings.menu_item')}
-        info={own.length === 0 ? t('classifications.currencies.pages.settings.empty_state') : undefined}
+        info={t('classifications.currencies.pages.settings.info')}
         alert={error ? <p className="px-1 text-sm text-destructive">{error}</p> : null}
         createLabel={t('classifications.currencies.pages.settings.create_currency')}
         deleteTitle={t('classifications.currencies.modals.delete.title')}
