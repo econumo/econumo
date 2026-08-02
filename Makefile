@@ -107,7 +107,7 @@ go-test: go-lint test-cover
 
 # Coverage threshold for test-cover (true cross-package %). Override on the
 # command line: make test-cover GO_COVER_MIN=70
-GO_COVER_MIN ?= 78
+GO_COVER_MIN ?= 80
 
 # Coverage denominator: all internal packages EXCEPT the sqlc-generated code
 # (internal/infra/storage/sqlc/gen/**). That code is machine-generated and its

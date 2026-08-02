@@ -14,11 +14,15 @@ import (
 // currency_id option in CurrentUserResult). DefaultCode returns the fallback
 // used when the user's code can't be resolved.
 type CurrencyLookup interface {
-	// GetIDByCode returns the currency uuid for the given code, or an error if
-	// not found. The service falls back to DefaultCode on error.
-	GetIDByCode(ctx context.Context, code string) (string, error)
+	// GetIDByCode returns the currency uuid for the given code (own custom
+	// first, then global), or an error if not found. The service falls back
+	// to DefaultCode on error.
+	GetIDByCode(ctx context.Context, userID, code string) (string, error)
 	// DefaultCode returns the fallback currency code (USD).
 	DefaultCode() string
+	// CodeByID maps a stored currency id back to its code (the options wire
+	// is frozen to show codes). Missing ids error; callers apply the fallback.
+	CodeByID(ctx context.Context, id string) (string, error)
 }
 
 // BudgetAccess is the minimal budget lookup the update-budget use case needs:

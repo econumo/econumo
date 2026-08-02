@@ -20,6 +20,7 @@ func TestGetUserTool(t *testing.T) {
 	f := fixture.New(t, db)
 	const email = "profile-owner@example.test"
 	userID := f.User(fixture.User{Email: email})
+	f.DefaultOptions(userID)
 
 	readRepo := userrepo.NewReadRepo(db.Engine, db.TX)
 	encode := auth.NewEncodeService("")

@@ -11,8 +11,13 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  step = 1,
+  ticks = false,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: React.ComponentProps<typeof SliderPrimitive.Root> & {
+  /** render a dot per selectable value (horizontal sliders only) */
+  ticks?: boolean
+}) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -30,6 +35,7 @@ function Slider({
       value={value}
       min={min}
       max={max}
+      step={step}
       className={cn(
         "relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col",
         className
@@ -45,6 +51,16 @@ function Slider({
           className="absolute bg-primary select-none data-horizontal:h-full data-vertical:w-full"
         />
       </SliderPrimitive.Track>
+      {ticks && step > 0 && max > min ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0.5 top-1/2 flex -translate-y-1/2 items-center justify-between"
+        >
+          {Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => (
+            <span key={i} data-slot="slider-tick" className="size-1 rounded-full bg-background/80" />
+          ))}
+        </div>
+      ) : null}
       {Array.from({ length: _values.length }, (_, index) => (
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"

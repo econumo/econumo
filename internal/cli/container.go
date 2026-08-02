@@ -79,7 +79,7 @@ func newContainer(ctx context.Context) (*container, error) {
 	}
 	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	userSvc := appuser.NewService(
-		userRepo, txm, encodeSvc, hasher, accessTokens, currencyLookup, budgetExistence,
+		userRepo, txm, encodeSvc, hasher, accessTokens, server.NewUserCurrencyLookup(currencyLookup), budgetExistence,
 		passwordReqRepo, resetMailer, emailVerificationRepo, nil,
 		emailChangeRepo, nil,
 		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,

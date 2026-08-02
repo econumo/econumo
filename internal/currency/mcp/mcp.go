@@ -14,7 +14,7 @@ import (
 )
 
 type currenciesDoc struct {
-	Currencies []model.CurrencyResult     `json:"currencies"`
+	Currencies []model.CurrencyListItem   `json:"currencies"`
 	Rates      []model.CurrencyRateResult `json:"rates"`
 }
 

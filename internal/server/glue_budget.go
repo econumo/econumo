@@ -5,11 +5,32 @@ package server
 
 import (
 	"context"
+	"fmt"
 	appbudget "github.com/econumo/econumo/internal/budget"
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+// BudgetCurrencyLookup adapts currencyrepo.Lookup to budget.CurrencyLookup
+// (the usability check on explicit currency ids).
+type BudgetCurrencyLookup struct {
+	inner *currencyrepo.Lookup
+}
+
+var _ appbudget.CurrencyLookup = (*BudgetCurrencyLookup)(nil)
+
+// NewBudgetCurrencyLookup wraps a currencyrepo.Lookup.
+func NewBudgetCurrencyLookup(inner *currencyrepo.Lookup) *BudgetCurrencyLookup {
+	return &BudgetCurrencyLookup{inner: inner}
+}
+
+// EnsureUsable confirms the currency is usable by the user (global, or their
+// own custom).
+func (l *BudgetCurrencyLookup) EnsureUsable(ctx context.Context, userID, currencyID string) error {
+	return l.inner.EnsureUsable(ctx, userID, currencyID)
+}
 
 type budgetAccountRepo interface {
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
@@ -222,8 +243,9 @@ func (l *BudgetUserLookup) GetOwner(ctx context.Context, userID string) (model.O
 	return model.OwnerView{ID: h.ID, Name: h.Name, Avatar: h.Avatar}, nil
 }
 
-// CurrencyCode returns the user's default currency code (the currency option).
-func (l *BudgetUserLookup) CurrencyCode(ctx context.Context, userID string) (string, error) {
+// DefaultCurrencyID returns the user's stored default currency id. The
+// migration guarantees every user holds one, so an absent option is an error.
+func (l *BudgetUserLookup) DefaultCurrencyID(ctx context.Context, userID string) (string, error) {
 	id, err := vo.ParseId(userID)
 	if err != nil {
 		return "", err
@@ -232,10 +254,10 @@ func (l *BudgetUserLookup) CurrencyCode(ctx context.Context, userID string) (str
 	if err != nil {
 		return "", err
 	}
-	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil {
+	if o := u.Option(model.OptionCurrency); o != nil && o.Value != nil && *o.Value != "" {
 		return *o.Value, nil
 	}
-	return model.DefaultCurrency, nil
+	return "", fmt.Errorf("user %s: currency option missing", userID)
 }
 
 // SetActiveBudget writes the user's active-budget option.

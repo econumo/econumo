@@ -219,7 +219,10 @@ func run(serveArgs []string) error {
 	slog.Info("migrations applied", "backend", be.Name())
 
 	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
-	handler, adminHandler, rateUpdater := server.Build(cfg, db, server.Seams{Updates: updates})
+	handler, adminHandler, rateUpdater, err := server.Build(cfg, db, server.Seams{Updates: updates})
+	if err != nil {
+		return err
+	}
 	updates.StartPolling(ctx)
 	rateUpdater.StartPolling(ctx)
 

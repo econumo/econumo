@@ -61,7 +61,7 @@ func newVerifySvcClock(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled 
 	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
 	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
-	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets,
+	return appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
 		ecRepo, nil,
@@ -93,7 +93,7 @@ func newVerifySvcLimited(t *testing.T, db *dbtest.DB, cap *captureMailer, limit 
 		Window: time.Hour,
 		Global: 0,
 	}, clk)
-	return appuser.NewService(repo, db.TX, enc, hasher, tokens, lookup, budgets,
+	return appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
 		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
 		ecRepo, nil,

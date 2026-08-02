@@ -56,6 +56,13 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 		if !acct.UserID.Equal(userID) {
 			return errs.NewAccessDenied("Access denied")
 		}
+		// Only gate the currency when it actually changes: a form resending the
+		// account's current (possibly foreign/archived) currency must keep working.
+		if currencyID != nil && !currencyID.Equal(acct.CurrencyID) {
+			if cerr := s.currency.EnsureUsable(ctx, userID.String(), currencyID.String()); cerr != nil {
+				return cerr
+			}
+		}
 		now := s.clock.Now()
 		acct.UpdateName(name, now)
 		acct.UpdateIcon(icon, now)

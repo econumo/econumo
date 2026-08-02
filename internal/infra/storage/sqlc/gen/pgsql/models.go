@@ -151,6 +151,8 @@ type Currency struct {
 	CreatedAt      time.Time
 	Name           *string
 	FractionDigits int16
+	UserID         *string
+	Rate           *string
 }
 
 type Folder struct {
@@ -283,6 +285,12 @@ type UsersEmailVerification struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	ExpiredAt time.Time
+}
+
+type UsersHiddenCurrency struct {
+	UserID     string
+	CurrencyID string
+	CreatedAt  time.Time
 }
 
 type UsersOption struct {

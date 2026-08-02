@@ -145,12 +145,17 @@ func TestMoveElementList_NoTypeField(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
+		"budgetId": budgetID1, "id": bFolderID1, "name": "Bills",
+	}); st != http.StatusOK {
+		t.Fatalf("create-folder precondition=%d body=%s", st, e.raw)
+	}
 
-	// Move the seeded category element into the (seeded) folder at position 0.
+	// Move the seeded category element into the budget folder at position 0.
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element-list", tok, map[string]any{
 		"budgetId": budgetID1,
 		"items": []map[string]any{
-			{"id": catID, "position": 0, "folderId": folderID},
+			{"id": catID, "position": 0, "folderId": bFolderID1},
 		},
 	})
 	if status != http.StatusOK {
@@ -158,7 +163,31 @@ func TestMoveElementList_NoTypeField(t *testing.T) {
 	}
 	var folder *string
 	h.db.QueryRow(`SELECT folder_id FROM budgets_elements WHERE budget_id = ? AND external_id = ?`, budgetID1, catID).Scan(&folder)
-	if folder == nil || *folder != folderID {
-		t.Fatalf("category element folder=%v want %q", folder, folderID)
+	if folder == nil || *folder != bFolderID1 {
+		t.Fatalf("category element folder=%v want %q", folder, bFolderID1)
+	}
+}
+
+// TestMoveElementList_ForeignFolder_403 verifies move-element-list rejects a
+// folderId that is not one of the budget's folders (here: an ACCOUNTS folder
+// id) with access denied instead of hitting the budgets_folders FK.
+func TestMoveElementList_ForeignFolder_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element-list", tok, map[string]any{
+		"budgetId": budgetID1,
+		"items": []map[string]any{
+			{"id": catID, "position": 0, "folderId": folderID},
+		},
+	})
+	if status != http.StatusForbidden {
+		t.Fatalf("move-element-list (accounts folder)=%d want 403; body=%s", status, env.raw)
+	}
+	var folder *string
+	h.db.QueryRow(`SELECT folder_id FROM budgets_elements WHERE budget_id = ? AND external_id = ?`, budgetID1, catID).Scan(&folder)
+	if folder != nil {
+		t.Fatalf("category element folder=%q want unchanged (NULL)", *folder)
 	}
 }

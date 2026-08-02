@@ -37,14 +37,14 @@ func newBudgetService(t *testing.T, db *dbtest.DB) *appbudget.Service {
 
 	budgetRepo := budgetrepo.NewRepo(db.Engine, txm)
 	budgetReadRepo := budgetrepo.NewReadRepo(db.Engine, txm)
-	rateProvider := currencyrepo.NewRateProvider(db.Engine, txm, currencyLookup, "USD")
+	rateProvider := currencyrepo.NewRateProvider(db.Engine, txm, currencyLookup, "dffc2a06-6f29-4704-8575-31709adee926")
 	convertor := domcurrency.NewConvertor(rateProvider)
 	clk := clock.New()
 	return appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
+		server.NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(
 			server.NewBudgetCategoryMetadataLookup(categoryRepo),
 			server.NewBudgetTagMetadataLookup(tagRepo),

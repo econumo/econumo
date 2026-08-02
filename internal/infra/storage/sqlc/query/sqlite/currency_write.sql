@@ -11,15 +11,17 @@
 -- generated statement.
 
 -- name: ListCurrencyCodes :many
--- Every currency's id + code, used to build the rate loader's symbols list and
--- the code->id map. Mirrors CurrencyRepository::getAll() (code projection only).
-SELECT id, code FROM currencies;
+-- Every GLOBAL currency's id + code, used to build the rate loader's symbols
+-- list and the code->id map. Custom (per-user) currencies must never reach the
+-- CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
+SELECT id, code FROM currencies WHERE user_id IS NULL;
 
 -- name: GetCurrencyByCode :one
--- One currency by ISO code (full row), for the idempotency check in add-currency.
+-- One GLOBAL currency by ISO code (full row), for the idempotency check in
+-- add-currency.
 SELECT id, code, symbol, name, fraction_digits, created_at
 FROM currencies
-WHERE code = ?;
+WHERE code = ? AND user_id IS NULL;
 
 -- name: InsertCurrency :exec
 -- Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
@@ -43,3 +45,71 @@ DO UPDATE SET rate = excluded.rate;
 -- ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 -- (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 SELECT published_at FROM currencies_rates ORDER BY published_at DESC LIMIT 1;
+
+-- name: GetLatestRateBase :one
+-- Base currency of the newest stored rate, for the boot-time drift WARN when
+-- ECONUMO_CURRENCY_BASE no longer matches what the rates were written against.
+SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1;
+
+-- User currency management (per-user custom currencies). Global currencies
+-- have user_id NULL; custom currencies carry their owner id.
+
+-- name: GetCurrencyRecord :one
+SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at
+FROM currencies WHERE id = ?;
+
+-- name: GlobalCurrencyCodeExists :one
+SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id IS NULL;
+
+-- name: OwnerCurrencyCodeExists :one
+SELECT COUNT(*) FROM currencies WHERE code = ? AND user_id = ?;
+
+-- name: InsertUserCurrency :exec
+INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: UpdateCurrencyDetails :exec
+UPDATE currencies SET name = ?, symbol = ?, fraction_digits = ?, rate = ? WHERE id = ?;
+
+-- Fixed custom-currency rates for the convertor overlay: one rate per custom,
+-- period-independent. Globals never carry a rate here.
+-- name: GetFixedCurrencyRates :many
+SELECT id, rate FROM currencies WHERE rate IS NOT NULL;
+
+
+-- name: DeleteCurrency :exec
+DELETE FROM currencies WHERE id = ?;
+
+-- Usage census for delete protection: accounts (including soft-deleted ones,
+-- they still hold the FK), budgets, budget elements, and any user whose
+-- profile currency option stores this currency id.
+-- name: CountCurrencyUsage :one
+SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = ?)
+     + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = ?)
+     + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = ?)
+     + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = ?) AS usage_count;
+
+-- name: InsertHiddenCurrency :exec
+INSERT INTO users_hidden_currencies (user_id, currency_id, created_at)
+VALUES (?, ?, ?)
+ON CONFLICT (user_id, currency_id) DO NOTHING;
+
+-- name: DeleteHiddenCurrency :exec
+DELETE FROM users_hidden_currencies WHERE user_id = ? AND currency_id = ?;
+
+-- Bulk visibility over the GLOBAL currencies (customs keep their per-row
+-- preference). The two exclusion slots carry the base and profile ids.
+-- name: HideGlobalCurrencies :exec
+INSERT INTO users_hidden_currencies (user_id, currency_id, created_at)
+SELECT ?, c.id, ?
+FROM currencies c
+WHERE c.user_id IS NULL AND c.id != ? AND c.id != ?
+ON CONFLICT (user_id, currency_id) DO NOTHING;
+
+-- name: ShowGlobalCurrencies :exec
+DELETE FROM users_hidden_currencies
+WHERE users_hidden_currencies.user_id = ?
+  AND currency_id IN (SELECT c.id FROM currencies c WHERE c.user_id IS NULL);
+
+-- Profile defaults holding this currency id, for the archive guard (a
+-- default must stay pickable).

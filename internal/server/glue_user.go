@@ -13,12 +13,47 @@ import (
 	"database/sql"
 	"errors"
 
+	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/user"
 )
+
+// UserCurrencyLookup adapts currencyrepo.Lookup to user.CurrencyLookup:
+// GetIDByCode is user-aware (own-first-then-global) here, unlike the
+// concrete Lookup's global-only GetIDByCode used directly by the CLI and the
+// rate provider. Shared by server.BuildAPI and the CLI composition root
+// (internal/cli/container.go).
+type UserCurrencyLookup struct {
+	inner *currencyrepo.Lookup
+}
+
+var _ user.CurrencyLookup = (*UserCurrencyLookup)(nil)
+
+// NewUserCurrencyLookup wraps a currencyrepo.Lookup.
+func NewUserCurrencyLookup(inner *currencyrepo.Lookup) *UserCurrencyLookup {
+	return &UserCurrencyLookup{inner: inner}
+}
+
+// GetIDByCode resolves a code preferring the user's own custom currency, then
+// a global one.
+func (l *UserCurrencyLookup) GetIDByCode(ctx context.Context, userID, code string) (string, error) {
+	return l.inner.GetIDByCodeForUser(ctx, userID, code)
+}
+
+// DefaultCode returns the fallback currency code (USD).
+func (l *UserCurrencyLookup) DefaultCode() string { return l.inner.DefaultCode() }
+
+// CodeByID maps a stored currency id back to its code.
+func (l *UserCurrencyLookup) CodeByID(ctx context.Context, id string) (string, error) {
+	v, err := l.inner.GetByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return v.Code, nil
+}
 
 // budgetOwnerProbe returns the budget's owner id and whether the budget exists.
 type budgetOwnerProbe func(ctx context.Context, db backend.DBTX, budgetID string) (ownerID string, found bool, err error)

@@ -19,7 +19,7 @@ import (
 type readQuerier interface {
 	GetUserView(ctx context.Context, db backend.DBTX, id string) (sqlitegen.GetUserViewRow, error)
 	GetUserOptionsView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.GetUserOptionsViewRow, error)
-	GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error)
+	GetCurrencyCodeByID(ctx context.Context, db backend.DBTX, id string) (string, error)
 }
 
 type ReadRepo struct {
@@ -68,10 +68,10 @@ func (r *ReadRepo) OptionViews(ctx context.Context, userID string) ([]model.Opti
 	return out, nil
 }
 
-// CurrencyIDByCode resolves a currency code to its id; sql.ErrNoRows when absent
-// so the caller can apply the USD fallback.
-func (r *ReadRepo) CurrencyIDByCode(ctx context.Context, code string) (string, error) {
-	return r.q.GetCurrencyIDByCode(ctx, r.db(ctx), code)
+// CurrencyCodeByID maps a stored profile-currency id back to its code.
+// sql.ErrNoRows passes through (the read service applies the USD fallback).
+func (r *ReadRepo) CurrencyCodeByID(ctx context.Context, id string) (string, error) {
+	return r.q.GetCurrencyCodeByID(ctx, r.tx.Querier(ctx), id)
 }
 
 type sqliteReadQuerier struct{}
@@ -82,8 +82,8 @@ func (sqliteReadQuerier) GetUserView(ctx context.Context, db backend.DBTX, id st
 func (sqliteReadQuerier) GetUserOptionsView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.GetUserOptionsViewRow, error) {
 	return sqlitegen.New(db).GetUserOptionsView(ctx, userID)
 }
-func (sqliteReadQuerier) GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error) {
-	return sqlitegen.New(db).GetCurrencyIDByCode(ctx, code)
+func (sqliteReadQuerier) GetCurrencyCodeByID(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return sqlitegen.New(db).GetCurrencyCodeByID(ctx, id)
 }
 
 type pgsqlReadQuerier struct{}
@@ -103,6 +103,6 @@ func (pgsqlReadQuerier) GetUserOptionsView(ctx context.Context, db backend.DBTX,
 	}
 	return out, nil
 }
-func (pgsqlReadQuerier) GetCurrencyIDByCode(ctx context.Context, db backend.DBTX, code string) (string, error) {
-	return pgsqlgen.New(db).GetCurrencyIDByCode(ctx, code)
+func (pgsqlReadQuerier) GetCurrencyCodeByID(ctx context.Context, db backend.DBTX, id string) (string, error) {
+	return pgsqlgen.New(db).GetCurrencyCodeByID(ctx, id)
 }

@@ -18,6 +18,7 @@ func TestStoredLanguage(t *testing.T) {
 	t.Run("returns the stored language", func(t *testing.T) {
 		userSvc, f := timezoneFallbackFixture(t)
 		userID := f.User(fixture.User{})
+		f.DefaultOptions(userID)
 		uid, err := vo.ParseId(userID)
 		if err != nil {
 			t.Fatal(err)
