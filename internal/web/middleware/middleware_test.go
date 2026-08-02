@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -508,6 +509,42 @@ func TestLanguageMiddleware(t *testing.T) {
 		h.ServeHTTP(httptest.NewRecorder(), r)
 		if got != tc.want {
 			t.Errorf("header %q: language = %q, want %q", tc.header, got, tc.want)
+		}
+	}
+}
+
+func TestLanguageMiddleware_LogsUnsupportedPreference(t *testing.T) {
+	cases := []struct{ header, want string }{
+		{"", ""},
+		{"ru-RU,ru;q=0.9", ""},
+		{"de-DE,de;q=0.9", "de"},
+		{"fr,de;q=0.9", "fr"},
+		{"de,en;q=0.5", "de"}, // en matches, but de was preferred — the case that matters
+		{"ru,de", ""},         // top preference is servable; de is never reached
+		{"*", ""},
+		{"zz-ZZ", "zz"},
+		{"not a tag", ""},
+		{"x", ""},
+	}
+	for _, tc := range cases {
+		var attrs []slog.Attr
+		h := Language([]string{"en", "ru"})(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attrs = reqctx.LogAttrs(r.Context())
+		}))
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		if tc.header != "" {
+			r.Header.Set("Accept-Language", tc.header)
+		}
+		h.ServeHTTP(httptest.NewRecorder(), r.WithContext(reqctx.WithLogAttrs(r.Context())))
+
+		var got string
+		for _, a := range attrs {
+			if a.Key == "unsupported_language" {
+				got = a.Value.String()
+			}
+		}
+		if got != tc.want {
+			t.Errorf("header %q: unsupported_language = %q, want %q", tc.header, got, tc.want)
 		}
 	}
 }
