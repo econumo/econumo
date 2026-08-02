@@ -8926,6 +8926,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "isDeleted": {
+                    "type": "integer"
+                },
                 "isHidden": {
                     "type": "integer"
                 },

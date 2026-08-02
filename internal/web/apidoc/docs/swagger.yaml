@@ -635,6 +635,8 @@ definitions:
         type: integer
       id:
         type: string
+      isDeleted:
+        type: integer
       isHidden:
         type: integer
       name:

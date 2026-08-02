@@ -1,0 +1,21 @@
+== create-currency POST /api/v1/currency/create-currency [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0,"isDeleted":0}}}
+
+== create-account POST /api/v1/account/create-account [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","owner":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"folderId":"f0000000-0000-0000-0000-000000000001","name":"Kid","position":2,"currency":{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0},"balance":"0","type":2,"icon":"wallet","sharedAccess":[]},"transaction":null}}
+
+== err:delete-currency-in-use POST /api/v1/currency/delete-currency [owner] -> 400
+{"success":false,"message":"Currency is in use and cannot be deleted","code":400,"errors":{}}
+
+== delete-account POST /api/v1/account/delete-account [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== delete-currency POST /api/v1/currency/delete-currency [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-delete GET /api/v1/currency/get-currency-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","code":"PTS","name":"Points","symbol":"pts","fractionDigits":0,"scope":"own","isHidden":0,"isDeleted":1},{"id":"dffc2a06-6f29-4704-8575-31709adee926","code":"USD","name":"US Dollar","symbol":"$","fractionDigits":2,"scope":"global","isHidden":0,"isDeleted":0}]}}
+
+== rates-after-delete GET /api/v1/currency/get-currency-rate-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"currencyId":"<generated-uuid>","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"100","updatedAt":"<datetime>"},{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","baseCurrencyId":"dffc2a06-6f29-4704-8575-31709adee926","rate":"1","updatedAt":"<datetime>"}]}}
+
