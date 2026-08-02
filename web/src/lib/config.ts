@@ -93,6 +93,9 @@ export function getLocaleOptions(): LocaleOption[] {
   return [
     { value: 'en', label: 'English', short: 'EN' },
     { value: 'ru', label: 'Русский', short: 'РУ' },
+    { value: 'de', label: 'Deutsch', short: 'DE' },
+    { value: 'fr', label: 'Français', short: 'FR' },
+    { value: 'it', label: 'Italiano', short: 'IT' },
     { value: 'pt', label: 'Português', short: 'PT' },
   ]
 }
