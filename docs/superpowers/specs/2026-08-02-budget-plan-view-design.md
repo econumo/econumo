@@ -172,6 +172,24 @@ the plan sheet.
   month ≥ budget start). Past months remain editable, months before the budget
   start are read-only. Envelope children and Uncategorized are actual-only.
 
+### Keyboard interaction
+
+The sheet follows the ARIA grid pattern with a roving cell selection:
+
+- **Arrow keys** move the selected cell: up/down walk the rows (skipping section
+  headers and the totals block), left/right walk the month columns. Moving left
+  from the first visible column (or right from the last) shifts the sheet window
+  by one month — the same operation as the on-screen arrow buttons — with the
+  selection staying on its row.
+- **Enter** on a selected editable cell opens the planned-amount editor
+  (`CalculatorInput` popover) prefilled with the current value; **Enter** commits
+  and returns focus to the cell, **Esc** cancels. On read-only cells (envelope
+  children, Uncategorized, months before the budget start, insufficient role)
+  Enter does nothing; on an envelope parent's row-name cell it toggles expansion.
+- Cells expose screen-reader labels ("<row name>, <month>: actual …, planned …")
+  and `aria-selected`; selection is arrow-key driven rather than Tab-driven, which
+  also sidesteps Safari's Tab-skips-buttons behavior.
+
 ### Totals block (client-computed, budget currency)
 
 Per visible month, converted with that month's average rates via the existing
@@ -228,8 +246,9 @@ homogeneity error) go into **every** catalogue in `locales/`; the parity guards
   `get-budget` builder; `months` bounds validation.
 - **Frontend (vitest)**: window math (responsive count, initial anchoring,
   clamping), totals + Balance rolling math (actual-past / planned-future split),
-  a grid-cell edit component test; metrics-coverage; `pnpm exec tsc -b` before
-  claiming done.
+  a grid-cell edit component test; keyboard navigation (arrow movement, window
+  shift at the visible edge, Enter-to-edit/Esc, read-only cells inert);
+  metrics-coverage; `pnpm exec tsc -b` before claiming done.
 
 ## Out of scope (v1)
 
