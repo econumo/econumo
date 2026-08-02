@@ -504,6 +504,40 @@ func TestDeleteCurrency_RefusesWhenUsed(t *testing.T) {
 	if _, ok := repo.records["own-pts"]; !ok {
 		t.Error("record should NOT have been deleted")
 	}
+	if repo.records["own-pts"].IsDeleted {
+		t.Error("a refused delete must not set the flag")
+	}
+}
+
+// A currency whose only references are soft-deleted accounts reaches the
+// service with usage 0 -- the census counts live references only -- so this is
+// the case the bug report describes.
+func TestDeleteCurrency_GlobalIsNeverDeletable(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-eur"] = model.CurrencyRecord{ID: "global-eur", Code: "EUR", Symbol: "E"}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+
+	_, err := svc.DeleteCurrency(context.Background(), vo.MustParseId(manageMeID), model.DeleteCurrencyRequest{Id: "global-eur"})
+	if err == nil {
+		t.Fatal("a global currency must never be deletable")
+	}
+	if repo.records["global-eur"].IsDeleted {
+		t.Fatal("a refused delete must not set the flag")
+	}
+}
+
+func TestDeleteCurrency_ForeignCustomIsNeverDeletable(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["foreign-pts"] = model.CurrencyRecord{ID: "foreign-pts", Code: "GEM", Symbol: "GEM", UserID: strPtr(manageOtherID)}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+
+	_, err := svc.DeleteCurrency(context.Background(), vo.MustParseId(manageMeID), model.DeleteCurrencyRequest{Id: "foreign-pts"})
+	if err == nil {
+		t.Fatal("another user's currency must never be deletable")
+	}
+	if repo.records["foreign-pts"].IsDeleted {
+		t.Fatal("a refused delete must not set the flag")
+	}
 }
 
 func TestDeleteCurrency_HappyPath(t *testing.T) {

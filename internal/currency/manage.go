@@ -127,8 +127,9 @@ func toCurrencyResult(rec model.CurrencyRecord, scope string) model.CurrencyList
 			Symbol:         rec.Symbol,
 			FractionDigits: rec.FractionDigits,
 		},
-		Scope:    scope,
-		IsHidden: 0,
+		Scope:     scope,
+		IsHidden:  0,
+		IsDeleted: 0,
 	}
 }
 
