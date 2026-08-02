@@ -88,9 +88,16 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: accountApi.deleteAccount,
     onSuccess: (_result, id) => {
-      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => (prev ?? []).filter((a) => a.id !== id))
+      const remaining = (queryClient.getQueryData<AccountDto[]>(queryKeys.accounts) ?? []).filter((a) => a.id !== id)
+      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, remaining)
+      // Deleting an account is a soft delete that leaves its transactions in
+      // place, and the server still lists a transfer whose OTHER leg is a
+      // surviving account (the money did move). Dropping those here would only
+      // hide them until the next refetch, so mirror the server: a transaction
+      // goes only when neither of its accounts is left.
+      const survives = new Set(remaining.map((a) => a.id))
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
+        (prev ?? []).filter((t) => survives.has(t.accountId) || (t.accountRecipientId !== null && survives.has(t.accountRecipientId))),
       )
       trackEvent(METRICS.ACCOUNT_DELETE)
     },
