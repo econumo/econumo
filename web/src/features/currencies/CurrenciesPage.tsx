@@ -155,6 +155,7 @@ export function CurrenciesPage() {
         open={dialog.open}
         currency={dialog.currency}
         currentRate={dialog.currency ? rateFor(dialog.currency.id)?.rate : undefined}
+        baseCode={baseCurrency?.code}
         onClose={closeDialog}
         onSubmit={(form) => {
           setError(null)

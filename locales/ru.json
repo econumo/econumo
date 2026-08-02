@@ -1137,7 +1137,8 @@
             }
           },
           "symbol": {
-            "label": "Символ"
+            "label": "Символ",
+            "optional": "необязательно"
           },
           "fraction_digits": {
             "label": "Знаков после запятой"

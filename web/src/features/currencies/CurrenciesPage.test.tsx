@@ -349,3 +349,42 @@ it("with every non-locked global disabled the link flips to 'Enable all' posting
   await user.click(screen.getByRole('button', { name: 'Enable all' }))
   await waitFor(() => expect(called).toBe(true))
 })
+
+it('the dialog frames the rate as a live equation and sizes fields compactly', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Points')
+  await user.click(screen.getByRole('button', { name: /Create currency/ }))
+  // Equation prefix uses the instance base; the suffix tracks the typed code.
+  expect(await screen.findByText('1 USD =')).toBeInTheDocument()
+  await user.type(screen.getByLabelText('Code'), 'pts')
+  expect(screen.getByText('PTS', { selector: 'span' })).toBeInTheDocument()
+  // Decimal places is a 0-8 slider defaulting to 2.
+  // { hidden: true } skips the a11y-visibility computation: jsdom 30 crashes
+  // resolving the Radix slider's font-size in getComputedStyle.
+  const slider = screen.getByRole('slider', { hidden: true })
+  expect(slider).toHaveAttribute('aria-valuenow', '2')
+  expect(slider).toHaveAttribute('aria-valuemax', '8')
+})
+
+it('the decimal-places slider prefills in edit mode and rides the update', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/currency/update-currency', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Points')
+  await user.click(screen.getByRole('button', { name: 'actions Points' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+  const slider = await screen.findByRole('slider', { hidden: true })
+  expect(slider).toHaveAttribute('aria-valuenow', '0') // PTS has 0 decimals
+  slider.focus()
+  await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.fractionDigits).toBe(3)
+})

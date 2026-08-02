@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Slider } from '@/components/ui/slider'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { isNotEmpty } from '@/lib/validation'
 import type { CurrencyDto } from '@/api/dto/currency'
@@ -20,11 +21,13 @@ interface CurrencyDialogProps {
   currency?: CurrencyDto | null
   /** the currency's current fixed rate, prefilled in edit mode */
   currentRate?: string
+  /** the instance base currency code, framing the rate equation */
+  baseCode?: string
   onClose: () => void
   onSubmit: (form: CurrencyDialogForm) => void
 }
 
-export function CurrencyDialog({ open, currency, currentRate, onClose, onSubmit }: CurrencyDialogProps) {
+export function CurrencyDialog({ open, currency, currentRate, baseCode, onClose, onSubmit }: CurrencyDialogProps) {
   const { t } = useTranslation()
   const isNew = !currency
   const [code, setCode] = useState('')
@@ -78,51 +81,72 @@ export function CurrencyDialog({ open, currency, currentRate, onClose, onSubmit 
     >
       <form
         id="currency-dialog-form"
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-3"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
           submit()
         }}
       >
-        {isNew ? (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="currency-code">{t('classifications.currencies.forms.currency.code.label')}</Label>
-            <Input
-              id="currency-code"
-              maxLength={3}
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-            />
-          </div>
-        ) : null}
-
         <div className="flex flex-col gap-2">
           <Label htmlFor="currency-name">{t('classifications.currencies.forms.currency.name.label')}</Label>
           <Input id="currency-name" maxLength={64} value={name} onChange={(e) => setName(e.target.value)} />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="currency-symbol">{t('classifications.currencies.forms.currency.symbol.label')}</Label>
-          <Input id="currency-symbol" maxLength={12} value={symbol} onChange={(e) => setSymbol(e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          {isNew ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="currency-code">{t('classifications.currencies.forms.currency.code.label')}</Label>
+              <Input
+                id="currency-code"
+                maxLength={3}
+                placeholder="PTS"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+              />
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="currency-symbol">
+              {t('classifications.currencies.forms.currency.symbol.label')}
+              <span className="font-normal text-muted-foreground"> ({t('classifications.currencies.forms.currency.symbol.optional')})</span>
+            </Label>
+            <Input
+              id="currency-symbol"
+              maxLength={12}
+              placeholder={code || currency?.code || ''}
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="currency-fraction-digits">{t('classifications.currencies.forms.currency.fraction_digits.label')}</Label>
-          <Input
+          <div className="flex items-center justify-between">
+            <Label htmlFor="currency-fraction-digits">{t('classifications.currencies.forms.currency.fraction_digits.label')}</Label>
+            <span className="text-sm text-muted-foreground">{fractionDigits}</span>
+          </div>
+          <Slider
             id="currency-fraction-digits"
-            type="number"
+            aria-label={t('classifications.currencies.forms.currency.fraction_digits.label')}
             min={0}
             max={8}
-            value={fractionDigits}
-            onChange={(e) => setFractionDigits(Number(e.target.value))}
+            step={1}
+            value={[fractionDigits]}
+            onValueChange={([v]) => setFractionDigits(v)}
           />
         </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="currency-rate">{t('classifications.currencies.forms.currency.rate.label')}</Label>
-          <Input id="currency-rate" value={rate} onChange={(e) => setRate(e.target.value)} />
+          <div className="flex items-center gap-2">
+            {baseCode ? <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">1 {baseCode} =</span> : null}
+            <Input id="currency-rate" inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} />
+            {(code || currency?.code) && baseCode ? (
+              <span className="shrink-0 text-sm text-muted-foreground">{code || currency?.code}</span>
+            ) : null}
+          </div>
           {rateError ? <p className="text-sm text-destructive">{rateError}</p> : null}
         </div>
       </form>
