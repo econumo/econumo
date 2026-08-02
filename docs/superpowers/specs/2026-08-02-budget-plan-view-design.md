@@ -1,0 +1,226 @@
+# Budget Plan View — Design
+
+Date: 2026-08-02
+Status: Approved design, pending implementation plan
+
+## Overview
+
+A **Plan** mode on the budget page: a multi-month sheet where every row is a budget
+element (incomes and expenses) and every column is a month. Each cell shows two
+values — the **actual** amount (read-only: money received/spent that month) and the
+**planned** amount (editable: the same value the budget page calls "budgeted").
+A totals block at the bottom (Income / Expenses / Net / running Balance) turns it
+into a one-page planner for up to a year ahead.
+
+Planned expense in the plan view **is** the budget limit for that month — one value,
+two views. The genuinely new concept is **planned income**, which this design adds by
+making income categories first-class budget elements.
+
+## Decisions made during brainstorming
+
+| Topic | Decision |
+|---|---|
+| Income rows | Per income category, groupable into envelopes (shared budgets need e.g. one "Salaries" envelope across members) |
+| Row structure | Mirrors the budget page exactly (folders, envelopes with children, uncategorized, archived) |
+| Placement | A Budget \| Plan toggle on the existing budget page |
+| Visible window | Responsive: as many month columns as fit the screen (min 3, max 12); left/right arrows shift the first month; no horizon selector |
+| Initial position | ~¼ of visible columns are past months; clamped at the budget start month; persisted |
+| Backend approach | Income categories become budget elements (new element type); planned income reuses `budgets_elements_limits` and `set-limit`; one new read endpoint `get-budget-plan` |
+| Carryover | Not shown per cell; enters the totals via the running Balance row |
+| Balance row seed | Real account balances at the window start (existing financial-summary machinery, excluded accounts respected) |
+
+## Backend
+
+### Income elements
+
+- `budget_elements.type` gains a new value for *income category* (the next unused
+  SMALLINT value; existing values envelope/category/tag stay untouched). No schema
+  migration — the column and the `UNIQUE(budget_id, external_id)` constraint already
+  accommodate it (a category is either income or expense, never both).
+- **Seeding**: `seedCategoryElements` (budget creation) also seeds the members'
+  income categories with the income type, positioned after their category order.
+  The `SetLimit` self-heal path learns to create income-typed elements for income
+  categories created after the budget (it reads the category's income flag to pick
+  the type).
+- **Planned income storage**: rows in the existing `budgets_elements_limits` table,
+  keyed (element, month) — identical to expense limits.
+
+### Envelopes with income categories
+
+- `CreateEnvelope` / `UpdateEnvelope` accept income categories, with a
+  **homogeneity rule**: an envelope's child categories are all-expense or
+  all-income, never mixed. Violations return a new coded error
+  (registered in `errs.AllCodes` with `errors.*` catalogue entries in every
+  language — the i18n guards enforce the pairing).
+- An envelope containing income categories is an income-typed element and appears
+  in the plan view's income section, never in `get-budget`.
+
+### Frozen contract: get-budget unchanged
+
+Every existing builder (`buildStructure`, `buildFilters`, `buildElementsSpending`,
+seed listing for the single-month read) explicitly excludes income-typed elements.
+The apiparity goldens for `get-budget` (and every other existing route) must come
+out **byte-identical** — that diff is the regression proof.
+
+### Writes: no new endpoints
+
+Editable plan cells call the existing `POST /api/v1/budget/set-limit` with the
+cell's month as `period` — for expense elements and income categories alike.
+Permissions are unchanged: role owner/admin/user and `period >= budget.startedAt`.
+`Amount: null` clears a planned value, as today.
+
+### New read: get-budget-plan
+
+`GET /api/v1/budget/get-budget-plan?id=<budgetId>&from=<Y-m-d first of month>&months=<1..24>`
+
+Readable by any accepted budget member (same visibility rule as `get-budget`).
+`from` is snapped to first-of-month; `months` outside 1–24 is a validation error.
+
+Response sketch (final field names to follow the existing DTO conventions in
+`internal/model/budget_dto.go`):
+
+```jsonc
+{
+  "meta": { /* same shape as get-budget meta */ },
+  "months": ["2026-06-01", "..."],                  // ordered, length = months
+  "openingBalances": [ {"currencyId": "...", "amount": "..."} ],
+  "currencyRates": [ { "period": "2026-06-01", "rates": [ /* AverageCurrencyRateResult */ ] } ],
+  "incomes":   { "elements": [ /* PlanElement: income envelopes + standalone income categories, ordered */ ] },
+  "structure": { "folders": [ /* as get-budget */ ], "elements": [ /* PlanElement: expense rows as get-budget orders them */ ] }
+}
+```
+
+`PlanElement`: id, type, name, icon, currencyId, isArchived, position, folderId?,
+ownerUserId?, `cells: [{actual, planned}]` aligned with `months` (`planned` is `""`
+when no limit row exists; amounts are decimal strings in the element's currency),
+`children: [{ …, cells: [{actual}] }]` for envelope children (planned lives on the
+parent, exactly like `budgeted` today). The synthetic Uncategorized element appears
+with actual-only cells. All existing wire conventions hold (datetime layout,
+`isArchived` as 0/1, decimal strings, envelope with HTML escaping off).
+
+- `openingBalances` — per-currency account balances at the start of `months[0]`,
+  computed by the existing financial-summary machinery with excluded accounts
+  respected. Seeds the client-side Balance row.
+- `currencyRates` — the existing per-period average-rate computation, once per
+  month in the window. The server computes **no totals**; the SPA does FX and
+  totals client-side, as the budget page does.
+
+### Queries
+
+Three grouped-by-month additions to `internal/budget/repo/read.go` (already
+hand-built per-engine dynamic SQL, so the dialect split is at home there):
+
+- spending by month: expense transactions summed per (month, category/tag, currency)
+  over `[from, to)`;
+- income by month: same for income transactions per (month, category, currency);
+- limits by month: `budgets_elements_limits` per (external_id, type, period).
+
+Month bucketing is `strftime('%Y-%m-01', …)` on SQLite vs `date_trunc('month', …)`
+on PostgreSQL; results must normalize to byte-identical wire output (enginecompare
+covers it). **No carryover loop** — a plan cell is just actual + planned, so the
+endpoint is O(1) queries regardless of window size.
+
+## Frontend
+
+### Mode toggle
+
+`BudgetPage` gets a **Budget | Plan** segmented toggle, persisted in
+`useBudgetPeriodStore` alongside the selected period. Plan mode reuses the page
+header (budget picker, currency) and replaces the month strip + budget table with
+the plan sheet.
+
+### The sheet
+
+- **Responsive column count**: the grid measures its container (ResizeObserver);
+  after the sticky row-name column it shows as many month columns as fit at a
+  comfortable minimum column width — never fewer than 3 (narrow phones), up to 12
+  on wide screens, reflowing live on resize.
+- **Navigation**: left/right arrow buttons shift the first visible month by one
+  month (press-and-hold repeats). Navigation clamps at the budget's start month;
+  there is no forward limit.
+- **Initial position**: roughly a quarter of the visible columns are past months
+  (3 visible → 1 back; 8 visible → 2 back), clamped at the budget start. The first
+  visible month persists in the budget store and is restored on return.
+- **Current month column** is visually highlighted.
+- Sections top to bottom: **Incomes** (envelopes expandable to children, then
+  standalone income categories), **expense structure** exactly as the budget page
+  orders it (folders as section headers, elements, uncategorized, archived), then
+  the **Totals block**.
+
+### Cells
+
+- Each cell: actual on top (muted, read-only; rendered as a dash when zero in a
+  future month), planned below (editable where permitted).
+- Editing reuses the existing machinery: `LimitEditor` popover with
+  `CalculatorInput` on desktop, `SetLimitDialog` on compact screens — committing
+  `set-limit` with the cell's month, optimistic cell patch, invalidating both the
+  budget and plan queries.
+- Editability per cell: `canUpdateLimits` semantics (role owner/admin/user and
+  month ≥ budget start). Past months remain editable, months before the budget
+  start are read-only. Envelope children and Uncategorized are actual-only.
+
+### Totals block (client-computed, budget currency)
+
+Per visible month, converted with that month's average rates via the existing
+`budgetMath` FX helpers:
+
+- **Income** — actual | planned
+- **Expenses** — actual | planned
+- **Net** — actual | planned (income − expenses)
+- **Balance** — one running row: `balance(m) = balance(m−1) + net(m)`, seeded from
+  the FX-converted `openingBalances` at the fetch-window start. Fully elapsed
+  months contribute their **actual** net; the current and future months contribute
+  their **planned** net. Unspent money rolls forward automatically — this is where
+  carryover surfaces, telescoped into one number.
+
+### Data fetching
+
+`useBudgetPlan(budgetId, from, months)` (TanStack Query): fetches the visible
+window plus a 2-month buffer on each side, `placeholderData` keeps the previous
+grid rendered while the next window loads, so arrow navigation never flashes a
+spinner. The Balance seed corresponds to the fetch start, so buffered months keep
+the running math consistent.
+
+### Envelope management for incomes
+
+Income rows exist only in the plan view, so the income section header exposes the
+existing envelope create/edit dialogs (offering income categories) for members with
+edit rights. Drag re-ordering of income rows is out of scope for v1 (seed order =
+category order; `MoveElementList` already exists server-side if we add UI later).
+
+### Analytics
+
+New `METRICS` keys (frozen camelCase, PostHog name derived): one for opening Plan
+mode, one for arrow navigation. Planned-value edits are already covered by the
+shared `useSetLimit` choke point. The metrics-coverage test forces the wiring.
+
+### i18n
+
+New UI strings (mode toggle, section titles, totals labels, envelope
+homogeneity error) go into **every** catalogue in `locales/`; the parity guards
+(`internal/test/i18ntest`) enforce key and placeholder parity, and the
+`errs.AllCodes` ↔ `errors.*` guard covers the new error code.
+
+## Testing
+
+- **Repo queries**: sqlite unit tests for the three grouped-by-month queries and
+  opening balances; rerun under `make test-repo-pgsql`; byte-parity via the
+  `enginecompare` suite.
+- **apiparity**: scenario + golden for `get-budget-plan`; all existing goldens
+  (notably `get-budget`) byte-identical — the frozen-contract regression proof.
+- **MCP**: a `get-budget-plan` tool in `internal/budget/mcp` mirroring the REST
+  read, with an `mcpparity` golden.
+- **Behavior tests**: `SetLimit` self-heals an income-typed element; envelope
+  homogeneity rejection (with the coded error); income elements excluded from every
+  `get-budget` builder; `months` bounds validation.
+- **Frontend (vitest)**: window math (responsive count, initial anchoring,
+  clamping), totals + Balance rolling math (actual-past / planned-future split),
+  a grid-cell edit component test; metrics-coverage; `pnpm exec tsc -b` before
+  claiming done.
+
+## Out of scope (v1)
+
+- Drag re-ordering of income rows; folders for income rows.
+- Per-cell carryover ("available") display.
+- Server-side totals.
+- Any change to the budget page's single-month view or its wire contract.
