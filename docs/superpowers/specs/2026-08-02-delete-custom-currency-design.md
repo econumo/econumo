@@ -32,10 +32,42 @@ Two constraints rule out simply relaxing the count:
   from a **live** account into the dead one would have its recipient nulled —
   corruption of live data.
 
+## Invariant: currencies are never hard-deleted
+
+**No code path removes a row from `currencies`, for any currency, ever.**
+Deletion always means `is_deleted = 1`. This holds for user-owned and global
+currencies alike, for the API, the MCP edge, and every present and future CLI
+command — including the planned admin `currency:delete`.
+
+The reason is the foreign-key graph, not taste. `accounts.currency_id` is
+`ON DELETE CASCADE` and `transactions.account_id` cascades from there, so a
+single `DELETE FROM currencies` silently destroys every account denominated
+in that currency and all of their transactions — across every user on the
+instance when the currency is global. There is no safe hard-delete of a
+currency, only one that happens to be unreferenced at that instant.
+
+Consequences that the rest of this document depends on:
+
+- the only production hard-delete today is the `DeleteCurrency` query
+  (`currency_write.sql:81` sqlite / `:73` pgsql). This spec removes it and
+  its repo method, leaving no such query in the codebase.
+- because no row is ever removed, every historical reference stays
+  resolvable, which is what lets deleted currencies keep rendering.
+- a follow-up change that reintroduces a currency `DELETE` is a defect
+  regardless of the guards placed in front of it.
+
+One schema-level exception remains and is deliberately left alone:
+`currencies.user_id REFERENCES users (id) ON DELETE CASCADE` would take a
+user's customs with them if a `users` row were ever hard-deleted. No
+production code deletes a user (`user:deactivate` deactivates), so this is
+latent; it is noted here so a future user-deletion feature treats it as a
+question to answer rather than a surprise.
+
 ## Decisions (from brainstorming)
 
-- **Deleting a custom currency is a soft delete.** The row survives so every
-  foreign key stays valid; the currency disappears from the owner's world.
+- **Deleting a custom currency is a soft delete**, per the invariant above.
+  The row survives so every foreign key stays valid; the currency disappears
+  from the owner's world.
 - **The flag lives on `currencies`, not on `users_hidden_currencies`.** A
   custom currency has exactly one owner, so "deleted" is a property of the
   currency. Hiding is per-user only because globals are shared across users.
@@ -209,6 +241,10 @@ toggle on own customs later is a pure UI change requiring no data work.
 - Deleting a global currency, and deleting another user's custom, both still
   return 403 and leave `is_deleted` at 0. A regression here would let one
   user remove a currency out from under every other user on the instance.
+- Deleting a currency leaves its row in place — assert the row is still
+  present after a successful delete. This is the executable form of the
+  never-hard-delete invariant, and it is the test that fails if someone
+  reintroduces a `DELETE FROM currencies`.
 - Creating a currency reusing a deleted code succeeds, and the rewritten
   partial unique index still rejects a duplicate among live rows.
 - A currency soft-deleted while a live account holds it still appears in
