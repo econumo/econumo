@@ -13,7 +13,7 @@ import (
 )
 
 // Supported lists the catalogue languages; index 0 is the fallback.
-var Supported = []string{"en", "ru", "it"}
+var Supported = []string{"en", "ru", "de", "fr", "it"}
 
 var (
 	once     sync.Once

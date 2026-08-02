@@ -1,14 +1,9 @@
-import { enUS, it, ru, type Locale } from 'react-day-picker/locale'
+import { de, enUS, fr, it, ru, type Locale } from 'react-day-picker/locale'
 
 // react-day-picker needs a date-fns Locale object; map our two-letter UI
 // language onto one so calendar captions/weekdays follow the app language.
+const locales: Record<string, Locale> = { ru, de, fr, it }
+
 export function calendarLocale(lang: string): Locale {
-  switch (lang) {
-    case 'ru':
-      return ru
-    case 'it':
-      return it
-    default:
-      return enUS
-  }
+  return locales[lang] ?? enUS
 }
