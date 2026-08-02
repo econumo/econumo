@@ -60,6 +60,7 @@ it('search drops empty sections and their captions', async () => {
   const user = userEvent.setup()
   renderPage()
   await screen.findByText('Food')
+  await user.click(screen.getByRole('button', { name: 'Search' }))
   await user.type(screen.getByRole('textbox', { name: 'Search' }), 'sal')
   expect(screen.getByText('Salary')).toBeInTheDocument()
   expect(screen.queryByText('Food')).not.toBeInTheDocument()

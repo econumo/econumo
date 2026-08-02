@@ -88,11 +88,16 @@ it('payee create validates 3-64 and posts id+name', async () => {
   expect(await screen.findByText('Butcher')).toBeInTheDocument()
 })
 
+async function openSearch(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Search' }))
+  return screen.getByRole('textbox', { name: 'Search' })
+}
+
 it('search fuzzy-filters the list and restores it on clear', async () => {
   const user = userEvent.setup()
   renderPage(<PayeesPage />)
   await screen.findByText('Grocer')
-  const search = screen.getByRole('textbox', { name: 'Search' })
+  const search = await openSearch(user)
   await user.type(search, 'gt') // subsequence of "Grocer Twin" only
   expect(screen.getByText('Grocer Twin')).toBeInTheDocument()
   expect(screen.queryByText('Grocer')).not.toBeInTheDocument()
@@ -106,7 +111,7 @@ it('search with no matches shows nothing-found and hides drag handles while acti
   renderPage(<PayeesPage />)
   await screen.findByText('Grocer')
   expect(screen.getByRole('button', { name: 'drag Grocer' })).toBeInTheDocument()
-  const search = screen.getByRole('textbox', { name: 'Search' })
+  const search = await openSearch(user)
   await user.type(search, 'gro')
   expect(screen.queryByRole('button', { name: 'drag Grocer' })).not.toBeInTheDocument()
   await user.clear(search)
@@ -116,14 +121,33 @@ it('search with no matches shows nothing-found and hides drag handles while acti
   expect(screen.getByRole('button', { name: 'drag Grocer' })).toBeInTheDocument()
 })
 
+it('search collapses back to the icon when left empty, but stays open while filtering', async () => {
+  const user = userEvent.setup()
+  renderPage(<PayeesPage />)
+  await screen.findByText('Grocer')
+  expect(screen.queryByRole('textbox', { name: 'Search' })).not.toBeInTheDocument()
+
+  const search = await openSearch(user)
+  await user.type(search, 'gt')
+  await user.tab() // a query is active: the field must survive losing focus
+  expect(screen.getByRole('textbox', { name: 'Search' })).toBeInTheDocument()
+
+  await user.clear(search)
+  await user.tab()
+  expect(screen.queryByRole('textbox', { name: 'Search' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+  expect(screen.getByText('Grocer')).toBeInTheDocument()
+})
+
 it('search fires the analytics event once per visit', async () => {
   window.dataLayer = []
   const user = userEvent.setup()
   renderPage(<PayeesPage />)
   await screen.findByText('Grocer')
-  await user.type(screen.getByRole('textbox', { name: 'Search' }), 'gro')
-  await user.clear(screen.getByRole('textbox', { name: 'Search' }))
-  await user.type(screen.getByRole('textbox', { name: 'Search' }), 'tw')
+  const search = await openSearch(user)
+  await user.type(search, 'gro')
+  await user.clear(search)
+  await user.type(search, 'tw')
   const events = window.dataLayer.filter((e) => (e as { event?: string }).event === 'appClassificationSearch')
   expect(events).toHaveLength(1)
   expect((events[0] as { eventData?: { type?: string } }).eventData?.type).toBe('payee')

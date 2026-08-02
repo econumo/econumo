@@ -24,10 +24,12 @@ interface SettingsShellProps {
   crumbs?: Crumb[]
   /** extra toolbar actions (both modes) */
   actions?: ReactNode
+  /** desktop-only control sitting on the heading's right edge */
+  titleAction?: ReactNode
   children: ReactNode
 }
 
-export function SettingsShell({ title, heading, backTo, crumbs, actions, children }: SettingsShellProps) {
+export function SettingsShell({ title, heading, backTo, crumbs, actions, titleAction, children }: SettingsShellProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
@@ -70,7 +72,15 @@ export function SettingsShell({ title, heading, backTo, crumbs, actions, childre
               </Fragment>
             ))}
           </nav>
-          <h1 className="truncate text-[26px] font-normal leading-snug">{heading ?? title}</h1>
+          {titleAction ? (
+            <div className="flex items-center gap-2 lg:max-w-xl">
+              <h1 className="min-w-0 truncate text-[26px] font-normal leading-snug">{heading ?? title}</h1>
+              {/* a long heading truncates; the control keeps its size */}
+              <span className="shrink-0">{titleAction}</span>
+            </div>
+          ) : (
+            <h1 className="truncate text-[26px] font-normal leading-snug">{heading ?? title}</h1>
+          )}
           {actions ? (
             <div className="mt-2 flex items-center gap-2 lg:max-w-xl [&_button:not([data-slot=switch])]:min-w-44">{actions}</div>
           ) : null}

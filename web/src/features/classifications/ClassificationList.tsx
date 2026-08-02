@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { ArrowDownUp, GripVertical, MoreVertical, Plus } from 'lucide-react'
+import { ArrowDownUp, GripVertical, MoreVertical, Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -121,6 +121,8 @@ export function ClassificationList<T extends ClassificationItem>({
     storageKey ? ((getItem(storageKey) as boolean | null) ?? true) : false,
   )
   const [query, setQuery] = useState('')
+  // desktop only: the field is collapsed behind the magnifier until asked for
+  const [searchOpen, setSearchOpen] = useState(false)
   // one analytics event per visit, not one per keystroke
   const searchTracked = useRef(false)
 
@@ -205,14 +207,38 @@ export function ClassificationList<T extends ClassificationItem>({
     </Button>
   )
 
-  const searchField = (className: string) => (
+  const searchField = (className: string, autoFocus?: boolean) => (
     <Input
       aria-label={t('common.list.search')}
       placeholder={t('common.list.search')}
       className={`border-0 bg-econumo-card shadow-none ${className}`}
       value={query}
+      autoFocus={autoFocus}
       onChange={(e) => handleSearch(e.target.value)}
+      // an empty field that lost focus has nothing to show for the space it takes
+      onBlur={() => !query.trim() && setSearchOpen(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          handleSearch('')
+          setSearchOpen(false)
+        }
+      }}
     />
+  )
+
+  const searchToggle = searchOpen ? (
+    searchField('w-56', true)
+  ) : (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={t('common.list.search')}
+      title={t('common.list.search')}
+      onClick={() => setSearchOpen(true)}
+    >
+      <Search className="size-4" />
+    </Button>
   )
 
   const filterControl = storageKey ? (
@@ -320,6 +346,7 @@ export function ClassificationList<T extends ClassificationItem>({
       title={title}
       heading={heading}
       backTo={RouterPage.SETTINGS}
+      titleAction={isCompact ? undefined : searchToggle}
       actions={
         isCompact ? (
           <Button type="button" size="icon" aria-label={createLabel} title={createLabel} onClick={onCreate}>
@@ -332,7 +359,6 @@ export function ClassificationList<T extends ClassificationItem>({
               {createLabel}
             </Button>
             <span className="ml-auto flex items-center gap-3">
-              {searchField('w-48')}
               {orderable ? reorderButton : null}
               {filterControl}
             </span>
