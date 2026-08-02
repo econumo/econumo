@@ -139,6 +139,14 @@ endpoint is O(1) queries regardless of window size.
 
 ## Frontend
 
+**Guiding principle: it's a spreadsheet.** The plan view should look and feel like
+a familiar spreadsheet with dead-simple navigation — that is the main focus, and
+every UI decision below serves it: a clean row/column grid with sticky headers,
+arrow buttons and arrow keys to move through months, click/Enter on a cell to
+edit, no modes or configuration beyond what fits on the sheet itself. When a
+detail is in doubt during implementation, resolve it toward "what would a
+spreadsheet do".
+
 ### Mode toggle
 
 `BudgetPage` gets a **Budget | Plan** segmented toggle, persisted in
