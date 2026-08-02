@@ -105,9 +105,10 @@ type transactionImportFolderRepo interface {
 }
 
 // transactionImportCurrencyByCode resolves the base-currency id from its code
-// (for new accounts).
+// (for new accounts), preferring the importing user's own custom currency
+// over the global one.
 type transactionImportCurrencyByCode interface {
-	GetIDByCode(ctx context.Context, code string) (string, error)
+	GetIDByCodeForUser(ctx context.Context, userID, code string) (string, error)
 }
 
 // TransactionImportAccounts adapts the account service/repos + currency lookup
@@ -175,7 +176,7 @@ func (a *TransactionImportAccounts) CreateAccount(ctx context.Context, userID vo
 		folderID = fres.Item.Id
 	}
 
-	currencyID, err := a.currency.GetIDByCode(ctx, a.baseCode)
+	currencyID, err := a.currency.GetIDByCodeForUser(ctx, userID.String(), a.baseCode)
 	if err != nil {
 		return model.ImportAccount{}, err
 	}

@@ -21,9 +21,10 @@ type Connections interface {
 // UserLookup resolves a budget participant's id/name/avatar + their currency code.
 type UserLookup interface {
 	GetOwner(ctx context.Context, userID string) (model.OwnerView, error)
-	// CurrencyCode returns the user's default currency code (for createBudget when
+	// DefaultCurrencyID returns the user's stored default currency id, or ""
+	// when unset (for createBudget when
 	// no currencyId is supplied).
-	CurrencyCode(ctx context.Context, userID string) (string, error)
+	DefaultCurrencyID(ctx context.Context, userID string) (string, error)
 	// SetActiveBudget records the user's active budget id.
 	SetActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 	// ClearActiveBudget clears the user's active-budget option when it points at
@@ -37,9 +38,13 @@ type AccountLookup interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 }
 
-// CurrencyLookup resolves a currency id by code (createBudget default currency).
+// CurrencyLookup resolves a currency id by code (createBudget default
+// currency) and gates which currencies a user may denominate a
+// budget/element in.
 type CurrencyLookup interface {
-	GetIDByCode(ctx context.Context, code string) (string, error)
+	// EnsureUsable confirms the currency is usable by the user: global, or
+	// their own non-archived custom.
+	EnsureUsable(ctx context.Context, userID, currencyID string) error
 }
 
 // MetadataLookup resolves the categories + tags (+ payees) owned by a set of

@@ -58,6 +58,57 @@ func TestUpdateBudget_RenameAndCurrency(t *testing.T) {
 	}
 }
 
+func TestCreateBudget_ForeignCustomCurrency_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	h.seedSecondUser(t)
+	foreignCur := "cccc3333-0000-7000-8000-000000000001"
+	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{ID: foreignCur, Code: "PTS", UserID: secondUserID})
+
+	req := createBudgetReq(budgetID1, "Test Budget")
+	req["currencyId"] = foreignCur
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, req)
+	if status != http.StatusBadRequest {
+		t.Fatalf("create-budget with foreign custom currency=%d want 400 body=%s", status, env.raw)
+	}
+	if msgs := env.errorsMap()["currencyId"]; len(msgs) == 0 || msgs[0] != "Currency is not available" {
+		t.Fatalf("currencyId error = %v, want \"Currency is not available\"", env.errorsMap()["currencyId"])
+	}
+}
+
+func TestCreateBudget_OwnCustomCurrency_Success(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	ownCur := "cccc3333-0000-7000-8000-000000000002"
+	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{ID: ownCur, Code: "PTS", UserID: seedUserID})
+
+	req := createBudgetReq(budgetID1, "Test Budget")
+	req["currencyId"] = ownCur
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, req)
+	if status != http.StatusOK {
+		t.Fatalf("create-budget with own custom currency=%d want 200 body=%s", status, env.raw)
+	}
+}
+
+func TestChangeElementCurrency_ForeignCustom_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	h.seedSecondUser(t)
+	foreignCur := "cccc3333-0000-7000-8000-000000000005"
+	fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"}).Currency(fixture.Currency{ID: foreignCur, Code: "PTS", UserID: secondUserID})
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/change-element-currency", tok, map[string]any{
+		"budgetId": budgetID1, "elementId": catID, "currencyId": foreignCur,
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("change-element-currency to foreign custom=%d want 400 body=%s", status, env.raw)
+	}
+	if msgs := env.errorsMap()["currencyId"]; len(msgs) == 0 || msgs[0] != "Currency is not available" {
+		t.Fatalf("currencyId error = %v, want \"Currency is not available\"", env.errorsMap()["currencyId"])
+	}
+}
+
 func TestUpdateBudget_ExcludedAccountsReplaced(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

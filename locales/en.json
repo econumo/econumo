@@ -1097,6 +1097,58 @@
           }
         }
       }
+    },
+    "currencies": {
+      "pages": {
+        "settings": {
+          "menu_item": "Currencies",
+          "header": "Currencies",
+          "create_currency": "Create currency",
+          "my_currencies": "My currencies",
+          "global_currencies": "Econumo currencies",
+          "rate_caption": "1 {base} = {rate} {code}",
+          "locked_base": "The base currency is always enabled",
+          "locked_profile": "Your profile currency is always enabled",
+          "disable_currency": "Disable",
+          "enable_currency": "Enable",
+          "disable_all": "Disable all",
+          "enable_all": "Enable all",
+          "info": "You can add your own currencies — visible only to you, with a fixed exchange rate you set — and use them for your accounts and budgets. Econumo currencies are available to everyone on this server; their exchange rates are managed centrally and update automatically when the server has rate updates configured."
+        }
+      },
+      "modals": {
+        "create": {
+          "header": "New currency"
+        },
+        "edit": {
+          "header": "Edit currency"
+        },
+        "delete": {
+          "title": "Delete currency?"
+        }
+      },
+      "forms": {
+        "currency": {
+          "code": {
+            "label": "Code"
+          },
+          "name": {
+            "label": "Name",
+            "validation": {
+              "required_field": "Required field"
+            }
+          },
+          "symbol": {
+            "label": "Symbol"
+          },
+          "fraction_digits": {
+            "label": "Decimal places"
+          },
+          "rate": {
+            "label": "Exchange rate"
+          }
+        }
+      }
     }
   },
   "connections": {
@@ -1266,6 +1318,17 @@
       "invalid_code": "ConnectionCode is incorrect",
       "inviting_yourself": "Inviting yourself?",
       "deleting_yourself": "Deleting yourself?"
+    },
+    "currency": {
+      "already_exists": "Currency already exists",
+      "name_length": "Currency name must be 1-64 characters",
+      "symbol_length": "Currency symbol must be 1-12 characters",
+      "fraction_digits_range": "Fraction digits must be between 0 and 8",
+      "rate_invalid": "Rate must be a positive number",
+      "not_available": "Currency is not available",
+      "in_use": "Currency is in use and cannot be deleted",
+      "base_immutable": "The base currency cannot be modified",
+      "cannot_be_hidden": "This currency cannot be hidden"
     },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",

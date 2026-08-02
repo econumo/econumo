@@ -22,7 +22,9 @@ package migrate
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -176,28 +178,115 @@ func readLegacyVersions(ctx context.Context, db *sql.DB, legacyTable string) ([]
 // applyMigration runs all statements of a single migration plus its bookkeeping
 // row inside one transaction.
 func applyMigration(ctx context.Context, db *sql.DB, m Migration) error {
-	tx, err := db.BeginTx(ctx, nil)
+	stmts := splitStatements(m.SQL)
+
+	// SQLite's foreign_keys pragma is a silent no-op inside a transaction, so
+	// migrations that need it OFF (single-table rebuilds) write plain
+	// "PRAGMA foreign_keys = OFF/ON;" statements and the runner HOISTS them:
+	// OFF runs on a pinned connection before the transaction, the connection's
+	// PRIOR enforcement state is restored afterwards no matter what (the pool
+	// must not observe a state change), and PRAGMA foreign_key_check gates the
+	// result INSIDE the transaction so violations roll the migration back.
+	body := stmts[:0:0]
+	hoistFK := false
+	for _, stmt := range stmts {
+		if fkPragmaRe.MatchString(stmt) {
+			hoistFK = true
+			continue
+		}
+		body = append(body, stmt)
+	}
+	if !hoistFK {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("begin: %w", err)
+		}
+		// Rollback is a no-op after a successful Commit.
+		defer func() { _ = tx.Rollback() }()
+		if err := execAndRecord(ctx, tx, db.Driver(), m.Version, body, false); err != nil {
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit: %w", err)
+		}
+		return nil
+	}
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("acquire connection: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+	var fkWasOn int
+	if err := conn.QueryRowContext(ctx, "PRAGMA foreign_keys").Scan(&fkWasOn); err != nil {
+		return fmt.Errorf("read foreign_keys state: %w", err)
+	}
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("disable foreign_keys: %w", err)
+	}
+	// The connection returns to the pool in its prior enforcement state even
+	// when the migration fails.
+	defer func() {
+		_, _ = conn.ExecContext(ctx, fmt.Sprintf("PRAGMA foreign_keys = %d", fkWasOn))
+	}()
+
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
 	}
-	// Rollback is a no-op after a successful Commit.
 	defer func() { _ = tx.Rollback() }()
+	if err := execAndRecord(ctx, tx, db.Driver(), m.Version, body, true); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
+}
 
-	for _, stmt := range splitStatements(m.SQL) {
+// fkPragmaRe matches the hoisted statements. Only sqlite migrations contain
+// them; the match is engine-neutral and inert elsewhere.
+var fkPragmaRe = regexp.MustCompile(`(?i)^\s*PRAGMA\s+foreign_keys\s*=`)
+
+// execAndRecord runs the migration body and the version bookkeeping inside
+// tx. With fkCheck it additionally gates on PRAGMA foreign_key_check BEFORE
+// recording, so a migration that broke referential integrity rolls back.
+func execAndRecord(ctx context.Context, tx *sql.Tx, driver driver.Driver, version string, body []string, fkCheck bool) error {
+	for _, stmt := range body {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("exec statement: %w\n--- statement ---\n%s", err, stmt)
 		}
 	}
 
-	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO schema_migrations (version, applied_at) VALUES (`+placeholdersFor(db.Driver(), 2)+`)`,
-		m.Version, nowUTC(),
-	); err != nil {
-		return fmt.Errorf("record version: %w", err)
+	if fkCheck {
+		rows, err := tx.QueryContext(ctx, "PRAGMA foreign_key_check")
+		if err != nil {
+			return fmt.Errorf("foreign_key_check: %w", err)
+		}
+		defer rows.Close()
+		var broken []string
+		for rows.Next() && len(broken) < 5 {
+			var table string
+			var rowid, fkid any
+			var parent string
+			if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+				return fmt.Errorf("foreign_key_check scan: %w", err)
+			}
+			broken = append(broken, table+"->"+parent)
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("foreign_key_check: %w", err)
+		}
+		if len(broken) > 0 {
+			return fmt.Errorf("foreign_key_check reported violations after this migration (rolled back): %s", strings.Join(broken, ", "))
+		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit: %w", err)
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO schema_migrations (version, applied_at) VALUES (`+placeholdersFor(driver, 2)+`)`,
+		version, nowUTC(),
+	); err != nil {
+		return fmt.Errorf("record version: %w", err)
 	}
 	return nil
 }

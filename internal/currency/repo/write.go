@@ -31,6 +31,7 @@ type writeQuerier interface {
 	InsertCurrency(ctx context.Context, db backend.DBTX, p insertCurrencyP) error
 	UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error
 	GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error)
+	GetLatestRateBase(ctx context.Context, db backend.DBTX) (string, error)
 }
 
 // WriteRepo implements app/currency.WriteModel over the sqlc write queries.
@@ -119,6 +120,19 @@ func (r *WriteRepo) LatestRateDate(ctx context.Context) (time.Time, bool, error)
 	return t, true, nil
 }
 
+// LatestRateBase returns the base currency id of the newest stored rate;
+// ok=false when no rates exist.
+func (r *WriteRepo) LatestRateBase(ctx context.Context) (string, bool, error) {
+	id, err := r.q.GetLatestRateBase(ctx, r.db(ctx))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return id, true, nil
+}
+
 // sqliteWriteQuerier is the native passthrough (canonical types ARE sqlite's).
 type sqliteWriteQuerier struct{}
 
@@ -143,6 +157,10 @@ func (sqliteWriteQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBT
 
 func (sqliteWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
 	return sqlitegen.New(db).GetLatestRateDate(ctx)
+}
+
+func (sqliteWriteQuerier) GetLatestRateBase(ctx context.Context, db backend.DBTX) (string, error) {
+	return sqlitegen.New(db).GetLatestRateBase(ctx)
 }
 
 // pgsqlWriteQuerier is the thin whole-struct conversion shim.
@@ -177,4 +195,8 @@ func (pgsqlWriteQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX
 
 func (pgsqlWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
 	return pgsqlgen.New(db).GetLatestRateDate(ctx)
+}
+
+func (pgsqlWriteQuerier) GetLatestRateBase(ctx context.Context, db backend.DBTX) (string, error) {
+	return pgsqlgen.New(db).GetLatestRateBase(ctx)
 }

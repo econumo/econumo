@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 const (
@@ -169,6 +171,56 @@ func TestCreateAccount_ShortName_400(t *testing.T) {
 	}
 	if msgs := env.errorsMap()["name"]; len(msgs) == 0 || msgs[0] != "Account name must be 3-64 characters" {
 		t.Fatalf("name error = %v, want exact account-name message", env.errorsMap()["name"])
+	}
+}
+
+func TestCreateAccount_ForeignCustomCurrency_400(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	foreignCur := "cccc2222-0000-7000-8000-000000000001"
+	h.f.Currency(fixture.Currency{ID: foreignCur, Code: "PTS", UserID: otherUserID})
+
+	req := createAccountReq(acctID1, "Cash", "0")
+	req["currencyId"] = foreignCur
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, req)
+	if status != http.StatusBadRequest {
+		t.Fatalf("create with foreign custom currency = %d, want 400; body: %s", status, env.raw)
+	}
+	if msgs := env.errorsMap()["currencyId"]; len(msgs) == 0 || msgs[0] != "Currency is not available" {
+		t.Fatalf("currencyId error = %v, want \"Currency is not available\"", env.errorsMap()["currencyId"])
+	}
+}
+
+func TestCreateAccount_OwnCustomCurrency_Success(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	ownCur := "cccc2222-0000-7000-8000-000000000002"
+	h.f.Currency(fixture.Currency{ID: ownCur, Code: "PTS", UserID: seedUserID})
+
+	req := createAccountReq(acctID1, "Cash", "0")
+	req["currencyId"] = ownCur
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/create-account", tok, req)
+	if status != http.StatusOK {
+		t.Fatalf("create with own custom currency = %d, want 200; body: %s", status, env.raw)
+	}
+}
+
+// Hiding a currency is a picker preference, not a lock: a hidden own custom
+// stays usable for accounts.
+func TestUpdateAccount_ChangeToHiddenOwnCurrency_Success(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	acctID, _ := h.createAccount(t, acctID1, "Cash", "0")
+	hiddenCur := "cccc2222-0000-7000-8000-000000000004"
+	h.f.Currency(fixture.Currency{ID: hiddenCur, Code: "OLD", UserID: seedUserID})
+	h.f.HiddenCurrency(seedUserID, hiddenCur)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/update-account", tok, map[string]any{
+		"id": acctID, "name": "Cash", "currencyId": hiddenCur, "balance": "0", "icon": "wallet",
+		"updatedAt": "2024-01-01 12:00:00",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("update to hidden own currency = %d, want 200; body: %s", status, env.raw)
 	}
 }
 

@@ -14,5 +14,12 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 
 		mux.Handle("GET /api/v1/currency/get-currency-list", auth(h.GetCurrencyList))
 		mux.Handle("GET /api/v1/currency/get-currency-rate-list", auth(h.GetCurrencyRateList))
+		mux.Handle("POST /api/v1/currency/create-currency", auth(h.CreateCurrency))
+		mux.Handle("POST /api/v1/currency/update-currency", auth(h.UpdateCurrency))
+		mux.Handle("POST /api/v1/currency/delete-currency", auth(h.DeleteCurrency))
+		mux.Handle("POST /api/v1/currency/hide-currency", auth(h.HideCurrency))
+		mux.Handle("POST /api/v1/currency/show-currency", auth(h.ShowCurrency))
+		mux.Handle("POST /api/v1/currency/hide-all-currencies", auth(h.HideAllCurrencies))
+		mux.Handle("POST /api/v1/currency/show-all-currencies", auth(h.ShowAllCurrencies))
 	}
 }

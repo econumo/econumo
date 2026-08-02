@@ -5,6 +5,7 @@ import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { fuzzyMatch } from '@/lib/fuzzy'
 import { useCurrencies } from '@/features/currencies/queries'
+import { selectableCurrencies } from '@/features/currencies/selectable'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 
@@ -27,7 +28,7 @@ export function CurrencySelect({ value, onChange, disabled, id, 'aria-label': ar
   const [search, setSearch] = useState('')
 
   const selected = currencies?.find((c) => c.id === value)
-  const options = (currencies ?? []).filter(
+  const options = selectableCurrencies(currencies, value ?? undefined).filter(
     (c) => !search || fuzzyMatch(c.name, search) || fuzzyMatch(c.symbol, search) || fuzzyMatch(c.code, search),
   )
 

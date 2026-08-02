@@ -73,6 +73,11 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	}
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = db.Close() })
+	// Same pragmas as production (sqlite.Backend.Open) and dbtest: the schema
+	// relies on FK cascade/SET NULL semantics.
+	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("pragma foreign_keys: %v", err)
+	}
 	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -102,13 +107,13 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 
 	budgetRepo := budgetrepo.NewRepo("sqlite", txm)
 	budgetReadRepo := budgetrepo.NewReadRepo("sqlite", txm)
-	rateProvider := currencyrepo.NewRateProvider("sqlite", txm, currencyLookup, "USD")
+	rateProvider := currencyrepo.NewRateProvider("sqlite", txm, currencyLookup, usdID)
 	convertor := domcurrency.NewConvertor(rateProvider)
 	svc := appbudget.NewService(
 		budgetRepo, budgetReadRepo, convertor, rateProvider,
 		server.NewBudgetUserLookup(userRepo, clk),
 		server.NewBudgetAccountLookup(accountRepo),
-		currencyLookup,
+		server.NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), server.NewBudgetTagMetadataLookup(tagRepo), server.NewBudgetPayeeMetadataLookup(payeeRepo)),
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		txm, clk,
