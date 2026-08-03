@@ -91,8 +91,8 @@ func TestBetween_AppendIncrementsInteger(t *testing.T) {
 	cases := []struct{ prev, want Key }{
 		{"a0", "a1"},
 		{"a1", "a2"},
-		{"az", "b10"},
-		{"bzz", "c100"},
+		{"az", "b00"},
+		{"bzz", "c000"},
 		{"c000", "c001"},
 	}
 	for _, c := range cases {
@@ -112,7 +112,7 @@ func TestBetween_PrependDecrementsInteger(t *testing.T) {
 	cases := []struct{ next, want Key }{
 		{"a1", "a0"},
 		{"c000", "bzz"},
-		{"b10", "az"},
+		{"b00", "az"},
 		{"a0", "Zz"},
 	}
 	for _, c := range cases {
@@ -218,7 +218,7 @@ func TestValidate(t *testing.T) {
 			t.Errorf("Validate(%q) = nil, want error", bad)
 		}
 	}
-	for _, ok := range []Key{"a0", "az", "b10", "c000", "Zz", "c000V"} {
+	for _, ok := range []Key{"a0", "az", "b00", "c000", "Zz", "c000V"} {
 		if err := Validate(ok); err != nil {
 			t.Errorf("Validate(%q) = %v, want nil", ok, err)
 		}
@@ -247,7 +247,7 @@ Create `internal/shared/sortkey/sortkey.go`:
 // encodes how many integer digits follow: lowercase 'a'=1 through 'z'=26 for
 // non-negative magnitudes, uppercase inverted ('Z'=1 through 'A'=26) for the
 // negative side, which is why 'Z' < 'a' in ASCII gives the right global order.
-// Appending increments the integer part (a0, a1, ... az, b10) rather than
+// Appending increments the integer part (a0, a1, ... az, b00) rather than
 // bisecting toward infinity, which is what keeps keys 2-4 characters under
 // append-heavy use.
 package sortkey

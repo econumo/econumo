@@ -102,8 +102,10 @@ type Item struct {
 }
 
 // siblings must be pre-sorted by Key. An afterID not present in siblings
-// appends to the end. Errors only on a malformed sibling key.
-func Place(siblings []Item, afterID string) (Key, error)
+// appends to the end. Errors only on a malformed sibling key. Growth is needed
+// for the empty-siblings case, where there is no neighbour to anchor against
+// and the seed applies.
+func Place(siblings []Item, afterID string, g Growth) (Key, error)
 ```
 
 `""` carries two unrelated meanings that must not be conflated: as a `Between`
@@ -124,8 +126,12 @@ The prefix encodes how many integer digits follow: `a` = 1, `b` = 2, `c` = 3, an
 so on. Appending increments the integer part rather than bisecting:
 
 ```
-a0 → a1 → … → a9 → aA → … → aZ → aa → … → az → b10 → b11 → … → bzz → c100 → …
+a0 → a1 → … → a9 → aA → … → aZ → aa → … → az → b00 → b01 → … → bzz → c000 → …
 ```
+
+Magnitude `b` carries two digits and spans the full `b00`–`bzz` range (62² =
+3,844 keys); there is no leading-digit-nonzero rule. Verified by
+`TestBetween_AppendIncrementsInteger`.
 
 Keys therefore stay 2-4 characters under append-heavy use, which matters because
 **append is the dominant operation** — categories, tags, payees, accounts and
@@ -154,12 +160,13 @@ grows on create:
 | categories, tags, payees, accounts, account folders | append | `a0` |
 | budget folders, budget envelope elements | prepend | `c000` |
 
-Seeding the prepend-oriented lists at `c000` buys **≈3,844 prepends** of headroom
-before keys enter the inverted uppercase magnitudes. Note that `c000` is already
+Seeding the prepend-oriented lists at `c000` buys exactly **3,906 prepends** of
+headroom before keys enter the inverted uppercase magnitudes. `c000` is already
 the minimum of magnitude `c`, so the first decrement underflows straight to
-`bzz`; the headroom is the `b` range (`b10`–`bzz`, 3,782 keys) plus the `a` range
-(`a0`–`az`, 62 keys). That is ample for budget folders and envelopes, which
-number in the tens.
+`bzz`; the headroom is the `b` range (`b00`–`bzz`, 3,844 keys) plus the `a` range
+(`a0`–`az`, 62 keys). Measured and pinned by
+`TestBetween_PrependFromSeedStaysOutOfUppercase`. That is ample for budget
+folders and envelopes, which number in the tens.
 
 Without the policy those two tables would seed at `a0` and drop into the
 inverted uppercase magnitudes on their *second* row, making the hardest branch
@@ -422,8 +429,8 @@ request-shape mismatch is exactly the kind of error that slips past them.
   no-exhaustion claim.
 - **New** `sortkey` tests for the two paths the seed policy makes rare, since
   rare is exactly when a latent bug survives to production:
-  - **Magnitude rollover in both directions.** Appending across `az` → `b10` and
-    `bzz` → `c100`, and prepending across `a0` → `Zz` and `A0` → the next
+  - **Magnitude rollover in both directions.** Appending across `az` → `b00` and
+    `bzz` → `c000`, and prepending across `a0` → `Zz` and `A0` → the next
     magnitude down. Assert the emitted keys sort correctly *as bytes*, not just
     that the function returns without error.
   - **Sustained prepend from a `c000` seed**, asserting keys stay in the
