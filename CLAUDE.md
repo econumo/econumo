@@ -64,14 +64,13 @@ the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
 `ALLOW_REGISTRATION` and `ANALYTICS` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store). App and server version-check each other in BOTH directions, one hard
-floor per side: `MIN_SERVER_VERSION` (`web/src/lib/appConfig.ts`) is the
-oldest server the app accepts, `version.MinAppVersion`
-(`internal/version/version.go`, served as `MIN_APP_VERSION`) is the oldest
-app the server accepts — crossing either hard-blocks the app
-(`AppUpdateBlock`); compatible-but-outdated pairs get soft nudges (the
-existing release `UpdateNotice` covers an outdated app, `ServerVersionNotice`
-an outdated server). Full rules in `mobile/README.md` — bump floors and that
-file together.
+floor per side; both floors live in the single shared `compat/versions.json`
+(Go embeds it, the SPA imports it — same pattern as `locales/`):
+`minServerVersion` is the oldest server the app accepts, `minAppVersion`
+(served as `MIN_APP_VERSION`) the oldest app the server accepts — crossing
+either hard-blocks the app (`AppUpdateBlock`); compatible-but-outdated pairs
+get soft nudges (the existing release `UpdateNotice` covers an outdated app,
+`ServerVersionNotice` an outdated server). Full rules in `mobile/README.md`.
 
 ```bash
 make mobile-install   # cd mobile && pnpm install

@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/econumo/econumo/compat"
 	appaccount "github.com/econumo/econumo/internal/account"
 	handleraccount "github.com/econumo/econumo/internal/account/api"
 	accountmcp "github.com/econumo/econumo/internal/account/mcp"
@@ -364,7 +365,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		MCP:                mcpHandler,
 		SPA:                spaFS,
 		SPAVersion:         spaVersion,
-		MinAppVersion:      version.MinAppVersion,
+		MinAppVersion:      compat.MinAppVersion,
 	}), adminHandler, rateUpdater, nil
 }
 

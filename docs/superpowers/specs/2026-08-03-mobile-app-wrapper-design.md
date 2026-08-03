@@ -123,14 +123,16 @@ server binary today).
 **Two-way handshake (amended 2026-08-03):** the app and the server check each
 other in both directions, one hard floor per side:
 
-- The app carries `MIN_SERVER_VERSION` (`web/src/lib/appConfig.ts`) — the
-  oldest server it can talk to. An older server is incompatible and
-  hard-blocks the app with an "update your server" gate.
-- The server publishes `MIN_APP_VERSION` (constant
-  `version.MinAppVersion`, merged into the served `econumo-config.js`) —
-  the oldest app build it accepts. An older app hard-blocks itself with an
-  "update the app" gate. Servers predating the key never block the app;
-  the app-side floor governs them.
+- The app carries `MIN_SERVER_VERSION` — the oldest server it can talk to.
+  An older server is incompatible and hard-blocks the app with an "update
+  your server" gate.
+- The server publishes `MIN_APP_VERSION` (merged into the served
+  `econumo-config.js`) — the oldest app build it accepts. An older app
+  hard-blocks itself with an "update the app" gate. Servers predating the
+  key never block the app; the app-side floor governs them.
+- Both floors live in one shared file, `compat/versions.json` (embedded by
+  the Go backend, imported by the SPA — the `locales/` pattern), so bumping
+  a floor is a single-file edit.
 - Compatible-but-outdated pairs get soft, dismissable nudges instead: the
   `ServerVersionNotice` banner when the server is older than the app, and —
   for an outdated app — the pre-existing sidebar release notice

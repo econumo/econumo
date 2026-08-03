@@ -17,16 +17,18 @@ Release builds label the UI with the app version:
 ## Version compatibility handshake
 
 The app and the server check each other in both directions; each side owns
-one hard floor:
+one hard floor. **Both floors live in a single file, `compat/versions.json`**
+(embedded by the Go backend, imported by the SPA — the same shared-file
+pattern as `locales/`), so there is exactly one place to bump:
 
-- **App-side floor:** `MIN_SERVER_VERSION` in `web/src/lib/appConfig.ts`
-  (currently **v1.3.0**, mirrored here — bump both together when the bundled
-  SPA starts depending on newer API behavior). A server older than this
-  hard-blocks the app ("update your server").
-- **Server-side floor:** `MinAppVersion` in `internal/version/version.go`,
-  served to the app as `MIN_APP_VERSION` in `econumo-config.js`. An app build
-  older than this hard-blocks itself ("update the app"). Servers predating
-  the key never block the app — the app-side floor governs them.
+- **App-side floor** (`minServerVersion`): the oldest server the bundled app
+  can talk to — bump when the SPA starts depending on newer API behavior. A
+  server older than this hard-blocks the app ("update your server").
+- **Server-side floor** (`minAppVersion`): the oldest app build the backend
+  accepts, served as `MIN_APP_VERSION` in `econumo-config.js` — bump only
+  when a release breaks compatibility with older app builds. An app older
+  than this hard-blocks itself ("update the app"). Servers predating the key
+  never block the app — the app-side floor governs them.
 - **Soft tier:** compatible-but-outdated pairs get dismissable nudges. A
   server older than the app shows the `ServerVersionNotice` banner. An
   outdated app is covered by the pre-existing release notice (`UpdateNotice`
@@ -36,8 +38,8 @@ one hard floor:
   surface needed.
 
 Both hard cases render `AppUpdateBlock` (a full-screen gate over every
-route); the soft banners live in the authenticated layout. Version checks
-only fire on strict `vX.Y.Z` values, so `dev` builds never block.
+route). Version checks only fire on strict `vX.Y.Z` values, so `dev` builds
+never block.
 
 ## Plain-HTTP self-hosted servers
 

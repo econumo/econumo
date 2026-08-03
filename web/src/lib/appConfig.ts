@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import versions from '../../../compat/versions.json'
 import { backendHost } from './config'
 
 // The app bundles a static econumo-config.js; the user's server holds the
@@ -9,8 +10,8 @@ const MERGED_KEYS = ['ALLOW_REGISTRATION', 'ANALYTICS'] as const
 // Minimum server version the bundled app is compatible with; an older server
 // hard-blocks the app. The server's own floor arrives as MIN_APP_VERSION in
 // its config (older servers without the key simply never block the app).
-// Documented in mobile/README.md — bump together with that file.
-export const MIN_SERVER_VERSION = 'v1.3.0'
+// Both floors live in compat/versions.json, shared with the Go backend.
+export const MIN_SERVER_VERSION = versions.minServerVersion
 
 export const useServerConfig = create<{
   serverVersion: string | null
