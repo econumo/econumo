@@ -19,3 +19,13 @@ Release builds label the UI with the app version:
 **v1.3.0** — mirrored by `MIN_SERVER_VERSION` in `web/src/lib/appConfig.ts`.
 Older servers show a non-blocking warning banner in the app. Bump both
 together when the bundled SPA starts depending on newer API behavior.
+
+## Store submission checklist
+
+- App id `com.econumo.app` on both stores.
+- Privacy labels: declare PostHog product analytics (disabled instance-wide
+  when the server sets `ECONUMO_ANALYTICS=false`); no ad tracking.
+- Review notes: include a demo account on Econumo Cloud so reviewers can
+  sign in without registering.
+- Release builds: `ECONUMO_VERSION=vX.Y.Z make mobile-sync`, then archive
+  from Xcode (iOS) / build an AAB from Android Studio.

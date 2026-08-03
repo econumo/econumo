@@ -54,6 +54,25 @@ make web-lint      # cd web && pnpm lint      (oxlint)
 make web-bundle    # cd web && pnpm build     (production SPA build -> web/dist)
 ```
 
+### Mobile app (Capacitor) — in `mobile/`
+
+The iOS/Android apps are a Capacitor shell around the `web/` SPA — `web/` stays
+the single frontend. App-specific behavior branches on `isNativeApp()`
+(`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
+Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
+the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
+`ALLOW_REGISTRATION` and `ANALYTICS` into `window.econumoConfig` (a fixed
+allowlist; the server VERSION goes to a separate store for the outdated-server
+banner). Minimum supported server version: `MIN_SERVER_VERSION` in
+`web/src/lib/appConfig.ts`, documented in `mobile/README.md` — bump together.
+
+```bash
+make mobile-install   # cd mobile && pnpm install
+make mobile-sync      # build web/ + cap sync into ios/ and android/
+make mobile-ios       # sync + open in Xcode
+make mobile-android   # sync + open in Android Studio
+```
+
 ### Publishing
 
 ```bash
