@@ -1330,6 +1330,11 @@
       "base_immutable": "Die Basiswährung kann nicht geändert werden",
       "cannot_be_hidden": "Diese Währung kann nicht ausgeblendet werden"
     },
+    "label": {
+      "name_length": "Der Label-Name muss {min}-{max} Zeichen lang sein",
+      "already_exists": "Das Label existiert bereits.",
+      "list_empty": "Die Label-Liste ist leer"
+    },
     "payee": {
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
       "already_exists": "Der Zahlungsempfänger existiert bereits.",

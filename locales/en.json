@@ -1330,6 +1330,11 @@
       "base_immutable": "The base currency cannot be modified",
       "cannot_be_hidden": "This currency cannot be hidden"
     },
+    "label": {
+      "name_length": "Label name must be {min}-{max} characters",
+      "already_exists": "Label already exists.",
+      "list_empty": "Labels list is empty"
+    },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",
       "already_exists": "Payee already exists.",

@@ -1330,6 +1330,11 @@
       "base_immutable": "A moeda base não pode ser alterada.",
       "cannot_be_hidden": "Esta moeda não pode ser ocultada."
     },
+    "label": {
+      "name_length": "O nome do marcador deve ter entre {min} e {max} caracteres.",
+      "already_exists": "O marcador já existe.",
+      "list_empty": "A lista de marcadores está vazia."
+    },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
       "already_exists": "O beneficiário já existe.",

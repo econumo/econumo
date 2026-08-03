@@ -1330,6 +1330,11 @@
       "base_immutable": "Waluty bazowej nie można zmienić.",
       "cannot_be_hidden": "Tej waluty nie można ukryć."
     },
+    "label": {
+      "name_length": "Nazwa etykiety musi mieć od {min} do {max} znaków.",
+      "already_exists": "Taka etykieta już istnieje.",
+      "list_empty": "Lista etykiet jest pusta."
+    },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",

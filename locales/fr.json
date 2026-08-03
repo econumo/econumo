@@ -1330,6 +1330,11 @@
       "base_immutable": "La devise de base ne peut pas être modifiée.",
       "cannot_be_hidden": "Cette devise ne peut pas être masquée."
     },
+    "label": {
+      "name_length": "Le nom du label doit contenir de {min} à {max} caractères.",
+      "already_exists": "Ce label existe déjà.",
+      "list_empty": "La liste des labels est vide."
+    },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce bénéficiaire existe déjà.",

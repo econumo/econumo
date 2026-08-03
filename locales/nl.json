@@ -1330,6 +1330,11 @@
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
       "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
     },
+    "label": {
+      "name_length": "Labelnaam moet {min}-{max} tekens bevatten.",
+      "already_exists": "Dit label bestaat al.",
+      "list_empty": "De lijst met labels is leeg."
+    },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze begunstigde bestaat al.",

@@ -1330,6 +1330,11 @@
       "base_immutable": "基准货币无法修改。",
       "cannot_be_hidden": "该货币无法隐藏。"
     },
+    "label": {
+      "name_length": "标记名称需为 {min}-{max} 个字符。",
+      "already_exists": "该标记已存在。",
+      "list_empty": "标记列表为空。"
+    },
     "payee": {
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
       "already_exists": "该收款人已存在。",
