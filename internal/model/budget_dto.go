@@ -92,10 +92,24 @@ type ParentElementResult struct {
 	OwnerUserId *string              `json:"ownerUserId"`
 }
 
-// StructureResult is the budget's folders + ordered elements.
+// LabelSpendResult is one reporting label in the budget's labels block. It has
+// no budgeted/available fields on purpose: a label carries no limit and takes no
+// part in envelope math, so only its period spend is meaningful. Amounts across
+// labels deliberately overlap and do not sum to total spend.
+type LabelSpendResult struct {
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	Icon        string `json:"icon"`
+	IsArchived  int    `json:"isArchived"`
+	Spent       string `json:"spent"`
+	OwnerUserId string `json:"ownerUserId"`
+}
+
+// StructureResult is the budget's folders + ordered elements + labels.
 type StructureResult struct {
 	Folders  []BudgetFolderResult  `json:"folders"`
 	Elements []ParentElementResult `json:"elements"`
+	Labels   []LabelSpendResult    `json:"labels"`
 }
 
 // BudgetResult is the full get-budget shape.

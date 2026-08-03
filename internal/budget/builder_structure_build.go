@@ -160,6 +160,21 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		}
 	}
 
+	// --- Labels (budget-neutral: never folded into toConvert keys the
+	// elements loop below reads) ---
+	labelSpending, err := s.buildLabelSpending(ctx, f)
+	if err != nil {
+		return model.StructureResult{}, err
+	}
+	// Labels convert into the BUDGET currency only: a label has no per-element
+	// currency option because it has no element.
+	for labelID, spends := range labelSpending {
+		for _, a := range spends {
+			key := fmt.Sprintf("label-spent_%s", labelID)
+			toConvert[key] = append(toConvert[key], convItem(a, budgetCurrencyID))
+		}
+	}
+
 	// --- standalone Categories ---
 	for catID, cat := range f.categories {
 		if categoryUsed[catID] {
@@ -278,7 +293,25 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	}
 	sortByPositionThenID(result, func(p model.ParentElementResult) int { return p.Position }, func(p model.ParentElementResult) string { return p.Id })
 
-	return model.StructureResult{Folders: folders, Elements: result}, nil
+	labels := []model.LabelSpendResult{}
+	for labelID, meta := range f.labels {
+		// Spend is the only visibility trigger: a label has no limit that could
+		// keep it on screen the way a budgeted-but-unspent tag stays visible.
+		spent := get(fmt.Sprintf("label-spent_%s", labelID))
+		if spent.IsZero() {
+			continue
+		}
+		labels = append(labels, model.LabelSpendResult{
+			Id: labelID, Name: meta.Name, Icon: meta.Icon,
+			IsArchived: boolToInt(meta.IsArchived), Spent: spent.String(),
+			OwnerUserId: meta.OwnerID,
+		})
+	}
+	sortByPositionThenID(labels,
+		func(l model.LabelSpendResult) int { return int(f.labels[l.Id].Position) },
+		func(l model.LabelSpendResult) string { return l.Id })
+
+	return model.StructureResult{Folders: folders, Elements: result, Labels: labels}, nil
 }
 
 // addSpendingConvert appends the spent / spent-budget / spent-before convert

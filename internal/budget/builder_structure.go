@@ -160,6 +160,30 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 	return data, nil
 }
 
+// buildLabelSpending accumulates per-label spending for the current period
+// only. Labels have no carryover, so unlike elements there is no month-by-month
+// "before" walk. This is a deliberately separate pass from
+// buildElementsSpending: label spend overlaps across labels and must never
+// enter the element accumulation it feeds.
+func (s *Service) buildLabelSpending(ctx context.Context, f filters) (map[string][]amountSpent, error) {
+	rows, err := s.read.CountSpendingByLabel(ctx, f.includedAccountIDs, f.periodStart, f.periodEnd)
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]amountSpent{}
+	for _, row := range rows {
+		cid, perr := vo.ParseId(row.CurrencyID)
+		if perr != nil {
+			return nil, perr
+		}
+		out[row.LabelID] = append(out[row.LabelID], amountSpent{
+			currencyID: cid, amount: vo.NewDecimal(row.Amount),
+			periodStart: f.periodStart, periodEnd: f.periodEnd,
+		})
+	}
+	return out, nil
+}
+
 // elementKey is "<id>-<typeAlias>".
 func elementKey(id string, t model.ElementType) string {
 	return fmt.Sprintf("%s-%s", id, t.Alias())

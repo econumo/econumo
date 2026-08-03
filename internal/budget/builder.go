@@ -25,6 +25,7 @@ type filters struct {
 	currencyIDs            []vo.Id
 	categories             map[string]model.CategoryMeta // expense-only, keyed by id
 	tags                   map[string]model.TagMeta
+	labels                 map[string]model.LabelMeta
 }
 
 // BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
@@ -179,11 +180,19 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		tagMap[t.ID] = t
 	}
 
+	// Labels resolve over the same owner set as tags, so a shared account's
+	// spend aggregates under the ACCOUNT OWNER's labels exactly like it does
+	// for tags.
+	labels, err := s.read.LabelsForUsers(ctx, userIDs)
+	if err != nil {
+		return filters{}, err
+	}
+
 	return filters{
 		periodStart: periodStart, periodEnd: periodEnd,
 		userIDs: userIDs, excludedAccountIDs: excludedForUser,
 		includedAccountIDs: included, currencyIDs: currencyIDs,
-		categories: catMap, tags: tagMap,
+		categories: catMap, tags: tagMap, labels: labels,
 	}, nil
 }
 

@@ -1078,6 +1078,21 @@ definitions:
       updatedAt:
         type: string
     type: object
+  model.LabelSpendResult:
+    properties:
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      spent:
+        type: string
+    type: object
   model.LoginRequest:
     properties:
       password:
@@ -1554,6 +1569,10 @@ definitions:
       folders:
         items:
           $ref: '#/definitions/model.BudgetFolderResult'
+        type: array
+      labels:
+        items:
+          $ref: '#/definitions/model.LabelSpendResult'
         type: array
     type: object
   model.TagResult:
