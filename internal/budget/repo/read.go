@@ -6,6 +6,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -407,6 +408,110 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 			}
 		}
 		out = append(out, model.SpendingRow{CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+	}
+	return out, rows.Err()
+}
+
+// CountSpendingByLabel implements ReadModel. Deliberately independent of
+// CountSpending: that query GROUPs BY (category_id, tag_id, currency_id) on
+// the assumption of one bucket per row, so joining the many-to-many
+// transactions_labels there would fan a transaction into N rows and
+// double-count the element totals. Here that fan-out is exactly the feature:
+// a transaction carrying two labels contributes its full amount to each.
+func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.LabelSpendingRow, error) {
+	// An empty IN () is a no-op on SQLite but a syntax error on PostgreSQL.
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	const sel = "SELECT SUM(t.amount) as amount, tl.label_id, a.currency_id " +
+		"FROM transactions t " +
+		"JOIN transactions_labels tl ON tl.transaction_id = t.id " +
+		"LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (%s) " +
+		"WHERE t.type = 0 AND t.spent_at >= %s AND t.spent_at < %s " +
+		"GROUP BY tl.label_id, a.currency_id ORDER BY tl.label_id, a.currency_id"
+	var sql string
+	var args []any
+	if r.driver == "postgresql" {
+		accIn := r.ph(1, len(accArgs))
+		sql = fmt.Sprintf(sel, accIn, "$"+itoa(1+len(accArgs)), "$"+itoa(2+len(accArgs)))
+		args = append(args, accArgs...)
+		args = append(args, start, end)
+	} else {
+		accIn := r.ph(1, len(accArgs))
+		sql = fmt.Sprintf(sel, accIn, "?", "?")
+		args = append(args, accArgs...)
+		// Bind the bounds as 'Y-m-d H:i:s' strings (see sqliteDatetime): a
+		// time.Time bound mis-compares against the stored datetime TEXT at month
+		// boundaries and drops the first-of-month row.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.LabelSpendingRow
+	for rows.Next() {
+		var labelID string
+		var currencyID *string
+		// SQLite's SUM(amount) is a float; scan it as float and format with
+		// 'f',8 (round to 8 decimals) instead of the driver's full-precision
+		// text. PostgreSQL's SUM is exact NUMERIC, scanned as text and passed
+		// through.
+		a := "0"
+		if r.driver == "postgresql" {
+			var amount *string
+			if err := rows.Scan(&amount, &labelID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil {
+				continue
+			}
+			if amount != nil {
+				a = *amount
+			}
+		} else {
+			var amount *float64
+			if err := rows.Scan(&amount, &labelID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil {
+				continue
+			}
+			if amount != nil {
+				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+			}
+		}
+		out = append(out, model.LabelSpendingRow{LabelID: labelID, CurrencyID: *currencyID, Amount: a})
+	}
+	return out, rows.Err()
+}
+
+// LabelsForUsers implements ReadModel.
+func (r *ReadRepo) LabelsForUsers(ctx context.Context, userIDs []vo.Id) (map[string]model.LabelMeta, error) {
+	// An empty IN () is a no-op on SQLite but a syntax error on PostgreSQL.
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+	ids := idArgs(userIDs)
+	in := r.ph(1, len(ids))
+	// ORDER BY pins row order across engines (SQLite would otherwise satisfy
+	// this from the user_id index while PostgreSQL seq-scans in insertion
+	// order); Task 2 renders the block in position order, so position leads.
+	sql := "SELECT id, user_id, name, icon, position, is_archived FROM labels WHERE user_id IN (" + in + ") ORDER BY user_id, position, id"
+	rows, err := r.db(ctx).QueryContext(ctx, sql, ids...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]model.LabelMeta{}
+	for rows.Next() {
+		var m model.LabelMeta
+		if err := rows.Scan(&m.ID, &m.OwnerID, &m.Name, &m.Icon, &m.Position, &m.IsArchived); err != nil {
+			return nil, err
+		}
+		out[m.ID] = m
 	}
 	return out, rows.Err()
 }

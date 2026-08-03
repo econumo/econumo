@@ -62,6 +62,27 @@ type BudgetTransactionRow struct {
 	TagID       *string
 }
 
+// LabelSpendingRow is one (label, currency) spending total in a period.
+// Unlike SpendingRow this is NOT grouped alongside category/tag: a
+// transaction with N labels contributes N rows, each carrying the FULL
+// amount, so these totals deliberately overlap and must never feed envelope
+// math (see CountSpendingByLabel).
+type LabelSpendingRow struct {
+	LabelID    string
+	CurrencyID string
+	Amount     string
+}
+
+// LabelMeta is a label's display metadata for the budget view.
+type LabelMeta struct {
+	ID         string
+	OwnerID    string
+	Name       string
+	Icon       string
+	Position   int16
+	IsArchived bool
+}
+
 // AccountView is an account as the budget filters builder needs it: id +
 // currency + owner.
 type AccountView struct {
