@@ -151,7 +151,7 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_transaction",
-			Description: "Update an existing transaction; send the full new field set (type, amount, account_id, date, ...)."},
+			Description: "Update an existing transaction; send the full new field set (type, amount, account_id, date, ...). Any labels already on the transaction are left untouched (there is no label_ids argument yet)."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateInput) (*sdk.CallToolResult, model.UpdateTransactionResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_transaction")
 				userID, err := webmcp.UserID(ctx)
@@ -159,7 +159,11 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 					return nil, model.UpdateTransactionResult{}, err
 				}
 				typ, amount, accountID, date, categoryID, accountRecipientID, amountRecipient, description, payeeID, tagID := in.toRequestFields()
-				res, err := svc.UpdateTransaction(ctx, userID, model.UpdateTransactionRequest{
+				// UpdateTransactionPreservingLabels, not UpdateTransaction: this
+				// tool has no label_ids argument, so req.LabelIds below is always
+				// unset — the plain full-replace path would read that as "clear
+				// every label" and silently delete them.
+				res, err := svc.UpdateTransactionPreservingLabels(ctx, userID, model.UpdateTransactionRequest{
 					Id:                 in.ID,
 					Type:               typ,
 					Amount:             amount,

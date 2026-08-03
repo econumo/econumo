@@ -89,20 +89,24 @@ func notAvailableCode(msg string) string {
 //     account owner), so a caller-only check would reject a legitimate
 //     co-sharer's transaction; a truly foreign (unconnected) id is still
 //     rejected.
-//   - when rawLabelIDs is non-nil, the ids it points to are resolved and
-//     written into st.LabelIDs for a non-transfer (a transfer never carries
-//     labels; st.LabelIDs stays whatever the caller already set — buildState
-//     never sets it, so create/update start from nil). rawLabelIDs itself
-//     being nil means "leave st.LabelIDs as the caller already set it": bulk
-//     re-classification touches only category/payee/tag and must not zero an
-//     existing label set, so it passes nil after seeding st.LabelIDs with the
-//     transaction's current labels; create/update always pass a non-nil
-//     pointer (even to an empty/nil slice) since their wire contract is a full
-//     replace. Unlike category/payee/tag, a label must belong to the ACCOUNT
-//     OWNER specifically, not the caller: reporting labels classify the
-//     owner's books, so a connected co-sharer classifies with the owner's
-//     labels exactly as they do with the owner's categories/tags/payees above.
-func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.NewState, rawLabelIDs *[]string) error {
+//   - rawLabelIDs is resolved and written into st.LabelIDs for a non-transfer
+//     (a transfer never carries labels, so its rawLabelIDs is ignored and
+//     st.LabelIDs stays nil, matching buildState which never sets it either).
+//     This is always a FULL REPLACE, same as categoryId/payeeId/tagId above:
+//     an empty/nil rawLabelIDs means "no labels", full stop. A caller that
+//     must leave existing labels untouched (there is exactly one: MCP's
+//     update_transaction, which has no label_ids argument yet — see
+//     Service.updateTransaction's preserveLabels parameter) is responsible for
+//     seeding rawLabelIDs with the transaction's CURRENT persisted labels
+//     itself before calling in; checkReferences has no "leave alone" mode of
+//     its own; a bulk re-classification simply never has anything to seed
+//     with here, since BulkUpdateTransactions never calls ReplaceLabels and
+//     never persists st.LabelIDs regardless of what this sets it to. Unlike
+//     category/payee/tag, a label must belong to the ACCOUNT OWNER
+//     specifically, not the caller: reporting labels classify the owner's
+//     books, so a connected co-sharer classifies with the owner's labels
+//     exactly as they do with the owner's categories/tags/payees above.
+func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.NewState, rawLabelIDs []string) error {
 	if st.AccountRecipID != nil {
 		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
 			return err
@@ -130,8 +134,8 @@ func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.N
 			return err
 		}
 	}
-	if !st.Type.IsTransfer() && rawLabelIDs != nil {
-		ids, lerr := s.resolveLabels(ctx, ownerID, *rawLabelIDs)
+	if !st.Type.IsTransfer() {
+		ids, lerr := s.resolveLabels(ctx, ownerID, rawLabelIDs)
 		if lerr != nil {
 			return lerr
 		}
@@ -257,26 +261,6 @@ func labelIDStrings(ids []vo.Id) []string {
 		out[i] = id.String()
 	}
 	return out
-}
-
-// labelIDsFromStrings parses an already-persisted label id list back into
-// vo.Id (the DB values are always well-formed, but ParseId's signature is
-// honored rather than assumed). Used to seed a preserved label set into a
-// model.NewState when a use case (bulk re-classification) must not disturb
-// the existing labels.
-func labelIDsFromStrings(ids []string) ([]vo.Id, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	out := make([]vo.Id, len(ids))
-	for i, s := range ids {
-		id, err := vo.ParseId(s)
-		if err != nil {
-			return nil, err
-		}
-		out[i] = id
-	}
-	return out, nil
 }
 
 // buildResult assembles the wire DTO from an already-resolved author (no DB

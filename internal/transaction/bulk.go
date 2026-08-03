@@ -15,9 +15,12 @@ const maxBulkUpdateIds = 100
 
 // BulkUpdateTransactions re-classifies (sets or clears category/payee/tag on)
 // an explicit list of transactions in one all-or-nothing call. This is
-// MCP-only — there is no REST route. Labels are outside this request's shape
-// and are always carried over unchanged (see the preservedLabelIDs comment
-// below).
+// MCP-only — there is no REST route. Labels are entirely outside this
+// request's shape and this method never calls ReplaceLabels, so
+// transactions_labels is never touched by a bulk update regardless of what
+// checkReferences computes for st.LabelIDs below (that value is written only
+// onto the in-memory t, which Save persists via the transactions row — Save
+// is an upsert and carries no label write).
 //
 // It deliberately does NOT run a raw UPDATE ... WHERE id IN: that would bypass
 // the single-update invariants and let a caller e.g. attach a category to a
@@ -86,27 +89,11 @@ func (s *Service) BulkUpdateTransactions(ctx context.Context, userID vo.Id, req 
 				continue
 			}
 
-			// Labels are outside this request's shape entirely, so the existing
-			// set must be carried over unchanged: t (from GetByID) never carries
-			// labels (they are not part of the hydrated row), and
-			// model.Transaction.Update always overwrites LabelIDs from the state
-			// for a non-transfer, so leaving st.LabelIDs at its zero value would
-			// silently wipe every label on every bulk-updated transaction.
-			existingLabels, lerr := s.repo.LabelsByTransactionIDs(ctx, []vo.Id{id})
-			if lerr != nil {
-				return lerr
-			}
-			preservedLabelIDs, lerr := labelIDsFromStrings(existingLabels[id.String()])
-			if lerr != nil {
-				return lerr
-			}
-
 			st := model.NewState{
 				ID: t.ID, UserID: t.UserID, Type: t.Type, AccountID: t.AccountID,
 				Amount: t.Amount, Description: t.Description, SpentAt: t.SpentAt,
 				CreatedAt: t.CreatedAt, UpdatedAt: now,
 				CategoryID: t.CategoryID, PayeeID: t.PayeeID, TagID: t.TagID,
-				LabelIDs: preservedLabelIDs,
 			}
 			switch {
 			case req.ClearCategory:

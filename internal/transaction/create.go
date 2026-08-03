@@ -71,7 +71,7 @@ func (s *Service) createTransaction(ctx context.Context, userID vo.Id, req model
 		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
 			return nerr
 		}
-		if rerr := s.checkReferences(ctx, userID, &st, &req.LabelIds); rerr != nil {
+		if rerr := s.checkReferences(ctx, userID, &st, req.LabelIds); rerr != nil {
 			return rerr
 		}
 		t := model.New(st)

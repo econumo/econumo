@@ -16,9 +16,11 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/shared/vo"
 	apptag "github.com/econumo/econumo/internal/tag"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -65,10 +67,12 @@ func newTransactionService(t *testing.T, db *dbtest.DB) *apptransaction.Service 
 		server.NewTransactionTagNameLookup(tgRepo),
 		server.NewTransactionPayeeNameLookup(pyRepo),
 	)
+	labelRepo := labelrepo.NewRepo(db.Engine, txm)
 	return apptransaction.NewService(
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
-		txExport, txImport, nil, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
+		txExport, txImport, server.NewTransactionLabelOwnership(labelRepo),
+		txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 }
 
@@ -612,5 +616,60 @@ func TestListTransactionsFilters_InvalidCombos(t *testing.T) {
 		if !ok || text.Text != "period_start and period_end must be provided together" {
 			t.Fatalf("%s: unexpected message: %#v", name, res.Content)
 		}
+	}
+}
+
+// TestUpdateTransactionTool_PreservesExistingLabels pins the critical fix:
+// MCP's update_transaction has no label_ids argument, so it must leave a
+// transaction's existing labels untouched rather than reading its own
+// missing argument as "clear every label". Regression guard for
+// UpdateTransactionPreservingLabels — routing this tool through plain
+// UpdateTransaction (full replace) would silently delete the label.
+func TestUpdateTransactionTool_PreservesExistingLabels(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	labelID := f.Label(fixture.Label{UserID: userID})
+	txID := f.Transaction(fixture.Transaction{
+		UserID: userID, AccountID: accountID, Type: 0, Amount: "10.00",
+		Description: "before",
+	})
+	txRepo := transactionrepo.NewRepo(db.Engine, db.TX)
+	if err := txRepo.ReplaceLabels(context.Background(), vo.MustParseId(txID), []vo.Id{vo.MustParseId(labelID)}); err != nil {
+		t.Fatalf("seed ReplaceLabels: %v", err)
+	}
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "update_transaction",
+		Arguments: map[string]any{
+			"id": txID, "type": "expense", "amount": "10.00", "account_id": accountID,
+			"date": "2024-03-01", "description": "after",
+		},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("update_transaction: err=%v res=%#v", err, res)
+	}
+	out := structured(t, res)
+	item := out["item"].(map[string]any)
+	if item["description"] != "after" {
+		t.Fatalf("description = %v, want updated to \"after\"", item["description"])
+	}
+
+	got, lerr := txRepo.LabelsByTransactionIDs(context.Background(), []vo.Id{vo.MustParseId(txID)})
+	if lerr != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", lerr)
+	}
+	if len(got[txID]) != 1 || got[txID][0] != labelID {
+		t.Fatalf("persisted labels after MCP update = %v, want [%s] (must survive)", got[txID], labelID)
+	}
+	// The response DTO must also report the surviving label, not an empty list.
+	labelIds, _ := item["labelIds"].([]any)
+	if len(labelIds) != 1 || labelIds[0] != labelID {
+		t.Fatalf("response labelIds = %v, want [%s]", item["labelIds"], labelID)
 	}
 }
