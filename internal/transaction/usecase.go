@@ -144,6 +144,15 @@ func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.N
 	return nil
 }
 
+// maxTransactionLabels caps the deduped labelIds a single transaction may
+// carry: resolveLabels issues one LabelOwners lookup per unique id and the
+// follow-up ReplaceLabels one INSERT per id, both inside the open write
+// transaction (BulkUpdateTransactions caps its own id list at 100 for the
+// identical reason — see maxBulkUpdateIds in bulk.go). 50 is far past any
+// real classification (reporting labels tag a transaction along a handful of
+// axes, not hundreds) while keeping the per-request statement count small.
+const maxTransactionLabels = 50
+
 // resolveLabels parses, dedupes, and authorizes the wire labelIds for a
 // non-transfer transaction: each must parse as a valid id, exist, and be
 // owned by ownerID (the transaction's account owner) — else the frozen
@@ -169,6 +178,9 @@ func (s *Service) resolveLabels(ctx context.Context, ownerID vo.Id, rawLabelIDs 
 		}
 		seen[key] = struct{}{}
 		ids = append(ids, id)
+	}
+	if len(ids) > maxTransactionLabels {
+		return nil, &errs.ValidationError{Msg: "A transaction can have at most 50 labels.", MsgCode: errs.CodeTransactionTooManyLabels}
 	}
 	owners, err := s.labels.LabelOwners(ctx, ids)
 	if err != nil {

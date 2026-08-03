@@ -52,7 +52,9 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 
 // mutate loads the label, checks ownership, applies fn inside a transaction, and
 // saves. It returns the mutated (in-memory) aggregate so the caller can build
-// its result without a second read. Ownership failure -> AccessDenied (403).
+// its result without a second read. Ownership failure is masked as a not-found
+// (400), matching the repo lookup above, so a caller cannot probe which label
+// ids exist by distinguishing "not yours" from "doesn't exist".
 func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(l *model.Label, now time.Time)) (*model.Label, error) {
 	var loaded *model.Label
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {

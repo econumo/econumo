@@ -1354,7 +1354,8 @@
     "transaction": {
       "account_not_available": "To konto jest niedostępne dla tej operacji.",
       "item_not_available": "Ta transakcja jest niedostępna dla tej operacji.",
-      "invalid_import_file": "Prześlij prawidłowy plik CSV."
+      "invalid_import_file": "Prześlij prawidłowy plik CSV.",
+      "too_many_labels": "Transakcja może mieć maksymalnie 50 etykiet."
     },
     "user": {
       "report_period_invalid": "Nieprawidłowy okres raportu.",

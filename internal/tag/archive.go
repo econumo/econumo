@@ -8,8 +8,9 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// ArchiveTag marks the tag archived; ownership failure is a 403. This toggles
-// only is_archived and does not touch budget-element archival.
+// ArchiveTag marks the tag archived; ownership failure is a masked not-found
+// (400), so a caller cannot probe which tag ids exist. This toggles only
+// is_archived and does not touch budget-element archival.
 func (s *Service) ArchiveTag(ctx context.Context, userID vo.Id, req model.ArchiveTagRequest) (*model.ArchiveTagResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -23,7 +24,8 @@ func (s *Service) ArchiveTag(ctx context.Context, userID vo.Id, req model.Archiv
 	return &model.ArchiveTagResult{}, nil
 }
 
-// UnarchiveTag clears the archived flag; ownership failure is a 403.
+// UnarchiveTag clears the archived flag; ownership failure is a masked
+// not-found (400), so a caller cannot probe which tag ids exist.
 func (s *Service) UnarchiveTag(ctx context.Context, userID vo.Id, req model.UnarchiveTagRequest) (*model.UnarchiveTagResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

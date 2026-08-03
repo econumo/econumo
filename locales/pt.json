@@ -1354,7 +1354,8 @@
     "transaction": {
       "account_not_available": "Esta conta não está disponível para esta operação.",
       "item_not_available": "Esta transação não está disponível para esta operação.",
-      "invalid_import_file": "Carregue um ficheiro CSV válido."
+      "invalid_import_file": "Carregue um ficheiro CSV válido.",
+      "too_many_labels": "Uma transação pode ter no máximo 50 rótulos."
     },
     "user": {
       "report_period_invalid": "O período do relatório está incorreto.",

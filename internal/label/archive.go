@@ -8,7 +8,8 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// ArchiveLabel marks the label archived; ownership failure is a 403. This
+// ArchiveLabel marks the label archived; ownership failure is a masked
+// not-found (400), so a caller cannot probe which label ids exist. This
 // toggles only is_archived and does not touch budget-element archival (labels
 // have no budget role at all).
 func (s *Service) ArchiveLabel(ctx context.Context, userID vo.Id, req model.ArchiveLabelRequest) (*model.ArchiveLabelResult, error) {
@@ -24,7 +25,8 @@ func (s *Service) ArchiveLabel(ctx context.Context, userID vo.Id, req model.Arch
 	return &model.ArchiveLabelResult{}, nil
 }
 
-// UnarchiveLabel clears the archived flag; ownership failure is a 403.
+// UnarchiveLabel clears the archived flag; ownership failure is a masked
+// not-found (400), so a caller cannot probe which label ids exist.
 func (s *Service) UnarchiveLabel(ctx context.Context, userID vo.Id, req model.UnarchiveLabelRequest) (*model.UnarchiveLabelResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

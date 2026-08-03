@@ -17,6 +17,11 @@ import (
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
+// maxTestLabels mirrors internal/transaction/usecase.go's unexported
+// maxTransactionLabels (50) — this test package cannot see it directly, so
+// the boundary is duplicated here; keep the two in sync.
+const maxTestLabels = 50
+
 func createReqWithLabels(id, typ, amount string, labelIDs []string) map[string]any {
 	return map[string]any{
 		"id": id, "type": typ, "amount": amount, "accountId": accountID, "categoryId": catID,
@@ -175,6 +180,45 @@ func TestCreateTransaction_SharedAccount_UsesOwnerLabel_Succeeds(t *testing.T) {
 	res := mustUnmarshal[writeResult](t, env.Data)
 	if len(res.Item.LabelIds) != 1 || res.Item.LabelIds[0] != ownerLabelID {
 		t.Fatalf("labelIds = %v, want [%s]", res.Item.LabelIds, ownerLabelID)
+	}
+}
+
+// TestCreateTransaction_TooManyLabels_Rejected: one over the cap is rejected
+// with the dedicated too-many-labels error, BEFORE any per-id ownership
+// lookup runs — none of these ids need to exist for the cap to fire, since
+// resolveLabels checks the deduped count first.
+func TestCreateTransaction_TooManyLabels_Rejected(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	ids := make([]string, maxTestLabels+1)
+	for i := range ids {
+		ids[i] = fixture.NewID()
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok,
+		createReqWithLabels(txID1, "expense", "12.00", ids))
+	assertValidationDenied(t, status, env, "A transaction can have at most 50 labels.")
+}
+
+// TestCreateTransaction_MaxLabels_Accepted: exactly the cap succeeds, proving
+// the check is an off-by-one-safe ">", not ">=".
+func TestCreateTransaction_MaxLabels_Accepted(t *testing.T) {
+	h := newHarness(t)
+	txm := backend.NewTxManager(h.db)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	ids := make([]string, maxTestLabels)
+	for i := range ids {
+		ids[i] = f.Label(fixture.Label{UserID: seedUserID, Name: fixture.NewID()})
+	}
+
+	tok := h.token(t)
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok,
+		createReqWithLabels(txID1, "expense", "12.00", ids))
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[writeResult](t, env.Data)
+	if len(res.Item.LabelIds) != maxTestLabels {
+		t.Fatalf("labelIds count = %d, want %d", len(res.Item.LabelIds), maxTestLabels)
 	}
 }
 

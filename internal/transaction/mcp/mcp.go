@@ -151,7 +151,7 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_transaction",
-			Description: "Update an existing transaction; send the full new field set (type, amount, account_id, date, ...). Any labels already on the transaction are left untouched (there is no label_ids argument yet)."},
+			Description: "Update an existing transaction; send the full new field set (type, amount, account_id, date, ...). Any labels already on the transaction are left untouched as long as type stays expense/income (there is no label_ids argument yet); switching type to transfer clears them, since a transfer cannot carry labels."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateInput) (*sdk.CallToolResult, model.UpdateTransactionResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_transaction")
 				userID, err := webmcp.UserID(ctx)

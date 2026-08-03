@@ -1354,7 +1354,8 @@
     "transaction": {
       "account_not_available": "Deze rekening is niet beschikbaar voor deze bewerking.",
       "item_not_available": "Deze transactie is niet beschikbaar voor deze bewerking.",
-      "invalid_import_file": "Upload een geldig CSV-bestand."
+      "invalid_import_file": "Upload een geldig CSV-bestand.",
+      "too_many_labels": "Een transactie kan maximaal 50 labels hebben."
     },
     "user": {
       "report_period_invalid": "De rapportageperiode is onjuist.",

@@ -34,6 +34,7 @@ import (
 	handlerrecurring "github.com/econumo/econumo/internal/recurring/api"
 	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/server"
+	"github.com/econumo/econumo/internal/shared/vo"
 	apptag "github.com/econumo/econumo/internal/tag"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/authstub"
@@ -63,6 +64,16 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
+}
+
+// noLabels stubs apptransaction.LabelOwnership: recurring templates carry no
+// labelIds field today, so resolveLabels short-circuits on the empty list and
+// this is never actually called. It exists so a future labelIds field on
+// recurring posting fails with a clear panic instead of a nil-pointer one.
+type noLabels struct{}
+
+func (noLabels) LabelOwners(context.Context, []vo.Id) (map[string]vo.Id, error) {
+	panic("harness: LabelOwnership not wired for recurring; add a real implementation before giving recurring templates labelIds")
 }
 
 func newHarness(t *testing.T) *harness {
@@ -122,7 +133,7 @@ func newHarness(t *testing.T) *harness {
 		txRepo, accountSvc,
 		accountAccessResolver,
 		accountSvc,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, nil, txm, opGuard, clk,
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, noLabels{}, txm, opGuard, clk,
 	)
 
 	recurringRepo := recurringrepo.NewRepo("sqlite", txm)

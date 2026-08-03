@@ -1354,7 +1354,8 @@
     "transaction": {
       "account_not_available": "Dieses Konto ist für diesen Vorgang nicht verfügbar.",
       "item_not_available": "Diese Transaktion ist für diesen Vorgang nicht verfügbar.",
-      "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch"
+      "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
+      "too_many_labels": "Eine Transaktion kann höchstens 50 Labels haben."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

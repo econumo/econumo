@@ -10,7 +10,7 @@ import (
 
 // UpdateLabel enforces name uniqueness among the owner's labels (excluding
 // itself), updates the name, and returns the refreshed item; ownership failure
-// is a 403.
+// is a masked not-found (400), so a caller cannot probe which label ids exist.
 func (s *Service) UpdateLabel(ctx context.Context, userID vo.Id, req model.UpdateLabelRequest) (*model.UpdateLabelResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
