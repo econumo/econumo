@@ -36,3 +36,8 @@ export async function moveCategory(id: Id, afterId: Id | null): Promise<Category
   const response = await api.post<Envelope<{ items: CategoryDto[] }>>(apiUrl('/api/v1/category/move-category'), { id, afterId })
   return response.data.data.items
 }
+
+export async function sortCategoryList(ids: Id[]): Promise<CategoryDto[]> {
+  const response = await api.post<Envelope<{ items: CategoryDto[] }>>(apiUrl('/api/v1/category/sort-category-list'), { ids })
+  return response.data.data.items
+}

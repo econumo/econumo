@@ -195,6 +195,31 @@ func (r MoveCategoryRequest) Validate() error {
 	return nil
 }
 
+// SortCategoryListRequest is the sort-category-list request body: the caller's desired
+// order as a full list of ids. A drag is one MoveCategory; sorting the whole list
+// (alphabetically, say) is this, because no single relative move can express an
+// n-item reorder.
+type SortCategoryListRequest struct {
+	Ids []string `json:"ids"`
+}
+
+func (r SortCategoryListRequest) Validate() error {
+	if len(r.Ids) == 0 {
+		return &errs.ValidationError{Msg: "Ids list is empty", MsgCode: errs.CodeIsBlank}
+	}
+	for _, id := range r.Ids {
+		if _, err := vo.ParseId(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SortCategoryListResult is the sort-category-list response: {items: [...]}.
+type SortCategoryListResult struct {
+	Items []CategoryResult `json:"items"`
+}
+
 // MoveCategoryResult is the move-category response: {items: [...]}.
 type MoveCategoryResult struct {
 	Items []CategoryResult `json:"items"`

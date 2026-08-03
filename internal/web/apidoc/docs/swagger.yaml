@@ -1434,6 +1434,48 @@ definitions:
       item:
         $ref: '#/definitions/model.RecurringTransactionResult'
     type: object
+  model.SortCategoryListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.SortPayeeListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.SortTagListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
   model.StructureResult:
     properties:
       elements:
@@ -3739,6 +3781,52 @@ paths:
       summary: Move a category
       tags:
       - Category
+  /api/v1/category/sort-category-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own categorys and returns the full ordered list.
+      parameters:
+      - description: Sort category list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortCategoryListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortCategoryListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the category list
+      tags:
+      - Category
   /api/v1/category/unarchive-category:
     post:
       consumes:
@@ -4602,6 +4690,52 @@ paths:
       summary: Move a payee
       tags:
       - Payee
+  /api/v1/payee/sort-payee-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own payees and returns the full ordered list.
+      parameters:
+      - description: Sort payee list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortPayeeListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortPayeeListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the payee list
+      tags:
+      - Payee
   /api/v1/payee/unarchive-payee:
     post:
       consumes:
@@ -5190,6 +5324,52 @@ paths:
       security:
       - Bearer: []
       summary: Move a tag
+      tags:
+      - Tag
+  /api/v1/tag/sort-tag-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own tags and returns the full ordered list.
+      parameters:
+      - description: Sort tag list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortTagListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortTagListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the tag list
       tags:
       - Tag
   /api/v1/tag/unarchive-tag:

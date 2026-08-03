@@ -49,3 +49,22 @@ func (h *Handlers) MoveCategory(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) GetCategoryList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.read.GetCategoryList)
 }
+
+// SortCategoryList handles POST /api/v1/category/sort-category-list (auth).
+//
+// @Summary     Sort the category list
+// @Description Applies an explicit order (a full list of ids) to the caller's own categorys and returns the full ordered list.
+// @Tags        Category
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SortCategoryListRequest true "Sort category list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SortCategoryListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/category/sort-category-list [post]
+func (h *Handlers) SortCategoryList(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.SortCategoryList)
+}

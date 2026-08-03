@@ -49,3 +49,22 @@ func (h *Handlers) MoveTag(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) GetTagList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.read.GetTagList)
 }
+
+// SortTagList handles POST /api/v1/tag/sort-tag-list (auth).
+//
+// @Summary     Sort the tag list
+// @Description Applies an explicit order (a full list of ids) to the caller's own tags and returns the full ordered list.
+// @Tags        Tag
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SortTagListRequest true "Sort tag list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SortTagListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/tag/sort-tag-list [post]
+func (h *Handlers) SortTagList(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.SortTagList)
+}

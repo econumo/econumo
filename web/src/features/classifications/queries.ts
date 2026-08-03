@@ -103,6 +103,21 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       }
     },
     replaceAll: (items: EntityDto[]) => queryClient.setQueryData(key, items),
+    // Reorder the cached list to an explicit id order and re-stamp dense
+    // positions, so a bulk sort shows instantly instead of after the round trip.
+    // Ids the cache does not know are ignored; rows the order omits keep their
+    // slot at the end, matching how the server skips ids the caller does not own.
+    reorder: (orderedIds: Id[]) => {
+      queryClient.setQueryData<EntityDto[]>(key, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        const byId = new Map(prev.map((i) => [i.id, i]))
+        const ordered = orderedIds.map((id) => byId.get(id)).filter((i): i is EntityDto => i !== undefined)
+        const seen = new Set(ordered.map((i) => i.id))
+        return [...ordered, ...prev.filter((i) => !seen.has(i.id))].map((i, position) => ({ ...i, position }))
+      })
+    },
   }
 }
 
@@ -292,18 +307,15 @@ export function useCreateTag() {
   })
 }
 
-// useSortCategories replays an explicit target order as a chain of relative moves. Each
-// call must see the previous one's result, so they run in sequence rather than
-// in parallel; the last response carries the finished list.
+// useSortCategories applies an explicit order in ONE request. A drag is a relative
+// move; sorting the whole list changes every row's neighbour, which no single
+// move can express. The cache is reordered up front so the list flips instantly.
 export function useSortCategories() {
   const ops = useEntityCacheOps('categories', false)
   return useMutation({
-    mutationFn: async (orderedIds: Id[]) => {
-      let items: CategoryDto[] = []
-      for (let i = 0; i < orderedIds.length; i++) {
-        items = await categoryApi.moveCategory(orderedIds[i], i === 0 ? null : orderedIds[i - 1])
-      }
-      return items
+    mutationFn: (orderedIds: Id[]) => categoryApi.sortCategoryList(orderedIds),
+    onMutate: (orderedIds) => {
+      ops.reorder(orderedIds)
     },
     onSuccess: (items) => {
       ops.replaceAll(items)
@@ -312,18 +324,15 @@ export function useSortCategories() {
   })
 }
 
-// useSortPayees replays an explicit target order as a chain of relative moves. Each
-// call must see the previous one's result, so they run in sequence rather than
-// in parallel; the last response carries the finished list.
+// useSortPayees applies an explicit order in ONE request. A drag is a relative
+// move; sorting the whole list changes every row's neighbour, which no single
+// move can express. The cache is reordered up front so the list flips instantly.
 export function useSortPayees() {
   const ops = useEntityCacheOps('payees', false)
   return useMutation({
-    mutationFn: async (orderedIds: Id[]) => {
-      let items: PayeeDto[] = []
-      for (let i = 0; i < orderedIds.length; i++) {
-        items = await payeeApi.movePayee(orderedIds[i], i === 0 ? null : orderedIds[i - 1])
-      }
-      return items
+    mutationFn: (orderedIds: Id[]) => payeeApi.sortPayeeList(orderedIds),
+    onMutate: (orderedIds) => {
+      ops.reorder(orderedIds)
     },
     onSuccess: (items) => {
       ops.replaceAll(items)
@@ -332,18 +341,15 @@ export function useSortPayees() {
   })
 }
 
-// useSortTags replays an explicit target order as a chain of relative moves. Each
-// call must see the previous one's result, so they run in sequence rather than
-// in parallel; the last response carries the finished list.
+// useSortTags applies an explicit order in ONE request. A drag is a relative
+// move; sorting the whole list changes every row's neighbour, which no single
+// move can express. The cache is reordered up front so the list flips instantly.
 export function useSortTags() {
   const ops = useEntityCacheOps('tags', false)
   return useMutation({
-    mutationFn: async (orderedIds: Id[]) => {
-      let items: TagDto[] = []
-      for (let i = 0; i < orderedIds.length; i++) {
-        items = await tagApi.moveTag(orderedIds[i], i === 0 ? null : orderedIds[i - 1])
-      }
-      return items
+    mutationFn: (orderedIds: Id[]) => tagApi.sortTagList(orderedIds),
+    onMutate: (orderedIds) => {
+      ops.reorder(orderedIds)
     },
     onSuccess: (items) => {
       ops.replaceAll(items)

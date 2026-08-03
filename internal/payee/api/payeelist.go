@@ -49,3 +49,22 @@ func (h *Handlers) MovePayee(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) GetPayeeList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.read.GetPayeeList)
 }
+
+// SortPayeeList handles POST /api/v1/payee/sort-payee-list (auth).
+//
+// @Summary     Sort the payee list
+// @Description Applies an explicit order (a full list of ids) to the caller's own payees and returns the full ordered list.
+// @Tags        Payee
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SortPayeeListRequest true "Sort payee list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SortPayeeListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/payee/sort-payee-list [post]
+func (h *Handlers) SortPayeeList(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.SortPayeeList)
+}

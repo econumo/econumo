@@ -1,6 +1,9 @@
 package sortkey
 
-import "testing"
+import (
+	"sort"
+	"testing"
+)
 
 // sibs builds a sibling list with single-letter ids "a", "b", "c", ... in the
 // order given, which is also the order the callers keep them sorted in.
@@ -232,5 +235,95 @@ func TestMoveWithin_MatchesTheFirstOccurrence(t *testing.T) {
 	}
 	if moved.key != "a0" {
 		t.Fatalf("returned the %q row, want the first occurrence (a0)", moved.key)
+	}
+}
+
+// TestResequence_AlreadyOrderedWritesNothing is the property that makes a bulk
+// sort cheap: rows already in the requested relative order keep their keys.
+func TestResequence_AlreadyOrderedWritesNothing(t *testing.T) {
+	items := []row{{"a", "c000"}, {"b", "c001"}, {"c", "c002"}}
+	changed, err := Resequence(items, []string{"a", "b", "c"}, rowItem, GrowsUp)
+	if err != nil {
+		t.Fatalf("Resequence: %v", err)
+	}
+	if len(changed) != 0 {
+		t.Fatalf("changed = %v, want no writes", changed)
+	}
+}
+
+// TestResequence_WritesOnlyTheRowsOutOfPlace: reversing three rows only needs the
+// two that trail to be rewritten, not all three.
+func TestResequence_WritesOnlyTheRowsOutOfPlace(t *testing.T) {
+	items := []row{{"a", "c000"}, {"b", "c001"}, {"c", "c002"}}
+	changed, err := Resequence(items, []string{"c", "b", "a"}, rowItem, GrowsUp)
+	if err != nil {
+		t.Fatalf("Resequence: %v", err)
+	}
+	if len(changed) != 2 {
+		t.Fatalf("changed = %v, want 2 writes", changed)
+	}
+	if _, ok := changed["c"]; ok {
+		t.Error("the leading row already sorts first; it should not be rewritten")
+	}
+	assertResequenced(t, items, changed, []string{"c", "b", "a"})
+}
+
+// TestResequence_SkipsRowsTheCallerDoesNotOwn mirrors move semantics: an id that
+// is not in items (a shared row) is ignored rather than rejected.
+func TestResequence_SkipsRowsTheCallerDoesNotOwn(t *testing.T) {
+	items := []row{{"a", "c002"}, {"b", "c001"}}
+	changed, err := Resequence(items, []string{"foreign", "b", "a"}, rowItem, GrowsUp)
+	if err != nil {
+		t.Fatalf("Resequence: %v", err)
+	}
+	if _, ok := changed["foreign"]; ok {
+		t.Fatal("a row that is not in items must not get a key")
+	}
+	assertResequenced(t, items, changed, []string{"b", "a"})
+}
+
+// TestResequence_AssignsAKeyToAnUnsetRow covers a row that carries no key yet.
+func TestResequence_AssignsAKeyToAnUnsetRow(t *testing.T) {
+	items := []row{{"a", ""}, {"b", "c001"}}
+	changed, err := Resequence(items, []string{"a", "b"}, rowItem, GrowsUp)
+	if err != nil {
+		t.Fatalf("Resequence: %v", err)
+	}
+	if changed["a"] == "" {
+		t.Fatal("the keyless row must be assigned one")
+	}
+	assertResequenced(t, items, changed, []string{"a", "b"})
+}
+
+// assertResequenced applies changed to items and checks the resulting key order
+// matches want.
+func assertResequenced(t *testing.T, items []row, changed map[string]Key, want []string) {
+	t.Helper()
+	final := make([]row, 0, len(items))
+	for _, it := range items {
+		if k, ok := changed[it.id]; ok {
+			it.key = k
+		}
+		final = append(final, it)
+	}
+	inWant := map[string]bool{}
+	for _, id := range want {
+		inWant[id] = true
+	}
+	kept := make([]row, 0, len(final))
+	for _, it := range final {
+		if inWant[it.id] {
+			kept = append(kept, it)
+		}
+	}
+	sort.SliceStable(kept, func(i, j int) bool { return kept[i].key < kept[j].key })
+	for i, id := range want {
+		if kept[i].id != id {
+			got := make([]string, 0, len(kept))
+			for _, k := range kept {
+				got = append(got, k.id)
+			}
+			t.Fatalf("key order = %v, want %v", got, want)
+		}
 	}
 }

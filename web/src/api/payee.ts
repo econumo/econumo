@@ -36,3 +36,8 @@ export async function movePayee(id: Id, afterId: Id | null): Promise<PayeeDto[]>
   const response = await api.post<Envelope<{ items: PayeeDto[] }>>(apiUrl('/api/v1/payee/move-payee'), { id, afterId })
   return response.data.data.items
 }
+
+export async function sortPayeeList(ids: Id[]): Promise<PayeeDto[]> {
+  const response = await api.post<Envelope<{ items: PayeeDto[] }>>(apiUrl('/api/v1/payee/sort-payee-list'), { ids })
+  return response.data.data.items
+}

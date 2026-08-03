@@ -135,6 +135,31 @@ func (r MovePayeeRequest) Validate() error {
 	return nil
 }
 
+// SortPayeeListRequest is the sort-payee-list request body: the caller's desired
+// order as a full list of ids. A drag is one MovePayee; sorting the whole list
+// (alphabetically, say) is this, because no single relative move can express an
+// n-item reorder.
+type SortPayeeListRequest struct {
+	Ids []string `json:"ids"`
+}
+
+func (r SortPayeeListRequest) Validate() error {
+	if len(r.Ids) == 0 {
+		return &errs.ValidationError{Msg: "Ids list is empty", MsgCode: errs.CodeIsBlank}
+	}
+	for _, id := range r.Ids {
+		if _, err := vo.ParseId(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SortPayeeListResult is the sort-payee-list response: {items: [...]}.
+type SortPayeeListResult struct {
+	Items []PayeeResult `json:"items"`
+}
+
 // MovePayeeResult is the move-payee response: {items: [...]}.
 type MovePayeeResult struct {
 	Items []PayeeResult `json:"items"`

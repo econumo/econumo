@@ -97,3 +97,49 @@ func Prepend[T any](items []T, of func(T) Item, g Growth) (Key, error) {
 	}
 	return Between("", of(items[0]).Key)
 }
+
+// Resequence assigns keys so the rows named in order end up in that order, and
+// returns id -> new key for ONLY the rows that need writing.
+//
+// It walks the requested order keeping the highest key placed so far: a row
+// already sorting after it is left alone, and only a row that would break the
+// sequence gets a fresh key appended past it. Sorting an already-sorted list
+// therefore writes nothing, and reversing one writes n-1 rows rather than n.
+//
+// An id absent from items is skipped rather than rejected, matching MoveWithin:
+// it belongs to another owner, or was deleted concurrently. Rows present in
+// items but absent from order keep their keys and are not repositioned.
+func Resequence[T any](items []T, order []string, of func(T) Item, g Growth) (map[string]Key, error) {
+	byID := make(map[string]Item, len(items))
+	for _, it := range items {
+		e := of(it)
+		byID[e.ID] = e
+	}
+	changed := make(map[string]Key)
+	var prev Key
+	for _, id := range order {
+		e, ok := byID[id]
+		if !ok {
+			continue
+		}
+		if e.Key != "" && e.Key > prev {
+			prev = e.Key
+			continue
+		}
+		var (
+			k   Key
+			err error
+		)
+		if prev == "" {
+			k = Seed(g)
+		} else {
+			k, err = Between(prev, "")
+		}
+		if err != nil {
+			return nil, err
+		}
+		changed[id] = k
+		prev = k
+	}
+	return changed, nil
+}

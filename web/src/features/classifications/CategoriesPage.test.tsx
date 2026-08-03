@@ -212,10 +212,10 @@ it('delete posts mode=delete and scrubs the category from cached transactions', 
   })
 })
 
-it('A-Z sort replays the target order as a chain of relative moves', async () => {
+it('A-Z sort posts the whole target order in one request', async () => {
   const bodies: unknown[] = []
   server.use(
-    http.post('*/api/v1/category/move-category', async ({ request }) => {
+    http.post('*/api/v1/category/sort-category-list', async ({ request }) => {
       bodies.push(await request.json())
       return HttpResponse.json({ success: true, message: '', data: { items: [] } })
     }),
@@ -225,14 +225,6 @@ it('A-Z sort replays the target order as a chain of relative moves', async () =>
   await screen.findByText('Food')
   await user.click(screen.getByRole('button', { name: /Reorder list/ }))
   await user.click(await screen.findByRole('button', { name: 'Alphabetically (A-Z)' }))
-  // alphabetical target: Food, Old, Salary. Each item is placed after the one
-  // before it, so the chain fully determines the order regardless of where the
-  // list started.
-  await waitFor(() =>
-    expect(bodies).toEqual([
-      { id: 'cat-food', afterId: null },
-      { id: 'cat-archived', afterId: 'cat-food' },
-      { id: 'cat-salary', afterId: 'cat-archived' },
-    ]),
-  )
+  // alphabetical target: Food, Old, Salary -- one request carrying the full order.
+  await waitFor(() => expect(bodies).toEqual([{ ids: ['cat-food', 'cat-archived', 'cat-salary'] }]))
 })

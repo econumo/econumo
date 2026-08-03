@@ -137,6 +137,31 @@ func (r MoveTagRequest) Validate() error {
 	return nil
 }
 
+// SortTagListRequest is the sort-tag-list request body: the caller's desired
+// order as a full list of ids. A drag is one MoveTag; sorting the whole list
+// (alphabetically, say) is this, because no single relative move can express an
+// n-item reorder.
+type SortTagListRequest struct {
+	Ids []string `json:"ids"`
+}
+
+func (r SortTagListRequest) Validate() error {
+	if len(r.Ids) == 0 {
+		return &errs.ValidationError{Msg: "Ids list is empty", MsgCode: errs.CodeIsBlank}
+	}
+	for _, id := range r.Ids {
+		if _, err := vo.ParseId(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SortTagListResult is the sort-tag-list response: {items: [...]}.
+type SortTagListResult struct {
+	Items []TagResult `json:"items"`
+}
+
 // MoveTagResult is the move-tag response: {items: [...]}.
 type MoveTagResult struct {
 	Items []TagResult `json:"items"`
